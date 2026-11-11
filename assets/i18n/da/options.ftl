@@ -33,6 +33,10 @@ options-auto-trim = Automatisk trim
         Når stikken slippes, holder trimmet den stilling, du forlod
         Helikoptere: næsen stiger ikke mere med farten; jetfly: trimmer beskadigede ror ud
         Manuel trim: Alt + piletaster, Alt + Home centrerer den
+options-keep-time-accel = Behold tidsacceleration
+    .facts =
+        Accelerationen afbrydes ikke længere, når du bliver opdaget, affyrer et våben eller bliver skudt ned
+        Kun TIME-knappen og Shift + Z / Shift + X ændrer den
 options-tooltips = Cockpit-tooltips
     .facts = Hvad et cockpitinstrument eller en skærm er, under musen eller en VR-fingerspids
 options-player-labels = Spillernavne

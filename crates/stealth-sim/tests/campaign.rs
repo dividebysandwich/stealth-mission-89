@@ -1281,3 +1281,42 @@ fn a_fighter_engages_the_strike_aircraft_it_meets() {
     }
     panic!("the MiG-29 never got the A-10");
 }
+
+/// A player flying a cargo run (its tag on his aircraft): the fighters hunting or escorting
+/// that tag follow him once he is in the air, not before.
+#[test]
+fn the_cargo_runs_hunters_follow_the_player_flying_it() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let base = find(&sim, 0x401, None);
+    let st = sim.respawn_player(base, None);
+    sim.set_cargo_tag(0, Some(77));
+    let o = sim.objects()[base];
+    let i = sim.spawn_ai_mission(
+        base,
+        stealth_sim::ai_missions::F16,
+        stealth_sim::ai_missions::AiTask::Hunt(77, o.x + 0x400, o.y),
+        900,
+        true,
+    );
+    run(&mut sim, &st, 2);
+    let goal = |sim: &Sim| sim.campaign_flight(i).expect("the escort").goal;
+    assert_eq!(goal(&sim), (o.x + 0x400, o.y), "waits while he is on the ground");
+    let (mx, my) = (o.x - 0x600, o.y + 0x300);
+    let (x, y) = Sim::map_to_world(mx, my);
+    let air = PlayerState {
+        x,
+        y,
+        altitude: 3000,
+        height: 3000,
+        on_ground: false,
+        velocity: 250 * 27,
+        gear_up: true,
+        ..st.clone()
+    };
+    run(&mut sim, &air, 2);
+    // An escort keeps station 2 km to one side of him.
+    let (gx, gy) = goal(&sim);
+    let side = ((gx - mx).abs() - 0x80).abs();
+    assert!(side <= 4 && (gy - my).abs() <= 4, "goal {:?} vs {:?}", (gx, gy), (mx, my));
+}

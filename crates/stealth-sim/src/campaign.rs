@@ -37,6 +37,8 @@ const SITE_RELOAD: i32 = 25;
 const FIGHTER_RELOAD: i32 = 12;
 /// A fighter goes for enemy aircraft this close (80 km, its radar).
 const FIGHTER_SEARCH: i32 = 0x1400;
+/// How far (map units, 25 km) from the aircraft it escorts an escort engages the enemy.
+const ESCORT_BUBBLE: i32 = 0x640;
 /// A strike or recon aircraft watches the enemy's aircraft this close (32 km, its warning
 /// receiver and the AWACS's picture) and shoots at them in reach; one this close and pointing
 /// at it (or closer than `PRESS_CLOSE` whatever it does) presses it into a fight, which it
@@ -366,9 +368,11 @@ pub(crate) fn horizon(alt_m: f64) -> i32 {
     (4120.0 * (alt_m.max(0.0).sqrt() + 3.2) / M_PER_MAP) as i32
 }
 
+/// A single mission's escort: the tag the player flies under, its fighters' tags after it.
+pub const ESCORT_TAG: u32 = 0xE5C0_0000;
+
 impl Sim {
     pub(crate) fn init_campaign(&mut self, stores: [i32; 4], gun: i32) {
-        let n = self.objects.len();
         // The mission's own aircraft are not used: the campaign launches its own.
         for (i, u) in self.flights.iter_mut().enumerate() {
             if i + 4 < self.mission_flights || i >= self.mission_flights {
@@ -379,8 +383,15 @@ impl Sim {
         self.pl.deadline = 0;
         let base = self.pl.targets[0].base;
         self.pl.targets = [TargetSlot { mission_type: 0, object: -1, base, code: 0 }; 2];
+        self.campaign = Some(Box::new(self.campaign_state(stores, gun)));
+        self.leave_world();
+    }
+
+    /// The campaign's bookkeeping, nothing launched yet.
+    pub(crate) fn campaign_state(&self, stores: [i32; 4], gun: i32) -> CampaignSim {
+        let n = self.objects.len();
         let seed = self.rng.hold ^ 0xCA4D_A1A1;
-        self.campaign = Some(Box::new(CampaignSim {
+        CampaignSim {
             rng: Rng::new(seed),
             original: self.objects.iter().map(|o| (o.unit_type, o.shape)).collect(),
             intel: vec![false; n],
@@ -399,13 +410,43 @@ impl Sim {
             magazines: false,
             site_rounds: Vec::new(),
             gun_rounds: Vec::new(),
-        }));
-        self.leave_world();
+        }
+    }
+
+    /// A single mission's fighter escort: `n` friendly fighters take off from the player's
+    /// base after him and follow him once he is up (the campaign's AI flights, hosted by its
+    /// bookkeeping without making the mission a campaign).
+    pub(crate) fn launch_escorts(&mut self, n: u8, stores: [i32; 4], gun: i32) {
+        if n == 0 || self.opts.campaign {
+            return;
+        }
+        if self.campaign.is_none() {
+            self.campaign = Some(Box::new(self.campaign_state(stores, gun)));
+        }
+        let base = self.pl.targets[0].base;
+        let Some(o) = usize::try_from(base).ok().and_then(|b| self.objects.get(b)).copied() else {
+            return;
+        };
+        for k in 0..n as u32 {
+            let i = self.spawn_fighter(
+                base as usize,
+                o.x,
+                o.y,
+                ESCORT_TAG + 1 + k,
+                true,
+                FighterTask::Patrol,
+            );
+            // Fuel for the whole mission (tankers on the way): the longest the timer runs.
+            self.flights[i].timer = 0x7FFF;
+            self.set_hunt(ESCORT_TAG + 1 + k, ESCORT_TAG);
+        }
+        let id = self.pl.id;
+        self.set_cargo_tag(id, Some(ESCORT_TAG));
     }
 
     /// The active pilot is not in the world (campaign, between sorties).
     pub fn player_absent(&self) -> bool {
-        self.campaign.is_some() && self.pl.absent
+        self.opts.campaign && self.pl.absent
     }
 
     /// Pilot `id` is not in the world.
@@ -414,8 +455,9 @@ impl Sim {
         p.id != id || p.absent
     }
 
+    /// The campaign (None in a single mission, even one hosting an escort's AI flights).
     pub fn campaign(&self) -> Option<&CampaignSim> {
-        self.campaign.as_deref()
+        self.campaign.as_deref().filter(|_| self.opts.campaign)
     }
 
     /// The active pilot leaves the world: what was after him is called off.
@@ -469,7 +511,7 @@ impl Sim {
     pub fn end_sortie_pilot(&mut self, id: u8, outcome: u8) {
         let back = self.pl.id as usize;
         self.activate(id as usize);
-        if self.campaign.is_some() && self.pl.id == id && !self.player_absent() {
+        if self.opts.campaign && self.pl.id == id && !self.player_absent() {
             let e = MissionEnd {
                 outcome,
                 landing_type: self.pl.landing_type,
@@ -529,6 +571,9 @@ impl Sim {
             kiowa: self.pl.kiowa,
             chinook: self.pl.chinook,
             raptor: self.pl.raptor,
+            galaxy: self.pl.galaxy,
+            spectre: self.pl.spectre,
+            apache: self.pl.apache,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -554,8 +599,11 @@ impl Sim {
             kiowa,
             chinook,
             raptor,
+            galaxy,
+            spectre,
+            apache,
         } = airframe;
-        if self.campaign.is_none() {
+        if !self.opts.campaign {
             return self.start_state();
         }
         if id as usize >= self.pilot_count() {
@@ -577,6 +625,10 @@ impl Sim {
         self.pl.kiowa = kiowa;
         self.pl.chinook = chinook;
         self.pl.raptor = raptor;
+        self.pl.galaxy = galaxy;
+        self.pl.spectre = spectre;
+        self.pl.apache = apache;
+        self.pl.cargo_tag = None;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;
         self.pl.hits = 2;
@@ -586,6 +638,7 @@ impl Sim {
         self.pl.irj_heat = 0;
         self.pl.stores = stores;
         self.pl.gun_ammo = gun;
+        self.pl.load_side_guns();
         self.pl.gun_firing = false;
         self.pl.pflags &= pflags::BAY_OPEN;
         if external_stores {
@@ -640,6 +693,7 @@ impl Sim {
             self.pl.stores = c.stores_init;
             self.pl.gun_ammo = c.gun_init;
         }
+        self.pl.load_side_guns();
         self.pl.damage = 0;
         self.pl.hits = 2;
         self.pl.control_fault = ControlFault::default();
@@ -1744,8 +1798,11 @@ impl Sim {
                 .min_by_key(|&(_, d)| d)
         };
         let mut launches: Vec<AiMissile> = Vec::new();
+        // The air defences fight AI aircraft in the campaign only (a single mission's escort is
+        // left to the fighters, as the player is to the classic air defence).
+        let ground_fire = self.opts.campaign;
         // Enemy SAM sites against the friendly aircraft (radar horizon, intelligence).
-        for i in 0..self.ground_units {
+        for i in 0..self.ground_units * ground_fire as usize {
             let o = self.objects[i];
             c.site_cool[i] = (c.site_cool[i] - fs).max(0);
             if o.unit_type == 0
@@ -1786,7 +1843,7 @@ impl Sim {
             launches.push(self.ai_missile(spec, from, [0.0, 0.0, 1.0], j, false));
         }
         // Guns pick a target in reach; MANPADS teams fire; Patriot radars track.
-        for k in 0..self.units.len() {
+        for k in 0..self.units.len() * ground_fire as usize {
             let u = self.units[k];
             let blue = c.aaa_blue[k];
             c.aaa_target[k] = None;
@@ -1845,7 +1902,7 @@ impl Sim {
             }
         }
         // Missile battery launchers fire on their battery radar's track.
-        for k in 0..self.units.len() {
+        for k in 0..self.units.len() * ground_fire as usize {
             let u = self.units[k];
             let Some(b) = u.kind.battery_launcher().filter(|_| !u.destroyed) else { continue };
             let blue = c.aaa_blue[k];
@@ -1929,7 +1986,13 @@ impl Sim {
                 let cap = f.task == FighterTask::Cap;
                 let (ax, ay) = f.anchor;
                 let leashed = cap && approx(u.x - ax, u.y - ay) > CAP_LEASH;
-                let in_bubble = |j: usize| !cap || approx(xy[j].0 - ax, xy[j].1 - ay) < CAP_BUBBLE;
+                // An escort keeps to the enemies near what it escorts (its goal follows it).
+                let escort = f.blue && f.hunt.is_some();
+                let (gx, gy) = f.goal;
+                let in_bubble = |j: usize| {
+                    (!cap || approx(xy[j].0 - ax, xy[j].1 - ay) < CAP_BUBBLE)
+                        && (!escort || approx(xy[j].0 - gx, xy[j].1 - gy) < ESCORT_BUBBLE)
+                };
                 f.target = (0..sides.len())
                     .filter(|&j| !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
                     .filter(|&j| in_bubble(j))

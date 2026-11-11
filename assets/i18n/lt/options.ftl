@@ -33,6 +33,10 @@ options-auto-trim = Autom. trim
         Paleidus stick, trim išlaiko padėtį, kurioje ją palikote
         Sraigtasparniai: nosis nebekyla didėjant greičiui; reaktyviniai: kompensuoja pažeistus valdymo paviršius
         Rankinis trim: Alt + rodyklių klavišai, Alt + Home centruoja
+options-keep-time-accel = Išlaikyti laiko spartinimą
+    .facts =
+        Spartinimas nebeišsijungia, kai jus aptinka, paleidžiate ginklą ar numuša
+        Jį keičia tik mygtukas TIME ir Shift + Z / Shift + X
 options-tooltips = Kabinos paaiškinimai
     .facts = Kas yra kabinos valdiklis ar ekranas, po pele arba VR piršto galiuku
 options-player-labels = Žaidėjų vardai

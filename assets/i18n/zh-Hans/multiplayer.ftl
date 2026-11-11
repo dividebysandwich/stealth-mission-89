@@ -64,6 +64,7 @@ pic-site = { $place } 阵地
 uv-live = { $unit } - 实时
 uv-contact-lost = 失去联系
 uv-hint = 拖动：环绕  滚轮：缩放
+uv-infrared = 红外（热成像）视图
 
 ## 多人游戏
 
@@ -77,6 +78,8 @@ mp-your-name = 你的名字
 mp-join-address = 通过地址加入
     .hint = 地址或 名称[:端口]
 mp-connect = 连接
+mp-join-vr = 在 VR 中加入
+    .facts = 在 VR 头显中重新启动游戏并加入此服务器
 mp-server-name = 服务器名称
 mp-udp-port = UDP 端口
 mp-address-note = 其他玩家使用这台电脑的地址加入；如需通过互联网游玩，请在路由器中开放 UDP 端口
@@ -88,6 +91,8 @@ mp-friendly-fire = 友军误伤
 mp-airframe-losses = 损失消耗资源
 mp-ai-missions = 友军 AI 任务
 mp-host-new = 创建新战役
+mp-host-vr = 在 VR 中创建
+    .facts = 在 VR 头显中重新启动游戏并创建战役
 mp-host-saved = 创建已保存的战役
 mp-host = 创建
 mp-host-game = 创建游戏
@@ -98,9 +103,7 @@ mp-refresh = 刷新
 mp-server-count = { $servers } 个服务器，{ $pilots } 名飞行员
 mp-list-error = 无法访问服务器列表：{ $error }
 mp-no-servers = 当前没有公开服务器
-mp-col-server = 服务器
 mp-col-pilots = 飞行员
-mp-col-war = 战争
 mp-dedicated = 专用
 mp-other-version = 其他版本
 mp-join = 加入

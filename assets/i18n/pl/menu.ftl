@@ -221,6 +221,11 @@ aircraft-ah1z =
         Śmigłowiec szturmowy
         Działko w wieżyczce, Hellfire, AIM-9
         Działko i Hellfire podążają za zasobnikiem
+aircraft-ah64 =
+    .facts =
+        Dwumiejscowy śmigłowiec szturmowy
+        Działko w wieżyczce, Hellfire, Stinger
+        Drugi gracz może lecieć jako strzelec
 
 ## Sekcje i grupy
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Śmigłowiec transportowy z wirnikami tandem
         Podwiesza ładunki zaopatrzeniowe i logistyczne
         Brak momentu do skompensowania: wirniki znoszą się nawzajem
+aircraft-c5 =
+    .facts =
+        Czterosilnikowy strategiczny samolot transportowy
+        Przewozi amunicję między bazami lotniczymi
+        Ciężki: wolno się przechyla i podrywa nos
+aircraft-ac130 =
+    .facts =
+        Samolot ogniowy strzelający w bok
+        Działa 40 mm i 105 mm celowane zasobnikiem
+        Krąż w lewo, by działa sięgnęły celu

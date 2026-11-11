@@ -132,6 +132,7 @@ tip-cmd-harm = HARM 표적 지정
 tip-cmd-gm = 지상 매핑 레이더 (GM)
 tip-cmd-eng = 엔진 및 연료 (ENG)
 tip-cmd-rcs = 레이더 신호 (RCS)
+tip-cmd-cgo = 화물, 램프와 공중 투하 (CGO)
 tip-cmd-format-row = 포맷, 다시 누르면 포맷 메뉴
 tip-cmd-tgp = 타기팅 포드
 tip-cmd-map = 지도
@@ -205,6 +206,7 @@ tip-console-manual = 선택한 드론을 수동 조종: 스틱과 스로틀
 tip-console-track = 드론 카메라를 조준선 아래 지면에 고정
 tip-console-slave = 드론 카메라를 웨이포인트로 복귀(전방 아래쪽)
 tip-console-view = 드론 카메라: TGP 또는 조종용 전방 FLIR
+tip-console-gun = 다음에 이 측면포를 조준 (방아쇠로 발사)
 
 ## 조작부
 

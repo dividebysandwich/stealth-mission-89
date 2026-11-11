@@ -58,13 +58,19 @@ pub struct RemotePilot {
     /// them (`Sim::pylon_looks`).
     pub kiowa: bool,
     pub pylons: [u8; 2],
-    /// A jet's stores (with `external_stores`, not a helicopter): per station the weapon type
+    /// A jet's or the AH-64's stores (with `external_stores`, not another helicopter): per station the weapon type
     /// (255 none) and the rounds left on it, as its model hangs them.
     pub stores: Vec<(u8, u8)>,
     /// The CH-47 (with `helicopter`).
     pub chinook: bool,
     /// The F-22A (weapons in bays).
     pub raptor: bool,
+    /// The C-5 Galaxy.
+    pub galaxy: bool,
+    /// The AC-130 gunship.
+    pub spectre: bool,
+    /// The AH-64 Apache (with `gunship`).
+    pub apache: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -85,7 +91,7 @@ pub struct RemotePilot {
 /// A-10, RAH-66, AV-8B, OH-58D, CH-47),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
 /// the nozzle angle, the OH-58D's pylons (left in the low four bits), a jet's stores, more
-/// aircraft types (bit 0 the F-22A).
+/// aircraft types (bit 0 the F-22A, bit 1 the C-5, bit 2 the AC-130, bit 3 the AH-64).
 
 #[derive(Serialize, Deserialize)]
 struct RemoteWire(
@@ -138,7 +144,7 @@ impl From<RemotePilot> for RemoteWire {
             p.nozzle,
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
             p.stores,
-            p.raptor as u8,
+            p.raptor as u8 | (p.galaxy as u8) << 1 | (p.spectre as u8) << 2 | (p.apache as u8) << 3,
         )
     }
 }
@@ -205,6 +211,9 @@ impl From<RemoteWire> for RemotePilot {
             stores,
             chinook: bit(15),
             raptor: kinds & 1 != 0,
+            galaxy: kinds & 2 != 0,
+            spectre: kinds & 4 != 0,
+            apache: kinds & 8 != 0,
             gun_aim,
             chute,
             missiles,
@@ -292,6 +301,10 @@ pub struct SlowBase {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PilotSnap {
     pub pilot: Pilot,
+    /// The aircraft he is crew in (another's at its gunner's console, or his own with a
+    /// gunner or flown by the AI).
+    #[serde(default)]
+    pub crew: Option<crate::crew::CrewView>,
 }
 
 /// What of a pilot's own state changes every frame: the radar sweep, the distance to the
@@ -393,7 +406,7 @@ impl Sim {
                     nozzle: if p.harrier { p.last_input.nozzle } else { 0 },
                     kiowa: p.kiowa,
                     pylons: if p.kiowa { self.pylon_looks(&p.bays) } else { [0; 2] },
-                    stores: if p.external_stores && !p.helicopter {
+                    stores: if p.external_stores && (!p.helicopter || p.apache) {
                         p.bays
                             .iter()
                             .map(|&(w, n)| (u8::try_from(w).unwrap_or(255), n.clamp(0, 255) as u8))
@@ -403,6 +416,9 @@ impl Sim {
                     },
                     chinook: p.chinook,
                     raptor: p.raptor,
+                    galaxy: p.galaxy,
+                    spectre: p.spectre,
+                    apache: p.apache,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,
@@ -546,7 +562,7 @@ impl Sim {
         pilot.aaa_track = None;
         pilot.sweep_anim = 0;
         pilot.nearest_base_dist = 0;
-        PilotSnap { pilot }
+        PilotSnap { pilot, crew: self.crew_view(id) }
     }
 
     /// Pilot `id`'s state that changes every frame.
@@ -765,6 +781,7 @@ impl Sim {
             *o = p.scratch0;
         }
         self.pl = p;
+        self.crew_view = s.crew;
     }
 
     pub fn apply_pilot_tick(&mut self, t: &PilotTick) {

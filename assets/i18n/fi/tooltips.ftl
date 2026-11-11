@@ -132,6 +132,7 @@ tip-cmd-harm = HARM-maalinosoitus
 tip-cmd-gm = Maastokartoitustutka (GM)
 tip-cmd-eng = Moottorit ja polttoaine (ENG)
 tip-cmd-rcs = Tutkajälki (RCS)
+tip-cmd-cgo = Rahti, ramppi ja pudotus (CGO)
 tip-cmd-format-row = Formaatti; uudelleen: formaattivalikko
 tip-cmd-tgp = Tähtäinpodi (TGP)
 tip-cmd-map = Kartta
@@ -205,6 +206,7 @@ tip-console-manual = Lennä valittua lennokkia käsin: ohjaussauva ja kaasuvipu
 tip-console-track = Pidä lennokin kamera maassa tähtäimensä kohdalla
 tip-console-slave = Lennokin kamera takaisin sen waypointiin (eteen ja alas)
 tip-console-view = Lennokin kamera: sen TGP tai eteenpäin katsova FLIR sen lentämiseen
+tip-console-gun = Suuntaa seuraavaksi tämä sivutykki (liipaisin ampuu sillä)
 
 ## Säätimet
 

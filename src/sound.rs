@@ -9,7 +9,8 @@
 //!   requested id with no sample stays silent, so speech can be added later by dropping files in.
 //! - Radar warning tones come from `sounds/rwr/` (ids 100 and up).
 //! - The cannon (sound 6) holds a loop of its burst while it fires and plays the burst's decay
-//!   when it stops (`cannon_loop.flac`, `cannon_tail.flac`).
+//!   when it stops (`cannon_loop.flac`, `cannon_tail.flac`; the AH-64's 30 mm chain gun
+//!   `cannon30_loop.flac`, `cannon30_tail.flac`).
 //! - A fire on board sounds the fire warning siren (`fire_siren.flac`, tools/gen_fire_siren.py)
 //!   without a break until the fire is out (or the pilot has ejected).
 //! - The master caution (its cockpit light or key) silences the alarms sounding: the fire
@@ -85,6 +86,7 @@ impl Plugin for SoundPlugin {
         app.add_message::<PlaySound>()
             .add_message::<Thunder>()
             .add_message::<GunReport>()
+            .add_message::<ShellBurst>()
             .init_resource::<SoundLevel>()
             .init_resource::<Alarms>()
             .init_resource::<muffle::MuffledSounds>()
@@ -138,6 +140,14 @@ pub const DIRECT: u8 = 255;
 /// A vehicle's gun fired a round at `at` (Bevy world).
 #[derive(Message, Debug, Clone, Copy)]
 pub struct GunReport {
+    pub at: bevy::math::DVec3,
+    pub calibre: crate::explosions::Calibre,
+}
+
+/// A gunship's shell burst at `at` (Bevy world): the 105 mm's blast (explosion1-3.ogg), the
+/// 40 mm's sharp bang.
+#[derive(Message, Debug, Clone, Copy)]
+pub struct ShellBurst {
     pub at: bevy::math::DVec3,
     pub calibre: crate::explosions::Calibre,
 }
@@ -399,6 +409,12 @@ const LAUNCH_VOLUME: f32 = 1.0;
 const TANK_GUN: (f32, f32, f32) = (12_000.0, 150.0, 1.0);
 const AUTOCANNON: (f32, f32, f32) = (5_000.0, 50.0, 0.6);
 const LIGHT_GUN: (f32, f32, f32) = (3_000.0, 30.0, 0.35);
+/// The AC-130's guns firing (40mm.ogg, 105mm.ogg), heard from the cockpit 15 to 20 m away.
+const SIDE_40: (f32, f32, f32) = (7_000.0, 40.0, 0.8);
+const SIDE_105: (f32, f32, f32) = (10_000.0, 60.0, 1.0);
+/// Their shells bursting on the ground.
+const BURST_40: (f32, f32, f32) = (4_000.0, 40.0, 0.5);
+const BURST_105: (f32, f32, f32) = (9_000.0, 120.0, 1.0);
 const GUN_FAR: f32 = 800.0;
 /// The flown aircraft's engine in the external views: at full volume within this distance (m)
 /// of the eye, then falling off with 1 / distance.
@@ -425,6 +441,8 @@ struct SoundBank {
     siren: Option<Handle<AudioSource>>,
     /// The cannon's loop and tail.
     cannon: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
+    /// The AH-64's 30 mm chain gun's loop and tail.
+    cannon30: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     /// The other aircraft's loops, by `Engine`.
     distant: [Option<Handle<AudioSource>>; 5],
     launch: Option<Handle<AudioSource>>,
@@ -440,6 +458,10 @@ struct SoundBank {
     afterburner: Option<Handle<AudioSource>>,
     /// The Sidewinder seeker's loops, by `SeekerTone`.
     aim9: [Option<Handle<AudioSource>>; 3],
+    /// The AC-130's guns firing: the 40 mm, the 105 mm.
+    side_guns: [Option<Handle<AudioSource>>; 2],
+    /// The 105 mm's shells bursting (explosion1-3.ogg).
+    booms: Vec<Handle<AudioSource>>,
 }
 
 /// A playing one-shot sound (one instance per id at a time, like the single-voice driver, but
@@ -631,6 +653,7 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.beacon = optional("beacon.flac");
     bank.siren = optional("fire_siren.flac");
     bank.cannon = optional("cannon_loop.flac").zip(optional("cannon_tail.flac"));
+    bank.cannon30 = optional("cannon30_loop.flac").zip(optional("cannon30_tail.flac"));
     bank.distant = DISTANT_FILES.map(optional);
     bank.launch = optional("launch.flac");
     bank.guns = [
@@ -644,6 +667,11 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.jet_loops = optional("jet_engine.flac").zip(optional("jet_wind.flac"));
     bank.afterburner = optional("afterburner.flac");
     bank.aim9 = AIM9_FILES.map(optional);
+    bank.side_guns = [optional("40mm.ogg"), optional("105mm.ogg")];
+    bank.booms = ["explosion1.ogg", "explosion2.ogg", "explosion3.ogg"]
+        .into_iter()
+        .filter_map(optional)
+        .collect();
     commands.insert_resource(bank);
 }
 
@@ -825,12 +853,21 @@ fn cannon(
     settings: Res<crate::settings::Settings>,
 ) {
     let mix = || Mixed(Channel::Effects, 1.0);
-    let Some((looped, tail)) = bank.as_ref().and_then(|b| b.cannon.clone()) else { return };
+    let thirty = settings.aircraft.apache();
+    let Some((looped, tail)) = bank.as_ref().and_then(|b| {
+        if thirty { b.cannon30.clone().or(b.cannon.clone()) } else { b.cannon.clone() }
+    }) else {
+        return;
+    };
     let ejected = has_ejected(combat.as_deref());
-    let firing = combat
-        .as_deref()
-        .is_some_and(|c| c.sim.gun_firing() && c.end.is_none() && !c.sim.player_absent())
-        && !ejected
+    // In another's aircraft (his gunner): his gun, as the gunner is told.
+    let crew_gun = |c: &crate::combat::Combat| {
+        let me = c.sim.active_pilot();
+        c.sim.crew_view(me).is_some_and(|v| v.owner != me && v.gun_firing)
+    };
+    let firing = combat.as_deref().is_some_and(|c| {
+        c.end.is_none() && ((c.sim.gun_firing() && !c.sim.player_absent()) || crew_gun(c))
+    }) && !ejected
         && level.0 > 0;
     if !firing {
         if !playing.is_empty() && !ejected && level.0 > 0 {
@@ -963,6 +1000,21 @@ fn spawn_loop(
     ));
 }
 
+/// The aircraft the player is in is a helicopter: his own, or as a gunner riding in another's,
+/// that one (an AC-130's console keeps his own type in `settings.aircraft`).
+fn heard_helicopter(
+    settings: &crate::settings::Settings,
+    manning: Option<&crate::station::Manning>,
+    combat: Option<&crate::combat::Combat>,
+) -> bool {
+    if let (Some(m), Some(c)) = (manning.filter(|m| m.remote_gunner()), combat)
+        && let Some(p) = c.sim.remote_pilots().into_iter().find(|p| p.id == m.unit as u8)
+    {
+        return p.helicopter;
+    }
+    settings.aircraft.spec().helicopter
+}
+
 /// The flown helicopter's rotor and turbines (instead of the engine drone), while the rotor
 /// turns.
 #[allow(clippy::too_many_arguments)]
@@ -976,12 +1028,13 @@ fn heli_sounds(
     mut loops: Query<(Entity, &HeliLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
     distance: EngineDistance,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Some(bank) = bank else { return };
     let Ok(a) = player.single() else { return };
     let nr = a.rotor_speed();
     let on = level.0 == 3
-        && settings.aircraft.spec().helicopter
+        && heard_helicopter(&settings, manning.as_deref(), combat.as_deref())
         && nr > 0.05
         && a.ended.is_none()
         && !has_ejected(combat.as_deref());
@@ -1036,11 +1089,12 @@ fn jet_sounds(
     mut loops: Query<(Entity, &JetLoop, &Pitch, Option<&mut AudioSink>)>,
     mut muffler: Muffler,
     distance: EngineDistance,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let Some((engine, wind)) = bank.as_ref().and_then(|b| b.jet_loops.clone()) else { return };
     let Ok(a) = player.single() else { return };
     let on = level.0 == 3
-        && !settings.aircraft.spec().helicopter
+        && !heard_helicopter(&settings, manning.as_deref(), combat.as_deref())
         && a.ended.is_none()
         && !has_ejected(combat.as_deref());
     if !on {
@@ -1303,8 +1357,11 @@ fn distant_aircraft(
     )>,
     settings: Res<crate::settings::Settings>,
     mut muffler: Muffler,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let gain = Channel::Engine.gain(&settings);
+    // A gunner riding in another's aircraft hears its engines as his own (`jet_sounds`).
+    let ridden = manning.filter(|m| m.remote_gunner()).map(|m| m.unit as u8);
     let heard = level.0 == 3 && combat.as_ref().is_some_and(|c| c.end.is_none());
     let (Some(bank), Some(combat), Ok(eye_tf)) = (bank.filter(|_| heard), combat, eye.single())
     else {
@@ -1356,7 +1413,10 @@ fn distant_aircraft(
         })
         .collect();
     let me = sim.active_pilot();
-    for p in sim.remote_pilots().iter().filter(|p| p.id != me && p.chute.is_none()) {
+    for p in sim.remote_pilots().iter().filter(|p| p.id != me && Some(p.id) != ridden) {
+        if p.chute.is_some() {
+            continue;
+        }
         let v = combat.remote_track.view_at(p.id, combat.remote_time, p.view);
         if p.on_ground && v.knots == 0 {
             continue;
@@ -1544,6 +1604,7 @@ fn sam_launches(
 fn gun_reports(
     mut commands: Commands,
     mut fired: MessageReader<GunReport>,
+    mut bursts: MessageReader<ShellBurst>,
     bank: Option<Res<SoundBank>>,
     level: Res<SoundLevel>,
     origin: Res<FloatingOrigin>,
@@ -1551,12 +1612,14 @@ fn gun_reports(
     eye: Query<&GlobalTransform, With<EyeCamera>>,
     settings: Res<crate::settings::Settings>,
     mut muffler: Muffler,
-    // Reports on their way: seconds until heard, position (Bevy world), calibre.
-    mut coming: Local<Vec<(f32, bevy::math::DVec3, crate::explosions::Calibre)>>,
+    // Reports on their way: seconds until heard, position (Bevy world), calibre, a shell's
+    // burst (not a gun firing).
+    mut coming: Local<Vec<(f32, bevy::math::DVec3, crate::explosions::Calibre, bool)>>,
 ) {
     use crate::explosions::Calibre;
     let (Some(bank), Ok(eye_tf)) = (bank.filter(|_| level.0 >= 1), eye.single()) else {
         fired.clear();
+        bursts.clear();
         coming.clear();
         return;
     };
@@ -1565,12 +1628,21 @@ fn gun_reports(
         Calibre::Tank => TANK_GUN,
         Calibre::Cannon => AUTOCANNON,
         Calibre::Small => LIGHT_GUN,
+        Calibre::Mm40 => SIDE_40,
+        Calibre::Mm105 => SIDE_105,
     };
+    let burst_reach = |c: Calibre| if c == Calibre::Mm105 { BURST_105 } else { BURST_40 };
     for g in fired.read() {
         let d = (g.at - ear).length() as f32;
         // Only so many rounds on their way at once (a few columns firing bursts).
         if d < reach(g.calibre).0 && coming.len() < 48 {
-            coming.push((d / SPEED_OF_SOUND, g.at, g.calibre));
+            coming.push((d / SPEED_OF_SOUND, g.at, g.calibre, false));
+        }
+    }
+    for b in bursts.read() {
+        let d = (b.at - ear).length() as f32;
+        if d < burst_reach(b.calibre).0 && coming.len() < 64 {
+            coming.push((d / SPEED_OF_SOUND, b.at, b.calibre, true));
         }
     }
     let dt = virt.delta_secs();
@@ -1583,17 +1655,35 @@ fn gun_reports(
             i += 1;
             continue;
         }
-        let (_, p, calibre) = coming.swap_remove(i);
+        let (_, p, calibre, burst) = coming.swap_remove(i);
         let dist = (p - ear).length() as f32;
-        let Some((near, far)) = bank.guns[(calibre != Calibre::Tank) as usize].as_ref() else {
+        let side = matches!(calibre, Calibre::Mm40 | Calibre::Mm105);
+        let gun = (calibre == Calibre::Mm105) as usize;
+        let sound = if burst && calibre == Calibre::Mm105 {
+            // One of the three blasts.
+            (!bank.booms.is_empty()).then(|| &bank.booms[rand::random_range(0..bank.booms.len())])
+        } else if burst {
+            // The 40 mm's burst: the tank gun's far crack, small.
+            bank.guns[0].as_ref().map(|(_, far)| far)
+        } else if side {
+            bank.side_guns[gun].as_ref()
+        } else {
+            bank.guns[(calibre != Calibre::Tank) as usize]
+                .as_ref()
+                .map(|(near, far)| if dist > GUN_FAR { far } else { near })
+        };
+        let Some(muffled) = sound.and_then(|s| muffler.once(s)) else {
             continue;
         };
-        let Some(muffled) = muffler.once(if dist > GUN_FAR { far } else { near }) else {
-            continue;
-        };
+        let reach = if burst { burst_reach } else { reach };
         let (range, ..) = reach(calibre);
-        // The Shilka's 23 mm: the autocannon's report, smaller and quicker.
-        let speed = if calibre == Calibre::Small { 1.3 } else { rand::random_range(0.95..1.05) };
+        // The Shilka's 23 mm: the autocannon's report, smaller and quicker; a 40 mm burst's
+        // crack quicker still.
+        let speed = match (calibre, burst) {
+            (Calibre::Small, _) => 1.3,
+            (Calibre::Mm40, true) => rand::random_range(1.5..1.8),
+            _ => rand::random_range(0.95..1.05),
+        };
         commands.spawn((
             AudioPlayer(muffled),
             PlaybackSettings {

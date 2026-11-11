@@ -221,6 +221,11 @@ aircraft-ah1z =
         Hélicoptère d'attaque
         Canon en tourelle, Hellfire, AIM-9
         Le canon et les Hellfire suivent la nacelle
+aircraft-ah64 =
+    .facts =
+        Hélicoptère d'attaque biplace
+        Canon en tourelle, Hellfire, Stinger
+        Un second joueur peut voler comme tireur
 
 ## Sections et groupes
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Hélicoptère cargo à rotors en tandem
         Élingue les charges de ravitaillement et de logistique
         Pas de couple à compenser : les rotors s'annulent
+aircraft-c5 =
+    .facts =
+        Quadriréacteur de transport stratégique
+        Achemine les munitions entre les bases aériennes
+        Lourd : lent en roulis et à la rotation
+aircraft-ac130 =
+    .facts =
+        Avion-canonnière à tir latéral
+        Canons de 40 mm et 105 mm pointés par la nacelle
+        Orbitez à gauche pour pointer les canons

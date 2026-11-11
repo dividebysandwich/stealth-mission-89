@@ -62,6 +62,8 @@ pub(crate) struct Split {
     compact_key: egui::Id,
     room: egui::Vec2,
     compact: bool,
+    /// The body also scrolls sideways (`wide`).
+    wide: bool,
 }
 
 impl Split {
@@ -75,7 +77,14 @@ impl Split {
         let compact = ui
             .data(|d| d.get_temp::<(egui::Vec2, bool)>(compact_key))
             .is_some_and(|(at, compact)| at == room && compact);
-        Self { id, key, footer, compact_key, room, compact }
+        Self { id, key, footer, compact_key, room, compact, wide: false }
+    }
+
+    /// The body scrolls sideways too, for rows that can be wider than the window: only for a
+    /// window of a fixed size (`fixed_size`), which the scroll area can't widen.
+    pub(crate) fn wide(mut self) -> Self {
+        self.wide = true;
+        self
     }
 
     /// Whether the body did not fit with its long lists (the theaters, the aircraft) at this
@@ -85,7 +94,8 @@ impl Split {
     }
 
     /// The scrolling body, all the height the window has left but for the footer's. What is
-    /// wider than the window is clipped: a scroll area would widen the window to fit it.
+    /// wider than the window is clipped (a scroll area would widen the window to fit it), unless
+    /// the body is `wide`.
     pub(crate) fn body(&self, ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
         self.body_sized(ui, |ui, _| add(ui));
     }
@@ -99,7 +109,9 @@ impl Split {
             egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), height));
         let mut body = ui.new_child(egui::UiBuilder::new().max_rect(rect));
         body.set_clip_rect(rect.intersect(ui.clip_rect()));
-        let out = egui::ScrollArea::vertical()
+        let scroll =
+            if self.wide { egui::ScrollArea::both() } else { egui::ScrollArea::vertical() };
+        let out = scroll
             .id_salt(self.id)
             .auto_shrink([false, false])
             .min_scrolled_height(height)

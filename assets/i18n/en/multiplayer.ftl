@@ -66,6 +66,7 @@ pic-site = { $place } site
 uv-live = { $unit } - LIVE
 uv-contact-lost = CONTACT LOST
 uv-hint = Drag: orbit  Wheel: zoom
+uv-infrared = Infrared (thermal) view
 
 ## Multiplayer
 
@@ -80,6 +81,8 @@ mp-your-name = Your name
 mp-join-address = Join by address
     .hint = address or name[:port]
 mp-connect = CONNECT
+mp-join-vr = JOIN IN VR
+    .facts = Starts the game again in the VR headset and joins this server
 mp-server-name = Server name
 mp-udp-port = UDP port
 mp-address-note = Other players join with this computer's address; open the UDP port in your router to play over the internet
@@ -91,6 +94,8 @@ mp-friendly-fire = Friendly fire
 mp-airframe-losses = Losses cost resources
 mp-ai-missions = Friendly AI missions
 mp-host-new = HOST NEW
+mp-host-vr = HOST IN VR
+    .facts = Starts the game again in the VR headset and hosts the campaign
 mp-host-saved = Host a saved campaign
 mp-host = HOST
 mp-host-game = HOST A GAME
@@ -101,9 +106,7 @@ mp-refresh = REFRESH
 mp-server-count = { $servers } servers, { $pilots } pilots
 mp-list-error = The server list is not reachable: { $error }
 mp-no-servers = No public servers right now
-mp-col-server = SERVER
 mp-col-pilots = PILOTS
-mp-col-war = WAR
 mp-dedicated = DEDICATED
 mp-other-version = other version
 mp-join = JOIN

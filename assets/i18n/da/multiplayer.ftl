@@ -64,6 +64,7 @@ pic-site = Stedet { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = KONTAKT TABT
 uv-hint = Træk: kredsløb  Hjul: zoom
+uv-infrared = Infrarød (termisk) visning
 
 ## Multiplayer
 
@@ -77,6 +78,8 @@ mp-your-name = Dit navn
 mp-join-address = Tilslut via adresse
     .hint = adresse eller navn[:port]
 mp-connect = FORBIND
+mp-join-vr = TILSLUT I VR
+    .facts = Starter spillet igen i VR-headsettet og tilslutter denne server
 mp-server-name = Servernavn
 mp-udp-port = UDP-port
 mp-address-note = De andre spillere tilslutter sig med denne computers adresse; åbn UDP-porten i din router for at spille over internettet
@@ -88,6 +91,8 @@ mp-friendly-fire = Egenbeskydning
 mp-airframe-losses = Tab koster ressourcer
 mp-ai-missions = Venlige AI-missioner
 mp-host-new = HOST NY
+mp-host-vr = HOST I VR
+    .facts = Starter spillet igen i VR-headsettet og er vært for kampagnen
 mp-host-saved = Host en gemt kampagne
 mp-host = HOST
 mp-host-game = HOST ET SPIL
@@ -98,9 +103,7 @@ mp-refresh = OPDATÉR
 mp-server-count = { $servers } servere, { $pilots } piloter
 mp-list-error = Serverlisten kan ikke nås: { $error }
 mp-no-servers = Ingen offentlige servere lige nu
-mp-col-server = SERVER
 mp-col-pilots = PILOTER
-mp-col-war = KRIG
 mp-dedicated = DEDIKERET
 mp-other-version = anden version
 mp-join = TILSLUT

@@ -64,6 +64,7 @@ pic-site = Site { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = CONTACT VERLOREN
 uv-hint = Slepen: draaien  Wiel: zoomen
+uv-infrared = Infraroodbeeld (thermisch)
 
 ## Multiplayer
 
@@ -77,6 +78,8 @@ mp-your-name = Je naam
 mp-join-address = Deelnemen via adres
     .hint = adres of naam[:poort]
 mp-connect = VERBIND
+mp-join-vr = DEELNEMEN IN VR
+    .facts = Start het spel opnieuw in de VR-headset en neemt deel aan deze server
 mp-server-name = Servernaam
 mp-udp-port = UDP-poort
 mp-address-note = Andere spelers nemen deel met het adres van deze computer; open de UDP-poort in je router om via internet te spelen
@@ -88,6 +91,8 @@ mp-friendly-fire = Friendly fire
 mp-airframe-losses = Verliezen kosten middelen
 mp-ai-missions = Eigen AI-missies
 mp-host-new = NIEUW HOSTEN
+mp-host-vr = HOSTEN IN VR
+    .facts = Start het spel opnieuw in de VR-headset en host de campagne
 mp-host-saved = Een opgeslagen campagne hosten
 mp-host = HOST
 mp-host-game = HOST EEN SPEL
@@ -98,9 +103,7 @@ mp-refresh = VERVERSEN
 mp-server-count = { $servers } servers, { $pilots } piloten
 mp-list-error = De serverlijst is niet bereikbaar: { $error }
 mp-no-servers = Momenteel geen openbare servers
-mp-col-server = SERVER
 mp-col-pilots = PILOTEN
-mp-col-war = OORLOG
 mp-dedicated = DEDICATED
 mp-other-version = andere versie
 mp-join = DEELNEMEN

@@ -34,6 +34,7 @@ mod debrief;
 mod dedicated;
 mod dots;
 mod effects;
+mod cargo_page;
 mod eng_page;
 mod explosions;
 mod fires;
@@ -48,6 +49,7 @@ mod gif_recorder;
 mod glvr;
 mod goggles;
 mod ground_fire;
+mod gunner;
 mod ground_radar;
 mod headtrack;
 mod help;
@@ -75,7 +77,7 @@ mod mpd;
 mod multiplayer_menu;
 mod net;
 mod net_interp;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", windows))]
 mod no_gpu;
 mod options;
 mod palette;
@@ -98,6 +100,7 @@ mod script;
 mod settings;
 mod sfw;
 mod shake;
+mod side_guns;
 mod sim_render;
 mod sky;
 mod sling;
@@ -174,8 +177,8 @@ pub fn run() {
     dedicated::run_if_asked();
     // `--help`: the command line options.
     help::run_if_asked();
-    // No Vulkan driver: a window that says so, not Bevy's panic. glvr draws with OpenGL.
-    #[cfg(target_os = "linux")]
+    // No GPU: a window that says so, not Bevy's panic. glvr draws with OpenGL.
+    #[cfg(any(target_os = "linux", windows))]
     if gl_vr.is_none() {
         no_gpu::exit_if_missing();
     }
@@ -317,6 +320,7 @@ pub fn run() {
         .add_plugins((
             combat::CombatPlugin,
             sim_render::SimRenderPlugin,
+            side_guns::SideGunsPlugin,
             stores::StoresPlugin,
             trackcam::TrackCamPlugin,
             trails::TrailsPlugin,
@@ -347,6 +351,7 @@ pub fn run() {
             sling::SlingPlugin,
             weather::WeatherPlugin,
             station::StationPlugin,
+            gunner::GunnerPlugin,
         ))
         .add_plugins((
             fires::FiresPlugin,

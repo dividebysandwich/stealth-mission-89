@@ -221,6 +221,11 @@ aircraft-ah1z =
         Ründekopter
         Tornikahur, Hellfire'id, AIM-9
         Kahur ja Hellfire'id järgivad pod'i
+aircraft-ah64 =
+    .facts =
+        Ründekopter, kahekohaline
+        Tornikahur, Hellfire'id, Stingerid
+        Teine mängija saab lennata laskurina
 
 ## Jaotised ja rühmad
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Tandemrootoritega kaubahelikopter
         Riputab varustus- ja logistikakoormaid
         Pole pöördemomenti tasakaalustada: rootorid tühistavad teineteist
+aircraft-c5 =
+    .facts =
+        Neljamootoriline strateegiline transpordilennuk
+        Veab laskemoona lennubaaside vahel
+        Raske: aeglane kalduma ja nina tõstma
+aircraft-ac130 =
+    .facts =
+        Küljelt tulistav suurtükilennuk
+        40 mm ja 105 mm kahurid, suunatud konteineriga
+        Tiirle vasakule, et kahurid ulatuksid

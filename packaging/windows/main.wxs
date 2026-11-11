@@ -2,11 +2,13 @@
 <!-- Built by the build workflow (WiX 5):
      wix build packaging/windows/main.wxs -arch x64|arm64 \
          -d Version=<cargo version> -d BinDir=target/<target>/release \
-         -d SrcDir=<the checkout, a Windows path> -o <out>.msi
+         -d SrcDir=<the checkout, a Windows path> -d CrtDir=<the runtime DLLs> -o <out>.msi
 
-     stealth-mission-89.exe needs no DLLs of its own: bevy_mod_openxr links
-     the OpenXR loader statically on Windows, and finds the headset's runtime
-     (SteamVR, Oculus, Windows Mixed Reality) through the registry. The game
+     stealth-mission-89.exe needs only the Visual C++ runtime DLLs (CrtDir,
+     copied beside it from Visual Studio by the build workflow), since a fresh
+     Windows doesn't have them: bevy_mod_openxr links the OpenXR loader
+     statically on Windows, and finds the headset's runtime (SteamVR, Oculus,
+     Windows Mixed Reality) through the registry. The game
      reads assets\ beside the executable (src/asset_path.rs), which stays
      read-only in Program Files; saves, pilots, campaigns, settings and logs
      go to Documents\My Games\Stealth Mission 89 (docs/files.md). -->
@@ -48,6 +50,10 @@
         <ComponentGroup Id="Assets" Directory="AssetsFolder">
             <Files Include="$(var.SrcDir)\assets\**" />
         </ComponentGroup>
+        <!-- The Visual C++ runtime (msvcp140, vcruntime140, vcruntime140_1) beside the game. -->
+        <ComponentGroup Id="Runtime" Directory="INSTALLFOLDER">
+            <Files Include="$(var.CrtDir)\*.dll" />
+        </ComponentGroup>
         <ComponentGroup Id="Manual" Directory="DocsFolder">
             <Files Include="$(var.SrcDir)\docs\**" />
         </ComponentGroup>
@@ -73,6 +79,7 @@
 
         <Feature Id="Main">
             <ComponentRef Id="MainExe" />
+            <ComponentGroupRef Id="Runtime" />
             <ComponentRef Id="Docs" />
             <ComponentGroupRef Id="Assets" />
             <ComponentGroupRef Id="Manual" />

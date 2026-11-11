@@ -132,6 +132,7 @@ tip-cmd-harm = Zameriavanie HARM
 tip-cmd-gm = Radar na mapovanie terénu (GM)
 tip-cmd-eng = Motory a palivo (ENG)
 tip-cmd-rcs = Radarová stopa (RCS)
+tip-cmd-cgo = Náklad, rampa a zhoz (CGO)
 tip-cmd-format-row = Formát; znova: ponuka formátov
 tip-cmd-tgp = Zameriavacia gondola (TGP)
 tip-cmd-map = Mapa
@@ -205,6 +206,7 @@ tip-console-manual = Riadiť vybraný dron ručne: knipel a plyn
 tip-console-track = Držať kameru dronu na zemi pod jej zameriavačom
 tip-console-slave = Kamera dronu späť na jeho waypoint (dopredu a dole)
 tip-console-view = Kamera dronu: jeho TGP alebo FLIR dopredu na riadenie
+tip-console-gun = Ďalej mieriť týmto bočným kanónom (spúšť z neho strieľa)
 
 ## Ovládanie
 

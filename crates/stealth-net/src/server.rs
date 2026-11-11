@@ -186,7 +186,15 @@ impl Server {
                         let name = host.state.player_name(p).unwrap_or("?").to_string();
                         self.log.push(format!("{name} left ({why})"));
                         if host.state.sortie(p).is_some() {
-                            self.grace.insert(p, now + std::time::Duration::from_secs_f32(GRACE));
+                            if sim.gunner_of(p.0).is_some() && sim.pilot_in_the_air(p.0) {
+                                // His gunner flies on with the aircraft.
+                                let ev = host.end_sortie(sim, p, 7);
+                                self.route(&ev);
+                                out.extend(ev);
+                            } else {
+                                self.grace
+                                    .insert(p, now + std::time::Duration::from_secs_f32(GRACE));
+                            }
                         }
                         out.extend(self.unselect(p, host, sim));
                     }
@@ -266,9 +274,10 @@ impl Server {
             }
             (ToServer::EndSortie { outcome }, Some(p)) => Ok(host.end_sortie(sim, p, outcome)),
             (ToServer::Retask { offer }, Some(p)) => host.retask(sim, p, offer),
-            (ToServer::TakeControl { tag, stores }, Some(p)) => {
-                host.take_control(sim, p, tag, stores)
+            (ToServer::TakeControl { tag, stores, seat }, Some(p)) => {
+                host.take_control(sim, p, tag, stores, seat)
             }
+            (ToServer::Crew(cmd), Some(p)) => host.crew(sim, p, cmd),
             (ToServer::LeaveAircraft, Some(p)) => host.leave_aircraft(sim, p),
             (ToServer::Station(cmd), Some(p)) => host.station(sim, p, cmd),
             (ToServer::Hit(hit), Some(p)) => {
@@ -383,6 +392,7 @@ impl Server {
     /// A player gone: off his air defence console (the AI's again) and the plans he was on.
     fn unselect(&mut self, p: PlayerId, host: &mut Host, sim: &mut Sim) -> Vec<HostEvent> {
         sim.leave_station(p.0);
+        sim.leave_crew(p.0);
         if !host.state.plans.iter().any(|x| x.crew.contains(&p)) {
             return Vec::new();
         }
@@ -597,10 +607,16 @@ impl Server {
     }
 
     /// The moving world for pilot `me`: the pilots far from him only in some of the messages
-    /// (each in every `FAR_EVERY`th, in turns).
+    /// (each in every `FAR_EVERY`th, in turns). One out of the world (at a station's console,
+    /// a gunner riding in another's aircraft) is sent them all in every message: his eye may
+    /// be in any of them, and his client draws them between their frames (`present` lists
+    /// them all, or it would drop them as gone).
     fn seen_by(world: &WorldFast, sim: &Sim, me: u8, round: u32) -> WorldFast {
         let Some(at) = sim.pilot_view(me).filter(|_| !sim.pilot_absent(me)) else {
-            return WorldFast { present: Vec::new(), ..world.clone() };
+            return WorldFast {
+                present: world.pilots.iter().map(|p| p.id).collect(),
+                ..world.clone()
+            };
         };
         let near = |p: &RemotePilot| {
             p.id == me
@@ -626,6 +642,14 @@ impl Server {
                     }
                 } else if let Some(s) = host.state.sortie(id).filter(|_| !sim.pilot_absent(id.0)) {
                     PlayerStatus::Flying { title: s.offer.title.clone(), aircraft: s.aircraft }
+                } else if let Some((owner, _)) = sim.crew_of(id.0).filter(|(o, _)| *o != id.0)
+                    && let Some(s) = host.state.sortie(PlayerId(owner))
+                {
+                    PlayerStatus::Crew {
+                        title: s.offer.title.clone(),
+                        aircraft: s.aircraft,
+                        pilot: host.state.player_name(PlayerId(owner)).unwrap_or("?").to_string(),
+                    }
                 } else {
                     PlayerStatus::Ops
                 };

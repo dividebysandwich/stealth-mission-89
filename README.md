@@ -1,5 +1,7 @@
 # Stealth Mission 89
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/W7J0271P9Q)
+
 <img width="1200" height="766" alt="Stealth Mission 89 screenshots" src="frontpage.gif" />
 
 A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
@@ -45,7 +47,7 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording
 * **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar), AV-8B Harrier II (V/STOL, vectored thrust)
-* **Flyable Helicopters:** UH-60A (Logistics and Insertions), CH-47F Chinook (tandem rotors, sling-load logistics), AH-1Z (with HMD), RAH-66 Comanche (stealth, internal bays), OH-58D Kiowa Warrior (mast-mounted sight, HMD, optional pylons)
+* **Flyable Helicopters:** UH-60A (Logistics and Insertions), CH-47F Chinook (tandem rotors, sling-load logistics), AH-1Z (with HMD), AH-64D Apache (two seats: a second player can crew it as gunner), RAH-66 Comanche (stealth, internal bays), OH-58D Kiowa Warrior (mast-mounted sight, HMD, optional pylons, a second player can crew it as gunner)
 * **Controllable Air Defenses:** Gepard (manual and radar-guided), Patriot (radar)
 * **Ukraine theater** with drone defense missions and famous landmarks like the Zaporizhzhia NPP
 * **Classic modes:** DOS era flight model, cockpit, HUD and rendering, switchable on their own
@@ -135,6 +137,7 @@ NDK's `llvm-strip` first for a smaller APK.)
 | `--realistic-damage` | realistic weapon damage: missile hits can destroy the aircraft, start fires that burn out or blow it up, and bend control surfaces (out of trim, oscillating) |
 | `--tutorial` | interactive tutorial (single missions only): step by step from the takeoff to the landing, each objective in turn with the weapon to use against it, an arrow points at the cockpit part to use next, which blinks blue, and a box says what to do and which keys do it |
 | `--no-crashes` | crash protection: automatic pull-up near the ground with the gear up, ground contact and collisions are not fatal |
+| `--keep-time-accel` | the time acceleration is no longer cut by a detection, a weapon release or being shot down: only the TIME button and Shift-Z / Shift-X change it; also the *Keep time acceleration* option |
 | `--tacview-real-time [--tacview-address <ip[:port]>] [--tacview-password <text>]` | Tacview real-time telemetry: the flight is shown in Tacview (*Record > Real-Time Telemetry*) while it is flown; hosted on 127.0.0.1:42674 by default, `0.0.0.0` lets another computer join |
 | `--lockheed` | realistic weapons: the real aircraft's 2 bays, no air-to-air missiles, no carrier operations |
 | `--head-tracking` | head/eye tracking: infrared, eye, webcam or phone trackers move the cockpit view through a tracking program such as OpenTrack (FreeTrack output on Windows, or UDP to 127.0.0.1 port 4242); Home recentres |
@@ -201,7 +204,8 @@ the desktop. `--script` replays timed actions, `--log-flight` / `--log-sim`
 print the state, `--time-scale` speeds runs up, and `--diag --novsync` shows the frame rate.
 Script steps `yaw=`, `throttle=` and `press=Gear` drive the rudder, an absolute throttle and the
 3D cockpit's controls; `--head-look yaw,pitch` turns the 3D cockpit view (degrees). The step
-`SaveMission` saves the flight (its name is logged), which `--load` flies on.
+`SaveMission` saves the flight (its name is logged), which `--load` flies on; `LoadMission`
+opens the list of saves over the in-flight menu (`Menu` first opens it).
 
 ### Testing on Steam Frame
 `tools/frame.sh` cross-compiles the aarch64 build on an x86-64 Linux PC, copies it to the Frame
@@ -213,6 +217,18 @@ rendering in VR, `SM89_NO_INDIRECT=0|1` overrides direct draws (on in VR) and `S
 flattens parts of the palette shader (1 all, 2 background, 4 objects, 8 clouds and smoke).
 On the Frame, SteamVR's per-app GPU time (printed at the end of each run) is the reliable GPU
 measurement.
+
+
+## Licence
+
+The code is licensed under the [GNU GPL v3](LICENSE) (GPL-3.0-only). The assets (models,
+sounds, music, theaters, missions and other game data in `assets/` and `assets-src/`) are
+licensed under [CC BY-NC-SA 4.0](assets/LICENSE-CC-BY-NC-SA-4.0.txt). The shaders count as code,
+and a few third-party files keep their own licences. [assets/LICENSE.md](assets/LICENSE.md) has
+the details.
+
+Contributions are accepted under the same licences: code under GPL-3.0-only, assets under
+CC BY-NC-SA 4.0.
 
 
 ## Contributing, LLM Usage

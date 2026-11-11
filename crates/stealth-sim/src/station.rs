@@ -200,6 +200,9 @@ pub struct DefenceState {
     pub uav_serial: u16,
     #[serde(default)]
     pub uav_known: Vec<Seen>,
+    /// The seats taken in aircraft with more than one (`crew`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub crews: Vec<crate::crew::Crew>,
 }
 
 /// A stockpile to keep over a save: where, the unit that keeps it (a Patriot radar, a Gepard,

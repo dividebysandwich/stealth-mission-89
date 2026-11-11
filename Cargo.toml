@@ -5,7 +5,8 @@ exclude = ["vendor"]
 
 [workspace.package]
 edition = "2024"
-version = "0.8.5"
+version = "0.8.7"
+license = "GPL-3.0-only"
 
 [workspace.dependencies]
 stealth-formats = { path = "crates/stealth-formats" }
@@ -17,6 +18,7 @@ anyhow = "1"
 [package]
 name = "stealth-mission-89"
 version.workspace = true
+license.workspace = true
 edition.workspace = true
 
 # The game as a library, for the executable (src/main.rs) and the Android app
@@ -97,10 +99,11 @@ sha2 = "0.10"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
-# The check for a Vulkan GPU before Bevy starts, and the window that says there is none
-# (src/no_gpu.rs): Bevy's GL fallback can't present to a window.
-[target.'cfg(target_os = "linux")'.dependencies]
-wgpu = { version = "29", default-features = false, features = ["vulkan"] }
+# The check for a GPU before Bevy starts, and the window that says there is none
+# (src/no_gpu.rs): on Linux Bevy's GL fallback can't present to a window, on Windows the
+# software renderer (WARP) loses its device within seconds.
+[target.'cfg(any(target_os = "linux", windows))'.dependencies]
+wgpu = { version = "29", default-features = false, features = ["vulkan", "dx12"] }
 winit = "0.30"
 softbuffer = { version = "0.4", default-features = false, features = ["x11", "x11-dlopen", "wayland", "wayland-dlopen"] }
 ab_glyph = "0.2"

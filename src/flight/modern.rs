@@ -102,6 +102,8 @@ pub struct Aero {
     pub push_rate: f32,
     /// Yaw rate limit (rad/s).
     pub yaw_rate_max: f32,
+    /// Nose-up rotation rate on the take-off roll (rad/s): a heavy rotates slowly.
+    pub rotate_rate: f32,
     /// A swing wing (the Tornado's): the values above are with it fully forward.
     pub swing_wing: Option<SwingWing>,
     /// Vectored thrust (the Harrier's): nozzles turning the thrust down, reaction controls.
@@ -300,6 +302,7 @@ impl Aero {
         pitch_rate_max: 0.5,
         push_rate: 0.6,
         yaw_rate_max: 0.5,
+        rotate_rate: ROTATE_RATE,
         swing_wing: None,
         vtol: None,
     };
@@ -343,6 +346,7 @@ impl Aero {
         pitch_rate_max: 0.6,
         push_rate: 0.6,
         yaw_rate_max: 0.6,
+        rotate_rate: ROTATE_RATE,
         swing_wing: None,
         vtol: None,
     };
@@ -392,6 +396,7 @@ impl Aero {
         pitch_rate_max: 0.75,
         push_rate: 0.6,
         yaw_rate_max: 0.7,
+        rotate_rate: ROTATE_RATE,
         swing_wing: None,
         vtol: None,
     };
@@ -434,6 +439,7 @@ impl Aero {
         pitch_rate_max: 0.5,
         push_rate: 0.6,
         yaw_rate_max: 0.5,
+        rotate_rate: ROTATE_RATE,
         swing_wing: Some(SwingWing {
             forward: 25.0 * std::f32::consts::PI / 180.0,
             back: 67.0 * std::f32::consts::PI / 180.0,
@@ -485,6 +491,7 @@ impl Aero {
         pitch_rate_max: 0.5,
         push_rate: 0.6,
         yaw_rate_max: 0.5,
+        rotate_rate: ROTATE_RATE,
         swing_wing: None,
         vtol: None,
     };
@@ -527,6 +534,7 @@ impl Aero {
         pitch_rate_max: 0.5,
         push_rate: 0.6,
         yaw_rate_max: 0.5,
+        rotate_rate: ROTATE_RATE,
         swing_wing: None,
         vtol: Some(Vtol {
             max_nozzle: 98.5 * std::f32::consts::PI / 180.0,
@@ -538,6 +546,93 @@ impl Aero {
             momentum_drag: 0.08,
             ground_pitch: 5.5 * std::f32::consts::PI / 180.0,
         }),
+    };
+
+    /// C-5M Super Galaxy: four F138 high bypass turbofans (205,000 lbf static, falling off steeply
+    /// with speed) on 6,200 ft^2 of swept wing. The empty airframe and a typical cargo weigh about
+    /// 480,000 lb; it starts with 150,000 lb of its 332,000 lb of fuel. Big slotted flaps and
+    /// slats for a 130-140 kt approach, about Mach 0.77 cruise, its limit Mach 0.85 or so; 2.5 g,
+    /// slow to roll and pitch, slow to rotate.
+    pub const C5: Aero = Aero {
+        wing_loading: 131.0,
+        dry_weight: 480_000.0,
+        ref_weight: 812_000.0,
+        thrust_ratio: 0.252,
+        ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
+        thrust_mach: -0.68,
+        cl_alpha: 5.2,
+        alpha_stall: 0.25,
+        alpha_stall_neg: -0.18,
+        alpha_limit: 0.22,
+        alpha_limit_neg: -0.12,
+        cl_flaps: 1.3,
+        alpha_flaps: 0.02,
+        cd0: 0.018,
+        cd_k: 0.048,
+        cd_sep: 0.5,
+        // The slotted flaps and slats keep the flow attached to a high CL (the clean wing never
+        // gets near it within its 2.5 g).
+        cl_sep: 2.0,
+        cd_gear: 0.015,
+        cd_flaps: 0.06,
+        // The spoilers.
+        cd_speed_brake: 0.05,
+        cd_bay: 0.0,
+        cd_idle: 0.010,
+        cy_beta: 0.6,
+        drag_rise: DragRise::Subsonic,
+        n_max: 2.5,
+        n_min: -1.0,
+        roll_rate: 0.35,
+        pitch_rate_max: 0.14,
+        push_rate: 0.6,
+        yaw_rate_max: 0.15,
+        rotate_rate: 0.05,
+        swing_wing: None,
+        vtol: None,
+    };
+
+    /// AC-130 gunship (a C-130H): four T56 turboprops of 4,590 shp (about 43,000 lbf static
+    /// between them, the thrust falling off with speed as a propeller's does) on 1,745 ft^2 of
+    /// straight wing. The airframe with its guns, ammunition and crew weighs about 100,000 lb;
+    /// it starts with 30,000 lb of fuel. Flaps for a 100-110 kt approach, about 300 kt flat out,
+    /// 3 g; it rolls into its orbit quicker than a jet transport.
+    pub const C130: Aero = Aero {
+        wing_loading: 89.0,
+        dry_weight: 100_000.0,
+        ref_weight: 155_000.0,
+        thrust_ratio: 0.28,
+        ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
+        thrust_mach: -1.4,
+        cl_alpha: 5.0,
+        alpha_stall: 0.35,
+        alpha_stall_neg: -0.2,
+        alpha_limit: 0.32,
+        alpha_limit_neg: -0.14,
+        cl_flaps: 1.1,
+        alpha_flaps: 0.02,
+        cd0: 0.026,
+        cd_k: 0.045,
+        cd_sep: 0.5,
+        cl_sep: 2.4,
+        cd_gear: 0.02,
+        cd_flaps: 0.05,
+        cd_speed_brake: 0.0,
+        cd_bay: 0.0,
+        cd_idle: 0.02,
+        cy_beta: 0.7,
+        drag_rise: DragRise::Subsonic,
+        n_max: 3.0,
+        n_min: -1.0,
+        roll_rate: 0.6,
+        pitch_rate_max: 0.2,
+        push_rate: 0.7,
+        yaw_rate_max: 0.2,
+        rotate_rate: 0.12,
+        swing_wing: None,
+        vtol: None,
     };
 
     /// The airframe with its swing wing (if it has one) at `at` (0 fully forward .. 1 fully
@@ -603,7 +698,8 @@ const HOVER_HOLD_GAIN: f32 = 2.0;
 const NOZZLE_KEY_RATE: f32 = 45.0 / 98.5;
 const NOZZLE_STOP_PUSH: f32 = 0.5;
 
-/// Ground: rolling friction, wheel brakes (g), nose-up rotation rate (rad/s), tail strike pitch.
+/// Ground: rolling friction, wheel brakes (g), the usual nose-up rotation rate (rad/s,
+/// `Aero::rotate_rate`), tail strike pitch.
 const ROLL_FRICTION: f32 = 0.02;
 const WHEEL_BRAKES: f32 = 1.0;
 const ROTATE_RATE: f32 = 0.15;
@@ -636,6 +732,11 @@ pub(super) struct State {
 }
 
 impl State {
+    /// Flap extension 0..1.
+    pub(super) fn flap_pos(&self) -> f32 {
+        self.flap_pos
+    }
+
     /// Direction of the velocity once the model runs and the aircraft moves.
     pub(super) fn velocity(&self) -> Option<Vec3> {
         (self.init && self.vel.length_squared() > 1.0).then(|| self.vel.normalize())
@@ -1037,9 +1138,9 @@ pub(super) fn step(
         let mut new_pitch = pitch;
         let pull = controls.pitch.clamp(-1.0, 1.0);
         if along > 0.8 * vs && pull > 0.05 {
-            new_pitch += pull * ROTATE_RATE * dt;
+            new_pitch += pull * ae.rotate_rate * dt;
         } else {
-            new_pitch -= ROTATE_RATE * 0.7 * dt;
+            new_pitch -= ae.rotate_rate * 0.7 * dt;
         }
         let new_pitch = new_pitch.clamp(ground_pitch(ae), MAX_GROUND_PITCH);
         // Nosewheel steering by the rudder, else the stick; less authority with speed.

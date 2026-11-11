@@ -221,6 +221,11 @@ aircraft-ah1z =
         Attackhelikopter
         Kanon i torn, Hellfire, AIM-9
         Kanonen och Hellfire följer pod:en
+aircraft-ah64 =
+    .facts =
+        Tvåsitsig attackhelikopter
+        Kanon i torn, Hellfire, Stinger
+        En andra spelare kan flyga som skytt
 
 ## Sektioner och grupper
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Lasthelikopter med tandemrotorer
         Hänger upp underhålls- och logistiklaster
         Inget moment att hålla emot: rotorerna tar ut varandra
+aircraft-c5 =
+    .facts =
+        Fyrmotorigt strategiskt transportflygplan
+        Flyger ammunition mellan flygbaserna
+        Tungt: långsamt att rolla och rotera
+aircraft-ac130 =
+    .facts =
+        Sidoskjutande attackflygplan
+        40 mm- och 105 mm-kanoner riktade med kapseln
+        Cirkla vänster för att få kanonerna på målet

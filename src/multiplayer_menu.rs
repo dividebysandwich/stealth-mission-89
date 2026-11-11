@@ -28,7 +28,7 @@ use crate::menu::{
 use crate::mission::MissionData;
 use crate::net::{NetLink, Notice};
 use crate::settings::{AppState, MissionSetup};
-use crate::text_entry::{Charset, text_entry};
+use crate::text_entry::{Charset, field_id, text_entry, text_field, virtual_keyboard};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum Page {
@@ -60,6 +60,8 @@ pub struct MultiplayerWindow {
     clear_sky: bool,
     /// `--host`: host a new campaign at once.
     auto_host: bool,
+    /// `--host-save <name>`: host that saved campaign at once.
+    auto_host_save: Option<String>,
     /// The public server list: as last fetched, being fetched, or why not.
     servers: Vec<ServerEntry>,
     fetching: Option<stealth_net::master::ListSlot>,
@@ -145,8 +147,10 @@ impl Plugin for MultiplayerMenuPlugin {
     }
 }
 
-/// Test aids: `--connect <host[:port]>` joins a server, `--host` serves a new campaign (in
-/// `--theater`, with `--friendly-fire`), both as `--name <pilot>` (else the saved name).
+/// `--connect <host[:port]>` joins a server, `--host` serves a new campaign (in `--theater`,
+/// with `--friendly-fire`, `--host-sky-ratio <r>`, `--host-clear-sky`), `--host-save <name>` a
+/// saved one, all as `--name <pilot>` (else the saved name): test aids, and how JOIN IN VR and
+/// HOST IN VR start the game again in the headset.
 fn test_args(
     mut done: Local<bool>,
     mut w: ResMut<MultiplayerWindow>,
@@ -181,6 +185,15 @@ fn test_args(
         w.page = Page::Host;
         w.auto_host = true;
     }
+    if let Some(name) = get("--host-save") {
+        w.show();
+        w.page = Page::Host;
+        w.auto_host_save = Some(name);
+    }
+    if let Some(r) = get("--host-sky-ratio").and_then(|r| r.parse().ok()) {
+        w.sky_ratio = r;
+    }
+    w.clear_sky |= args.iter().any(|a| a == "--host-clear-sky");
 }
 
 /// The rules of a campaign hosted here.
@@ -245,6 +258,8 @@ fn multiplayer_window(
     mut next: ResMut<NextState<AppState>>,
     mut settings: ResMut<crate::settings::Settings>,
     mut notice: ResMut<Notice>,
+    vr: Res<crate::menu::VrAvailable>,
+    mut exit: MessageWriter<AppExit>,
 ) -> Result {
     // A coop game that ended brings the menu back here, with why.
     if let Some(n) = notice.0.take() {
@@ -261,6 +276,11 @@ fn multiplayer_window(
     let mut close = escape && w.joining.is_none() && w.confirm_delete.is_none();
     let mut join = false;
     let auto_host = std::mem::take(&mut w.auto_host);
+    let auto_host_save = w.auto_host_save.take();
+    // JOIN IN VR / HOST IN VR: not already in the headset, not in the browser or on Android.
+    let can_vr = vr.0 && !settings.vr && !cfg!(any(target_arch = "wasm32", target_os = "android"));
+    // The game started again in VR does what these say in its multiplayer menu.
+    let mut relaunch: Option<Vec<String>> = None;
     let mut host: Option<Result<(String, Host), String>> = None;
     // The public server list, when it came.
     let came = w.fetching.as_ref().and_then(|a| a.lock().ok().and_then(|mut a| a.take()));
@@ -360,19 +380,29 @@ fn multiplayer_window(
             if w.page == Page::Host {
                 flow.card(ui, Span::Fill(SERVER_LEAST), |ui| {
                     area(ui, false, |ui| {
-                        ui.horizontal(|ui| {
+                        let field = ui.horizontal(|ui| {
                             ui.label(t!("mp-server-name"));
                             let hint = server_title(&state);
-                            text_entry(
+                            text_field(
                                 ui,
                                 "mp_server",
                                 &mut state.server_name,
                                 32,
                                 Charset::Name,
-                                settings.vr,
                                 &hint,
-                            );
+                            )
                         });
+                        if settings.vr {
+                            virtual_keyboard(
+                                ui,
+                                "mp_server",
+                                field_id("mp_server"),
+                                &mut state.server_name,
+                                32,
+                                Charset::Name,
+                                field.inner.clicked(),
+                            );
+                        }
                         ui.horizontal_wrapped(|ui| {
                             ui.label(t!("mp-udp-port"));
                             ui.add(egui::DragValue::new(&mut state.host_port).range(1024..=65535));
@@ -392,14 +422,14 @@ fn multiplayer_window(
                 flow.card(ui, Span::Fill(JOIN_LEAST), |ui| {
                     area(ui, false, |ui| {
                         section(ui, t!("mp-join-address"));
-                        ui.horizontal(|ui| {
-                            text_entry(
+                        // Wrapped: the buttons go under the address in a narrow card.
+                        let row = ui.horizontal_wrapped(|ui| {
+                            let field = text_field(
                                 ui,
                                 "mp_server",
                                 &mut state.server_addr,
                                 64,
                                 Charset::Address,
-                                settings.vr,
                                 t!("mp-join-address.hint"),
                             );
                             if w.joining.is_some() {
@@ -423,7 +453,41 @@ fn multiplayer_window(
                                     no_name = true;
                                 }
                             }
+                            if can_vr
+                                && w.joining.is_none()
+                                && ui
+                                    .add_enabled(
+                                        !state.server_addr.trim().is_empty(),
+                                        egui::Button::new(icon_text(
+                                            ui,
+                                            icon::VR,
+                                            t!("mp-join-vr"),
+                                        )),
+                                    )
+                                    .on_hover_text(t!("mp-join-vr.facts"))
+                                    .clicked()
+                            {
+                                if named {
+                                    let addr = state.server_addr.trim().to_string();
+                                    relaunch = Some(vec!["--connect".into(), addr]);
+                                } else {
+                                    no_name = true;
+                                }
+                            }
+                            field.clicked()
                         });
+                        // Under the row: in it the keyboard got what the buttons left.
+                        if settings.vr {
+                            virtual_keyboard(
+                                ui,
+                                "mp_server",
+                                field_id("mp_server"),
+                                &mut state.server_addr,
+                                64,
+                                Charset::Address,
+                                row.inner,
+                            );
+                        }
                         if let Some(s) = &w.status {
                             ui.label(egui::RichText::new(s).small().color(BRIGHT));
                         }
@@ -434,12 +498,15 @@ fn multiplayer_window(
             ui.separator();
             match w.page {
                 Page::Join => {
-                    if let Some(addr) = server_list(ui, &mut w, list_height) {
-                        if named {
+                    if let Some((addr, in_vr)) = server_list(ui, &mut w, list_height, can_vr) {
+                        if !named {
+                            no_name = true;
+                        } else if in_vr {
+                            relaunch = Some(vec!["--connect".into(), addr.clone()]);
+                            state.server_addr = addr;
+                        } else {
                             state.server_addr = addr;
                             join = true;
-                        } else {
-                            no_name = true;
                         }
                     }
                 }
@@ -490,9 +557,29 @@ fn multiplayer_window(
                     flow.card(ui, Span::Fill(NEW_LEAST), |ui| {
                         section(ui, t!("cm-section-new"));
                         ui.label(crate::i18n::theater_name(state.theater.min(THEATERS.len() - 1)));
-                        let clicked =
-                            ui.add(big_button(t!("mp-host-new")).icon(icon::HOST)).clicked();
-                        no_name |= clicked && !named;
+                        // Wrapped: HOST IN VR goes under HOST NEW in a narrow card.
+                        let (clicked, in_vr) = ui
+                            .horizontal_wrapped(|ui| {
+                                let clicked = ui
+                                    .add(big_button(t!("mp-host-new")).icon(icon::HOST))
+                                    .clicked();
+                                let in_vr = can_vr
+                                    && ui
+                                        .add(big_button(t!("mp-host-vr")).icon(icon::VR))
+                                        .on_hover_text(t!("mp-host-vr.facts"))
+                                        .clicked();
+                                (clicked, in_vr)
+                            })
+                            .inner;
+                        no_name |= (clicked || in_vr) && !named;
+                        if in_vr && named {
+                            let mut args = vec!["--host".to_string(), "--host-sky-ratio".into()];
+                            args.push(w.sky_ratio.to_string());
+                            if w.clear_sky {
+                                args.push("--host-clear-sky".into());
+                            }
+                            relaunch = Some(args);
+                        }
                         if (clicked && named) || auto_host {
                             let (code, _) = THEATERS[state.theater.min(THEATERS.len() - 1)];
                             let secs = web_time::SystemTime::now()
@@ -542,8 +629,17 @@ fn multiplayer_window(
                                     let clicked = ui
                                         .button(icon_text(ui, icon::HOST, t!("mp-host")))
                                         .clicked();
-                                    no_name |= clicked && !named;
-                                    if clicked && named {
+                                    let in_vr = can_vr
+                                        && ui
+                                            .button(icon_text(ui, icon::VR, t!("cm-in-vr")))
+                                            .on_hover_text(t!("mp-host-vr.facts"))
+                                            .clicked();
+                                    no_name |= (clicked || in_vr) && !named;
+                                    if in_vr && named {
+                                        relaunch = Some(vec!["--host-save".into(), name.clone()]);
+                                    }
+                                    let auto = auto_host_save.as_ref() == Some(&name);
+                                    if (clicked && named) || auto {
                                         let rules = host_rules(&settings, &state);
                                         host = Some(match save::load(&name) {
                                             Ok(Some(st)) => Host::resume(st, &data.0, rules)
@@ -628,6 +724,14 @@ fn multiplayer_window(
         let (addr, name) = (state.server_addr.clone(), state.player_name.clone());
         connect(&mut w, &addr, &name);
     }
+    if let Some(args) = relaunch {
+        match crate::menu::relaunch_multiplayer_in_vr(&args, &state, &settings) {
+            Ok(()) => {
+                exit.write(AppExit::Success);
+            }
+            Err(e) => w.error = Some(t!("menu-vr-failed", error = e.to_string())),
+        }
+    }
     match host {
         Some(Ok((name, h))) => {
             let title = server_title(&state);
@@ -711,7 +815,14 @@ fn area(ui: &mut egui::Ui, flash: bool, add: impl FnOnce(&mut egui::Ui)) {
 }
 
 /// The public server list on the Join page, `height` tall: a server's JOIN gives its address.
-fn server_list(ui: &mut egui::Ui, w: &mut MultiplayerWindow, height: f32) -> Option<String> {
+/// The public servers; the address of the one whose JOIN was clicked, and whether to join it
+/// in VR (`vr`: the VR button is there).
+fn server_list(
+    ui: &mut egui::Ui,
+    w: &mut MultiplayerWindow,
+    height: f32,
+    vr: bool,
+) -> Option<(String, bool)> {
     let mut pick = None;
     ui.horizontal(|ui| {
         section(ui, t!("mp-public-servers"));
@@ -741,58 +852,72 @@ fn server_list(ui: &mut egui::Ui, w: &mut MultiplayerWindow, height: f32) -> Opt
     }
     let list = egui::ScrollArea::vertical().max_height(height).min_scrolled_height(height);
     list.auto_shrink([false, false]).show(ui, |ui| {
-        if w.servers.is_empty() {
-            return;
-        }
-        egui::Grid::new("mp_servers")
-            .num_columns(5)
-            .spacing(egui::vec2(18.0, 6.0))
-            .striped(true)
-            .show(ui, |ui| {
-                for h in ["mp-col-server", "mp-col-pilots", "summary-theater", "mp-col-war"] {
-                    ui.label(egui::RichText::new(t!(h)).color(DIM));
-                }
-                {
-                    ui.label("");
-                }
-                ui.end_row();
-                for s in &w.servers {
-                    let r = &s.report;
-                    let ours = r.protocol == stealth_net::PROTOCOL;
-                    let full = r.max_players > 0 && r.players.len() >= r.max_players as usize;
-                    let col = if ours { BRIGHT } else { DIM };
-                    ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(&r.name).strong().color(col));
-                        if r.dedicated {
-                            ui.label(egui::RichText::new(t!("mp-dedicated")).small().color(DIM));
+        // Two lines a server (its name and pilots, then its theater and war), the buttons at
+        // the right: as narrow as the window, never wider.
+        for (i, s) in w.servers.iter().enumerate() {
+            let r = &s.report;
+            let ours = r.protocol == stealth_net::PROTOCOL;
+            let full = r.max_players > 0 && r.players.len() >= r.max_players as usize;
+            let col = if ours { BRIGHT } else { DIM };
+            let fill =
+                if i % 2 == 0 { ui.visuals().faint_bg_color } else { egui::Color32::TRANSPARENT };
+            egui::Frame::new().fill(fill).inner_margin(egui::Margin::symmetric(4, 3)).show(
+                ui,
+                |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if !ours {
+                            ui.label(
+                                egui::RichText::new(t!("mp-other-version")).small().color(DIM),
+                            );
+                        } else {
+                            let can = !full && w.joining.is_none();
+                            // Right to left: VR right of JOIN.
+                            if vr
+                                && ui
+                                    .add_enabled(
+                                        can,
+                                        egui::Button::new(icon_text(ui, icon::VR, "VR")),
+                                    )
+                                    .on_hover_text(t!("mp-join-vr.facts"))
+                                    .clicked()
+                            {
+                                pick = Some((s.addr.clone(), true));
+                            }
+                            let join = egui::Button::new(icon_text(ui, icon::JOIN, t!("mp-join")));
+                            if ui.add_enabled(can, join).clicked() {
+                                pick = Some((s.addr.clone(), false));
+                            }
                         }
-                    })
-                    .response
-                    .on_hover_text(s.addr.as_str());
-                    let count = format!("{}/{}", r.players.len(), r.max_players);
-                    ui.label(egui::RichText::new(count).monospace().color(if full {
-                        AMBER
-                    } else {
-                        GREEN
-                    }));
-                    ui.label(egui::RichText::new(&r.theater).color(col));
-                    ui.label(
-                        egui::RichText::new(format!("{}, {}", r.situation, r.clock)).color(DIM),
-                    );
-                    if !ours {
-                        ui.label(egui::RichText::new(t!("mp-other-version")).small().color(DIM));
-                    } else if ui
-                        .add_enabled(
-                            !full && w.joining.is_none(),
-                            egui::Button::new(icon_text(ui, icon::JOIN, t!("mp-join"))),
-                        )
-                        .clicked()
-                    {
-                        pick = Some(s.addr.clone());
-                    }
-                    ui.end_row();
-                }
-            });
+                        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(egui::RichText::new(&r.name).strong().color(col))
+                                    .on_hover_text(s.addr.as_str());
+                                if r.dedicated {
+                                    ui.label(
+                                        egui::RichText::new(t!("mp-dedicated")).small().color(DIM),
+                                    );
+                                }
+                                ui.add_space(8.0);
+                                ui.label(
+                                    egui::RichText::new(t!("mp-col-pilots")).small().color(DIM),
+                                );
+                                let count = format!("{}/{}", r.players.len(), r.max_players);
+                                let count_col = if full { AMBER } else { GREEN };
+                                ui.label(egui::RichText::new(count).monospace().color(count_col));
+                            });
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(egui::RichText::new(&r.theater).color(col));
+                                ui.label(
+                                    egui::RichText::new(format!("{}, {}", r.situation, r.clock))
+                                        .color(DIM),
+                                );
+                            });
+                        });
+                    });
+                },
+            );
+        }
     });
     ui.add_space(6.0);
     pick

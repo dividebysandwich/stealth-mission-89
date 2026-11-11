@@ -46,13 +46,14 @@ Starting
                                view direction (default 0, -15)
 
 Aircraft and rules
-  --aircraft f117|f16|f22|tornado|a10|av8b|uh60|ch47|ah1z|rah66|oh58
+  --aircraft f117|f16|f22|tornado|a10|av8b|c5|ac130|uh60|ch47|ah1z|ah64|rah66|oh58
                                the flown aircraft (default f117)
   --lockheed                   realistic weapons: the real F-117A's 2 bays, no air-to-air
                                missiles, no carrier operations
   --classic-guidance           DOS era missile guidance instead of the realistic
   --realistic-damage           realistic weapon damage
   --no-crashes                 crash protection: collisions and ground contact are not fatal
+  --keep-time-accel            no automatic stop of the time acceleration (detection, weapon release)
   --no-auto-trim               no auto trim (the trim keys still trim)
   --continuous-time            moving sun and moon; moonlight sets the enemy's visual range
   --sun-moon                   without --continuous-time: sun by day, moon and stars by night
@@ -102,7 +103,8 @@ Multiplayer
 
 Testing and screenshots
   --script <steps>             replay timed actions, e.g. \"0:ThrottleMax,7:pitch=0.35,14:Gear\"
-                               (SaveMission: save the flight as the menu's SAVE MISSION)
+                               (SaveMission: save the flight as the menu's SAVE MISSION;
+                               LoadMission: open the list of saves as its LOAD MISSION)
   --log-flight / --log-sim     print the flight / simulation state
   --readout                    on-screen text readout of the flight state
   --touch                      the touch flight controls (the Android app's), the left
@@ -124,6 +126,8 @@ Testing and screenshots
   --head-look <yaw,pitch>      initial cockpit view direction (degrees)
   --start-final <km[,ft[,kt]]> start on final approach (default 3 km, 500 ft, 170 kt)
   --start-target <km[,ft[,kt]]> start in the air south of the primary target, heading at it
+  --start-orbit <km[,ft[,kt]]>  start in the air east of the primary target, banked left round it
+  --orbit <yaw,pitch>           turn the external views by these degrees at the start
                                (default 8 km, 2000 ft, 350 kt)
   --start-chase <k[,m[,kt]]>   start in the air behind drone k (default 300 m, 250 kt)
   --stage-cam <mode[,dist,height]>
@@ -140,6 +144,7 @@ Testing and screenshots
   --open-multiplayer, --open-host, --open-keyboard, --open-saves
                                start with that screen or window open
   --open-options <tab>         start with OPTIONS open: game, graphics, sound, controls
+  --open-input                 start with the input mapping dialog open
   --open-voices                start with the VOICES dialog open
   --atc-voice, --pilot-voice <voice[:speaker]>
                                the spoken ATC's voices (test runs, which skip the prefs)
@@ -159,6 +164,7 @@ Testing and screenshots
                                a friendly NASAMS launcher
   --watch-orbit <yaw>,<pitch>,<m>
                                the watching camera's place (radians from behind, above)
+  --watch-ir                   the watching window starts in infrared
   --campaign-watch             watch the first friendly aircraft
   --campaign-ai-now            the AI flies the boards' missions at once (not 5 minutes after)
   --campaign-take-control [s]  take over the first friendly AI aircraft up s seconds (60)

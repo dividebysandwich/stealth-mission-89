@@ -221,6 +221,11 @@ aircraft-ah1z =
         Bojni helikopter
         Topovska kupola, Hellfire, AIM-9
         Top in Hellfire sledita podu
+aircraft-ah64 =
+    .facts =
+        Dvosedežni bojni helikopter
+        Topovska kupola, Hellfire, Stinger
+        Drugi igralec lahko leti kot strelec
 
 ## Razdelki in skupine
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Tovorni helikopter s tandemskima rotorjema
         Obesi tovore za oskrbo in logistiko
         Brez reakcijskega momenta: rotorja se izničita
+aircraft-c5 =
+    .facts =
+        Štirimotorno strateško transportno letalo
+        Prevaža strelivo med letalskimi bazami
+        Težko: počasi se nagiba in dviguje nos
+aircraft-ac130 =
+    .facts =
+        Bočno strelsko ognjeno letalo
+        Topova 40 mm in 105 mm, merjena s kontejnerjem
+        Krožite levo, da topovi dosežejo cilj

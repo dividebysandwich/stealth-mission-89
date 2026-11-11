@@ -221,6 +221,11 @@ aircraft-ah1z =
         Helikopter serang
         Kanon turret, Hellfire, AIM-9
         Kanon dan Hellfire mengikuti pod
+aircraft-ah64 =
+    .facts =
+        Helikopter serang dua kursi
+        Kanon turret, Hellfire, Stinger
+        Pemain kedua bisa terbang sebagai penembak
 
 ## Bagian dan kelompok
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Helikopter kargo rotor tandem
         Menggantung muatan pasokan ulang dan logistik
         Tanpa torsi yang perlu ditahan: rotor saling meniadakan
+aircraft-c5 =
+    .facts =
+        Pesawat angkut strategis bermesin empat
+        Mengangkut amunisi antar pangkalan udara
+        Berat: lambat berguling dan mengangkat hidung
+aircraft-ac130 =
+    .facts =
+        Pesawat meriam tembak samping
+        Meriam 40 mm dan 105 mm dibidik dengan pod
+        Orbit ke kiri agar meriam menjangkau

@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 
 import heli  # noqa: E402
 import mklib  # noqa: E402
-from mklib import Geo, Ramp, frustum, v3  # noqa: E402
+from mklib import Geo, Ramp, area, cut, frustum, v3  # noqa: E402
 
 NAME = "aircraft_049"
 K = 16.38
@@ -188,71 +188,6 @@ WINDOWS = (
     + [[SHIELD_S, F(*p)] for p in SHIELD_F]
     + [[SHIELD_S, F(*SHIELD_F[0], mirror=True)]]
 )
-
-
-def project(view, p):
-    return (p.y, p.z) if view == "side" else (p.x, p.z)
-
-
-def half_planes(view, poly):
-    """The outline's edges as functions >= 0 inside (whichever way the outline winds)."""
-    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(poly, poly[1:] + poly[:1]))
-    s = 1.0 if area > 0 else -1.0
-    out = []
-    for (ax, ay), (bx, by) in zip(poly, poly[1:] + poly[:1]):
-        def f(p, ax=ax, ay=ay, bx=bx, by=by):
-            u, v = project(view, p)
-            return s * ((bx - ax) * (v - ay) - (by - ay) * (u - ax))
-        out.append(f)
-    return out
-
-
-def clip(poly, f, keep_inside):
-    """Sutherland-Hodgman: the part of a 3D polygon where f >= 0 (or < 0)."""
-    out = []
-    n = len(poly)
-    for i in range(n):
-        a, b = poly[i], poly[(i + 1) % n]
-        fa, fb = f(a), f(b)
-        ina, inb = (fa >= 0) == keep_inside, (fb >= 0) == keep_inside
-        if ina:
-            out.append(a)
-        if ina != inb:
-            t = fa / (fa - fb)
-            out.append(a + (b - a) * t)
-    return out if len(out) >= 3 else []
-
-
-def cut(poly, windows):
-    """Splits a skin polygon into (glass pieces, body pieces) along the windows."""
-    glass, body = [], []
-    rest = [poly]
-    for win in windows:
-        nxt = []
-        for piece in rest:
-            inside = piece
-            for view, outline in win:
-                for f in half_planes(view, outline):
-                    out = clip(inside, f, False)
-                    if out:
-                        nxt.append(out)
-                    inside = clip(inside, f, True)
-                    if not inside:
-                        break
-                if not inside:
-                    break
-            if inside:
-                glass.append(inside)
-        rest = nxt
-    body += rest
-    return glass, body
-
-
-def area(poly):
-    n = Vector()
-    for i in range(len(poly)):
-        n += poly[i].cross(poly[(i + 1) % len(poly)])
-    return n.length / 2
 
 
 def fuselage(columns, segs, glazed=True):

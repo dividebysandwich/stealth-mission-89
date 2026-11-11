@@ -51,6 +51,7 @@ pub struct Prefs {
     pub start_hour: Option<u8>,
     pub moon: Option<u8>,
     pub no_crashes: bool,
+    pub keep_time_accel: bool,
     pub auto_trim: bool,
     pub realistic_damage: bool,
     pub realistic_guidance: bool,
@@ -145,6 +146,7 @@ impl Default for Prefs {
             start_hour: menu.start_hour,
             moon: menu.moon,
             no_crashes: false,
+            keep_time_accel: false,
             auto_trim: true,
             realistic_damage: false,
             realistic_guidance: true,
@@ -254,6 +256,7 @@ impl Prefs {
             start_hour: menu.start_hour,
             moon: menu.moon,
             no_crashes: s.no_crashes,
+            keep_time_accel: s.keep_time_accel,
             auto_trim: s.auto_trim,
             realistic_damage: s.realistic_damage,
             realistic_guidance: s.realistic_guidance,
@@ -344,6 +347,7 @@ impl Prefs {
             menu.max_players = self.max_players.min(stealth_net::protocol::MAX_PLAYERS as u8);
         }
         s.no_crashes |= self.no_crashes;
+        s.keep_time_accel |= self.keep_time_accel;
         // On by default: a command-line flag turning it off stays off.
         s.auto_trim &= self.auto_trim;
         s.realistic_guidance &= self.realistic_guidance;
@@ -434,6 +438,7 @@ impl Prefs {
         self.classic_hud = s.classic_hud;
         self.classic_avionics = s.classic_avionics;
         self.classic_flight = s.classic_flight;
+        self.keep_time_accel = s.keep_time_accel;
         self.auto_trim = s.auto_trim;
         self.tooltips = s.tooltips;
         self.tutorial = s.tutorial;

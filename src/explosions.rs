@@ -132,6 +132,10 @@ pub enum Calibre {
     Cannon,
     /// A tank's main gun: a fountain of dirt.
     Tank,
+    /// The AC-130's 40 mm Bofors: a high explosive shell's sharp burst.
+    Mm40,
+    /// The AC-130's 105 mm howitzer: a big blast and a column of smoke.
+    Mm105,
 }
 
 /// What a blast looks like.
@@ -154,9 +158,15 @@ pub enum Blast {
     /// A vehicle's gun firing this way (Bevy world, unit): the flash, its smoke, and a tank's
     /// blast raising the dust around it.
     Muzzle(Calibre, Vec3),
+    /// A gun on a moving aircraft firing this way (the AC-130's): its flash carried along at
+    /// the aircraft's velocity (m/s), its smoke falling behind.
+    AirMuzzle(Calibre, Vec3, Vec3),
     /// A small burst in the air: a flash and a few puffs `size` m across of the given darkness
     /// (0 black .. 1 light grey): a dispenser's skin cut away, a skeet destroying itself.
     Pop { size: f32, shade: f32 },
+    /// A gunship shell's tracer glowing on its way: one short bright puff of radius `size` (m)
+    /// lasting `life` seconds, left behind each frame.
+    Tracer { size: f32, life: f32 },
 }
 
 /// Explosion kind of an anti-aircraft shell burst (`Combat::explosions`; not a sim kind).
@@ -855,7 +865,15 @@ fn spawn_blast(
         Blast::Crash => (30.0, 16, 40, 30, 14, 3.5),
         Blast::Flak => (0.0, 0, 0, 0, 0, 0.0),
         Blast::Muzzle(calibre, dir) => {
-            muzzle(commands, p, pos, calibre, dir);
+            muzzle(commands, p, pos, calibre, dir, Vec3::ZERO);
+            return;
+        }
+        Blast::AirMuzzle(calibre, dir, carry) => {
+            muzzle(commands, p, pos, calibre, dir, carry);
+            return;
+        }
+        Blast::Tracer { size, life } => {
+            p.puff(pos, Vec3::ZERO, life, (size, size * 0.6), PuffLook::GunFlash, 0.0, 0.0, 1.0);
             return;
         }
         Blast::Pop { size, shade } => {
@@ -1076,7 +1094,14 @@ fn flash_light(commands: &mut Commands, p: &mut Particles, at: DVec3, strength: 
 /// A vehicle's gun firing from `at` along `dir`: a tank's flash and fire thrown out of the
 /// barrel, its blast rolling the dust out around the hull and a cloud of grey smoke; an
 /// autocannon's quick flash and a wisp of smoke.
-fn muzzle(commands: &mut Commands, p: &mut Particles, at: DVec3, calibre: Calibre, dir: Vec3) {
+fn muzzle(
+    commands: &mut Commands,
+    p: &mut Particles,
+    at: DVec3,
+    calibre: Calibre,
+    dir: Vec3,
+    carry: Vec3,
+) {
     match calibre {
         Calibre::Tank => {
             p.puff(at, dir * 20.0, 0.12, (1.5, 4.5), PuffLook::Flash, 0.0, 0.0, 1.0);
@@ -1114,6 +1139,38 @@ fn muzzle(commands: &mut Commands, p: &mut Particles, at: DVec3, calibre: Calibr
         Calibre::Small => {
             p.puff(at, dir * 4.0, 0.05, (0.3, 0.8), PuffLook::GunFlash, 0.0, 0.0, 1.0);
         }
+        // The gunship's guns (their flash lights the fuselage: `side_guns`): the Bofors' sharp
+        // flash and a few grey puffs, the howitzer's tongue of fire and a cloud of grey smoke.
+        Calibre::Mm40 => {
+            p.puff(at, dir * 10.0 + carry, 0.12, (1.0, 2.6), PuffLook::Flash, 0.0, 0.0, 1.0);
+            for _ in 0..2 {
+                let v = dir * p.range(20.0, 35.0) + carry;
+                let o = at + (dir * p.range(0.0, 0.8)).as_dvec3();
+                let life = p.range(0.06, 0.12);
+                p.puff(o, v, life, (0.4, 1.2), PuffLook::Fire, 6.0, 0.0, 0.9);
+            }
+            for _ in 0..4 {
+                let v = dir * p.range(4.0, 10.0) + p.dir(0.0) * 1.0 + carry * 0.7;
+                let life = p.range(1.2, 2.2);
+                let shade = p.range(0.35, 0.5);
+                p.puff(at, v, life, (0.6, 2.8), PuffLook::Trail(shade), 2.5, 0.3, 0.55);
+            }
+        }
+        Calibre::Mm105 => {
+            p.puff(at, dir * 15.0 + carry, 0.18, (2.0, 5.5), PuffLook::Flash, 0.0, 0.0, 1.0);
+            for _ in 0..6 {
+                let v = dir * p.range(30.0, 70.0) + p.dir(0.0) * 4.0 + carry;
+                let life = p.range(0.12, 0.25);
+                let o = at + (dir * p.range(0.0, 2.0)).as_dvec3();
+                p.puff(o, v, life, (0.8, 2.6), PuffLook::Fire, 6.0, 0.0, 0.95);
+            }
+            for _ in 0..9 {
+                let v = dir * p.range(6.0, 18.0) + p.dir(0.0) * 2.5 + carry * 0.7;
+                let life = p.range(2.5, 4.5);
+                let shade = p.range(0.3, 0.5);
+                p.puff(at, v, life, (1.2, 6.0), PuffLook::Trail(shade), 2.5, 0.4, 0.6);
+            }
+        }
     }
 }
 
@@ -1131,6 +1188,8 @@ fn armour_hit(
         Calibre::Tank => (16, (2.0, 4.0), (20.0, 50.0)),
         Calibre::Cannon => (6, (0.8, 1.8), (12.0, 35.0)),
         Calibre::Small => (3, (0.4, 0.9), (10.0, 25.0)),
+        Calibre::Mm40 => (10, (1.2, 2.6), (15.0, 40.0)),
+        Calibre::Mm105 => (24, (3.0, 7.0), (25.0, 60.0)),
     };
     for _ in 0..sparks {
         let v = p.dir(0.2) * p.range(speed.0, speed.1);
@@ -1138,7 +1197,11 @@ fn armour_hit(
         spawn_chunk(commands, p, materials, globals, ChunkKind::GunSpark, at, v, life, 1.0, false);
     }
     p.puff(at, Vec3::ZERO, 0.1, flash, PuffLook::GunFlash, 0.0, 0.0, 1.0);
-    if calibre == Calibre::Tank {
+    if matches!(calibre, Calibre::Mm40 | Calibre::Mm105) {
+        // High explosive on the armour: the burst's dust and smoke as on the ground.
+        strike_burst(commands, p, materials, globals, at, calibre, true);
+    }
+    if matches!(calibre, Calibre::Tank | Calibre::Mm105) {
         for _ in 0..3 {
             let v = p.dir(0.6) * 1.5 + Vec3::Y;
             let life = p.range(2.5, 4.0);
@@ -1168,6 +1231,22 @@ fn strike(
     };
     let land = surface != Surface::Water;
     let up = at + DVec3::Y * 0.3;
+    if matches!(calibre, Calibre::Mm40 | Calibre::Mm105) {
+        if land {
+            strike_burst(commands, p, materials, globals, up, calibre, surface == Surface::Land);
+        } else {
+            // The water thrown up in a column, a 105 mm's high.
+            let (n, h) = if calibre == Calibre::Mm105 { (14, 26.0) } else { (6, 12.0) };
+            for _ in 0..n {
+                let v = Vec3::Y * p.range(0.5 * h, h) + p.dir(0.0) * p.range(0.5, 2.5);
+                let life = p.range(1.8, 3.2);
+                let s = p.range(1.0, 2.0) * if calibre == Calibre::Mm105 { 1.6 } else { 1.0 };
+                p.puff(up, v, life, (s, s * 3.0), PuffLook::Smoke(1.0), 1.8, -1.0, 0.8);
+            }
+            p.puff(up, Vec3::ZERO, 0.08, (1.0, 3.0), PuffLook::Flash, 0.0, 0.0, 0.7);
+        }
+        return;
+    }
     match calibre {
         Calibre::Small => {
             let life = p.range(0.7, 1.1);
@@ -1255,6 +1334,175 @@ fn strike(
                     );
                 }
             }
+        }
+        // Burst above (`strike_burst`).
+        Calibre::Mm40 | Calibre::Mm105 => {}
+    }
+}
+
+/// A gunship shell's high explosive burst at `at` (on the ground, `dirt`: on soft earth): the
+/// 40 mm's flash, the dust and earth thrown up, the clods; the 105 mm's is
+/// [`howitzer_burst`].
+#[allow(clippy::too_many_arguments)]
+fn strike_burst(
+    commands: &mut Commands,
+    p: &mut Particles,
+    materials: &mut Assets<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+    at: DVec3,
+    calibre: Calibre,
+    dirt: bool,
+) {
+    let (dust, earth) = if dirt {
+        (PuffLook::Dust, PuffLook::Dirt)
+    } else {
+        (PuffLook::Smoke(0.7), PuffLook::Smoke(0.55))
+    };
+    if calibre == Calibre::Mm105 {
+        howitzer_burst(commands, p, materials, globals, at, dust, earth, dirt);
+        return;
+    }
+    p.puff(at, Vec3::ZERO, 0.1, (1.2, 3.0), PuffLook::Flash, 0.0, 0.0, 0.95);
+    for _ in 0..2 {
+        let v = p.dir(0.3) * p.range(4.0, 10.0);
+        let life = p.range(0.1, 0.2);
+        p.puff(at, v, life, (0.6, 1.6), PuffLook::Fire, 4.0, 0.0, 0.9);
+    }
+    // The burst's dirt thrown up and slumping.
+    for _ in 0..6 {
+        let v = Vec3::Y * p.range(4.0, 11.0) + p.dir(0.0) * p.range(1.0, 3.0);
+        let life = p.range(2.0, 3.5);
+        let s = p.range(0.8, 1.4);
+        p.puff(at, v, life, (s, s * 3.5), earth, 1.6, -1.0, 0.8);
+    }
+    for _ in 0..5 {
+        let a = p.range(0.0, std::f32::consts::TAU);
+        let out = Vec3::new(a.cos(), 0.08, a.sin());
+        let life = p.range(2.0, 3.5);
+        let v = out * p.range(5.0, 10.0);
+        p.puff(at, v, life, (1.0, 3.5), dust, 1.4, 0.3, 0.6);
+    }
+    flash_light(commands, p, at + DVec3::Y * 1.5, 0.7, 0.12);
+    if dirt {
+        for _ in 0..5 {
+            let v = p.dir(0.7) * p.range(4.0, 11.0) + Vec3::Y * p.range(4.0, 12.0);
+            let life = p.range(1.5, 3.0);
+            let size = p.range(0.15, 0.4);
+            spawn_chunk(
+                commands,
+                p,
+                materials,
+                globals,
+                ChunkKind::Debris,
+                at,
+                v,
+                life,
+                size,
+                false,
+            );
+        }
+    }
+}
+
+/// The 105 mm shell's burst: about 2 kg of high explosive, a blast between a missile's kill and
+/// a bomb's. A flash and a short fireball tens of metres across, earth thrown up in a fountain
+/// some 30 m high, the base surge rolling out along the ground, clods, then a dark column of
+/// smoke that climbs and spreads and a low pall of dust that hangs over the spot for half a
+/// minute (seen from the orbit, kilometres off, through the pod).
+#[allow(clippy::too_many_arguments)]
+fn howitzer_burst(
+    commands: &mut Commands,
+    p: &mut Particles,
+    materials: &mut Assets<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+    at: DVec3,
+    dust: PuffLook,
+    earth: PuffLook,
+    dirt: bool,
+) {
+    let centre = at + DVec3::Y * 2.0;
+    p.puff(centre, Vec3::ZERO, 0.16, (10.0, 24.0), PuffLook::Flash, 0.0, 0.0, 0.95);
+    // The fireball: glowing puffs pushed out from the middle, mostly up and sideways.
+    for _ in 0..10 {
+        let d = p.dir(0.4);
+        let o = d * p.range(0.0, 3.0);
+        let v = d * p.range(8.0, 22.0);
+        let life = p.range(0.35, 0.7);
+        let s = p.range(3.0, 5.5);
+        p.puff(centre + o.as_dvec3(), v, life, (s * 0.5, s * 1.4), PuffLook::Fire, 3.5, 2.0, 0.95);
+    }
+    // Sparks: the casing's fragments.
+    for _ in 0..24 {
+        let v = p.dir(0.3) * p.range(40.0, 90.0);
+        let life = p.range(0.4, 1.0);
+        let size = p.range(0.8, 1.4);
+        spawn_chunk(
+            commands,
+            p,
+            materials,
+            globals,
+            ChunkKind::Spark,
+            centre,
+            v,
+            life,
+            size,
+            false,
+        );
+    }
+    // The fountain: earth thrown high, slumping back.
+    for _ in 0..26 {
+        let v = Vec3::Y * p.range(10.0, 30.0) + p.dir(0.0) * p.range(2.0, 8.0);
+        let life = p.range(3.0, 5.5);
+        let s = p.range(2.0, 3.5);
+        p.puff(at, v, life, (s, s * 3.2), earth, 1.2, -1.2, 0.85);
+    }
+    // The base surge: a ring of dust rolling out along the ground.
+    for _ in 0..18 {
+        let a = p.range(0.0, std::f32::consts::TAU);
+        let out = Vec3::new(a.cos(), 0.06, a.sin());
+        let life = p.range(4.0, 7.0);
+        let v = out * p.range(12.0, 26.0);
+        let s = p.range(2.5, 4.0);
+        p.puff(at + DVec3::Y * 1.5, v, life, (s, s * 3.5), dust, 1.3, 0.3, 0.7);
+    }
+    // The smoke column: dark, climbing and spreading, drifting off; born as the fire dies.
+    for i in 0..14 {
+        let v = Vec3::Y * p.range(4.0, 12.0) + p.dir(0.0) * 1.5;
+        let life = p.range(18.0, 32.0);
+        let shade = p.range(0.08, 0.25);
+        let s = p.range(4.0, 7.0);
+        let o = (p.dir(0.0) * p.range(0.0, 4.0)).as_dvec3();
+        p.puff(centre + o, v, life, (s, s * 4.5), PuffLook::Smoke(shade), 0.45, 0.9, 0.85);
+        let last = p.puffs.len() - 1;
+        p.puffs[last].age = -0.1 - 0.04 * i as f32;
+    }
+    // The pall of dust left hanging low over the spot.
+    for _ in 0..6 {
+        let a = p.range(0.0, std::f32::consts::TAU);
+        let out = Vec3::new(a.cos(), 0.0, a.sin());
+        let v = out * p.range(1.0, 3.0) + Vec3::Y * p.range(0.3, 1.0);
+        let life = p.range(20.0, 30.0);
+        let s = p.range(6.0, 9.0);
+        p.puff(at + DVec3::Y * 3.0, v, life, (s, s * 3.0), dust, 0.3, 0.1, 0.55);
+    }
+    flash_light(commands, p, at + DVec3::Y * 6.0, 4.0, 0.45);
+    if dirt {
+        for _ in 0..30 {
+            let v = p.dir(0.6) * p.range(8.0, 20.0) + Vec3::Y * p.range(8.0, 22.0);
+            let life = p.range(2.5, 4.5);
+            let size = p.range(0.25, 0.7);
+            spawn_chunk(
+                commands,
+                p,
+                materials,
+                globals,
+                ChunkKind::Debris,
+                at,
+                v,
+                life,
+                size,
+                false,
+            );
         }
     }
 }

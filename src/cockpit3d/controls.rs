@@ -236,6 +236,7 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
                 "Track" => K::Track,
                 "Slave" => K::Slave,
                 "View" => K::View,
+                "Gun" => K::Gun(n()?),
                 _ => return None,
             })
         }
@@ -346,7 +347,6 @@ const SCREEN_TAP: f32 = 0.025;
 #[allow(clippy::too_many_arguments)]
 pub(super) fn interact(
     time: Res<Time<Real>>,
-    settings: Res<crate::settings::Settings>,
     view: Res<ViewState>,
     mut hands: ResMut<Hands>,
     mut controls: Query<(Entity, &mut Control, &Transform), Without<Unused>>,
@@ -394,9 +394,9 @@ pub(super) fn interact(
     let cockpit_view =
         matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
 
-    // Mouse click (`Action::ClickControl`): the control under the cursor, unless something in front hides it.
-    if !settings.vr
-        && cockpit_view
+    // Mouse click (`Action::ClickControl`): the control under the cursor, unless something in front
+    // hides it (in VR the cursor on the desktop mirror).
+    if cockpit_view
         && pointer.click_pressed
         && let Some(ray) = picker.cursor_ray()
     {
@@ -498,7 +498,7 @@ pub(super) fn interact(
             }
             let face = c.height + FINGER;
             let gap = local.z - face;
-            if hand.squeeze < 0.4
+            if !hand.grab
                 && gap < TOUCH_GAP
                 && gap > -c.travel - TOUCH_GAP
                 && touching[h].is_none_or(|(g, _)| gap.abs() < g)

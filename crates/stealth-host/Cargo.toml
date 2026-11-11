@@ -1,6 +1,7 @@
 [package]
 name = "stealth-host"
 version.workspace = true
+license.workspace = true
 edition.workspace = true
 description = "Stealth Mission 89 campaign host: the dynamic campaign driving the combat simulation, without the renderer"
 

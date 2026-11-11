@@ -258,13 +258,15 @@ pub fn read_hands(
     settings: Res<crate::settings::Settings>,
     view: Res<ViewState>,
     manning: Option<Res<crate::station::Manning>>,
+    config: Res<crate::hotas::InputConfig>,
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
-    let offset = offset.hands(&settings, manning.is_some());
+    let offset = offset.hands(&settings, manning.as_deref().is_some_and(|m| m.console()));
     for (hand, c) in hands.hands.iter_mut().zip(&input.controllers) {
         hand.prev_buttons = hand.buttons;
         hand.prev_trigger = hand.trigger;
+        hand.prev_squeeze = hand.squeeze;
         hand.squeeze = c.squeeze;
         hand.trigger = c.trigger;
         hand.buttons = c.buttons;
@@ -293,6 +295,7 @@ pub fn read_hands(
             });
         }
     }
+    crate::cockpit3d::update_grabs(&mut hands, &config);
 }
 
 /// Frames until the pending recentre (None: none pending).

@@ -221,6 +221,11 @@ aircraft-ah1z =
         Attack helicopter
         Turret gun, Hellfires, AIM-9
         Gun and Hellfires follow the pod
+aircraft-ah64 =
+    .facts =
+        Attack helicopter, two seats
+        Turret gun, Hellfires, Stingers
+        A second player can fly as gunner
 
 ## Sections and groups
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Tandem-rotor cargo helicopter
         Slings resupply and logistics loads
         No torque to hold: the rotors cancel
+aircraft-c5 =
+    .facts =
+        Four-engined strategic airlifter
+        Flies munitions between the airbases
+        Heavy: slow to roll and to rotate
+aircraft-ac130 =
+    .facts =
+        Side-firing gunship
+        40 mm and 105 mm guns aimed with the pod
+        Orbit left to bring the guns to bear

@@ -2702,7 +2702,7 @@ mod tests {
         let button = |mfd: &MfdState, p| ctx(&a, &hud, mfd).page_button(p);
         assert_eq!(button(&mfd, Page::Weapons), Target::Cmd(MfdCmd::Sms(false)));
         // The map is on the left MFD's bottom row.
-        let map = crate::avionics::formats(MfdSide::Left, false)
+        let map = crate::avionics::formats(MfdSide::Left, false, false)
             .iter()
             .position(|&f| f == Format::Map)
             .unwrap() as u8;

@@ -63,6 +63,7 @@ pic-site = Situs { $place }
 uv-live = { $unit } - LANGSUNG
 uv-contact-lost = KONTAK HILANG
 uv-hint = Seret: putar  Roda: zoom
+uv-infrared = Tampilan inframerah (termal)
 
 ## Multiplayer
 
@@ -76,6 +77,8 @@ mp-your-name = Nama Anda
 mp-join-address = Gabung lewat alamat
     .hint = alamat atau nama[:port]
 mp-connect = SAMBUNG
+mp-join-vr = GABUNG DI VR
+    .facts = Memulai ulang permainan di headset VR dan bergabung ke server ini
 mp-server-name = Nama server
 mp-udp-port = Port UDP
 mp-address-note = Pemain lain bergabung dengan alamat komputer ini; buka port UDP di router Anda untuk bermain lewat internet
@@ -87,6 +90,8 @@ mp-friendly-fire = Tembakan kawan
 mp-airframe-losses = Kehilangan memakan sumber daya
 mp-ai-missions = Misi AI kawan
 mp-host-new = HOST BARU
+mp-host-vr = HOST DI VR
+    .facts = Memulai ulang permainan di headset VR dan menjadi host kampanye
 mp-host-saved = Host kampanye tersimpan
 mp-host = HOST
 mp-host-game = BUAT GAME
@@ -97,9 +102,7 @@ mp-refresh = SEGARKAN
 mp-server-count = { $servers } server, { $pilots } pilot
 mp-list-error = Daftar server tidak dapat dijangkau: { $error }
 mp-no-servers = Tidak ada server publik saat ini
-mp-col-server = SERVER
 mp-col-pilots = PILOT
-mp-col-war = PERANG
 mp-dedicated = KHUSUS
 mp-other-version = versi lain
 mp-join = GABUNG

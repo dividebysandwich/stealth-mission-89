@@ -221,6 +221,11 @@ aircraft-ah1z =
         Uzbrukuma helikopters
         Torņa lielgabals, Hellfire, AIM-9
         Lielgabals un Hellfire seko pod
+aircraft-ah64 =
+    .facts =
+        Divvietīgs uzbrukuma helikopters
+        Torņa lielgabals, Hellfire, Stinger
+        Otrs spēlētājs var lidot kā šāvējs
 
 ## Sadaļas un grupas
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Kravas helikopters ar tandēma rotoriem
         Pakar apgādes un loģistikas kravas
         Nav griezes momenta, ko kompensēt: rotori viens otru izslēdz
+aircraft-c5 =
+    .facts =
+        Četrdzinēju stratēģiskā transporta lidmašīna
+        Pārved munīciju starp aviobāzēm
+        Smags: lēni sasveras un ceļ degunu
+aircraft-ac130 =
+    .facts =
+        Uz sāniem šaujoša uguns atbalsta lidmašīna
+        40 mm un 105 mm lielgabali, tēmēti ar konteineru
+        Riņķojiet pa kreisi, lai lielgabali tēmētu

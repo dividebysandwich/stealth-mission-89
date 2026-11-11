@@ -7,7 +7,31 @@ use crate::tuning::*;
 use crate::{CampaignEvent, Report, WorldView};
 use stealth_i18n::{Text, text};
 
+/// The AC-130 takes a mission only with its target this far (map units) from every live enemy
+/// SAM site: out of their immediate reach, where it can orbit.
+pub const GUNSHIP_SAM_CLEARANCE: i32 = 25 * 64;
+
 impl CampaignState {
+    /// Whether `aircraft` may fly offer `o` (else why not): its kind of mission, and for the
+    /// AC-130 its target clear of the enemy's SAM sites.
+    pub fn offer_flyable(&self, o: &MissionOffer, aircraft: Aircraft) -> Result<(), Text> {
+        if !o.kind.flyable_by(aircraft) {
+            return Err(o.kind.not_flyable(aircraft));
+        }
+        if aircraft.spectre() {
+            let sam_near = self.sites.iter().any(|s| {
+                s.kind == SiteKind::Sam
+                    && s.alive()
+                    && self.owner(s.object) == Some(Side::Red)
+                    && dist(s.x - o.x, s.y - o.y) < GUNSHIP_SAM_CLEARANCE
+            });
+            if sam_near {
+                return Err(text!("ce-ac130-sams"));
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn take_mission(
         &mut self,
         player: PlayerId,
@@ -18,21 +42,32 @@ impl CampaignState {
         let Some(o) = self.board.iter().find(|o| o.id == offer).cloned() else {
             return Err(text!("ce-off-board"));
         };
-        if !o.kind.flyable_by(aircraft) {
-            return Err(o.kind.not_flyable(aircraft));
-        }
+        self.offer_flyable(&o, aircraft)?;
         if self.sortie(player).is_some() {
             return Err(text!("ce-already-flying"));
         }
         if self.objective_met(&o.objective, &Progress::default()) {
             return Err(text!("ce-target-destroyed"));
         }
-        let base = base.unwrap_or(o.base);
+        // An airlift takes off where its cargo waits.
+        let airlift = match o.objective {
+            Objective::Airlift { run } => Some(run),
+            _ => None,
+        };
+        let base = match airlift.and_then(|r| self.cargo_runs.iter().find(|c| c.id == r)) {
+            Some(r) => r.from,
+            None => base.unwrap_or(o.base),
+        };
         if !self.player_bases().contains(&base) {
             return Err(text!("ce-not-friendly-base"));
         }
         let mut progress = Progress { heli: aircraft.cargo(), ..Progress::default() };
         let mut ev = Vec::new();
+        if let Some(run) = airlift
+            && self.fly_airlift(player, run, &mut ev).is_none()
+        {
+            return Err(text!("ce-off-board"));
+        }
         if let Objective::Insertion { place } = o.objective {
             let (id, e) = self.fly_insertion(player, place, base)?;
             progress.insertion = Some(id);
@@ -48,6 +83,7 @@ impl CampaignState {
             progress,
             flight,
             position,
+            crew: Vec::new(),
         };
         let from = self.site(base).map(|s| s.name.clone()).unwrap_or_default();
         self.note(text!("cl-sortie-from", title = o.title.clone(), base = from));
@@ -81,9 +117,7 @@ impl CampaignState {
         let Some(s) = self.sortie(player).cloned() else {
             return Err(text!("ce-not-flying"));
         };
-        if !o.kind.flyable_by(s.aircraft) {
-            return Err(o.kind.not_flyable(s.aircraft));
-        }
+        self.offer_flyable(&o, s.aircraft)?;
         if s.progress.achieved || s.offer.id == offer || !divertible(&o.objective) {
             return Err(text!("ce-no-divert"));
         }
@@ -164,6 +198,16 @@ impl CampaignState {
         {
             self.lost_aboard(downed, &mut ev);
         }
+        // His cargo run not delivered: lost with the aircraft, else back to the AI's.
+        if let Objective::Airlift { .. } = s.offer.objective
+            && !s.progress.delivered
+        {
+            let lost = matches!(
+                end,
+                SortieEnd::Crashed | SortieEnd::Ejected | SortieEnd::Captured | SortieEnd::Rescued
+            );
+            self.airlift_ended(player, lost, &mut ev);
+        }
         let (insertion, raid, downed) = match s.offer.objective {
             Objective::Escort { insertion } | Objective::Intercept { insertion } => {
                 (Some(insertion), None, None)
@@ -215,6 +259,7 @@ impl CampaignState {
             place: self.objective_place(&s.offer.objective),
             achieved_at: s.progress.achieved_at,
             effects: s.progress.effects.clone(),
+            crew: s.crew.iter().filter_map(|&p| self.player_name(p)).map(str::to_string).collect(),
         };
         let mut record = record;
         // Under the airframe rule his aircraft lost is one fewer of the friendly side's.
@@ -579,7 +624,9 @@ impl CampaignState {
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Cargo { tag } => self.cargo_lost.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,
-            Objective::Resupply { .. } | Objective::Logistics { .. } => p.delivered,
+            Objective::Resupply { .. }
+            | Objective::Logistics { .. }
+            | Objective::Airlift { .. } => p.delivered,
             Objective::Rescue { downed } => {
                 p.on_station >= RESCUE_SECONDS
                     || p.present()

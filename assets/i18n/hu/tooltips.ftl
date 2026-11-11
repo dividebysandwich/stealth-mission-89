@@ -133,6 +133,7 @@ tip-cmd-harm = HARM célzás
 tip-cmd-gm = Földfelszín-térképező radar (GM)
 tip-cmd-eng = Hajtóművek és üzemanyag (ENG)
 tip-cmd-rcs = Radarjel (RCS)
+tip-cmd-cgo = Rakomány, rámpa és ledobás (CGO)
 tip-cmd-format-row = Formátum; újra: formátummenü
 tip-cmd-tgp = Célzópod (TGP)
 tip-cmd-map = Térkép
@@ -206,6 +207,7 @@ tip-console-manual = A kiválasztott drón kézi vezetése: botkormány és gáz
 tip-console-track = A drón kamerájának a földön tartása a célkereszt alatt
 tip-console-slave = A drón kamerája vissza a waypointjára (előre és lefelé)
 tip-console-view = A drón kamerája: a TGP-je, vagy az előre néző FLIR a vezetéséhez
+tip-console-gun = Következőként ezt az oldalágyút irányozd (a ravasz ezzel tüzel)
 
 ## Kezelőszervek
 

@@ -83,6 +83,8 @@ pub enum Format {
     Eng,
     /// Our radar signature among the radars painting us (`draw_rcs`).
     Rcs,
+    /// The cargo jet's hold and ramp, and the airdrop (`crate::cargo_page`).
+    Cgo,
 }
 
 /// The formats on the bottom bezel buttons, left to right.
@@ -101,9 +103,19 @@ pub const RADAR_FORMATS: [Format; 5] =
 pub const FOURTH_FORMATS: [Format; 5] =
     [Format::Eng, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
 
+/// The cargo jet's rows: the cargo page instead of the HARM display, the centre MFD's first.
+pub const CARGO_FORMATS: [Format; 5] =
+    [Format::Hsd, Format::Cgo, Format::Tgp, Format::Map, Format::Sms];
+pub const CARGO_RIGHT_FORMATS: [Format; 5] =
+    [Format::Hsi, Format::Hsd, Format::Cgo, Format::Map, Format::Sms];
+pub const CARGO_THIRD_FORMATS: [Format; 5] =
+    [Format::Cgo, Format::Hsi, Format::Hsd, Format::Map, Format::Sms];
+pub const CARGO_FOURTH_FORMATS: [Format; 5] =
+    [Format::Eng, Format::Cgo, Format::Hsi, Format::Hsd, Format::Map];
+
 /// Every format, in the order the format menu lists them down its sides (the radar's only with
-/// the radar).
-pub const ALL_FORMATS: [Format; 10] = [
+/// the radar, the cargo page only on the cargo jet): an aircraft has ten at most.
+pub const ALL_FORMATS: [Format; 11] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -114,12 +126,17 @@ pub const ALL_FORMATS: [Format; 10] = [
     Format::Fcr,
     Format::Eng,
     Format::Rcs,
+    Format::Cgo,
 ];
 
 /// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
-/// radar).
-pub fn formats(side: MfdSide, radar: bool) -> [Format; 5] {
+/// radar; `cargo`: it is the cargo jet).
+pub fn formats(side: MfdSide, radar: bool, cargo: bool) -> [Format; 5] {
     match side {
+        MfdSide::Third if cargo => CARGO_THIRD_FORMATS,
+        MfdSide::Fourth if cargo => CARGO_FOURTH_FORMATS,
+        MfdSide::Right if cargo => CARGO_RIGHT_FORMATS,
+        _ if cargo => CARGO_FORMATS,
         MfdSide::Third => THIRD_FORMATS,
         MfdSide::Fourth => FOURTH_FORMATS,
         MfdSide::Left if radar => RADAR_FORMATS,
@@ -140,6 +157,7 @@ impl Format {
             Format::Fcr => "FCR",
             Format::Eng => "ENG",
             Format::Rcs => "RCS",
+            Format::Cgo => "CGO",
         }
     }
 
@@ -162,7 +180,8 @@ impl Format {
             | Format::Gm
             | Format::Fcr
             | Format::Eng
-            | Format::Rcs => Action::Maps,
+            | Format::Rcs
+            | Format::Cgo => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -242,6 +261,8 @@ pub struct AvionicsState {
     pub radar: bool,
     /// The aircraft shows its own radar signature (the RCS format: the stealth types).
     pub rcs: bool,
+    /// The aircraft is the cargo jet (the CGO format).
+    pub cargo: bool,
     /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
     pub aircraft: crate::aircraft::AircraftKind,
     pub gm_range: usize,
@@ -579,6 +600,7 @@ impl Default for AvionicsState {
             sms_ord: true,
             radar: false,
             rcs: false,
+            cargo: false,
             aircraft: Default::default(),
             gm_range: 2,
             radar_standby: false,
@@ -677,7 +699,7 @@ impl AvionicsState {
 
     /// The formats on an MFD's bottom bezel buttons.
     pub fn formats(&self, side: MfdSide) -> [Format; 5] {
-        self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar))
+        self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar, self.cargo))
     }
 
     /// The formats the format menu offers: all of them, the radar's with the radar only, the
@@ -688,7 +710,7 @@ impl AvionicsState {
 
     /// The aircraft has format `f`.
     pub fn has(&self, f: Format) -> bool {
-        (!f.radar() || self.radar) && (f != Format::Rcs || self.rcs)
+        (!f.radar() || self.radar) && (f != Format::Rcs || self.rcs) && (f != Format::Cgo || self.cargo)
     }
 
     /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
@@ -734,6 +756,36 @@ impl AvionicsState {
         let old = self.clone();
         self.rcs = rcs;
         self.refit(&old);
+    }
+
+    /// The aircraft changed to the cargo jet or from it: as `set_radar`, its rows its own.
+    pub fn set_cargo(&mut self, cargo: bool) {
+        let old = self.clone();
+        self.cargo = cargo;
+        self.refit(&old);
+        if cargo {
+            self.rows = [None; 4];
+            self.cargo_start();
+        }
+    }
+
+    /// The cargo jet's displays at the start, left to right: the HSD and the HSI before the
+    /// pilot, the engines and the cargo page in the middle (the fourth MFD is left of the
+    /// third there).
+    pub fn cargo_start(&mut self) {
+        self.formats = [Format::Hsd, Format::Hsi, Format::Cgo, Format::Eng];
+        self.menu = [None; 4];
+        self.fix_soi();
+    }
+
+    /// The AC-130's displays at the start: the targeting pod (its guns' sight) on the left
+    /// centre MFD, the SOI, the HSD on the right.
+    pub fn gunship_start(&mut self) {
+        self.formats[0] = Format::Tgp;
+        self.formats[1] = Format::Hsd;
+        self.menu = [None; 4];
+        self.soi = Some(Format::Tgp);
+        self.fix_soi();
     }
 
     /// After `set_radar` or `set_rcs`: the formats this aircraft lacks leave the rows and the
@@ -1126,6 +1178,8 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Fcr, 16) => (FCR_EL_LABELS[(av.fcr_el + FCR_EL_MAX) as usize], Readout, false),
         (Format::Fcr, 17) => ("EL-", Cmd(MfdCmd::FcrElevation(-1)), false),
         (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr, 4) => soi,
+        // The cargo page: the ramp up or down (the bay doors' key).
+        (Format::Cgo, 0) => ("RAMP", OsbFn::Action(crate::input::Action::BayDoors), false),
         (Format::Rcs, 1) => ("RNG-", Cmd(MfdCmd::RcsRange(-1)), false),
         (Format::Rcs, 2) => (RCS_RANGE_LABELS[av.rcs_range], Readout, false),
         (Format::Rcs, 3) => ("RNG+", Cmd(MfdCmd::RcsRange(1)), false),
@@ -1218,6 +1272,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Fcr => draw_fcr(p, c, ac, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
         Format::Rcs => draw_rcs_page(p, c),
+        Format::Cgo => crate::cargo_page::draw(c, p.cues.drop.as_ref(), crate::hud::blink(&p.time)),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.
@@ -1245,6 +1300,9 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
                 let o = Vec2::new(c.w as f32 / 2.0, c.h as f32 / 2.0);
                 for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
                     c.stroke(o + d * 6.0, o + d * 22.0, 1.3, col);
+                }
+                if let Some(g) = p.cues.side_guns {
+                    draw_side_gun_scope(p, c, fonts, g, col);
                 }
             }
         }
@@ -2651,7 +2709,9 @@ fn update_pod(
     // The helmet sight, with a helmet-mounted display: the gunship's slaved pod follows it
     // whether its page is up or not (the page shows what it looks at), the Sidewinder seeker
     // too.
-    let helmet = settings.aircraft.spec().hmd != crate::aircraft::Hmd::None;
+    // (Not in a gunner's cockpit: the AH-64's gunner lays the gun with the TADS.)
+    let helmet =
+        settings.aircraft.spec().hmd != crate::aircraft::Hmd::None && !settings.gunner_cockpit;
     let sight = helmet_sight(&eyes, view.view).filter(|_| helmet);
     let body = sight.map(|d| {
         let d = a.orientation.inverse() * d;
@@ -2832,6 +2892,73 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground: &Terrain) -> Option<Sn
         .filter(|&(_, d)| d <= POD_SNAP)
         .min_by(|a, b| a.1.total_cmp(&b.1))
         .map(|(r, _)| r)
+}
+
+/// The pod's line of sight seen from the AC-130's body as (azimuth right of the nose,
+/// depression below the wings' plane), degrees.
+pub fn side_gun_angles(orientation: Quat, los: Vec3) -> (f32, f32) {
+    let b = orientation.inverse() * los;
+    (b.x.atan2(-b.z).to_degrees(), (-b.y).clamp(-1.0, 1.0).asin().to_degrees())
+}
+
+/// The AC-130's gimbal scope on the TGP page (bottom right): the guns' reach off the left wing
+/// (the box: 20 degrees either way of the wing's line, 5 to 55 degrees down), where the pod
+/// looks within the wider frame round it (forward on the right, as the pod's picture out of the
+/// left side and the gunner's console show it; at the frame's edge when farther off), and under it the gun, its rounds and whether it bears
+/// (the time of flight when it does).
+fn draw_side_gun_scope(
+    p: &MfdParams,
+    c: &mut Canvas,
+    fonts: &Fonts,
+    g: crate::hud::SideGunCue,
+    col: u8,
+) {
+    let (w, h) = (78.0, 66.0);
+    let x0 = c.w as f32 - w - 10.0;
+    let y0 = c.h as f32 - BAND as f32 - h - 58.0;
+    // The frame: 35 degrees either way of the wing's line, 0 to 70 degrees down.
+    let (az_span, dep_max) = (35.0, 70.0);
+    let at = |off: f32, dep: f32| {
+        Vec2::new(x0 + w / 2.0 + off / az_span * (w / 2.0), y0 + dep / dep_max * h)
+    };
+    c.frame(Vec2::new(x0, y0), Vec2::new(x0 + w, y0 + h), 1.0, col);
+    let (az, dep) = stealth_sim::gunship::GIMBAL_EL;
+    let (lim, lo, hi) =
+        (stealth_sim::gunship::GIMBAL_AZ.to_degrees() as f32, az.to_degrees() as f32, dep.to_degrees() as f32);
+    let bears = if g.in_gimbal { GREEN } else { col };
+    c.frame(at(lim, lo), at(-lim, hi), 1.5, bears);
+    // The wing's line, dashed down the middle.
+    let mut y = y0;
+    while y < y0 + h {
+        c.stroke(Vec2::new(x0 + w / 2.0, y), Vec2::new(x0 + w / 2.0, (y + 3.0).min(y0 + h)), 1.0, col);
+        y += 6.0;
+    }
+    if let (Some(los), Ok((a, _))) = (p.state.av.tgp.los, p.aircraft.single()) {
+        let (az, dep) = side_gun_angles(a.orientation, los);
+        let off = (az + 270.0).rem_euclid(360.0) - 180.0;
+        let inside = off.abs() <= az_span && (0.0..=dep_max).contains(&dep);
+        let m = at(off.clamp(-az_span, az_span), dep.clamp(0.0, dep_max));
+        let shown = inside || crate::hud::blink(&p.time);
+        if shown {
+            let colour = if g.in_gimbal { GREEN } else { col };
+            for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
+                c.stroke(m + d * 2.0, m + d * 6.0, 1.5, colour);
+            }
+        }
+    }
+    let gun = stealth_sim::gunship::gun_name(g.gun as usize);
+    let line1 = format!("{gun} {}", g.rounds[g.gun as usize]);
+    let y = (y0 + h + 4.0) as i32;
+    fonts.text_scaled(c, x0 as i32, y, line1.as_bytes(), col, 2);
+    let line2 = match (g.in_gimbal, g.tof) {
+        (true, Some(t)) => format!("TOF {t:.1}"),
+        (true, None) => "IN GIMBAL".to_string(),
+        (false, _) => "GIMBAL".to_string(),
+    };
+    if g.in_gimbal || crate::hud::blink(&p.time) {
+        let colour = if g.in_gimbal { if g.ready { GREEN } else { col } } else { AMBER };
+        fonts.text_scaled(c, x0 as i32, y + 13, line2.as_bytes(), colour, 2);
+    }
 }
 
 /// Where the gunship's slaved pod looks: at the lock (else the helmet sight).
@@ -3439,6 +3566,24 @@ mod tests {
         assert_eq!(next.formats(MfdSide::Left), s.av.formats(MfdSide::Left));
     }
 
+    /// The cargo jet starts on the HSD, the HSI, the engines and the cargo page, left to right
+    /// (its fourth MFD sits left of the third), and keeps them in NAV; only it has the cargo page.
+    #[test]
+    fn cargo_jet_starts_on_its_own_displays() {
+        assert!(AvionicsState::default().available().all(|f| f != Format::Cgo));
+        let mut av = AvionicsState::default();
+        av.set_mfds(4);
+        av.set_cargo(true);
+        let order = [MfdSide::Left, MfdSide::Right, MfdSide::Fourth, MfdSide::Third];
+        let shown = |av: &AvionicsState| order.map(|s| av.format(s));
+        assert_eq!(shown(&av), [Format::Hsd, Format::Hsi, Format::Eng, Format::Cgo]);
+        av.set_master(HudMode::Nav);
+        assert_eq!(shown(&av), [Format::Hsd, Format::Hsi, Format::Eng, Format::Cgo]);
+        assert!(av.available().any(|f| f == Format::Cgo));
+        av.set_cargo(false);
+        assert!(order.iter().all(|&s| av.format(s) != Format::Cgo));
+    }
+
     /// The RCS page is in the stealth types' format menus (with or without a radar: the menu's
     /// ten side buttons hold all the formats), not the others'; it leaves the MFDs with an
     /// aircraft without it, and its range steps from AUTO out and back.
@@ -3846,7 +3991,11 @@ mod tests {
     #[test]
     fn every_button_on_every_format() {
         for side in [MfdSide::Left, MfdSide::Third] {
-            for f in formats(side, true).into_iter().chain(formats(side, false)) {
+            for f in formats(side, true, false)
+                .into_iter()
+                .chain(formats(side, false, false))
+                .chain(formats(side, false, true))
+            {
                 for (way, ord) in [(false, false), (true, true)] {
                     let mut s = MfdState { modern: true, ..default() };
                     s.av.set_mfds(3);

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use crate::canvas::Canvas;
 use crate::font::{Align, stroke_has, stroke_text_at, stroke_text_keep_case};
-use crate::hotas::{ButtonTarget, InputConfig, VrHand};
+use crate::hotas::{ButtonTarget, InputConfig, VrHand, VrInput};
 use crate::input::{Action, Mods};
 use stealth_i18n::{t, ts};
 
@@ -204,12 +204,27 @@ pub fn lines(config: &InputConfig, vr: bool) -> Vec<Line> {
     let mut out = Vec::new();
     if vr {
         out.push(Line::Heading(ts!("kg-vr-controllers").into()));
-        out.push(row("kg-vr-grip"));
+        // The grab, on the grips unless rebound (`hotas::VrGrab`).
+        let grabs = [VrHand::Left, VrHand::Right].map(|hand| config.vr_grab(hand).input);
+        if grabs == [VrInput::Grip; 2] {
+            out.push(row("kg-vr-grip"));
+        } else {
+            let keys = [(VrHand::Left, "L"), (VrHand::Right, "R")]
+                .map(|(hand, side)| {
+                    format!("{side}_{}", config.vr_grab(hand).input.name(hand).replace(' ', "_"))
+                })
+                .join(" ");
+            out.push(Line::Row(keys, ts!("kg-vr-grip.desc").to_string(), true));
+        }
         out.push(row("kg-vr-fingertip"));
         out.push(row("kg-vr-left-stick"));
         out.push(row("kg-vr-stick"));
         for hand in [VrHand::Left, VrHand::Right] {
-            for m in config.vr_buttons.iter().filter(|m| m.hand == hand) {
+            for m in config
+                .vr_buttons
+                .iter()
+                .filter(|m| m.hand == hand && !config.vr_grabs(hand, m.input))
+            {
                 let side = if hand == VrHand::Left { "L" } else { "R" };
                 let keys = format!("{side}_{}", m.input.name(hand).replace(' ', "_"));
                 let what = match m.target {

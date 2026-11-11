@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Ляв страничен отсек (Sidewinder)
 hardpoint-f22-left-main-bay = Главен отсек, лява половина
 hardpoint-f22-right-main-bay = Главен отсек, дясна половина
 hardpoint-f22-right-side-bay = Десен страничен отсек (Sidewinder)
+hardpoint-c5-hold = Товарен отсек (палети за десантиране)
 weapon-role-21 = Въздух-въздух, инфрачервено насочване, много малък обхват
 employment-21 = Обхват: 1-6 км, по-голям челно
 loadout-none-in-stock = (няма наличност)

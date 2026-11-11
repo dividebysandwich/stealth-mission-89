@@ -304,6 +304,8 @@ pub fn next_sortie(
     for k in 0..SORTIE_TRIES {
         let s = menu.seed.wrapping_add(k as u16 * 7919);
         let kind = match s % 20 {
+            // The gunship flies against ground targets only.
+            _ if aircraft.spectre() => MissionKind::Strike,
             0..=11 => MissionKind::Strike,
             12..=15 if drones => MissionKind::DroneDefense,
             _ => MissionKind::Air,
@@ -318,10 +320,16 @@ pub fn next_sortie(
             menu.cloud_cover,
         );
         settings.moon = menu.moon;
-        settings.helicopter = aircraft.spec().helicopter;
+        crate::mission::settings_for(&mut settings, aircraft);
         settings.pilot = pilot.title();
         settings.sorties = pilot.sorties as u16;
-        let Ok(m) = stealth_mission::generate(&data.0, &settings, Seed::Srand(s)) else { continue };
+        let Ok(mut m) = stealth_mission::generate(&data.0, &settings, Seed::Srand(s)) else {
+            continue;
+        };
+        // The gunship's targets are its own (the column and its place): checked as flown.
+        if aircraft.spectre() {
+            crate::mission::for_aircraft(&mut m, &data.0, aircraft);
+        }
         let standing = |tg: &stealth_mission::Target| {
             !t.damage.objects.contains(&(tg.object_index as u16))
                 && !t.damage.near(tg.position.x, tg.position.y, 0x20)

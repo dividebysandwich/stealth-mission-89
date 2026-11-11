@@ -133,6 +133,7 @@ tip-cmd-harm = Designación HARM
 tip-cmd-gm = Radar de mapeo del terreno (GM)
 tip-cmd-eng = Motores y combustible (ENG)
 tip-cmd-rcs = Firma de radar (RCS)
+tip-cmd-cgo = Carga, rampa y lanzamiento (CGO)
 tip-cmd-format-row = Formato; otra vez: menú de formatos
 tip-cmd-tgp = Pod de designación (TGP)
 tip-cmd-map = Mapa
@@ -206,6 +207,7 @@ tip-console-manual = Pilotar el dron seleccionado a mano: la palanca y el aceler
 tip-console-track = Mantener la cámara del dron sobre el suelo en su retícula
 tip-console-slave = La cámara del dron vuelve a su waypoint (hacia delante y abajo)
 tip-console-view = La cámara del dron: su TGP, o el FLIR mirando al frente para pilotarlo
+tip-console-gun = Apuntar a continuación este cañón lateral (el gatillo lo dispara)
 
 ## Mandos
 

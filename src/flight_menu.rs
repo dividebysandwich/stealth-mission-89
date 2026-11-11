@@ -75,7 +75,7 @@ impl Plugin for FlightMenuPlugin {
                     type_search,
                     scroll_guide,
                     navigate,
-                    bindings_overlay,
+                    dialog_overlay,
                     draw,
                     vr_end_screen,
                 )
@@ -88,6 +88,9 @@ impl Plugin for FlightMenuPlugin {
             );
     }
 }
+
+/// How long SAVED (or NOT SAVED) stays beside SAVE MISSION.
+pub const SAVE_NOTE_SECONDS: f32 = 2.0;
 
 /// Menu state; `open` pauses the flight.
 #[derive(Resource, Default)]
@@ -121,10 +124,17 @@ pub struct FlightMenu {
     /// The bindings dialog is up instead of the menu's screen (until its DONE).
     bindings: bool,
     /// SAVE MISSION can save the flight now (`savegame.rs` says so every frame), was chosen,
-    /// and what came of it (shown beside it until the menu closes).
+    /// and what came of it (shown beside it for `SAVE_NOTE_SECONDS`, or until the menu closes).
     pub can_save: bool,
     pub save_request: bool,
     pub save_note: Option<&'static str>,
+    /// How long `save_note` has been shown (real seconds: the flight is paused under the menu).
+    pub save_note_age: f32,
+    /// LOAD MISSION can replace the flight now (`savegame.rs` says so every frame), was chosen,
+    /// and the list of saves is up over the menu (until its BACK).
+    pub can_load: bool,
+    pub load_request: bool,
+    pub saves: bool,
     /// Opens the menu (pausing the flight) as soon as it can: a loaded save starts so.
     pub open_on_start: bool,
     /// Opens the menu on its OPTIONS page as soon as it can (the campaign's Ops screen asks);
@@ -135,6 +145,43 @@ pub struct FlightMenu {
     home: Page,
     /// LEAVE AIRCRAFT can hand the aircraft to the AI now (the campaign says so every frame).
     pub can_leave: bool,
+    /// The seat entry: which move it makes now (the campaign, or `gunner` in a single
+    /// mission, says so every frame), and it was chosen (a single mission's: `gunner` makes
+    /// the move).
+    pub seat: SeatChoice,
+    pub seat_request: bool,
+}
+
+/// What the seat entry of the menu does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SeatChoice {
+    /// Nothing (no other seat free).
+    #[default]
+    None,
+    /// The pilot to his aircraft's gunner's console (the AI flies).
+    ToGunner,
+    /// Back to the pilot's seat.
+    ToPilot,
+    /// Up from another's gunner's console, back to operations.
+    LeaveGunner,
+}
+
+impl SeatChoice {
+    fn label_id(self) -> &'static str {
+        match self {
+            SeatChoice::None | SeatChoice::ToGunner => "fm-seat-gunner",
+            SeatChoice::ToPilot => "fm-seat-pilot",
+            SeatChoice::LeaveGunner => "fm-leave-seat",
+        }
+    }
+}
+
+impl FlightMenu {
+    /// A dialog is up instead of the menu's screen (the bindings, the list of saves): the menu
+    /// takes no input, and Esc goes to the dialog.
+    fn overlay(&self) -> bool {
+        self.bindings || self.saves
+    }
 }
 
 /// The menu's pages: the main one, OPTIONS and its pages (as the main menu's OPTIONS window).
@@ -144,6 +191,8 @@ enum Page {
     Main,
     /// The main page in a campaign sortie: LEAVE AIRCRAFT, END SORTIE asks first.
     Sortie,
+    /// The main page at another's gunner's console: LEAVE SEAT.
+    Crew,
     /// END SORTIE?
     ConfirmEnd,
     Options,
@@ -159,16 +208,27 @@ impl Page {
     fn items(self) -> &'static [Item] {
         use Item::*;
         match self {
-            Page::Main => &[Resume, SaveMission, Open(Page::Options), KeyGuide, EndMission, Back],
+            Page::Main => &[
+                Resume,
+                SaveMission,
+                LoadMission,
+                Open(Page::Options),
+                KeyGuide,
+                SwitchSeat,
+                EndMission,
+                Back,
+            ],
             Page::Sortie => &[
                 Resume,
                 SaveMission,
                 Open(Page::Options),
                 KeyGuide,
+                SwitchSeat,
                 LeaveAircraft,
                 EndMission,
                 Back,
             ],
+            Page::Crew => &[Resume, Open(Page::Options), KeyGuide, SwitchSeat, Back],
             Page::ConfirmEnd => &[ConfirmEnd, Resume, Back],
             Page::Options => &[
                 Open(Page::Game),
@@ -184,6 +244,7 @@ impl Page {
                 Hud,
                 Avionics,
                 AutoTrim,
+                KeepTimeAccel,
                 Tooltips,
                 Tutorial,
                 Atc,
@@ -253,7 +314,7 @@ impl Page {
 
     fn parent(self, home: Page) -> Option<Page> {
         match self {
-            Page::Main | Page::Sortie => None,
+            Page::Main | Page::Sortie | Page::Crew => None,
             Page::Options | Page::ConfirmEnd => Some(home),
             _ => Some(Page::Options),
         }
@@ -261,7 +322,7 @@ impl Page {
 
     fn title(self) -> &'static str {
         ts!(match self {
-            Page::Main | Page::Sortie => "fm-menu",
+            Page::Main | Page::Sortie | Page::Crew => "fm-menu",
             Page::ConfirmEnd => "fm-end-sortie-confirm",
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
@@ -319,11 +380,16 @@ impl Vol {
 enum Item {
     Resume,
     SaveMission,
+    /// The list of saves over the menu: the one chosen replaces the flight.
+    LoadMission,
     /// Opens a page.
     Open(Page),
     KeyGuide,
     /// A campaign sortie: the AI takes the aircraft over and flies the mission on.
     LeaveAircraft,
+    /// Moves to the aircraft's other seat (the gunner's console, the pilot's), or up from
+    /// another's gunner's console (`FlightMenu::seat`).
+    SwitchSeat,
     EndMission,
     /// END SORTIE, asked to be sure.
     ConfirmEnd,
@@ -341,6 +407,7 @@ enum Item {
     Hud,
     Avionics,
     AutoTrim,
+    KeepTimeAccel,
     Tooltips,
     Tutorial,
     Atc,
@@ -379,9 +446,11 @@ impl Item {
         ts!(match self {
             Item::Resume => "fm-resume",
             Item::SaveMission => "fm-save-mission",
+            Item::LoadMission => "fm-load-mission",
             Item::KeyGuide => "fm-key-guide",
             Item::EndMission => "fm-end-mission",
             Item::LeaveAircraft => "fm-leave-aircraft",
+            Item::SwitchSeat => "fm-seat-gunner",
             Item::ConfirmEnd => "fm-end-sortie",
             Item::Back => "back",
             Item::Language => "fm-language",
@@ -396,6 +465,7 @@ impl Item {
             Item::Hud => "fm-hud",
             Item::Avionics => "fm-avionics",
             Item::AutoTrim => "fm-auto-trim",
+            Item::KeepTimeAccel => "fm-keep-time-accel",
             Item::Tooltips => "fm-tooltips",
             Item::Tutorial => "fm-tutorial",
             Item::Atc => "fm-atc",
@@ -438,6 +508,7 @@ impl Item {
             Item::Hud => style(s.classic_hud),
             Item::Avionics => style(s.classic_avionics),
             Item::AutoTrim => on(s.auto_trim),
+            Item::KeepTimeAccel => on(s.keep_time_accel),
             Item::Tooltips => on(s.tooltips),
             Item::Tutorial => on(s.tutorial),
             Item::Atc => on(s.atc),
@@ -458,7 +529,9 @@ impl Item {
             | Item::Bindings
             | Item::Resume
             | Item::SaveMission
+            | Item::LoadMission
             | Item::LeaveAircraft
+            | Item::SwitchSeat
             | Item::EndMission
             | Item::ConfirmEnd
             | Item::Back => String::new(),
@@ -471,14 +544,17 @@ impl Item {
     /// classic time of day, head tracking only on the desktop, MSAA not on WebGL2 nor with the
     /// pixelize look, scanlines and pixelize not in VR; the bindings not over the campaign's Ops
     /// screen (its egui context is the one up then); SAVE MISSION while the flight can be saved,
-    /// LEAVE AIRCRAFT while the AI can take it over (in the air), the interactive tutorial while
-    /// the flight is a single mission (`single`, `mission::single_mission`).
+    /// LOAD MISSION in a single mission, LEAVE AIRCRAFT while the AI can take it over (in the air),
+    /// the interactive tutorial while the flight is a single mission (`single`,
+    /// `mission::single_mission`).
     fn enabled(self, s: &Settings, ops: bool, menu: &FlightMenu, single: bool) -> bool {
         match self {
             Item::Bindings => !ops,
             Item::SaveMission => menu.can_save,
+            Item::LoadMission => menu.can_load,
             Item::LeaveAircraft => menu.can_leave,
             Item::Tutorial => single,
+            Item::SwitchSeat => menu.seat != SeatChoice::None,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::LabelSize => s.player_labels,
             Item::PixelSize => crate::palette::pixelized(s),
@@ -501,10 +577,12 @@ impl Item {
             self,
             Item::Resume
                 | Item::SaveMission
+                | Item::LoadMission
                 | Item::Open(_)
                 | Item::KeyGuide
                 | Item::Bindings
                 | Item::LeaveAircraft
+                | Item::SwitchSeat
                 | Item::EndMission
                 | Item::ConfirmEnd
                 | Item::Back
@@ -630,6 +708,8 @@ fn close_on_exit(
         dialog.close();
     }
     menu.bindings = false;
+    menu.saves = false;
+    menu.load_request = false;
     menu.open = false;
     menu.opened_with = None;
     menu.exiting = false;
@@ -655,8 +735,8 @@ fn toggle(
     let pressed =
         actions.read().filter(|a| a.0 == Action::Menu).count() % 2 == 1 && !boss.showing();
     // The bindings dialog takes Esc (it cancels a capture) and every other key: only its DONE
-    // closes it.
-    if menu.bindings {
+    // closes it. The list of saves takes Esc as BACK.
+    if menu.overlay() {
         return;
     }
     if menu.open_on_start {
@@ -671,8 +751,11 @@ fn toggle(
         menu.options_only = true;
     }
     // In a campaign sortie the main page has LEAVE AIRCRAFT.
-    let sortie = campaign.as_deref().is_some_and(|c| c.phase == crate::campaign::Phase::Sortie);
-    menu.home = if sortie { Page::Sortie } else { Page::Main };
+    menu.home = match campaign.as_deref().map(|c| c.phase) {
+        Some(crate::campaign::Phase::Sortie) => Page::Sortie,
+        Some(crate::campaign::Phase::Crew { .. }) => Page::Crew,
+        _ => Page::Main,
+    };
     // Esc in the key guide clears its search, else goes back to the entries; on a page it goes
     // to the page before.
     if pressed && menu.open && menu.guide {
@@ -744,7 +827,7 @@ fn set_open(
 }
 
 /// The options changed since the menu opened: saved to the preferences.
-fn save_options(menu: &mut FlightMenu, s: &Settings) {
+pub(crate) fn save_options(menu: &mut FlightMenu, s: &Settings) {
     use crate::prefs::Prefs;
     if menu.opened_with.take().is_some_and(|before| Prefs::options(&before) != Prefs::options(s)) {
         Prefs::save_options(s);
@@ -1049,7 +1132,7 @@ fn type_search(
     keys: Res<ButtonInput<KeyCode>>,
     logical: Res<ButtonInput<Key>>,
 ) {
-    if !menu.open || !menu.guide || menu.bindings {
+    if !menu.open || !menu.guide || menu.overlay() {
         events.clear();
         return;
     }
@@ -1111,7 +1194,7 @@ fn navigate(
     mouse: Res<ButtonInput<MouseButton>>,
     gamepads: Query<&Gamepad>,
     mut hands: ResMut<Hands>,
-    windows: Query<&Window>,
+    (windows, mirror): (Query<&Window>, Res<crate::camera::MirrorRay>),
     cams: Query<(&Camera, &GlobalTransform), With<EyeCamera>>,
     screen: Query<(&GlobalTransform, &Transform), With<MenuScreen>>,
     overlay: Query<&RelativeCursorPosition, With<MenuScreen>>,
@@ -1125,7 +1208,7 @@ fn navigate(
     ),
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
 ) {
-    if !menu.open || menu.exiting || menu.bindings {
+    if !menu.open || menu.exiting || menu.overlay() {
         return;
     }
     let ops = campaign.as_deref().is_some_and(|c| c.screen_open());
@@ -1255,10 +1338,8 @@ fn navigate(
     }
     if let Ok((screen_gtf, screen_tf)) = screen.single() {
         let inv = screen_gtf.affine().inverse();
-        if !settings.vr
-            && let (Ok(window), Ok((camera, cam_tf))) = (windows.single(), cams.single())
-            && let Some(cursor) = window.cursor_position()
-            && let Ok(ray) = camera.viewport_to_world(cam_tf, cursor)
+        if let Some(ray) =
+            crate::camera::cursor_ray(windows.single().ok(), cams.single().ok(), &mirror)
         {
             let o = inv.transform_point3(ray.origin);
             let d = inv.transform_vector3(*ray.direction);
@@ -1350,6 +1431,7 @@ fn navigate(
         Item::Hud => s.classic_hud = !s.classic_hud,
         Item::Avionics => s.classic_avionics = !s.classic_avionics,
         Item::AutoTrim => s.auto_trim = !s.auto_trim,
+        Item::KeepTimeAccel => s.keep_time_accel = !s.keep_time_accel,
         Item::Language => {
             let all = Language::ALL;
             let i = all.iter().position(|&l| l == s.language).unwrap_or(0) as isize;
@@ -1407,6 +1489,7 @@ fn navigate(
         }
         Item::Resume => close = true,
         Item::SaveMission => menu.save_request = true,
+        Item::LoadMission => menu.load_request = true,
         // On the campaign's board: its SAVE & EXIT or DISCONNECT, asking first.
         Item::EndMission if let Some(c) = campaign.as_mut().filter(|c| c.on_board()) => {
             c.ask_exit();
@@ -1416,6 +1499,21 @@ fn navigate(
         Item::EndMission if menu.page == Page::Sortie => go_to(&mut menu, Page::ConfirmEnd),
         Item::EndMission | Item::ConfirmEnd if !pause => {
             actions.write(ActionEvent(Action::Quit));
+            close = true;
+        }
+        // The other seat (in a campaign the server's say), or up from another's console.
+        Item::SwitchSeat => {
+            use stealth_sim::crew::{CrewCmd, Seat};
+            let cmd = match menu.seat {
+                SeatChoice::ToGunner => Some(CrewCmd::Seat(Seat::Gunner)),
+                SeatChoice::ToPilot => Some(CrewCmd::Seat(Seat::Pilot)),
+                SeatChoice::LeaveGunner => Some(CrewCmd::Leave),
+                SeatChoice::None => None,
+            };
+            match campaign.as_mut() {
+                Some(c) => c.actions.extend(cmd.map(crate::campaign::Action::Crew)),
+                None => menu.seat_request = cmd.is_some(),
+            }
             close = true;
         }
         // The AI flies on in his aircraft; he is back on the board.
@@ -1437,20 +1535,22 @@ fn navigate(
     }
 }
 
-/// The camera (desktop) or the VR panel carrying the bindings dialog's egui context.
+/// The camera (desktop) or the VR panel carrying the egui context of the bindings dialog and of
+/// the list of saves.
 #[derive(Component, Clone)]
-struct BindingsOverlay;
+struct DialogOverlay;
 
-/// Puts up the bindings dialog's egui context while it is open (as the campaign's Ops screen
-/// does, `campaign::ops::overlay`); its DONE goes back to the menu.
+/// Puts up the egui context while the bindings dialog or the list of saves is open (as the
+/// campaign's Ops screen does, `campaign::ops::overlay`); their DONE and BACK go back to the
+/// menu.
 #[allow(clippy::too_many_arguments)]
-fn bindings_overlay(
+fn dialog_overlay(
     mut commands: Commands,
     mut menu: ResMut<FlightMenu>,
     dialog: Res<crate::input_dialog::InputDialog>,
-    tagged: Query<Entity, With<BindingsOverlay>>,
-    mut cams: Query<&mut Msaa, With<BindingsOverlay>>,
-    eye: Query<&Msaa, (With<EyeCamera>, Without<BindingsOverlay>)>,
+    tagged: Query<Entity, With<DialogOverlay>>,
+    mut cams: Query<&mut Msaa, With<DialogOverlay>>,
+    eye: Query<&Msaa, (With<EyeCamera>, Without<DialogOverlay>)>,
     settings: Res<Settings>,
     root: Option<Res<crate::camera::XrRoot>>,
     mut images: ResMut<Assets<Image>>,
@@ -1460,7 +1560,7 @@ fn bindings_overlay(
     if menu.bindings && !dialog.open {
         menu.bindings = false;
     }
-    let want = menu.open && menu.bindings;
+    let want = menu.open && menu.overlay();
     // The overlay draws into the 3D view's picture only with the same anti-aliasing.
     let msaa = eye.iter().next().copied().unwrap_or(Msaa::Off);
     for mut m in &mut cams {
@@ -1488,7 +1588,7 @@ fn bindings_overlay(
             &mut meshes,
             &mut materials,
             root,
-            BindingsOverlay,
+            DialogOverlay,
             false,
         );
         commands.insert_resource(crate::vr_menu::WorldPanel);
@@ -1499,7 +1599,7 @@ fn bindings_overlay(
         Camera2d,
         Camera { order: 50, clear_color: ClearColorConfig::None, ..default() },
         msaa,
-        BindingsOverlay,
+        DialogOverlay,
         bevy_egui::PrimaryEguiContext,
     ));
 }
@@ -1539,7 +1639,7 @@ fn draw(
     time: Res<Time<Real>>,
 ) {
     let Ok((mut tex, mut vis)) = q.single_mut() else { return };
-    let shown = menu.open && !menu.bindings;
+    let shown = menu.open && !menu.overlay();
     vis.set_if_neq(if shown { Visibility::Inherited } else { Visibility::Hidden });
     if !shown {
         return;
@@ -1663,11 +1763,12 @@ fn draw(
         let label: std::borrow::Cow<str> = match item {
             Item::EndMission if let Some(b) = board => ts!(b.exit_id()).into(),
             Item::EndMission if campaign.is_some() => ts!("fm-end-sortie").into(),
+            Item::SwitchSeat => ts!(menu.seat.label_id()).into(),
             _ => item.label(),
         };
         let label = &*label;
         let mut right = x1 - VALUE_INSET;
-        if matches!(item, Item::Open(_) | Item::KeyGuide | Item::Bindings) {
+        if matches!(item, Item::Open(_) | Item::KeyGuide | Item::Bindings | Item::LoadMission) {
             let (tip, s) = (Vec2::new(x1 - 24.0, mid), (h * 0.17).min(10.0));
             let arms = [tip + Vec2::new(-0.65 * s, -s), tip, tip + Vec2::new(-0.65 * s, s)];
             c.polyline(&arms, pen.max(1.8), col);
@@ -1867,10 +1968,12 @@ fn icon(item: Item) -> Option<char> {
     Some(match item {
         Item::Resume => '\u{e13c}', // play
         Item::SaveMission => icon::SAVE,
+        Item::LoadMission => icon::LOAD,
         Item::Open(Page::Options) => icon::OPTIONS,
         Item::KeyGuide => '\u{e05f}', // book-open
         Item::EndMission | Item::ConfirmEnd => icon::END_SORTIE,
         Item::LeaveAircraft => icon::KEYS,
+        Item::SwitchSeat => '\u{e1de}', // plane
         Item::Open(Page::Game) => '\u{e1de}',     // plane
         Item::Open(Page::Graphics) => '\u{e11d}', // monitor
         Item::Open(Page::Effects) => '\u{e412}',  // sparkles
@@ -2085,6 +2188,9 @@ mod tests {
         let items = Page::Sortie.items();
         let leave = items.iter().position(|&i| i == Item::LeaveAircraft).unwrap();
         assert_eq!(items[leave + 1], Item::EndMission);
+        assert_eq!(items[leave - 1], Item::SwitchSeat);
+        assert!(!Page::Crew.items().contains(&Item::EndMission));
+        assert_eq!(item_rects(Page::Crew).len(), Page::Crew.items().len());
         assert!(!Page::Main.items().contains(&Item::LeaveAircraft));
         assert_eq!(Page::ConfirmEnd.items()[0], Item::ConfirmEnd);
         assert_eq!(Page::ConfirmEnd.back(false, Page::Sortie), Some(Page::Sortie));
@@ -2097,6 +2203,9 @@ mod tests {
         assert!(!Item::LeaveAircraft.enabled(&s, false, &menu, true));
         menu.can_leave = true;
         assert!(Item::LeaveAircraft.enabled(&s, false, &menu, true));
+        assert!(!Item::SwitchSeat.enabled(&s, false, &menu, true));
+        menu.seat = SeatChoice::ToGunner;
+        assert!(Item::SwitchSeat.enabled(&s, false, &menu, true));
     }
 
     /// A stepped value changes only on its chevrons, whatever the half of the row they are in;

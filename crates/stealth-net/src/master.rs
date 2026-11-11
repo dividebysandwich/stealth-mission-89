@@ -318,6 +318,9 @@ pub fn report(server: &Server, host: &Host, sim: &Sim, dedicated: bool) -> Serve
                 PlayerStatus::Flying { title, aircraft } => {
                     format!("Flying {title} ({})", aircraft.name())
                 }
+                PlayerStatus::Crew { title, aircraft, pilot } => {
+                    format!("Gunner with {pilot}: {title} ({})", aircraft.name())
+                }
                 PlayerStatus::Reconnecting { .. } => "Reconnecting".into(),
             },
             name: p.name,

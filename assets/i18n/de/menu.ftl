@@ -221,6 +221,11 @@ aircraft-ah1z =
         Kampfhubschrauber
         Turmkanone, Hellfire, AIM-9
         Kanone und Hellfire folgen dem Pod
+aircraft-ah64 =
+    .facts =
+        Kampfhubschrauber, zweisitzig
+        Turmkanone, Hellfire, Stinger
+        Ein zweiter Spieler kann als Schütze mitfliegen
 
 ## Abschnitte und Gruppen
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Transporthubschrauber mit Tandemrotoren
         Hängt Nachschub- und Logistiklasten an
         Kein Drehmoment auszugleichen: die Rotoren heben sich auf
+aircraft-c5 =
+    .facts =
+        Vierstrahliger strategischer Transporter
+        Fliegt Munition zwischen den Fliegerhorsten
+        Schwer: rollt und rotiert langsam
+aircraft-ac130 =
+    .facts =
+        Seitlich feuerndes Kanonenflugzeug
+        40-mm- und 105-mm-Geschütze, gerichtet mit dem Zielbehälter
+        Im Linkskreis fliegen, damit die Geschütze tragen

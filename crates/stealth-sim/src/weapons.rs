@@ -7,6 +7,8 @@ use stealth_i18n::text;
 const NEAREST_WAIT: u8 = 8;
 /// Seconds the RAH-66's doors stay open after the last launch they opened for.
 const BAY_AUTO_CLOSE: i32 = 4;
+/// Seconds the C-5's cargo ramp takes to go down (or up).
+pub const RAMP_SECS: i32 = 8;
 /// Seconds a missile dropped off its pylon falls clear before its motor lights (the Maverick,
 /// the Harpoon, the Penguin; the others light theirs on the rail), and one ejected from the
 /// F-117A's bays (all of them, lest they fly through the fuselage).
@@ -206,8 +208,11 @@ impl Sim {
     /// skipped; classic mode steps through the 2 or 4 bays, the same with a different weapon in
     /// each).
     /// The HUD mode store `w` (weapon type) is used in with realistic avionics: None for the
-    /// camera and the tanks, used in any mode.
+    /// camera, the tanks and the cargo jet's pallets, used in any mode.
     fn store_mode(&self, w: i32) -> Option<HudMode> {
+        if w == crate::SPECIAL_EQUIPMENT {
+            return None;
+        }
         let spec = self.weapon_types.get(usize::try_from(w).ok()?)?.spec as i32;
         if spec <= 0 {
             return None;
@@ -251,6 +256,12 @@ impl Sim {
 
     /// Space: the next weapon (with realistic avionics, the next one of the HUD's mode).
     fn next_weapon(&mut self, ps: &PlayerState) {
+        // The AC-130: its side guns in turn.
+        if self.pl.spectre {
+            let gun = (self.pl.side_guns.gun as usize + 1) % crate::gunship::GUNS;
+            self.select_side_gun(gun);
+            return;
+        }
         // A gunship's cannon is two entries: slaved to the helmet, then to the pod.
         if self.pl.gun_selected
             && self.pl.gunship
@@ -365,7 +376,22 @@ impl Sim {
                 self.sound(0x1F, 1);
             }
         }
-        if self.pl.bay_req {
+        if self.pl.galaxy {
+            // The cargo ramp goes down and up slowly; the pallets go only with it down.
+            let down = RAMP_SECS * self.fs;
+            let r = &mut self.pl.ramp;
+            *r = if self.pl.bay_req { (*r + 1).min(down) } else { (*r - 1).max(0) };
+            self.pl.door_anim = match *r {
+                0 => 0,
+                r if r >= down => 2,
+                _ => 1,
+            };
+            if self.pl.ramp >= down {
+                self.pl.pflags |= pflags::BAY_OPEN;
+            } else {
+                self.pl.pflags &= !(pflags::BAY_OPEN | pflags::CAMERA_VIEW);
+            }
+        } else if self.pl.bay_req {
             if self.pl.door_anim == 2 {
                 self.pl.pflags |= pflags::BAY_OPEN;
             } else {
@@ -382,6 +408,12 @@ impl Sim {
     pub(crate) fn handle_fire(&mut self, ps: &PlayerState) {
         if self.pl.fire_cooldown > 0 {
             self.pl.fire_cooldown -= 1;
+        }
+        // The AH-64's gunner's missile.
+        if let Some(station) = self.pl.crew_launch.take()
+            && self.pl.eject == 0
+        {
+            self.crew_launch(station as usize);
         }
         let bomb = ballistics::drag(self.selected_spec(), self.opts.fix_classic_bugs).is_some();
         let ccrp = ps.ccrp && self.pl.hud_mode == HudMode::Gnd && bomb;
@@ -439,6 +471,22 @@ impl Sim {
             self.release_bombs(ps);
         }
         self.pl.ccrp_last = along;
+    }
+
+    /// The gunner fires a missile from `station`'s kind (his own selection, the pilot's left as
+    /// it was unless that is now empty).
+    fn crew_launch(&mut self, station: usize) {
+        let Some(&(w, n)) = self.pl.bays.get(station) else { return };
+        if w < 0 || n <= 0 || self.gun_pod(w) {
+            return;
+        }
+        let saved = (self.pl.gun_selected, self.pl.cur_bay);
+        self.pl.gun_selected = false;
+        self.pl.cur_bay = station;
+        self.fire_missile();
+        if saved.0 || self.pl.bays.get(saved.1).is_some_and(|b| b.0 >= 0 && b.1 > 0) {
+            (self.pl.gun_selected, self.pl.cur_bay) = saved;
+        }
     }
 
     /// Bombs a press releases (at least 1, no more than are left) and the ground distance
@@ -567,7 +615,11 @@ impl Sim {
                 return;
             }
             self.sound(0x20, 1);
-            self.msg(text!("sim-bay-closed"));
+            self.msg(if self.pl.galaxy {
+                text!("sim-ramp-closed")
+            } else {
+                text!("sim-bay-closed")
+            });
             return;
         }
         if self.pl.comanche && self.pl.bay_close > 0 {
@@ -897,8 +949,9 @@ impl Sim {
     /// Where the active pilot's turret points: an attack helicopter's follows the helmet sight
     /// or the targeting pod (`gun_pod`) as far as it turns (None: a fixed cannon, or no sight,
     /// along the nose).
+    /// The AH-64's gunner fires it along his own sight (the pod).
     pub(crate) fn turret_aim(&self, ps: &PlayerState) -> Option<(i32, i32)> {
-        let sight = if self.pl.gun_pod { ps.pod } else { ps.helmet.or(ps.pod) };
+        let sight = if self.pl.gun_pod || self.pl.crew_gun { ps.pod } else { ps.helmet.or(ps.pod) };
         let pod = sight.filter(|_| self.pl.gunship)?;
         let p = &self.pl.p;
         let az = s16(pod.heading as i32 - p.heading).clamp(-TURRET_AZIMUTH, TURRET_AZIMUTH);
@@ -914,9 +967,15 @@ impl Sim {
         // each slot is reused after `nb` frames, which ends the round there.
         if self.has_gun() {
             let slot = (self.frame as usize) % nb;
-            let trigger = ps.cmd.gun || (self.pl.gun_selected && ps.cmd.trigger);
-            // Realistic avionics: the cannon fires in AIR and GND only.
-            let in_mode = self.usable_in_mode(ps, None);
+            let crew = self.pl.crew_gun;
+            let trigger = ps.cmd.gun || (self.pl.gun_selected && ps.cmd.trigger) || crew;
+            // Realistic avionics: the cannon fires in AIR and GND only (the pilot's modes; his
+            // gunner's sight is his own).
+            let in_mode = crew || self.usable_in_mode(ps, None);
+            if self.pl.crew_rounds.len() != nb {
+                self.pl.crew_rounds = vec![false; nb];
+            }
+            self.pl.crew_rounds[slot] = false;
             if trigger && !in_mode && !self.pl.gun_blocked && self.pl.eject == 0 {
                 self.msg(text!("sim-select-aa-ag"));
             }
@@ -926,6 +985,7 @@ impl Sim {
                 self.sound(6, 2);
                 let aim = self.turret_aim(ps);
                 self.bullets[slot] = Self::gun_round(&self.pl.p, aim, fs);
+                self.pl.crew_rounds[slot] = crew;
                 self.pl.gun_aim = aim;
                 self.pl.gun_firing = true;
                 self.pl.fired_step = self.steps;
@@ -943,20 +1003,23 @@ impl Sim {
                 b.vz -= g;
             }
         }
-        // A coop client's rounds hit on his side (he reports the hits): here they only fly.
+        // A coop client's rounds hit on his side (he reports the hits): here they only fly; his
+        // gunner's are tested here.
+        let crew = |sim: &Self, i: usize| sim.pl.crew_rounds.get(i).copied().unwrap_or(false);
         if self.pl.client_rounds {
             let hills = self.hills();
-            for b in self.bullets[..nb].iter_mut().filter(|b| b.alt < b.ground(&hills)) {
-                b.x = 0;
+            for i in 0..nb {
+                if !crew(self, i) && self.bullets[i].alt < self.bullets[i].ground(&hills) {
+                    self.bullets[i].x = 0;
+                }
             }
-            return;
         }
         // Hit tests (all rounds, not only those that project on screen). A player round
         // hits what passes within the hit radius of its path over this frame.
         self.credit = Some(self.pl.id);
         for i in 0..nb {
             let b = self.bullets[i];
-            if b.x == 0 {
+            if b.x == 0 || (self.pl.client_rounds && !crew(self, i)) {
                 continue;
             }
             for j in self.round_hits(&b) {

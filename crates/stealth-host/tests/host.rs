@@ -217,6 +217,7 @@ fn a_sortie_briefs_its_own_target() {
             progress: Progress::default(),
             flight: 0,
             position: 0,
+            crew: Vec::new(),
         }
     };
     let cap =
@@ -451,6 +452,7 @@ fn a_sortie_briefs_its_own_base_and_fuel() {
                     progress: Progress::default(),
                     flight: 0,
                     position: 0,
+                    crew: Vec::new(),
                 };
                 let m = stealth_host::glue::sortie_mission(generated, &host.state, &s);
                 let b = &m.briefing;

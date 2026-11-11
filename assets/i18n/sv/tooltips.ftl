@@ -132,6 +132,7 @@ tip-cmd-harm = HARM-målval
 tip-cmd-gm = Markkarteringsradar (GM)
 tip-cmd-eng = Motorer och bränsle (ENG)
 tip-cmd-rcs = Radarsignatur (RCS)
+tip-cmd-cgo = Last, ramp och fällning (CGO)
 tip-cmd-format-row = Format; igen: formatmeny
 tip-cmd-tgp = Målpod (TGP)
 tip-cmd-map = Karta
@@ -205,6 +206,7 @@ tip-console-manual = Flyg den valda drönaren för hand: spaken och gasreglaget
 tip-console-track = Håll drönarens kamera på marken vid dess hårkors
 tip-console-slave = Drönarens kamera tillbaka till dess waypoint (framåt och nedåt)
 tip-console-view = Drönarens kamera: dess TGP eller FLIR framåt för att flyga den
+tip-console-gun = Rikta denna sidokanon härnäst (avtryckaren avfyrar den)
 
 ## Reglage
 

@@ -64,6 +64,7 @@ pic-site = { $place } 陣地
 uv-live = { $unit } - ライブ
 uv-contact-lost = 接触喪失
 uv-hint = ドラッグ：旋回  ホイール：ズーム
+uv-infrared = 赤外線（熱画像）表示
 
 ## マルチプレイヤー
 
@@ -77,6 +78,8 @@ mp-your-name = あなたの名前
 mp-join-address = アドレスで参加
     .hint = アドレスまたは名前[:ポート]
 mp-connect = 接続
+mp-join-vr = VRで参加
+    .facts = VRヘッドセットでゲームを再起動し、このサーバーに参加します
 mp-server-name = サーバー名
 mp-udp-port = UDPポート
 mp-address-note = 他のプレイヤーはこのコンピューターのアドレスで参加します。インターネット越しにプレイするには、ルーターでUDPポートを開放してください
@@ -88,6 +91,8 @@ mp-friendly-fire = 友軍誤射
 mp-airframe-losses = 損失は資源を消費
 mp-ai-missions = 味方AIの任務
 mp-host-new = 新規ホスト
+mp-host-vr = VRでホスト
+    .facts = VRヘッドセットでゲームを再起動し、キャンペーンをホストします
 mp-host-saved = セーブ済みキャンペーンをホスト
 mp-host = ホスト
 mp-host-game = ゲームをホスト
@@ -98,9 +103,7 @@ mp-refresh = 更新
 mp-server-count = サーバー{ $servers }台、パイロット{ $pilots }名
 mp-list-error = サーバーリストに接続できません：{ $error }
 mp-no-servers = 現在、公開サーバーはありません
-mp-col-server = サーバー
 mp-col-pilots = パイロット
-mp-col-war = 戦争
 mp-dedicated = 専用
 mp-other-version = 別バージョン
 mp-join = 参加

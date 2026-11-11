@@ -1656,6 +1656,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::OH58,
         Aircraft::CH47,
         Aircraft::F22,
+        Aircraft::AH64,
     ];
     for k in kinds {
         for last in all {
@@ -1668,6 +1669,10 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Interdiction.pick(Aircraft::AH1Z), Aircraft::F117);
     assert_eq!(Strike.pick(Aircraft::F16), Aircraft::F16);
     assert_eq!(Cas.pick(Aircraft::AH1Z), Aircraft::AH1Z);
+    assert_eq!(Cas.pick(Aircraft::AH64), Aircraft::AH64);
+    assert!(!MissionKind::Insertion.flyable_by(Aircraft::AH64));
+    assert!(Aircraft::AH64.gunner_seat());
+    assert!(Aircraft::OH58.gunner_seat());
     assert_eq!(Interdiction.pick(Aircraft::Tornado), Aircraft::Tornado);
     assert_eq!(Cas.pick(Aircraft::A10), Aircraft::A10);
     assert_eq!(Cas.pick(Aircraft::UH60), Aircraft::A10);
@@ -3210,7 +3215,7 @@ fn the_ai_picks_the_aircraft_for_the_job() {
     assert_eq!(pick_blue(MissionKind::Cap, 0, 0, false), F16);
     // Close to the base: the helicopters.
     assert_eq!(pick_blue(MissionKind::Recon, 0, 0, true), OH58);
-    assert_eq!(pick_blue(MissionKind::Cas, 0, 0, true), AH1Z);
+    assert_eq!(pick_blue(MissionKind::Cas, 0, 0, true), AH64);
     assert_eq!(pick_blue(MissionKind::Cas, heavy, 0, true), RAH66);
     // Else the one made for it.
     assert_eq!(pick_blue(MissionKind::Cas, 0, 0, false), A10);
@@ -3695,4 +3700,169 @@ fn a_side_left_with_carriers_takes_its_next_production_base() {
     assert_eq!(c.production_base(Side::Blue), Some(target));
     assert_eq!(c.production_target(Side::Blue), None);
     assert!(c.available(target, Munition::Aim120) >= 32);
+}
+
+/// A friendly cargo run waiting at the production base, its airlift offer on the board.
+fn airlift_offer(c: &mut CampaignState, m: Munition) -> (ObjectId, ObjectId, MissionOffer) {
+    let b = other_base(c, Side::Blue);
+    let p = c.production_base(Side::Blue).unwrap();
+    run_out(c, b, m);
+    c.tick(1.0, &WorldView::default(), &[]);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let o = c
+        .board
+        .iter()
+        .find(|o| o.kind == MissionKind::Airlift)
+        .expect("an airlift on the board")
+        .clone();
+    assert_eq!(o.base, p, "flown from the production base");
+    (p, b, o)
+}
+
+#[test]
+fn the_player_flies_a_cargo_run_in_the_cargo_jet() {
+    let mut c = ai_campaign();
+    let (p, b, o) = airlift_offer(&mut c, Munition::Aim120);
+    // The cargo jet flies airlifts only, and only it does.
+    let take = |c: &mut CampaignState, a: Aircraft| {
+        c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: a })
+    };
+    assert!(take(&mut c, Aircraft::F16).is_err());
+    let strike = c.board.iter().find(|x| x.kind == MissionKind::Strike).unwrap().id;
+    assert!(
+        c.apply(P0, Command::TakeMission { offer: strike, base: None, aircraft: Aircraft::C5 })
+            .is_err()
+    );
+    let ev = take(&mut c, Aircraft::C5).expect("take");
+    let s = ev
+        .iter()
+        .find_map(|e| match e {
+            CampaignEvent::SortieStarted { sortie, .. } => Some(sortie.clone()),
+            _ => None,
+        })
+        .expect("started");
+    assert_eq!(s.base, p);
+    let r = c.flown_cargo(P0).expect("his run").clone();
+    assert_eq!(r.to, b);
+    // The AI does not fly it meanwhile.
+    for _ in 0..(tuning::CARGO_WAIT as usize + 60) {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        assert!(
+            !ev.iter().any(
+                |e| matches!(e, CampaignEvent::CargoPlaneLaunched { tag, .. } if *tag == r.tag)
+            )
+        );
+    }
+    // A stop elsewhere delivers nothing; at its base it does.
+    c.tick(1.0, &WorldView::default(), &[Report::PlayerLanded { player: P0, base: p }]);
+    assert!(c.flown_cargo(P0).is_some());
+    let ev = c.tick(1.0, &WorldView::default(), &[Report::PlayerLanded { player: P0, base: b }]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { .. })), "{ev:?}");
+    assert_eq!(c.available(b, Munition::Aim120), 16);
+    assert!(c.cargo_runs.iter().all(|x| x.id != r.id));
+    let ev = c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap();
+    assert_eq!(finished(&ev).result, SortieResult::Success);
+}
+
+#[test]
+fn a_cargo_run_the_player_crashes_with_is_lost_and_one_he_aborts_goes_back_to_the_ai() {
+    let mut c = ai_campaign();
+    let (_, b, o) = airlift_offer(&mut c, Munition::Harm);
+    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::C5 }).unwrap();
+    let r = c.flown_cargo(P0).unwrap().clone();
+    // Aborted: the AI's cargo aircraft flies it soon after.
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Aborted }).unwrap();
+    let back = c.cargo_runs.iter().find(|x| x.id == r.id).expect("still there");
+    assert_eq!(back.launch_at(), Some(c.clock + tuning::CARGO_RELAUNCH));
+    // Taken again, and crashed: the load is lost, the enemy's intercept is met.
+    c.tick(1.0, &WorldView::default(), &[]);
+    let o = c.board.iter().find(|x| x.kind == MissionKind::Airlift).unwrap().clone();
+    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::C5 }).unwrap();
+    c.apply(P0, Command::EndSortie { end: SortieEnd::Crashed }).unwrap();
+    assert!(c.cargo_runs.iter().all(|x| x.id != r.id));
+    assert!(c.objective_met(&Objective::Cargo { tag: r.tag }, &Progress::default()));
+    assert_eq!(c.available(b, Munition::Harm), 0);
+}
+
+/// The AC-130 flies close air support only, never for the AI, and only with its target out of
+/// the immediate reach of the enemy's SAM sites.
+#[test]
+fn the_gunship_flies_close_support_clear_of_the_sams() {
+    use MissionKind::*;
+    let kinds = [
+        Recon,
+        Sead,
+        Cap,
+        Cas,
+        AntiShip,
+        Strike,
+        Escort,
+        Insertion,
+        Intercept,
+        Defend,
+        Interdiction,
+        Csar,
+        Awacs,
+        Resupply,
+        Logistics,
+        Airlift,
+    ];
+    for k in kinds {
+        assert_eq!(k.flyable_by(Aircraft::AC130), k == Cas, "{k:?}");
+        assert!(!k.suited().contains(&Aircraft::AC130), "the AI would fly it on {k:?}");
+    }
+    let c = campaign("central_europe", 3);
+    let sams: Vec<(i32, i32)> = c
+        .sites
+        .iter()
+        .filter(|s| s.kind == SiteKind::Sam && s.alive() && c.owner(s.object) == Some(Side::Red))
+        .map(|s| (s.x, s.y))
+        .collect();
+    assert!(!sams.is_empty());
+    let mut o = MissionOffer {
+        id: 1,
+        kind: Cas,
+        title: stealth_i18n::text!("ce-ac130-only"),
+        objective: Objective::Cas { place: 0, aaa: Vec::new() },
+        x: sams[0].0 + 64,
+        y: sams[0].1,
+        base: 0,
+        threat: 0,
+        posted: 0.0,
+    };
+    assert!(c.offer_flyable(&o, Aircraft::AC130).is_err());
+    assert!(c.offer_flyable(&o, Aircraft::A10).is_ok());
+    // Somewhere well clear of every SAM site.
+    let clear = (0..64 * 64)
+        .map(|i| ((i % 64) * 512 + 256, (i / 64) * 512 + 256))
+        .find(|&(x, y)| {
+            sams.iter()
+                .all(|&(sx, sy)| dist(sx - x, sy - y) > 2 * crate::missions::GUNSHIP_SAM_CLEARANCE)
+        })
+        .expect("a point clear of the SAMs");
+    (o.x, o.y) = clear;
+    assert!(c.offer_flyable(&o, Aircraft::AC130).is_ok());
+}
+
+#[test]
+fn patriots_stand_on_land() {
+    let codes = [
+        "libya",
+        "persian_gulf",
+        "north_cape",
+        "central_europe",
+        "vietnam",
+        "middle_east",
+        "desert_storm",
+        "cuba",
+        "korea",
+        "ukraine",
+    ];
+    for (index, code) in codes.iter().enumerate() {
+        let c = campaign_on_terrain(code, index);
+        for (p, x, y) in c.patriot_sites() {
+            let name = &c.places[p as usize].name;
+            assert_eq!(c.terrain.is_water(x, y), Some(false), "{code}: {name}'s Patriots in water");
+        }
+    }
 }

@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Linker Seitenschacht (Sidewinder)
 hardpoint-f22-left-main-bay = Hauptschacht, linke Hälfte
 hardpoint-f22-right-main-bay = Hauptschacht, rechte Hälfte
 hardpoint-f22-right-side-bay = Rechter Seitenschacht (Sidewinder)
+hardpoint-c5-hold = Frachtraum (Abwurfpaletten)
 weapon-role-21 = Luft-Luft, Infrarot-Suchkopf, sehr kurze Reichweite
 employment-21 = Reichweite: 1-6 km, bei frontalem Anflug mehr
 loadout-none-in-stock = (nicht auf Lager)

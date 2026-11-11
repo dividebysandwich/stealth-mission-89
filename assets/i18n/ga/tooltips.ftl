@@ -132,6 +132,7 @@ tip-cmd-harm = Spriocdhíriú HARM
 tip-cmd-gm = Radar mapála talún (GM)
 tip-cmd-eng = Innill agus breosla (ENG)
 tip-cmd-rcs = Síniú radair (RCS)
+tip-cmd-cgo = Lasta, rampa agus aerscaoileadh (CGO)
 tip-cmd-format-row = Formáid; arís: roghchlár formáidí
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Léarscáil
@@ -205,6 +206,7 @@ tip-console-manual = Eitil an dróin roghnaithe de láimh: an maide agus an scó
 tip-console-track = Coinnigh ceamara an dróin ar an talamh faoina chros-ribí
 tip-console-slave = Ceamara an dróin ar ais ar a waypoint (chun tosaigh agus síos)
 tip-console-view = Ceamara an dróin: a TGP, nó an FLIR chun tosaigh chun é a eitilt
+tip-console-gun = Dírigh an gunna taoibh seo ina dhiaidh sin (scaoileann an truicear é)
 
 ## Rialuithe
 

@@ -221,6 +221,11 @@ aircraft-ah1z =
         Taisteluhelikopteri
         Tornitykki, Hellfire-ohjuksia, AIM-9
         Tykki ja Hellfire-ohjukset seuraavat podia
+aircraft-ah64 =
+    .facts =
+        Taisteluhelikopteri, kaksipaikkainen
+        Tornitykki, Hellfire- ja Stinger-ohjuksia
+        Toinen pelaaja voi lentää ampujana
 
 ## Osiot ja ryhmät
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Tandemroottorinen rahtihelikopteri
         Kuljettaa huolto- ja logistiikkakuormia ripustettuna
         Ei vääntömomenttia vastustettavana: roottorit kumoavat toisensa
+aircraft-c5 =
+    .facts =
+        Nelimoottorinen strateginen kuljetuskone
+        Lentää ammuksia lentotukikohtien välillä
+        Raskas: kallistuu ja nostaa nokkaa hitaasti
+aircraft-ac130 =
+    .facts =
+        Sivulle ampuva tykkikone
+        40 mm:n ja 105 mm:n tykit suunnataan säiliöllä
+        Kierrä vasemmalle saadaksesi tykit maaliin

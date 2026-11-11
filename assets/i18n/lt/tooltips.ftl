@@ -133,6 +133,7 @@ tip-cmd-harm = HARM taikinių parinkimas
 tip-cmd-gm = Žemės kartografavimo radaras (GM)
 tip-cmd-eng = Varikliai ir degalai (ENG)
 tip-cmd-rcs = Radaro pėdsakas (RCS)
+tip-cmd-cgo = Krovinys, rampa ir numetimas (CGO)
 tip-cmd-format-row = Formatas; dar kartą: formatų meniu
 tip-cmd-tgp = Taikinio žymėjimo konteineris (TGP)
 tip-cmd-map = Žemėlapis
@@ -206,6 +207,7 @@ tip-console-manual = Valdyti pasirinktą droną rankiniu būdu: vairalazdė ir d
 tip-console-track = Laikyti drono kamerą ant žemės po jos taikikliu
 tip-console-slave = Drono kamera grįžta į jo waypoint (pirmyn ir žemyn)
 tip-console-view = Drono kamera: jo TGP arba FLIR į priekį, kad juo skristumėte
+tip-console-gun = Toliau taikyti šiuo šoniniu pabūklu (gaidukas iš jo šauna)
 
 ## Valdikliai
 

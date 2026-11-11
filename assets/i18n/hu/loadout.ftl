@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Bal oldalsó fegyverterem (Sidewinder)
 hardpoint-f22-left-main-bay = Fő fegyverterem, bal fele
 hardpoint-f22-right-main-bay = Fő fegyverterem, jobb fele
 hardpoint-f22-right-side-bay = Jobb oldalsó fegyverterem (Sidewinder)
+hardpoint-c5-hold = Raktér (ledobható raklapok)
 weapon-role-21 = Levegő-levegő, infravörös önirányítás, nagyon rövid hatótáv
 employment-21 = Hatótáv: 1-6 km, szemből nagyobb
 loadout-none-in-stock = (nincs készleten)

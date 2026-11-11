@@ -90,7 +90,7 @@ pub(super) fn draw(
     ui: Res<ConsoleUi>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat), Some(c)) = (manning, combat, c) else { return };
+    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else { return };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Board) else {
         return;
     };

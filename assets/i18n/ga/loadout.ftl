@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Clós taoibh clé (Sidewinder)
 hardpoint-f22-left-main-bay = Príomhchlós, leath chlé
 hardpoint-f22-right-main-bay = Príomhchlós, leath dheas
 hardpoint-f22-right-side-bay = Clós taoibh deas (Sidewinder)
+hardpoint-c5-hold = Coimeádán lasta (pailléid aerscaoilte)
 weapon-role-21 = Aer-aer, treorú infridhearg, raon an-ghearr
 employment-21 = Raon: 1-6 km, níos mó ón tosach
 loadout-none-in-stock = (gan stoc)

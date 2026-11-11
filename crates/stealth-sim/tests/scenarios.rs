@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x9c023228b72688bb,
-        0xdc61170c7c2b3835,
-        0x46c6b6e23ad1ba9c,
-        0xcf572f1578286fd5,
-        0xb20c2d50d390afa1,
-        0x82f2a125302dcce9,
-        0x5144efd02a6e2cf6,
-        0xbe4182bb1adb621b,
-        0x00360c7fb385e4b5,
-        0x38276bd04dc9864a,
-        0xd0f8a427c0a9c50b,
-        0x812d1e9c0479adaa,
-        0x02a94c7648c9ffe9,
-        0xf6a8297a50cd216d,
-        0x68d434493ac54c46,
-        0xcbb9c6b0770dbf11,
-        0xbc5502794c4d0420,
-        0x42e018a36396d48e,
+        0xe4c42d76653b6222,
+        0x1c3fcb84f80bfa30,
+        0x134bca4247602e4f,
+        0x88068b2165707817,
+        0xcd276dd882025212,
+        0xc5b78e983d55f096,
+        0x7f11f7d9ab15ba0f,
+        0x5bc6fd3f658fbc52,
+        0x628a115f2c730002,
+        0x97e7952527c7c5cb,
+        0xd2e319e5ab3674ba,
+        0xbfd9008c751fc555,
+        0x9ccfe95278bcdaf3,
+        0xde82fbd0f5accb8c,
+        0xc6b008d981eb59bd,
+        0x6715e4d7d0a3c0a7,
+        0xe3fb71c98c76869d,
+        0xb0e4c10af20480bd,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -883,6 +883,31 @@ fn supply_drop_fixed_and_classic() {
 }
 
 #[test]
+fn nearest_target_skips_friendlies() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    for o in sim.objects_mut().iter_mut() {
+        o.flags |= 0x80;
+    }
+    // Ahead (north): a friendly object at 300, a hostile one at 600 map units.
+    place_site(&mut sim, 1, 0, cx, cy - 300);
+    sim.objects_mut()[1].flags = 0x0400;
+    place_site(&mut sim, 2, 0, cx, cy - 600);
+    sim.set_bay(0, 9, 2);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 2000, 0, 300);
+    p.camera_mfd = true;
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(2));
+}
+
+#[test]
 fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     let d = data();
     let m = mission(d, 3, 0x1234, 0);
@@ -899,6 +924,8 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     sim.select_bay(0);
     let mut p = player_at(cx, cy, 2000, 0, 300);
     p.camera_mfd = true;
+    // The modern avionics: the key waits for the HUD to switch to the weapon's mode.
+    p.mode_weapons = true;
     p.cmd.nearest_target = true;
     // Still in NAV: the request waits for the HUD to switch.
     sim.step(&p, 15);
@@ -907,6 +934,66 @@ fn nearest_target_skips_friendlies_and_waits_for_hud_mode() {
     p.hud_mode = HudMode::Gnd;
     sim.step(&p, 15);
     assert_eq!(sim.targeting().ground, Some(2));
+}
+
+/// A sim with an enemy aircraft and a ground site ahead at the given distances (map units), no
+/// mission objective among them, and the player in the given HUD mode with a missile selected.
+fn air_and_ground(mode: HudMode, air_at: i32, ground_at: i32) -> (Sim, PlayerState) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    for o in sim.objects_mut().iter_mut() {
+        o.flags |= 0x80;
+    }
+    place_site(&mut sim, 2, 0, cx, cy - ground_at);
+    for slot in sim.target_slots_mut() {
+        slot.object = -1;
+    }
+    {
+        let u = &mut sim.flights_mut()[1];
+        *u = FlightUnit {
+            x: cx,
+            y: cy - air_at,
+            alt: 2000,
+            spec: 9,
+            flags: 0x43,
+            speed: 200,
+            timer: 30000,
+            wp: 3,
+            ..Default::default()
+        };
+        u.wx = u.x << 5;
+        u.wy = u.y << 5;
+    }
+    sim.set_bay(0, 9, 2);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 2000, 0, 300);
+    p.camera_mfd = true;
+    p.hud_mode = mode;
+    (sim, p)
+}
+
+/// What the nearest-target key locks in each HUD mode with an enemy aircraft and a ground site
+/// ahead: (air lock, ground lock).
+fn nearest_in(mode: HudMode, air_at: i32, ground_at: i32) -> (Option<usize>, Option<usize>) {
+    let (mut sim, mut p) = air_and_ground(mode, air_at, ground_at);
+    p.cmd.nearest_target = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    sim.step(&p, 15);
+    (sim.targeting().air, sim.targeting().ground)
+}
+
+/// NAV takes the nearer of an aircraft and a ground target, AIR only aircraft, GND only ground
+/// and sea targets: whatever the selected weapon is.
+#[test]
+fn nearest_target_follows_the_hud_mode() {
+    assert_eq!(nearest_in(HudMode::Nav, 300, 600), (Some(1), None));
+    assert_eq!(nearest_in(HudMode::Nav, 600, 300), (None, Some(2)));
+    // In AIR and GND the other kind is not asked for: the nearer one of the wrong kind is passed.
+    assert_eq!(nearest_in(HudMode::Air, 600, 300).0, Some(1));
+    assert_eq!(nearest_in(HudMode::Gnd, 300, 600).1, Some(2));
 }
 
 /// The nearest-target key picks a mission objective in view over nearer hostile targets, and
@@ -942,6 +1029,25 @@ fn nearest_target_prefers_the_objective() {
     p.cmd = Commands::default();
     sim.step(&p, 15);
     assert_eq!(sim.targeting().ground, Some(1));
+}
+
+/// The next-target key in GND passes an aircraft by with the classic avionics (in AIR it would
+/// pick it, in NAV too); the modern avionics keep picking it.
+#[test]
+fn next_target_in_gnd_ignores_aircraft() {
+    let next = |mode, modern| {
+        let (mut sim, mut p) = air_and_ground(mode, 300, 600);
+        p.mode_weapons = modern;
+        p.cmd.next_target = true;
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        sim.step(&p, 15);
+        sim.targeting().air
+    };
+    assert_eq!(next(HudMode::Gnd, false), None);
+    assert_eq!(next(HudMode::Air, false), Some(1));
+    assert_eq!(next(HudMode::Nav, false), Some(1));
+    assert_eq!(next(HudMode::Gnd, true), Some(1));
 }
 
 fn drone_mission(d: &Data, seed: u16, opponents: u8) -> Mission {
@@ -3365,4 +3471,162 @@ fn realistic_avionics_lock_only_on_request() {
         sim.step(&p, 15);
         assert_eq!(sim.targeting().air, Some(1), "'B' locks it (modern {modern})");
     }
+}
+
+/// The cargo jet's mission (`stealth_mission::airlift`): the pallets released over the drop
+/// zone are delivered (the primary), the stop on the delivery airfield's runway unloads the
+/// cargo (the secondary) and ends the flight safely; no cannon.
+#[test]
+fn cargo_jet_drops_and_delivers() {
+    let d = data();
+    let s = MissionSettings {
+        theater: 3,
+        roe: 2,
+        kind: MissionKind::Strike,
+        land_bases: true,
+        ..Default::default()
+    };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(0x2345)).unwrap();
+    stealth_mission::airlift::for_transport(&mut m, &d.gdata);
+    let opts = SimOptions { galaxy: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    assert!(!sim.has_gun());
+    sim.set_training(true);
+    let zone = sim.objects()[m.primary.object_index as usize];
+    sim.set_bay(0, 18, 4);
+    sim.select_bay(0);
+    let mut p = player_at(zone.x, zone.y + 10, 1000, 0, 150);
+    // Realistic avionics with the HUD in NAV: the pallets go in any mode.
+    p.mode_weapons = true;
+    // With the ramp up nothing goes.
+    p.cmd.fire = true;
+    let ev = sim.step(&p, 15);
+    assert!(ev.iter().any(|e| is_msg(e, "Ramp closed")), "{ev:?}");
+    p.cmd = Commands::default();
+    // The ramp goes down in its own time.
+    p.cmd.toggle_bay = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    assert!(sim.ramp().1, "on its way down");
+    for _ in 0..15 * 4 {
+        sim.step(&p, 15);
+    }
+    let (half, _) = sim.ramp();
+    assert!(half > 0.3 && half < 0.7 && !sim.bay_doors_open(), "ramp {half}");
+    for _ in 0..15 * 5 {
+        sim.step(&p, 15);
+    }
+    assert_eq!(sim.ramp(), (1.0, false));
+    assert!(sim.bay_doors_open());
+    p.cmd.fire = true;
+    let mut dropped = false;
+    for _ in 0..15 * 30 {
+        for e in sim.step(&p, 15) {
+            dropped |= is_msg(&e, "Equipment Delivered");
+        }
+        p.cmd = Commands::default();
+    }
+    assert!(dropped, "the pallets missed the drop zone");
+    assert!(sim.objectives().primary_done);
+    // Stopped on the delivery airfield's runway.
+    let dest = sim.objects()[m.secondary.object_index as usize];
+    let mut p = player_at(dest.x, dest.y, 0, 0, 0);
+    (p.on_ground, p.gear_up, p.altitude, p.height) = (true, false, 0, 0);
+    let mut delivered = false;
+    for _ in 0..15 * 10 {
+        for e in sim.step(&p, 15) {
+            delivered |= is_msg(&e, "Cargo delivered");
+        }
+    }
+    assert!(delivered, "no delivery at {}", m.secondary.place_name);
+    assert!(sim.objectives().secondary_done);
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(0));
+}
+
+/// Cargo jet airlifts (`stealth_mission::airlift`) in every theater, flown straight to the
+/// drop zone at 8000 ft: a routine one behind the lines meets no enemy aircraft and takes no
+/// hits; a front-line one takes two friendly fighters along, which take off after the player
+/// and stay with him, and getting hit on the way is the exception.
+#[test]
+fn cargo_jet_airlifts_are_quiet_or_escorted() {
+    use stealth_sim::fflags;
+    let d = data();
+    let (mut quiet, mut front, mut hit, mut escorted, mut checks) = (0, 0, 0, 0, 0);
+    for theater in 0..10 {
+        for seed in 0..4u16 {
+            let s = MissionSettings {
+                theater,
+                roe: 2,
+                kind: MissionKind::Strike,
+                land_bases: true,
+                ..Default::default()
+            };
+            let Ok(mut m) = stealth_mission::generate(&d.gdata, &s, Seed::Srand(seed * 977 + 5))
+            else {
+                continue;
+            };
+            stealth_mission::airlift::for_transport(&mut m, &d.gdata);
+            let name = format!("{} {seed}", m.theater_name);
+            let opts = SimOptions { galaxy: true, ..Default::default() };
+            let mut sim = Sim::with_options(&d.sim, &m, opts);
+            let (tx, ty) = (m.takeoff.position.x, m.takeoff.position.y);
+            let (zx, zy) = (m.primary.position.x, m.primary.position.y);
+            // On the runway for half a minute, then along the route at 300 kt (10 map units a
+            // second).
+            let mut p = player_at(tx, ty, 0, 0, 0);
+            (p.on_ground, p.gear_up, p.altitude, p.height) = (true, false, 0, 0);
+            for _ in 0..15 * 30 {
+                sim.step(&p, 15);
+            }
+            let leg = (((zx - tx) as f64).powi(2) + ((zy - ty) as f64).powi(2)).sqrt();
+            let secs = (leg / 10.0) as usize;
+            let (mut hostile, mut hits) = (0, 0);
+            for k in 0..secs * 15 {
+                let f = k as f64 / (secs * 15) as f64;
+                let x = tx + ((zx - tx) as f64 * f) as i32;
+                let y = ty + ((zy - ty) as f64 * f) as i32;
+                for e in sim.step(&player_at(x, y, 8000, 0, 300), 15) {
+                    hits += matches!(e, SimEvent::PlayerHit { .. }) as usize;
+                }
+                if k % 15 != 0 {
+                    continue;
+                }
+                let up = |u: &FlightUnit| {
+                    u.flags & fflags::AIRBORNE != 0 && u.flags & fflags::DESTROYED == 0
+                };
+                let near = |u: &FlightUnit, km: i32| {
+                    up(u) && (u.x - x).pow(2) + (u.y - y).pow(2) < (km * 64).pow(2)
+                };
+                let fl = sim.flights();
+                // Not counting the Ukraine drone war's attack drones (type 29), which leave
+                // aircraft alone.
+                hostile += (0..fl.len())
+                    .filter(|&i| near(&fl[i], 30) && !sim.friendly_unit(i, fl[i].spec))
+                    .filter(|&i| fl[i].spec != 29)
+                    .count();
+                if !m.quiet && k > 15 * 120 {
+                    let escort = |i: usize| sim.campaign_flight(i).is_some_and(|f| f.blue);
+                    checks += 1;
+                    escorted += (0..fl.len()).any(|i| escort(i) && near(&fl[i], 16)) as usize;
+                }
+            }
+            println!(
+                "{name}: quiet {} leg {:.0} km, enemy aircraft sighted {hostile}, hits {hits}",
+                m.quiet,
+                leg / 64.0
+            );
+            if m.quiet {
+                assert_eq!(hostile, 0, "{name}: enemy aircraft on a quiet airlift");
+                assert_eq!(hits, 0, "{name}: hit on a quiet airlift");
+                quiet += 1;
+            } else {
+                front += 1;
+                hit += (hits > 0) as usize;
+            }
+        }
+    }
+    println!("{quiet} quiet, {front} front-line ({hit} hit), escorted {escorted}/{checks}");
+    assert!(quiet >= 15 && front >= 15, "quiet {quiet} front {front}");
+    assert!(escorted * 10 >= checks * 9, "escorted {escorted}/{checks}");
+    assert!(hit * 4 <= front, "{hit} of {front} front-line airlifts hit");
 }

@@ -91,6 +91,10 @@ impl Rules {
             Aircraft::F16 => Airframe { external_stores: true, ..Airframe::default() },
             // Weapons in bays as the F-117A's, a cannon, a lower radar return.
             Aircraft::F22 => Airframe { raptor: true, ..Airframe::default() },
+            // No weapons, no cannon; cargo inside, dropped over the ramp (its "bay").
+            Aircraft::C5 => Airframe { galaxy: true, ..Airframe::default() },
+            // No cannon of its own: the side guns, fired at where the pod looks.
+            Aircraft::AC130 => Airframe { spectre: true, ..Airframe::default() },
             Aircraft::Tornado => {
                 Airframe { external_stores: true, tornado: true, ..Airframe::default() }
             }
@@ -118,6 +122,13 @@ impl Rules {
                 external_stores: true,
                 helicopter: true,
                 gunship: true,
+                ..Airframe::default()
+            },
+            Aircraft::AH64 => Airframe {
+                external_stores: true,
+                helicopter: true,
+                gunship: true,
+                apache: true,
                 ..Airframe::default()
             },
             // Missiles in its bays: the doors open as it fires.

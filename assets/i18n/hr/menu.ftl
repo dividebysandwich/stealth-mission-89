@@ -221,6 +221,11 @@ aircraft-ah1z =
         Jurišni helikopter
         Top u kupoli, Hellfire, AIM-9
         Top i Hellfire prate pod
+aircraft-ah64 =
+    .facts =
+        Jurišni helikopter, dvosjed
+        Top u kupoli, Hellfire, Stinger
+        Drugi igrač može letjeti kao strijelac
 
 ## Odjeljci i skupine
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Teretni helikopter s tandemskim rotorima
         Vješa terete za opskrbu i logistiku
         Nema reaktivnog momenta: rotori se poništavaju
+aircraft-c5 =
+    .facts =
+        Četveromotorni strateški transportni avion
+        Prevozi streljivo između zračnih baza
+        Težak: sporo se naginje i podiže nos
+aircraft-ac130 =
+    .facts =
+        Bočno pucajući vatreni zrakoplov
+        Topovi od 40 mm i 105 mm ciljani kontejnerom
+        Kružite ulijevo da bi topovi dosegnuli cilj

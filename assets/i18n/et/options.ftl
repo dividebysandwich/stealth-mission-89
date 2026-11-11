@@ -33,6 +33,10 @@ options-auto-trim = Auto trim
         Kui stick on lahti, hoiab trim lennuasendit seal, kus selle jätsid
         Kopterid: nina ei tõuse enam kiirusega; jetid: trimmib kahjustatud juhtpinnad välja
         Käsitsi trim: Alt + nooleklahvid, Alt + Home tsentreerib
+options-keep-time-accel = Hoia aja kiirendus alles
+    .facts =
+        Kiirendus ei katke enam, kui sind avastatakse, laskes relva või alla tulistatakse
+        Seda muudavad ainult nupp TIME ning Shift + Z / Shift + X
 options-tooltips = Cockpiti tooltips
     .facts = Mis on cockpiti juhtelement või ekraan, hiire all või VR-i sõrmeotsas
 options-player-labels = Mängijate nimed

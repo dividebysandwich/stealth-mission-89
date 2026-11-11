@@ -184,7 +184,7 @@ fn toggle(
     manning: Option<Res<crate::station::Manning>>,
 ) {
     // No kneeboard at a Patriot or Gepard console.
-    if manning.is_some() {
+    if manning.as_deref().is_some_and(|m| m.console()) {
         actions.clear();
         if kb.overlay {
             kb.overlay = false;
@@ -310,7 +310,7 @@ fn carry(
     manning: Option<Res<crate::station::Manning>>,
 ) {
     let Ok(mut t) = boards.single_mut() else { return };
-    let hidden = kb.hidden || manning.is_some();
+    let hidden = kb.hidden || manning.as_deref().is_some_and(|m| m.console());
     // The cockpit is not there (VR, the campaign's Ops screen): the board is let go and stays.
     if hide.is_some_and(|h| h.0) {
         if kb.held.take().is_some() {
@@ -328,7 +328,7 @@ fn carry(
     );
     if let Some((i, _)) = kb.held {
         let h = &mut hands.hands[i];
-        if hidden || !h.active || h.squeeze < 0.4 {
+        if hidden || !h.active || !h.grab {
             kb.held = None;
             kb.placed = Some(*t);
             h.haptic = h.haptic.max(0.2);
@@ -338,7 +338,7 @@ fn carry(
         if let Some((i, h)) = hands.hands.iter_mut().enumerate().find(|(_, h)| {
             h.active
                 && !h.lever
-                && h.squeeze > 0.6
+                && h.grab
                 && within_reach(local_from_cockpit.transform_point3(h.grip.translation))
         }) {
             let in_grip = h.grip.to_matrix().inverse() * rest.to_matrix();
@@ -348,6 +348,7 @@ fn carry(
     }
     for (i, h) in hands.hands.iter_mut().enumerate() {
         h.carrying = kb.held.is_some_and(|(k, _)| k == i);
+        h.holding |= h.carrying;
     }
     let tf = match kb.held {
         Some((i, in_grip)) => hands.hands[i].grip * in_grip,
@@ -375,13 +376,13 @@ fn tab_at(p: Vec2) -> Option<usize> {
 #[allow(clippy::too_many_arguments)]
 fn interact(
     mut kb: ResMut<Kneeboard>,
-    settings: Res<Settings>,
     pointer: Res<crate::input::FlightControls>,
     wheel: Res<AccumulatedMouseScroll>,
     time: Res<Time<Real>>,
     mut hands: ResMut<Hands>,
     windows: Query<&Window>,
     cams: Query<(&Camera, &GlobalTransform), With<EyeCamera>>,
+    mirror: Res<crate::camera::MirrorRay>,
     mut boards: Query<(&GlobalTransform, &Transform, &mut Visibility), With<Board>>,
     mut overlays: Query<
         (&RelativeCursorPosition, &mut Visibility),
@@ -390,7 +391,7 @@ fn interact(
     menu: Res<crate::flight_menu::FlightMenu>,
     manning: Option<Res<crate::station::Manning>>,
 ) {
-    let hidden = kb.hidden || manning.is_some();
+    let hidden = kb.hidden || manning.as_deref().is_some_and(|m| m.console());
     let mut pick: Option<usize> = None;
     // The canvas pixel under the mouse, on the overlay or on the board in the cockpit.
     let mut pointed: Option<Vec2> = None;
@@ -412,11 +413,9 @@ fn interact(
     let mut scroll = 0.0;
     if !hidden && !menu.open {
         let inv = gtf.affine().inverse();
-        if !settings.vr
-            && !kb.overlay
-            && let (Ok(window), Ok((camera, cam_tf))) = (windows.single(), cams.single())
-            && let Some(cursor) = window.cursor_position()
-            && let Ok(ray) = camera.viewport_to_world(cam_tf, cursor)
+        if !kb.overlay
+            && let Some(ray) =
+                crate::camera::cursor_ray(windows.single().ok(), cams.single().ok(), &mirror)
         {
             let o = inv.transform_point3(ray.origin);
             let d = inv.transform_vector3(*ray.direction);

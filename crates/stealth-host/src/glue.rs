@@ -201,6 +201,9 @@ pub fn ai_spec(aircraft: Aircraft) -> i32 {
         Aircraft::OH58 => t::OH58,
         Aircraft::CH47 => t::CH47,
         Aircraft::F22 => t::F22,
+        Aircraft::AH64 => t::AH64,
+        // Player-only: the AI flies it (a player who left it) as a transport.
+        Aircraft::C5 | Aircraft::AC130 => stealth_sim::munitions::C5,
     }
 }
 
@@ -268,6 +271,8 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
         | MissionKind::Awacs
         | MissionKind::Resupply
         | MissionKind::Logistics => [1, 0, 1, 0],
+        // The cargo jet carries no stores: its load is the cargo run's.
+        MissionKind::Airlift => [-1, -1, -1, -1],
     }
 }
 
@@ -315,7 +320,25 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     m.time.tod_ticks = secs % 3600 / 2;
     m.time.depart = depart;
     m.takeoff = home.clone();
-    m.landing = home;
+    // An airlift lands at the base its cargo is for.
+    let dest = match o.objective {
+        stealth_campaign::Objective::Airlift { run } => state
+            .cargo_runs
+            .iter()
+            .find(|r| r.id == run)
+            .and_then(|r| state.site(r.to).map(|s| (r.to, s))),
+        _ => None,
+    };
+    m.landing = match dest {
+        Some((k, s)) => Base {
+            object_index: k as i16,
+            name: s.name.clone(),
+            position: MapPoint { x: s.x, y: s.y },
+            ..home
+        },
+        None => home,
+    };
+    m.briefing.land_line = m.briefing.land_line.replace(&m.takeoff.name, &m.landing.name);
     let target = MapPoint { x: o.x, y: o.y };
     let mid = MapPoint { x: (bx + o.x) / 2, y: (by + o.y) / 2 };
     // An intercept meets the helicopters on their track, then follows them to their goal.
@@ -326,7 +349,8 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
             .map_or(target, |s| MapPoint { x: s.x, y: s.y }),
         _ => target,
     };
-    m.waypoints = [mid, target, then, MapPoint { x: bx, y: by }];
+    let back = MapPoint { x: m.landing.position.x, y: m.landing.position.y };
+    m.waypoints = [mid, target, then, back];
     // The fuel planned for that route (as for the drone missions), not the generated one's.
     let mut at = (bx, by);
     let mut length = 0.0;
@@ -346,6 +370,7 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     p.position = object.and_then(|k| state.site(k)).map_or(target, |s| MapPoint { x: s.x, y: s.y });
     p.mission_type = match o.kind {
         MissionKind::Recon => 1,
+        MissionKind::Airlift => 4,
         k if airborne(k) => 8,
         _ => 2,
     };
@@ -391,7 +416,7 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     ];
     m.loadout.bays =
         stores(o.kind).iter().map(|&w| Bay { weapon: w, name: String::new(), count: 1 }).collect();
-    m.loadout.usable_bays = if sortie.aircraft.cargo() {
+    m.loadout.usable_bays = if sortie.aircraft.cargo() || sortie.aircraft.airlifter() {
         0
     } else if m.settings.plane == stealth_mission::Plane::Lockheed {
         2
@@ -415,6 +440,14 @@ pub fn airborne(kind: MissionKind) -> bool {
             | MissionKind::Resupply
             | MissionKind::Logistics
     )
+}
+
+/// The base an airlift lands at and what it carries, for its briefing.
+fn airlift_summary(state: &CampaignState, run: u32) -> Option<String> {
+    let r = state.cargo_runs.iter().find(|r| r.id == run)?;
+    let site = |k: u16| state.site(k).map_or(String::new(), |s| s.name.clone());
+    let load: u32 = r.load.iter().map(|&(_, n)| n).sum();
+    Some(t!("brief-airlift", base = site(r.to), from = site(r.from), count = load))
 }
 
 /// What an enemy forward battery's offer asks for (message id).
@@ -442,6 +475,7 @@ fn primary_target(
         Objective::Battery { .. } => return (None, t!("brief-shape-battery").into(), true),
         Objective::Armour { .. } => return (None, t!("brief-shape-armour").into(), true),
         Objective::Support { .. } => return (None, t!("brief-shape-armour-guns").into(), true),
+        Objective::Airlift { run } => state.cargo_runs.iter().find(|r| r.id == run).map(|r| r.to),
         _ => return (None, String::new(), false),
     };
     let name = object.and_then(|k| state.site(k)).map_or(String::new(), |s| {
@@ -495,6 +529,10 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
                 d.title(),
                 describe(o.kind)
             ),
+            None => describe(o.kind).into(),
+        },
+        Objective::Airlift { run } => match airlift_summary(state, run) {
+            Some(s) => format!("{s} {}", describe(o.kind)),
             None => describe(o.kind).into(),
         },
         Objective::Intercept { insertion } | Objective::Escort { insertion } => {

@@ -157,6 +157,7 @@ pub(super) struct Picker<'w, 's> {
         Or<(With<Camera3d>, With<XrHead>)>,
     >,
     root: Query<'w, 's, &'static GlobalTransform, With<CockpitRoot>>,
+    mirror: Res<'w, crate::camera::MirrorRay>,
 }
 
 impl Picker<'_, '_> {
@@ -170,10 +171,10 @@ impl Picker<'_, '_> {
         self.windows.single().ok().map(|w| w.size())
     }
 
-    /// The ray through the mouse cursor (world), if it is over the window.
+    /// The ray through the mouse cursor (world), if it is over the window (in VR over the left
+    /// eye's mirror).
     pub fn cursor_ray(&self) -> Option<Ray3d> {
-        let Ok((camera, cam_tf)) = self.cams.single() else { return None };
-        camera.viewport_to_world(cam_tf, self.cursor()?).ok()
+        crate::camera::cursor_ray(self.windows.single().ok(), self.cams.single().ok(), &self.mirror)
     }
 
     /// The ray from the eye through a point of the cockpit frame (a fingertip), and how far the

@@ -171,6 +171,13 @@ pub struct Hand {
     pub buttons: u8,
     pub prev_buttons: u8,
     pub prev_trigger: f32,
+    pub prev_squeeze: f32,
+    /// Grabs: its grab input (`hotas::VrGrab`) is held, or toggled on (`update_grabs`).
+    pub grab: bool,
+    /// The grab holds something (the stick, the throttle, the ejection handle, the kneeboard,
+    /// the campaign's unit window): set each frame by what it holds, so a toggled grab that took
+    /// nothing lets go.
+    pub holding: bool,
     /// Haptic pulse request 0..1 (consumed by the XR module).
     pub haptic: f32,
     /// The fingertip touches a cockpit control (its trigger presses that control).
@@ -194,6 +201,37 @@ impl Hand {
     pub fn trigger_pulled(&self) -> bool {
         self.trigger > 0.7 && self.prev_trigger <= 0.7
     }
+    /// The grip as a button: (held, just pressed).
+    pub fn grip_button(&self) -> (bool, bool) {
+        (self.squeeze > GRIP_PRESS, self.squeeze > GRIP_PRESS && self.prev_squeeze <= GRIP_PRESS)
+    }
+}
+
+/// The grip counts as pressed past this, and a held grab lets go below `GRIP_RELEASE`.
+const GRIP_PRESS: f32 = 0.6;
+const GRIP_RELEASE: f32 = 0.4;
+
+/// Sets `Hand::grab` from the hands' grab inputs (the VR backends, after reading the
+/// controllers): held, or toggled by a press (and let go when the grab took nothing).
+pub fn update_grabs(hands: &mut Hands, config: &crate::hotas::InputConfig) {
+    use crate::hotas::{VrHand, VrInput};
+    for (hand, side) in hands.hands.iter_mut().zip([VrHand::Left, VrHand::Right]) {
+        let g = config.vr_grab(side);
+        let holding = std::mem::take(&mut hand.holding);
+        let (held, pressed) = match g.input {
+            // Hysteresis: a held grip lets go only when mostly open.
+            VrInput::Grip => {
+                let edge = if hand.grab && !g.toggle { GRIP_RELEASE } else { GRIP_PRESS };
+                (hand.squeeze > edge, hand.grip_button().1)
+            }
+            input => {
+                let bit = levers::vr_bit(input);
+                (hand.held(bit), hand.just_pressed(bit))
+            }
+        };
+        hand.grab =
+            if g.toggle { if pressed { !hand.grab } else { hand.grab && holding } } else { held };
+    }
 }
 
 /// The HUD combiner glass (things are placed next to it).
@@ -211,6 +249,8 @@ pub struct CockpitRoot(pub layout::PanelStyle, pub bool, pub bool, pub &'static 
 /// (`tools/models/build_console_drone.py`).
 pub const CONSOLE_MODEL: &str = "cockpit_console";
 pub const DRONE_CONSOLE_MODEL: &str = "cockpit_drone";
+/// The AC-130's gunner's console (`tools/models/build_console_gunner.py`).
+pub const GUNNER_CONSOLE_MODEL: &str = "cockpit_gunner";
 /// How much larger than shown the console's model is built (it looked too large life size).
 pub const CONSOLE_MODEL_SCALE: f32 = 1.0 / 0.95;
 /// How far below the eye the console sits in VR (m): the operator's head higher in the room.
@@ -223,10 +263,16 @@ fn choice(
     settings: &Settings,
     manning: Option<&crate::station::Manning>,
 ) -> (layout::PanelStyle, &'static str, Vec3, f32) {
-    if let Some(m) = manning {
+    if let Some(m) = manning.filter(|m| m.console()) {
         let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
         let eye = settings.cockpit_origin() - Vec3::Y * drop;
-        let model = if m.drones() { DRONE_CONSOLE_MODEL } else { CONSOLE_MODEL };
+        let model = if m.drones() {
+            DRONE_CONSOLE_MODEL
+        } else if m.gunner() {
+            GUNNER_CONSOLE_MODEL
+        } else {
+            CONSOLE_MODEL
+        };
         return (layout::PanelStyle::Modern, model, eye, CONSOLE_MODEL_SCALE);
     }
     let (style, stem) = settings.cockpit();
@@ -393,7 +439,8 @@ fn sync_shading(
     let lift = (bursts.cockpit.min(1.0) * 4.0).round() / 4.0;
     let dark = if sky.on && !nvg { q(sky.dark * (1.0 - lift)) } else { 0.0 };
     // An air defence console's shelter has no windows: dark but for its screens and buttons.
-    let dark = if manning.is_some() && !nvg { SHELTER_DARK } else { dark };
+    let console = manning.is_some_and(|m| m.console());
+    let dark = if console && !nvg { SHELTER_DARK } else { dark };
     let daylight = if nvg { q(lighting.daylight.clamp(0.0, 1.0)) } else { 0.0 };
     let night = |m: &CockpitMaterial| {
         Vec4::new(
@@ -408,7 +455,7 @@ fn sync_shading(
     };
     // Night lighting: a red flood light (blue-green under the goggles) as the daylight goes,
     // in 1/16 steps; the master caution's pulse while a warning is on.
-    let flood = if settings.effects.cockpit_night && manning.is_none() {
+    let flood = if settings.effects.cockpit_night && !console {
         let k = q16(((FLOOD_DUSK - lighting.daylight) / FLOOD_DUSK).clamp(0.0, 1.0));
         let colour = if nvg { FLOOD_NVG } else { FLOOD_RED };
         let caution = warnings.as_ref().is_some_and(|w| w.caution()) && k > 0.0;
@@ -489,7 +536,7 @@ fn cockpit_lamps(
     // As bright as in the cockpit model's size, which brings them nearer.
     let k = choice(&settings, manning.as_deref()).3;
     // The air defence shelter's dome light: the closed shelter's only light, day or night.
-    let lumens = match (settings.local_lights, manning.is_some()) {
+    let lumens = match (settings.local_lights, manning.is_some_and(|m| m.console())) {
         (false, _) => 0.0,
         (true, true) => CONSOLE_LAMP_LUMENS / (k * k),
         (true, false) => (300.0 + 1500.0 * (1.0 - lighting.daylight)) / (k * k),
@@ -521,9 +568,9 @@ fn console_stick(
     manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(Ref<levers::Stick>, &mut Visibility, &mut tooltips::Tip)>,
 ) {
-    let Some(m) = manning else { return };
+    let Some(m) = manning.filter(|m| m.console()) else { return };
     for (stick, mut v, mut tip) in &mut q {
-        v.set_if_neq(if m.gepard() || m.drones() {
+        v.set_if_neq(if m.gepard() || m.drones() || m.gunner() {
             Visibility::Inherited
         } else {
             Visibility::Hidden
@@ -759,7 +806,7 @@ fn mouse_look(
                 | Action::ViewInverseTactical
                 | Action::ViewMissile
         ) {
-            *orbit = Orbit::default();
+            *orbit = Orbit::from_args();
             state.wheel_zoom = 0.0;
         }
     }
@@ -843,5 +890,68 @@ fn release_cursor(mut cursor: Query<&mut CursorOptions>) {
     {
         c.grab_mode = CursorGrabMode::None;
         c.visible = true;
+    }
+}
+
+#[cfg(test)]
+mod grab_tests {
+    use super::*;
+    use crate::hotas::{InputConfig, VrGrab, VrInput};
+
+    /// One frame: the left hand's grip and buttons as given, then what holds it.
+    fn frame(
+        hands: &mut Hands,
+        config: &InputConfig,
+        squeeze: f32,
+        buttons: u8,
+        holds: bool,
+    ) -> bool {
+        let h = &mut hands.hands[0];
+        h.prev_squeeze = h.squeeze;
+        h.prev_buttons = h.buttons;
+        h.squeeze = squeeze;
+        h.buttons = buttons;
+        update_grabs(hands, config);
+        let grab = hands.hands[0].grab;
+        hands.hands[0].holding = grab && holds;
+        grab
+    }
+
+    #[test]
+    fn grip_holds_with_hysteresis() {
+        let (mut hands, config) = (Hands::default(), InputConfig::default());
+        assert!(!frame(&mut hands, &config, 0.5, 0, false));
+        assert!(frame(&mut hands, &config, 0.7, 0, false));
+        assert!(frame(&mut hands, &config, 0.5, 0, false));
+        assert!(!frame(&mut hands, &config, 0.3, 0, false));
+    }
+
+    #[test]
+    fn toggled_button_takes_and_lets_go() {
+        let mut config = InputConfig::default();
+        config.vr_grab[0] = VrGrab { input: VrInput::Primary, toggle: true };
+        let mut hands = Hands::default();
+        // The grip does nothing now; a press of X takes the lever and it stays held.
+        assert!(!frame(&mut hands, &config, 1.0, 0, true));
+        assert!(frame(&mut hands, &config, 0.0, BUTTON_PRIMARY, true));
+        assert!(frame(&mut hands, &config, 0.0, 0, true));
+        assert!(frame(&mut hands, &config, 0.0, 0, true));
+        // The next press lets go.
+        assert!(!frame(&mut hands, &config, 0.0, BUTTON_PRIMARY, true));
+        assert!(!frame(&mut hands, &config, 0.0, 0, true));
+        // A press that takes nothing does not stay on.
+        assert!(frame(&mut hands, &config, 0.0, BUTTON_PRIMARY, false));
+        assert!(!frame(&mut hands, &config, 0.0, BUTTON_PRIMARY, false));
+        assert!(!frame(&mut hands, &config, 0.0, 0, false));
+    }
+
+    #[test]
+    fn held_button_grabs_while_held() {
+        let mut config = InputConfig::default();
+        config.vr_grab[0] = VrGrab { input: VrInput::ThumbClick, toggle: false };
+        let mut hands = Hands::default();
+        assert!(frame(&mut hands, &config, 0.0, BUTTON_THUMB, false));
+        assert!(frame(&mut hands, &config, 0.0, BUTTON_THUMB, true));
+        assert!(!frame(&mut hands, &config, 0.0, 0, true));
     }
 }

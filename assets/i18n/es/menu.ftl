@@ -221,6 +221,11 @@ aircraft-ah1z =
         Helicóptero de ataque
         Cañón en torreta, Hellfire, AIM-9
         El cañón y los Hellfire siguen al pod
+aircraft-ah64 =
+    .facts =
+        Helicóptero de ataque biplaza
+        Cañón en torreta, Hellfire, Stinger
+        Un segundo jugador puede volar de artillero
 
 ## Secciones y grupos
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Helicóptero de carga de rotores en tándem
         Eslinga cargas de reabastecimiento y logística
         Sin par que compensar: los rotores se anulan
+aircraft-c5 =
+    .facts =
+        Avión de transporte estratégico cuatrimotor
+        Lleva munición entre las bases aéreas
+        Pesado: lento al alabear y al rotar
+aircraft-ac130 =
+    .facts =
+        Cañonero de tiro lateral
+        Cañones de 40 mm y 105 mm apuntados con el pod
+        Orbite a la izquierda para que los cañones apunten

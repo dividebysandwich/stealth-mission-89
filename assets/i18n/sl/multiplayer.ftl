@@ -64,6 +64,7 @@ pic-site = Položaj: { $place }
 uv-live = { $unit } - V ŽIVO
 uv-contact-lost = STIK IZGUBLJEN
 uv-hint = Vleci: kroži  Kolesce: povečava
+uv-infrared = Infrardeči (termalni) pogled
 
 ## Več igralcev
 
@@ -77,6 +78,8 @@ mp-your-name = Vaše ime
 mp-join-address = Pridružitev po naslovu
     .hint = naslov ali ime[:vrata]
 mp-connect = POVEŽI
+mp-join-vr = PRIDRUŽI SE V VR
+    .facts = Znova zažene igro v VR očalih in se pridruži temu strežniku
 mp-server-name = Ime strežnika
 mp-udp-port = Vrata UDP
 mp-address-note = Drugi igralci se pridružijo z naslovom tega računalnika; za igro prek interneta odprite vrata UDP v usmerjevalniku
@@ -88,6 +91,8 @@ mp-friendly-fire = Ogenj po svojih
 mp-airframe-losses = Izgube stanejo vire
 mp-ai-missions = Prijateljske misije UI
 mp-host-new = GOSTI NOVO
+mp-host-vr = GOSTI V VR
+    .facts = Znova zažene igro v VR očalih in gosti kampanjo
 mp-host-saved = Gostite shranjeno kampanjo
 mp-host = GOSTI
 mp-host-game = GOSTITE IGRO
@@ -98,9 +103,7 @@ mp-refresh = OSVEŽI
 mp-server-count = { $servers } strežnikov, { $pilots } pilotov
 mp-list-error = Seznam strežnikov ni dosegljiv: { $error }
 mp-no-servers = Trenutno ni javnih strežnikov
-mp-col-server = STREŽNIK
 mp-col-pilots = PILOTI
-mp-col-war = VOJNA
 mp-dedicated = NAMENSKI
 mp-other-version = druga različica
 mp-join = PRIDRUŽI SE

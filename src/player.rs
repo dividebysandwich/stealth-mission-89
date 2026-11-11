@@ -113,6 +113,24 @@ fn spawn_player(
         a.set_thrust = 60.0;
         a.thrust = 60.0;
     }
+    if let Some(((km, alt, kts), m)) = start_orbit().zip(mission.as_ref()) {
+        // Test aid (`--start-orbit km[,ft[,kts]]`): in the air `km` east of the primary target,
+        // heading north banked 30 degrees left: a gunship's orbit round it, the target off the
+        // left wing.
+        let p = m.0.primary.position;
+        let east = p.x as f64 * 32.0 + 16.0 + km as f64 * 1000.0 / crate::world::WU;
+        let north = (0x8000 - p.y) as f64 * 32.0 - 16.0;
+        pos = wu_to_bevy(east, north, crate::flight::view_z(alt) as f64);
+        let a = &mut aircraft_state;
+        a.orientation = Aircraft::from_euler(0.0, 0.0, -30f32.to_radians());
+        a.altitude = alt;
+        a.on_ground = false;
+        a.has_flown = true;
+        a.gear_down = false;
+        a.velocity = kts * 27.0;
+        a.set_thrust = 60.0;
+        a.thrust = 60.0;
+    }
     if let Some((p, heading, alt, kts)) =
         mission.as_ref().and_then(|m| crate::stage::chase_start(&m.0))
     {
@@ -170,6 +188,17 @@ fn start_target() -> Option<(f32, f32, f32)> {
     let km = it.next().flatten().unwrap_or(8.0);
     let alt = it.next().flatten().unwrap_or(2000.0);
     let kts = it.next().flatten().unwrap_or(350.0);
+    Some((km, alt, kts))
+}
+
+/// `--start-orbit km[,alt ft[,knots]]` (defaults 3 km, 8000 ft, 180 kt).
+fn start_orbit() -> Option<(f32, f32, f32)> {
+    let args: Vec<String> = std::env::args().collect();
+    let v = args.iter().position(|a| a == "--start-orbit").and_then(|i| args.get(i + 1))?;
+    let mut it = v.split(',').map(|x| x.parse::<f32>().ok());
+    let km = it.next().flatten().unwrap_or(3.0);
+    let alt = it.next().flatten().unwrap_or(8000.0);
+    let kts = it.next().flatten().unwrap_or(180.0);
     Some((km, alt, kts))
 }
 
@@ -383,7 +412,8 @@ fn interior_follows_eye(
     mut q: Query<&mut Transform, With<OwnModelInterior>>,
 ) {
     let spec = settings.aircraft.spec();
-    let at = Vec3::Y * spec.model_lift + settings.cockpit_origin() - spec.eye;
+    let seat = settings.gunner_seat().map_or(spec.eye, |g| g.eye);
+    let at = Vec3::Y * spec.model_lift + settings.cockpit_origin() - seat;
     for mut tf in &mut q {
         if tf.translation != at {
             tf.translation = at;
@@ -421,7 +451,7 @@ fn own_model_visibility(
     let external =
         !matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
     // At an air defence console the aircraft waits there unseen.
-    let hidden = hide.is_some_and(|h| h.0) || manning.is_some();
+    let hidden = hide.is_some_and(|h| h.0) || manning.as_deref().is_some_and(|m| m.console());
     let vis = |on: bool| if on && !hidden { Visibility::Inherited } else { Visibility::Hidden };
     for mut v in &mut q {
         v.set_if_neq(vis(external));

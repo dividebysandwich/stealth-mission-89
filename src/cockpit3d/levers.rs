@@ -1,6 +1,6 @@
 //! Stick (right console, or a centre stick between the knees) and throttle (left console).
 //!
-//! VR: squeeze the grip near the stick to take it. Tilting the controller (relative to how it
+//! VR: squeeze the grip (or the grab input, `hotas::VrGrab`) near the stick to take it. Tilting the controller (relative to how it
 //! was held when grabbed) deflects pitch (tilt back = nose up) and roll; twisting it about the
 //! stick's axis is the rudder. Letting go re-centres the stick. A centre stick between the knees
 //! (the UH-60A's cyclic, the Tornado's) is moved by the hand instead: its grip follows the hand
@@ -15,6 +15,12 @@
 //! A V/STOL type's nozzle lever (the AV-8B's, just inboard of the throttle) is taken the same way
 //! by the left hand (the nearer of the two handles): pulled back it swings the nozzles down, a
 //! tick every 10 degrees and a firm one on the hover stop (90 degrees) and the end stops.
+//! A yoke (the C-5M's: a column from the floor with a wheel on top) is taken by the wheel and
+//! moved by the hand: fore and aft swings the column about its floor pivot (pitch), twisting the
+//! controller about the wheel's axis or moving it sideways turns the wheel (roll). With the
+//! throttles right of it (the left seat, the throttles on the pedestal) the left hand takes the
+//! yoke and the right one the throttles, or the yoke's right horn (whichever is nearer); with
+//! both hands on the wheel the yoke goes by the average of the two.
 //! The ejection handle is pulled up with either hand. A hand carrying the kneeboard grabs none.
 //! Without VR both animate from the keyboard/gamepad controls.
 
@@ -68,9 +74,15 @@ pub struct CockpitAnchors {
     pub nozzle_down: Option<Vec3>,
     pub nozzle_pivot: Option<Vec3>,
     pub eject: Vec3,
+    /// The model has an ejection handle (the C-5M's has none: `eject` is only where the
+    /// kneeboard rests from).
+    pub eject_handle: bool,
     /// The middle of the HUD combiner glass's lower edge (cockpit frame, metres from the eye):
     /// the modern HUD's field reaches down to it (`HudFrame::field_bottom`).
     pub hud_glass_bottom: Option<Vec3>,
+    /// A yoke instead of a stick (the `yoke` object, its column pivoting about `stick_pivot`):
+    /// its wheel's hub at rest (the `yoke_wheel` object).
+    pub yoke_hub: Option<Vec3>,
 }
 
 impl Default for CockpitAnchors {
@@ -85,12 +97,37 @@ impl Default for CockpitAnchors {
             nozzle_down: None,
             nozzle_pivot: None,
             eject: Vec3::new(0.0, -0.74, -0.20),
+            eject_handle: true,
             hud_glass_bottom: None,
+            yoke_hub: None,
         }
     }
 }
 
 impl CockpitAnchors {
+    /// The yoke column's tilt at full pitch (radians).
+    fn yoke_tilt(&self) -> f32 {
+        let arm = self.yoke_hub.map_or(1.0, |h| h.distance(self.stick_pivot));
+        (YOKE_TRAVEL / arm.max(0.1)).atan()
+    }
+
+    /// The yoke column's rotation about its pivot at a pitch input (back = nose up = +).
+    fn yoke_rotation(&self, pitch: f32) -> Quat {
+        Quat::from_rotation_x(pitch * self.yoke_tilt())
+    }
+
+    /// The yoke wheel's hub at a pitch input (none: a stick).
+    fn yoke_hub_at(&self, pitch: f32) -> Option<Vec3> {
+        let h = self.yoke_hub?;
+        Some(self.stick_pivot + self.yoke_rotation(pitch) * (h - self.stick_pivot))
+    }
+
+    /// The throttle is right of the stick (or yoke): the right hand takes it, the left one the
+    /// stick.
+    fn throttle_right(&self) -> bool {
+        self.throttle_idle.x > self.stick_pivot.x
+    }
+
     fn throttle_handle(&self, t: f32) -> Vec3 {
         match self.throttle_pivot {
             Some(p) => p + self.throttle_rotation(t) * (self.throttle_idle - p),
@@ -162,12 +199,24 @@ pub(super) struct Stick;
 #[derive(Component)]
 pub(super) struct ThrottleLever;
 
+/// A yoke's column (it swings fore and aft about its pivot, its origin) and its wheel (it turns
+/// about its local Z, the axis towards the pilot).
+#[derive(Component)]
+pub(super) struct Yoke;
+
+#[derive(Component)]
+pub(super) struct YokeWheel;
+
 #[derive(Component)]
 pub(super) struct NozzleLever;
 
 #[derive(Default)]
 pub(super) struct Grabs {
     stick: Option<StickGrab>,
+    /// The throttle hand on the yoke's other horn.
+    yoke_other: Option<StickGrab>,
+    /// The yoke's last pitch and roll from the hands on it.
+    yoke_last: (f32, f32),
     throttle: Option<ThrottleGrab>,
     nozzle: Option<NozzleGrab>,
     eject: Option<(usize, f32)>,
@@ -257,6 +306,9 @@ fn throttle_zone(t: f32) -> u8 {
 }
 
 struct StickGrab {
+    /// A yoke's: the pitch and roll inputs this hand started from when it grabbed.
+    pitch0: f32,
+    roll0: f32,
     rot0: Quat,
     /// Hand position from the pivot when grabbed.
     p0: Vec3,
@@ -284,6 +336,28 @@ struct NozzleGrab {
 
 /// Throttle detents per full travel (one haptic tick each).
 const THROTTLE_NOTCHES: f32 = 10.0;
+
+/// A yoke's full pitch: the wheel's travel fore and aft (m), and how far the wheel turns at full
+/// roll (radians).
+const YOKE_TRAVEL: f32 = 0.12;
+const WHEEL_TURN: f32 = 1.2;
+/// Sideways hand travel to full roll (m), on top of the twist.
+const YOKE_ROLL_REACH: f32 = 0.15;
+/// Reach for grabbing the yoke (metres from the wheel's hub): its horns stand out either side.
+const YOKE_REACH: f32 = 0.22;
+
+/// The pitch and roll a hand on the yoke sets: the column swung about its pivot by the hand's
+/// travel fore and aft, the wheel turned by its twist about the wheel's axis and its sideways
+/// travel.
+fn yoke_hand(anchors: &CockpitAnchors, g: &StickGrab, grip: &Transform) -> (f32, f32) {
+    let at = grip.translation - anchors.stick_pivot;
+    let (moved, _) = stick_angles_moved(g.p0, at);
+    let twist = twist_about(grip.rotation * g.rot0.inverse(), Vec3::Z);
+    (
+        g.pitch0 + moved / anchors.yoke_tilt(),
+        g.roll0 - twist / WHEEL_TURN + (at.x - g.p0.x) / YOKE_ROLL_REACH,
+    )
+}
 
 /// Twist of a rotation about an axis (swing-twist decomposition), radians.
 fn twist_about(q: Quat, axis: Vec3) -> f32 {
@@ -330,10 +404,10 @@ fn stick_tilt(pivot: Vec3, grip_height: f32) -> f32 {
     STICK_TILT
 }
 
-/// `Hand::buttons` bit of a controller input (the trigger is analog).
-fn vr_bit(input: VrInput) -> u8 {
+/// `Hand::buttons` bit of a controller input (the trigger and the grip are analog).
+pub(super) fn vr_bit(input: VrInput) -> u8 {
     match input {
-        VrInput::Trigger => 0,
+        VrInput::Trigger | VrInput::Grip => 0,
         VrInput::Primary => BUTTON_PRIMARY,
         VrInput::Secondary => BUTTON_SECONDARY,
         VrInput::ThumbClick => BUTTON_THUMB,
@@ -357,7 +431,10 @@ pub(super) fn grab_levers(
     (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
     console_throttle: Res<crate::input::ConsoleThrottle>,
     anchors: Res<CockpitAnchors>,
-    hide: Option<Res<crate::camera::HideOwnAircraft>>,
+    (hide, manning): (
+        Option<Res<crate::camera::HideOwnAircraft>>,
+        Option<Res<crate::station::Manning>>,
+    ),
     k: Res<FlightConstants>,
     time: Res<Time>,
 ) {
@@ -376,8 +453,12 @@ pub(super) fn grab_levers(
             for m in config.vr_buttons.iter().filter(|m| m.hand == side) {
                 if hand.active
                     && m.target == ButtonTarget::Action(Action::Menu)
-                    && m.input != VrInput::Trigger
-                    && hand.just_pressed(vr_bit(m.input))
+                    && !config.vr_grabs(side, m.input)
+                    && match m.input {
+                        VrInput::Trigger => false,
+                        VrInput::Grip => hand.grip_button().1,
+                        input => hand.just_pressed(vr_bit(input)),
+                    }
                 {
                     actions.write(ActionEvent(Action::Menu));
                 }
@@ -391,29 +472,106 @@ pub(super) fn grab_levers(
     let brakes_on = aircraft.single().is_ok_and(|a| a.brakes);
     let set_nozzle = aircraft.single().map_or(0.0, |a| a.nozzle_lever);
     let [left, right] = &mut hands.hands;
+    // The hands on the stick and on the throttle: the right and the left one, or the other way
+    // round with the throttle right of the stick (the C-5M's left seat).
+    let swap = anchors.throttle_right();
+    let (sh, th) = if swap { (&mut *left, &mut *right) } else { (&mut *right, &mut *left) };
 
-    // --- stick (right hand)
-    let grip_centre = anchors.stick_pivot + Vec3::Y * anchors.grip_height;
-    if !right.active || right.squeeze < 0.4 {
+    // --- stick or yoke
+    let yoke = anchors.yoke_hub.is_some();
+    let held_before = (grabs.stick.is_some(), grabs.yoke_other.is_some());
+    // A hand taking the yoke the other one holds starts from where it is.
+    let start = |other: bool, now: f32, last: f32| if other { last } else { now };
+    let hub = anchors.yoke_hub_at(controls.pitch);
+    let grip_centre = hub.unwrap_or(anchors.stick_pivot + Vec3::Y * anchors.grip_height);
+    let reach = if hub.is_some() { YOKE_REACH } else { GRAB_REACH };
+    if !sh.active || !sh.grab {
         if grabs.stick.take().is_some() {
-            right.haptic = right.haptic.max(0.2);
+            sh.haptic = sh.haptic.max(0.2);
         }
     } else if grabs.stick.is_none()
-        && !right.carrying
-        && right.squeeze > 0.6
-        && right.grip.translation.distance(grip_centre) < GRAB_REACH
+        && !sh.carrying
+        && sh.grab
+        && sh.grip.translation.distance(grip_centre) < reach
     {
+        let other = grabs.yoke_other.is_some();
         grabs.stick = Some(StickGrab {
-            rot0: right.grip.rotation,
-            p0: right.grip.translation - anchors.stick_pivot,
+            pitch0: start(other, controls.pitch, grabs.yoke_last.0),
+            roll0: start(other, 0.0, grabs.yoke_last.1),
+            rot0: sh.grip.rotation,
+            p0: sh.grip.translation - anchors.stick_pivot,
             twisted: false,
         });
-        right.haptic = right.haptic.max(0.4);
+        sh.haptic = sh.haptic.max(0.4);
     }
-    if let Some(g) = &mut grabs.stick {
-        let delta = right.grip.rotation * g.rot0.inverse();
+    // The throttle hand on the yoke's other horn (when it is nearer than the throttle handle).
+    let handle = anchors.throttle_handle(set_thrust);
+    let to_throttle = th.grip.translation.distance(handle);
+    let to_nozzle = anchors
+        .nozzle_handle(set_nozzle)
+        .map_or(f32::INFINITY, |h| th.grip.translation.distance(h));
+    if let Some(hub) = hub.filter(|_| yoke) {
+        let side = if swap { 1.0 } else { -1.0 };
+        let to_yoke = th.grip.translation.distance(hub);
+        if !th.active || !th.grab {
+            if grabs.yoke_other.take().is_some() {
+                th.haptic = th.haptic.max(0.2);
+            }
+        } else if grabs.yoke_other.is_none()
+            && grabs.throttle.is_none()
+            && grabs.nozzle.is_none()
+            && !th.carrying
+            && to_yoke < YOKE_REACH
+            && to_yoke < to_throttle.min(to_nozzle)
+            && (th.grip.translation.x - hub.x) * side > 0.0
+        {
+            let other = grabs.stick.is_some();
+            grabs.yoke_other = Some(StickGrab {
+                pitch0: start(other, controls.pitch, grabs.yoke_last.0),
+                roll0: start(other, 0.0, grabs.yoke_last.1),
+                rot0: th.grip.rotation,
+                p0: th.grip.translation - anchors.stick_pivot,
+                twisted: false,
+            });
+            th.haptic = th.haptic.max(0.4);
+        }
+    }
+    if yoke {
+        // One hand let go of the wheel the other still holds: that one goes on from where the
+        // two had it.
+        let held = (grabs.stick.is_some(), grabs.yoke_other.is_some());
+        // (Only from both to one: a first hand grabbing starts from its own tilt as neutral.)
+        if held_before == (true, true) && held.0 != held.1 {
+            let gr = &mut *grabs;
+            let (g, grip) = match (&mut gr.stick, &mut gr.yoke_other) {
+                (Some(g), _) => (g, &sh.grip),
+                (_, Some(g)) => (g, &th.grip),
+                _ => unreachable!(),
+            };
+            let (p, r) = yoke_hand(&anchors, g, grip);
+            g.pitch0 += gr.yoke_last.0 - p;
+            g.roll0 += gr.yoke_last.1 - r;
+        }
+        // The yoke: by the hand on it, or the average of both. No rudder.
+        let hands: Vec<(f32, f32)> = [
+            grabs.stick.as_ref().map(|g| yoke_hand(&anchors, g, &sh.grip)),
+            grabs.yoke_other.as_ref().map(|g| yoke_hand(&anchors, g, &th.grip)),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        if !hands.is_empty() {
+            let n = hands.len() as f32;
+            let p = hands.iter().map(|h| h.0).sum::<f32>() / n;
+            let r = hands.iter().map(|h| h.1).sum::<f32>() / n;
+            grabs.yoke_last = (p, r);
+            controls.pitch = p.clamp(-1.0, 1.0);
+            controls.roll = r.clamp(-1.0, 1.0);
+        }
+    } else if let Some(g) = &mut grabs.stick {
+        let delta = sh.grip.rotation * g.rot0.inverse();
         let (tp, tr) = stick_angles(delta);
-        let (mp, mr) = stick_angles_moved(g.p0, right.grip.translation - anchors.stick_pivot);
+        let (mp, mr) = stick_angles_moved(g.p0, sh.grip.translation - anchors.stick_pivot);
         let w = stick_follow(anchors.stick_pivot, anchors.grip_height);
         let (p, r) = (tp + (mp - tp) * w, tr + (mr - tr) * w);
         let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
@@ -425,7 +583,7 @@ pub(super) fn grab_levers(
         let edge = if g.twisted { TWIST_DEADZONE - TWIST_HYSTERESIS } else { TWIST_DEADZONE };
         if (yaw.abs() > edge) != g.twisted {
             g.twisted = !g.twisted;
-            right.haptic = right.haptic.max(0.15);
+            sh.haptic = sh.haptic.max(0.15);
         }
         // Rescaled past the deadzone so the rudder starts from zero at its edge.
         controls.yaw = if g.twisted {
@@ -436,58 +594,54 @@ pub(super) fn grab_levers(
         };
     }
 
-    // --- throttle and nozzle lever (left hand): the nearer handle
-    let handle = anchors.throttle_handle(set_thrust);
-    let to_throttle = left.grip.translation.distance(handle);
-    let to_nozzle = anchors
-        .nozzle_handle(set_nozzle)
-        .map_or(f32::INFINITY, |h| left.grip.translation.distance(h));
-    if !left.active || left.squeeze < 0.4 {
+    // --- throttle and nozzle lever (the throttle hand): the nearer handle
+    if !th.active || !th.grab {
         if grabs.throttle.take().is_some() {
-            left.haptic = left.haptic.max(0.2);
+            th.haptic = th.haptic.max(0.2);
         }
         if grabs.nozzle.take().is_some() {
             controls.nozzle = None;
-            left.haptic = left.haptic.max(0.2);
+            th.haptic = th.haptic.max(0.2);
         }
     } else if grabs.throttle.is_none()
         && grabs.nozzle.is_none()
-        && !left.carrying
-        && left.squeeze > 0.6
+        && grabs.yoke_other.is_none()
+        && !th.carrying
+        && th.grab
         && to_throttle.min(to_nozzle) < GRAB_REACH
     {
         if to_nozzle < to_throttle {
-            let a0 = anchors.nozzle_angle(left.grip.translation);
+            let a0 = anchors.nozzle_angle(th.grip.translation);
             let notch = (set_nozzle / NOZZLE_NOTCH).floor() as i32;
             grabs.nozzle = Some(NozzleGrab { a0, t0: set_nozzle, notch });
         } else {
             let notch = (set_thrust * THROTTLE_NOTCHES).floor() as i32;
             let zone = throttle_zone(set_thrust);
             grabs.throttle =
-                Some(ThrottleGrab { p0: left.grip.translation, t0: set_thrust, notch, zone });
+                Some(ThrottleGrab { p0: th.grip.translation, t0: set_thrust, notch, zone });
         }
-        left.haptic = left.haptic.max(0.4);
+        th.haptic = th.haptic.max(0.4);
     }
     if let Some(g) = &mut grabs.nozzle {
-        let moved = anchors.nozzle_angle(left.grip.translation) - g.a0;
+        let moved = anchors.nozzle_angle(th.grip.translation) - g.a0;
         let t = (g.t0 + moved).clamp(0.0, 1.0);
         let before = controls.nozzle.unwrap_or(set_nozzle);
         // A firm tick on the end stops and the hover stop, a light one every 10 degrees (with
         // hysteresis, so hand jitter on one doesn't buzz).
         let crossed = |at: f32| (before < at) != (t < at);
         if (t >= 1.0 && before < 1.0) || (t <= 0.0 && before > 0.0) || crossed(NOZZLE_HOVER) {
-            left.haptic = left.haptic.max(0.5);
+            th.haptic = th.haptic.max(0.5);
         }
         let pos = t / NOZZLE_NOTCH;
         if pos >= (g.notch + 1) as f32 + 0.1 || pos < g.notch as f32 - 0.1 {
             g.notch = pos.floor() as i32;
-            left.haptic = left.haptic.max(0.15);
+            th.haptic = th.haptic.max(0.15);
         }
         controls.nozzle = Some(t);
     }
     let mut rumble = None;
     if let Some(g) = &mut grabs.throttle {
-        let mut t = (g.t0 + anchors.throttle_travel(left.grip.translation - g.p0)).clamp(0.0, 1.0);
+        let mut t = (g.t0 + anchors.throttle_travel(th.grip.translation - g.p0)).clamp(0.0, 1.0);
         if ab {
             if g.zone == 2 && t >= AB_DETENT + AB_GAP - AB_HYSTERESIS {
                 t = t.max(AB_DETENT + AB_GAP);
@@ -498,14 +652,14 @@ pub(super) fn grab_levers(
                 (_, 2) => rumble = Some(RUMBLE_AB_ON),
                 (2, _) => rumble = Some(RUMBLE_AB_OFF),
                 // Into the detent from either side, or through it.
-                _ => left.haptic = left.haptic.max(0.6),
+                _ => th.haptic = th.haptic.max(0.6),
             }
             g.zone = zone;
         }
         // A light tick at each detent, a firm one at the idle and full stops.
         let before = set_thrust;
         if (t >= 1.0 && before < 1.0) || (t <= 0.0 && before > 0.0) {
-            left.haptic = left.haptic.max(0.5);
+            th.haptic = th.haptic.max(0.5);
         }
         // Hysteresis so hand jitter on a detent doesn't buzz. A collective has none.
         let pos = t * THROTTLE_NOTCHES;
@@ -513,7 +667,7 @@ pub(super) fn grab_levers(
             && (pos >= (g.notch + 1) as f32 + 0.1 || pos < g.notch as f32 - 0.1)
         {
             g.notch = pos.floor() as i32;
-            left.haptic = left.haptic.max(0.15);
+            th.haptic = th.haptic.max(0.15);
         }
         controls.throttle = Some(t);
     }
@@ -522,7 +676,7 @@ pub(super) fn grab_levers(
     }
     if let Some((r, t)) = &mut grabs.rumble {
         match rumble_at(r, *t) {
-            Some(amp) => left.haptic = left.haptic.max(amp),
+            Some(amp) => th.haptic = th.haptic.max(amp),
             None => grabs.rumble = None,
         }
         if let Some((_, t)) = &mut grabs.rumble {
@@ -533,37 +687,79 @@ pub(super) fn grab_levers(
     let depth = aircraft
         .single()
         .ok()
-        .filter(|a| a.ended.is_none() && grabs.stick.is_some())
+        .filter(|a| a.ended.is_none() && (grabs.stick.is_some() || grabs.yoke_other.is_some()))
         .map_or(0.0, crate::shake::stall_buffet);
     let buffet = stall_rumble(depth, time.delta_secs(), &mut grabs.buffet, rand::random::<f32>);
-    right.haptic = right.haptic.max(buffet);
+    if grabs.stick.is_some() {
+        sh.haptic = sh.haptic.max(buffet);
+    }
+    if grabs.yoke_other.is_some() {
+        th.haptic = th.haptic.max(buffet);
+    }
     let shake = aircraft
         .single()
         .ok()
         .filter(|a| a.ended.is_none())
         .map_or(0.0, |a| ab_shake(a.afterburner, time.elapsed_secs()));
     if shake > 0.0 {
-        for h in [&mut *left, &mut *right] {
+        for h in [&mut *th, &mut *sh] {
             h.haptic = h.haptic.max(shake);
         }
     }
 
     // --- sensor/cursor slew: the left thumbstick
-    if left.active && !block.0 && !left.scrolling && left.thumb.length() > SLEW_DEADZONE {
+    // At a console (but the drone command center's) the left controller works the console's
+    // camera and lock (`station::vr_console`): no slew, none of its mapped buttons but the menu.
+    let at_console = manning.as_deref().is_some_and(|m| !m.drones() && m.console());
+    let gunner = manning.as_deref().is_some_and(|m| m.gunner());
+    if left.active
+        && !block.0
+        && !at_console
+        && !left.scrolling
+        && left.thumb.length() > SLEW_DEADZONE
+    {
         controls.slew = left.thumb.clamp(Vec2::splat(-1.0), Vec2::ONE);
     }
 
     // --- mapped buttons; a trigger only while its hand holds the throttle / stick (otherwise it
     // presses the cockpit control under the fingertip), but for the brakes
     let mut brakes_held = false;
-    for (side, hand, holding) in [
-        (VrHand::Left, &*left, grabs.throttle.is_some() || grabs.nozzle.is_some()),
-        (VrHand::Right, &*right, grabs.stick.is_some()),
-    ] {
+    // (The throttle hand on the yoke counts as holding: its trigger fires.)
+    let throttle_held =
+        grabs.throttle.is_some() || grabs.nozzle.is_some() || grabs.yoke_other.is_some();
+    let stick_held = grabs.stick.is_some();
+    let (left_holds, right_holds) =
+        if swap { (stick_held, throttle_held) } else { (throttle_held, stick_held) };
+    for (side, hand, holding) in
+        [(VrHand::Left, &*left, left_holds), (VrHand::Right, &*right, right_holds)]
+    {
         if !hand.active {
             continue;
         }
-        for m in config.vr_buttons.iter().filter(|m| m.hand == side) {
+        for m in
+            config.vr_buttons.iter().filter(|m| m.hand == side && !config.vr_grabs(side, m.input))
+        {
+            if at_console
+                && side == VrHand::Left
+                && m.target != ButtonTarget::Action(Action::Menu)
+            {
+                continue;
+            }
+            // At a gunner's seat the right stick zooms and the left Y toggles the FLIR
+            // (`station::vr_console`): none of their mapped buttons, nor the left X's.
+            let gunner_input = match side {
+                VrHand::Right => matches!(
+                    m.input,
+                    VrInput::ThumbUp
+                        | VrInput::ThumbDown
+                        | VrInput::ThumbLeft
+                        | VrInput::ThumbRight
+                ),
+                VrHand::Left => matches!(m.input, VrInput::Primary | VrInput::Secondary),
+            };
+            if gunner && gunner_input && m.target != ButtonTarget::Action(Action::Menu) {
+                continue;
+            }
             // The brakes also on the trigger of a free hand that touches no control.
             let brakes = m.target == ButtonTarget::Action(Action::Brakes)
                 && (!hand.touching || grabs.brakes);
@@ -578,6 +774,7 @@ pub(super) fn grab_levers(
                     continue;
                 }
                 VrInput::Trigger => (hand.trigger > 0.7, hand.trigger_pulled()),
+                VrInput::Grip => hand.grip_button(),
                 input => (hand.held(vr_bit(input)), hand.just_pressed(vr_bit(input))),
             };
             match m.target {
@@ -627,11 +824,10 @@ pub(super) fn grab_levers(
     // --- ejection handle: grab with either hand and pull up 6 cm
     let handle = anchors.eject;
     for (i, h) in [&mut *left, &mut *right].into_iter().enumerate() {
-        let is_grabbing_other = (i == 1 && grabs.stick.is_some())
-            || (i == 0 && (grabs.throttle.is_some() || grabs.nozzle.is_some()));
+        let is_grabbing_other = [left_holds, right_holds][i];
         match grabs.eject {
             Some((who, y0)) if who == i => {
-                if !h.active || h.squeeze < 0.4 {
+                if !h.active || !h.grab {
                     grabs.eject = None;
                 } else if h.grip.translation.y - y0 > 0.06 {
                     actions.write(ActionEvent(Action::Eject));
@@ -640,9 +836,10 @@ pub(super) fn grab_levers(
                 }
             }
             None if h.active
+                && anchors.eject_handle
                 && !is_grabbing_other
                 && !h.carrying
-                && h.squeeze > 0.6
+                && h.grab
                 && h.grip.translation.distance(handle) < 0.07 =>
             {
                 grabs.eject = Some((i, h.grip.translation.y));
@@ -651,14 +848,19 @@ pub(super) fn grab_levers(
             _ => {}
         }
     }
-    left.lever = grabs.throttle.is_some()
-        || grabs.nozzle.is_some()
-        || grabs.eject.is_some_and(|(who, _)| who == 0);
-    right.lever = grabs.stick.is_some() || grabs.eject.is_some_and(|(who, _)| who == 1);
+    left.lever = left_holds || grabs.eject.is_some_and(|(who, _)| who == 0);
+    right.lever = right_holds || grabs.eject.is_some_and(|(who, _)| who == 1);
+    left.holding |= left.lever;
+    right.holding |= right.lever;
 }
 
-/// Stick, throttle and nozzle lever follow the controls (whatever the input source).
-#[allow(clippy::type_complexity)]
+/// The yoke's column and wheel at the given controls (their local rotations).
+fn yoke_pose(anchors: &CockpitAnchors, pitch: f32, roll: f32) -> (Quat, Quat) {
+    (anchors.yoke_rotation(pitch), Quat::from_rotation_z(-roll * WHEEL_TURN))
+}
+
+/// Stick (or yoke), throttle and nozzle lever follow the controls (whatever the input source).
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(super) fn animate_levers(
     controls: Res<FlightControls>,
     console_throttle: Res<crate::input::ConsoleThrottle>,
@@ -666,9 +868,30 @@ pub(super) fn animate_levers(
     mut stick: Query<&mut Transform, (With<Stick>, Without<ThrottleLever>, Without<NozzleLever>)>,
     mut throttle: Query<&mut Transform, (With<ThrottleLever>, Without<NozzleLever>)>,
     mut nozzle: Query<&mut Transform, With<NozzleLever>>,
+    mut yoke: Query<
+        &mut Transform,
+        (
+            With<Yoke>,
+            Without<Stick>,
+            Without<ThrottleLever>,
+            Without<NozzleLever>,
+            Without<YokeWheel>,
+        ),
+    >,
+    mut wheel: Query<
+        &mut Transform,
+        (With<YokeWheel>, Without<Stick>, Without<ThrottleLever>, Without<NozzleLever>),
+    >,
     anchors: Res<CockpitAnchors>,
     k: Res<FlightConstants>,
 ) {
+    let (column, turn) = yoke_pose(&anchors, controls.pitch, controls.roll);
+    if let Ok(mut tf) = yoke.single_mut() {
+        tf.rotation = column;
+    }
+    if let Ok(mut tf) = wheel.single_mut() {
+        tf.rotation = turn;
+    }
     if let Ok(mut tf) = stick.single_mut() {
         let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
         tf.rotation = Quat::from_rotation_x(controls.pitch * tilt)
@@ -692,6 +915,121 @@ pub(super) fn animate_levers(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The yoke: pulling the hand back 12 cm (about the floor pivot) is full nose up and tilts
+    /// the column so its wheel follows the hand; the wheel turns the right way; the throttles
+    /// right of it go to the right hand.
+    #[test]
+    fn yoke_follows_the_hand() {
+        let pivot = Vec3::new(0.0, -1.2, -0.45);
+        let hub = Vec3::new(0.0, -0.45, -0.42);
+        let anchors = CockpitAnchors {
+            stick_pivot: pivot,
+            yoke_hub: Some(hub),
+            throttle_idle: Vec3::new(0.62, -0.62, -0.2),
+            ..default()
+        };
+        assert!(anchors.throttle_right());
+        assert!(!CockpitAnchors::default().throttle_right());
+        let p0 = hub - pivot;
+        let (moved, _) = stick_angles_moved(p0, p0 + Vec3::Z * YOKE_TRAVEL);
+        let pitch = moved / anchors.yoke_tilt();
+        assert!((pitch - 1.0).abs() < 0.1, "{pitch}");
+        let back = anchors.yoke_hub_at(1.0).unwrap();
+        assert!(back.z > hub.z + 0.1 && (back - pivot).length() - (hub - pivot).length() < 1e-4);
+        // Roll right: the wheel's right horn goes down.
+        let (_, turn) = yoke_pose(&anchors, 0.0, 1.0);
+        assert!((turn * Vec3::X).y < -0.5);
+        // Twisting the controller clockwise (seen from the seat) is roll right.
+        let cw = Quat::from_rotation_z(-0.5);
+        assert!(-twist_about(cw, Vec3::Z) / WHEEL_TURN > 0.3);
+    }
+
+    /// Both hands on the yoke (the C-5M's left seat: the right hand takes its right horn
+    /// rather than the throttles when it is nearer): the yoke goes by the average of the two
+    /// hands' pitch and roll, by the one left holding it without a jump when the other lets go,
+    /// and the right hand's trigger then fires.
+    #[test]
+    fn two_hands_on_the_yoke() {
+        use crate::input::{ConsoleStick, ConsoleThrottle, InputBlock};
+        let pivot = Vec3::new(0.0, -1.2, -0.45);
+        let hub = Vec3::new(0.0, -0.45, -0.42);
+        let anchors = CockpitAnchors {
+            stick_pivot: pivot,
+            yoke_hub: Some(hub),
+            throttle_idle: Vec3::new(0.62, -0.62, -0.2),
+            throttle_full: Vec3::new(0.62, -0.62, -0.4),
+            ..default()
+        };
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<ActionEvent>()
+            .insert_resource(anchors)
+            .insert_resource(InputConfig::default())
+            .insert_resource(FlightConstants::default())
+            .init_resource::<Hands>()
+            .init_resource::<FlightControls>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ConsoleThrottle>()
+            .add_systems(Update, grab_levers);
+        let horn = |x: f32| Transform::from_translation(hub + Vec3::X * x);
+        let set = |app: &mut App, k: usize, grip: Option<Transform>| {
+            let h = &mut app.world_mut().resource_mut::<Hands>().hands[k];
+            h.active = true;
+            h.grab = grip.is_some();
+            if let Some(g) = grip {
+                h.grip = g;
+            }
+        };
+        let step = |app: &mut App| {
+            app.world_mut().resource_mut::<FlightControls>().pitch = 0.0;
+            app.world_mut().resource_mut::<FlightControls>().roll = 0.0;
+            app.update();
+            let c = app.world().resource::<FlightControls>();
+            (c.pitch, c.roll)
+        };
+        // Both hands take the horns.
+        set(&mut app, 0, Some(horn(-0.15)));
+        set(&mut app, 1, Some(horn(0.15)));
+        step(&mut app);
+        assert!(app.world().resource::<Hands>().hands[1].lever, "the right hand holds the yoke");
+        // The left hand pulls back half the travel, the right one stays: a quarter.
+        set(&mut app, 0, Some(horn(-0.15).with_translation(hub + Vec3::new(-0.15, 0.0, 0.06))));
+        let (p, _) = step(&mut app);
+        assert!((p - 0.25).abs() < 0.05, "pitch {p}");
+        // Both pull back half the travel: a half.
+        set(&mut app, 1, Some(horn(0.15).with_translation(hub + Vec3::new(0.15, 0.0, 0.06))));
+        let (p, _) = step(&mut app);
+        assert!((p - 0.5).abs() < 0.05, "pitch {p}");
+        // Both turn the wheel right (clockwise seen from the seat): the average of the two.
+        let turn = |q: f32, at: Vec3| {
+            Transform::from_translation(at).with_rotation(Quat::from_rotation_z(-q))
+        };
+        set(&mut app, 0, Some(turn(0.6, hub + Vec3::new(-0.15, 0.0, 0.06))));
+        set(&mut app, 1, Some(turn(0.2, hub + Vec3::new(0.15, 0.0, 0.06))));
+        let (p, r) = step(&mut app);
+        let want = (0.6 + 0.2) / 2.0 / WHEEL_TURN;
+        assert!((r - want).abs() < 0.03 && (p - 0.5).abs() < 0.05, "roll {r} want {want}");
+        // The left hand lets go: no jump, then the right one alone moves it.
+        set(&mut app, 0, None);
+        let (p2, r2) = step(&mut app);
+        assert!((p2 - p).abs() < 0.02 && (r2 - r).abs() < 0.02, "{p2} {r2} vs {p} {r}");
+        set(&mut app, 1, Some(turn(0.2, hub + Vec3::new(0.15, 0.0, 0.12))));
+        let (p3, _) = step(&mut app);
+        assert!((p3 - (p + 0.5)).abs() < 0.08, "pitch {p3}");
+        // The right hand's trigger fires while it holds the yoke.
+        let h = &mut app.world_mut().resource_mut::<Hands>().hands[1];
+        h.trigger = 1.0;
+        step(&mut app);
+        assert!(app.world().resource::<FlightControls>().fire);
+        // Near the throttles it takes them instead.
+        set(&mut app, 1, None);
+        step(&mut app);
+        set(&mut app, 1, Some(Transform::from_translation(Vec3::new(0.62, -0.62, -0.2))));
+        step(&mut app);
+        assert!(app.world().resource::<FlightControls>().throttle.is_some());
+    }
 
     /// The stall buffet: nothing outside it, knocks with gaps at its edge, and on average harder
     /// and more often the deeper the stall.

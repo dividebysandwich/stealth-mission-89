@@ -66,9 +66,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # libx11-dev: the OpenXR-SDK's configure step wants Xlib headers (default backend).
+          # libxkbcommon-x11-0, libxcb-xkb1: bundled in the AppImage (see packaging/linux/AppRun).
           sudo apt-get install -y --no-install-recommends \
             pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev \
-            libx11-dev  # the OpenXR-SDK's configure step wants Xlib headers (default backend)
+            libx11-dev libxkbcommon-x11-0 libxcb-xkb1
 
       # The Linux packages ship the loader beside stealth-mission-89 with its licence (Apache 2.0), for
       # systems without the openxr package or that can't install it (SteamOS, the Steam
@@ -107,6 +109,29 @@ jobs:
             -p stealth-mission-89 --no-default-features \
             ${{ matrix.features && format('--features stealth-mission-89/{0}', matrix.features) || '' }}
 
+      # The Visual C++ runtime the game links (msvcp140, vcruntime140, vcruntime140_1), put
+      # beside the executable ("app-local", allowed by Microsoft's redistribution terms): a
+      # fresh Windows, such as winget's validation machine, doesn't have it, and the game
+      # wouldn't start. The OpenXR loader, linked statically, is built against the DLL runtime,
+      # so the runtime can't simply be linked in with +crt-static.
+      - name: Copy the Visual C++ runtime (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          $arch = if ("${{ matrix.target }}".StartsWith("aarch64")) { "arm64" } else { "x64" }
+          $redist = Get-ChildItem "$vs\VC\Redist\MSVC" -Directory | Where-Object Name -match '^\d+\.\d+' |
+            Sort-Object { [version]$_.Name } | Select-Object -Last 1
+          $crt = Get-ChildItem "$($redist.FullName)\$arch" -Directory -Filter "Microsoft.VC*.CRT" | Select-Object -First 1
+          New-Item -ItemType Directory -Force crt | Out-Null
+          foreach ($dll in "msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll") {
+            if (Test-Path "$($crt.FullName)\$dll") { Copy-Item "$($crt.FullName)\$dll" crt }
+          }
+          Get-ChildItem crt | Format-Table Name, Length, @{ n = "Version"; e = { $_.VersionInfo.FileVersion } }
+          if (!(Test-Path crt\vcruntime140.dll) -or !(Test-Path crt\msvcp140.dll)) {
+            throw "No Visual C++ runtime in $($crt.FullName)"
+          }
+
       - name: Package
         id: package
         shell: bash
@@ -118,6 +143,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/stealth-mission-89$ext" "dist/$name/"
           cp -r assets README.md LICENSE "dist/$name/"
           [[ -d openxr ]] && cp openxr/* "dist/$name/"
+          [[ -d crt ]] && cp crt/* "dist/$name/"
           cd dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             7z a -tzip "$name.zip" "$name" > /dev/null
@@ -130,7 +156,7 @@ jobs:
             [[ "${{ matrix.target }}" == aarch64-* ]] && arch=arm64
             dotnet tool install --global wix --version 5.0.2
             wix build packaging/windows/main.wxs -arch $arch \
-              -d Version="$version" -d BinDir="target/${{ matrix.target }}/release" -d SrcDir="$GITHUB_WORKSPACE" \
+              -d Version="$version" -d BinDir="target/${{ matrix.target }}/release" -d SrcDir="$GITHUB_WORKSPACE" -d CrtDir="$GITHUB_WORKSPACE\\crt" \
               -o "dist/$name.msi"
           else
             tar -czf "$name.tar.gz" "$name"
@@ -162,6 +188,12 @@ jobs:
           fi
           cp -r assets $APPDIR/usr/share/stealth-mission-89/
           cp README.md LICENSE $APPDIR/usr/share/doc/stealth-mission-89/
+          # winit loads libxkbcommon-x11 for X11 windows and panics without it; minimal systems
+          # (AppImageHub's test runner) lack it. AppRun uses these copies only then. They need
+          # glibc 2.14 and libxkbcommon 0.5 (libxkbcommon itself needs glibc 2.38, so not that).
+          mkdir -p $APPDIR/usr/lib/fallback
+          MULTIARCH=$(gcc -print-multiarch)
+          cp -L /usr/lib/$MULTIARCH/libxkbcommon-x11.so.0 /usr/lib/$MULTIARCH/libxcb-xkb.so.1 $APPDIR/usr/lib/fallback/
           cp packaging/linux/AppRun $APPDIR/
           cp packaging/linux/stealth-mission-89.desktop $APPDIR/
           cp packaging/linux/stealth-mission-89.desktop $APPDIR/usr/share/applications/
@@ -297,3 +329,13 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+  # The release is made with GITHUB_TOKEN, which does not trigger other workflows (so no
+  # `on: release`): winget.yml is called from here instead.
+  winget:
+    name: winget
+    needs: release
+    uses: ./.github/workflows/winget.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

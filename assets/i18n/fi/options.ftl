@@ -33,6 +33,10 @@ options-auto-trim = Autotrimmi
         Kun sauva on vapaana, trimmi pitää asennon siinä, mihin sen jätit
         Helikopterit: nokka ei enää nouse nopeuden mukana; suihkukoneet: vaurioituneet ohjauspinnat trimmataan pois
         Manuaalinen trimmi: Alt + nuolinäppäimet, Alt + Home keskittää sen
+options-keep-time-accel = Pidä ajan kiihdytys päällä
+    .facts =
+        Kiihdytys ei enää katkea, kun sinut havaitaan, laukaiset aseen tai sinut ammutaan alas
+        Sitä muuttavat vain TIME-painike ja Shift + Z / Shift + X
 options-tooltips = Ohjaamon työkaluvihjeet
     .facts = Mikä ohjaamon säädin tai näyttö on, hiiren tai VR-sormenpään alla
 options-player-labels = Pelaajien nimet

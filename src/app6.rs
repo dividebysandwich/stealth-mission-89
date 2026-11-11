@@ -3,7 +3,23 @@
 //! below in the air), filled with the affiliation's colour, the black icon inside, and the
 //! modifiers the maps use (installation, echelon, tracked mobility, direction of movement).
 
+use std::cell::Cell;
+
 use bevy_egui::egui;
+
+thread_local! {
+    /// The ink the symbols are drawn in instead of their usual colours (see `with_ink`).
+    static INK: Cell<Option<egui::Color32>> = const { Cell::new(None) };
+}
+
+/// Runs `draw` with the symbols' outline, icon, modifiers and direction staff in `ink` rather
+/// than black (the staff, than its affiliation's colour): how the maps mark the selected one,
+/// whichever function draws it.
+pub fn with_ink(ink: egui::Color32, draw: impl FnOnce()) {
+    let before = INK.replace(Some(ink));
+    draw();
+    INK.set(before);
+}
 
 /// APP-6's light fill colours: friend cyan, hostile red, neutral green.
 pub const FRIEND: egui::Color32 = egui::Color32::from_rgb(128, 224, 255);
@@ -91,7 +107,7 @@ impl Symbol {
     /// Draws the symbol centred on `c`; `k` scales it (1: a friendly ground frame 15 by 10
     /// points).
     pub fn draw(&self, painter: &egui::Painter, c: egui::Pos2, k: f32, alpha: f32) {
-        let ink = egui::Color32::BLACK.gamma_multiply(alpha);
+        let ink = INK.get().unwrap_or(egui::Color32::BLACK).gamma_multiply(alpha);
         let line = egui::Stroke::new((1.2 * k).max(0.8), ink);
         let at = |x: f32, y: f32| c + egui::vec2(x, y) * k;
         let frame = self.frame();
@@ -101,10 +117,9 @@ impl Symbol {
             let fwd = egui::vec2(h.sin(), -h.cos());
             let side = egui::vec2(-fwd.y, fwd.x);
             let tip = c + fwd * 14.0 * k;
-            let staff = egui::Stroke::new(
-                (1.5 * k).max(1.0),
-                self.affiliation.colour().gamma_multiply(alpha),
-            );
+            // Blinks with the rest when the symbol is the selected one.
+            let staff_ink = INK.get().unwrap_or(self.affiliation.colour());
+            let staff = egui::Stroke::new((1.5 * k).max(1.0), staff_ink.gamma_multiply(alpha));
             painter.line_segment([c, tip], staff);
             painter.line_segment([tip, tip - fwd * 3.0 * k + side * 2.0 * k], staff);
             painter.line_segment([tip, tip - fwd * 3.0 * k - side * 2.0 * k], staff);

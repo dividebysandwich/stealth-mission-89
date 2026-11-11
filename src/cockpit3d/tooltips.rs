@@ -308,6 +308,7 @@ fn cmd_text(c: MfdCmd) -> String {
             Format::Fcr => "tip-cmd-fcr",
             Format::Eng => "tip-cmd-eng",
             Format::Rcs => "tip-cmd-rcs",
+            Format::Cgo => "tip-cmd-cgo",
         },
         MfdCmd::Soi(_) => "tip-cmd-soi",
         MfdCmd::SwapSoi => "tip-cmd-swap-soi",
@@ -373,6 +374,8 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ConsoleKey::Track => ("TRACK", "tip-console-track"),
         ConsoleKey::Slave => ("SLAVE", "tip-console-slave"),
         ConsoleKey::View => ("FWD", "tip-console-view"),
+        ConsoleKey::Gun(1) => ("40MM", "tip-console-gun"),
+        ConsoleKey::Gun(_) => ("105MM", "tip-console-gun"),
     };
     (title, t!(id))
 }
@@ -1024,6 +1027,11 @@ mod tests {
             PanelStyle::Oh58,
             PanelStyle::Ch47,
             PanelStyle::F22,
+            PanelStyle::C5,
+            PanelStyle::C130,
+            PanelStyle::Ah64,
+            PanelStyle::Ah64Cpg,
+            PanelStyle::Oh58Cpg,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));

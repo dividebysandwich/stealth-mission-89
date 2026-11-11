@@ -132,6 +132,7 @@ tip-cmd-harm = Țintire HARM
 tip-cmd-gm = Radar de cartografiere a solului (GM)
 tip-cmd-eng = Motoare și combustibil (ENG)
 tip-cmd-rcs = Amprentă radar (RCS)
+tip-cmd-cgo = Marfă, rampă și parașutare (CGO)
 tip-cmd-format-row = Format; din nou: meniul de formate
 tip-cmd-tgp = Nacelă de desemnare (TGP)
 tip-cmd-map = Hartă
@@ -205,6 +206,7 @@ tip-console-manual = Pilotează manual drona selectată: manșa și maneta de ga
 tip-console-track = Ține camera dronei pe sol, sub reticul
 tip-console-slave = Camera dronei înapoi pe waypoint-ul ei (înainte și în jos)
 tip-console-view = Camera dronei: TGP-ul ei sau FLIR-ul înainte pentru a o pilota
+tip-console-gun = Ochește în continuare cu acest tun lateral (trăgaciul trage cu el)
 
 ## Comenzi
 

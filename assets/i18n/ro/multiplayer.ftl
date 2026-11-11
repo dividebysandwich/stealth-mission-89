@@ -64,6 +64,7 @@ pic-site = Poziția { $place }
 uv-live = { $unit } - LIVE
 uv-contact-lost = CONTACT PIERDUT
 uv-hint = Tragere: orbitare  Rotiță: zoom
+uv-infrared = Vedere în infraroșu (termică)
 
 ## Multiplayer
 
@@ -77,6 +78,8 @@ mp-your-name = Numele dumneavoastră
 mp-join-address = Alăturare prin adresă
     .hint = adresă sau nume[:port]
 mp-connect = CONECTARE
+mp-join-vr = ALĂTURARE ÎN VR
+    .facts = Repornește jocul în casca VR și se alătură acestui server
 mp-server-name = Numele serverului
 mp-udp-port = Port UDP
 mp-address-note = Ceilalți jucători se alătură cu adresa acestui calculator; deschideți portul UDP în router pentru a juca prin internet
@@ -88,6 +91,8 @@ mp-friendly-fire = Foc prietenesc
 mp-airframe-losses = Pierderile costă resurse
 mp-ai-missions = Misiuni IA aliate
 mp-host-new = GĂZDUIEȘTE NOU
+mp-host-vr = GĂZDUIEȘTE ÎN VR
+    .facts = Repornește jocul în casca VR și găzduiește campania
 mp-host-saved = Găzduiește o campanie salvată
 mp-host = GĂZDUIEȘTE
 mp-host-game = GĂZDUIEȘTE UN JOC
@@ -98,9 +103,7 @@ mp-refresh = ACTUALIZARE
 mp-server-count = { $servers } servere, { $pilots } piloți
 mp-list-error = Lista de servere nu este accesibilă: { $error }
 mp-no-servers = Niciun server public în acest moment
-mp-col-server = SERVER
 mp-col-pilots = PILOȚI
-mp-col-war = RĂZBOI
 mp-dedicated = DEDICAT
 mp-other-version = altă versiune
 mp-join = ALĂTURARE

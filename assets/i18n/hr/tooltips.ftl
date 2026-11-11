@@ -132,6 +132,7 @@ tip-cmd-harm = HARM ciljanje
 tip-cmd-gm = Radar za kartiranje tla (GM)
 tip-cmd-eng = Motori i gorivo (ENG)
 tip-cmd-rcs = Radarski potpis (RCS)
+tip-cmd-cgo = Teret, rampa i izbacivanje (CGO)
 tip-cmd-format-row = Format; ponovno: izbornik formata
 tip-cmd-tgp = Ciljnički pod (TGP)
 tip-cmd-map = Karta
@@ -205,6 +206,7 @@ tip-console-manual = Upravljaj odabranim dronom ručno: palica i ručica snage
 tip-console-track = Drži kameru drona na tlu ispod njezina križa
 tip-console-slave = Kamera drona natrag na njegov waypoint (naprijed i dolje)
 tip-console-view = Kamera drona: njegov TGP ili FLIR prema naprijed za upravljanje
+tip-console-gun = Sljedeći usmjeri ovaj bočni top (okidač puca iz njega)
 
 ## Komande
 

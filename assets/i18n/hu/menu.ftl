@@ -221,6 +221,11 @@ aircraft-ah1z =
         Támadóhelikopter
         Forgótornyos gépágyú, Hellfire-ok, AIM-9
         Az ágyú és a Hellfire-ok a pod-ot követik
+aircraft-ah64 =
+    .facts =
+        Kétüléses támadóhelikopter
+        Forgótornyos gépágyú, Hellfire-ok, Stingerek
+        Egy második játékos fegyverkezelőként repülhet
 
 ## Szakaszok és csoportok
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Tandemrotoros teherszállító helikopter
         Utánpótlási és logisztikai terheket függeszt
         Nincs ellennyomaték: a rotorok kioltják egymást
+aircraft-c5 =
+    .facts =
+        Négyhajtóműves stratégiai szállító repülőgép
+        Lőszert szállít a légibázisok között
+        Nehéz: lassan dől és emeli az orrát
+aircraft-ac130 =
+    .facts =
+        Oldalra tüzelő tűztámogató repülőgép
+        40 mm-es és 105 mm-es ágyúk a konténerrel célozva
+        Körözzön balra, hogy az ágyúk célba érjenek

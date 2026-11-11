@@ -133,8 +133,8 @@ fn aircraft_model(model: i32) -> i32 {
 fn aircraft_size(model: i32) -> crate::explosions::AircraftSize {
     use crate::explosions::AircraftSize as S;
     match model {
-        // An-72, A-50, E-767 / Tu-95, C-5.
-        6 | 9 | 14 | 30 => S::Large,
+        // An-72, A-50, E-767 / Tu-95, C-5, AC-130.
+        6 | 9 | 14 | 30 | 76 => S::Large,
         HELICOPTER_MODEL | HIND_MODEL => S::Helicopter,
         m if (REMAKE_MODELS..AAA_MODELS).contains(&m) => S::Drone,
         _ => S::Fighter,
@@ -1403,7 +1403,8 @@ fn projectile_model(combat: &Combat, m: &stealth_sim::Projectile) -> i32 {
 
 /// Lights (slots 10/11) for the world and the own aircraft, the antenna angles (15/16) and the
 /// own aircraft's (model 24) gear (5/6), brakes (7), bay doors (8), navigation (12) and
-/// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22).
+/// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22), the C-5's
+/// flaps (29).
 #[allow(clippy::type_complexity)]
 fn world_model_state(
     time: Res<Time>,
@@ -1423,6 +1424,8 @@ fn world_model_state(
     >,
     player: Query<&Aircraft, With<Player>>,
     flight: Option<Res<crate::flight::FlightConstants>>,
+    settings: Res<crate::settings::Settings>,
+    cues: Option<Res<crate::hud::HudCues>>,
 ) {
     // Slot 15 += 1152 and slot 16 += 1024 per sim frame time unit, ~15 per second.
     let dt = time.delta_secs() * crate::combat::FS as f32;
@@ -1466,9 +1469,40 @@ fn world_model_state(
         })
     };
     let (left_stores, right_stores) = (door_stores(0), door_stores(1));
-    // The OH-58D's pylons and what is left on them (slots 26 left, 27 right).
-    let pylons = combat.as_ref().map_or([0; 2], |c| c.sim.pylon_looks(c.sim.bays().0));
+    // The OH-58D's pylons and what is left on them (slots 26 left, 27 right); in another's, his
+    // as his gunner is told.
+    let pylons = combat.as_ref().map_or([0; 2], |c| {
+        let me = c.sim.active_pilot();
+        match c.sim.crew_view(me).filter(|v| v.owner != me) {
+            Some(v) => {
+                let bays: Vec<(i32, i32)> =
+                    v.stores.iter().map(|&(w, n)| (w as i32, n as i32)).collect();
+                c.sim.pylon_looks(&bays)
+            }
+            None => c.sim.pylon_looks(c.sim.bays().0),
+        }
+    });
     let (left_pylon, right_pylon) = crate::aircraft::PYLON_SLOTS;
+    // The AH-64's stores on its stations, its chin gun and TADS as they point.
+    let apache = settings.aircraft.apache().then(|| {
+        // In another's: his, as his gunner is told.
+        let crew = combat.as_ref().and_then(|c| {
+            let me = c.sim.active_pilot();
+            c.sim.crew_view(me).filter(|v| v.owner != me)
+        });
+        let stores = match crew {
+            Some(v) => crate::aircraft::apache_store_values(
+                v.stores.iter().map(|&(w, n)| (w as i32, n as i32)),
+            ),
+            None => crate::aircraft::apache_store_values(
+                combat.as_ref().map_or(&[][..], |c| c.sim.bays().0).iter().copied(),
+            ),
+        };
+        let (az, el) = cues.as_ref().and_then(|c| c.chin_gun).unwrap_or((0.0, 0.0));
+        let gun = crate::aircraft::apache_gun_values(az, el);
+        let tads = cues.as_ref().and_then(|c| c.tads_azimuth).unwrap_or(0.0);
+        (stores, gun, crate::aircraft::apache_gun_values(tads, 0.0).0)
+    });
     let Ok(a) = player.single() else { return };
     // Gear position counts 0 (up) .. 3 (down), one step per ~0.2 s (key 6).
     let target = if a.gear_down { 3.0 } else { 0.0 };
@@ -1494,7 +1528,16 @@ fn world_model_state(
         .as_ref()
         .and_then(|k| k.aero.vtol)
         .map(|_| crate::aircraft::nozzle_slot_value(a.nozzle));
+    // The C-5's flaps, as far down as the flight model has them.
+    let flaps = (settings.aircraft == crate::aircraft::AircraftKind::C5).then(|| {
+        crate::aircraft::flap_slot_value(a.flap_extension() * crate::aircraft::C5_FLAP_ANGLE)
+    });
     for mut s in &mut own {
+        if let Some(f) = flaps
+            && s.0[crate::aircraft::FLAP_SLOT] != f
+        {
+            s.0[crate::aircraft::FLAP_SLOT] = f;
+        }
         if let Some(r) = rotor {
             s.0[17] = r;
         }
@@ -1509,7 +1552,7 @@ fn world_model_state(
                 (s.0[sr], s.0[sl]) = (r, l);
             }
         }
-        let v = [
+        let mut v = vec![
             (5, (c072 != 0) as i16),
             (6, c072 - 1),
             (7, brakes),
@@ -1526,6 +1569,12 @@ fn world_model_state(
             (left_pylon, pylons[0] as i16),
             (right_pylon, pylons[1] as i16),
         ];
+        if let Some((stores, (gun_az, gun_el), tads)) = apache {
+            v.retain(|&(k, _)| !crate::aircraft::APACHE_STORE_SLOTS.contains(&k));
+            v.extend(crate::aircraft::APACHE_STORE_SLOTS.into_iter().zip(stores));
+            let (az, el) = crate::aircraft::APACHE_GUN_SLOTS;
+            v.extend([(az, gun_az), (el, gun_el), (crate::aircraft::APACHE_TADS_SLOT, tads)]);
+        }
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
                 s.0[k] = x;
@@ -1596,7 +1645,7 @@ fn own_shadow(
     let show = a.altitude < 1000.0
         && !assets.palette.lights_on()
         && !(settings.shadows && external)
-        && manning.is_none();
+        && !manning.as_deref().is_some_and(|m| m.console());
     vis.set_if_neq(if show { Visibility::Inherited } else { Visibility::Hidden });
     if show {
         let (e, n, _) = crate::world::bevy_to_wu(pos.0);
@@ -1740,13 +1789,19 @@ pub(crate) fn sync_remote_pilots(
     mut landing_lights: crate::landing_lights::Lights,
     landing: Res<crate::landing_lights::LandingAssets>,
     stores: Query<Option<&crate::stores::StoreLoads>>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let vis = &mut *vis;
     let sim = &combat.sim;
     let lights = assets.palette.lights_on();
     let globals = assets.palette.globals.clone();
     let me = sim.active_pilot();
-    let others: Vec<_> = sim.remote_pilots().into_iter().filter(|p| p.id != me).collect();
+    // In another's AH-64's front cockpit his aircraft is the player's own model (`station`); at
+    // another's AC-130's console, in its closed hold, it isn't drawn at all (its skin, guns and
+    // wings round the eye cut into the booth).
+    let ridden = manning.filter(|m| m.remote_gunner()).map(|m| m.unit as u8);
+    let others: Vec<_> =
+        sim.remote_pilots().into_iter().filter(|p| p.id != me && Some(p.id) != ridden).collect();
     let file = library.load(&server, "aircraft");
     vis.planes.retain(|id, (e, ..)| {
         let keep = others.iter().any(|p| p.id == *id && p.chute.is_none());
@@ -1863,12 +1918,47 @@ pub(crate) fn sync_remote_pilots(
                         (s.0[sr], s.0[sl]) = (r, l);
                     }
                 }
+                // A C-5's flaps: down with his gear (the flaps aren't sent).
+                if p.galaxy {
+                    let down = !p.gear_up || p.on_ground && p.view.knots > 40;
+                    let f = crate::aircraft::flap_slot_value(if down {
+                        crate::aircraft::C5_FLAP_ANGLE
+                    } else {
+                        0.0
+                    });
+                    if s.0[crate::aircraft::FLAP_SLOT] != f {
+                        s.0[crate::aircraft::FLAP_SLOT] = f;
+                    }
+                }
                 // His pylons and what is left on them.
                 if p.kiowa {
                     let (l, r) = crate::aircraft::PYLON_SLOTS;
                     let v = (p.pylons[0] as i16, p.pylons[1] as i16);
                     if (s.0[l], s.0[r]) != v {
                         (s.0[l], s.0[r]) = v;
+                    }
+                }
+                // An AH-64's stores, and its chin gun where it fires (else straight ahead).
+                if p.apache {
+                    let stations = p
+                        .stores
+                        .iter()
+                        .map(|&(w, n)| (if w == 255 { -1 } else { w as i32 }, n as i32));
+                    let stores = crate::aircraft::apache_store_values(stations);
+                    let bam = |b: i32| (b as i16) as f32 / 65536.0 * std::f32::consts::TAU;
+                    let (az, el) = p.gun_aim.map_or((0.0, 0.0), |(h, e)| {
+                        (bam(h - p.view.heading), bam(e - p.view.pitch))
+                    });
+                    let (gun_az, gun_el) = crate::aircraft::apache_gun_values(az, el);
+                    let (sa, se) = crate::aircraft::APACHE_GUN_SLOTS;
+                    for (k, x) in crate::aircraft::APACHE_STORE_SLOTS
+                        .into_iter()
+                        .zip(stores)
+                        .chain([(sa, gun_az), (se, gun_el)])
+                    {
+                        if s.0[k] != x {
+                            s.0[k] = x;
+                        }
                     }
                 }
                 // His nozzles, as his flight model has them.
@@ -1881,10 +1971,14 @@ pub(crate) fn sync_remote_pilots(
             }
         }
     }
-    // Their weapons in flight, with a dot on the missiles like the own: the motor's glow, then
-    // black by day, white at night.
-    let missiles: Vec<((u8, u8), stealth_sim::Projectile)> =
-        others.iter().flat_map(|p| p.missiles.iter().map(move |&(s, m)| ((p.id, s), m))).collect();
+    // Their weapons in flight (the ridden aircraft's too: a gunner's missiles fly as its), with
+    // a dot on the missiles like the own: the motor's glow, then black by day, white at night.
+    let missiles: Vec<((u8, u8), stealth_sim::Projectile)> = sim
+        .remote_pilots()
+        .into_iter()
+        .filter(|p| p.id != me)
+        .flat_map(|p| p.missiles.iter().map(|&(s, m)| ((p.id, s), m)).collect::<Vec<_>>())
+        .collect();
     vis.missiles.retain(|key, (e, spec, _)| {
         let keep = missiles.iter().any(|(k, m)| k == key && m.spec == *spec);
         if !keep {

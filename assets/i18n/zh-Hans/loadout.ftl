@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = 左侧弹舱（Sidewinder）
 hardpoint-f22-left-main-bay = 主弹舱左半部
 hardpoint-f22-right-main-bay = 主弹舱右半部
 hardpoint-f22-right-side-bay = 右侧弹舱（Sidewinder）
+hardpoint-c5-hold = 货舱 (空投货盘)
 weapon-role-21 = 空对空，红外制导，射程很短
 employment-21 = 射程：1-6 km，正面更远
 loadout-none-in-stock = （无库存）

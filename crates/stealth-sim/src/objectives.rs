@@ -73,7 +73,7 @@ impl Sim {
         if outcome == 0 && self.pl.eject == 0 {
             self.pl.landing_type = 3;
         }
-        if self.campaign.is_some() {
+        if self.opts.campaign {
             if !self.player_absent() {
                 let e = MissionEnd {
                     outcome,
@@ -278,7 +278,7 @@ impl Sim {
                     }
                     if cdiv(16, fs) < self.pl.armed_landing {
                         // Campaign: on a friendly base the sortie goes on (rearm, or end it).
-                        if self.campaign.is_some() {
+                        if self.opts.campaign {
                             self.pl.armed_landing = 0;
                             let object = self.pl.nearest_base.max(0) as usize;
                             self.emit(SimEvent::LandedAtBase { object });

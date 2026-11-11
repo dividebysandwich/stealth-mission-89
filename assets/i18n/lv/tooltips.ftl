@@ -132,6 +132,7 @@ tip-cmd-harm = HARM mērķēšana
 tip-cmd-gm = Zemes kartēšanas radars (GM)
 tip-cmd-eng = Dzinēji un degviela (ENG)
 tip-cmd-rcs = Radara paraksts (RCS)
+tip-cmd-cgo = Krava, rampa un nomešana (CGO)
 tip-cmd-format-row = Formāts; vēlreiz: formātu izvēlne
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Karte
@@ -205,6 +206,7 @@ tip-console-manual = Vadīt izvēlēto dronu ar roku: vadības svira un droselis
 tip-console-track = Turēt drona kameru uz zemes zem tās tēmekļa
 tip-console-slave = Drona kamera atpakaļ uz tā waypoint (uz priekšu un uz leju)
 tip-console-view = Drona kamera: tā TGP vai FLIR uz priekšu, lai to vadītu
+tip-console-gun = Tālāk tēmēt ar šo sānu lielgabalu (mēlīte ar to šauj)
 
 ## Vadības elementi
 

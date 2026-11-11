@@ -221,6 +221,11 @@ aircraft-ah1z =
         Atakos sraigtasparnis
         Bokšteliu valdoma patranka, Hellfire, AIM-9
         Patranka ir Hellfire seka nacelę
+aircraft-ah64 =
+    .facts =
+        Dvivietis atakos sraigtasparnis
+        Bokšteliu valdoma patranka, Hellfire, Stinger
+        Antras žaidėjas gali skristi kaip šaulys
 
 ## Skyriai ir grupės
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Krovininis sraigtasparnis su tandeminiais rotoriais
         Kabina aprūpinimo ir logistikos krovinius
         Nėra sukimo momento, kurį reikėtų kompensuoti: rotoriai vienas kitą panaikina
+aircraft-c5 =
+    .facts =
+        Keturių variklių strateginis transporto lėktuvas
+        Skraidina šaudmenis tarp aviacijos bazių
+        Sunkus: lėtai krypsta ir kelia nosį
+aircraft-ac130 =
+    .facts =
+        Į šoną šaudantis ugnies paramos lėktuvas
+        40 mm ir 105 mm pabūklai, taikomi konteineriu
+        Skriskite ratu į kairę, kad pabūklai pasiektų

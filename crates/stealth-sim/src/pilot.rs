@@ -53,6 +53,22 @@ pub struct Pilot {
     /// The aircraft is the F-22A (`SimOptions::raptor` for pilot 0).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) raptor: bool,
+    /// The aircraft is the C-5 (`SimOptions::galaxy` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) galaxy: bool,
+    /// The aircraft is the AC-130 (`SimOptions::spectre` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) spectre: bool,
+    /// The aircraft is the AH-64 (`SimOptions::apache` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) apache: bool,
+    /// The AC-130's side guns.
+    #[serde(default, skip_serializing_if = "crate::gunship::SideGuns::is_default")]
+    pub(crate) side_guns: crate::gunship::SideGuns,
+    /// Campaign: the cargo run he flies (its campaign tag): the other side's interceptors hunt
+    /// him, his escort flies with him (`Sim::set_cargo_tag`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) cargo_tag: Option<u32>,
     /// Frames landed near each insertion target (mission type 9).
     #[serde(default, skip_serializing_if = "none_unloading")]
     pub(crate) unload: [i32; 2],
@@ -97,6 +113,10 @@ pub struct Pilot {
     pub(crate) irj_heat: i32,
     pub(crate) door_anim: i32,
     pub(crate) bay_req: bool,
+    /// The C-5's cargo ramp: frames lowered (0 shut .. `RAMP_SECS` seconds' worth, down for
+    /// an airdrop); it sets `door_anim` (shut, moving, down).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub(crate) ramp: i32,
     /// The RAH-66's doors: a missile fired with them shut waits for them to open.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) bay_pending: bool,
@@ -225,6 +245,24 @@ pub struct Pilot {
     pub(crate) fired_step: u32,
     #[serde(skip)]
     pub(crate) claims: (u32, u8),
+    /// At another's gunner's console: his console now and his designation still to be done
+    /// (the host's, `crew`).
+    #[serde(skip)]
+    pub(crate) crew_aim: crate::crew::GunnerAim,
+    #[serde(skip)]
+    pub(crate) crew_cmd: Commands,
+    /// At another's gunner's seat: a missile to fire from this station (the host's, `crew`).
+    #[serde(skip)]
+    pub(crate) crew_fire: Option<u8>,
+    /// The owner of an AH-64: his gunner fires the chin gun along the gunner's sight this
+    /// frame, and from this station a missile still to go; which gun round slots are the
+    /// gunner's (the host tests their hits even when the owner's client reports his own).
+    #[serde(skip)]
+    pub(crate) crew_gun: bool,
+    #[serde(skip)]
+    pub(crate) crew_launch: Option<u8>,
+    #[serde(skip)]
+    pub(crate) crew_rounds: Vec<bool>,
 }
 
 /// An event of a step and the pilot it happened to (whose turn it was): private events
@@ -343,6 +381,9 @@ impl Sim {
             kiowa: p0.kiowa,
             chinook: p0.chinook,
             raptor: p0.raptor,
+            galaxy: p0.galaxy,
+            spectre: p0.spectre,
+            apache: p0.apache,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,
@@ -363,6 +404,7 @@ impl Sim {
             p.stores = c.stores_init;
             p.gun_ammo = c.gun_init;
         }
+        p.load_side_guns();
         p
     }
 

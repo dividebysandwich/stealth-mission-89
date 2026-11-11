@@ -142,7 +142,7 @@ impl CampaignState {
         }
         self.board
             .iter()
-            .filter(|o| divertible(&o.objective) && o.kind.flyable_by(s.aircraft))
+            .filter(|o| divertible(&o.objective) && self.offer_flyable(o, s.aircraft).is_ok())
             .map(|o| (dist(o.x - x, o.y - y), o))
             .filter(|&(d, _)| d <= DIVERT_RANGE)
             .min_by_key(|&(d, o)| (d, o.id))

@@ -205,6 +205,11 @@ pub struct Waypoints {
 }
 
 impl Waypoints {
+    /// The landing base's index among the waypoints.
+    pub fn land_index(&self) -> usize {
+        self.anchors.get(3).copied().unwrap_or(3)
+    }
+
     /// The waypoints of a route about to be flown: none passed, the first selected.
     pub fn planned(points: Vec<Waypoint>, anchors: Vec<usize>) -> Self {
         Self {
@@ -264,6 +269,10 @@ pub struct HudCues {
     /// gun's pipper (selected or not), or a fixed gun's while selected.
     pub helmet_lock: Option<(Vec3, bool)>,
     pub turret_gun: Option<GunCue>,
+    /// The AH-64's chin gun and TADS as they point (azimuth right and elevation up in the
+    /// aircraft frame, rad), for its model.
+    pub chin_gun: Option<(f32, f32)>,
+    pub tads_azimuth: Option<f32>,
     /// Unguided bomb selected in AG: the CCIP or CCRP solution.
     pub bomb: Option<BombCue>,
     /// CBU-105 selected in AG: its burst altitude and release cues.
@@ -273,6 +282,63 @@ pub struct HudCues {
     /// Missile selected with a target locked (AG: air-to-ground, AA: air-to-air): its launch
     /// zone.
     pub launch_zone: Option<LaunchZoneCue>,
+    /// The cargo jet's hold, ramp and airdrop (the C-5's: its HUD's drop cues, the cargo page).
+    pub drop: Option<DropCue>,
+    /// The AC-130's side guns: the selected gun, its rounds, whether it bears (its TGP page's
+    /// gimbal scope and the HUD's gun box).
+    pub side_guns: Option<SideGunCue>,
+}
+
+/// The AC-130's side guns (`stealth_sim::gunship`).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SideGunCue {
+    /// The selected gun: 0 the 40 mm, 1 the 105 mm.
+    pub gun: u8,
+    pub rounds: [i32; 2],
+    /// The fire control has a solution inside the gimbal.
+    pub in_gimbal: bool,
+    /// The solution's time of flight (s) and slant range (m), when the pod looks at the ground.
+    pub tof: Option<f32>,
+    pub range: f32,
+    /// The selected gun has its next round loaded.
+    pub ready: bool,
+}
+
+/// The C-5's cargo and airdrop: the ramp, what is in the hold, and while a drop zone is still to
+/// supply, where a pallet released now comes down and when to release.
+#[derive(Debug, Clone, Default)]
+pub struct DropCue {
+    /// The ramp: 0 up .. 1 down (the pallets go only with it down), and whether it is going
+    /// down.
+    pub ramp: f32,
+    pub lowering: bool,
+    /// Airdrop pallets in the hold, of the hold's `capacity`.
+    pub pallets: u32,
+    pub capacity: u32,
+    /// Seconds since the last pallet went out over the ramp (its animation on the cargo page).
+    pub since_release: Option<f32>,
+    /// A campaign cargo run's load (one pallet a line) and the base it is for.
+    pub manifest: Vec<String>,
+    pub destination: Option<String>,
+    /// The drop zone (direction from the eye, aircraft frame) and its ground range (km).
+    pub zone_dir: Option<Vec3>,
+    pub zone_km: Option<f32>,
+    /// Where a pallet released now lands (direction from the eye), its time of fall (s).
+    pub impact_dir: Option<Vec3>,
+    pub fall_secs: f32,
+    /// Seconds to the computed air release point (negative past it); None without a zone.
+    pub release_secs: Option<f32>,
+    /// Metres the pallet released now lands off the drop zone's track (positive: right).
+    pub cross_m: Option<f32>,
+    /// A pallet released now lands within the drop zone.
+    pub in_zone: bool,
+}
+
+impl DropCue {
+    /// The jump light: green with the ramp down and a pallet released now landing in the zone.
+    pub fn green(&self) -> bool {
+        self.ramp >= 1.0 && self.in_zone && self.pallets > 0
+    }
 }
 
 /// Dynamic launch zone of the selected missile against the locked target
@@ -393,6 +459,7 @@ fn hud_keys(
     mut hud: ResMut<HudState>,
     mut wps: ResMut<Waypoints>,
     stores: Res<Stores>,
+    mfd: Res<crate::mfd::MfdState>,
     mut msg: ResMut<HudMessages>,
 ) {
     let n = wps.points.len();
@@ -408,7 +475,9 @@ fn hud_keys(
             Action::HudNav => hud.mode = HudMode::Nav,
             Action::HudAir => hud.mode = HudMode::Air,
             Action::HudGnd => hud.mode = HudMode::Gnd,
-            Action::NearestTarget => {
+            // With the modern avionics the key puts the HUD in the selected weapon's mode; with the
+            // classic ones it looks for its target in the mode as it is (the simulation).
+            Action::NearestTarget if mfd.modern => {
                 // A turret gun is aimed at the ground as much as at aircraft.
                 let air = (stores.gun_selected && stores.gun_slave.is_none())
                     || stores.bays.get(stores.selected).is_some_and(|b| b.air_to_air);
@@ -533,7 +602,10 @@ fn advance_waypoints(
             }
         }
     }
-    if let Some(wp) = wps.target() {
+    // Orbiting for the gunner (`gunner`): the orbit's tangent, not the waypoint.
+    if let Some(wp) = wps.target()
+        && a.orbit.is_none()
+    {
         a.waypoint_bearing = waypoint_bearing(pos, wp) as f32;
     }
 }

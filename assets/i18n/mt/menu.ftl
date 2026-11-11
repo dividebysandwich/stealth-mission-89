@@ -221,6 +221,11 @@ aircraft-ah1z =
         Ħelikopter tal-attakk
         Kanun fuq turret, Hellfires, AIM-9
         Il-kanun u l-Hellfires isegwu l-pod
+aircraft-ah64 =
+    .facts =
+        Ħelikopter tal-attakk b'żewġ siġġijiet
+        Kanun fuq turret, Hellfires, Stingers
+        Plejer ieħor jista' jtir bħala gunner
 
 ## Sezzjonijiet u gruppi
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Ħelikopter tal-merkanzija b'rotors tandem
         Jgħalleq tagħbijiet ta' rifornimenti u loġistika
         L-ebda torque x'tikkumpensa: ir-rotors jikkanċellaw lil xulxin
+aircraft-c5 =
+    .facts =
+        Ajruplan strateġiku tat-trasport b'erba' magni
+        Iġorr il-munizzjon bejn il-bażijiet tal-ajru
+        Tqil: bil-mod biex idur u jgħolli l-imnieħer
+aircraft-ac130 =
+    .facts =
+        Ajruplan tal-kanuni li jispara mill-ġenb
+        Kanuni ta' 40 mm u 105 mm immirati bil-pod
+        Dur lejn ix-xellug biex il-kanuni jilħqu

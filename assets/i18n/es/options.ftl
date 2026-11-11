@@ -33,6 +33,10 @@ options-auto-trim = Trim automático
         Con la palanca suelta, el trim mantiene la actitud en la que se dejó
         Helicópteros: el morro ya no sube con la velocidad; reactores: compensa las superficies de mando dañadas
         Trim manual: Alt + flechas, Alt + Inicio lo centra
+options-keep-time-accel = Mantener la aceleración del tiempo
+    .facts =
+        La aceleración ya no se corta al ser detectado, lanzar un arma o ser derribado
+        Solo el botón TIME y Shift + Z / Shift + X la cambian
 options-tooltips = Tooltips de la cabina
     .facts = Qué es un mando o una pantalla de la cabina, bajo el ratón o un dedo en VR
 options-player-labels = Nombres de los jugadores

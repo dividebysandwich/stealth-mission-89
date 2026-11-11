@@ -132,6 +132,7 @@ tip-cmd-harm = Στόχευση HARM
 tip-cmd-gm = Ραντάρ χαρτογράφησης εδάφους (GM)
 tip-cmd-eng = Κινητήρες και καύσιμο (ENG)
 tip-cmd-rcs = Ίχνος ραντάρ (RCS)
+tip-cmd-cgo = Φορτίο, ράμπα και ρίψη (CGO)
 tip-cmd-format-row = Μορφή· ξανά: μενού μορφών
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Χάρτης
@@ -205,6 +206,7 @@ tip-console-manual = Χειροκίνητη πτήση του επιλεγμέν
 tip-console-track = Κράτημα της κάμερας του drone στο έδαφος, στο σταυρόνημά της
 tip-console-slave = Η κάμερα του drone πίσω στο waypoint του (μπροστά και κάτω)
 tip-console-view = Η κάμερα του drone: το TGP του ή το FLIR μπροστά για την πτήση του
+tip-console-gun = Σκόπευση με αυτό το πλευρικό πυροβόλο στη συνέχεια (η σκανδάλη το πυροδοτεί)
 
 ## Χειριστήρια
 

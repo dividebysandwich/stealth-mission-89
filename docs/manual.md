@@ -4,7 +4,7 @@
 
 ### FLIGHT MANUAL
 
-*Ten aircraft. Ten theaters. One war that never stops.*
+*Many aircraft. Ten theaters. One war that never stops.*
 
 <img src="images/units/fly_f117.png" width="480" alt="F-117A Nighthawk">
 
@@ -22,7 +22,7 @@ flight model, the missiles, even the VGA palette, scanlines and pixelize effects
 
 But while you can visit the past in SM89, you are not stuck there. The *Modern* options give you F-16 style 
 avionics with a targeting pod, an aerodynamic flight model, missiles that use proportial navigation, a sky 
-with the accurate stars and moon of the mission's date. Seven more aircraft stand beside the F-117A, a modern 
+with the accurate stars and moon of the mission's date. Many more aircraft stand beside the F-117A, a modern 
 war in Ukraine joins the old theaters, and the dynamic campaign turns the missions into a war that runs on in 
 real time, with armour, helicopters, drones and multiplayer up to 64 players. On top of it all, you can fly 
 on your Linux, Mac or Windows machine, on an Android phone or tablet, or in a browser, or in VR - both with your PC and also directly on 
@@ -40,9 +40,9 @@ centers and remotely pilot recon, attack and interceptor drones.
 | [Introduction: The Night Belongs to Us](#introduction-the-night-belongs-to-us) | Radar wars, stealth, and the modern sky |
 | [1. Getting Started](#1-getting-started) | The menu, the mission screen, options, controls |
 | [2. Tutorial](#2-tutorial) | Your first and second missions |
-| [3. The Flight Line](#3-the-flight-line) | The ten aircraft: their history, and what they do in the game |
+| [3. The Flight Line](#3-the-flight-line) | The aircraft: their history, and what they do in the game |
 | [4. In the Cockpit](#4-in-the-cockpit) | HUD, panels, warning lights, MFD pages, the in-flight menu, the kneeboard |
-| [5. Sensors and Targeting](#5-sensors-and-targeting) | Locking targets, the targeting pod, the helmet sights |
+| [5. Sensors and Targeting](#5-sensors-and-targeting) | Locking targets, the targeting pod, the helmet sights, the radar |
 | [6. Arms and Equipment](#6-arms-and-equipment) | Every weapon, its range and how to deliver it |
 | [7. Techniques and Tactics](#7-techniques-and-tactics) | Radar and stealth, defeating missiles, flying low, landing, ejecting |
 | [8. Single Missions and the Career](#8-single-missions-and-the-career) | Mission kinds, the planner, the debrief, the career |
@@ -182,20 +182,20 @@ mouse on an option for a short description.
 |---|---|
 | **Mission** | *Theater*: the ten areas of conflict (chapter 12). *Situation*: Cold War (covert operation, few enemy aircraft), Limited War (air defences on alert) or Conventional War (all enemy forces active); the briefing states the rules of engagement. *Opponents*: Green, Regular, Veteran or Elite crews; higher levels bring more ships and patrols and more sensitive radars. *Mission*: Strike, Air to air, Strike training, Air training, or Drone defense (Ukraine only, chapter 10.2). |
 | **Conditions** | *Weather*: Random (from the theater's climate), Clear, Scattered, Broken, Overcast or Storm; with *Random cover* off a slider sets the main cloud layer's cover. Clouds block optical seekers and eyes on both sides; radar sees through them. *Start time*: night is 18:00-06:00; *Random* rolls a morning or evening take-off. *Moon*: the real moon of the mission's date, or a fixed phase from new (enemy pilots see you at 2 km) to full (4 km). |
-| **Vehicle** | The ten aircraft of chapter 3. *Realistic weapons* (F-117A only): two bays, no gun, no AIM-9 or AIM-120, no carrier operations. |
+| **Vehicle** | The aircraft of chapter 3. *Realistic weapons* (F-117A only): two bays, no gun, no AIM-9 or AIM-120, no carrier operations. |
 | **Simulation** | *Damage*: *Game* hits damage systems but never bring you down; *Real* hits can destroy the aircraft, start fires and damage the flight controls. *Guidance*: *Classic* DOS era missiles, or *Real* missiles that fly proportional navigation, glide after burn-out and loft against distant targets. *Air defence*: *Real* adds anti-aircraft guns and MANPADS teams (chapter 13.3). *Crash protection*: an automatic pull-up near the ground; collisions are not fatal. These switches belong to each game, not to OPTIONS. |
 | **Tutorial** | *Interactive tutorial* (chapter 4): single missions only. |
 
 | Button | Function |
 |---|---|
 | NEW MISSION | New objectives with the same options. |
-| LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. DELETE removes one save and DELETE ALL every save, each after a confirmation. |
+| LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. The pencil left of LOAD renames a save (an empty name gives back the mission's title). DELETE removes one save and DELETE ALL every save, each after a confirmation. |
 | PLAN ROUTE | The mission planner (chapter 8.2). |
 | LOADOUT | The stores on each station or bay, seen from above: click one and pick its load (*Same on both sides* mirrors it). Greyed out weapons are out of stock. BRIEFED restores the briefed stores, CLEAR empties everything. |
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |
 | FLY | Take off. |
 
-Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions.
+Helicopter missions are short ones near a friendly base; in the UH-60 and the CH-47, the targets become insertions. The C-5 takes off from a land base and flies an airlift: an airdrop, then a landing with the cargo (chapter 3.12). The AC-130 takes off from a land base against an enemy column (chapter 3.13).
 
 ## 1.3 Options
 
@@ -204,7 +204,7 @@ pages for what can change in flight.
 
 | Tab | Settings |
 |---|---|
-| **Game** | *Cockpit*, *HUD*, *Avionics*, *Flight model*: Classic (DOS era) or Modern. This manual describes the modern ones; the modern flight model is aerodynamic with fly-by-wire (released, the stick holds the attitude), and the helicopters and the AV-8B always fly it. *Auto trim*. *Cockpit tooltips*. *Player labels* and their size (multiplayer). *VR cockpit size*. *Tacview* export and real-time telemetry (chapter 8.3). *GIF recording*: size and frame rate; **F12** starts and stops a recording, saved in your Pictures folder. |
+| **Game** | *Cockpit*, *HUD*, *Avionics*, *Flight model*: Classic (DOS era) or Modern. This manual describes the modern ones; the modern flight model is aerodynamic with fly-by-wire (released, the stick holds the attitude), and the helicopters and the AV-8B always fly it. *Auto trim*. *Keep time acceleration* (the acceleration is no longer cut by a detection, a weapon release or being shot down). *Cockpit tooltips*. *Player labels* and their size (multiplayer). *VR cockpit size*. *Tacview* export and real-time telemetry (chapter 8.3). *GIF recording*: size and frame rate; **F12** starts and stops a recording, saved in your Pictures folder. |
 | **Graphics** | *Shaders*, *Shadows*, *Point lights* (cockpit lamps, flares, explosions and runway lights light the scene), *Time of day* (the sun, moon and the real stars of the mission's date and place move with the clock), *Anti-aliasing*, *Automatic scenery detail* in VR. **Effects**: camera shake, combat flashes, night barrage, cockpit night lighting, night vision goggles, snow, ground mist, cloud shadows, sunbeams, vapour and downwash, night sky. **Retro**: VGA colours, scanlines and *Pixelize* (the whole 3D view in big square pixels like an MS-DOS game; the menus and tooltips stay sharp, the anti-aliasing is off while it is on; a slider sets the size of the blocks, 2 to 5 screen pixels; the switches *Exclude HUD*, *Exclude cockpit* and *Exclude MFDs, gauges, kneeboard* leave those parts of the cockpit view sharp, so the thin HUD symbols, the displays and the kneeboard stay readable), for the full 1991 look. |
 | **Sound** | *Master*, *Engine*, *Effects*, *Warnings* and *RWR* volumes; *Radar warning tones*: all, detections only, launches only, or off. *Engine low-pass* muffles the engines inside the cockpit. |
 | **Controls** | *Keys and joystick* (1.4). *Head/Eye tracking*. |
@@ -239,7 +239,8 @@ change is saved at once.
 ![VR controller mapping](images/controls_vr.png)
 
 **VR controllers.** The last section assigns an action to each controller input. The defaults work like
-a HOTAS: grab the stick with the right hand and the throttle with the left. To find an action in
+a HOTAS: grab the stick with the right hand and the throttle with the left (in the C-5, the yoke
+with the left hand and the throttles with the right, chapter 3.12). To find an action in
 the lists, type its name in the search field: every input stays, and their lists hold only the
 matching actions.
 
@@ -391,7 +392,7 @@ When you've brought a few F-117As home, try the others. The **F-16C** with HARMs
 
 # 3. THE FLIGHT LINE
 
-Ten aircraft stand ready on the flight line. Choose yours in the single mission screen's *Vehicle*
+Many types of aircraft stand ready on the flight line. Choose yours in the single mission screen's *Vehicle*
 section, in the career's options, or on a campaign briefing's LOADOUT page. Each has its own
 cockpit, its own flight model and its own place in the war. This chapter tells where each one came
 from, and what it does in the game.
@@ -406,8 +407,12 @@ from, and what it does in the game.
 | <img src="images/units/fly_uh60.png" width="160"> | [**UH-60 BLACK HAWK**](#36-uh-60-black-hawk) | Unarmed transport helicopter: insertions, rescues, sling loads. The only way to take a place by air. |
 | <img src="images/units/fly_ah1z.png" width="160"> | [**AH-1Z VIPER**](#37-ah-1z-viper) | Attack helicopter: turret gun and Hellfires that follow the pilot's eyes. |
 | <img src="images/units/fly_rah66.png" width="160"> | [**RAH-66 COMANCHE**](#38-rah-66-comanche) | Stealth scout helicopter: barely seen while slow, weapons inside its bay doors. |
-| <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods. |
+| <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods; a second player can sit in its left seat as gunner. |
 | <img src="images/units/fly_ch47.png" width="160"> | [**CH-47F CHINOOK**](#310-ch-47f-chinook) | Unarmed tandem-rotor cargo helicopter: sling loads for logistics and resupply. |
+| <img src="images/units/fly_f22.png" width="160"> | [**F-22A RAPTOR**](#311-f-22a-raptor) | Stealth fighter: supercruise, weapons in its bays, the radars barely see it. |
+| <img src="images/units/fly_c5.png" width="160"> | [**C-5M GALAXY**](#312-c-5m-galaxy) | Four-engined strategic airlifter: airdrops pallets from its ramp, flies munitions between the airbases. |
+| <img src="images/units/fly_ac130.png" width="160"> | [**AC-130 SPECTRE**](#313-ac-130-spectre) | Side-firing gunship: 40 mm and 105 mm guns aimed with the pod from a left-hand orbit. |
+| | [**AH-64D APACHE**](#314-ah-64d-apache) | Two-seat attack helicopter: a second player can fly as its gunner, laying the chin gun and Hellfires with the TADS. |
 
 ## 3.1 F-117A NIGHTHAWK
 
@@ -572,7 +577,8 @@ start off each flight.
 
 **Best for.** SEAD with HARMs, combat air patrol, defending against raids and drone waves, intercepting
 helicopters, and hunting the enemy's AWACS; anything else at a much higher radar signature. In a
-campaign it is the only aircraft offered for CAP, DEFEND and AWACS missions.
+campaign it and the F-22A (chapter 3.11) are the only aircraft offered for CAP, DEFEND and AWACS
+missions.
 
 ## 3.3 A-10C THUNDERBOLT II
 
@@ -997,11 +1003,29 @@ rotor, slaved to the lock or to your eyes like an attack helicopter's (chapter 5
 a hill with only the sight above it, lock, and fire Hellfires over the crest. The full helmet display
 (chapter 5.4) shows where the sight is looking.
 
-**Cockpit.** One wide panel across both seats (the pilot in the right one) under a low glareshield:
-two large MFDs either side of the centre column with the standby instruments and the engine gauges,
-the CDU and the caution and countermeasure panels on the console between the seats.
+**Cockpit.** One wide panel across both seats (the pilot in the right one) under a low glareshield,
+with no HUD (the helmet display shows the symbology): a pair of MFDs in front of each seat either
+side of the centre column with the standby instruments, the engine gauges and the fuel readouts,
+the CDU and the caution and countermeasure panels on the console between the seats. All four MFDs
+work; your own pair are your left and right MFDs, the other seat's pair your third and fourth.
 
 ![The OH-58D's cockpit](images/cockpit_oh58.png)
+
+**Two seats.** The left seat is the **copilot/gunner's**, with its own pair of MFDs.
+
+- **Changing seats.** In flight, the in-flight menu's **GUNNER'S SEAT** entry moves you to the left
+  seat (`--seat gunner[@seconds]` from the command line), the AI flying as in the AH-64 (chapter
+  3.14): it keeps the auto-hover or the autopilot, else hovers below 30 kt or takes up the autopilot.
+  The **PILOT'S SEAT** entry takes you back.
+- **In the gunner's seat** the stick slews the mast-mounted sight (as do the slew keys); its picture
+  is on your right MFD, the sensor of interest.
+
+**A second player as gunner.** In a campaign another player can crew your Kiowa Warrior from the
+**FLIGHTS** tab (*JOIN AS GUNNER*), as in the AH-64. His mast sight replaces yours, so your Hellfires
+go to his laser spot. His weapon key steps through the kinds of missiles left and his release fires
+the one he selected. The gun pods stay yours: they fire along the nose, so his trigger does not fire
+them. If you leave the aircraft or lose your connection, it goes on with him in the left seat and
+the AI flying. The sortie's kills count for the crew.
 
 **Best for.** CAS, ESCORT and INTERCEPT against helicopters close to the front, and finding targets
 from behind cover.
@@ -1066,6 +1090,398 @@ the windshield show the sky in a turn.
 ![The CH-47's cockpit](images/cockpit_ch47.png)
 
 **Best for.** LOGISTICS and RESUPPLY, and nothing else.
+
+## 3.11 F-22A RAPTOR
+
+<img src="images/units/fly_f22.png" width="480" alt="F-22A RAPTOR">
+
+In 1981, with the Soviet Union fielding the MiG-29 and the Su-27 and the F-117A still a secret,
+the US Air Force began looking for the fighter that would replace the F-15: the Advanced Tactical
+Fighter. It was to combine what had always been traded off against each other: stealth, speed
+without the afterburner ("supercruise"), the agility of a dogfighter and an avionics suite that
+fused everything its sensors saw into one picture. Two teams each built two prototypes: Lockheed,
+Boeing and General Dynamics the YF-22, Northrop and McDonnell Douglas the YF-23. The YF-22 first
+flew on 29 September 1990; in April 1991 it won the fly-off, helped by thrust-vectoring nozzles
+that let it point its nose at a speed where others would stall.
+
+The production **F-22A Raptor** first flew on 7 September 1997 and entered service in December
+2005. Its weapons ride inside: AMRAAMs and bombs in the main bay under the fuselage, a Sidewinder
+in each side bay on the intakes' flanks, the doors snapping open only for the moment of the
+launch. The end of the Cold War and its cost cut the order from 750 to 187; the last one was
+delivered in 2012, and Congress never allowed it to be exported. Its first combat came in
+September 2014, dropping bombs in Syria; in February 2023 an F-22 shot down a Chinese balloon off
+South Carolina with a Sidewinder from 58,000 ft.
+
+| **F-22A RAPTOR** | |
+|---|---|
+| *Role* | Air superiority fighter with a strike role, one pilot |
+| *Manufacturer* | Lockheed Martin and Boeing, USA |
+| *First flight* | 29 September 1990 (YF-22); 7 September 1997 (F-22A) |
+| *Wingspan / length / height* | 13.56 m / 18.92 m / 5.08 m |
+| *Engines* | 2 × Pratt & Whitney F119-PW-100, about 156 kN (35,000 lbf) each with afterburner |
+| *Maximum take-off weight* | 38,000 kg (83,500 lb) |
+| *Maximum speed* | Mach 2.25; supercruise above Mach 1.5 |
+| *Armament* | 20 mm M61A2 cannon, 6 AIM-120 and 2 AIM-9 inside, or 2 GBU-32 and 2 AIM-120 |
+
+**IN THE GAME.** The F-22A is the stealth fighter: the F-16C's agility (9 g, the same roll rate)
+with an airframe the radars barely see.
+
+- **Supercruise.** About Mach 1.55 at 36,000 ft without the afterburner, Mach 1.95 with it; on
+  the deck about 700 kt dry, over 860 kt in afterburner. It carries 18,000 lb of fuel (bingo
+  3,000), and the afterburner drinks it fast.
+- **Stealth.** In a campaign its radar return is less than 40% of a usual fighter's, smaller even
+  than the F-117A's; in single missions about 60%. Like the F-117A and the RAH-66 it has a
+  faceted airframe whose return depends on the angle a radar sees it from: it spikes with the bay
+  doors open, the gear down or the belly turned towards a radar (chapter 7.4). Its **RCS** MFD
+  page shows the shape the radars see.
+- **Radar.** It has the A-A radar (**FCR**) and the ground map (**GM**) on the left MFD's bottom
+  row (chapter 5.5). With the radar in standby the F-22A emits nothing and sees only what the
+  datalink tells it.
+- **No helmet sight** and no RWR scope: the HARM format shows the radars painting you.
+- It flies with either flight model.
+
+**Weapons.** Four bays. A Sidewinder in each side bay (LS, RS), and one store in each half of the
+main bay (L, R), which may be any air-to-air or air-to-ground store, Hellfires and the CBU-105
+included: two
+AMRAAMs for a fighter sweep, two GBU-12s or two Mavericks for a strike. Open the bay doors (key 8)
+only for the launch: with them open, its return is no longer small. The M61 cannon sits above the
+right intake.
+
+**Cockpit.** The F-22A has its own cockpit, after the real one: a side stick on the right console,
+the throttles on the left, and four displays.
+
+* **Up-front controller** under the HUD: the scratchpad (the DED's data) over three rows of keys
+  (the HUD modes, LOCK, DCLT, NVG; ILS, MENU, VOL, TIME, STPT, ORD; COM1, COM2, IFF, LIST, the
+  autopilot, ENTR). Left of it the small up-front display with the warnings, right of it the
+  square standby attitude display.
+* **The MFDs.** The large primary MFD in the middle (the right MFD), the left MFD and the third one
+  (the HSI to start with) either side of it, and the fourth display between the knees (the
+  engine page to start with). Pressing a display's lit bottom button opens the format menu: any
+  format on any display.
+* **Over the left MFD** the master caution, STALL and threat lights, the master arm and the bay
+  doors; **over the right one** the fire, engine, flight control and caution lights.
+* **Under the left MFD** the gear lights and handle, FLAPS and BRAKE, the standby airspeed
+  indicator and altimeter between the AOA and vertical velocity tapes; **under the right one**
+  the fuel and thrust readouts, the EMV gauge, the countermeasures and the jammers.
+
+![The F-22A's cockpit](images/cockpit_f22.png)
+
+**Best for.** Everything a fighter does, unseen: CAP, DEFEND, AWACS hunts and intercepts, fighter
+sweeps ahead of a strike, and SEAD or strikes with two stores in the main bay. In a campaign it
+flies RECON, STRIKE, ANTI-SHIP, INTERDICT, SEAD, CAP, DEFEND, AWACS, INTERCEPT and ESCORT.
+
+## 3.12 C-5M GALAXY
+
+<img src="images/units/fly_c5.png" width="480" alt="C-5M GALAXY">
+
+In 1964 the US Air Force asked for a transport that could carry anything the Army owned, tanks
+included, across an ocean in one hop. Boeing, Douglas and Lockheed competed for the CX-HLS
+("Cargo Experimental - Heavy Logistics System"). Lockheed won the airframe, General Electric the
+engines; Boeing's losing design went on to become the 747. The **C-5A Galaxy** first flew on
+30 June 1968, and for years it was the largest aircraft in the world. Its whole nose swings up
+and its tail opens on a ramp, so vehicles drive straight through the hold; its landing gear
+"kneels" to bring the floor down to the height of a truck bed.
+
+In October 1973, during Operation Nickel Grass, C-5s flew tanks, howitzers and helicopters to
+Israel when the Yom Kippur war had all but emptied its arsenal. A year later a C-5A dropped a
+Minuteman ICBM from its open ramp over the Pacific and the missile lit its motor under its
+parachutes, to show that one could be launched from the air. C-5s carried much of the build-up
+for Desert Shield and have flown in every American war and relief operation since. The
+**C-5M Super Galaxy**, rebuilt from 2009, has new General Electric engines, a glass cockpit and
+much better climb on a hot day.
+
+| **C-5M SUPER GALAXY** | |
+|---|---|
+| *Role* | Strategic airlifter, crew of seven |
+| *Manufacturer* | Lockheed, USA |
+| *First flight* | 30 June 1968 (C-5A); 19 June 2006 (C-5M) |
+| *Wingspan / length / height* | 67.89 m / 75.31 m / 19.84 m |
+| *Engines* | 4 × General Electric F138-GE-100 (CF6-80C2), 228 kN (51,250 lbf) each |
+| *Maximum take-off weight* | 381,000 kg (840,000 lb) |
+| *Maximum speed* | about Mach 0.79 |
+| *Payload* | about 127,000 kg (281,000 lb): two M1 tanks, or six helicopters |
+
+**IN THE GAME.** The C-5 is the cargo jet: unarmed, no gun, no stores, only its hold. It flies
+only with the modern flight model.
+
+- **Heavy.** 150,000 lb of fuel (bingo 25,000), slow to roll and slow to rotate. Plan turns
+  and the flare early; the controls answer late and keep going once they do.
+- **Long take-off.** Full throttle and flaps down (key 9): it lifts off at 115 to 130 kt after
+  2,500 to 3,000 ft of runway. Let it run off the end and you are on the grass.
+- **Seen from far away.** Its radar return is two and a half times a fighter's: the long-range
+  SAMs can fire at it from well over 100 km. Stay away from the SAM sites and low over hostile
+  ground (chapter 7.8).
+- Mach 0.79 (about 470 kt) at 30,000 ft. It stalls at about 165 kt clean, 115 kt with the flaps:
+  keep them down for the approach and the drop.
+
+**Cockpit.** The pilot sits in the left seat with the **yoke** in front of the knees, a control
+column from the floor with a wheel on top, and the four **throttles** on the pedestal to the right.
+Ahead of the pilot two MFDs (the HSD and the HSI to start with); between the seats two more (the
+**cargo page** and the 4-engine **ENG page**). Left of the centre MFDs, the small warnings display,
+with the **RAMP** and **DROP** buttons above it; right of them the standby instruments and the
+gear lights, FLAPS and BRAKE. The autopilot and HUD mode keys sit on the glare shield, the CDU
+and the countermeasures on the pedestal behind the throttles. The copilot's displays stay dark.
+
+![The C-5's cockpit](images/cockpit_c5.png)
+
+**The yoke in VR.** The yoke works like the real one, not like a stick. The *left* hand flies it
+and the *right* hand takes the throttles (the reverse of every other aircraft in the game, because
+the throttles are on your right):
+
+- **Take the wheel** by squeezing the grip anywhere near it: its horns stand out on either side.
+- **Pull or push the hand** to swing the column aft and forward: back is nose up. It moves with
+  your hand, about 12 cm either way to full deflection.
+- **Turn the wheel** to bank: twist the controller as if you were turning a steering wheel, or move
+  the hand sideways. Both add up.
+- **Both hands.** Reach the right hand to the wheel's right horn instead of the throttles (it
+  takes whichever is nearer) and fly with both hands: the yoke follows their average, the way you
+  would hold a real one. Let go with either hand and the other one carries on from where the two
+  had it, without a jump.
+- The yoke has **no rudder**: twisting it turns the wheel. Use the rudder pedals, the gamepad's
+  right stick or the keys if you need the rudder.
+- The **stall buffet** shakes whichever hand is on the wheel.
+
+The controllers' buttons keep their usual mapping (chapter 1.4). The right trigger fires (in the
+C-5: drops a pallet) while the right hand holds the throttles or the right horn, and the left
+trigger holds the wheel brakes. The RAMP and DROP buttons, like every other button in the cockpit,
+can also be pressed with a fingertip.
+
+**Cargo drop operations.** In single missions and the career the C-5 flies an **airlift** (chapter
+8.1): it takes off from a land base with four supply pallets in the hold, drops them to friendly
+troops at the drop zone and lands at the friendly airfield nearest them, which ends the mission.
+About two in three airlifts go to troops well behind the lines, on a route away from the enemy's
+SAMs and airfields, and are left alone. The others go to troops near the front, with two fighters
+as escort that stay 2 km off your wing and engage enemy aircraft within 25 km of the drop zone.
+
+The **CGO** (cargo) page shows the hold from the left side, the pallets on its floor and the aft
+ramp at its angle:
+
+![The cargo page: ramp up, green light, ramp lowering, red light; below, a pallet sliding out over the ramp and falling under its chute](images/mfd_cgo.png)
+
+| Shown | Meaning |
+|---|---|
+| **RAMP UP** (green) | The ramp is shut. |
+| **RAMP LOWERING** / **RAMP RAISING** (amber) | The ramp is moving, with how far it has gone. It takes 8 seconds. |
+| **RAMP DOWN** (cyan) | Open for the drop. Pallets only leave with the ramp down. |
+| **PLT 4/4** | Pallets left in the hold, of four. An empty place is dotted. |
+| **DZ 4.0 KM** | Ground range to the drop zone. *NO DROP ZONE* when there is none left to drop to. |
+| **REL 0:30** | Time to the release point: when a pallet released then lands on the zone. *REL PAST* once you are beyond it. |
+| **DFT 80R** | Drift: how far (m) right or left of the zone a pallet released now would land. |
+| **GREEN LIGHT** | The jump light: the ramp is down, and a pallet released now lands in the zone. It blinks. |
+| **RED LIGHT** | Not yet (or no longer): the pallets would land outside the zone. |
+| **TOF** | A pallet's time of fall (s) from your height. |
+
+On a campaign cargo run the page shows where the cargo goes (*FOR* the base) and the load,
+instead of the drop zone.
+
+The **HUD** shows the drop in every mode (its mode reads *DROP*): the drop zone's diamond with
+its range, the steering line through it, the release cue sliding down the line towards the flight
+path marker, and a ring with a cross where a pallet released now would land. Above the marker, the
+jump light: *RAMP UP* blinking from 30 seconds before the release point while the ramp is still
+up, *RAMP MOVING*, then *GREEN LIGHT*, and *DROP* flashing at the release point itself. Lower
+right are the pallets left, the zone's range, the time to release and the time of fall.
+
+![A C-5 over the fields on its way to the drop zone](images/c5_airdrop.png)
+
+To make a drop:
+
+1. Fly towards the drop zone (the first steerpoint after take-off). Bring a cargo page up on one
+   of the MFDs; it starts on the right centre one.
+2. Slow down to a comfortable speed and hold your height steady: about 1,000 to 1,500 ft above the
+   ground and 200 to 250 kt. The lower and slower, the shorter the fall and the less the pallets
+   drift.
+3. A minute or so out, lower the ramp: **RAMP** on the cargo page (its top left button) or on the
+   panel, or the **bay doors** key (**8**, gamepad West). The HUD warns *RAMP UP* if you leave it late.
+4. Steer to put the steering line through the flight path marker. Keep the impact ring moving up
+   the line onto the diamond, and fly the release cue down to the marker.
+5. On **GREEN LIGHT** (or when *DROP* flashes), release: **DROP**, the **fire** key (**Enter**) or
+   the right VR trigger. Each press sends one pallet aft along the floor and out over the ramp's
+   end; its chute opens behind you. *Equipment Delivered* means it landed within 4 km of the drop
+   zone's beacon and the primary objective is done; *Bad Drop* means it missed.
+6. Raise the ramp and fly on to the airfield to land. Stop on its runway to deliver the rest of
+   the cargo (the secondary objective). There is no time limit.
+
+With four pallets you have three more tries after a bad drop. A pallet dropped with the ramp up
+does not leave: *Ramp closed*.
+
+**In a campaign** the C-5 flies **AIRLIFT** missions (chapter 9.4): a cargo flight waiting at
+your production base for an airbase out of munitions (chapter 9.14). Take off with the load, fly
+it to the base and stop on its runway to unload. The enemy hunts you as it would hunt the AI's
+cargo flight, and a base near the front sends its two escort fighters along with you. If you
+abort the sortie, the run goes back to an AI C-5; if you are shot down, the load is lost.
+The C-5 flies nothing else in a campaign, and no other aircraft flies an airlift.
+
+**Best for.** AIRLIFT. Nothing else.
+
+## 3.13 AC-130 SPECTRE
+
+<img src="images/units/fly_ac130.png" width="480" alt="AC-130 SPECTRE">
+
+In Vietnam the US Air Force wanted aircraft that could find and destroy the trucks moving down the
+Ho Chi Minh Trail at night. The answer was an old idea: guns that fire sideways out of a transport
+while it circles the target, the pilot aiming by banking the aircraft. After the AC-47 "Spooky"
+proved it, a C-130A was fitted in 1967 with four 7.62 mm miniguns, four 20 mm cannon, a night
+sight and a searchlight. The **AC-130 Spectre** went to war that autumn and destroyed more trucks
+on the trail than any other aircraft. Later versions swapped the small guns for a **40 mm Bofors**
+and, from 1972, a **105 mm howitzer** firing out of the left side behind the wing.
+
+The AC-130H flew in Grenada, Panama, the Gulf War and the Balkans; the AC-130U "Spooky II" of
+1995 added a 25 mm Gatling gun, a pressurised cabin and better sensors. Gunships fly at night, in
+a slow left-hand orbit high over the target (the "pylon turn"): the pilot keeps the target in a
+sight on the left window while the sensor operators and the fire control lay the guns on what the
+sensor turrets look at. They are slow and big, and keep away from the SAMs.
+
+| **AC-130H SPECTRE** | |
+|---|---|
+| *Role* | Ground attack gunship, crew of 14 |
+| *Manufacturer* | Lockheed, USA (conversions of C-130 Hercules) |
+| *First flight* | 23 August 1954 (YC-130); AC-130 in combat from 1967 |
+| *Wingspan / length / height* | 40.41 m / 29.79 m / 11.66 m |
+| *Engines* | 4 × Allison T56-A-15 turboprops, 3,661 kW (4,910 shp) each |
+| *Maximum take-off weight* | 70,300 kg (155,000 lb) |
+| *Maximum speed* | about 300 kt |
+| *Armament* | 40 mm L/60 Bofors, 105 mm M102 howitzer |
+
+**IN THE GAME.** The AC-130 is the gunship: no stores, no cannon in the nose, only its two side
+guns. It flies only with the modern flight model, and only you fly it: the AI never does.
+
+- **Two guns.** The **40 mm** fires a round every half second (256 rounds), the **105 mm** one
+  every four seconds (100 rounds). **Weapon select** (**Space**, or the **40MM** and **105MM**
+  buttons on the glare shield) changes between them; the **fire** key or button fires the selected
+  gun as long as you hold it.
+- **They fire where the targeting pod looks.** The fire control lays the gun on the pod's point
+  on the ground, the shell's drop and the aircraft's own speed allowed for; with the pod on a
+  vehicle (or near one) it leads the vehicle as it drives. The shells are not guided: from 3 or 4 km
+  each round lands a few metres from the aim point, so a vehicle takes a few rounds to hit.
+- **Only off the left wing.** The guns point out of the left side and turn only 20 degrees either
+  way of the wing's line, depressing 5 to 55 degrees below the wings. To bring them to bear, fly a
+  **left-hand orbit** round the target: bank left, about 30 degrees, at 6,000 to 10,000 ft and 2
+  to 4 km from it. The guns do not fire while the target is outside that box (*Guns cannot bear*).
+- **What it takes.** The 40 mm destroys an infantry fighting vehicle, a gun or anything softer
+  in two or three hits, a tank in five to ten. The 105 mm destroys anything but a tank with one
+  hit (its blast reaches 10 m), a tank with two or three direct hits.
+- **Countermeasures.** 250 flares and 250 chaff: it is a big, slow aircraft, and the ZSU-23s
+  that drive with the enemy's columns shoot back if you come down low.
+- **Seen from far away.** Its radar return is large: keep away from the SAM sites.
+- About 300 kt flat out; it stalls at about 120 kt clean, 92 kt with the flaps (key 9). Full
+  throttle and flaps: it lifts off after 2,500 to 2,800 ft of runway.
+
+**Cockpit.** The flight deck of a C-130J: the pilot in the left seat behind the **yoke** (flown as
+the C-5's, chapter 3.12), the four throttles on the pedestal between the seats with the CDU. Before
+the pilot the attitude display and the standby instruments; between the seats the two centre MFDs:
+the **TGP** on the right one, the SOI from the start, and the HSD on the left one. The **40MM** and
+**105MM** buttons sit on the glare shield over them. The windows by your left shoulder look down
+on the target in the orbit.
+
+![The AC-130's cockpit](images/cockpit_ac130.png)
+
+**The TGP page.** Slew the pod onto the target (it snaps onto a vehicle near where it settles) or
+press **CZ** to cue it to the steerpoint. The **gimbal scope** in its lower right shows where the
+guns can reach: the small box is the guns' reach off the left wing (forward to the left, as out of
+your window), the larger frame round it 35 degrees either way and 70 degrees down. The cross is
+where the pod looks; it turns green, and so does the box, when the guns bear. Under the scope are
+the selected gun and its rounds, then **TOF** and the shell's time of flight in seconds when the
+guns bear, or a blinking amber **GIMBAL** when they do not.
+
+![The TGP page: the pod on a town, the gimbal scope at its lower right with the line of sight inside the guns' reach, 249 rounds of 40 mm left, 5.7 s time of flight](images/mfd_tgp_ac130.png)
+
+The **HUD** shows the same low on its left: the gun and its rounds, then *IN RNG* and the slant
+range (nm) when the guns bear, *GIMBAL* when they do not, *NO TGP* without the pod on the ground.
+
+Firing, the guns flash and puff grey smoke from their ports; with **local lights** on (chapter
+1.3) the flash lights up the fuselage round them. Each shell's tracer glows all the way down, and
+where it lands the 40 mm bursts in a sharp flash and a spray of dirt, the 105 mm in a big blast
+and a column of smoke. The bursts are heard when their sound gets to you, seconds later.
+
+![A 105 mm round leaving the gun at night, its flash lighting the fuselage](images/ac130_firing.png)
+
+**Gunship missions.** In single missions and the career the AC-130 flies against an **enemy
+column**: five or six armoured vehicles (T-90s, BMP-2s and a ZSU-23-4) moving up from an enemy
+place toward the front. The column is the primary target (destroy three quarters of it), the place
+it set off from the secondary. It sets off when you come within 35 km, at a walking pace across
+country, so the steerpoint shows where it starts and the pod finds it on its way. The column is
+always out of the immediate reach of the enemy's SAM sites. About half the missions are **quiet**,
+far from every SAM site with the enemy's fighters on the ground; the others are nearer the front,
+SAM sites some way off and enemy fighters up, and two friendly fighters escort you (they stay off
+your wing and engage enemy aircraft within 25 km of the target).
+
+To attack the column:
+
+1. Fly to the column's steerpoint at 6,000 to 10,000 ft, the TGP up.
+2. A few kilometres out, cue the pod (**CZ**) and slew it onto the vehicles; let it snap onto one.
+3. Pass the column on your left and roll into a left turn round it, 2 to 4 km out, about 30
+   degrees of bank. Watch the gimbal scope's cross come into the box.
+4. When it turns green, fire: the 40 mm in bursts on the BMP-2s and the ZSU, the 105 mm on the
+   tanks. Keep the bank steady; widen the circle if the cross drifts below the box, tighten it if
+   it drifts above.
+5. Move the pod to the next vehicle and carry on. When most of the column is burning the primary
+   objective is done; the place it came from is the secondary. Then fly home.
+
+**In a campaign** the AC-130 flies **CAS** missions (chapter 9.4) and nothing else, and only those
+whose target is at least 25 km from every live enemy SAM site (*Enemy SAM sites are too close to
+the target for the AC-130*). It is never preselected: pick it in the briefing.
+
+**Best for.** Columns and garrisons away from the SAMs: gunship missions, CAS.
+
+## 3.14 AH-64D APACHE
+
+The US Army's Advanced Attack Helicopter competition of the early 1970s asked for a helicopter that
+could fight Soviet armour at night and in bad weather, take hits from 23 mm guns and keep flying.
+Hughes won it with the YAH-64, first flown on 30 September 1975. The **AH-64A Apache** entered
+service in 1986 with a 30 mm chain gun under the nose, sixteen Hellfire missiles and the TADS/PNVS
+in its nose: the Target Acquisition and Designation Sight, a turret of day and night sensors and a
+laser for the gunner, and the Pilot Night Vision Sensor above it, slaved to the pilot's helmet.
+
+The crew sit in tandem: the copilot-gunner (CPG) low in front, the pilot behind and above him.
+Each can fly the helicopter and fire its weapons. Apaches opened the air war over Iraq in January
+1991, destroying two early warning radars with Hellfires minutes before the first bombs fell. The
+**AH-64D**, built from 1997, has a glass cockpit with MFDs in both seats, more power and, on the
+Longbow version, a millimetre-wave radar above the rotor. The game's AH-64D has no mast radar.
+
+| **AH-64D APACHE** | |
+|---|---|
+| *Role* | Attack helicopter, two crew |
+| *Manufacturer* | Hughes, then McDonnell Douglas and Boeing, USA |
+| *First flight* | 30 September 1975 (YAH-64) |
+| *Rotor diameter / length / height* | 14.63 m / 17.73 m / 3.87 m |
+| *Engines* | 2 × General Electric T700-GE-701C, 1,410 kW (1,890 shp) each |
+| *Maximum take-off weight* | 10,430 kg (23,000 lb) |
+| *Maximum speed* | about 160 kt level, 197 kt never-exceed |
+| *Armament* | 30 mm M230 chain gun, 16 Hellfire, Stingers on the wingtips, rockets |
+
+**IN THE GAME.** Heavier and draggier than the Viper, the Apache tops out near 160 kt in level flight.
+It sits on wheels, the nose a little up. It carries the **chin gun** (510 rounds) and four M299
+launchers with **16 Hellfires** on its stub wings, plus two **Stingers** on each wingtip. The pilot's
+**helmet-mounted display** (chapter 5.4) works as in the AH-1Z: the chin gun follows his eyes (**GUN
+HMS**) or the pod (**GUN TGP**), and the Hellfires go where the pod looks.
+
+**Two seats.** The pilot's cockpit is the rear one: two MFDs and the up-front display, the gunner's
+helmet and canopy before and below you. The front cockpit is the **gunner's**: three displays, the
+centre one the **TEDAC** with the TADS (the targeting pod) on it, and its two hand grips below.
+
+- **Changing seats.** In flight, the in-flight menu's **GUNNER'S SEAT** entry takes you forward
+  (`--seat gunner[@seconds]` from the command line). The empty pilot's seat is flown by the AI:
+  if you left the **auto-hover** engaged it keeps hovering over the spot, if you left the
+  **autopilot** engaged it flies on to the waypoint; with neither engaged it hovers if you were
+  slower than 30 kt and otherwise takes up the autopilot at your speed (at least 80 kt) and
+  altitude. The **PILOT'S SEAT** entry takes you back, the autopilot still engaged: move the
+  cyclic to take over.
+- **In the gunner's seat** the stick slews the TADS (as do the slew keys); its picture is on the
+  TEDAC, the sensor of interest. The chin gun follows the TADS, not your eyes. The weapon keys and
+  the fire buttons work as in the pilot's seat, whatever master mode the pilot left.
+
+**A second player as gunner.** In a campaign another player can crew your Apache: on the campaign
+screen's **FLIGHTS** tab, *JOIN AS GUNNER* on your flight puts him in the front seat while you fly. His
+TADS replaces yours: your Hellfires go to his laser spot, and his designations are your aircraft's.
+Both of you fire: his trigger fires the chin gun along his TADS, his weapon key steps through the
+gun and the kinds of missiles left, and his release fires the missile he selected; your own trigger
+still fires the chin gun along your helmet and your release your own selection. If you leave the
+aircraft or lose your connection, it goes on with him in the front seat and the AI flying. A player
+can also take the gunner's seat of an AI flown Apache from the FLIGHTS tab; the AI then flies it for
+him. The sortie's kills count for the crew.
+
+**Best for.** Close air support against armour, guns and MANPADS (it is the AI's first choice for
+CAS near the front), escorting insertions, and flying with a friend.
 
 
 ---
@@ -1219,7 +1635,7 @@ The panel is laid out like the real F-117A's:
 |---|---|---|
 | MENU | Esc | Open or close the in-flight menu (chapter 4.7). |
 | VOL | Alt V | Sound level. |
-| TIME | Shift Z / Shift X | Time acceleration on/off. Each press of Shift Z, like each click on the cockpit TIME button, goes faster (ACCEL, ACCEL x2, ACCEL x3, up to three times the plain acceleration), then back to normal time; Shift X returns to normal time at once. Acceleration ends automatically when a radar detects the aircraft or a weapon is released. |
+| TIME | Shift Z / Shift X | Time acceleration on/off. Each press of Shift Z, like each click on the cockpit TIME button, goes faster (ACCEL, ACCEL x2, ACCEL x3, up to three times the plain acceleration), then back to normal time; Shift X returns to normal time at once. Acceleration ends automatically when a radar detects the aircraft or a weapon is released, unless *Keep time acceleration* is checked in the options. |
 | STPT | F7 | Waypoints. |
 | ORD | F10 | Mission orders. |
 | COM, IFF | - | Not used. |
@@ -1252,8 +1668,8 @@ the left MFD.
 | BRAKE | 0 | Wheel brakes on the ground, speed brake in the air. |
 | AUTO | 7 | Autopilot: flies to the current waypoint. |
 | BAY | 8 | Weapon bay doors open/close. Weapons can only be released with open bays. |
-| NEAR | T | Lock the nearest target ahead. AIR or GND mode depends on the selected weapon. |
-| NEXT | B | Select the next target. |
+| NEAR | T | Lock the nearest target ahead. With the classic avionics it looks in the HUD mode as it is, and leaves it: AIR picks aircraft, GND ground and sea targets, NAV either (a mission objective first, then the nearer). With the modern avionics AIR or GND mode depends on the selected weapon. |
+| NEXT | B | Select the next target. With the classic avionics: aircraft in AIR, ground and sea targets in GND, either in NAV. |
 | NONE | Shift B | Clear the target. No automatic acquisition until the next target or camera key; the targeting pod looks at the current steerpoint. |
 | WPN | Space | Select the next weapon, after the last one the gun. |
 | DTL | Alt D | Detail level. |
@@ -1306,13 +1722,14 @@ back a page; on the first page they close the menu.
 |---|---|
 | Resume | Closes the menu (as does Esc again). |
 | Save mission | Single missions only, while still in the aircraft: saves the flight as it is (the world, your aircraft, route, stores and the flight's record); LOAD in the single mission screen flies it on (chapter 1.2). Views, MFD pages and the kneeboard start afresh. |
+| Load mission | Single missions only: the list of saves over the menu (LOAD, the pencil to rename, DELETE); the one loaded replaces the flight under way, paused. |
 | Options | The pages of the main menu's OPTIONS (chapter 1.3) that apply in flight, below. |
 | Key guide | The keys as bound, the mouse or the VR controllers. Type to keep only the keys whose description holds the text (any case); Backspace deletes, the field's X or Esc clears it. In VR, a fingertip on the field and the trigger open a keyboard on the screen: touch a key and pull the trigger to type, DONE closes it. |
 | End mission | Ends the flight and goes to the debrief. |
 
 | Page | Entries |
 |---|---|
-| Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Tooltips*, *Interactive tutorial* (single missions only), *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
+| Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Keep time acceleration*, *Tooltips*, *Interactive tutorial* (single missions only), *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
 | Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
 | Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours, scanlines and pixelize. |
 | Sound | The *Master*, *Engine*, *Effects*, *Warnings*, *RWR*, *Radio* and *ATC voice* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |
@@ -1400,7 +1817,8 @@ buildings appear bright.</td>
 
 With the modern avionics each MFD can show any of five F-16 style formats, chosen with the
 bottom row of bezel buttons: **HSD**, **HARM**, **TGP**, **MAP** and **SMS**; the third MFD
-(F-117A, Tornado) offers **HSI** in place of TGP. The buttons' functions are written on the display next
+(F-117A, Tornado) offers **HSI** in place of TGP. On the aircraft with a radar the left MFD's row
+is **HSD**, **FCR**, **GM**, **TGP** and **MAP** (chapter 5.5). The buttons' functions are written on the display next
 to them (lit = selected); the bezel caps are blank. Choosing a format another MFD shows swaps
 the two. F3 cycles the left MFD through HSD, MAP
 and HARM; F5 / F10 bring up SMS, the camera keys the TGP (F6 too, switching its FLIR on or
@@ -1422,6 +1840,8 @@ every mode. With the classic avionics every weapon can be selected and fired in 
 | MAP | NUP / HUP, ZM-, ZM+, WAY | The moving map in muted colours; WAY switches to the waypoint table (SOI; the side edges have UP, DN, LFT, RGT, RST, WP+, WP- and MOV): while it is the SOI, the keypad moves the waypoint being edited (F8). |
 | SMS | WPN, ORD, SEL, CCIP / CCRP | Stores (WPN): the inventory by station, mirrored pairs on one row, the selected store highlighted, the bombsight mode and the **release program** down the sides: RP+ / RP- set how many bombs one release drops (1-4, a *ripple*), SPC+ / SPC- the spacing between their impacts (25-500 ft, 100 by default). ORD: the mission orders. |
 | HSI | WP-, WP+ | Horizontal situation indicator (chapter 4.11). |
+| FCR | CRM / STBY, RWS, SOI; range, scan width, bars down the left, elevation down the right | The A-A radar's B-scope (chapter 5.5). |
+| GM | GM / STBY, RNG-, range, RNG+, SOI | The ground map radar (chapter 5.5). |
 
 **Sensor of interest (SOI).** The HSD, HARM display or TGP with the white frame is the SOI (its
 SOI button, or Alt S to move it). Its cursor moves with the **sensor/cursor slew** controls:
@@ -1635,6 +2055,91 @@ wherever you look, then **GUN TGP**, the turret following the pod; the next pres
 missiles. The turret turns 110° either side, 50° down and 20° up.
 
 
+## 5.5 The radar (FCR and GM)
+
+The F-16C, the F-22A, the Tornado, the AV-8B and the RAH-66 carry a radar, worked from the MFDs with
+the modern avionics. On these aircraft the left MFD's bottom row is **HSD, FCR, GM, TGP, MAP**:
+**FCR** is the air-to-air radar, **GM** the air-to-ground ground map. The master mode brings the
+right one up by itself: the first time you select **A-A** the left MFD shows the FCR, and with
+**A-G** the GM, as its sensor of interest (SOI). Each master mode remembers how you set up its
+displays after that.
+
+**The radar gives you away.** While it is not in standby the radar transmits, whether its page is
+up or not, and every radar warning receiver around hears it: it adds 28 to your EMV. The top left
+button of either page (**CRM** on the FCR, **GM** on the ground map) switches it to **STBY**, and
+press it again to switch it back on. In standby the radar is silent and the GM picture stops updating.
+Enemy aircraft then show on the HSD, the MAP and the war map only where a friendly radar, a
+friendly site or a friendly aircraft sees them (the datalink). Aircraft without a radar, such as
+the F-117A, always have the full picture.
+
+The radar's cursor works like the HSD's (chapter 4.10): slew it with keypad 8 / 2 / 4 / 6, the
+left VR thumbstick or the slew axes, and push it past the top or bottom edge to step the range out
+or in. **Lock cursor target** (keypad Enter) locks what is under the cursor when you let go of it.
+Hold it to see a 4× magnified window first. A press while something is locked drops the lock.
+
+### The A-A radar (FCR)
+
+![The FCR in search (40 nm, A6, 4 bars): a contact's brick ahead, the cursor with the altitudes the scan covers at its range](images/mfd_fcr.png)
+
+The FCR is drawn as a **B-scope**: azimuth across (60° either side of the nose), range up from the
+bottom. The beam sweeps left and right across the scan width, one row (bar) higher or lower each
+way. Every aircraft it sees leaves a **brick** where it was, kept for two sweeps and dimmer the
+second; friendly aircraft are green. The scan is stabilised: its width is measured from your
+heading, its elevation from the horizon, whatever the aircraft does.
+
+| Button | Does |
+|---|---|
+| **CRM** / **STBY** (top left) | Radar on (combined radar mode, range while search **RWS**) or standby. |
+| **RNG+** / range / **RNG-** (left) | The scope's range: 10, 20, 40, 80 or 160 nm. |
+| **A6** / **A3** / **A1** (left) | The scan's width: 60°, 30° or 10° either side of the nose. |
+| **4B** / **2B** / **1B** (left) | Bars: rows in the scan, 2.2° apart. A 4-bar scan across A6 takes about 7 s. |
+| **EL+** / elevation / **EL-** (right) | The antenna's elevation, -20° to +20° in steps of 2°. |
+| **SOI** (top right) | Makes it the sensor of interest. |
+
+Across the scope the **artificial horizon** banks with the aircraft. Carets under and left of the
+scope show where the antenna points. Next to the cursor, the two numbers are the highest and lowest
+altitudes (thousands of feet) that the scan covers at the cursor's range. Raise or lower the
+antenna until the target's altitude is between them.
+
+**What it sees.** A fighter is detected out to about 40 nm (74 km), and a drone only within
+about 10 nm. The edge of detection varies from sweep to sweep. Hills and mountains between you
+and the target hide it. Looking down at a target flying across the beam (little speed towards or
+away from you) loses it in the ground clutter, the **notch**: an enemy that turns to put you on
+its wing can vanish from the scope.
+
+**The lock.** Locked, the radar stops scanning and follows the target alone (single target
+track). The target becomes a filled square with its heading line and its altitude, and across the
+top of the scope you read its aspect, heading, closure and ground speed. Locking an aircraft puts
+the HUD in A-A mode.
+
+### The ground map (GM)
+
+![The ground map at 40 km: hills bright where they face the radar, a locked ground target boxed, the cursor below](images/mfd_gm.png)
+
+The ground map is a wedge with your aircraft at its apex (the cyan triangle). The beam sweeps
+60° either side of the nose, left, right and left again, and a caret over the outer arc shows where
+it is. Each pass paints the ground into the picture, which stays fixed to the ground until the beam
+passes over that spot again. The dashed arcs are range marks. The range is 5, 10, 20, 40 or 80 km
+(**RNG-** / **RNG+** on the top row).
+
+Reading the picture:
+
+- **Slopes facing you** return brightly; those facing away are dim. Ground hidden behind nearer
+  hills lies in the **radar shadow** and stays black.
+- **Water** reflects the beam away and is black, so coastlines, rivers and lakes stand out.
+  **Concrete** (runways) is dark. Woods are brighter than fields, and **buildings** are brightest
+  of all: towns show as bright clusters.
+- **Targets** (sites, vehicles, ships, buildings) show as bright returns. A moving vehicle's return
+  jumps from one pass to the next.
+- The picture has **speckle** and grows blurrier with range, as the beam widens.
+- Steerpoints show on the map (the current one ringed), a diamond marks where the targeting pod
+  looks, and the locked target is boxed.
+
+Lock a return with the cursor to make it your target: the pod (TGP) looks at it, and your weapons
+use it as they would any other lock. The GM is the way to find targets at night, in
+cloud or beyond the pod's reach. Map the area from a distance, lock what you find, then put the
+radar in standby for the run-in.
+
 ---
 
 # 6. ARMS AND EQUIPMENT
@@ -1642,7 +2147,9 @@ missiles. The turret turns 110° either side, 50° down and 20° up.
 ## 6.1 Rules for every weapon
 
 - **HUD mode:** air-to-air weapons in AIR, all others in GND. T (nearest target) switches to
-  the selected weapon's mode by itself.
+  the selected weapon's mode by itself with the modern avionics; with the classic ones it looks
+  for its target in the mode as it is (aircraft in AIR, ground and sea in GND, either in NAV)
+  and leaves it unchanged.
 - **Release:** the F-117A's bay doors open (*Bay closed*, except the fuel tank; the RAH-66 opens
   its own; every other aircraft carries its stores outside), bank under 67°, and in the air (*Insufficient Altitude* on
   the ground or the deck). At most four of your weapons fly at a time: a fifth press uses up a
@@ -1807,7 +2314,8 @@ or TGP), lock the recon target and put the nose on it (the camera looks about 10
 **Fuel tank.** Releasing it transfers its 1,900 lb into the aircraft's tanks (no bay doors
 needed).
 
-**Special cargo.** Release on *Drop supplies now*, within 4 km of the drop zone.
+**Special cargo.** Release on *Drop supplies now*, within 4 km of the drop zone. The C-5's supply
+pallets go out over its cargo ramp, with the ramp down (chapter 3.12).
 
 
 ---
@@ -2059,6 +2567,12 @@ The mission summary and briefing list the objectives, the bases, the weather, th
 intelligence. Read them, plan the route, check the loadout, and fly. *Save mission* in the in-flight menu
 keeps a flight to continue later from LOAD.
 
+In the **C-5** the mission becomes an **airlift**: drop supplies to friendly troops, then land the
+cargo at the airfield nearest them (chapter 3.12).
+
+In the **AC-130** the mission becomes a **gunship mission**: destroy an enemy column with the side
+guns, then the place it came from (chapter 3.13).
+
 ## 8.2 The mission planner
 
 ![Mission planner](images/planner.png)
@@ -2166,7 +2680,7 @@ In Ukraine, drone waves cross the border at night. Your side fights the same war
 columns and insertions, repairs what was destroyed, and puts fighters up when raiders come close.
 
 You are one pilot in it, or one of up to 64 in a multiplayer campaign (chapter 11). You take your
-missions from a board that follows the situation, fly them in any of the ten aircraft, and come back
+missions from a board that follows the situation, fly them in any of the aircraft, and come back
 to the board. You can't be killed or lost for good: after every sortie you are back on the Ops screen.
 But the places your side holds, the materiel it has, the air defences it builds: all of that is won or
 lost one sortie at a time.
@@ -2236,7 +2750,7 @@ own armour always shows; enemy armour only while one of your ground units or dro
 checkboxes in the legend beside the map switch each kind of symbol on and off (clouds, snow and storm
 cells, SAM and engagement ranges among them), and the *Symbols* switch chooses between the game's
 classic symbols and NATO's **APP-6** military map symbols. Pointing at a symbol shows its tooltip
-(chapter 8.2). Click a unit to watch it live; the wheel zooms, dragging pans. The selected mission's target is circled.
+(chapter 8.2). Click a unit to watch it live; the wheel zooms, dragging pans. In the live window, the **IR** button in the title bar switches the picture to infrared (thermal), to see the unit on a night too dark to make it out. The selected mission's target is circled.
 
 ## 9.3 Places and the front
 
@@ -2287,7 +2801,7 @@ long as its situation lasts.
 |---|---|---|---|
 | **RECON** | 100 | Each front place without fresh intelligence. | You photograph its main object. For an hour its defences see you at 0.7 times their range, you see them at twice yours, and the target keys pick its objects from twice as far. |
 | **SEAD** | 150 | Front places with SAM sites or radars. | At least half of the listed sites are destroyed, by anyone (AI SEAD too). |
-| **CAS** | 120 | Front places with guns, MANPADS or armour. | You destroy at least half of the listed units. |
+| **CAS** | 120 | Front places with guns, MANPADS or armour. | You destroy at least half of the listed units. The AC-130 only where no live enemy SAM site is within 25 km (3.13). |
 | **CAS - battery** | 120 | An enemy gun battery pushed forward near your bases (9.8). | You destroy at least half of its guns. |
 | **CAS - armour column** | 120 | Each enemy armour column on the move. Its threat is the number of air defence guns left in it. | At least half of its vehicles are destroyed. |
 | **CAS - support armour** | 120 | Each friendly column on the move whose target still has enemy units within 6 km. | At least half of them are destroyed, or you were there when the place fell to the column. |
@@ -2303,6 +2817,7 @@ long as its situation lasts.
 | **AWACS** | 250 | While the enemy AWACS is up. | It is shot down, by anyone. |
 | **LOGISTICS** | 100 | Each cargo load for a new air defence site. | You set its crate down by the site's helipad. UH-60 or CH-47 (9.14). |
 | **RESUPPLY** | 100 | Each air defence site that ran out or asked for a resupply. | You hover at the unit for 10 s. UH-60 or CH-47 (9.14). |
+| **AIRLIFT** | 100 | Each cargo flight waiting at the production base (9.14). | You stop on the receiving base's runway with the load. C-5 only (3.12). |
 
 The game counts a player as involved in activity if they were at least 2 minutes in the air within 20 km
 of the helicopters, attackers or column, their target or the meeting point while it is going on, 
@@ -2696,6 +3211,8 @@ to its base, so the AI's interceptors wait three quarters of the way along it; u
 cargo flight to that base waits half an hour. The enemy hunts your
 C-5s the same way: its interceptors take off 2 minutes after your cargo flight is scheduled.
 A cargo flight in the air when you save takes off again shortly after you continue, with its load.
+While a cargo flight waits to take off, it is on your board as an **AIRLIFT** mission: fly it
+yourself in the C-5 (chapter 3.12).
 
 UH-60 and CH-47 pilots keep the air defence going: they fly the cargo for new sites and the
 resupplies for existing ones. Both are missions on the board (UH-60 or CH-47, 100 points). If no player takes one,

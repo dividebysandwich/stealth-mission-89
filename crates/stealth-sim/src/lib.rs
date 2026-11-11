@@ -12,11 +12,13 @@ pub mod units;
 mod ai;
 pub mod ai_flight;
 pub mod ai_missions;
+pub mod crew;
 pub mod csar;
 mod damage;
 pub mod dlz;
 pub mod drones;
 pub mod ground;
+pub mod gunship;
 pub mod guidance;
 pub use stealth_mission::hills;
 pub mod lights;
@@ -179,6 +181,13 @@ pub struct Sim {
     pub(crate) flights: Vec<FlightUnit>,
     /// Flight unit the escorts follow, -1 none.
     pub(crate) escort_leader: i32,
+    /// A routine flight behind the lines (`Mission::quiet`): the enemy's fighters stay down.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) quiet: bool,
+    /// An escorted airlift: how many more enemy fighters may scramble (no more than the
+    /// escort can take on), None unlimited.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) scrambles_left: Option<u8>,
     pub(crate) proj: [Projectile; N_PROJ],
     pub(crate) bullets: Vec<Bullet>,
     /// Number of player gun-round slots (enemy rounds follow them).
@@ -229,6 +238,15 @@ pub struct Sim {
     pub(crate) shell_impacts: Vec<([f64; 2], bool)>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) aaa_rng: Option<Rng>,
+    /// The AC-130s' side gun shells in flight ([`gunship`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) side_shells: Vec<gunship::SideShell>,
+    /// Damage the side guns did to each unit (`units` index; 100 destroys it).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) side_gun_wear: Vec<u8>,
+    /// A gunship mission's enemy column, until it sets off ([`gunship::MissionColumn`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) column: Option<gunship::MissionColumn>,
     /// The CBU-105s' submunitions and skeets on their way down.
     #[serde(default, skip_serializing_if = "sfw::Sfw::is_empty")]
     pub(crate) sfw: sfw::Sfw,
@@ -265,6 +283,9 @@ pub struct Sim {
     pub(crate) mirror: bool,
     #[serde(skip)]
     pub(crate) remote: Vec<net::RemotePilot>,
+    /// A mirror's: the aircraft its player is crew in (`crew::CrewView`).
+    #[serde(skip)]
+    pub(crate) crew_view: Option<crew::CrewView>,
     /// A mirror's: the other pilots' gun rounds, flown here from their trigger (only drawn),
     /// with their age in frames.
     #[serde(skip)]
@@ -375,6 +396,9 @@ impl Sim {
         let kiowa = opts.kiowa;
         let chinook = opts.chinook;
         let raptor = opts.raptor;
+        let galaxy = opts.galaxy;
+        let spectre = opts.spectre;
+        let apache = opts.apache;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -422,6 +446,11 @@ impl Sim {
                 kiowa,
                 chinook,
                 raptor,
+                galaxy,
+                spectre,
+                apache,
+                side_guns: Default::default(),
+                cargo_tag: None,
                 unload: [0; 2],
                 scratch0: GroundObject::default(),
                 spi: None,
@@ -441,6 +470,7 @@ impl Sim {
                 breakup_frames: 0,
                 irj_heat: 0,
                 door_anim: 0,
+                ramp: 0,
                 bay_req: false,
                 bay_pending: false,
                 hardpoints: Vec::new(),
@@ -524,6 +554,12 @@ impl Sim {
                 client_rounds: false,
                 fired_step: 0,
                 claims: (0, 0),
+                crew_aim: Default::default(),
+                crew_cmd: Commands::default(),
+                crew_fire: None,
+                crew_gun: false,
+                crew_launch: None,
+                crew_rounds: Vec::new(),
             },
             weather: m.weather,
             ground_units: (w.ground_unit_count as usize).min(objects.len()),
@@ -538,6 +574,8 @@ impl Sim {
             display_shape,
             flights,
             escort_leader: m.escort as i32,
+            quiet: m.quiet,
+            scrambles_left: (m.escorts > 0).then_some(m.escorts),
             proj: [Projectile::default(); N_PROJ],
             bullets: Vec::new(),
             n_bullets: 0,
@@ -563,6 +601,9 @@ impl Sim {
             aaa_shells: Vec::new(),
             shell_impacts: Vec::new(),
             aaa_rng: None,
+            side_shells: Vec::new(),
+            side_gun_wear: Vec::new(),
+            column: None,
             sfw: sfw::Sfw::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
@@ -583,6 +624,7 @@ impl Sim {
             event_credit: Vec::new(),
             mirror: false,
             remote: Vec::new(),
+            crew_view: None,
             remote_rounds: Vec::new(),
             steps: 0,
             flight_history: Default::default(),
@@ -611,11 +653,28 @@ impl Sim {
             sim.pl.door_anim = 2;
             sim.pl.pflags |= pflags::BAY_OPEN;
         }
+        sim.pl.load_side_guns();
         if sim.opts.campaign {
             let st = data.stores_init.map(|v| v as i32);
             sim.init_campaign(st, data.gun_ammo_init as i32);
         } else if sim.opts.air_defence {
             sim.place_aaa(m);
+        }
+        if sim.quiet && !sim.opts.campaign {
+            // No enemy aircraft about, only the bases' traffic.
+            for i in 0..sim.mission_flights.min(sim.flights.len()) {
+                if !sim.is_traffic(i) {
+                    sim.flights[i] = FlightUnit::default();
+                }
+            }
+            sim.escort_leader = -1;
+        }
+        if m.escorts > 0 {
+            let st = data.stores_init.map(|v| v as i32);
+            sim.launch_escorts(m.escorts, st, data.gun_ammo_init as i32);
+        }
+        if !sim.opts.campaign {
+            sim.column = gunship::MissionColumn::of(m);
         }
         let st = sim.start_state();
         sim.ingest(&st);
@@ -870,6 +929,7 @@ impl Sim {
         for (x, y) in std::mem::take(&mut self.crash_sites) {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -16 });
         }
+        self.tidy_crews();
         let present = self.present();
         if present.is_empty() {
             self.step_absent();
@@ -884,7 +944,8 @@ impl Sim {
         };
         for &k in &present {
             self.activate(k);
-            let ps = input(self, k);
+            let mut ps = input(self, k);
+            self.crew_input(k, &mut ps);
             self.ingest(&ps);
             // Key commands and per-frame systems.
             self.handle_keys(&ps);
@@ -936,7 +997,11 @@ impl Sim {
             self.activate(k);
             let ps = self.pl.last_input.clone();
             self.update_own_rounds(&ps);
+            self.update_side_guns(&ps);
         }
+        self.activate(first);
+        self.update_side_shells();
+        self.update_column(&present);
         self.apply_claims(&present);
         self.apply_pilot_hits();
         self.update_enemy_rounds(&present);
@@ -1168,6 +1233,8 @@ impl Sim {
     /// a helicopter without a turret a machine gun pod on a pylon.
     pub fn has_gun(&self) -> bool {
         !self.pl.lockheed
+            && !self.pl.galaxy
+            && !self.pl.spectre
             && (!self.pl.helicopter
                 || self.pl.gunship
                 || self.pl.bays.iter().any(|b| self.gun_pod(b.0)))
@@ -1280,6 +1347,13 @@ impl Sim {
         self.pl.door_anim
     }
 
+    /// The C-5's cargo ramp: 0 shut .. 1 down, and whether it is on its way down (else up or
+    /// still).
+    pub fn ramp(&self) -> (f32, bool) {
+        let down = (crate::weapons::RAMP_SECS * self.fs).max(1);
+        (self.pl.ramp as f32 / down as f32, self.pl.bay_req && self.pl.ramp < down)
+    }
+
     pub fn ecm(&self) -> bool {
         self.ecm_on()
     }
@@ -1317,6 +1391,12 @@ impl Sim {
     /// leaves.
     pub fn helmet_seeker(&self) -> Option<[f64; 3]> {
         self.pl.helmet_seeker
+    }
+
+    /// Whether the helmet seeker looks at a lock made on purpose (the HSD cursor, the nearest
+    /// target) rather than along the helmet sight.
+    pub fn helmet_seeker_held(&self) -> bool {
+        self.pl.helmet_seeker.is_some() && self.pl.target_hold && self.air_lock_point().is_some()
     }
 
     /// The right MFD should show the Maverick seeker of this slot.

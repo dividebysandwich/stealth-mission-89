@@ -64,6 +64,7 @@ pic-site = Stanowisko { $place }
 uv-live = { $unit } - NA ŻYWO
 uv-contact-lost = UTRACONO KONTAKT
 uv-hint = Przeciąganie: obrót  Kółko: zoom
+uv-infrared = Widok w podczerwieni (termowizja)
 
 ## Gra wieloosobowa
 
@@ -77,6 +78,8 @@ mp-your-name = Twoje imię
 mp-join-address = Dołączanie przez adres
     .hint = adres lub nazwa[:port]
 mp-connect = POŁĄCZYĆ
+mp-join-vr = DOŁĄCZYĆ W VR
+    .facts = Uruchamia grę ponownie w goglach VR i dołącza do tego serwera
 mp-server-name = Nazwa serwera
 mp-udp-port = Port UDP
 mp-address-note = Inni gracze dołączają przez adres tego komputera; aby grać przez internet, trzeba otworzyć port UDP w routerze
@@ -88,6 +91,8 @@ mp-friendly-fire = Ogień do swoich
 mp-airframe-losses = Straty kosztują zasoby
 mp-ai-missions = Misje sojuszniczej SI
 mp-host-new = ZAŁOŻYĆ NOWĄ
+mp-host-vr = ZAŁOŻYĆ W VR
+    .facts = Uruchamia grę ponownie w goglach VR i zakłada kampanię
 mp-host-saved = Założyć grę z zapisanej kampanii
 mp-host = ZAŁOŻYĆ
 mp-host-game = ZAŁOŻYĆ GRĘ
@@ -98,9 +103,7 @@ mp-refresh = ODŚWIEŻYĆ
 mp-server-count = Serwery: { $servers }, piloci: { $pilots }
 mp-list-error = Lista serwerów jest niedostępna: { $error }
 mp-no-servers = Obecnie brak serwerów publicznych
-mp-col-server = SERWER
 mp-col-pilots = PILOCI
-mp-col-war = WOJNA
 mp-dedicated = DEDYKOWANY
 mp-other-version = inna wersja
 mp-join = DOŁĄCZYĆ

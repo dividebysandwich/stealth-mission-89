@@ -6,6 +6,8 @@
 //! the `Core2d` schedule) the left eye's swapchain image is drawn over it with Bevy's blit
 //! pipeline, letterboxed to keep its shape. That costs one fullscreen pass, not another view of the world.
 //! The window stops waiting for its vertical sync in VR, so it never holds the headset back.
+//! The mouse cursor on the mirror points into the world through the left eye (`MirrorRay`), so
+//! the mouse clicks the cockpit, the kneeboard and the menus as on the desktop.
 
 use bevy::camera::visibility::RenderLayers;
 use bevy::core_pipeline::blit::{BlitPipeline, BlitPipelineKey};
@@ -23,8 +25,11 @@ use bevy::render::view::{ExtractedView, ViewTarget};
 use bevy::render::{Render, RenderApp, RenderSystems};
 use bevy::window::{PresentMode, PrimaryWindow};
 use bevy_mod_openxr::render::{OxrFrameProgress, XR_TEXTURE_INDEX};
+use bevy_mod_openxr::resources::OxrCurrentSessionConfig;
+use bevy_mod_xr::camera::XrCamera;
 use bevy_mod_xr::session::session_available;
 
+use crate::camera::MirrorRay;
 use crate::settings::AppState;
 
 /// Drawn after everything else on the window.
@@ -43,7 +48,14 @@ pub struct XrMirrorPlugin;
 impl Plugin for XrMirrorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<XrMirror>::default())
-            .add_systems(OnEnter(AppState::Flight), spawn_mirror.run_if(session_available));
+            .add_systems(OnEnter(AppState::Flight), spawn_mirror.run_if(session_available))
+            .add_systems(
+                PostUpdate,
+                mirror_ray
+                    .after(TransformSystems::Propagate)
+                    .run_if(in_state(AppState::Flight).and_then(session_available)),
+            )
+            .add_systems(OnExit(AppState::Flight), |mut ray: ResMut<MirrorRay>| ray.0 = None);
         let Some(render) = app.get_sub_app_mut(RenderApp) else { return };
         render
             .add_systems(
@@ -63,6 +75,9 @@ fn spawn_mirror(mut commands: Commands, mut window: Query<&mut Window, With<Prim
             ..default()
         },
         RenderLayers::none(),
+        // It only blits the eye: no MSAA (a multisampled one failed validation with the
+        // campaign's VR panel on the window too).
+        Msaa::Off,
         XrMirror,
         DespawnOnExit(AppState::Flight),
     ));
@@ -88,6 +103,49 @@ fn prepare_pipelines(
             commands.entity(e).insert(MirrorPipeline(id, key));
         }
     }
+}
+
+/// The ray through the mouse cursor on the mirrored left eye (`MirrorRay`): from the eye
+/// through the point of its picture under the cursor.
+fn mirror_ray(
+    window: Query<&Window, With<PrimaryWindow>>,
+    config: Option<Res<OxrCurrentSessionConfig>>,
+    eyes: Query<(&XrCamera, &GlobalTransform, &Projection)>,
+    mut ray: ResMut<MirrorRay>,
+) {
+    ray.0 = (|| {
+        let window = window.single().ok()?;
+        let (_, eye, projection) = eyes.iter().find(|(c, ..)| c.0 == 0)?;
+        eye_ray(
+            window.physical_cursor_position()?,
+            window.physical_size(),
+            config?.resolution,
+            eye,
+            projection.get_clip_from_view(),
+        )
+    })();
+}
+
+/// The ray from an eye (`eye`, `clip_from_view`) whose `picture` (pixels) is letterboxed in a
+/// `window` through the point of it under the `cursor` (window pixels): none beside it.
+fn eye_ray(
+    cursor: Vec2,
+    window: UVec2,
+    picture: UVec2,
+    eye: &GlobalTransform,
+    clip_from_view: Mat4,
+) -> Option<Ray3d> {
+    let [x, y, w, h] = letterbox(picture, UVec4::new(0, 0, window.x, window.y));
+    let uv = (cursor - Vec2::new(x, y)) / Vec2::new(w, h);
+    if !(0.0..=1.0).contains(&uv.x) || !(0.0..=1.0).contains(&uv.y) {
+        return None;
+    }
+    // A point in the view under the cursor (any depth in the frustum is in front).
+    let ndc = Vec3::new(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, 0.5);
+    let at = eye.to_matrix() * clip_from_view.inverse();
+    let origin = eye.translation();
+    let dir = Dir3::new(at.project_point3(ndc) - origin).ok()?;
+    Some(Ray3d::new(origin, dir))
 }
 
 /// Where a picture `src` (w, h) goes letterboxed in a view `dst` (x, y, w, h): x, y, w, h.
@@ -159,5 +217,21 @@ mod tests {
         let wide = letterbox(UVec2::new(2000, 1000), UVec4::new(0, 0, 1000, 1000));
         assert_eq!((wide[0], wide[2], wide[3]), (0.0, 1000.0, 500.0));
         assert_eq!(wide[1], 250.0);
+    }
+
+    /// The cursor in the middle of the mirrored eye looks where the eye looks, at the top edge
+    /// half its field of view up; beside the pillarboxed picture there is no ray.
+    #[test]
+    fn cursor_through_the_eye() {
+        let clip = Mat4::perspective_infinite_reverse_rh(1.0, 1.0, 0.05);
+        let eye =
+            GlobalTransform::from(Transform::from_xyz(1.0, 2.0, 3.0).looking_to(Vec3::X, Vec3::Y));
+        let (window, picture) = (UVec2::new(1600, 900), UVec2::new(1000, 1000));
+        let ray = eye_ray(Vec2::new(800.0, 450.0), window, picture, &eye, clip).unwrap();
+        assert!(ray.origin.distance(Vec3::new(1.0, 2.0, 3.0)) < 1e-4);
+        assert!(ray.direction.distance(Vec3::X) < 1e-4, "{:?}", ray.direction);
+        let up = eye_ray(Vec2::new(800.0, 0.0), window, picture, &eye, clip).unwrap();
+        assert!((up.direction.y.atan2(up.direction.x) - 0.5).abs() < 1e-3, "{:?}", up.direction);
+        assert!(eye_ray(Vec2::new(100.0, 450.0), window, picture, &eye, clip).is_none());
     }
 }

@@ -56,6 +56,9 @@ pub const F117_RCS: i32 = 20;
 /// (where the F-117A keeps the classic return) it is as much lower against the classic one.
 pub const F22_RCS: i32 = 12;
 
+/// The C-5 Galaxy's radar return, in 32nds of a fighter's: a big airframe, four big engines.
+pub const GALAXY_RCS: i32 = 80;
+
 /// Height above the ground (ft) below which ground radars start losing the Tornado: its
 /// terrain-following radar holds it down in the clutter where others fly by hand.
 pub const TORNADO_LOW_LEVEL_FT: i32 = 150;
@@ -123,7 +126,11 @@ impl crate::pilot::Pilot {
     /// The stealth types' pose for [`aspect_factor`]: the F-22A and the RAH-66, and the F-117A
     /// in a campaign (the classic missions keep its classic return); None for the others.
     pub(crate) fn pose(&self, campaign: bool) -> Option<Pose> {
-        let f117 = !self.lockheed && !self.external_stores && !self.helicopter && !self.raptor;
+        let f117 = !self.lockheed
+            && !self.external_stores
+            && !self.helicopter
+            && !self.raptor
+            && !self.galaxy;
         (self.raptor || self.comanche || (campaign && f117)).then(|| {
             let rad = |b: i32| s16(b) as f32 * std::f32::consts::PI / 32768.0;
             Pose {
@@ -137,10 +144,12 @@ impl crate::pilot::Pilot {
 
     /// The aircraft's radar return in 32nds of the usual one: in a campaign [`F117_RCS`] for
     /// the F-117A with its bays, [`F22_RCS`] for the F-22A; the F-22A's as much under the
-    /// classic return in the other missions.
+    /// classic return in the other missions; the C-5's [`GALAXY_RCS`] everywhere.
     pub(crate) fn rcs(&self, campaign: bool) -> i32 {
         if self.raptor {
             if campaign { F22_RCS } else { 32 * F22_RCS / F117_RCS }
+        } else if self.galaxy {
+            GALAXY_RCS
         } else if !campaign || self.lockheed || self.external_stores || self.helicopter {
             32
         } else {
@@ -976,6 +985,17 @@ mod tests {
         }
         assert_eq!(jet(true).rcs(true), F22_RCS);
         assert_eq!(jet(false).rcs(true), F117_RCS);
+    }
+
+    /// The C-5 returns far more than a fighter, in a campaign and outside.
+    #[test]
+    fn c5_returns_more_than_a_fighter() {
+        let c5 = crate::pilot::Pilot { galaxy: true, external_stores: true, ..Default::default() };
+        let f16 = crate::pilot::Pilot { external_stores: true, ..Default::default() };
+        for campaign in [false, true] {
+            assert_eq!(c5.rcs(campaign), GALAXY_RCS);
+            assert!(c5.rcs(campaign) > 2 * f16.rcs(campaign), "campaign {campaign}");
+        }
     }
 
     /// The F-117A returns a smaller share; the pulse radar still sees its beam best, the

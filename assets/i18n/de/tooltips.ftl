@@ -133,6 +133,7 @@ tip-cmd-harm = HARM-Zielerfassung
 tip-cmd-gm = Bodenkartierungsradar (GM)
 tip-cmd-eng = Triebwerke und Kraftstoff (ENG)
 tip-cmd-rcs = Radarsignatur (RCS)
+tip-cmd-cgo = Fracht, Rampe und Abwurf (CGO)
 tip-cmd-format-row = Format; erneut: Formatmenü
 tip-cmd-tgp = Zielbehälter (TGP)
 tip-cmd-map = Karte
@@ -206,6 +207,7 @@ tip-console-manual = Die gewählte Drohne von Hand fliegen: Stick und Schubhebel
 tip-console-track = Die Kamera der Drohne am Boden unter ihrem Fadenkreuz halten
 tip-console-slave = Die Kamera der Drohne zurück auf ihren Wegpunkt (voraus und nach unten)
 tip-console-view = Die Kamera der Drohne: ihr TGP oder das FLIR nach vorn, um sie zu fliegen
+tip-console-gun = Als Nächstes diese Seitenkanone richten (der Abzug feuert sie)
 
 ## Bedienelemente
 

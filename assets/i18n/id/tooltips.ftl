@@ -133,6 +133,7 @@ tip-cmd-harm = Penargetan HARM
 tip-cmd-gm = Radar pemetaan darat (GM)
 tip-cmd-eng = Mesin dan bahan bakar (ENG)
 tip-cmd-rcs = Jejak radar (RCS)
+tip-cmd-cgo = Kargo, rampa dan jatuhan udara (CGO)
 tip-cmd-format-row = Format; tekan lagi: menu format
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Peta
@@ -206,6 +207,7 @@ tip-console-manual = Terbangkan drone terpilih secara manual: stick dan throttle
 tip-console-track = Tahan kamera drone di tanah pada crosshair-nya
 tip-console-slave = Kamera drone kembali ke waypoint-nya (ke depan dan ke bawah)
 tip-console-view = Kamera drone: TGP-nya, atau FLIR ke depan untuk menerbangkannya
+tip-console-gun = Arahkan meriam samping ini berikutnya (pelatuk menembakkannya)
 
 ## Kontrol
 

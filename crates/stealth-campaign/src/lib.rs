@@ -168,6 +168,11 @@ pub enum Report {
     Photographed {
         tag: u32,
     },
+    /// A player stopped on a friendly airbase (his sortie goes on).
+    PlayerLanded {
+        player: PlayerId,
+        base: ObjectId,
+    },
 }
 
 /// A player's request.
@@ -211,6 +216,11 @@ pub enum Command {
     TakeControl { tag: u32 },
     /// In the air: leave the aircraft to the AI (it flies the mission on).
     LeaveAircraft,
+    /// Sit at the gunner's console of player `owner`'s aircraft (its sortie's crew).
+    JoinCrew { owner: PlayerId },
+    /// In the air: the aircraft goes on with player `to` (his gunner) as its pilot, the
+    /// player's sortie ends as handed over.
+    HandSortie { to: PlayerId },
 }
 
 /// What the authority has to do or show.
@@ -411,6 +421,13 @@ pub enum CampaignEvent {
         to: ObjectId,
         tag: u32,
     },
+    /// Player `from`'s aircraft goes on with player `to` (his gunner, `Command::HandSortie`):
+    /// `to`'s sortie starts where it is.
+    SortieHanded {
+        from: PlayerId,
+        to: PlayerId,
+        sortie: Sortie,
+    },
     /// A player left his aircraft to the AI (it is `tag` from now on, flying for `target` from
     /// base `from`; `home`: its job is done, it flies home).
     ControlLeft {
@@ -439,6 +456,8 @@ impl CampaignState {
             Command::Retask { offer } => self.retask(player, offer),
             Command::TakeControl { tag } => self.take_control(player, tag),
             Command::LeaveAircraft => self.leave_aircraft(player),
+            Command::JoinCrew { owner } => self.join_crew(player, owner),
+            Command::HandSortie { to } => self.hand_sortie(player, to),
             Command::Select { offer, base } => self.select(player, offer, base),
             Command::Plan { offer, base, route } => self.edit_plan(player, offer, base, route),
             Command::RequestSupport { offer } => self.request_support(player, offer),

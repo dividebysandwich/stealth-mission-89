@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Bodega lateral izquierda (Sidewinder)
 hardpoint-f22-left-main-bay = Bodega principal, mitad izquierda
 hardpoint-f22-right-main-bay = Bodega principal, mitad derecha
 hardpoint-f22-right-side-bay = Bodega lateral derecha (Sidewinder)
+hardpoint-c5-hold = Bodega de carga (palés de lanzamiento)
 weapon-role-21 = Aire-aire, guiado infrarrojo, alcance muy corto
 employment-21 = Alcance: 1-6 km, más en frontal
 loadout-none-in-stock = (sin existencias)

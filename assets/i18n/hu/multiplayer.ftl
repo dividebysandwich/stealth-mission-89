@@ -64,6 +64,7 @@ pic-site = Állás: { $place }
 uv-live = { $unit } - ÉLŐ
 uv-contact-lost = ELVESZETT A KAPCSOLAT
 uv-hint = Húzás: keringés  Kerék: nagyítás
+uv-infrared = Infravörös (hő) nézet
 
 ## Többjátékos
 
@@ -77,6 +78,8 @@ mp-your-name = A neved
 mp-join-address = Csatlakozás címmel
     .hint = cím vagy név[:port]
 mp-connect = CSATLAKOZÁS
+mp-join-vr = CSATLAKOZÁS VR-BEN
+    .facts = Újraindítja a játékot a VR-headsetben, és csatlakozik ehhez a szerverhez
 mp-server-name = Szerver neve
 mp-udp-port = UDP-port
 mp-address-note = A többiek ennek a számítógépnek a címével csatlakoznak; az interneten át játszáshoz nyisd meg az UDP-portot a routeren
@@ -88,6 +91,8 @@ mp-friendly-fire = Baráti tűz
 mp-airframe-losses = A veszteségek erőforrásba kerülnek
 mp-ai-missions = Baráti MI-küldetések
 mp-host-new = ÚJ INDÍTÁSA
+mp-host-vr = INDÍTÁS VR-BEN
+    .facts = Újraindítja a játékot a VR-headsetben, és elindítja a hadjáratot
 mp-host-saved = Mentett kampány indítása
 mp-host = INDÍTÁS
 mp-host-game = JÁTÉK INDÍTÁSA
@@ -98,9 +103,7 @@ mp-refresh = FRISSÍTÉS
 mp-server-count = { $servers } szerver, { $pilots } pilóta
 mp-list-error = A szerverlista nem érhető el: { $error }
 mp-no-servers = Jelenleg nincs nyilvános szerver
-mp-col-server = SZERVER
 mp-col-pilots = PILÓTÁK
-mp-col-war = HÁBORÚ
 mp-dedicated = DEDIKÁLT
 mp-other-version = másik verzió
 mp-join = CSATLAKOZÁS

@@ -221,6 +221,11 @@ aircraft-ah1z =
         Gevechtshelikopter
         Kanon in een koepel, Hellfires, AIM-9
         Kanon en Hellfires volgen de pod
+aircraft-ah64 =
+    .facts =
+        Tweezits gevechtshelikopter
+        Kanon in een koepel, Hellfires, Stingers
+        Een tweede speler kan meevliegen als schutter
 
 ## Secties en groepen
 
@@ -434,3 +439,13 @@ aircraft-ch47 =
         Vrachthelikopter met tandemrotors
         Hangt bevoorradings- en logistieke lasten aan
         Geen koppel om op te vangen: de rotors heffen elkaar op
+aircraft-c5 =
+    .facts =
+        Viermotorig strategisch transportvliegtuig
+        Vliegt munitie tussen de vliegbases
+        Zwaar: traag rollen en roteren
+aircraft-ac130 =
+    .facts =
+        Zijwaarts vurende gunship
+        40mm- en 105mm-kanonnen gericht met de pod
+        Vlieg linksom om de kanonnen te laten richten

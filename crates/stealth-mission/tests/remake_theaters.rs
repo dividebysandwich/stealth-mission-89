@@ -137,3 +137,152 @@ fn the_water_grid_agrees_with_the_point_test() {
         assert!(i != 3 || wet > 0, "no water in Central Europe of {checked}");
     }
 }
+
+/// The cargo jet's missions in every theater: off a land base (never a carrier), an airdrop
+/// to friendly troops, then the delivery to a friendly airfield on land where it also lands,
+/// the pallets in the hold.
+#[test]
+fn cargo_jet_missions_drop_and_deliver() {
+    let data = data();
+    let f = world::flags::FRIENDLY;
+    let mut tested = 0;
+    for theater in 0..stealth_formats::ALL_THEATERS.len() {
+        if data.theaters.get(theater).is_none_or(|t| t.world.objects.is_empty()) {
+            continue;
+        }
+        for (seed, kind) in
+            (0..6u16).zip([MissionKind::Strike, MissionKind::Air].into_iter().cycle())
+        {
+            let s = MissionSettings { theater, kind, land_bases: true, ..Default::default() };
+            let Ok(mut m) = generate(&data, &s, Seed::Srand(seed * 3001 + 7)) else { continue };
+            assert!(!m.takeoff.carrier, "theater {theater} seed {seed}: carrier takeoff");
+            airlift::for_transport(&mut m, &data);
+            let w = &m.world;
+            let (p, s2) = (&m.primary, &m.secondary);
+            let name = &m.theater_name;
+            assert_eq!(p.mission_type, airlift::AIRDROP, "{name} {seed}");
+            assert_eq!(s2.mission_type, airlift::DELIVERY, "{name} {seed}");
+            let zone = w.objects[p.object_index as usize];
+            let dest = w.objects[s2.object_index as usize];
+            assert!(zone.flags & f != 0 && zone.flags & world::flags::AIRFIELD == 0, "{name}");
+            assert!(dest.flags & f != 0 && dest.flags & world::flags::AIRFIELD != 0, "{name}");
+            assert!(dest.flags & world::flags::CARRIER == 0, "{name}: delivery to a carrier");
+            assert_eq!(m.landing.object_index, s2.object_index);
+            assert_eq!(m.loadout.usable_bays, 1);
+            assert_eq!(m.loadout.bays[0].weapon, airlift::PALLETS);
+            tested += 1;
+            // Done once.
+            let again = m.clone();
+            airlift::for_transport(&mut m, &data);
+            assert_eq!(m, again);
+        }
+    }
+    println!("{tested} cargo jet missions");
+    assert!(tested >= 20, "only {tested} missions");
+}
+
+/// About half the cargo jet's missions are routine, behind the lines (no escort, the enemy's
+/// fighters grounded), their routes far clearer of the enemy than the front-line drops, which
+/// get two escorts.
+#[test]
+fn cargo_jet_missions_are_quiet_or_escorted() {
+    let data = data();
+    let (mut quiet, mut front) = (Vec::new(), Vec::new());
+    for theater in 0..stealth_formats::ALL_THEATERS.len() {
+        if data.theaters.get(theater).is_none_or(|t| t.world.objects.is_empty()) {
+            continue;
+        }
+        for seed in 0..12u16 {
+            let kind = if seed % 2 == 0 { MissionKind::Strike } else { MissionKind::Air };
+            let s = MissionSettings { theater, kind, land_bases: true, ..Default::default() };
+            let Ok(mut m) = generate(&data, &s, Seed::Srand(seed * 3001 + 7)) else { continue };
+            airlift::for_transport(&mut m, &data);
+            let t = airlift::threats(&m);
+            let p = |b: &stealth_mission::MapPoint| (b.x, b.y);
+            let km = airlift::route_clearance(
+                &t,
+                p(&m.takeoff.position),
+                p(&m.primary.position),
+                p(&m.secondary.position),
+            ) / 64.0;
+            if m.quiet {
+                assert_eq!(m.escorts, 0);
+                quiet.push(km);
+            } else {
+                assert_eq!(m.escorts, airlift::ESCORTS);
+                front.push(km);
+            }
+        }
+    }
+    let median = |v: &mut Vec<f64>| {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let n = (quiet.len() + front.len()) as f64;
+    let (q, f) = (median(&mut quiet), median(&mut front));
+    println!(
+        "{} quiet (median clearance {q:.0} km, least {:.0}), {} front ({f:.0} km)",
+        quiet.len(),
+        quiet[0],
+        front.len()
+    );
+    assert!((0.3..0.7).contains(&(quiet.len() as f64 / n)), "quiet share");
+    assert!(q > f + 10.0, "quiet routes {q:.0} km, front {f:.0} km");
+}
+
+/// The gunship's missions: an enemy column always, never within a SAM launcher's immediate
+/// reach; about half quiet (far from every SAM site and airfield, no escort), the others nearer
+/// the front with two escorts.
+#[test]
+fn gunship_missions_find_a_column_clear_of_the_sams() {
+    use stealth_mission::gunship;
+    let data = data();
+    let (mut quiet, mut front) = (0, 0);
+    for theater in 0..stealth_formats::ALL_THEATERS.len() {
+        if data.theaters.get(theater).is_none_or(|t| t.world.objects.is_empty()) {
+            continue;
+        }
+        for seed in 0..10u16 {
+            let s = MissionSettings {
+                theater,
+                kind: MissionKind::Strike,
+                land_bases: true,
+                ..Default::default()
+            };
+            let Ok(mut m) = generate(&data, &s, Seed::Srand(seed * 3001 + 7)) else { continue };
+            gunship::for_gunship(&mut m, &data);
+            let name = &m.theater_name;
+            if m.primary.mission_type != gunship::COLUMN {
+                println!("{name} {seed}: no ground target, kept the generated mission");
+                continue;
+            }
+            let c = m.column.as_ref().expect("a column");
+            assert!((5..=6).contains(&c.kinds.len()), "{name} {seed}");
+            assert!(c.route.len() >= 2, "{name} {seed}");
+            assert_eq!(m.primary.position.x, c.route[0].0);
+            assert!(m.secondary.object_index > 2);
+            // Where the column is caught.
+            let p = (m.primary.position.x, m.primary.position.y);
+            let d = |q: &(i32, i32)| {
+                (((q.0 - p.0) as f64).powi(2) + ((q.1 - p.1) as f64).powi(2)).sqrt()
+            };
+            let sam = airlift::sam_sites(&m).iter().map(d).fold(f64::MAX, f64::min) / 64.0;
+            if m.quiet {
+                quiet += 1;
+                assert_eq!(m.escorts, 0);
+                assert!(sam >= 30.0, "{name} {seed}: quiet {sam:.0} km from a SAM");
+            } else {
+                front += 1;
+                assert_eq!(m.escorts, gunship::ESCORTS);
+                assert!(sam >= 15.0, "{name} {seed}: {sam:.0} km from a SAM");
+            }
+            let again = m.clone();
+            gunship::for_gunship(&mut m, &data);
+            assert_eq!(m, again);
+        }
+    }
+    println!("gunship: {quiet} quiet, {front} front-line");
+    let n = quiet + front;
+    assert!(n >= 40, "only {n} gunship missions");
+    assert!(quiet * 100 >= n * 30 && front * 100 >= n * 30, "{quiet} quiet of {n}");
+}

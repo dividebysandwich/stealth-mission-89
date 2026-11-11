@@ -221,6 +221,11 @@ aircraft-ah1z =
         Angrebshelikopter
         Tårnkanon, Hellfire, AIM-9
         Kanon og Hellfire følger pod'en
+aircraft-ah64 =
+    .facts =
+        Angrebshelikopter, tosædet
+        Tårnkanon, Hellfire, Stinger
+        En anden spiller kan flyve som skytte
 
 ## Sektioner og grupper
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Lasthelikopter med tandemrotorer
         Hænger forsynings- og logistiklaster op
         Intet moment at holde imod: rotorerne ophæver hinanden
+aircraft-c5 =
+    .facts =
+        Firemotoret strategisk transportfly
+        Flyver ammunition mellem flybaserne
+        Tung: langsom til at krænge og rotere
+aircraft-ac130 =
+    .facts =
+        Sidefyrende gunship
+        40 mm- og 105 mm-kanoner rettet med poden
+        Kreds til venstre for at få kanonerne på målet

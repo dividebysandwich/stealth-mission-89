@@ -64,6 +64,7 @@ pic-site = { $place } 기지
 uv-live = { $unit } - 실시간
 uv-contact-lost = 접촉 상실
 uv-hint = 끌기: 회전  휠: 확대/축소
+uv-infrared = 적외선(열화상) 보기
 
 ## 멀티플레이어
 
@@ -77,6 +78,8 @@ mp-your-name = 이름
 mp-join-address = 주소로 참가
     .hint = 주소 또는 이름[:포트]
 mp-connect = 연결
+mp-join-vr = VR로 참가
+    .facts = VR 헤드셋으로 게임을 다시 시작하고 이 서버에 참가합니다
 mp-server-name = 서버 이름
 mp-udp-port = UDP 포트
 mp-address-note = 다른 플레이어는 이 컴퓨터의 주소로 참가합니다. 인터넷으로 플레이하려면 공유기에서 UDP 포트를 여십시오
@@ -88,6 +91,8 @@ mp-friendly-fire = 아군 피해
 mp-airframe-losses = 손실은 자원 소모
 mp-ai-missions = 아군 AI 임무
 mp-host-new = 새로 호스트
+mp-host-vr = VR로 호스트
+    .facts = VR 헤드셋으로 게임을 다시 시작하고 캠페인을 호스트합니다
 mp-host-saved = 저장된 캠페인 호스트
 mp-host = 호스트
 mp-host-game = 게임 호스트
@@ -98,9 +103,7 @@ mp-refresh = 새로고침
 mp-server-count = 서버 { $servers }개, 조종사 { $pilots }명
 mp-list-error = 서버 목록에 접속할 수 없음: { $error }
 mp-no-servers = 현재 공개 서버 없음
-mp-col-server = 서버
 mp-col-pilots = 조종사
-mp-col-war = 전쟁
 mp-dedicated = 전용
 mp-other-version = 다른 버전
 mp-join = 참가

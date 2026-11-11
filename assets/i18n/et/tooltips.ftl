@@ -133,6 +133,7 @@ tip-cmd-harm = HARM-i sihtimine
 tip-cmd-gm = Maapinna kaardistusradar (GM)
 tip-cmd-eng = Mootorid ja kütus (ENG)
 tip-cmd-rcs = Radarijälg (RCS)
+tip-cmd-cgo = Last, kaldtee ja heide (CGO)
 tip-cmd-format-row = Formaat; uuesti: formaatide menüü
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Kaart
@@ -206,6 +207,7 @@ tip-console-manual = Juhi valitud drooni käsitsi: juhtkang ja gaasihoob
 tip-console-track = Hoia drooni kaamerat maapinnal selle sihiku all
 tip-console-slave = Drooni kaamera tagasi selle waypoint'ile (ette ja alla)
 tip-console-view = Drooni kaamera: selle TGP või ettepoole vaatav FLIR selle juhtimiseks
+tip-console-gun = Sihi järgmisena selle külgkahuriga (päästik tulistab sellest)
 
 ## Juhtelemendid
 

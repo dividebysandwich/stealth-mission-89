@@ -41,7 +41,7 @@ const G: f32 = 32.174;
 /// ft/s per knot (`Aircraft::velocity` is knots * 27 = ft/s * 16).
 const KNOT: f32 = 27.0 / 16.0;
 /// Rotor revolutions per second drawn at 100% rotor speed (the AI helicopters' rate).
-const DRAWN_REVS: f32 = 0.94;
+pub(super) const DRAWN_REVS: f32 = 0.94;
 
 /// Rotor and airframe constants.
 #[derive(Debug, Clone, Copy)]
@@ -183,6 +183,22 @@ impl Rotor {
         drag: Vec3::new(8.0e-4, 0.0, 1.1e-4),
         rotor_lag: 0.9,
         fuel_burn: 0.11,
+        ..Rotor::AH1Z
+    };
+
+    /// AH-64D: heavier than the AH-1Z, with its wide stub wings, sponsons and stores draggier,
+    /// and slower on the cyclic; the same four-blade rotor stalls earlier (the level speed tops
+    /// out near 160 kt); two bigger turbines that burn more.
+    pub const AH64: Rotor = Rotor {
+        thrust_slope: 1.10,
+        pitch_accel: 2.6,
+        roll_accel: 6.0,
+        pedal_accel: 2.8,
+        sas: Vec3::new(4.0, 2.4, 5.2),
+        stall_knots: (158.0, 205.0),
+        drag: Vec3::new(4.0e-4, 0.0, 5.4e-5),
+        rotor_lag: 1.3,
+        fuel_burn: 0.36,
         ..Rotor::AH1Z
     };
 
@@ -1022,6 +1038,32 @@ mod tests {
         );
         assert!(fast.knots() > 160.0 && fast.climb_rate > 0.0);
         assert!(faster.knots() < 230.0 && faster.climb_rate < 0.0);
+    }
+
+    /// The AH-64: hovers at a sane collective; its level speed tops out between the UH-60's and
+    /// the AH-1Z's (about 150-175 kt at full collective, the nose down 14 degrees).
+    #[test]
+    fn ah64_hovers_and_tops_out_near_160_kt() {
+        let hc = Rotor::AH64.hover_collective();
+        assert!((0.45..0.6).contains(&hc), "hover collective {hc}");
+        let (a, _) = fly_as(FlightConstants::ah64(), hovering(200.0), 10.0, 1, |a, c| {
+            c.throttle = Some(hc);
+            pilot(a, c, 0.0);
+        });
+        assert!(a.climb_rate.abs() < 2.0, "climb {}", a.climb_rate);
+        let (fast, faster) = (
+            full_collective(FlightConstants::ah64(), 10.0),
+            full_collective(FlightConstants::ah64(), 16.0),
+        );
+        println!(
+            "AH-64 full collective: {:.0} kt climb {:.1}, {:.0} kt climb {:.1}",
+            fast.knots(),
+            fast.climb_rate,
+            faster.knots(),
+            faster.climb_rate
+        );
+        assert!(fast.knots() > 135.0 && fast.climb_rate > 0.0);
+        assert!(faster.knots() < 200.0 && faster.climb_rate < 0.0);
     }
 
     /// Full collective with the nose held `deg` down from 120 kt, the wheels up: the speed and

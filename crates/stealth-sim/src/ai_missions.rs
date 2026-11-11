@@ -21,6 +21,7 @@ pub const AH1Z: i32 = 40;
 pub const RAH66: i32 = 41;
 pub const OH58: i32 = 42;
 pub const CH47: i32 = 43;
+pub const AH64: i32 = 44;
 
 /// The other side's ground units this close to a CAS flight's point are its targets (map
 /// units, 5 km).
@@ -202,11 +203,13 @@ impl Sim {
         }
     }
 
-    /// Flight unit of the campaign aircraft with tag `tag` (in the air, alive).
+    /// Flight unit of the campaign aircraft with tag `tag` (in the air, alive). A client gets
+    /// the campaign slots and the flight units in separate messages, so a new flight's slot
+    /// can arrive before its unit: not up yet.
     pub fn flight_of_tag(&self, tag: u32) -> Option<usize> {
         let c = self.campaign.as_ref()?;
         let i = c.flights.iter().position(|f| f.is_some_and(|f| f.tag == tag))?;
-        let u = self.flights[i];
+        let u = *self.flights.get(i)?;
         (u.flags & fflags::DESTROYED == 0 && u.flags & fflags::AIRBORNE != 0).then_some(i)
     }
 
@@ -370,7 +373,7 @@ impl Sim {
         home: bool,
         blue: bool,
     ) -> bool {
-        if self.campaign.is_none() || !self.pilot_in_the_air(id) {
+        if !self.opts.campaign || !self.pilot_in_the_air(id) {
             return false;
         }
         let p = self.pilot_input(id);

@@ -133,6 +133,7 @@ tip-cmd-harm = Targeting tal-HARM
 tip-cmd-gm = Radar tal-immappjar tal-art (GM)
 tip-cmd-eng = Magni u fjuwil (ENG)
 tip-cmd-rcs = Firma tar-radar (RCS)
+tip-cmd-cgo = Merkanzija, rampa u waqgħa mill-ajru (CGO)
 tip-cmd-format-row = Format; għal darb'oħra: menu tal-formati
 tip-cmd-tgp = Targeting pod (TGP)
 tip-cmd-map = Mappa
@@ -206,6 +207,7 @@ tip-console-manual = Tajjar id-drone magħżul bl-idejn: l-istick u t-throttle
 tip-console-track = Żomm il-kamera tad-drone fuq l-art taħt il-crosshair tagħha
 tip-console-slave = Il-kamera tad-drone lura fuq il-waypoint tiegħu ('il quddiem u 'l isfel)
 tip-console-view = Il-kamera tad-drone: it-TGP tiegħu, jew il-FLIR 'il quddiem biex ittajru
+tip-console-gun = Immira dan il-kanun tal-ġenb li jmiss (il-grillu jisparah)
 
 ## Kontrolli
 

@@ -33,6 +33,10 @@ options-auto-trim = Automatikus trim
         Elengedett botkormánynál a trim ott tartja a helyzetet, ahol hagyta
         Helikopterek: az orr nem emelkedik tovább a sebességgel; vadászgépek: kitrimmeli a sérült kormányfelületeket
         Kézi trim: Alt + nyílbillentyűk, az Alt + Home középre állítja
+options-keep-time-accel = Időgyorsítás megtartása
+    .facts =
+        A gyorsítás már nem szakad meg, ha felfednek, fegyvert lősz ki, vagy lelőnek
+        Csak a TIME gomb és a Shift + Z / Shift + X változtatja meg
 options-tooltips = Pilótafülke-tooltipek
     .facts = Mi a pilótafülke egy kezelőszerve vagy kijelzője, az egér alatt vagy VR-ban egy ujjhegynél
 options-player-labels = Játékosnevek

@@ -64,6 +64,7 @@ pic-site = Emplazamiento de { $place }
 uv-live = { $unit } - EN DIRECTO
 uv-contact-lost = CONTACTO PERDIDO
 uv-hint = Arrastrar: orbitar  Rueda: zoom
+uv-infrared = Vista infrarroja (térmica)
 
 ## Multijugador
 
@@ -77,6 +78,8 @@ mp-your-name = Su nombre
 mp-join-address = Unirse por dirección
     .hint = dirección o nombre[:puerto]
 mp-connect = CONECTAR
+mp-join-vr = UNIRSE EN VR
+    .facts = Reinicia el juego en el visor de VR y se une a este servidor
 mp-server-name = Nombre del servidor
 mp-udp-port = Puerto UDP
 mp-address-note = Los demás jugadores se unen con la dirección de este ordenador; abra el puerto UDP en su router para jugar por internet
@@ -88,6 +91,8 @@ mp-friendly-fire = Fuego amigo
 mp-airframe-losses = Las pérdidas cuestan recursos
 mp-ai-missions = Misiones de IA aliada
 mp-host-new = ALOJAR NUEVA
+mp-host-vr = ALOJAR EN VR
+    .facts = Reinicia el juego en el visor de VR y aloja la campaña
 mp-host-saved = Alojar una campaña guardada
 mp-host = ALOJAR
 mp-host-game = ALOJAR UNA PARTIDA
@@ -98,9 +103,7 @@ mp-refresh = ACTUALIZAR
 mp-server-count = { $servers } servidores, { $pilots } pilotos
 mp-list-error = No se puede acceder a la lista de servidores: { $error }
 mp-no-servers = Ahora mismo no hay servidores públicos
-mp-col-server = SERVIDOR
 mp-col-pilots = PILOTOS
-mp-col-war = GUERRA
 mp-dedicated = DEDICADO
 mp-other-version = otra versión
 mp-join = UNIRSE

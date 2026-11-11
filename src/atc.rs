@@ -886,6 +886,9 @@ fn callsign(kind: crate::aircraft::AircraftKind, (flight, position): (u8, u8)) -
         K::OH58 => "Kiowa",
         K::CH47 => "Chinook",
         K::F22 => "Raptor",
+        K::C5 => "Reach",
+        K::AC130 => "Spectre",
+        K::AH64 => "Apache",
     };
     format!("{name} {flight}-{position}")
 }
@@ -967,7 +970,7 @@ fn control(
     let ground = DVec2::new(pos.0.x, -pos.0.z);
     let traffic = traffic(sim, me, ground);
     let ifr = weather.as_ref().is_some_and(|w| instrument_conditions(&w.weather));
-    let land = waypoints.as_ref().map_or(3, |w| land_index(w));
+    let land = waypoints.as_ref().map_or(3, |w| w.land_index());
     let homeward = waypoints.as_ref().is_some_and(|w| w.current == land && !w.points.is_empty());
     let (h, ..) = a.euler();
     let input = AtcInput {
@@ -1041,11 +1044,6 @@ fn station_speaker(station: &str, chosen: u32, speakers: u32) -> u32 {
     }
     let h = station.bytes().fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619));
     (chosen + 1 + h % (speakers - 1)) % speakers
-}
-
-/// The landing base's index among the waypoints.
-fn land_index(w: &crate::hud::Waypoints) -> usize {
-    w.anchors.get(3).copied().unwrap_or(3)
 }
 
 /// Low cloud or poor visibility: the approaches are flown on instruments.

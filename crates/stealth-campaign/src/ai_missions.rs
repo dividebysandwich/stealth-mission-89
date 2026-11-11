@@ -124,6 +124,17 @@ impl AiMission {
     fn slot(&self, tag: u32) -> Option<usize> {
         self.tags.iter().position(|&t| t == tag)
     }
+
+    /// Its aircraft have a gunner's console (a player can sit there, the AI flying).
+    pub fn gunner_seat(&self) -> bool {
+        matches!(self.airframe, AiAirframe::Blue(a) if a.gunner_seat())
+    }
+
+    /// Aircraft `tag`'s state: waiting to take off, the AI flies it, a player took it over.
+    pub fn tag_state(&self, tag: u32) -> Option<(bool, Option<PlayerId>, bool)> {
+        let k = self.slot(tag)?;
+        Some((self.alive[k], self.controlled[k], self.waiting(k)))
+    }
 }
 
 /// The missions the AI flies (the others fly themselves: insertions when ordered, the rescue
@@ -168,7 +179,7 @@ pub fn pick_blue(kind: MissionKind, sam: i32, air: usize, close: bool) -> Aircra
                 if heavy_sam {
                     RAH66
                 } else {
-                    AH1Z
+                    AH64
                 }
             }
             MissionKind::Sead if heavy_sam => {
@@ -810,6 +821,7 @@ impl CampaignState {
             progress: Progress { heli: aircraft.cargo(), ..Progress::default() },
             flight,
             position,
+            crew: Vec::new(),
         };
         self.ai_missions[k].controlled[slot] = Some(player);
         self.note(text!("cl-took-control", title = offer.title.clone()));
@@ -828,6 +840,79 @@ impl CampaignState {
         Ok(vec![CampaignEvent::ControlTaken { player, tag, sortie }, self.plans_changed()])
     }
 
+    /// Player `player` sits at the gunner's console of `owner`'s aircraft: he is its sortie's
+    /// crew (its credit is his too).
+    pub(crate) fn join_crew(
+        &mut self,
+        player: PlayerId,
+        owner: PlayerId,
+    ) -> Result<Vec<CampaignEvent>, Text> {
+        if self.sortie(player).is_some() {
+            return Err(text!("ce-already-flying"));
+        }
+        let Some(s) = self.sortie(owner).cloned() else {
+            return Err(text!("ce-not-flying"));
+        };
+        if !s.aircraft.gunner_seat() {
+            return Err(text!("crew-no-such-seat"));
+        }
+        self.leave_plans(player);
+        let slot = self.slot_mut(owner);
+        if let Some(s) = slot.sortie.as_mut()
+            && !s.crew.contains(&player)
+        {
+            s.crew.push(player);
+        }
+        let name = self.player_name(player).unwrap_or("").to_string();
+        self.note(text!("cl-joined-crew", name = name, title = s.offer.title.clone()));
+        Ok(vec![self.plans_changed()])
+    }
+
+    /// Player `from`'s aircraft goes on with `to` (his gunner) as its pilot: a new sortie on
+    /// the same mission from where it is; `from`'s ends as handed over when the host takes him
+    /// out of it.
+    pub(crate) fn hand_sortie(
+        &mut self,
+        from: PlayerId,
+        to: PlayerId,
+    ) -> Result<Vec<CampaignEvent>, Text> {
+        if self.sortie(to).is_some() {
+            return Err(text!("ce-already-flying"));
+        }
+        let Some(s) = self.sortie(from).cloned() else {
+            return Err(text!("ce-not-flying"));
+        };
+        let mut crew: Vec<PlayerId> = s.crew.iter().copied().filter(|&p| p != to).collect();
+        if !crew.contains(&from) {
+            crew.push(from);
+        }
+        let sortie = Sortie {
+            id: self.id(),
+            offer: s.offer.clone(),
+            base: s.base,
+            aircraft: s.aircraft,
+            started: self.clock,
+            progress: Progress { heli: s.aircraft.cargo(), ..Progress::default() },
+            flight: s.flight,
+            position: s.position,
+            crew,
+        };
+        // An AI flight's aircraft he took over is `to`'s now.
+        for m in &mut self.ai_missions {
+            for c in m.controlled.iter_mut().filter(|c| **c == Some(from)) {
+                *c = Some(to);
+            }
+        }
+        self.leave_plans(to);
+        self.slot_mut(to).sortie = Some(sortie.clone());
+        for p in self.plans.iter_mut().filter(|p| p.flying.contains(&from)) {
+            p.flying.push(to);
+        }
+        let name = self.player_name(to).unwrap_or("").to_string();
+        self.note(text!("cl-handed-sortie", name = name, title = s.offer.title.clone()));
+        Ok(vec![CampaignEvent::SortieHanded { from, to, sortie }, self.plans_changed()])
+    }
+
     /// A player in the air leaves his aircraft to the AI: it flies his mission on (the
     /// aircraft he took over goes back to its flight). His sortie ends when the host takes him
     /// out ([`SortieEnd::HandedOver`]).
@@ -835,6 +920,10 @@ impl CampaignState {
         let Some(s) = self.sortie(player).cloned() else {
             return Err(text!("ce-not-flying"));
         };
+        // A cargo run is flown to its base by the one who took it.
+        if matches!(s.offer.objective, Objective::Airlift { .. }) {
+            return Err(text!("ce-airlift-no-handover"));
+        }
         let held = self.ai_missions.iter().position(|m| m.controlled.contains(&Some(player)));
         let (k, tag) = match held {
             Some(k) => {

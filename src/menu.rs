@@ -23,7 +23,7 @@ impl Plugin for MenuPlugin {
         app.add_plugins(EguiPlugin::default())
             .insert_resource(EguiGlobalSettings { auto_create_primary_context: false, ..default() })
             .init_resource::<MenuState>()
-            .init_resource::<crate::input_dialog::InputDialog>()
+            .insert_resource(crate::input_dialog::InputDialog::from_args())
             .insert_resource(crate::options::OptionsWindow::from_args())
             // `--open-loadout`: start in the loadout editor (screenshots).
             .insert_resource(crate::loadout::LoadoutWindow::opened(
@@ -213,15 +213,18 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft.
-const AIRCRAFT: [AircraftKind; 11] = [
+const AIRCRAFT: [AircraftKind; 14] = [
     AircraftKind::F117,
     AircraftKind::F16,
     AircraftKind::F22,
     AircraftKind::Tornado,
     AircraftKind::A10,
     AircraftKind::AV8B,
+    AircraftKind::C5,
+    AircraftKind::AC130,
     AircraftKind::UH60,
     AircraftKind::AH1Z,
+    AircraftKind::AH64,
     AircraftKind::RAH66,
     AircraftKind::OH58,
     AircraftKind::CH47,
@@ -297,6 +300,25 @@ fn relaunch_in_vr(state: &MenuState, settings: &crate::settings::Settings) -> st
     cmd.spawn().map(|_| ())
 }
 
+/// Starts the game again in VR in the multiplayer menu, which does what `args` say there (join
+/// a server: `--connect`, host a campaign: `--host`). The menu's choices are saved first: the new
+/// game starts with them.
+pub fn relaunch_multiplayer_in_vr(
+    args: &[String],
+    state: &MenuState,
+    settings: &crate::settings::Settings,
+) -> std::io::Result<()> {
+    crate::prefs::Prefs::save_if_changed(state, settings, &mut None);
+    let exe = match std::env::var_os("APPIMAGE") {
+        Some(appimage) => appimage.into(),
+        None => std::env::current_exe()?,
+    };
+    let mut cmd = std::process::Command::new(exe);
+    cmd.arg(vr_flag()).args(args).args(["--name", &state.player_name]);
+    settings_args(&mut cmd, settings);
+    cmd.spawn().map(|_| ())
+}
+
 /// Starts the game again in VR, straight into a saved campaign.
 pub fn relaunch_campaign_in_vr(
     name: &str,
@@ -327,6 +349,7 @@ fn settings_args(cmd: &mut std::process::Command, settings: &crate::settings::Se
         (settings.classic_avionics, "--classic-avionics"),
         (settings.classic_flight, "--classic-flight"),
         (settings.no_crashes, "--no-crashes"),
+        (settings.keep_time_accel, "--keep-time-accel"),
         (!settings.auto_trim, "--no-auto-trim"),
         (settings.realistic_damage, "--realistic-damage"),
         (!settings.realistic_guidance, "--classic-guidance"),
@@ -1813,14 +1836,12 @@ pub(crate) fn menu_ui(
             );
             mission_settings.start_hour = state.start_hour;
             mission_settings.moon = state.moon;
-            mission_settings.helicopter = settings.aircraft.spec().helicopter;
-            let transport = settings.aircraft.spec().transport();
+            crate::mission::settings_for(&mut mission_settings, settings.aircraft);
+            let aircraft = settings.aircraft;
             state.mission = Some(
                 crate::mission::generate(&data, &mission_settings, state.seed)
                     .map(|mut m| {
-                        if transport {
-                            stealth_mission::insertion::for_helicopter(&mut m);
-                        }
+                        crate::mission::for_aircraft(&mut m, &data.0, aircraft);
                         m
                     })
                     .map_err(|e| format!("{e:#}")),
@@ -1938,11 +1959,14 @@ pub(crate) fn menu_ui(
                             crate::aircraft_preview::show(ui, &mut preview);
                             let was = settings.aircraft;
                             vehicle_options(ui, &mut settings, Some(&mut state.lockheed), compact);
-                            // A troop helicopter flies the same seed's targets as insertions;
-                            // helicopters fly short missions.
+                            // A troop helicopter flies the same seed's targets as insertions,
+                            // the cargo jet as an airdrop and a delivery; helicopters fly
+                            // short missions.
+                            let lift = settings.aircraft.airlifter() != was.airlifter();
                             let (now, was) = (settings.aircraft.spec(), was.spec());
                             if now.transport() != was.transport()
                                 || now.helicopter != was.helicopter
+                                || lift
                             {
                                 state.regenerate();
                             }
@@ -2129,7 +2153,7 @@ pub(crate) fn menu_ui(
     );
     crate::planner::planner_ui(ctx, &mut planner, &mut state, settings.aircraft);
     crate::loadout::loadout_ui(ctx, &mut loadout, &mut state, settings.aircraft);
-    let loaded = crate::savegame::saves_ui(ctx, &mut saves);
+    let loaded = crate::savegame::saves_ui(ctx, &mut saves, settings.vr);
     if before
         != (
             state.theater,

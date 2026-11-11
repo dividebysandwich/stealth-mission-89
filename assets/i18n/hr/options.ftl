@@ -33,6 +33,10 @@ options-auto-trim = Automatski trim
         S otpuštenom palicom trim drži stav u kojem ste je ostavili
         Helikopteri: nos se više ne diže s brzinom; mlažnjaci: kompenzira oštećene upravljačke površine
         Ručni trim: Alt + strelice, Alt + Home ga centrira
+options-keep-time-accel = Zadrži ubrzanje vremena
+    .facts =
+        Ubrzanje se više ne prekida kad vas otkriju, ispalite oružje ili vas obore
+        Mijenjaju ga samo tipka TIME i Shift + Z / Shift + X
 options-tooltips = Tooltipi kokpita
     .facts = Što je pojedina komanda ili zaslon u kokpitu, pod mišem ili vrhom prsta u VR-u
 options-player-labels = Imena igrača

@@ -159,6 +159,7 @@ hardpoint-f22-left-side-bay = Left side bay (Sidewinder)
 hardpoint-f22-left-main-bay = Main bay, left half
 hardpoint-f22-right-main-bay = Main bay, right half
 hardpoint-f22-right-side-bay = Right side bay (Sidewinder)
+hardpoint-c5-hold = Cargo hold (airdrop pallets)
 weapon-role-21 = Air-to-air, infrared homing, very short range
 employment-21 = Range: 1-6 km, farther head-on
 weapon-role-22 = Machine gun pod: fired as the gun, along the nose

@@ -154,6 +154,7 @@ hardpoint-f22-left-side-bay = Lewa komora boczna (Sidewinder)
 hardpoint-f22-left-main-bay = Komora główna, lewa połowa
 hardpoint-f22-right-main-bay = Komora główna, prawa połowa
 hardpoint-f22-right-side-bay = Prawa komora boczna (Sidewinder)
+hardpoint-c5-hold = Ładownia (palety zrzutowe)
 weapon-role-21 = Powietrze-powietrze, naprowadzanie na podczerwień, bardzo krótki zasięg
 employment-21 = Zasięg: 1-6 km, większy czołowo
 loadout-none-in-stock = (brak w magazynie)

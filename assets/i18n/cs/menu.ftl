@@ -221,6 +221,11 @@ aircraft-ah1z =
         Bitevní vrtulník
         Kanón ve věži, Hellfire, AIM-9
         Kanón a Hellfire sledují kontejner
+aircraft-ah64 =
+    .facts =
+        Bitevní vrtulník, dvoumístný
+        Kanón ve věži, Hellfire, Stinger
+        Druhý hráč může letět jako střelec
 
 ## Sekce a skupiny
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Nákladní vrtulník s tandemovými rotory
         Zavěšuje náklady zásobování a logistiky
         Žádný reakční moment: rotory se ruší
+aircraft-c5 =
+    .facts =
+        Čtyřmotorový strategický transportní letoun
+        Vozí munici mezi leteckými základnami
+        Těžký: pomalu se naklání i zvedá příď
+aircraft-ac130 =
+    .facts =
+        Bočně střílející palebný letoun
+        Kanóny 40 mm a 105 mm mířené kontejnerem
+        Kroužete vlevo, aby kanóny dosáhly

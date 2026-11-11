@@ -557,7 +557,16 @@ pub struct PlayerState {
     /// The air-to-ground radar transmits: an emitter shows the aircraft to the enemy radars.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub radar: bool,
+    /// The engines as the flight model runs them, for the crew's sound (percent): a fixed
+    /// wing's thrust and afterburner, a helicopter's rotor speed, torque and translational
+    /// lift.
+    #[serde(default, skip_serializing_if = "is_zero_engine")]
+    pub engine: [u8; 3],
     pub cmd: Commands,
+}
+
+fn is_zero_engine(v: &[u8; 3]) -> bool {
+    *v == [0; 3]
 }
 
 fn is_zero(v: &u16) -> bool {
@@ -644,6 +653,19 @@ pub struct Airframe {
     /// The F-22A (weapons in bays, as the F-117A): its radar return is lower still.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub raptor: bool,
+    /// The C-5 Galaxy (a cargo jet, no weapons, no cannon, no ejection seats): a big radar
+    /// return.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub galaxy: bool,
+    /// The AC-130 gunship (no cannon of its own, no ejection seats): its 40 mm and 105 mm guns
+    /// fire from its left side at where the targeting pod looks ([`crate::gunship`]), a big
+    /// radar return.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spectre: bool,
+    /// The AH-64 Apache (an attack helicopter with a turret gun, as `gunship`): only its look
+    /// differs from the AH-1Z's; it has a gunner's seat ([`crate::crew`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub apache: bool,
 }
 
 /// Landing option.
@@ -704,6 +726,17 @@ pub struct SimOptions {
     /// return lower than the F-117A's ([`crate::radar::F22_RCS`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub raptor: bool,
+    /// The aircraft is the C-5 Galaxy (a cargo jet): seen as one by the other pilots, no cannon,
+    /// a big radar return ([`crate::radar::GALAXY_RCS`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub galaxy: bool,
+    /// The aircraft is the AC-130 gunship: seen as one by the other pilots, its side guns aimed
+    /// with the targeting pod ([`crate::gunship`]), a big radar return.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub spectre: bool,
+    /// The aircraft is the AH-64 Apache: seen as one by the other pilots, a gunner's seat.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub apache: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -754,6 +787,9 @@ impl Default for SimOptions {
             kiowa: false,
             chinook: false,
             raptor: false,
+            galaxy: false,
+            spectre: false,
+            apache: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,
@@ -907,6 +943,21 @@ pub enum SimEvent {
         y: i32,
         #[serde(default)]
         heavy: bool,
+    },
+    /// Pilot `pilot`'s AC-130 fired its side gun `gun` (0: 40 mm, 1: 105 mm): the shell left
+    /// the muzzle at `from` (decimetres east, north, up) at `vel` (dm/s).
+    SideGunFired {
+        gun: u8,
+        pilot: u8,
+        from: [i32; 3],
+        vel: [i32; 3],
+    },
+    /// A side gun's shell came down at `at` (decimetres east, north, up); `armour`: on a
+    /// vehicle or a gun.
+    SideShellImpact {
+        gun: u8,
+        at: [i32; 3],
+        armour: bool,
     },
     AircraftDestroyed {
         unit: usize,

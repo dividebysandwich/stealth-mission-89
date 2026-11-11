@@ -35,7 +35,8 @@ use crate::hud::{
 };
 use crate::input::{Action, ActionEvent, FlightControls};
 use crate::mfd::{
-    Contact, ContactKind, ContactRef, Contacts, MfdState, MissionClock, MissionOrders, TrackCam,
+    Contact, ContactKind, ContactRef, Contacts, MfdState, MissionClock, MissionOrders,
+    MissionTarget, TrackCam,
 };
 use crate::mission::{ActiveMission, PlannedRoute, clean_text};
 use crate::net::{NetInbox, NetLink, SimMsg};
@@ -139,6 +140,8 @@ pub struct Combat {
     pub ground_shots: Vec<GroundShotFx>,
     /// The CBU-105s' events this frame (drawn by `sfw`).
     pub sfw_fx: Vec<SimEvent>,
+    /// The AC-130s' guns firing and their shells landing this frame (drawn by `side_guns`).
+    pub side_gun_fx: Vec<SimEvent>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
     /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
@@ -317,6 +320,9 @@ fn start_combat(
     let kiowa = settings.aircraft == crate::aircraft::AircraftKind::OH58;
     let chinook = settings.aircraft == crate::aircraft::AircraftKind::CH47;
     let raptor = settings.aircraft == crate::aircraft::AircraftKind::F22;
+    let galaxy = settings.aircraft == crate::aircraft::AircraftKind::C5;
+    let spectre = settings.aircraft.spectre();
+    let apache = settings.aircraft.apache();
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -330,6 +336,9 @@ fn start_combat(
             kiowa,
             chinook,
             raptor,
+            galaxy,
+            spectre,
+            apache,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -345,6 +354,9 @@ fn start_combat(
             kiowa,
             chinook,
             raptor,
+            galaxy,
+            spectre,
+            apache,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -431,6 +443,7 @@ fn start_combat(
         round_impacts: Vec::new(),
         ground_shots: Vec::new(),
         sfw_fx: Vec::new(),
+        side_gun_fx: Vec::new(),
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
@@ -501,7 +514,10 @@ fn collect_commands(
     mut msgs: ResMut<HudMessages>,
     manning: Option<Res<crate::station::Manning>>,
 ) {
-    let helicopter = settings.aircraft.spec().helicopter;
+    // The helicopters, the C-5 and the AC-130 have no ejection seats.
+    let no_seat = settings.aircraft.spec().helicopter
+        || settings.aircraft == crate::aircraft::AircraftKind::C5
+        || settings.aircraft.spectre();
     let combat = &mut *combat;
     let c = &mut combat.pending;
     for crate::avionics::PodDesignate(x, y) in pods.read() {
@@ -524,8 +540,10 @@ fn collect_commands(
     for ActionEvent(a) in actions.read() {
         match a {
             Action::SelectWeapon => c.next_bay = true,
-            // At a console the trigger is the Gepard's (`station`), not the parked aircraft's.
-            Action::FireWeapon if manning.is_some() => {}
+            // At a console the trigger is the Gepard's (`station`), not the parked aircraft's;
+            // in another's gunner's cockpit his (`gunner::send_aim`).
+            Action::FireWeapon
+                if manning.as_deref().is_some_and(|m| m.console() || m.remote_gunner()) => {}
             Action::FireWeapon => c.fire = true,
             Action::Flare => c.flare = true,
             Action::Chaff => c.chaff = true,
@@ -541,7 +559,7 @@ fn collect_commands(
             Action::CamRight => c.camera_dir = Some(0x4000),
             Action::CamRear => c.camera_dir = Some(0x8000),
             Action::CamLeft => c.camera_dir = Some(0xC000),
-            Action::Eject if helicopter => msgs.show(tf!("hud-no-ejection-seat")),
+            Action::Eject if no_seat => msgs.show(tf!("hud-no-ejection-seat")),
             Action::Eject => c.eject = true,
             Action::Training => c.toggle_training ^= true,
             Action::Resupply => c.resupply = true,
@@ -612,6 +630,7 @@ fn player_state(
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
+        engine: [0; 3],
         // Realistic avionics: each weapon in its own HUD mode, no automatic locks.
         mode_weapons: mfd.modern,
         radar: mfd.modern && mfd.av.radar_emitting(),
@@ -621,7 +640,7 @@ fn player_state(
 
 /// The targeting pod's line of sight for the sim: its direction in BAM and the ground point
 /// (map units) it rests on.
-fn pod_aim(tgp: &crate::avionics::TgpState) -> Option<stealth_sim::PodAim> {
+pub(crate) fn pod_aim(tgp: &crate::avionics::TgpState) -> Option<stealth_sim::PodAim> {
     Some(sight_aim(tgp.los?, tgp.los_ground))
 }
 
@@ -646,6 +665,7 @@ struct StepParams<'w, 's> {
     view: Res<'w, ViewState>,
     msgs: ResMut<'w, HudMessages>,
     accel: ResMut<'w, TimeAccel>,
+    settings: Res<'w, crate::settings::Settings>,
     tiles: ResMut<'w, TileOverrides>,
     collision: Res<'w, PlayerCollision>,
     flash: ResMut<'w, crate::hud::DamageFlash>,
@@ -758,6 +778,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         view,
         mut msgs,
         mut accel,
+        settings,
         mut tiles,
         collision,
         mut flash,
@@ -770,6 +791,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.round_impacts.clear();
     combat.ground_shots.clear();
     combat.sfw_fx.clear();
+    combat.side_gun_fx.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
@@ -792,6 +814,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let mut fx = Fx {
         msgs: &mut msgs,
         accel: &mut accel,
+        keep_accel: settings.keep_time_accel,
         tiles: &mut tiles,
         flash: &mut flash,
         sounds: &mut sounds,
@@ -801,7 +824,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         while combat.accum >= dt {
             combat.accum -= dt;
             let cmd = std::mem::take(&mut combat.pending);
-            let ps = player_state(
+            let mut ps = player_state(
                 &a,
                 pos,
                 controls.gun,
@@ -812,6 +835,8 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                 &view,
                 cmd,
             );
+            ps.mode_weapons &= !settings.gunner_cockpit;
+            ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
             client.send_input(&ps);
             // His own rounds fly here; what they hit on his screen he reports.
             combat.sim.set_local_player(&ps);
@@ -861,10 +886,13 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                         combat.sim.apply_pilot_snap(mine);
                     }
                     combat.sim.apply_pilot_tick(&tick);
+                    // Those sent this time and those left out (far away) keep their samples.
+                    let mut about = w.present.clone();
                     for p in &w.pilots {
                         combat.remote_track.sample(p.id, step, p.view);
+                        about.push(p.id);
                     }
-                    combat.remote_track.retain(&w.present);
+                    combat.remote_track.retain(&about);
                     let gap = combat.playout.applied(step);
                     for _ in 0..gap.min(MAX_STEPS) {
                         combat.sim.mirror_frame();
@@ -890,8 +918,11 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         combat.accum -= dt;
         combat.steps += 1;
         let cmd = std::mem::take(&mut combat.pending);
-        let ps =
+        let mut ps =
             player_state(&a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
+        // The AH-64's gunner fires whatever the pilot's master mode (`gunner`).
+        ps.mode_weapons &= !settings.gunner_cockpit;
+        ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
         combat.prev_flights.clear();
         combat.prev_flights.extend_from_slice(combat.sim.flights());
         combat.prev_fine = fines(&combat.sim);
@@ -1118,6 +1149,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "OH-58D"
     } else if p.chinook {
         "CH-47F"
+    } else if p.apache {
+        "AH-64D"
     } else if p.gunship {
         "AH-1Z"
     } else if p.helicopter {
@@ -1130,6 +1163,10 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "AV-8B"
     } else if p.raptor {
         "F-22A"
+    } else if p.galaxy {
+        "C-5"
+    } else if p.spectre {
+        "AC-130"
     } else if p.external_stores {
         "F-16"
     } else {
@@ -1308,7 +1345,12 @@ const ESCORT_REACH: i32 = 512;
 type ZoneKey = (Option<HudMode>, Option<usize>, Option<usize>, Option<u8>, Option<usize>, bool);
 
 /// Publishes the simulation state into the cockpit and the flight model (every frame).
-fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Outputs) {
+fn publish(
+    mut combat: ResMut<Combat>,
+    mut zone: Local<ZoneDisplay>,
+    mut drops: Local<DropWatch>,
+    out: Outputs,
+) {
     let o = combat.sim.objectives();
     let waypoint_changed = o.waypoint != combat.sim_waypoint;
     combat.sim_waypoint = o.waypoint;
@@ -1335,6 +1377,7 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         zone.found(found, fresh);
     }
     let dt = out.time.delta_secs();
+    let wall = out.time.elapsed_secs_f64();
     zone.ease(dt);
     // A radar in standby adds nothing to the friendly side's air picture.
     let radar_off = out.mfd.modern && out.mfd.av.radar_off();
@@ -1780,6 +1823,14 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
         } else {
             [place, kind]
         };
+        // With the classic avionics the mission's own targets (the ones the TAC shows by their
+        // symbol) say which they are.
+        info.mission_target = sim
+            .target_slots()
+            .iter()
+            .position(|s| g > 2 && s.object == g as i32 && matches!(s.mission_type, 1..=3 | 9))
+            .filter(|_| !mfd.modern)
+            .map(|k| if k == 0 { MissionTarget::Primary } else { MissionTarget::Secondary });
         info.range_km = Some(t.range as f32 * 32.0 * WU as f32 / 1000.0);
         info.bearing = Some(((t.bearing as u16) as u32 * 360 / 65536) as i32);
         info.zoom = camera_zoom(t.range) + 1;
@@ -1958,8 +2009,127 @@ fn publish(mut combat: ResMut<Combat>, mut zone: Local<ZoneDisplay>, out: Output
             new_cues.turret_gun = Some(cue);
         }
     }
+    if settings.aircraft.apache() {
+        // The chin gun along the sight it is slaved to (as `Sim::turret_aim`), the TADS along
+        // the pod's line of sight.
+        let body = |d: Vec3| a.orientation.inverse() * d;
+        let sight =
+            if sim.gun_on_pod() { mfd.av.tgp.los } else { mfd.av.helmet.or(mfd.av.tgp.los) };
+        new_cues.chin_gun = sight.map(|d| crate::avionics::pod_angles(turret_dir(body(d))));
+        new_cues.tads_azimuth = mfd.av.tgp.los.map(|d| crate::avionics::pod_angles(body(d)).0);
+    }
     *cam = info;
+    if let Some(g) = sim.side_guns() {
+        new_cues.side_guns = Some(crate::hud::SideGunCue {
+            gun: g.gun,
+            rounds: g.rounds,
+            in_gimbal: !g.out_of_gimbal,
+            tof: (g.tof > 0).then(|| g.tof as f32 / 10.0),
+            range: g.range as f32,
+            ready: g.reload[g.gun as usize] == 0,
+        });
+    }
+    if settings.aircraft.airlifter() {
+        let run = campaign.as_ref().and_then(|c| {
+            let st = c.state();
+            let r = st.flown_cargo(c.me)?;
+            let to = st.site(r.to).map(|s| s.name.clone());
+            let lines = r.load.iter().map(|&(m, n)| format!("{n} {}", m.name().tr())).collect();
+            Some((lines, to))
+        });
+        new_cues.drop = Some(drop_cue(&a, pos, eye, sim, &mut drops, wall, run));
+    }
     *cues = new_cues;
+}
+
+/// Watches the C-5's pallets go: how many it had, when the last one went.
+#[derive(Default)]
+struct DropWatch {
+    pallets: u32,
+    released: Option<f64>,
+}
+
+/// The airdrop's drop zone: what a pallet released within this of it (map units) supplies
+/// (`stealth_sim` missiles.rs, the supply drop's rule).
+const DROP_RADIUS_MU: f64 = 256.0;
+
+/// The C-5's cargo and airdrop (`crate::hud::DropCue`): the ramp and the pallets from the
+/// simulation, and on an airdrop the drop zone (the first airdrop objective still open) with
+/// the release solution of a pallet (a supply pod under its chute, `stealth_sim::ballistics`
+/// as the simulation drops it): where one released now lands, the time to the release point
+/// and whether it lands in the zone.
+fn drop_cue(
+    a: &Aircraft,
+    pos: &WorldPos,
+    eye: Vec3,
+    sim: &stealth_sim::Sim,
+    watch: &mut DropWatch,
+    now: f64,
+    run: Option<(Vec<String>, Option<String>)>,
+) -> crate::hud::DropCue {
+    use stealth_sim::ballistics;
+    let (ramp, lowering) = sim.ramp();
+    let pallets: u32 = sim
+        .bays()
+        .0
+        .iter()
+        .filter(|b| b.0 == stealth_sim::SPECIAL_EQUIPMENT)
+        .map(|b| b.1.max(0) as u32)
+        .sum();
+    if pallets < watch.pallets {
+        watch.released = Some(now);
+    }
+    watch.pallets = pallets;
+    let (manifest, destination) = run.unwrap_or_default();
+    let mut cue = crate::hud::DropCue {
+        ramp,
+        lowering,
+        pallets,
+        capacity: stealth_mission::airlift::PALLET_COUNT as u32,
+        since_release: watch.released.map(|t| (now - t) as f32).filter(|&s| s >= 0.0),
+        manifest,
+        destination,
+        ..Default::default()
+    };
+    let o = sim.objectives();
+    let open = |k: usize| if k == 0 { !o.primary_done } else { !o.secondary_done };
+    let Some(zone) = sim
+        .target_slots()
+        .iter()
+        .enumerate()
+        .find(|&(k, t)| t.mission_type == 3 && open(k))
+        .and_then(|(_, t)| sim.objects().get(t.object.max(0) as usize).copied())
+    else {
+        return cue;
+    };
+    let (te, tn) = map_wu(zone.x, zone.y);
+    let (east, north, _) = bevy_to_wu(pos.0);
+    cue.zone_dir = direction_cockpit(a, pos, eye, te, tn, 0.0);
+    cue.zone_km = Some(((te - east).hypot(tn - north) * WU / 1000.0) as f32);
+    let Some(k) = ballistics::drag(38, sim.opts.fix_classic_bugs) else { return cue };
+    let heading = to_bam(a.euler().0) as i32;
+    let v = ballistics::release_velocity(heading, a.velocity as i32, a.climb_rate as i32);
+    let Some((d, fall)) =
+        ballistics::impact(v, k, a.altitude as f64 - ballistics::RELEASE_DROP, 1.0 / FS as f64)
+    else {
+        return cue;
+    };
+    // The offset is east and south.
+    let (ie, inn) = (east + d[0], north - d[1]);
+    cue.impact_dir = direction_cockpit(a, pos, eye, ie, inn, 0.0);
+    cue.fall_secs = fall as f32;
+    let vh = v[0].hypot(v[1]);
+    if vh > 1.0 {
+        // Along the track (east, north) and across it (right).
+        let (te_rel, tn_rel) = (te - ie, tn - inn);
+        let (ux, uy) = (v[0] / vh, -v[1] / vh);
+        let along = te_rel * ux + tn_rel * uy;
+        let across = te_rel * uy - tn_rel * ux;
+        cue.release_secs = Some((along / vh) as f32);
+        cue.cross_m = Some((-across * WU) as f32);
+    }
+    cue.in_zone = (te - ie).hypot(tn - inn) < DROP_RADIUS_MU * 32.0;
+    cue
 }
 
 /// Gun pipper: the direction in which the target (position, velocity; Bevy frame) has to be
@@ -2361,6 +2531,8 @@ mod tests {
 struct Fx<'a, 'w> {
     msgs: &'a mut HudMessages,
     accel: &'a mut TimeAccel,
+    /// `Settings::keep_time_accel`: the simulation's cancel requests are ignored.
+    keep_accel: bool,
     tiles: &'a mut TileOverrides,
     flash: &'a mut crate::hud::DamageFlash,
     sounds: &'a mut MessageWriter<'w, crate::sound::PlaySound>,
@@ -2397,7 +2569,11 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
     combat.record.event(&combat.sim, &e);
     match e {
         SimEvent::Message(s) => fx.msgs.show(s.tr_flight()),
-        SimEvent::CancelTimeAccel => fx.accel.level = 0,
+        SimEvent::CancelTimeAccel => {
+            if !fx.keep_accel {
+                fx.accel.level = 0;
+            }
+        }
         SimEvent::DamageFlash => fx.flash.0 = 1,
         SimEvent::Sound { id, priority } => {
             fx.sounds.write(crate::sound::PlaySound { id, priority });
@@ -2457,6 +2633,9 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
                 combat.kills.push(Kill { x: to.0 / fine, y: to.1 / fine, vehicle: true });
             }
             combat.sfw_fx.push(e);
+        }
+        SimEvent::SideGunFired { .. } | SimEvent::SideShellImpact { .. } => {
+            combat.side_gun_fx.push(e);
         }
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {

@@ -133,6 +133,7 @@ tip-cmd-harm = HARM ターゲティング
 tip-cmd-gm = 地上マッピングレーダー（GM）
 tip-cmd-eng = エンジンと燃料（ENG）
 tip-cmd-rcs = レーダー反射（RCS）
+tip-cmd-cgo = 貨物、ランプと空中投下（CGO）
 tip-cmd-format-row = フォーマット、再度押すとフォーマットメニュー
 tip-cmd-tgp = ターゲティングポッド（TGP）
 tip-cmd-map = マップ
@@ -206,6 +207,7 @@ tip-console-manual = 選択中のドローンを手動で操縦：スティッ�
 tip-console-track = ドローンのカメラを照準の地上地点に固定
 tip-console-slave = ドローンのカメラをウェイポイントに戻す（前方下向き）
 tip-console-view = ドローンのカメラ：TGP、または操縦用の前方FLIR
+tip-console-gun = 次にこの側面砲を照準する（トリガーで発射）
 
 ## Controls
 

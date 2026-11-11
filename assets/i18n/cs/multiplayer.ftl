@@ -64,6 +64,7 @@ pic-site = Stanoviště: { $place }
 uv-live = { $unit } - ŽIVĚ
 uv-contact-lost = KONTAKT ZTRACEN
 uv-hint = Tažení: otáčení  Kolečko: zoom
+uv-infrared = Infračervený (termální) pohled
 
 ## Multiplayer
 
@@ -77,6 +78,8 @@ mp-your-name = Vaše jméno
 mp-join-address = Připojit podle adresy
     .hint = adresa nebo jméno[:port]
 mp-connect = PŘIPOJIT
+mp-join-vr = PŘIPOJIT SE VE VR
+    .facts = Spustí hru znovu ve VR headsetu a připojí se k tomuto serveru
 mp-server-name = Název serveru
 mp-udp-port = Port UDP
 mp-address-note = Ostatní hráči se připojují na adresu tohoto počítače; pro hru přes internet otevřete port UDP v routeru
@@ -88,6 +91,8 @@ mp-friendly-fire = Palba do vlastních
 mp-airframe-losses = Ztráty stojí zdroje
 mp-ai-missions = Spojenecké mise UI
 mp-host-new = HOSTOVAT NOVOU
+mp-host-vr = HOSTOVAT VE VR
+    .facts = Spustí hru znovu ve VR headsetu a hostuje kampaň
 mp-host-saved = Hostovat uloženou kampaň
 mp-host = HOSTOVAT
 mp-host-game = HOSTOVAT HRU
@@ -98,9 +103,7 @@ mp-refresh = OBNOVIT
 mp-server-count = { $servers } serverů, { $pilots } pilotů
 mp-list-error = Seznam serverů není dostupný: { $error }
 mp-no-servers = Právě žádné veřejné servery
-mp-col-server = SERVER
 mp-col-pilots = PILOTI
-mp-col-war = VÁLKA
 mp-dedicated = DEDIKOVANÝ
 mp-other-version = jiná verze
 mp-join = PŘIPOJIT SE

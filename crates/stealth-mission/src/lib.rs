@@ -1,3 +1,5 @@
+pub mod airlift;
+pub mod gunship;
 pub mod drones;
 mod generator;
 pub mod hills;
@@ -121,6 +123,9 @@ pub struct MissionSettings {
     /// Flown in a helicopter: short missions, targets a short flight from a friendly base.
     #[serde(default)]
     pub helicopter: bool,
+    /// Takes off and lands on land bases only, never a carrier (the cargo jet).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub land_bases: bool,
 }
 
 fn clear_sky() -> Option<Sky> {
@@ -142,6 +147,7 @@ impl Default for MissionSettings {
             start_hour: None,
             moon: None,
             helicopter: false,
+            land_bases: false,
         }
     }
 }
@@ -391,6 +397,19 @@ pub struct Mission {
     /// Attack drones in the air.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub drones: Option<DroneWave>,
+    /// A routine flight behind the lines: the enemy's fighters stay on the ground.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub quiet: bool,
+    /// Friendly fighters that take off with the player and escort him.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub escorts: u8,
+    /// A gunship mission's enemy column ([`gunship::for_gunship`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column: Option<gunship::Column>,
+}
+
+fn is_zero(n: &u8) -> bool {
+    *n == 0
 }
 
 /// Roll the weapon availability flags after `srand`.
@@ -434,6 +453,7 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
     )
     .start_hour(s.start_hour)
     .helicopter(s.helicopter)
+    .land_bases(s.land_bases)
     .run();
     let mut avail = input.weapon_unavailable;
     avail[0] = lockheed as u8;
@@ -566,6 +586,9 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
         orders: ctx.orders(),
         world: g.world.clone(),
         drones: None,
+        quiet: false,
+        escorts: 0,
+        column: None,
     };
     if s.kind == MissionKind::DroneDefense {
         drones::defend(&mut m, data, th)?;

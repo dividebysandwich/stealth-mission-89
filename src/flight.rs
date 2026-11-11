@@ -140,6 +140,9 @@ pub struct FlightConstants {
     pub heli: Option<heli::Rotor>,
     /// The autopilot follows the terrain (`terrain_follow`) instead of holding the altitude.
     pub terrain_following: bool,
+    /// Always flies the modern model (the classic one's speed formula has no room for a heavy's
+    /// fuel load).
+    pub modern_only: bool,
 }
 
 impl Default for FlightConstants {
@@ -161,6 +164,7 @@ impl Default for FlightConstants {
             aero: modern::Aero::F117,
             heli: None,
             terrain_following: false,
+            modern_only: false,
         }
     }
 }
@@ -260,6 +264,42 @@ impl FlightConstants {
         }
     }
 
+    /// C-5 Galaxy: the modern model only; 150,000 lb of fuel (bingo 25,000) burnt by four F138s
+    /// at about 32,000 lb an hour in the cruise, 2.5 g.
+    pub fn c5() -> Self {
+        Self {
+            thrust_to_knots: 4.6,
+            max_knots: 500.0,
+            stall_knots: 125.0,
+            fuel_div: 405.0,
+            fuel: 150_000.0,
+            bingo: 25_000.0,
+            max_gees: 40.0,
+            roll_rate: 0.4,
+            aero: modern::Aero::C5,
+            modern_only: true,
+            ..default()
+        }
+    }
+
+    /// AC-130 gunship: the modern model only; 30,000 lb of fuel (bingo 6,000), its four T56
+    /// turboprops burning about 5,000 lb an hour in the orbit, 3 g.
+    pub fn c130() -> Self {
+        Self {
+            thrust_to_knots: 3.0,
+            max_knots: 330.0,
+            stall_knots: 100.0,
+            fuel_div: 8000.0,
+            fuel: 30_000.0,
+            bingo: 6_000.0,
+            max_gees: 48.0,
+            roll_rate: 0.6,
+            aero: modern::Aero::C130,
+            modern_only: true,
+            ..default()
+        }
+    }
+
     /// UH-60A: the helicopter model; 2400 lb of fuel, bingo 400.
     pub fn uh60() -> Self {
         Self { fuel: 2400.0, bingo: 400.0, heli: Some(heli::Rotor::UH60), ..default() }
@@ -278,6 +318,11 @@ impl FlightConstants {
     /// OH-58D: the helicopter model; 750 lb of fuel, bingo 150.
     pub fn oh58() -> Self {
         Self { fuel: 750.0, bingo: 150.0, heli: Some(heli::Rotor::OH58), ..default() }
+    }
+
+    /// AH-64D: the helicopter model; 2500 lb of fuel, bingo 400.
+    pub fn ah64() -> Self {
+        Self { fuel: 2500.0, bingo: 400.0, heli: Some(heli::Rotor::AH64), ..default() }
     }
 
     /// CH-47F: the helicopter model; 6800 lb of fuel, bingo 1200.
@@ -387,6 +432,11 @@ pub struct Aircraft {
     /// and objects included (`ground_altitude` is the flat ground's).
     #[serde(skip)]
     pub radar_ground: Option<f32>,
+    /// While the AI flies for the pilot in the gunner's seat: the least altitude (altitude
+    /// units) the ground ahead asks for now, each height less the climb there is time for on
+    /// the way (`terrain_follow::scan`).
+    #[serde(skip)]
+    pub terrain_ahead: Option<TerrainAhead>,
     pub on_ground: bool,
     pub in_landing_corridor: bool,
     /// Has been airborne since the start (landing only counts afterwards).
@@ -402,6 +452,9 @@ pub struct Aircraft {
     pub pitch_input: f32,
     /// Bearing to the current waypoint (BAM), for the autopilot.
     pub waypoint_bearing: f32,
+    /// The AI flies an orbit round this point (Bevy world) while the pilot is at the gunner's
+    /// console (`gunner`): the autopilot steers its tangent, not the waypoint.
+    pub orbit: Option<bevy::math::DVec3>,
     /// Seconds of simulated time since the start.
     pub time: f32,
     pub damage: FlightDamage,
@@ -476,6 +529,7 @@ impl Aircraft {
             autopilot_alt: 0.0,
             tf_gamma: None,
             radar_ground: None,
+            terrain_ahead: None,
             on_ground: true,
             in_landing_corridor: true,
             has_flown: false,
@@ -485,6 +539,7 @@ impl Aircraft {
             roll_input: 0.0,
             pitch_input: 0.0,
             waypoint_bearing: 0.0,
+            orbit: None,
             time: 0.0,
             damage: FlightDamage::default(),
             stick_trim: Vec2::ZERO,
@@ -519,9 +574,41 @@ impl Aircraft {
         (self.heli.nr, self.heli.torque) = (nr, torque);
     }
 
+    /// The engines as `PlayerState::engine` sends them (percent): a fixed wing's thrust and
+    /// afterburner, a helicopter's rotor speed, torque and translational lift.
+    pub fn engine_report(&self, helicopter: bool) -> [u8; 3] {
+        let pc = |v: f32| (v * 100.0).round().clamp(0.0, 255.0) as u8;
+        if helicopter {
+            [pc(self.heli.nr), pc(self.heli.torque), pc(self.heli.etl)]
+        } else {
+            [pc(self.thrust / 100.0), pc(self.afterburner), 0]
+        }
+    }
+
+    /// Runs the engines as another's flight model reports them (`engine_report`): a gunner
+    /// riding in his aircraft hears them, sees its rotor turn (`dt` on).
+    pub fn show_engine(&mut self, helicopter: bool, engine: [u8; 3], dt: f32) {
+        let f = |v: u8| v as f32 / 100.0;
+        if helicopter {
+            let st = &mut self.heli;
+            (st.nr, st.torque, st.etl) = (f(engine[0]), f(engine[1]), f(engine[2]));
+            st.angle = (st.angle + st.nr * heli::DRAWN_REVS * std::f32::consts::TAU * dt)
+                .rem_euclid(std::f32::consts::TAU);
+        } else {
+            self.thrust = f(engine[0]) * 100.0;
+            self.set_thrust = self.thrust;
+            self.afterburner = f(engine[1]);
+        }
+    }
+
     /// Translational lift 0..1 (helicopters): the blade slap in the rotor sound.
     pub fn translational_lift(&self) -> f32 {
         self.heli.etl
+    }
+
+    /// How far the flaps are out (0 up .. 1 fully down), as the modern model moves them.
+    pub fn flap_extension(&self) -> f32 {
+        self.modern.flap_pos()
     }
 
     pub fn knots(&self) -> f32 {
@@ -587,9 +674,32 @@ pub fn view_z(alt: f32) -> f32 {
     }
 }
 
+/// The terrain ahead as the gunner's seat's autopilot sees it (`Aircraft::terrain_ahead`), in
+/// altitude units: the bare ground (the rolling hills) and with what stands on it (buildings,
+/// trees, masts).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TerrainAhead {
+    pub ground: f32,
+    pub top: f32,
+}
+
 /// Marks the player's aircraft.
 #[derive(Component)]
 pub struct Player;
+
+/// The AI flies a helicopter while its pilot sits in the gunner's seat: on the autopilot or in
+/// the auto-hover he left engaged, else hovering if he was slow enough, else on the autopilot to
+/// the waypoint at his speed and altitude. Whether it flies on its autopilot now.
+pub fn crew_autopilot(a: &mut Aircraft, k: &FlightConstants) -> bool {
+    let Some(r) = &k.heli else { return false };
+    if a.autopilot() || a.on_ground || a.ended.is_some() || a.damage.autopilot_failed {
+        return a.autopilot();
+    }
+    if !heli::engage_hover(a) {
+        heli::engage_autopilot(a, r);
+    }
+    a.autopilot()
+}
 
 fn handle_actions(
     mut actions: MessageReader<ActionEvent>,
@@ -747,15 +857,32 @@ fn step_flight(
     settings: Res<Settings>,
     theater: Option<Res<Theater>>,
     manning: Option<Res<crate::station::Manning>>,
+    gunner: Res<crate::gunner::GunnerState>,
     mut q: Query<(&mut Aircraft, &mut WorldPos, &mut Transform), With<Player>>,
 ) {
-    // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun).
-    let parked = FlightControls::default();
+    // At a console the parked aircraft gets no stick or throttle (they fly a drone or slew a gun);
+    // at another's gunner's console it is not flown at all (`gunner` puts it where the pilot's
+    // aircraft is), at its own the autopilot flies it on, the AI holding its speed (`gunner::orbit`).
+    if manning.as_deref().is_some_and(|m| m.remote_gunner()) {
+        // Its clock runs on (the scripts, the lamps' blinking go by it).
+        for (mut a, _, _) in &mut q {
+            a.time += time.delta_secs().min(1.0);
+        }
+        return;
+    }
+    // (A helicopter's collective is left where it is: its autopilot or auto-hover holds it,
+    // `gunner::crew_autopilot`.)
+    let mut parked = FlightControls::default();
+    if manning.as_deref().is_some_and(|m| m.gunner()) && k.heli.is_none() {
+        parked.throttle = Some(gunner.orbit_throttle);
+    }
     let controls = if manning.is_some() { &parked } else { &*controls };
     // Sub-steps (at most 1/60 s classic, 1/120 s modern) keep accelerated test runs accurate.
     let total = time.delta_secs().min(1.0);
-    // A V/STOL type always flies the modern model (the classic one can't hover).
-    let classic = settings.classic_flight && k.heli.is_none() && k.aero.vtol.is_none();
+    // A V/STOL type always flies the modern model (the classic one can't hover), and so does a
+    // heavy.
+    let classic =
+        settings.classic_flight && k.heli.is_none() && k.aero.vtol.is_none() && !k.modern_only;
     let max_dt = if classic { 1.0 / 60.0 } else { 1.0 / 120.0 };
     for (mut a, mut pos, mut tf) in &mut q {
         a.auto_trim = settings.auto_trim;
@@ -1416,6 +1543,126 @@ mod tests {
         let c = fly_with(k(), true, level(airborne(1000.0, 300.0, 100.0)), 120.0, |_, _| {}).0;
         println!("A-10 classic: max speed {:.0} kt", c.knots());
         assert!((340.0..420.0).contains(&c.knots()), "classic {}", c.knots());
+    }
+
+    /// C-5 Galaxy (always the modern model): about Mach 0.8 at altitude, its cruise; a 1 g
+    /// stall near 115 kt with the flaps at its starting weight; off the ground well within the
+    /// runway at full throttle with the flaps; 2.5 g.
+    #[test]
+    fn c5_performance() {
+        let k = FlightConstants::c5;
+        assert!(!k().afterburner() && k().modern_only);
+        let heavy = |mut a: Aircraft| {
+            a.fuel = k().fuel;
+            a
+        };
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(heavy(a)), secs, |_, _| {}).0;
+        let a = run(airborne(30000.0, 420.0, 100.0), 400.0);
+        let mach = a.knots() / 589.0;
+        println!("C-5: max speed at 30000 ft: {:.0} kt (Mach {mach:.2})", a.knots());
+        assert!((0.76..0.88).contains(&mach), "at altitude {}", a.knots());
+        let a = run(airborne(1000.0, 300.0, 100.0), 300.0);
+        println!("C-5: max speed at 1000 ft: {:.0} kt", a.knots());
+        // Full throttle low down runs past the real one's limit speed (the model has none).
+        assert!((330.0..520.0).contains(&a.knots()), "sea level {}", a.knots());
+        let mut slow = heavy(airborne(1000.0, 200.0, 70.0));
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("C-5: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((135.0..175.0).contains(&clean), "clean {clean}");
+        assert!((100.0..130.0).contains(&flaps), "flaps {flaps}");
+        // The take-off roll: full throttle, the flaps out, the stick pulled back from `vr` knots.
+        // It must leave the ground well inside the runway: the player starts 57 map units (32 ft
+        // each in the flight model) past the runway box's centre, which ends 64 units the other
+        // side (72 on easy), so about 3,900 ft ahead; running off the end is a crash.
+        let take_off = |vr: f32, pull: f32| {
+            let kl = FlightConstants { landing: 0, ..k() };
+            let mut liftoff = None;
+            let mut x = 0.0;
+            let mut a0 = Aircraft::new_on_runway(kl.fuel);
+            a0.flaps = true;
+            fly_with(kl, false, a0, 90.0, |a, c| {
+                c.throttle = Some(1.0);
+                x += a.knots() * 1.6878 / 120.0;
+                c.pitch = if a.knots() > vr { pull } else { 0.0 };
+                if !a.on_ground && liftoff.is_none() {
+                    liftoff = Some((x, a.knots()));
+                }
+            });
+            println!("C-5: rotating at {vr} kt ({pull}): lift-off {liftoff:?} (ft, kt)");
+            liftoff.expect("the C-5 did not take off").0
+        };
+        let best = take_off(0.0, 1.0);
+        assert!(best < 2800.0, "take-off roll {best} ft");
+        // Pulling only at the 1 g stall speed.
+        let late = take_off(115.0, 1.0);
+        assert!(late < 3400.0, "take-off roll rotating late {late} ft");
+        let mut peak: f32 = 0.0;
+        fly_with(k(), false, heavy(airborne(10000.0, 330.0, 100.0)), 6.0, |a, c| {
+            c.pitch = 1.0;
+            peak = peak.max(a.gees / 16.0);
+        });
+        println!("C-5: peak load {peak:.1} g");
+        assert!((2.0..2.6).contains(&peak), "peak {peak}");
+    }
+
+    /// AC-130: about 300 kt flat out, a 100-115 kt stall clean, airborne well inside the runway,
+    /// 3 g.
+    #[test]
+    fn c130_performance() {
+        let k = FlightConstants::c130;
+        assert!(!k().afterburner() && k().modern_only);
+        let heavy = |mut a: Aircraft| {
+            a.fuel = k().fuel;
+            a
+        };
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(heavy(a)), secs, |_, _| {}).0;
+        let a = run(airborne(20000.0, 250.0, 100.0), 400.0);
+        println!("AC-130: max speed at 20000 ft: {:.0} kt", a.knots());
+        assert!((260.0..340.0).contains(&a.knots()), "at altitude {}", a.knots());
+        let a = run(airborne(1000.0, 250.0, 100.0), 300.0);
+        println!("AC-130: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((270.0..340.0).contains(&a.knots()), "sea level {}", a.knots());
+        let mut slow = heavy(airborne(1000.0, 160.0, 60.0));
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("AC-130: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((105.0..125.0).contains(&clean), "clean {clean}");
+        assert!((80.0..100.0).contains(&flaps), "flaps {flaps}");
+        // The take-off roll, as the C-5's: well inside the 3,900 ft ahead of the start.
+        let take_off = |vr: f32| {
+            let kl = FlightConstants { landing: 0, ..k() };
+            let mut liftoff = None;
+            let mut x = 0.0;
+            let mut a0 = Aircraft::new_on_runway(kl.fuel);
+            a0.flaps = true;
+            fly_with(kl, false, a0, 90.0, |a, c| {
+                c.throttle = Some(1.0);
+                x += a.knots() * 1.6878 / 120.0;
+                c.pitch = if a.knots() > vr { 1.0 } else { 0.0 };
+                if !a.on_ground && liftoff.is_none() {
+                    liftoff = Some((x, a.knots()));
+                }
+            });
+            println!("AC-130: rotating at {vr} kt: lift-off {liftoff:?} (ft, kt)");
+            liftoff.expect("the AC-130 did not take off").0
+        };
+        assert!(take_off(0.0) < 3000.0);
+        assert!(take_off(100.0) < 3400.0);
+        let mut peak: f32 = 0.0;
+        fly_with(k(), false, heavy(airborne(8000.0, 250.0, 100.0)), 6.0, |a, c| {
+            c.pitch = 1.0;
+            peak = peak.max(a.gees / 16.0);
+        });
+        println!("AC-130: peak load {peak:.1} g");
+        assert!((2.5..3.2).contains(&peak), "peak {peak}");
+        // The orbit: 30 degrees of bank at 200 kt holds without stalling.
+        let a = run(airborne(8000.0, 200.0, 60.0), 20.0);
+        println!("AC-130: level at 60% throttle: {:.0} kt", a.knots());
     }
 
     /// F-22A: supersonic at altitude without the afterburner, past Mach 2 with it; 9 g.

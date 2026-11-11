@@ -1,21 +1,28 @@
-# Builds the OH-58D cockpit master (assets-src/blend/cockpit_oh58.blend) from the panel layout,
-# after the OH-58D Kiowa Warrior's cockpit, with parts of the F-117A's modern cockpit and the
-# UH-60's collective:
+# Builds the OH-58D cockpit masters (assets-src/blend/cockpit_oh58.blend, the pilot's, and
+# cockpit_oh58_cpg.blend, the copilot/gunner's) from the panel layout, after the OH-58D Kiowa
+# Warrior's cockpit, with parts of the F-117A's modern cockpit and the UH-60's collective:
 #   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_oh58.py -- \
 #       assets-src/blend/cockpit_oh58_layout.json assets-src/blend/cockpit_oh58.blend
-# then tools/models/export.sh cockpit_oh58. The layout JSON is written by
-# `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::oh58` (src/cockpit3d/layout.rs).
+#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#       --python tools/models/build_cockpit_oh58.py -- \
+#       assets-src/blend/cockpit_oh58_cpg_layout.json assets-src/blend/cockpit_oh58_cpg.blend --seat left
+# then tools/models/export.sh cockpit_oh58 and cockpit_oh58_cpg. The layout JSONs are written by
+# `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::oh58` and `oh58_cpg`
+# (src/cockpit3d/layout.rs): the same panel, each seat's own pair of MFDs its left and right.
+# The gunner's model is the pilot's built round the left seat's eye (`--seat left`): the cabin's
+# centre line to the right, the working cyclic and collective at the left seat, the pilot's seat
+# with a stub cyclic on the right.
 #
 # Life size, as the UH-60's (tools/models/build_cockpit_uh60.py, which this follows; the pilot in
 # the right seat). Kept from the F-117A's cockpit: the seat with the ejection handle (no ejection:
 # the handle stays), the stick (a centre cyclic on a shaft from the floor between the knees), the
 # throttle (the UH-60's collective on its arm from a pivot left of the seat), the five target
-# buttons (on the console), the HUD glass, the approach indexer and the flood lamps (a helmet
-# display type: kept as the AH-1Z's). Built here, low-poly: one wide panel across both seats
-# under a deep, low glareshield (the forward view over the nose stays open), the two large MFDs
-# in raised bezels either side of the centre column (the data entry display on top, the standby
-# instruments, the warning strip and the engine gauges), fuel outboard of the right MFD; the
+# buttons (on the console) and the flood lamps (no HUD: the helmet display
+# only). Built here, low-poly: one wide panel across both seats under a deep, low glareshield
+# (the forward view over the nose stays open), a pair of MFDs in raised bezels in front of each
+# seat either side of the centre column (the data entry display on top, the standby instruments,
+# the warning strip and the engine gauges, fuel and the engine readouts at its foot); the
 # console down the pedestal between the seats with the CDU (the up-front caps over the
 # keyboard), the caution and countermeasure panels and the target buttons; the floor (short of
 # the chin windows), the pedals, and the left seat with its own cyclic and pedals (unused).
@@ -33,34 +40,34 @@ import bmesh
 import bpy
 from mathutils import Euler, Matrix, Quaternion, Vector
 
-layout_path, out = sys.argv[sys.argv.index("--") + 1:][:2]
+args = sys.argv[sys.argv.index("--") + 1:]
+layout_path, out = args[:2]
+LEFT_SEAT = "--seat" in args and args[args.index("--seat") + 1] == "left"
 layout = json.load(open(layout_path))
 root = bpy.data.objects["cockpit"]
 mats = bpy.data.materials
 
 F117_SCALE = 1.4706
-# The cabin (the fuselage's inside, tools/models/kiowa.py): its centre line, the floor; the side
-# walls at x -1.06 and +0.34.
-CABIN_X = -0.36
+# The cabin (the fuselage's inside, tools/models/kiowa.py): its centre line (to the left of the
+# pilot's eye, to the right of the gunner's), the floor; the side walls 0.70 m either side of
+# the centre line. The other seat is at 2 * CABIN_X.
+CABIN_X = 0.36 if LEFT_SEAT else -0.36
+# The pilot's (right) seat.
+PILOT_X = 2 * CABIN_X if LEFT_SEAT else 0.0
 FLOOR = -0.90
 # The main panel: its plane leaning back PANEL_TILT, the layout's origin (the cabin's centre
 # line) at PANEL_CENTRE; across PANEL_U, TOP to BOTTOM (mm). Low: the windshield's lower edge is
 # 1.32 m ahead and 0.45 m down.
 PANEL_TILT = math.radians(15.0)
 PANEL_CENTRE = Vector((CABIN_X, 0.70, -0.375))
-PANEL_U = (-560.0, 560.0)
-TOP, BOTTOM = -116.0, 112.0
+PANEL_U = (-620.0, 620.0)
+TOP, BOTTOM = -116.0, 124.0
 # The glareshield over its top: its lip at HOOD_Y, its top RISE over the panel's top edge, down
-# DROP to its front at GLARE_FRONT (under the sight line to the windshield's lower edge). The HUD
-# glass on it, scaled about the eye (the same angular size) to stand at HUD_Y.
+# DROP to its front at GLARE_FRONT (under the sight line to the windshield's lower edge).
 HOOD_Y = 0.655
 RISE = 0.03
 DROP = 0.10
 GLARE_FRONT = 0.95
-HUD_Y = 0.70
-# The glass lowered onto the glareshield and shrunk about its foot to reach no higher than
-# HUD_TOP (the windshield is 0.13 m up over it).
-HUD_TOP = 0.0
 # The console down the pedestal between the seats (layout x >= 1500, centred on 2000): its face
 # sloping down aft from under the panel, CONSOLE_V (mm) along it from CONSOLE_FRONT to
 # CONSOLE_REAR; CONSOLE_W wide.
@@ -84,7 +91,6 @@ GRIP_HAND = Vector((0.0, -50.0, 4.0))
 BEZEL = 0.03
 MFD_SIDE, MFD_TOP = 22.0, 25.0
 PLATE = 0.004
-HUD_BAR = 0.010
 ROUND = 16
 KNOB = 8
 
@@ -126,7 +132,7 @@ def rect_point(r, offset=0.0):
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "hud_glass", "approach", "lamp",
+    "lamp",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
@@ -399,7 +405,7 @@ def glare_z(y):
 # corners (as the F-16's).
 scr = layout["screens"]
 faces = {f["key"]: f["rect"] for f in layout["faces"]}
-for key in ("left", "right"):
+for key in ("left", "right", "third", "fourth"):
     x, y, w, h = scr[key]
     outer = (x - MFD_SIDE, y - MFD_TOP, w + 2 * MFD_SIDE, h + 2 * MFD_TOP)
     hole = (x - 3.0, y - 3.0, w + 6.0, h + 6.0)
@@ -418,8 +424,13 @@ for key in ("left", "right"):
         for by in (y - 16.0, y + h + 16.0):
             panel_box("dark", "dark", (bx - 4.5, by - 6.5, 9.0, 13.0), 0.003, base=BEZEL)
             panel_box("black", "black", (bx - 1.5, by - 5.0, 3.0, 10.0), 0.003, base=BEZEL + 0.003)
+for n, like in (("screen_fourth", "screen_right"), ("trackcam_fourth", "trackcam")):
+    if n not in mats:
+        mats[like].copy().name = n
 screen("screen_left", scr["left"], BEZEL - 0.008, "trackcam_left")
 screen("screen_right", scr["right"], BEZEL - 0.008, "trackcam")
+screen("screen_third", scr["third"], BEZEL - 0.008, "trackcam_third")
+screen("screen_fourth", scr["fourth"], BEZEL - 0.008, "trackcam_fourth")
 
 # --- plates under the instrument groups
 plates = [
@@ -428,28 +439,18 @@ plates = [
     ("dark", (-116.0, -46.0, 180.0, 116.0)),  # standby instruments
     ("dark", (62.0, -110.0, 98.0, 80.0)),  # warning strip
     ("dark", (62.0, -28.0, 102.0, 102.0)),  # engine gauges
-    ("dark", (-174.0, 76.0, 348.0, 30.0)),  # switch panel under the centre column
-    ("dark", (428.0, -92.0, 124.0, 132.0)),  # fuel, engine readouts, EMV
-    ("dark", (-552.0, -60.0, 120.0, 120.0)),  # the left seat's switch panel
+    ("dark", (-166.0, 70.0, 310.0, 50.0)),  # fuel, engine readouts, EMV
     ("black", (1920.0, -146.0, 160.0, 112.0)),  # CDU
     ("dark", (1940.0, -15.0, 120.0, 128.0)),  # cautions and countermeasures
 ]
 for mat, r in plates:
     panel_box(mat, mat, r, PLATE)
-# The CDU's knobs under its keyboard; switches on the countermeasure panel's side, under the
-# centre column and on the left seat's panel.
+# The CDU's knobs under its keyboard; switches on the countermeasure panel's side.
 for u in (1964.0, 1994.0, 2024.0):
     knob(u, -46.0, 0.006, 0.010, offset=PLATE)
 toggle(2048.0, -46.0, PLATE)
 for v in (50.0, 70.0, 90.0):
     toggle(2050.0, v, PLATE, up=(v != 70.0))
-for k in range(9):
-    toggle(-150.0 + 37.5 * k, 91.0, PLATE, up=(k % 3 != 1))
-for k in range(4):
-    for row in range(3):
-        toggle(-530.0 + 28.0 * k, -40.0 + 36.0 * row, PLATE, up=((k + row) % 2 == 0))
-for u in (-530.0, -470.0):
-    knob(u, 46.0, 0.008, 0.012, "dark", offset=PLATE)
 
 
 # Setting knobs at instrument corners.
@@ -701,50 +702,7 @@ full = COLLECTIVE_PIVOT + Matrix.Rotation(math.radians(COLLECTIVE_SWING), 3, "X"
 objs["throttle_full"].location = full
 empty("throttle_pivot", COLLECTIVE_PIVOT, props={"anchor": "throttle_pivot"})
 
-# --- HUD: the glass on the glareshield in front of the pilot, a frame of bars along its outline
-# (posts down to the glareshield, chamfered top corners, top) outside it by half a bar.
-hud = next(o for o in old if o.name.startswith("hud_glass"))
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-k = HUD_Y / (sum(v.y for v in glass) / len(glass))
-hud.location *= k
-hud.data.transform(Matrix.Scale(k, 4))
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-# Its foot down onto the glareshield, then shrunk about it.
-low = min(v.z for v in glass)
-foot = glare_z(HUD_Y) + 0.012
-k = min(1.0, (HUD_TOP - foot) / (max(v.z for v in glass) - low))
-shrink = Matrix.Translation((0.0, 0.0, foot)) @ Matrix.Diagonal((k, 1.0, k, 1.0)) @ Matrix.Translation((0.0, 0.0, -low))
-hud.data.transform(hud.matrix_world.inverted() @ shrink @ hud.matrix_world)
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-print(f"HUD glass shrunk {k:.2f}: foot {foot:.3f}, glareshield {glare_z(HUD_Y):.3f}")
-hud_y = sum(v.y for v in glass) / len(glass)
-half_x = max(abs(v.x) for v in glass)
-top = max(v.z for v in glass)
-shoulder = max(v.z for v in glass if abs(abs(v.x) - half_x) < 0.01)
-top_x = min(abs(v.x) for v in glass if abs(v.z - top) < 0.002)
-post_x = half_x + HUD_BAR / 2
-base = glare_z(hud_y)
-outline = [
-    Vector((-post_x, base)), Vector((-post_x, shoulder)),
-    Vector((-top_x, top + HUD_BAR / 2)), Vector((top_x, top + HUD_BAR / 2)),
-    Vector((post_x, shoulder)), Vector((post_x, base)),
-]
-for a, b in zip(outline, outline[1:]):
-    d = b - a
-    centre = (a + b) / 2
-    rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
-    box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
-# The approach indexer just outside the left post, in a housing behind it.
-ind = next(o for o in old if o.name.startswith("approach"))
-ind.location.x = -(post_x + HUD_BAR / 2 + 0.014)
-ind.location.y = hud_y
-ind.location.z = max(base + 0.05, (base + shoulder) / 2)
-box("dark", "dark", (ind.location.x, hud_y + 0.007, ind.location.z), (0.028, 0.010, 0.068))
-box("dark", "dark", (ind.location.x, hud_y + 0.007, (ind.location.z - 0.034 + base) / 2), (0.010, 0.010, ind.location.z - 0.034 - base))
-
+# No approach indexer: a helicopter has no angle of attack to fly the approach by.
 # --- flood lamps: two behind the pilot's head, one under the glareshield
 objs["lamp.002"].location = Vector((0.0, HOOD_Y + 0.04, t.z))
 

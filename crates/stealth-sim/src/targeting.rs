@@ -88,12 +88,18 @@ impl Sim {
         if auto(self.pl.gnd_lock) {
             self.select_ground();
         }
-        // The helmet-slaved seeker picks its own target.
-        if auto(self.pl.air_lock) && self.seeker_sight(ps).is_none() {
+        // With the classic avionics GND is for ground and sea targets: no aircraft is picked
+        // there, and a pick pending for one is dropped.
+        if self.pl.hud_mode == HudMode::Gnd && !ps.mode_weapons {
+            if self.pl.air_lock != -1 && self.pl.air_lock & 0x80 != 0 {
+                self.pl.air_lock = -1;
+            }
+        } else if auto(self.pl.air_lock) && self.seeker_sight(ps).is_none() {
+            // The helmet-slaved seeker picks its own target.
             self.select_air();
         }
         self.pl.select_req = false;
-        self.nearest_target();
+        self.nearest_target(ps);
         self.designate();
         self.lock_oval(ps);
         self.update_helmet_seeker(ps);
@@ -186,7 +192,7 @@ impl Sim {
     /// Farthest ground target the player can pick: recon intelligence doubles the range for
     /// its objects (campaign).
     fn spot_range(&self, base: i32) -> i32 {
-        if self.campaign.is_some() { base * 2 } else { base }
+        if self.opts.campaign { base * 2 } else { base }
     }
 
     /// Air target selection.
@@ -255,12 +261,19 @@ impl Sim {
         }
     }
 
-    /// Nearest enemy ahead (`Commands::nearest_target`), once the HUD mode
-    /// matches the selected weapon: same window, range and sight rules as the 'B' selection,
-    /// but only hostile targets (no friendly or neutral objects, no friendly aircraft). A
-    /// mission objective still to do in that window goes before nearer targets.
-    fn nearest_target(&mut self) {
+    /// Nearest enemy ahead (`Commands::nearest_target`). With the classic avionics it looks in the
+    /// HUD mode as it is, and leaves it alone: AIR for aircraft, GND for ground and sea
+    /// targets, NAV for any of them. With the modern ones it waits for the HUD mode to match the
+    /// selected weapon (the key switches it). Same window, range and sight rules as the 'B'
+    /// selection, but only hostile targets (no friendly or neutral objects, no friendly
+    /// aircraft). A mission objective still to do in that window goes before nearer targets.
+    fn nearest_target(&mut self, ps: &PlayerState) {
         if self.pl.nearest_req == 0 {
+            return;
+        }
+        if !ps.mode_weapons {
+            self.pl.nearest_req = 0;
+            self.nearest_in_mode();
             return;
         }
         self.pl.nearest_req -= 1;
@@ -274,61 +287,110 @@ impl Sim {
         }
         self.pl.nearest_req = 0;
         self.pl.targeting.target_killed = false;
-        let mut best = -1;
-        let mut best_obj = false;
         if air {
-            let mut best_r = 0x12C0;
-            for (j, u) in self.flights.iter().enumerate() {
-                let (r, b) = self.range_bearing(u.x, u.y);
-                let obj = self.air_objective(j);
-                if u.flags & fflags::AIRBORNE != 0
-                    && u.flags & fflags::DESTROYED == 0
-                    && u.speed != 0
-                    && !self.friendly_unit(j, u.spec)
-                    && r < 0x12C0
-                    && (obj, -r) > (best_obj, -best_r)
-                    && self.cam_off(b) < 0x2000
-                    && self.player_sees(u.x, u.y, u.alt)
-                {
-                    best_r = r;
-                    best = j as i32;
-                    best_obj = obj;
-                }
+            if let Some((j, _, _)) = self.nearest_air() {
+                self.pl.air_lock = j;
             }
-            if best != -1 {
-                self.pl.air_lock = best;
-            }
-        } else {
-            let base_r = 100 << (6 - self.night as i32);
-            let reach = self.spot_range(base_r);
-            let mut best_r = reach;
-            for i in 0..self.objects.len() {
-                let o = self.objects[i];
-                let (r, b) = self.range_bearing(o.x, o.y);
-                let obj = self.ground_objective(i);
-                if o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
-                    || (r >= base_r && !self.has_intel(i))
-                    || (i == 0 && (o.x == 0 || o.y == 0 || o.shape == 0))
-                    || r >= reach
-                    || (obj, -r) <= (best_obj, -best_r)
-                    || self.cam_off(b) >= 0x2000
-                    || !self.player_sees(o.x, o.y, 0)
-                {
-                    continue;
-                }
-                best = i as i32;
-                best_r = r;
-                best_obj = obj;
-            }
-            if best != -1 {
-                self.pl.gnd_lock = best;
-            }
+        } else if let Some((i, _, _)) = self.nearest_ground() {
+            self.pl.gnd_lock = i;
         }
         // Nothing hostile: whatever the camera-ahead acquisition locked stays.
         let locked = if air { self.pl.air_lock >= 0 } else { self.valid_gnd().is_some() };
         if !locked {
             self.msg(text!("sim-no-target-ahead"));
         }
+    }
+
+    /// The nearest-target key with the classic avionics: in the HUD mode as it is.
+    fn nearest_in_mode(&mut self) {
+        if self.pl.external_view {
+            return;
+        }
+        self.pl.targeting.target_killed = false;
+        let mode = self.pl.hud_mode;
+        let air = (mode != HudMode::Gnd).then(|| self.nearest_air()).flatten();
+        let ground = (mode != HudMode::Air).then(|| self.nearest_ground()).flatten();
+        // In NAV the better of the two: an objective first, then the nearer.
+        let ground = ground.filter(|g| air.is_none_or(|a| (g.2, -g.1) >= (a.2, -a.1)));
+        let air = air.filter(|_| ground.is_none());
+        if let Some((j, _, _)) = air {
+            self.pl.air_lock = j;
+            if mode == HudMode::Nav {
+                self.pl.gnd_lock = -1;
+            }
+        } else if let Some((i, _, _)) = ground {
+            self.pl.gnd_lock = i;
+            if mode == HudMode::Nav {
+                self.pl.air_lock = -1;
+                self.pl.pilot_lock = None;
+            }
+        }
+        // In NAV the pick is the only lock: no automatic acquisition adds the other kind.
+        if mode == HudMode::Nav && (air.is_some() || ground.is_some()) {
+            self.pl.target_hold = true;
+        }
+        // Nothing hostile: whatever the camera-ahead acquisition locked stays.
+        let locked = match mode {
+            HudMode::Air => self.pl.air_lock >= 0,
+            HudMode::Gnd => self.valid_gnd().is_some(),
+            HudMode::Nav => self.pl.air_lock >= 0 || self.valid_gnd().is_some(),
+        };
+        if !locked {
+            self.msg(text!("sim-no-target-ahead"));
+        }
+    }
+
+    /// The nearest hostile aircraft ahead: (flight unit, range, a mission objective).
+    fn nearest_air(&self) -> Option<(i32, i32, bool)> {
+        let mut best: Option<(i32, i32, bool)> = None;
+        let mut best_r = 0x12C0;
+        let mut best_obj = false;
+        for (j, u) in self.flights.iter().enumerate() {
+            let (r, b) = self.range_bearing(u.x, u.y);
+            let obj = self.air_objective(j);
+            if u.flags & fflags::AIRBORNE != 0
+                && u.flags & fflags::DESTROYED == 0
+                && u.speed != 0
+                && !self.friendly_unit(j, u.spec)
+                && r < 0x12C0
+                && (obj, -r) > (best_obj, -best_r)
+                && self.cam_off(b) < 0x2000
+                && self.player_sees(u.x, u.y, u.alt)
+            {
+                best_r = r;
+                best_obj = obj;
+                best = Some((j as i32, r, obj));
+            }
+        }
+        best
+    }
+
+    /// The nearest hostile ground or sea target ahead: (object, range, a mission objective).
+    fn nearest_ground(&self) -> Option<(i32, i32, bool)> {
+        let base_r = 100 << (6 - self.night as i32);
+        let reach = self.spot_range(base_r);
+        let mut best: Option<(i32, i32, bool)> = None;
+        let mut best_r = reach;
+        let mut best_obj = false;
+        for i in 0..self.objects.len() {
+            let o = self.objects[i];
+            let (r, b) = self.range_bearing(o.x, o.y);
+            let obj = self.ground_objective(i);
+            if o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
+                || (r >= base_r && !self.has_intel(i))
+                || (i == 0 && (o.x == 0 || o.y == 0 || o.shape == 0))
+                || r >= reach
+                || (obj, -r) <= (best_obj, -best_r)
+                || self.cam_off(b) >= 0x2000
+                || !self.player_sees(o.x, o.y, 0)
+            {
+                continue;
+            }
+            best_r = r;
+            best_obj = obj;
+            best = Some((i as i32, r, obj));
+        }
+        best
     }
 
     /// Object `i` is a ground objective of the mission still to do.
@@ -570,7 +632,7 @@ impl Sim {
     }
 
     /// The air lock in the HUD (map x, y and viewZ): the locked flight unit or other pilot.
-    fn air_lock_point(&self) -> Option<(i32, i32, i32)> {
+    pub(crate) fn air_lock_point(&self) -> Option<(i32, i32, i32)> {
         if self.pl.hud_mode != HudMode::Air || self.pl.external_view {
             return None;
         }

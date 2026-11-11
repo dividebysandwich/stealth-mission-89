@@ -221,6 +221,11 @@ aircraft-ah1z =
         Elicopter de atac
         Tun în turelă, Hellfire, AIM-9
         Tunul și Hellfire urmăresc nacela
+aircraft-ah64 =
+    .facts =
+        Elicopter de atac biloc
+        Tun în turelă, Hellfire, Stinger
+        Un al doilea jucător poate zbura ca trăgător
 
 ## Secțiuni și grupuri
 
@@ -433,3 +438,13 @@ aircraft-ch47 =
         Elicopter de marfă cu rotoare tandem
         Atârnă încărcături de aprovizionare și logistică
         Fără cuplu de compensat: rotoarele se anulează
+aircraft-c5 =
+    .facts =
+        Avion de transport strategic cvadrimotor
+        Transportă muniție între bazele aeriene
+        Greu: lent la ruliu și la rotire
+aircraft-ac130 =
+    .facts =
+        Avion de foc cu tragere laterală
+        Tunuri de 40 mm și 105 mm ochite cu containerul
+        Orbitați spre stânga ca tunurile să bată ținta

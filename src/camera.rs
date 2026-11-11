@@ -20,10 +20,11 @@ impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ViewState>()
             .init_resource::<HeadLook>()
-            .init_resource::<Orbit>()
+            .insert_resource(Orbit::from_args())
             .init_resource::<RigOffset>()
             .init_resource::<XrRoot>()
             .init_resource::<HeadPoses>()
+            .init_resource::<MirrorRay>()
             .init_resource::<WeaponCam>()
             .init_resource::<FreeView>()
             // The weapon view after the combat step, on the weapon's pose drawn this frame.
@@ -184,6 +185,18 @@ pub struct Orbit {
     pub pitch: f32,
 }
 
+impl Orbit {
+    /// Test aid (`--orbit yaw,pitch` in degrees): the external views start turned so far.
+    pub fn from_args() -> Self {
+        let args: Vec<String> = std::env::args().collect();
+        let Some(v) = args.iter().position(|a| a == "--orbit").and_then(|i| args.get(i + 1)) else {
+            return Self::default();
+        };
+        let mut it = v.split(',').map(|x| x.parse::<f32>().unwrap_or(0.0).to_radians());
+        Self { yaw: it.next().unwrap_or(0.0), pitch: it.next().unwrap_or(0.0) }
+    }
+}
+
 /// Transform of the eye camera / XR tracking root relative to the head anchor in cockpit
 /// views (VR recentring puts the headset's rest pose at the design eye point).
 #[derive(Resource, Default)]
@@ -211,6 +224,25 @@ pub struct XrRoot(pub Option<Entity>);
 
 #[derive(Component)]
 pub struct EyeCamera;
+
+/// VR: the ray (world) through the mouse cursor on the desktop window's mirror of the left eye,
+/// set after the transforms each frame of a flight (`xr_mirror`); none on the desktop or with the
+/// cursor beside the eye's picture.
+#[derive(Resource, Default)]
+pub struct MirrorRay(pub Option<Ray3d>);
+
+/// The ray (world) through the mouse cursor: through the eye camera's view on the desktop, the
+/// mirrored left eye's in VR (where the eye camera is the tracking root, no camera).
+pub fn cursor_ray(
+    window: Option<&Window>,
+    eye: Option<(&Camera, &GlobalTransform)>,
+    mirror: &MirrorRay,
+) -> Option<Ray3d> {
+    match eye {
+        Some((camera, tf)) => camera.viewport_to_world(tf, window?.cursor_position()?).ok(),
+        None => mirror.0,
+    }
+}
 
 /// The headset (between the eyes) under the tracking root, where it has no eye cameras of its
 /// own to follow it (`--gl-vr`): what the helmet display hangs on.
@@ -757,7 +789,8 @@ fn update_rig(
                     * Quat::from_rotation_z(tracked.roll),
             );
             *cam_tf = if settings.vr {
-                offset.scaled(settings.vr_rig_scale(manning.is_some()))
+                offset
+                    .scaled(settings.vr_rig_scale(manning.as_deref().is_some_and(|m| m.console())))
             } else {
                 offset.0
             };

@@ -7,7 +7,8 @@
 //! `build_cockpit_tornado.py`, the A-10C's by `build_cockpit_a10.py`, the RAH-66's by
 //! `build_cockpit_rah66.py`, the AV-8B's by `build_cockpit_av8b.py`, the OH-58D's by
 //! `build_cockpit_oh58.py`, the CH-47F's by `build_cockpit_ch47.py`, the F-22A's by
-//! `build_cockpit_f22.py`).
+//! `build_cockpit_f22.py`, the AH-64D's by `build_cockpit_ah64.py` (the pilot's, `cockpit_ah64.glb`) and
+//! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`)).
 //!
 //! Every visible part comes from the model. The game binds behaviour to it by material name
 //! and by object custom properties (glTF extras):
@@ -40,7 +41,9 @@
 //!   Its `moving` child is what moves when pressed; a `highlight` object under it is shown
 //!   while a VR fingertip touches the control.
 //! * `stick`, `throttle`: the levers (their origins: the stick pivot, the throttle handle at
-//!   idle; the stick's `grip`: its grip centre above the pivot, metres); `anchor:
+//!   idle; the stick's `grip`: its grip centre above the pivot, metres). `yoke` in place of
+//!   `stick` (the C-5M's): its column, its origin the floor pivot it swings fore and aft about,
+//!   with a `yoke_wheel` under it, its origin the wheel's hub, turning about its local Z; `anchor:
 //!   "throttle_full"`: the handle at full thrust; `anchor: "throttle_pivot"`: a collective's
 //!   pivot (the lever swings up about it instead of sliding).
 //! * `nozzle`: a V/STOL type's nozzle lever (the AV-8B's), its origin the knob at lever 0
@@ -69,7 +72,7 @@ use super::controls::{Control, Highlight, Moving};
 use super::displays::{self, CanvasRole, Face, LitMaterial, PanelMaterials, TrackCamScreen};
 use super::hud_glass::HudGlassMaterial;
 use super::layout::PanelLayout;
-use super::levers::{CockpitAnchors, NozzleLever, Stick, ThrottleLever};
+use super::levers::{CockpitAnchors, NozzleLever, Stick, ThrottleLever, Yoke, YokeWheel};
 use super::pick::Solid;
 use super::shading::{CockpitMaterial, cockpit_part};
 use super::tooltips;
@@ -85,6 +88,7 @@ pub(super) fn load_models(mut commands: Commands, server: Res<AssetServer>) {
     let mut files = crate::aircraft::cockpit_files();
     files.push(super::CONSOLE_MODEL);
     files.push(super::DRONE_CONSOLE_MODEL);
+    files.push(super::GUNNER_CONSOLE_MODEL);
     commands.insert_resource(CockpitModels(
         files.into_iter().map(|f| (f, server.load(format!("models/{f}.glb")))).collect(),
     ));
@@ -193,7 +197,7 @@ impl<'a> Spawner<'a> {
             images,
             modelled: HashMap::new(),
             left_trackcam_missing: false,
-            anchors: CockpitAnchors::default(),
+            anchors: CockpitAnchors { eject_handle: false, ..default() },
             faces: displays::atlas_faces(layout)
                 .into_iter()
                 .map(|(f, _)| (format!("{f:?}"), f))
@@ -292,6 +296,7 @@ impl<'a> Spawner<'a> {
                 Some(c) => {
                     if c.is_eject() {
                         self.anchors.eject = at.translation;
+                        self.anchors.eject_handle = true;
                     }
                     ec.insert(c);
                 }
@@ -310,6 +315,14 @@ impl<'a> Spawner<'a> {
             if let Some(g) = extras["grip"].as_f64() {
                 self.anchors.grip_height = g as f32;
             }
+        }
+        if extras["yoke"].as_bool() == Some(true) {
+            ec.insert((Yoke, tooltips::stick_tip()));
+            self.anchors.stick_pivot = at.translation;
+        }
+        if extras["yoke_wheel"].as_bool() == Some(true) {
+            ec.insert(YokeWheel);
+            self.anchors.yoke_hub = Some(at.translation);
         }
         if extras["throttle"].as_bool() == Some(true) {
             ec.insert((ThrottleLever, tooltips::throttle_tip()));
@@ -349,9 +362,18 @@ impl<'a> Spawner<'a> {
         let no_shadow = extras["no_shadow"].as_bool() == Some(true);
         // What moves, lights up or is shown and hidden, with all under it.
         let moves = moves
-            || ["control", "moving", "highlight", "stick", "throttle", "nozzle"]
-                .iter()
-                .any(|k| extras.get(k).is_some_and(|v| !v.is_null()));
+            || [
+                "control",
+                "moving",
+                "highlight",
+                "stick",
+                "yoke",
+                "yoke_wheel",
+                "throttle",
+                "nozzle",
+            ]
+            .iter()
+            .any(|k| extras.get(k).is_some_and(|v| !v.is_null()));
 
         if let Some(mesh) = node.mesh.as_ref().and_then(|m| assets.meshes.get(m)) {
             let single = mesh.primitives.len() == 1;
@@ -835,6 +857,11 @@ mod tests {
             (PanelStyle::Oh58, "cockpit_oh58", "build_cockpit_oh58"),
             (PanelStyle::Ch47, "cockpit_ch47", "build_cockpit_ch47"),
             (PanelStyle::F22, "cockpit_f22", "build_cockpit_f22"),
+            (PanelStyle::C5, "cockpit_c5", "build_cockpit_c5"),
+            (PanelStyle::C130, "cockpit_c130", "build_cockpit_c130"),
+            (PanelStyle::Ah64, "cockpit_ah64", "build_cockpit_ah64"),
+            (PanelStyle::Ah64Cpg, "cockpit_ah64_cpg", "build_cockpit_ah64_cpg"),
+            (PanelStyle::Oh58Cpg, "cockpit_oh58_cpg", "build_cockpit_oh58"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -866,6 +893,11 @@ mod tests {
             ("cockpit_oh58", PanelStyle::Oh58),
             ("cockpit_ch47", PanelStyle::Ch47),
             ("cockpit_f22", PanelStyle::F22),
+            ("cockpit_c5", PanelStyle::C5),
+            ("cockpit_c130", PanelStyle::C130),
+            ("cockpit_ah64", PanelStyle::Ah64),
+            ("cockpit_ah64_cpg", PanelStyle::Ah64Cpg),
+            ("cockpit_oh58_cpg", PanelStyle::Oh58Cpg),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -876,15 +908,14 @@ mod tests {
                 .iter()
                 .filter_map(|m| m["name"].as_str())
                 .collect();
-            let mut required = vec![
-                "atlas",
-                "screen_left",
-                "screen_right",
-                "adi",
-                "approach",
-                "trackcam",
-                "hud_glass",
-            ];
+            let mut required = vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"];
+            // The helicopters have no approach indexer.
+            let approach = materials.contains(&"approach");
+            assert_eq!(approach, !style.helicopter(), "{name}: approach indexer");
+            // The OH-58D has no HUD (its helmet display only).
+            if !matches!(style, PanelStyle::Oh58 | PanelStyle::Oh58Cpg) {
+                required.push("hud_glass");
+            }
             // The generated cockpits' MENU buttons are caps of their up-front controls (atlas
             // faces).
             required.extend(match style {
@@ -902,7 +933,7 @@ mod tests {
                     "trackcam_third",
                     "label_NEAR",
                 ],
-                PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Av8b | PanelStyle::Oh58 => {
+                PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Av8b | PanelStyle::Ah64 => {
                     vec!["ded", "trackcam_left", "label_NEAR"]
                 }
                 PanelStyle::Rah66 => {
@@ -911,7 +942,16 @@ mod tests {
                 PanelStyle::Ch47 => {
                     vec!["ded", "trackcam_left", "label_NEAR", "screen_rmpd", "screen_rwr"]
                 }
-                PanelStyle::F22 => vec![
+                PanelStyle::Oh58 | PanelStyle::Oh58Cpg => vec![
+                    "screen_third",
+                    "screen_fourth",
+                    "ded",
+                    "trackcam_left",
+                    "trackcam_third",
+                    "trackcam_fourth",
+                    "label_NEAR",
+                ],
+                PanelStyle::F22 | PanelStyle::C5 => vec![
                     "screen_third",
                     "screen_fourth",
                     "screen_lmpd",
@@ -921,13 +961,21 @@ mod tests {
                     "trackcam_fourth",
                     "label_NEAR",
                 ],
+                PanelStyle::C130 => vec!["screen_lmpd", "ded", "trackcam_left", "label_NEAR"],
+                PanelStyle::Ah64Cpg => {
+                    vec!["screen_third", "ded", "trackcam_left", "trackcam_third", "label_NEAR"]
+                }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
             });
             for m in required {
                 assert!(materials.contains(&m), "{name}: no material {m}");
             }
             let has = |k: &str| extras.iter().filter(|x| x.get(k).is_some()).count();
-            assert_eq!(has("stick"), 1, "{name}: stick");
+            // A stick, or a yoke (the C-5M's, the AC-130's) with its wheel.
+            let yoke = matches!(style, PanelStyle::C5 | PanelStyle::C130);
+            assert_eq!(has("stick"), !yoke as usize, "{name}: stick");
+            assert_eq!(has("yoke"), yoke as usize, "{name}: yoke");
+            assert_eq!(has("yoke_wheel"), yoke as usize, "{name}: yoke wheel");
             assert_eq!(has("throttle"), 1, "{name}: throttle");
             assert!(
                 extras.iter().any(|x| x["anchor"] == "throttle_full"),
@@ -957,7 +1005,12 @@ mod tests {
                     pos("nozzle", true.into()).distance(pos("anchor", "nozzle_down".into()));
                 assert!(swing > 0.10, "{name}: nozzle lever travel {swing} m");
             }
-            assert!(extras.iter().any(|x| x["kind"] == "eject"), "{name}: ejection handle");
+            // No ejection seats in the C-5M.
+            assert_eq!(
+                extras.iter().any(|x| x["kind"] == "eject"),
+                !yoke,
+                "{name}: ejection handle"
+            );
             assert!(extras.iter().any(|x| x["control"] == "Action(Menu)"), "{name}: MENU button");
             assert!(
                 extras.iter().any(|x| x["control"] == "Action(MasterCaution)"),

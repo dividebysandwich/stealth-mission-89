@@ -64,6 +64,7 @@ pic-site = Позиція: { $place }
 uv-live = { $unit } - НАЖИВО
 uv-contact-lost = КОНТАКТ ВТРАЧЕНО
 uv-hint = Перетягування: обертання  Колесо: масштаб
+uv-infrared = Інфрачервоний (тепловий) вигляд
 
 ## Мультиплеєр
 
@@ -77,6 +78,8 @@ mp-your-name = Ваше ім'я
 mp-join-address = Приєднатися за адресою
     .hint = адреса або ім'я[:порт]
 mp-connect = ПІДКЛЮЧИТИСЯ
+mp-join-vr = ПРИЄДНАТИСЯ У VR
+    .facts = Перезапускає гру у VR-шоломі та приєднується до цього сервера
 mp-server-name = Назва сервера
 mp-udp-port = Порт UDP
 mp-address-note = Інші гравці приєднуються за адресою цього комп'ютера; щоб грати через інтернет, відкрийте порт UDP на роутері
@@ -88,6 +91,8 @@ mp-friendly-fire = Дружній вогонь
 mp-airframe-losses = Втрати коштують ресурсів
 mp-ai-missions = Завдання союзного ШІ
 mp-host-new = СТВОРИТИ НОВУ
+mp-host-vr = СТВОРИТИ У VR
+    .facts = Перезапускає гру у VR-шоломі та створює кампанію
 mp-host-saved = Розмістити збережену кампанію
 mp-host = СТВОРИТИ
 mp-host-game = СТВОРИТИ ГРУ
@@ -98,9 +103,7 @@ mp-refresh = ОНОВИТИ
 mp-server-count = Серверів: { $servers }, пілотів: { $pilots }
 mp-list-error = Список серверів недоступний: { $error }
 mp-no-servers = Наразі немає публічних серверів
-mp-col-server = СЕРВЕР
 mp-col-pilots = ПІЛОТИ
-mp-col-war = ВІЙНА
 mp-dedicated = ВИДІЛЕНИЙ
 mp-other-version = інша версія
 mp-join = ПРИЄДНАТИСЯ

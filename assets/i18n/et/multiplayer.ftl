@@ -64,6 +64,7 @@ pic-site = Positsioon: { $place }
 uv-live = { $unit } - OTSE
 uv-contact-lost = KONTAKT KAOTATUD
 uv-hint = Lohista: tiirle  Ratas: suum
+uv-infrared = Infrapunavaade (termiline)
 
 ## Mitmikmäng
 
@@ -77,6 +78,8 @@ mp-your-name = Sinu nimi
 mp-join-address = Liitu aadressi järgi
     .hint = aadress või nimi[:port]
 mp-connect = ÜHENDU
+mp-join-vr = LIITU VR-IS
+    .facts = Käivitab mängu uuesti VR-peakomplektis ja liitub selle serveriga
 mp-server-name = Serveri nimi
 mp-udp-port = UDP port
 mp-address-note = Teised mängijad liituvad selle arvuti aadressiga; interneti kaudu mängimiseks ava ruuteris UDP port
@@ -88,6 +91,8 @@ mp-friendly-fire = Oma tuli
 mp-airframe-losses = Kaotused maksavad ressursse
 mp-ai-missions = Sõbraliku AI missioonid
 mp-host-new = KORRALDA UUS
+mp-host-vr = KORRALDA VR-IS
+    .facts = Käivitab mängu uuesti VR-peakomplektis ja korraldab kampaania
 mp-host-saved = Korralda salvestatud kampaania
 mp-host = KORRALDA
 mp-host-game = KORRALDA MÄNG
@@ -98,9 +103,7 @@ mp-refresh = VÄRSKENDA
 mp-server-count = { $servers } serverit, { $pilots } piloti
 mp-list-error = Serverite nimekiri pole kättesaadav: { $error }
 mp-no-servers = Praegu avalikke servereid pole
-mp-col-server = SERVER
 mp-col-pilots = PILOOTE
-mp-col-war = SÕDA
 mp-dedicated = OMAETTE
 mp-other-version = teine versioon
 mp-join = LIITU

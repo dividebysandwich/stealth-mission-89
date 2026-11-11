@@ -65,6 +65,7 @@ pic-site = Θέση: { $place }
 uv-live = { $unit } - ΖΩΝΤΑΝΑ
 uv-contact-lost = ΑΠΩΛΕΙΑ ΕΠΑΦΗΣ
 uv-hint = Σύρσιμο: περιστροφή  Ροδάκι: ζουμ
+uv-infrared = Προβολή υπερύθρων (θερμική)
 
 ## Πολλοί παίκτες
 
@@ -78,6 +79,8 @@ mp-your-name = Το όνομά σας
 mp-join-address = Σύνδεση με διεύθυνση
     .hint = διεύθυνση ή όνομα[:θύρα]
 mp-connect = ΣΥΝΔΕΣΗ
+mp-join-vr = ΕΙΣΟΔΟΣ ΣΕ VR
+    .facts = Ξεκινά ξανά το παιχνίδι στο κράνος VR και συνδέεται σε αυτόν τον διακομιστή
 mp-server-name = Όνομα server
 mp-udp-port = Θύρα UDP
 mp-address-note = Οι άλλοι παίκτες συνδέονται με τη διεύθυνση αυτού του υπολογιστή· ανοίξτε τη θύρα UDP στον router σας για να παίξετε μέσω διαδικτύου
@@ -89,6 +92,8 @@ mp-friendly-fire = Φίλια πυρά
 mp-airframe-losses = Οι απώλειες κοστίζουν πόρους
 mp-ai-missions = Φιλικές αποστολές ΤΝ
 mp-host-new = ΝΕΟ ΠΑΙΧΝΙΔΙ
+mp-host-vr = ΦΙΛΟΞΕΝΙΑ ΣΕ VR
+    .facts = Ξεκινά ξανά το παιχνίδι στο κράνος VR και φιλοξενεί την εκστρατεία
 mp-host-saved = Φιλοξενία αποθηκευμένης εκστρατείας
 mp-host = ΦΙΛΟΞΕΝΙΑ
 mp-host-game = ΔΗΜΙΟΥΡΓΙΑ ΠΑΙΧΝΙΔΙΟΥ
@@ -99,9 +104,7 @@ mp-refresh = ΑΝΑΝΕΩΣΗ
 mp-server-count = { $servers } servers, { $pilots } πιλότοι
 mp-list-error = Η λίστα των servers δεν είναι προσβάσιμη: { $error }
 mp-no-servers = Κανένας δημόσιος server αυτή τη στιγμή
-mp-col-server = SERVER
 mp-col-pilots = ΠΙΛΟΤΟΙ
-mp-col-war = ΠΟΛΕΜΟΣ
 mp-dedicated = DEDICATED
 mp-other-version = άλλη έκδοση
 mp-join = ΕΙΣΟΔΟΣ

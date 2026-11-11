@@ -14,8 +14,8 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::hotas::{
-    AxisControl, ButtonTarget, Hotas, InputConfig, MouseInput, Source, VrHand, VrInput,
-    action_name, default_vr_buttons,
+    AxisControl, ButtonTarget, Device, Hotas, InputConfig, MouseInput, Source, VrGrab, VrHand,
+    VrInput, action_name, default_vr_buttons,
 };
 use crate::input::{Action, Mods, default_key_mappings};
 use crate::key_guide::{SEARCH_MAX, caret_shown, holds, search_query};
@@ -38,6 +38,11 @@ pub struct InputDialog {
 }
 
 impl InputDialog {
+    /// `--open-input`: start with the dialog open (screenshots).
+    pub fn from_args() -> Self {
+        Self { open: std::env::args().any(|a| a == "--open-input"), ..default() }
+    }
+
     /// Closes the dialog, dropping a capture, the status and the search.
     pub fn close(&mut self) {
         self.open = false;
@@ -130,9 +135,9 @@ struct Capture {
 }
 
 impl Capture {
-    fn new(what: Binding, hotas: &Hotas) -> Self {
+    fn new<'a>(what: Binding, devices: impl IntoIterator<Item = &'a Device>) -> Self {
         let mut c = Self { what, axes: HashMap::new(), buttons: HashSet::new() };
-        for d in hotas.devices() {
+        for d in devices {
             c.axes.extend(d.axes.iter().map(|(code, v)| ((d.key.clone(), *code), *v)));
             c.buttons.extend(d.buttons.iter().map(|code| (d.key.clone(), *code)));
         }
@@ -140,9 +145,12 @@ impl Capture {
     }
 
     /// The first input that moved since the capture started.
-    fn poll(&mut self, hotas: &Hotas) -> Option<(String, Found)> {
+    fn poll<'a>(
+        &mut self,
+        devices: impl IntoIterator<Item = &'a Device>,
+    ) -> Option<(String, Found)> {
         let mut found = None;
-        for d in hotas.devices() {
+        for d in devices {
             // Buttons held at the start count again once released.
             self.buttons.retain(|(n, c)| *n != d.key || d.buttons.contains(c));
             for &code in &d.buttons {
@@ -153,6 +161,11 @@ impl Capture {
                 }
             }
             for (&code, &v) in &d.axes {
+                // Analog triggers already have a button above. Their resting value is -1:
+                // releasing one must not bind the negative half of its axis as a button.
+                if matches!(self.what, Binding::Button(_)) && d.button_axes.contains(&code) {
+                    continue;
+                }
                 // An axis seen for the first time is its own baseline.
                 let base = *self.axes.entry((d.key.clone(), code)).or_insert(v);
                 if (v - base).abs() > 0.5 {
@@ -171,11 +184,83 @@ impl Capture {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trigger_can_be_bound_again_after_release() {
+        for code in [0x30002, 0x30005] {
+            let mut d = Device::default();
+            d.key = "Xbox".into();
+            d.button_changed(code, 0.0, true);
+            let what = Binding::Button(ButtonTarget::Gun);
+            let mut capture = Capture::new(what, [&d]);
+            d.button_changed(code, 1.0, true);
+            assert!(matches!(
+                capture.poll([&d]),
+                Some((_, Found::Button(Source::Button(c)))) if c == code
+            ));
+
+            // Start another capture while still holding the trigger from the first binding.
+            let mut capture = Capture::new(what, [&d]);
+            assert!(capture.poll([&d]).is_none());
+            d.button_changed(code, 0.0, true);
+            assert!(capture.poll([&d]).is_none(), "release is not an axis-negative binding");
+            d.button_changed(code, 1.0, true);
+            assert!(matches!(
+                capture.poll([&d]),
+                Some((_, Found::Button(Source::Button(c)))) if c == code
+            ));
+        }
+    }
+
+    #[test]
+    fn axis_capture_accepts_triggers_but_not_digital_buttons() {
+        let mut d = Device::default();
+        d.button_changed(2, 0.0, true);
+        let mut capture = Capture::new(Binding::Axis(AxisControl::Throttle), [&d]);
+        d.button_changed(10, 1.0, false);
+        assert!(capture.poll([&d]).is_none());
+        d.button_changed(2, 0.5, true);
+        assert!(matches!(capture.poll([&d]), Some((_, Found::Axis(2)))));
+    }
+
+    #[test]
+    fn raw_hotas_axes_still_bind_in_both_directions() {
+        for value in [-1.0, 1.0] {
+            let mut d = Device::default();
+            d.axes.insert(42, 0.0);
+            let mut button = Capture::new(Binding::Button(ButtonTarget::Gun), [&d]);
+            let mut axis = Capture::new(Binding::Axis(AxisControl::Roll), [&d]);
+            d.axes.insert(42, value);
+            let expected =
+                if value > 0.0 { Source::AxisPositive(42) } else { Source::AxisNegative(42) };
+            assert!(matches!(button.poll([&d]), Some((_, Found::Button(s))) if s == expected));
+            assert!(matches!(axis.poll([&d]), Some((_, Found::Axis(42)))));
+        }
+    }
+}
+
 /// "Device: Axis 1", the device name shortened but its ids and number kept.
 fn binding_label(device: &str, source: &str) -> String {
     let (name, ids) = device.rfind(" [").map_or((device, ""), |i| device.split_at(i));
     let name: String = name.chars().take(28usize.saturating_sub(ids.len()).max(12)).collect();
     format!("{name}{ids}: {source}")
+}
+
+/// A binding in the dialog's rows: the device's name cut short (without its USB ids), the whole
+/// `binding_label` on hover, so that a long name doesn't push the row's buttons off the window.
+fn binding_cell(ui: &mut egui::Ui, device: &str, source: &str) -> egui::Response {
+    /// Characters of the device's name shown.
+    const NAME: usize = 16;
+    let name = device.rfind(" [").map_or(device, |i| &device[..i]);
+    let short = if name.chars().count() > NAME {
+        format!("{}…", name.chars().take(NAME - 1).collect::<String>().trim_end())
+    } else {
+        name.to_string()
+    };
+    ui.label(format!("{short}: {source}")).on_hover_text(binding_label(device, source))
 }
 
 /// Modifier keys, which only count together with another key.
@@ -257,7 +342,7 @@ pub fn show(
                 ));
                 dialog.capture = None;
             }
-        } else if let Some((device, input)) = cap.poll(hotas) {
+        } else if let Some((device, input)) = cap.poll(hotas.devices()) {
             let what = cap.what;
             let label = match (what, input) {
                 (Binding::Axis(control), Found::Axis(code)) => {
@@ -312,7 +397,8 @@ pub fn show(
             (screen.height() - 120.0).max(300.0),
         ));
     crate::menu::Panel::new(t!("input-title")).note(t!("input-note")).window(window, ctx, |ui| {
-        let split = Split::new(ui, "input_mapping");
+        // Rows wider than the window (long key lists) scroll sideways rather than clip.
+        let split = Split::new(ui, "input_mapping").wide();
         search_field(ui, &mut dialog.search, dialog.capture.is_some(), vr);
         ui.separator();
 
@@ -375,6 +461,11 @@ pub fn show(
                 egui::Grid::new("axes").num_columns(6).spacing([14.0, 6.0]).striped(true).show(
                     ui,
                     |ui| {
+                        ui.label("");
+                        ui.label(egui::RichText::new(t!("input-joystick")).color(GREEN));
+                        ui.label("");
+                        ui.label(egui::RichText::new(t!("input-dead-zone")).color(GREEN));
+                        ui.end_row();
                         for &control in &axes {
                             let what = Binding::Axis(control);
                             ui.label(control.name());
@@ -382,19 +473,23 @@ pub fn show(
                             let mapping = config.axes.iter_mut().find(|m| m.control == control);
                             match mapping {
                                 Some(m) => {
-                                    ui.label(binding_label(
+                                    binding_cell(
+                                        ui,
                                         &m.device,
                                         &t!("input-axis", n = m.code & 0xffff),
-                                    ));
+                                    );
                                     ui.checkbox(&mut m.invert, t!("input-invert"));
                                     if control.lever() {
                                         ui.label("");
                                     } else {
-                                        ui.add(
-                                            egui::Slider::new(&mut m.deadzone, 0.0..=0.5)
-                                                .text(t!("input-dead-zone"))
-                                                .fixed_decimals(2),
-                                        );
+                                        ui.scope(|ui| {
+                                            ui.spacing_mut().slider_width = 70.0;
+                                            ui.add(
+                                                egui::Slider::new(&mut m.deadzone, 0.0..=0.5)
+                                                    .fixed_decimals(2),
+                                            )
+                                            .on_hover_text(t!("input-dead-zone"));
+                                        });
                                     }
                                     let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
                                     let fill = match (control, v) {
@@ -406,9 +501,7 @@ pub fn show(
                                         format!("{v:+.2}")
                                     });
                                     ui.add(
-                                        egui::ProgressBar::new(fill)
-                                            .desired_width(120.0)
-                                            .text(text),
+                                        egui::ProgressBar::new(fill).desired_width(90.0).text(text),
                                     );
                                 }
                                 None => {
@@ -514,7 +607,7 @@ pub fn show(
                             let what = Binding::Button(target);
                             let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
                             match config.button(target) {
-                                Some(m) => ui.label(binding_label(&m.device, &m.source.label())),
+                                Some(m) => binding_cell(ui, &m.device, &m.source.label()),
                                 None => ui.label(
                                     egui::RichText::new(if capturing {
                                         t!("input-press-button")
@@ -586,7 +679,7 @@ pub fn show(
     if let Some(what) = start {
         dialog.status = None;
         dialog.jump = None;
-        dialog.capture = Some(Capture::new(what, hotas));
+        dialog.capture = Some(Capture::new(what, hotas.devices()));
     }
     if dialog.saved.as_ref() != Some(config) {
         match config.save() {
@@ -750,9 +843,11 @@ fn vr_buttons(
         );
         if ui.button(icon_text(ui, icon::RESET, t!("input-defaults"))).clicked() {
             config.vr_buttons = default_vr_buttons();
+            config.vr_grab = Default::default();
         }
     });
     ui.label(egui::RichText::new(t!("input-vr-trigger-note")).color(DIM).small());
+    ui.label(egui::RichText::new(t!("input-vr-grab-note")).color(DIM).small());
     egui::Grid::new("vr_buttons").num_columns(3).spacing([14.0, 4.0]).striped(true).show(
         ui,
         |ui| {
@@ -760,12 +855,36 @@ fn vr_buttons(
             ui.label(egui::RichText::new(t!("input-left-hand")).color(GREEN));
             ui.label(egui::RichText::new(t!("input-right-hand")).color(GREEN));
             ui.end_row();
+            // How each hand grabs: the input, and whether a press takes and the next lets go.
+            ui.label(t!("input-vr-grab"));
+            for hand in [VrHand::Left, VrHand::Right] {
+                let grab = &mut config.vr_grab[hand as usize];
+                egui::ComboBox::from_id_salt(("vr-grab", hand))
+                    .width(190.0)
+                    .selected_text(grab.input.name(hand))
+                    .show_ui(ui, |ui| {
+                        for input in VrGrab::INPUTS {
+                            ui.selectable_value(&mut grab.input, input, input.name(hand));
+                        }
+                    });
+            }
+            ui.end_row();
+            ui.label(t!("input-vr-grab-toggle"));
+            for hand in [VrHand::Left, VrHand::Right] {
+                ui.checkbox(&mut config.vr_grab[hand as usize].toggle, "");
+            }
+            ui.end_row();
             for &input in inputs {
                 let name = vr_input_name(input);
                 let narrow = !matching.is_empty() && !holds(&name, query);
                 let listed = if narrow { matching } else { targets };
                 ui.label(name);
                 for hand in [VrHand::Left, VrHand::Right] {
+                    // The grab input does nothing else (its mapping is kept for later).
+                    if config.vr_grabs(hand, input) {
+                        ui.label(egui::RichText::new(t!("input-vr-grab-bound")).color(DIM));
+                        continue;
+                    }
                     let current = config.vr_button(hand, input);
                     let mut picked = current;
                     egui::ComboBox::from_id_salt(("vr", hand, input))
