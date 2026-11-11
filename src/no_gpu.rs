@@ -50,7 +50,17 @@ Press Escape or close this window to quit.";
 /// Shows the message and exits when there is no GPU. `WGPU_BACKEND` picks the backend by hand,
 /// so it skips the check.
 pub fn exit_if_missing() {
-    if std::env::var_os("WGPU_BACKEND").is_some() || has_gpu() {
+    if std::env::var_os("WGPU_BACKEND").is_some() {
+        return;
+    }
+    if has_gpu() {
+        // Linux: Vulkan only. wgpu ranks a CPU adapter (lavapipe) below OpenGL's, so with only
+        // lavapipe (a VM, AppImageHub's test runner) Bevy would pick OpenGL and panic as above.
+        // SAFETY: called before any thread starts.
+        #[cfg(target_os = "linux")]
+        unsafe {
+            std::env::set_var("WGPU_BACKEND", "vulkan")
+        };
         return;
     }
     eprintln!("{TITLE}\n\n{MESSAGE}");
