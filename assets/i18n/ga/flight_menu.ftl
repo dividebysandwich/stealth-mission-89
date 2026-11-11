@@ -31,6 +31,7 @@ fm-avionics = AVIONICS
 fm-auto-trim = UATH-TRIM
 fm-keep-time-accel = COINNIGH LUASGHÉARÚ
 fm-tooltips = LEIDEANNA UIRLISE
+fm-tutorial = TIONSCADAL TEAGASC IDIRGHNÍOMHACH
 fm-player-labels = AINMNEACHA IMREOIRÍ
 fm-label-size = MÉID AINMNEACHA
 fm-seat-height = AIRDE AN TSUÍOCHÁIN

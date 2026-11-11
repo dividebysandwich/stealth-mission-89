@@ -46,6 +46,12 @@ pub struct ScreenClick {
     pub uv: Vec2,
 }
 
+/// A part with a tooltip (a display, say) was clicked (mouse) or tapped (VR fingertip and
+/// trigger): its entity. The
+/// lesson reads it, a display it points at being clicked is looked at.
+#[derive(Message, Debug, Clone, Copy)]
+pub(super) struct TipClick(pub Entity);
+
 /// A press on a console screen held and moved: where it started (`Start`, with the click), where
 /// the pointer is while it is held (`Move`, each frame it moved), where it let go (`End`).
 #[derive(Message, Debug, Clone, Copy)]
@@ -168,6 +174,11 @@ impl Control {
     /// A VR fingertip touches it.
     pub(super) fn touched(&self) -> bool {
         self.touched
+    }
+
+    /// The centre of its face, in the frame of `tf` (its own transform).
+    pub(super) fn face_centre(&self, tf: &Transform) -> Vec3 {
+        tf.translation + tf.rotation * Vec3::Z * self.height
     }
 
     /// Where the ray o + t d (cockpit frame, `tf` the control's) goes through the face
@@ -310,6 +321,23 @@ impl Fire<'_, '_> {
     }
 }
 
+/// The control a key action presses: panel caps and bezel buttons before the side panel
+/// duplicates; of two bezel buttons with the same key action (MAP / TAC), the one not selected.
+pub(super) fn press_target<'a>(
+    controls: impl Iterator<Item = (Entity, &'a Control)>,
+    a: Action,
+    mfd: &MfdState,
+) -> Option<Entity> {
+    let rank = |c: &Control| {
+        let lit = matches!(c.effect, Effect::Osb(side, slot) if osb(side, slot, mfd).is_some_and(|o| o.2));
+        (!matches!(c.kind, Kind::Cap | Kind::Osb), lit)
+    };
+    controls
+        .filter(|(_, c)| c.effect.action(mfd) == Some(a))
+        .min_by_key(|(_, c)| rank(c))
+        .map(|(e, _)| e)
+}
+
 /// Seconds a clicked control stays pushed in.
 const CLICK_SECONDS: f32 = 0.18;
 /// A VR fingertip taps a console screen this close to it (metres).
@@ -330,7 +358,7 @@ pub(super) fn interact(
     menu: Res<crate::flight_menu::FlightMenu>,
     hide: Option<Res<crate::camera::HideOwnAircraft>>,
     screens: Query<&super::displays::ConsoleCanvas>,
-    mut clicks: MessageWriter<ScreenClick>,
+    (mut clicks, mut tip_clicks): (MessageWriter<ScreenClick>, MessageWriter<TipClick>),
     (mut drags, mut dragging): (MessageWriter<ScreenDrag>, Local<Dragging>),
 ) {
     let dt = time.delta_secs();
@@ -353,17 +381,9 @@ pub(super) fn interact(
     // With the menu open only the MENU button works (it closes the menu again).
     let usable = |c: &Control| !menu.open || c.effect == Effect::Action(Action::Menu);
     for PressControl(a) in presses.read() {
-        // Panel caps and bezel buttons before the side panel duplicates; of two bezel buttons
-        // with the same key action (MAP / TAC), the one not selected.
-        let mfd = fire.mfd.clone();
-        let rank = |c: &Control| {
-            let lit = matches!(c.effect, Effect::Osb(side, slot) if osb(side, slot, &mfd).is_some_and(|o| o.2));
-            (!matches!(c.kind, Kind::Cap | Kind::Osb), lit)
-        };
-        if let Some((_, mut c, _)) = controls
-            .iter_mut()
-            .filter(|(_, c, _)| c.effect.action(&mfd) == Some(*a))
-            .min_by_key(|(_, c, _)| rank(c))
+        let found = press_target(controls.iter().map(|(e, c, _)| (e, c)), *a, &fire.mfd);
+        if let Some(e) = found
+            && let Ok((_, mut c, _)) = controls.get_mut(e)
         {
             c.click = CLICK_SECONDS;
             fire.fire(c.effect);
@@ -391,6 +411,11 @@ pub(super) fn interact(
             c.click = CLICK_SECONDS;
             fire.fire(c.effect);
         }
+        if let Some(Pointed::Tip(e)) = picked
+            && !menu.open
+        {
+            tip_clicks.write(TipClick(e));
+        }
         // A console screen: where on it.
         if let Some(Pointed::Tip(e)) = picked
             && !menu.open
@@ -403,9 +428,9 @@ pub(super) fn interact(
         }
     }
 
-    // VR: a fingertip on a console screen and the trigger taps it there (seen from the eye, so
-    // where the finger shows on the picture).
-    if cockpit_view && !menu.open && !screens.is_empty() {
+    // VR: a fingertip on a display and the trigger taps it there (seen from the eye, so where
+    // the finger shows on the picture); a console screen also gets where on it.
+    if cockpit_view && !menu.open {
         for (h, hand) in hands.hands.iter_mut().enumerate() {
             if !hand.active || hand.touching || !hand.trigger_pulled() {
                 continue;
@@ -416,14 +441,16 @@ pub(super) fn interact(
                 picker.pick_within(ray, reach + SCREEN_TAP, &all, |_| false)
             };
             if let Some(Pointed::Tip(e)) = picked
-                && let Ok(screen) = screens.get(e)
                 && let Some((t, uv)) = picker.uv_at(e, ray)
                 && t > reach - SCREEN_TAP
             {
-                hand.haptic = hand.haptic.max(0.4);
-                clicks.write(ScreenClick { screen: screen.0, uv });
-                drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Start });
-                dragging.0 = Some((e, Some(h), uv));
+                tip_clicks.write(TipClick(e));
+                if let Ok(screen) = screens.get(e) {
+                    hand.haptic = hand.haptic.max(0.4);
+                    clicks.write(ScreenClick { screen: screen.0, uv });
+                    drags.write(ScreenDrag { screen: screen.0, uv, phase: DragPhase::Start });
+                    dragging.0 = Some((e, Some(h), uv));
+                }
             }
         }
     }

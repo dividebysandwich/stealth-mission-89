@@ -31,6 +31,7 @@ fm-avionics = AVIONIKA
 fm-auto-trim = AUTOMATIKUS TRIM
 fm-keep-time-accel = GYORSÍTÁS MEGTARTÁSA
 fm-tooltips = TOOLTIPEK
+fm-tutorial = INTERAKTÍV OKTATÓ
 fm-player-labels = JÁTÉKOSNEVEK
 fm-label-size = NÉVMÉRET
 fm-seat-height = ÜLÉSMAGASSÁG

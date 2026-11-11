@@ -30,6 +30,7 @@ fm-avionics = АВІОНІКА
 fm-auto-trim = АВТОТРИМ
 fm-keep-time-accel = ЗБЕРІГАТИ ПРИСКОРЕННЯ
 fm-tooltips = ПІДКАЗКИ
+fm-tutorial = ІНТЕРАКТИВНЕ НАВЧАННЯ
 fm-player-labels = ІМЕНА ГРАВЦІВ
 fm-label-size = РОЗМІР ІМЕН
 fm-seat-height = ВИСОТА КРІСЛА

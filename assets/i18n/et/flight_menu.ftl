@@ -31,6 +31,7 @@ fm-avionics = AVIONIKA
 fm-auto-trim = AUTO TRIM
 fm-keep-time-accel = HOIA KIIRENDUST
 fm-tooltips = TOOLTIPS
+fm-tutorial = INTERAKTIIVNE ÕPETUS
 fm-player-labels = MÄNGIJATE NIMED
 fm-label-size = NIMEDE SUURUS
 fm-seat-height = ISTME KÕRGUS

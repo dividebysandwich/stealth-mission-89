@@ -184,6 +184,7 @@ mouse on an option for a short description.
 | **Conditions** | *Weather*: Random (from the theater's climate), Clear, Scattered, Broken, Overcast or Storm; with *Random cover* off a slider sets the main cloud layer's cover. Clouds block optical seekers and eyes on both sides; radar sees through them. *Start time*: night is 18:00-06:00; *Random* rolls a morning or evening take-off. *Moon*: the real moon of the mission's date, or a fixed phase from new (enemy pilots see you at 2 km) to full (4 km). |
 | **Vehicle** | The aircraft of chapter 3. *Realistic weapons* (F-117A only): two bays, no gun, no AIM-9 or AIM-120, no carrier operations. |
 | **Simulation** | *Damage*: *Game* hits damage systems but never bring you down; *Real* hits can destroy the aircraft, start fires and damage the flight controls. *Guidance*: *Classic* DOS era missiles, or *Real* missiles that fly proportional navigation, glide after burn-out and loft against distant targets. *Air defence*: *Real* adds anti-aircraft guns and MANPADS teams (chapter 13.3). *Crash protection*: an automatic pull-up near the ground; collisions are not fatal. These switches belong to each game, not to OPTIONS. |
+| **Tutorial** | *Interactive tutorial* (chapter 4): single missions only. |
 
 | Button | Function |
 |---|---|
@@ -1499,6 +1500,41 @@ has a keyboard equivalent (Appendix A). Rest the mouse on a button, display, ins
 light and a **tooltip** names it, says what it does and shows its keys; parts hidden behind the
 stick, the throttle or the glare shield can't be pointed at.
 
+**Interactive tutorial.** With *Interactive tutorial* on (the single mission screen's
+*Tutorial* group or the in-flight menu), any single mission in any theater is flown step by step,
+from the takeoff to the stop after landing: a box says what to do next and which keys do it, an
+arrow points at the button, display or lever to use, which blinks blue. When the view does not
+show it, the arrow waits at the edge of the window on its side. The lesson follows the
+mission's story: the takeoff; then, the autopilot flying (hands off before eyes down), the
+flight plan (the map, the route on it and the waypoint list: distance and time to each
+waypoint; on the DOS era map the route shows with the waypoint page up, so after the list), the tactical
+page and its zoom, the orders, and the store they call for (the one on board that does the most
+against that target: a Harpoon against a ship, a HARM against a radar, a Durandal against a
+runway, the air-to-air missile that locks the farthest against an aircraft, the camera for a
+photo, the supplies for a drop). Each display is shown once in the flight: the flight plan's and
+the tactical page only on a cruise long enough (more than 60 km to go), else on the way to the
+next objective or home; the orders before the first target, however short the way.
+Time acceleration is offered for a longer cruise (more than 100 km to go); getting near with it
+on, the lesson asks for normal time, the farther out the faster time runs (60 km out with ACCEL,
+75 km at ACCEL x2, 90 km at ACCEL x3). The lesson never acts for you: every step is yours. The
+cruise follows the route on the map (the DOS era map draws it with the waypoint page up). About
+50 km out, the autopilot still on, the threats on the tactical page and the target camera
+ahead. About 30 km out, getting ready for the attack: slower (about 400 knots,
+for a run on the ground), the HUD's attack mode (with a radar it shows its own display), the
+lock; about 15 km out, the target locked, the autopilot off (it would turn to the next waypoint
+about 8 km out); about 10 km out the run: the bay, the
+shot, or the landing the objective asks for; then on to the next objective, and at last the way
+home and the landing (the ILS, then the autopilot off). Dangers and threats come first while they last: a
+stall (nose down, power up), a missile locked on the aircraft (chaff against a radar-guided one, flares against an infrared one, then
+evading and a decoy, chapter 7.6), a radar tracking the aircraft (descend, slow down, wings
+level, bay shut: chapter 7.1); a fire on board and low fuel are said for a few seconds when they
+begin. Evading with the stick takes the autopilot off, so the lesson
+asks for it again afterwards; with the autopilot damaged it says to fly by hand. A step ends however it is done (a click, a key, the
+joystick), and shows again when it is undone (the bay shut, the lock lost, the store spent);
+the steps follow the aircraft (jet or helicopter, bomb bay or pylons) and the avionics (DOS era
+pages or F-16 style formats). Career sorties, the campaign and multiplayer games fly without it
+(the in-flight menu's entry is greyed out).
+
 With head or eye tracking (chapter 1.4) the view follows your head; **Home** recentres it. In VR
 you simply look around, and press the cockpit's buttons with a fingertip.
 
@@ -1693,7 +1729,7 @@ back a page; on the first page they close the menu.
 
 | Page | Entries |
 |---|---|
-| Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Keep time acceleration*, *Tooltips*, *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
+| Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Keep time acceleration*, *Tooltips*, *Interactive tutorial* (single missions only), *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
 | Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
 | Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours, scanlines and pixelize. |
 | Sound | The *Master*, *Engine*, *Effects*, *Warnings*, *RWR*, *Radio* and *ATC voice* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |

@@ -22,6 +22,15 @@ impl MissionData {
 #[derive(Resource, Clone)]
 pub struct ActiveMission(pub Mission);
 
+/// The flight is a single mission: not a career sortie, nor a campaign's (multiplayer games are
+/// coop campaigns). The interactive tutorial is for these.
+pub fn single_mission(
+    career: Option<&crate::career::CareerFlight>,
+    campaign: Option<&crate::campaign::ActiveCampaign>,
+) -> bool {
+    career.is_none() && campaign.is_none()
+}
+
 pub use stealth_campaign::{RouteKind, RoutePoint};
 
 /// The route flown (mission planner); the mission's 4 waypoints unless the player changed it.

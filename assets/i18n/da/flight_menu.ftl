@@ -31,6 +31,7 @@ fm-avionics = AVIONIK
 fm-auto-trim = AUTO TRIM
 fm-keep-time-accel = BEHOLD ACCELERATION
 fm-tooltips = TOOLTIPS
+fm-tutorial = INTERAKTIV GUIDE
 fm-player-labels = SPILLERNAVNE
 fm-label-size = NAVNESTØRRELSE
 fm-seat-height = SÆDEHØJDE

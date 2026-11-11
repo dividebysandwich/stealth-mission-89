@@ -31,6 +31,7 @@ fm-avionics = アビオニクス
 fm-auto-trim = オートトリム
 fm-keep-time-accel = 加速を維持
 fm-tooltips = ツールチップ
+fm-tutorial = インタラクティブチュートリアル
 fm-player-labels = プレイヤー名
 fm-label-size = 名前の大きさ
 fm-seat-height = 座席の高さ

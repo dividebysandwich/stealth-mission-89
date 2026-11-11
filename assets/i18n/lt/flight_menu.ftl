@@ -31,6 +31,7 @@ fm-avionics = AVIONIKA
 fm-auto-trim = AUTOM. TRIM
 fm-keep-time-accel = IŠLAIKYTI SPARTINIMĄ
 fm-tooltips = PAAIŠKINIMAI
+fm-tutorial = INTERAKTYVUS MOKOMASIS
 fm-player-labels = ŽAIDĖJŲ VARDAI
 fm-label-size = VARDŲ DYDIS
 fm-seat-height = SĖDYNĖS AUKŠTIS

@@ -31,6 +31,7 @@ fm-avionics = AVIONIK
 fm-auto-trim = TRIM OTOMATIS
 fm-keep-time-accel = PERTAHANKAN AKSELERASI
 fm-tooltips = TOOLTIP
+fm-tutorial = TUTORIAL INTERAKTIF
 fm-player-labels = NAMA PEMAIN
 fm-label-size = UKURAN NAMA
 fm-seat-height = TINGGI KURSI

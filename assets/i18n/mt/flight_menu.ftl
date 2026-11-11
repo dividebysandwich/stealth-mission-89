@@ -31,6 +31,7 @@ fm-avionics = AVJONIKA
 fm-auto-trim = TRIM AWTOMATIKU
 fm-keep-time-accel = ŻOMM L-AĊĊELERAZZJONI
 fm-tooltips = TOOLTIPS
+fm-tutorial = TUTORJAL INTERATTIV
 fm-player-labels = ISMIJIET TAL-PLEJERS
 fm-label-size = DAQS TAL-ISMIJIET
 fm-seat-height = GĦOLI TAS-SEDIL

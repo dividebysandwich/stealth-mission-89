@@ -31,6 +31,7 @@ fm-avionics = AVIONICA
 fm-auto-trim = AUTO TRIM
 fm-keep-time-accel = VERSNELLING BEHOUDEN
 fm-tooltips = TOOLTIPS
+fm-tutorial = INTERACTIEVE HANDLEIDING
 fm-player-labels = SPELERSNAMEN
 fm-label-size = NAAMGROOTTE
 fm-seat-height = STOELHOOGTE
