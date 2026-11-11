@@ -3843,3 +3843,26 @@ fn the_gunship_flies_close_support_clear_of_the_sams() {
     (o.x, o.y) = clear;
     assert!(c.offer_flyable(&o, Aircraft::AC130).is_ok());
 }
+
+#[test]
+fn patriots_stand_on_land() {
+    let codes = [
+        "libya",
+        "persian_gulf",
+        "north_cape",
+        "central_europe",
+        "vietnam",
+        "middle_east",
+        "desert_storm",
+        "cuba",
+        "korea",
+        "ukraine",
+    ];
+    for (index, code) in codes.iter().enumerate() {
+        let c = campaign_on_terrain(code, index);
+        for (p, x, y) in c.patriot_sites() {
+            let name = &c.places[p as usize].name;
+            assert_eq!(c.terrain.is_water(x, y), Some(false), "{code}: {name}'s Patriots in water");
+        }
+    }
+}

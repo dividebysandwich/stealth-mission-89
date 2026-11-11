@@ -926,10 +926,34 @@ impl CampaignState {
         rear.into_iter()
             .map(|k| {
                 let p = &self.places[k as usize];
-                // Off the airfield at an angle of its own (the golden angle per place).
-                let a = k as f64 * 2.399_963;
+                // Off the airfield at an angle of its own (the golden angle per place), turned
+                // on round until the battery and its launchers stand on land (a coastal base).
+                let a0 = k as f64 * 2.399_963;
                 let r = (PATRIOT_OFFSET + (k as i32 * 37) % (PATRIOT_OFFSET / 2)) as f64;
-                (k, p.x + (a.sin() * r) as i32, p.y - (a.cos() * r) as i32)
+                let at = |a: f64, r: f64| (p.x + (a.sin() * r) as i32, p.y - (a.cos() * r) as i32);
+                let dry = |(x, y): (i32, i32)| {
+                    (0..9).all(|j| {
+                        let (dx, dy) = if j == 0 {
+                            (0, 0)
+                        } else {
+                            let t = j as f64 * std::f64::consts::FRAC_PI_4;
+                            (
+                                (t.sin() * PATRIOT_SPREAD as f64) as i32,
+                                (t.cos() * PATRIOT_SPREAD as f64) as i32,
+                            )
+                        };
+                        self.terrain.is_water(x + dx, y + dy) != Some(true)
+                    })
+                };
+                let spot = [r, r * 0.5]
+                    .into_iter()
+                    .flat_map(|r| {
+                        (0..16).map(move |s| (a0 + s as f64 * std::f64::consts::PI / 8.0, r))
+                    })
+                    .map(|(a, r)| at(a, r))
+                    .find(|&s| dry(s))
+                    .unwrap_or_else(|| at(a0, r));
+                (k, spot.0, spot.1)
             })
             .collect()
     }
