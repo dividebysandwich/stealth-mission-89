@@ -237,6 +237,66 @@ const OSB_H: f32 = 10.0;
 /// The side buttons' centres off the screen's edges.
 const OSB_SIDE: f32 = 9.0;
 
+/// The TEDAC's screen's top, a little under the MFDs'.
+const TEDAC_Y: f32 = -50.0;
+/// The gunner's standby attitude indicator, on the console beside the cautions (under the
+/// TEDAC, which hides the panel there).
+const TEDAC_ADI: PxRect = rect(1870.0, 40.0, 60.0, 60.0);
+/// The TEDAC's side columns' centres off the screen's edges.
+const TEDAC_COLUMN: f32 = 24.0;
+
+/// The AH-64D gunner's TEDAC's buttons, at the standard places along each edge (so the page
+/// labels sit by them): five wide keys along the top, the azimuth rocker and four square keys
+/// along the bottom, down each side the halves of two rockers (R/F, EL; SYM, BRT) and a key
+/// under them (the right one the `*` key).
+fn tedac_osbs(s: PxRect) -> Vec<(u8, PxRect)> {
+    use crate::mfd::OsbEdge;
+    (0..OSB_COUNT)
+        .map(|slot| {
+            let (edge, k) = crate::mfd::osb_edge(slot);
+            let f = (k as f32 + 0.5) / 5.0;
+            let (cx, cy) = (s.x + s.w * f, s.y + s.h * f);
+            let column =
+                |sx: f32| if sx < 0.0 { s.x - TEDAC_COLUMN } else { s.x + s.w + TEDAC_COLUMN };
+            let r = match edge {
+                OsbEdge::Top => rect(cx - 11.0, s.y - 30.0, 22.0, 11.0),
+                OsbEdge::Bottom if k == 0 => rect(cx - 13.0, s.y + s.h + 17.0, 26.0, 11.0),
+                OsbEdge::Bottom => rect(cx - 7.0, s.y + s.h + 16.0, 14.0, 13.0),
+                OsbEdge::Left | OsbEdge::Right => {
+                    let x = column(if edge == OsbEdge::Left { -1.0 } else { 1.0 });
+                    if k == 4 {
+                        rect(x - 6.0, cy - 6.0, 12.0, 12.0)
+                    } else {
+                        rect(x - 5.0, cy - 5.0, 10.0, 10.0)
+                    }
+                }
+            };
+            (slot, r)
+        })
+        .collect()
+}
+
+/// The TEDAC's printed labels round its screen `s`: the knobs' (LEV, GAIN, DAY / NT / OFF), the
+/// rockers' between their halves, AZ by the azimuth rocker.
+fn tedac_labels(s: PxRect) -> Vec<Placed> {
+    let (l, r) = (s.x - TEDAC_COLUMN, s.x + s.w + TEDAC_COLUMN);
+    let mid = |k: f32| s.y + s.h * k - 4.0;
+    let label =
+        |text, rect| Placed { elem: Elem::Label(text, 47, 33), rect, cap: None, round: false };
+    vec![
+        label("LEV", rect(l - 11.0, s.y - 44.0, 22.0, 7.5)),
+        label("GAIN", rect(l - 13.0, s.y - 20.5, 26.0, 7.5)),
+        label("R/F", rect(l - 11.0, mid(0.2), 22.0, 8.0)),
+        label("EL", rect(l - 11.0, mid(0.6), 22.0, 8.0)),
+        label("SYM", rect(r - 11.0, mid(0.2), 22.0, 8.0)),
+        label("BRT", rect(r - 11.0, mid(0.6), 22.0, 8.0)),
+        label("DAY", rect(r + 3.0, s.y - 38.0, 13.0, 5.5)),
+        label("NT", rect(r + 3.0, s.y - 31.5, 13.0, 5.5)),
+        label("OFF", rect(r + 3.0, s.y - 25.0, 13.0, 5.5)),
+        label("AZ", rect(s.x - 22.0, s.y + s.h + 18.5, 16.0, 8.0)),
+    ]
+}
+
 impl PanelStyle {
     /// A helicopter's cockpit: no approach indexer (no angle of attack to fly the approach by).
     pub fn helicopter(self) -> bool {
@@ -295,6 +355,9 @@ impl PanelLayout {
             return Vec::new();
         }
         let s = unit.screen;
+        if self.style == PanelStyle::Ah64Cpg && unit.side == MfdSide::Third {
+            return tedac_osbs(s);
+        }
         (0..OSB_COUNT)
             .map(|slot| {
                 let (edge, k) = crate::mfd::osb_edge(slot);
@@ -930,6 +993,7 @@ impl PanelLayout {
     /// standby attitude indicator under the TEDAC. No standby or engine dials. The cautions and
     /// the countermeasures on the TEDAC's console between its hand grips under the panel.
     pub fn ah64_cpg() -> Self {
+        use LampId::*;
         let a = Self::ah1z();
         let items = a
             .items
@@ -958,11 +1022,20 @@ impl PanelLayout {
                     // The up-front display's caps from the console over the TEDAC.
                     _ if cx >= 1500.0 && cy < -40.0 => by(-2000.0, -38.0),
                     _ if cx >= 1500.0 => r,
-                    // The warning lights over the MFDs.
-                    _ if cy < -90.0 => by(90f32.copysign(cx), 0.0),
-                    // The caps and readouts under the MFDs.
-                    _ if cy > 90.0 && cx < 0.0 => by(-60.0, 0.0),
-                    _ if cy > 90.0 => by(100.0, 0.0),
+                    // The warning lights over the MFDs, at the panel's outer edges.
+                    _ if cy < -90.0 => by(180f32.copysign(cx), 0.0),
+                    // The flight control caps over the left MFD, inboard of its warning
+                    // lights (the TEDAC's grips hang under the MFDs): two rows of three.
+                    Elem::Lamp(id, _) if cy > 90.0 && cx < 0.0 => {
+                        let k = [Flaps, Brake, Bay, Auto, Hover, Hmd]
+                            .iter()
+                            .position(|&l| l == id)
+                            .unwrap_or(0) as f32;
+                        let (col, row) = (k % 3.0, (k / 3.0).floor());
+                        rect(-208.0 + 41.0 * col, -146.0 + 18.0 * row, r.w, r.h)
+                    }
+                    // The fuel, engine readouts and EMV gauge over the right one.
+                    _ if cy > 90.0 => by(20.0, -271.0),
                     _ => r,
                 };
                 Placed { rect, ..*p }
@@ -972,15 +1045,18 @@ impl PanelLayout {
         let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
         let (w, h) = (170.0, 170.0 * hires);
         let unit =
-            |side: MfdSide, x: f32| MfdUnit { side, screen: rect(x, -h / 2.0, w, h), osbs: true };
+            |side: MfdSide, x: f32, y: f32| MfdUnit { side, screen: rect(x, y, w, h), osbs: true };
+        let tedac = unit(MfdSide::Third, -w / 2.0, TEDAC_Y);
+        let mut items: Vec<Placed> = items;
+        items.extend(tedac_labels(tedac.screen));
         Self {
             style: PanelStyle::Ah64Cpg,
             items,
-            adi: rect(-30.0, 100.0, 60.0, 60.0),
+            adi: TEDAC_ADI,
             mfds: vec![
-                unit(MfdSide::Left, -320.0),
-                unit(MfdSide::Right, 150.0),
-                unit(MfdSide::Third, -w / 2.0),
+                unit(MfdSide::Left, -340.0, -h / 2.0),
+                unit(MfdSide::Right, 170.0, -h / 2.0),
+                tedac,
             ],
             ded,
             ..a

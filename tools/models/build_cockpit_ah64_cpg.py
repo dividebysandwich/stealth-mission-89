@@ -50,7 +50,8 @@ FLOOR = -1.17
 PANEL_TILT = math.radians(35.0)
 PANEL_CENTRE = Vector((0.0, 0.56, -0.43))
 PANEL_U = (-365.0, 365.0)
-UPPER_U = (-290.0, 290.0)
+UPPER_U = (-365.0, 365.0)
+GLARE_U = (-290.0, 290.0)
 UPPER_V = -95.0
 TOP, BOTTOM = -180.0, 172.0
 # The glareshield over its top: its lip at HOOD_Y, its top RISE over the panel's top edge,
@@ -70,9 +71,15 @@ CONSOLE_U = 2000.0
 CONSOLE_V = (15.0, 160.0)
 CONSOLE_FRONT = Vector((CABIN_X, 0.45, -0.585))
 CONSOLE_REAR = Vector((CABIN_X, 0.315, -0.64))
-CONSOLE_W = 0.40
+CONSOLE_W = 0.30
 SHELF = 0.05
-GRIP_U = 140.0
+# The TEDAC: a deep box standing TEDAC_OUT out of the panel, its face (round the screen, mm:
+# TEDAC_SIDE either side, TEDAC_TOP over it, TEDAC_BOTTOM under it) parallel to the panel; its
+# hand grips on the box's sides, their heads GRIP_V down the panel.
+TEDAC_OUT = 0.15
+TEDAC_SIDE, TEDAC_TOP, TEDAC_BOTTOM = 40.0, 46.0, 40.0
+GRIP_V = 118.0
+TEDAC_KEY = TEDAC_OUT + 0.004
 # Seat: its cushion's top (upright, the eye over the hips).
 SEAT_TOP = -0.78
 # Side consoles: inboard and outboard edges, aft and forward ends, top.
@@ -97,7 +104,6 @@ BULKHEAD = [(0.55, FLOOR), (0.55, -0.30), (0.50, -0.10), (0.42, 0.10), (0.33, 0.
 BEZEL = 0.03
 MFD_SIDE, MFD_TOP = 22.0, 25.0
 PLATE = 0.004
-HUD_BAR = 0.010
 ROUND = 16
 KNOB = 8
 
@@ -115,6 +121,17 @@ def console(u):
 def basis(u):
     """(across, normal towards the pilot, up) of the panel or the console."""
     return (RIGHT, C_NORMAL, -SLOPE) if console(u) else (RIGHT, NORMAL, UP)
+
+
+def tedac_face():
+    x, y, w, h = layout["screens"]["third"]
+    return (x - TEDAC_SIDE, y - TEDAC_TOP, w + 2 * TEDAC_SIDE, h + TEDAC_TOP + TEDAC_BOTTOM)
+
+
+def on_tedac(r):
+    """The rectangle r (mm) is on the TEDAC's face."""
+    x, y, w, h = tedac_face()
+    return x <= r[0] + r[2] / 2 <= x + w and y <= r[1] + r[3] / 2 <= y + h
 
 
 def point(u, v, offset=0.0):
@@ -266,6 +283,14 @@ def cylinder_mesh(name, r, h, mat, axis="-Y", n=KNOB):
     return me
 
 
+def outward(me):
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bm.to_mesh(me)
+    bm.free()
+
+
 def box(name, mat, centre, size, rot=Euler((0, 0, 0)), parent=root):
     return mesh_object(name, box_mesh(name, size, mat), centre, rot, parent=parent)
 
@@ -398,14 +423,14 @@ t = point(0.0, TOP)
 glare_top = t.z + RISE
 yz = [(t.y + 0.01, t.z - 0.01), (HOOD_Y, glare_top - 0.02), (HOOD_Y, glare_top - 0.008),
       (HOOD_Y + 0.015, glare_top), (GLARE_FRONT, glare_top + 0.01), (GLARE_FRONT, t.z - 0.01)]
-prism("black", "black", yz, UPPER_U[0] / 1000, UPPER_U[1] / 1000)
+prism("black", "black", yz, GLARE_U[0] / 1000, GLARE_U[1] / 1000)
 
 # --- MFDs: a housing standing BEZEL out of the panel round each screen, the screen recessed in
 # it; twenty labelled push buttons round it with ridges between them and rocker switches at the
 # corners (as the F-16's).
 scr = layout["screens"]
 faces = {f["key"]: f["rect"] for f in layout["faces"]}
-for key in ("left", "right", "third"):
+for key in ("left", "right"):
     x, y, w, h = scr[key]
     outer = (x - MFD_SIDE, y - MFD_TOP, w + 2 * MFD_SIDE, h + 2 * MFD_TOP)
     hole = (x - 3.0, y - 3.0, w + 6.0, h + 6.0)
@@ -426,17 +451,81 @@ for key in ("left", "right", "third"):
             panel_box("black", "black", (bx - 1.5, by - 5.0, 3.0, 10.0), 0.003, base=BEZEL + 0.003)
 screen("screen_left", scr["left"], BEZEL - 0.008, "trackcam_left")
 screen("screen_right", scr["right"], BEZEL - 0.008, "trackcam")
-screen("screen_third", scr["third"], BEZEL - 0.008, "trackcam_third")
+
+
+# --- the TEDAC (after the real unit): its box from inside the panel out to the face, a body
+# under the face set back from it; the face's bezel round the screen, sunk in a sloping hood;
+# the top keys and the side rockers in raised black housings, the knobs (LEV, GAIN; DAY / NT /
+# OFF), the azimuth rocker and the square keys along the bottom, lines from these up the hood.
+def chamfer(mat, outer, inner, d0, d1):
+    """The sloping sides between the rectangle `outer` (mm) d0 m off the panel and `inner` d1
+    off it, facing the gunner."""
+    def corners(r, d):
+        x, y, w, h = r
+        return [point(x, y, d), point(x + w, y, d), point(x + w, y + h, d), point(x, y + h, d)]
+    me = bpy.data.meshes.new(mat)
+    bm = bmesh.new()
+    vo = [bm.verts.new(p) for p in corners(outer, d0)]
+    vi = [bm.verts.new(p) for p in corners(inner, d1)]
+    for i in range(4):
+        j = (i + 1) % 4
+        bm.faces.new((vo[i], vo[j], vi[j], vi[i]))
+    bm.normal_update()
+    for f in bm.faces:
+        if f.normal.dot(NORMAL) < 0:
+            f.normal_flip()
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(mats[mat])
+    return mesh_object(mat, me, (0, 0, 0))
+
+
+def grown(r, m):
+    x, y, w, h = r
+    return (x - m, y - m, w + 2 * m, h + 2 * m)
+
+
+tx, ty, tw, th = tedac_face()
+sx_, sy_, sw_, sh_ = scr["third"]
+panel_box("black", "black", (tx + 4.0, ty + 4.0, tw - 8.0, th - 8.0), TEDAC_OUT - 0.022 + 0.03, base=-0.03)
+panel_box("black", "black", (tx + 10.0, ty + th - 4.0, tw - 20.0, 46.0), TEDAC_OUT - 0.03 + 0.03, base=-0.03)
+hole = grown(scr["third"], 14.0)
+frame("black", (tx, ty, tw, th), hole, TEDAC_OUT - 0.008, TEDAC_OUT)
+chamfer("black", hole, grown(scr["third"], 1.0), TEDAC_OUT, TEDAC_OUT - 0.016)
+screen("screen_third", scr["third"], TEDAC_OUT - 0.016, "trackcam_third")
+keys = {int(f["key"].split(",")[1].strip(" )")): f["rect"] for f in layout["faces"] if f["key"].startswith("Osb(Third")}
+for slot in (0, 1, 2, 3, 4, 5, 14, 19):
+    panel_box("dark", "dark", grown(keys[slot], 2.5), TEDAC_KEY - TEDAC_OUT, base=TEDAC_OUT)
+for a, b in ((10, 11), (12, 13), (15, 16), (17, 18)):
+    x, y, w, h = keys[a]
+    bottom = keys[b][1] + keys[b][3]
+    panel_box("dark", "dark", (x - 3.0, y - 3.0, w + 6.0, bottom - y + 6.0), TEDAC_KEY - TEDAC_OUT, base=TEDAC_OUT)
+for slot in (6, 7, 8, 9):
+    x, y, w, h = keys[slot]
+    panel_box("black", "black", grown(keys[slot], 1.5), TEDAC_KEY - TEDAC_OUT, base=TEDAC_OUT)
+    # Its line up the hood to the screen's edge.
+    u = x + w / 2
+    rod("metal", point(u, sy_ + sh_ + 0.5, TEDAC_OUT - 0.0155), point(u, sy_ + sh_ + 14.0, TEDAC_OUT + 0.0003), 0.0006, "metal", n=4)
+    rod("metal", point(u, sy_ + sh_ + 14.0, TEDAC_OUT + 0.0003), point(u, y - 1.0, TEDAC_OUT + 0.0003), 0.0006, "metal", n=4)
+for u, v, r in ((sx_ - 24.0, sy_ - 28.0, 0.0065), (sx_ - 24.0, sy_ - 6.0, 0.0065), (sx_ + sw_ + 18.0, sy_ - 27.0, 0.007)):
+    knob(u, v, r + 0.002, 0.004, "black", offset=TEDAC_OUT)
+    knob(u, v, r, 0.016, "metal", offset=TEDAC_OUT + 0.004)
+# The DAY / NT / OFF knob's pointer.
+box("black", "black", point(sx_ + sw_ + 22.0, sy_ - 27.0, TEDAC_OUT + 0.0205), (0.008, 0.002, 0.002), rotation(0.0))
+# Screws in the face's corners.
+for u in (tx + 6.0, tx + tw - 6.0):
+    for v in (ty + th - 8.0,):
+        knob(u, v, 0.0025, 0.0015, "black", offset=TEDAC_OUT)
 
 # --- plates under the instrument groups
 plates = [
     ("black", (-78.0, -179.0, 156.0, 86.0)),  # up-front display over the TEDAC
-    ("dark", (-273.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
-    ("dark", (197.0, -130.0, 76.0, 37.0)),  # and over the right one
-    ("dark", (-308.0, 102.0, 196.0, 80.0)),  # FLAPS, BRAKE, BAY, AUTO, HOVER, HMD
-    ("dark", (-38.0, 94.0, 76.0, 72.0)),  # standby attitude indicator under the TEDAC
-    ("dark", (162.0, 100.0, 164.0, 78.0)),  # fuel, engine readouts, EMV
+    ("dark", (-363.0, -130.0, 76.0, 37.0)),  # warning lights over the left MFD
+    ("dark", (287.0, -130.0, 76.0, 37.0)),  # and over the right one
+    ("dark", (-213.0, -151.0, 131.0, 42.0)),  # FLAPS, BRAKE, BAY, AUTO, HOVER, HMD
+    ("dark", (82.0, -171.0, 164.0, 78.0)),  # fuel, engine readouts, EMV
     ("dark", (1940.0, 25.0, 120.0, 128.0)),  # cautions and countermeasures
+    ("dark", (1862.0, 32.0, 76.0, 76.0)),  # standby attitude indicator beside them
 ]
 for mat, r in plates:
     panel_box(mat, mat, r, PLATE)
@@ -459,12 +548,16 @@ for r in (scr["adi"],):
 screen("adi", scr["adi"], PLATE, round=True)
 screen("ded", scr["ded"], PLATE + 0.0005)
 for f in layout["faces"]:
-    if f["control"] is None:
+    if f["control"] is None and on_tedac(f["rect"]):
+        face(f["key"], f["rect"], TEDAC_KEY + 0.0005, f["round"])
+    elif f["control"] is None:
         face(f["key"], f["rect"], PLATE + 0.0005, f["round"])
         if f["key"].startswith("Item(Dial(") and not f["round"]:
             # The tapes' black window frames.
             x, y, w, h = f["rect"]
             frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), 0.0, PLATE + 0.005)
+    elif f["kind"] == "osb" and f["key"].startswith("Osb(Third"):
+        control(f["key"], f["rect"], TEDAC_KEY, f["control"], "osb")
     elif f["kind"] == "osb":
         control(f["key"], f["rect"], BEZEL, f["control"], "osb")
     else:
@@ -482,29 +575,79 @@ prism("dark", "dark", [(f1.y + 0.03, f1.z - SHELF), (b.y + 0.03, b.z - SHELF - 0
       CABIN_X - 0.07, CABIN_X + 0.07)
 
 
-def tedac_grip(sx):
-    """A TEDAC hand grip on the console `sx` (-1 left, 1 right) of its centre: a boot on the
-    shelf, the handle leaning forward, its head with the thumb switches (inboard) and the
-    trigger (ahead)."""
-    u = CONSOLE_U + sx * GRIP_U
-    foot = point(u, 95.0, 0.004)
-    rot = rotation(u)
-    up = Vector((0.0, 0.25, 1.0)).normalized()
-    mesh_object("dark", box_mesh("dark", (0.07, 0.08, 0.016), "dark"), foot + C_NORMAL * 0.004, rot)
-    rod("rubber", foot, foot + up * 0.05, 0.026, "rubber", n=8)
-    top = foot + up * 0.11
-    rod("dark", foot + up * 0.04, top, 0.018, "dark", n=8)
-    head = top + up * 0.02
-    box("dark", "dark", head, (0.042, 0.06, 0.04), Euler((math.atan2(up.y, up.z), 0.0, 0.0)))
-    for dx, dy, r in ((-0.008 * sx, -0.012, 0.006), (0.010 * sx, 0.006, 0.0045), (-0.010 * sx, 0.012, 0.004)):
-        rod("black", head + Vector((dx, dy, 0.02)), head + Vector((dx, dy, 0.03)), r, "black", n=8)
-    # The thumb switches on the inboard face, the trigger ahead.
-    rod("metal", head + Vector((-sx * 0.021, -0.01, 0.0)), head + Vector((-sx * 0.031, -0.01, 0.0)), 0.005, "metal", n=6)
-    box("black", "black", head + Vector((0.0, 0.035, -0.025)), (0.012, 0.012, 0.03), Euler((math.radians(-20.0), 0.0, 0.0)))
+# --- the TEDAC's hand grips, on the box's sides: a mount plate, the head (its face to the
+# gunner with the thumb switches round a socket) and the handle hanging from it, bending
+# towards the gunner into a pointed foot; the trigger behind it.
+def extrude(name, mat, front, back, shrink=0.9):
+    """A slab from the outline `front` (points) to a copy moved by `back`, shrunk about its
+    centre."""
+    c = sum(front, Vector()) / len(front)
+    rear = [c + (p - c) * shrink + back for p in front]
+    me = bpy.data.meshes.new(name)
+    n = len(front)
+    f = [tuple(range(n)), tuple(range(n, 2 * n))[::-1]] + [(i, n + i, n + (i + 1) % n, (i + 1) % n) for i in range(n)]
+    me.from_pydata(list(front) + rear, [], f)
+    outward(me)
+    me.materials.append(mats[mat])
+    for p in me.polygons:
+        p.use_smooth = False
+    return mesh_object(name, me, (0, 0, 0))
 
 
+def sweep(name, mat, path, sizes, n=10):
+    """A tube along `path` (points), its elliptical sections (half width across, half depth)
+    square to it, closed at both ends."""
+    me = bpy.data.meshes.new(name)
+    v = []
+    for i, (p, (hw, hd)) in enumerate(zip(path, sizes)):
+        t = (path[min(i + 1, len(path) - 1)] - path[max(i - 1, 0)]).normalized()
+        d = t.cross(RIGHT).normalized()
+        x = d.cross(t).normalized()
+        for k in range(n):
+            a = 2 * math.pi * k / n
+            v.append(p + x * (hw * math.cos(a)) + d * (hd * math.sin(a)))
+    f = [tuple(range(n))[::-1], tuple(range(n * (len(path) - 1), n * len(path)))]
+    for s in range(len(path) - 1):
+        for k in range(n):
+            j = (k + 1) % n
+            f.append((s * n + k, s * n + j, (s + 1) * n + j, (s + 1) * n + k))
+    me.from_pydata(v, [], f)
+    outward(me)
+    for p in me.polygons:
+        p.use_smooth = True
+    me.materials.append(mats[mat])
+    return mesh_object(name, me, (0, 0, 0))
+
+
+GRIP_OFF = TEDAC_OUT - 0.035
+# The head's outline (mm: out from the box's side, up), its socket and its thumb switches.
+HEAD = [(4.0, -20.0), (4.0, 18.0), (16.0, 30.0), (40.0, 26.0), (58.0, 32.0), (82.0, 30.0), (104.0, 24.0), (118.0, 8.0),
+        (116.0, -10.0), (102.0, -26.0), (84.0, -30.0), (62.0, -26.0), (40.0, -30.0), (18.0, -30.0)]
+SWITCHES = [(22.0, 14.0), (52.0, 16.0), (82.0, 16.0), (106.0, 6.0), (24.0, -14.0), (82.0, -14.0), (104.0, -14.0)]
+SOCKET = (54.0, -10.0)
+# The handle's path (mm down the panel, out towards the gunner), HANDLE_SCALE of its drawn length.
+HANDLE_SCALE = 0.75
+HANDLE = [(d * HANDLE_SCALE, n * HANDLE_SCALE) for d, n in
+          [(0.0, 0.0), (30.0, 0.0), (70.0, 3.0), (115.0, 8.0), (150.0, 18.0), (175.0, 38.0), (188.0, 62.0), (193.0, 86.0)]]
+HANDLE_SIZE = [(30.0, 18.0), (24.0, 19.0), (20.0, 18.0), (21.0, 19.0), (19.0, 17.0), (14.0, 13.0), (8.0, 8.0), (3.0, 3.0)]
+HANDLE_A = 66.0
+side = tw / 2 - 4.0
 for sx in (-1, 1):
-    tedac_grip(sx)
+    def at(a, b, off):
+        return point(sx * (side + a), GRIP_V - b, off)
+    rot = rotation(sx * side)
+    box("dark", "dark", at(-1.0, 0.0, GRIP_OFF), (0.008, 0.06, 0.06), rot)
+    box("dark", "dark", at(-1.0, 0.0, GRIP_OFF), (0.004, 0.064, 0.064), rot)
+    extrude("tedac_grip", "black", [at(a, b, GRIP_OFF + 0.015) for a, b in HEAD], -NORMAL * 0.03)
+    for a, b in SWITCHES:
+        knob(sx * (side + a), GRIP_V - b, 0.0075, 0.003, "black", offset=GRIP_OFF + 0.015)
+        knob(sx * (side + a), GRIP_V - b, 0.004, 0.006, "dark", offset=GRIP_OFF + 0.015)
+    mesh_object("black", disc_mesh("black", 0.009, "black"), at(*SOCKET, GRIP_OFF + 0.0155), rot)
+    top = Vector(at(HANDLE_A, -22.0, GRIP_OFF))
+    path = [at(HANDLE_A, -22.0 - d, GRIP_OFF + n / 1000) for d, n in HANDLE]
+    sweep("tedac_grip", "black", path, [(w / 1000, d / 1000) for w, d in HANDLE_SIZE])
+    # The trigger behind the handle's top.
+    box("black", "black", at(HANDLE_A, -62.0, GRIP_OFF - 0.018), (0.01, 0.012, 0.03), rot)
 # --- side consoles, the target buttons on the left one (faces up), ahead of the collective
 for sx in (-1, 1):
     x0, x1 = CONSOLE_X
@@ -597,14 +740,6 @@ def loft(name, mat, sections, n=16, rib=1.0):
     outward(me)
     me.materials.append(mats[mat])
     return me
-
-
-def outward(me):
-    bm = bmesh.new()
-    bm.from_mesh(me)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    bm.to_mesh(me)
-    bm.free()
 
 
 def slab(name, mat, top, z0, z1, shrink=1.0):
@@ -711,8 +846,8 @@ objs["throttle_full"].location = full
 empty("throttle_pivot", COLLECTIVE_PIVOT, props={"anchor": "throttle_pivot"})
 
 # --- HUD: the glass on the glareshield in front of the gunner, its foot on it and shrunk to
-# stay under the windshield; a frame of bars along its outline (posts down to the glareshield,
-# chamfered top corners, top) outside it by half a bar.
+# stay under the windshield. No frame round it: the gunner's symbols are a helmet display's, the
+# glass only carries them.
 hud = next(o for o in old if o.name.startswith("hud_glass"))
 bpy.context.view_layer.update()
 glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
@@ -729,22 +864,6 @@ hud.data.transform(hud.matrix_world.inverted() @ shrink @ hud.matrix_world)
 bpy.context.view_layer.update()
 glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
 print(f"HUD glass shrunk {k:.2f}: foot {foot:.3f}")
-hud_y = sum(v.y for v in glass) / len(glass)
-half_x = max(abs(v.x) for v in glass)
-top = max(v.z for v in glass)
-shoulder = max(v.z for v in glass if abs(abs(v.x) - half_x) < 0.01)
-top_x = min(abs(v.x) for v in glass if abs(v.z - top) < 0.002)
-post_x = half_x + HUD_BAR / 2
-outline = [
-    Vector((-post_x, glare_top)), Vector((-post_x, shoulder)),
-    Vector((-top_x, top + HUD_BAR / 2)), Vector((top_x, top + HUD_BAR / 2)),
-    Vector((post_x, shoulder)), Vector((post_x, glare_top)),
-]
-for a, b in zip(outline, outline[1:]):
-    d = b - a
-    centre = (a + b) / 2
-    rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
-    box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
 # No approach indexer: a helicopter has no angle of attack to fly the approach by.
 # --- flood lamps: two behind the pilot's head, one under the glareshield
 objs["lamp.002"].location = Vector((0.0, HOOD_Y + 0.04, t.z))
