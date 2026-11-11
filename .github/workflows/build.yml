@@ -66,9 +66,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # libx11-dev: the OpenXR-SDK's configure step wants Xlib headers (default backend).
+          # libxkbcommon-x11-0, libxcb-xkb1: bundled in the AppImage (see packaging/linux/AppRun).
           sudo apt-get install -y --no-install-recommends \
             pkg-config libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev \
-            libx11-dev  # the OpenXR-SDK's configure step wants Xlib headers (default backend)
+            libx11-dev libxkbcommon-x11-0 libxcb-xkb1
 
       # The Linux packages ship the loader beside stealth-mission-89 with its licence (Apache 2.0), for
       # systems without the openxr package or that can't install it (SteamOS, the Steam
@@ -186,6 +188,12 @@ jobs:
           fi
           cp -r assets $APPDIR/usr/share/stealth-mission-89/
           cp README.md LICENSE $APPDIR/usr/share/doc/stealth-mission-89/
+          # winit loads libxkbcommon-x11 for X11 windows and panics without it; minimal systems
+          # (AppImageHub's test runner) lack it. AppRun uses these copies only then. They need
+          # glibc 2.14 and libxkbcommon 0.5 (libxkbcommon itself needs glibc 2.38, so not that).
+          mkdir -p $APPDIR/usr/lib/fallback
+          MULTIARCH=$(gcc -print-multiarch)
+          cp -L /usr/lib/$MULTIARCH/libxkbcommon-x11.so.0 /usr/lib/$MULTIARCH/libxcb-xkb.so.1 $APPDIR/usr/lib/fallback/
           cp packaging/linux/AppRun $APPDIR/
           cp packaging/linux/stealth-mission-89.desktop $APPDIR/
           cp packaging/linux/stealth-mission-89.desktop $APPDIR/usr/share/applications/

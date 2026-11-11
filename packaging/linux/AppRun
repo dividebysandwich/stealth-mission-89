@@ -15,6 +15,11 @@ if [ -z "$BEVY_ASSET_ROOT" ]; then
     mkdir -p "$BEVY_ASSET_ROOT/assets" && cp -rf "$HERE/usr/share/stealth-mission-89/assets/." "$BEVY_ASSET_ROOT/assets/"
     export BEVY_ASSET_ROOT
 fi
+# X11 windows need libxkbcommon-x11 (winit panics without it), which minimal systems lack: then
+# the bundled copy (with its libxcb-xkb).
+if ! { ldconfig -p 2>/dev/null || /sbin/ldconfig -p 2>/dev/null; } | grep -q 'libxkbcommon-x11\.so\.0 '; then
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$HERE/usr/lib/fallback"
+fi
 # The Steam Frame (SteamOS on aarch64) starts in VR: Steam launches apps there in a 2D window
 # otherwise. It takes `--gl-vr` (glvr's renderer, with eye-tracked foveation); `--vr` picks
 # Bevy's renderer instead, `--desktop` keeps the window.
