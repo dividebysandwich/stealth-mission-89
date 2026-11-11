@@ -104,6 +104,9 @@ pub struct Sim {
     pub(crate) maneuver: Vec<i16>,
     pub(crate) trig: math::Trig,
     pub(crate) tiles: Option<TheaterTiles>,
+    /// Where the ground units cannot stand (the host's terrain; not sent, not saved).
+    #[serde(skip)]
+    pub(crate) water: aaa::Water,
     pub opts: SimOptions,
 
     // ---- mission settings ----
@@ -340,6 +343,12 @@ impl Sim {
     }
 
     pub fn with_options(data: &SimData, m: &Mission, opts: SimOptions) -> Self {
+        Self::with_water(data, m, opts, aaa::Water::default())
+    }
+
+    /// As [`Self::with_options`], with the theater's water: no air defence unit or vehicle is
+    /// placed in it.
+    pub fn with_water(data: &SimData, m: &Mission, opts: SimOptions, water: aaa::Water) -> Self {
         let s = &m.settings;
         let w = &m.world;
         let objects: Vec<GroundObject> = w
@@ -408,6 +417,7 @@ impl Sim {
             maneuver: data.maneuver.clone(),
             trig: data.trig.clone(),
             tiles: data.theaters.get(theater).cloned(),
+            water,
             opts,
             diff: s.opponents.min(3) as i32,
             roe: s.roe.min(2) as i32,

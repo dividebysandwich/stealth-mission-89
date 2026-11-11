@@ -27,6 +27,48 @@ const M_PER_WU: f64 = M_PER_MAP / 32.0;
 const FT: f64 = 0.3048;
 const G: f64 = 9.81;
 
+/// The sea and the lakes of the theater (map x east, y south: water there), as the host's
+/// terrain has it; the simulation alone does not know them. None: all land.
+#[derive(Clone, Default)]
+pub struct Water(Option<std::sync::Arc<dyn Fn(i32, i32) -> bool + Send + Sync>>);
+
+impl Water {
+    pub fn new(wet: impl Fn(i32, i32) -> bool + Send + Sync + 'static) -> Self {
+        Self(Some(std::sync::Arc::new(wet)))
+    }
+
+    pub fn wet(&self, x: i32, y: i32) -> bool {
+        self.0.as_ref().is_some_and(|f| f(x, y))
+    }
+}
+
+impl std::fmt::Debug for Water {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(if self.0.is_some() { "Water" } else { "Water(none)" })
+    }
+}
+
+/// Draws for a unit's spot on land before it is given up (all water round a ship).
+const LAND_TRIES: usize = 12;
+
+/// A unit's spot `lo` to `hi` map units from (x, y) at a random bearing, on land: drawn
+/// again while it falls in the water, None when it keeps doing so. Also the bearing (radians).
+pub(crate) fn ring_spot(
+    rng: &mut Rng,
+    water: &Water,
+    (x, y): (i32, i32),
+    lo: i32,
+    hi: i32,
+) -> Option<(i32, i32, f64)> {
+    (0..LAND_TRIES).find_map(|_| {
+        let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
+        let r = (lo + rng.random(hi - lo)) as f64;
+        let ux = (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0);
+        let uy = (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0);
+        (!water.wet(ux, uy)).then_some((ux, uy, t))
+    })
+}
+
 /// The Gun Dish radar for [`detect`]: lethality (km), threat tier, Doppler.
 const GUN_DISH: (i32, i32, i32) = (12, 1, 1);
 /// SA-14 (missile table index).
@@ -468,15 +510,14 @@ impl Sim {
         let mut rng = Rng::new(m.rng.holdrand_exit ^ 0x5EAD_AAA0);
         let war = self.roe;
         let mut units = Vec::new();
+        let water = self.water.clone();
         let around =
             |rng: &mut Rng, units: &mut Vec<GroundUnit>, x: i32, y: i32, kind, lo: i32, hi: i32| {
-                let a = rng.random(0x4000) * 4;
-                let r = (lo + rng.random(hi - lo)) as f64;
-                let t = a as f64 / 65536.0 * std::f64::consts::TAU;
+                let Some((x, y, t)) = ring_spot(rng, &water, (x, y), lo, hi) else { return };
                 units.push(GroundUnit {
                     kind,
-                    x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
-                    y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
+                    x,
+                    y,
                     destroyed: false,
                     tracking: false,
                     aim_az: t as f32,

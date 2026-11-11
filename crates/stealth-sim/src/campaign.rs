@@ -833,13 +833,15 @@ impl Sim {
         // A town's defenders round its edge, else round the place.
         let town = self.town_ring(x, y);
         let around = |lo, hi| town.unwrap_or((x, y, lo, hi));
+        let water = self.water.clone();
         let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
-            let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
-            let r = (lo + rng.random(hi - lo)) as f64;
+            let Some((x, y, t)) = crate::aaa::ring_spot(rng, &water, (x, y), lo, hi) else {
+                return;
+            };
             let mut unit = GroundUnit {
                 kind,
-                x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
-                y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
+                x,
+                y,
                 destroyed: false,
                 tracking: false,
                 aim_az: t as f32,
@@ -958,13 +960,15 @@ impl Sim {
         let Some(mut c) = self.campaign.take() else { return };
         if self.units.len() + 7 <= MAX_UNITS {
             let mut rng = c.rng;
+            let water = self.water.clone();
             let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
-                let t = rng.random(0x4000) as f64 * 4.0 / 65536.0 * std::f64::consts::TAU;
-                let r = (lo + rng.random(hi - lo)) as f64;
+                let Some((x, y, t)) = crate::aaa::ring_spot(rng, &water, (x, y), lo, hi) else {
+                    return;
+                };
                 self.units.push(GroundUnit {
                     kind,
-                    x: (x + (t.sin() * r) as i32).clamp(0x40, 0x7FC0),
-                    y: (y - (t.cos() * r) as i32).clamp(0x40, 0x7FC0),
+                    x,
+                    y,
                     aim_az: t as f32,
                     aim_el: 0.3,
                     ..Default::default()

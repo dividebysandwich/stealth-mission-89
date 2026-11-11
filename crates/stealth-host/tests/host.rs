@@ -809,3 +809,45 @@ fn a_cargo_aircraft_flies_munitions_from_the_production_base() {
     assert!(!host.state.cargo_lost.contains(&tag));
     assert_eq!(host.state.available(to, Munition::Pac3), 12, "half a full stock delivered");
 }
+
+/// The guns, MANPADS teams and garrisons stand on land: round the places of a campaign
+/// (coastal towns, towns on rivers) and round a single mission's targets (ships too).
+#[test]
+fn air_defences_stand_on_land() {
+    use stealth_mission::{MissionKind, MissionSettings, Seed};
+    let data = theater::game_data().unwrap();
+    let mut ships = 0;
+    for code in ["persian_gulf", "north_cape", "cuba", "ukraine"] {
+        let s = CampaignSetup { roe: 2, ..setup(code) };
+        let index = s.theater;
+        let sim_data = theater::sim_data(index, code).unwrap();
+        let mut host = Host::new(s, &data, Rules::default()).unwrap();
+        let mut sim = host.new_sim(&sim_data);
+        host.begin(&mut sim);
+        let live = sim.units().iter().filter(|u| !u.destroyed).count();
+        assert!(live > 50, "{code}: {live} units");
+        for u in sim.units().iter().filter(|u| !u.destroyed) {
+            assert_eq!(host.state.terrain.is_water(u.x, u.y), Some(false), "{code}: {u:?}");
+        }
+        // Single missions, among them ships to strike or photograph.
+        let th = std::sync::Arc::new(data.theaters[index].clone());
+        for seed in 0..40u16 {
+            let ms = MissionSettings {
+                theater: index,
+                roe: (seed % 3) as u8,
+                kind: MissionKind::Strike,
+                ..Default::default()
+            };
+            let m = stealth_mission::generate(&data, &ms, Seed::Srand(seed)).unwrap();
+            ships += (m.primary.weapon_class == 12) as i32;
+            let opts = stealth_sim::SimOptions { air_defence: true, ..Default::default() };
+            let t = th.clone();
+            let water = stealth_sim::aaa::Water::new(move |x, y| t.is_water(x, y));
+            let sim = stealth_sim::Sim::with_water(&sim_data, &m, opts, water);
+            for u in sim.units() {
+                assert!(!th.is_water(u.x, u.y), "{code} seed {seed}: {u:?}");
+            }
+        }
+    }
+    assert!(ships > 0, "no ship targets");
+}

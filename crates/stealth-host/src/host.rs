@@ -148,7 +148,11 @@ impl Host {
 
     /// The simulation for this campaign (the host's; a client's mirror is built the same way).
     pub fn new_sim(&self, data: &stealth_sim::SimData) -> Sim {
-        Sim::with_options(data, &self.mission, self.rules.sim_options())
+        let water = match self.state.terrain.0.clone() {
+            Some(t) => stealth_sim::aaa::Water::new(move |x, y| t.is_water(x, y)),
+            None => Default::default(),
+        };
+        Sim::with_water(data, &self.mission, self.rules.sim_options(), water)
     }
 
     /// The simulation is made to match the campaign (once, on the first frame).

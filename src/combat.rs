@@ -267,6 +267,7 @@ fn start_combat(
     career: Option<Res<crate::career::CareerFlight>>,
     settings: Res<crate::settings::Settings>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    mission_data: Option<Res<crate::mission::MissionData>>,
 ) {
     accel.level = 0;
     let Some(m) = mission else {
@@ -365,7 +366,15 @@ fn start_combat(
             ..default()
         },
     };
-    let mut sim = Sim::with_options(&data, m, opts);
+    // No guns or vehicles in the sea (the theater's water is the mission data's).
+    let water = match mission_data {
+        Some(d) if d.0.theaters.get(m.settings.theater).is_some() => {
+            let (d, theater) = (d.0.clone(), m.settings.theater);
+            stealth_sim::aaa::Water::new(move |x, y| d.theaters[theater].is_water(x, y))
+        }
+        _ => default(),
+    };
+    let mut sim = Sim::with_water(&data, m, opts, water);
     // The stores chosen in the menu, else the briefed ones on this aircraft.
     let loadout = loadout
         .filter(|l| l.fits(m, settings.aircraft))
