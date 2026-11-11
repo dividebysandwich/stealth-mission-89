@@ -635,20 +635,35 @@ def f4():
     return Craft(g, (-5.85, -3.2, 0.75), (5.85, -3.2, 0.75), [(0, -8.0, 3.6)], fl)
 
 
+def modelled(path, name, paints):
+    """Geometry of a mesh modelled by hand in Blender (object `name` in the .blend at `path`:
+    metres, x right, y forward, z up, normals out): each face takes the paint its material
+    `pal_NNN` maps to in `paints` (a Ramp shades the face by its normal, like the builders')."""
+    with bpy.data.libraries.load(path) as (src, dst):
+        dst.objects = [name]
+    ob = dst.objects[0]
+    me = ob.data
+    mats = list(me.materials)
+    g = Geo()
+    for p in me.polygons:
+        pts = [ob.matrix_world @ me.vertices[i].co for i in p.vertices]
+        g.face(pts, paints[int(mats[p.material_index].name[4:7])])
+    bpy.data.objects.remove(ob)
+    bpy.data.meshes.remove(me)
+    for m in mats:
+        if m.users == 0:
+            bpy.data.materials.remove(m)
+    return g
+
+
 def mig21():
-    g = loft([(7.6, 0.0, 0.0, 0.0), (7.0, 0.0, 0.28, 0.28), (6.6, 0.0, 0.5, 0.5), (4.0, 0.05, 0.62, 0.7), (0.0, 0.05, 0.66, 0.68),
-              (-4.6, 0.05, 0.6, 0.6), (-6.4, 0.05, 0.5, 0.5)], GREY_L, n=8)
-    g.add(frustum((0, 7.0, 0), (0, 7.9, 0), 0.26, 0.02, RADOME, 8))
-    g.add(frustum((0, 6.95, 0), (0, 6.9, 0), 0.48, 0.48, BLACK, 8, caps=True))
-    g.add(loft([(4.4, 0.55, 0.0, 0.0), (2.0, 0.6, 0.25, 0.25), (-3.6, 0.55, 0.18, 0.18)], GREY_L, n=6))
-    g.add(canopy(4.6, 2.4, 0.55, 0.32, 0.38))
-    g.add(wing((0.55, 1.6, -0.15), 5.4, (3.6, -3.4, -0.15), 0.6, GREY_L, t=0.04))
-    g.add(wing((0.4, -4.6, 0.0), 1.8, (1.9, -5.7, 0.0), 0.8, GREY_L, t=0.05))
-    g.add(wing((0, -2.4, 0.6), 3.4, (0, -5.0, 2.9), 1.2, GREY_L, t=0.05, vertical=True, mirror=False))
-    g.add(wing((0, -4.6, -0.55), 1.4, (0, -5.4, -1.0), 0.8, GREY_L, t=0.06, vertical=True, mirror=False))
-    g.add(nozzle(0, -6.4, 0.05, 0.5, 0.6))
-    fl = flame(0, -7.0, 0.05, 0.45, 2.8)
-    return Craft(g, (-3.6, -3.7, -0.15), (3.6, -3.7, -0.15), [(0, -5.6, 2.9)], fl)
+    # Contributed model (assets-src/blend/mig21.blend); paints: body, canopy, nozzle lip, black
+    # intake and nozzle walls, the nozzle's glowing exit.
+    g = modelled(os.path.join(ROOT, "assets-src", "blend", "mig21.blend"), "mig21",
+                 {224: GREY_L, 144: CANOPY, 235: DARK, 239: BLACK, 13: FLAME})
+    g.add(wing((0, -4.3, -0.2), 1.5, (0, -4.95, -0.75), 0.85, GREY_L, t=0.06, vertical=True, mirror=False))  # ventral fin
+    fl = flame(0, -7.0, 0.43, 0.42, 2.8)
+    return Craft(g, (-3.46, -2.67, 0.06), (3.46, -2.67, 0.06), (), fl)
 
 
 def mig23():
