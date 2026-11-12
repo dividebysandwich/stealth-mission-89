@@ -679,7 +679,11 @@ impl Device {
         let usb_id = pad.vendor_id().zip(pad.product_id());
         #[cfg(windows)]
         let product = usb_id.and_then(|(v, p)| windows_hid::product(v, p));
-        #[cfg(not(windows))]
+        // The browser's id carries the USB ids (Chrome: "Name (... Vendor: 045e Product: 0b13)",
+        // Firefox: "045e-0b13-Name"): without them, a mapping fits the device in either.
+        #[cfg(target_arch = "wasm32")]
+        let product = Some(web_name(pad.name()).to_string()).filter(|n| n != pad.name());
+        #[cfg(not(any(windows, target_arch = "wasm32")))]
         let product = None;
         let buttons = STANDARD_BUTTONS
             .iter()
@@ -720,6 +724,26 @@ impl Device {
     /// The buttons pressed since the last poll.
     pub fn just_pressed(&self) -> impl Iterator<Item = u32> + '_ {
         self.buttons.difference(&self.prev_buttons).copied()
+    }
+}
+
+/// A browser gamepad id without the USB ids and mapping Chrome and Firefox add to the name.
+#[cfg(any(target_arch = "wasm32", test))]
+fn web_name(id: &str) -> &str {
+    let hex4 = |s: &str| s.len() == 4 && s.bytes().all(|b| b.is_ascii_hexdigit());
+    // Firefox: "045e-0b13-Name".
+    let id = match id.get(..10) {
+        Some(p) if hex4(&p[..4]) && &p[4..5] == "-" && hex4(&p[5..9]) && &p[9..] == "-" => {
+            &id[10..]
+        }
+        _ => id,
+    };
+    // Chrome: "Name (STANDARD GAMEPAD Vendor: 045e Product: 0b13)", "Name (Vendor: ...)".
+    match id.strip_suffix(')').and_then(|s| s.rfind(" (").map(|i| (i, s))) {
+        Some((i, s)) if s[i..].contains("Vendor: ") || s[i..].contains("STANDARD GAMEPAD") => {
+            id[..i].trim_end()
+        }
+        _ => id,
     }
 }
 
@@ -981,7 +1005,11 @@ impl Hotas {
                 E::ButtonChanged(_, value, code) => {
                     // Only physical axes have deadzone metadata. Ordinary buttons must not
                     // become bindable axes merely because gilrs also gives them 0/1 values.
-                    let analog = g.gamepad(ev.id).deadzone(code).is_some();
+                    // The browser's Gamepad API backend gives every code axis info, so there
+                    // a button event is never analog: under the raw mapping its analog
+                    // triggers come as axis events.
+                    let analog =
+                        !cfg!(target_arch = "wasm32") && g.gamepad(ev.id).deadzone(code).is_some();
                     d.button_changed(code.into_u32(), value, analog);
                 }
                 E::AxisChanged(_, v, code) => {
@@ -1200,6 +1228,17 @@ pub fn action_name(a: Action) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn browser_gamepad_names() {
+        let chrome = "Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)";
+        assert_eq!(web_name(chrome), "Xbox Wireless Controller");
+        let chrome = "Thrustmaster T.16000M (Vendor: 044f Product: b10a)";
+        assert_eq!(web_name(chrome), "Thrustmaster T.16000M");
+        assert_eq!(web_name("044f-b10a-Thrustmaster T.16000M"), "Thrustmaster T.16000M");
+        assert_eq!(web_name("Saitek X52 (rev 2)"), "Saitek X52 (rev 2)");
+        assert_eq!(web_name("Pedals"), "Pedals");
+    }
 
     #[test]
     fn trigger_releases_and_repeats() {

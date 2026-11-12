@@ -97,6 +97,12 @@ What WebGL2 lacks, and what the game does there:
 - **Networking.** The coop transport sends through `stealth_net::transport::Datagrams`: a UDP
   socket on the desktop, a WebSocket to the relay in the browser (`stealth-net/src/websocket.rs`).
   The server list comes from the browser's `fetch`. `Instant` in `stealth-net` is `web_time`'s.
+- **Joysticks.** gilrs reads the browser's Gamepad API, so gamepads, sticks, throttles and pedals
+  bind as on the desktop. A browser shows a device to the page only after one of its buttons is
+  pressed while the page is open. Chrome shows up to four devices. Devices are named without the
+  USB ids that Chrome and Firefox add to the name (`hotas::web_name`), so a mapping fits the
+  device in either browser. The browser backend gives every input axis info: there, a button
+  event is never analog, and analog triggers arrive as axes.
 
 ## Multiplayer in the browser
 

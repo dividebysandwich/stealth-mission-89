@@ -1546,9 +1546,8 @@ pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
 
 /// What the download has that the browser build has not (`web_gateway`), with the reason.
 #[cfg(target_arch = "wasm32")]
-const DOWNLOAD_GIVES: [&str; 7] = [
+const DOWNLOAD_GIVES: [&str; 6] = [
     "web-gives-vr",
-    "web-gives-hotas",
     "web-gives-multiplayer",
     "web-gives-server",
     "web-gives-head-tracking",
