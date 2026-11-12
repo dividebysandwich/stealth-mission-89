@@ -79,6 +79,15 @@ const uint CLOUD_RAMP = 0xE0u;
 const uint WORD_PER_VERTEX = 0xFFFFFFFFu;
 const float DOT_SIZE = 0.6;
 const float DOT_MIN_PIXELS = 2.0;
+// Per-lamp flag above the palette byte (dots.rs `DOT_CITY`), independent of mesh tags.
+const uint DOT_CITY = 256u;
+// Keep the city footprint and soft edge in step with palette.wgsl.
+const float CITY_DOT_SCALE = 0.5;
+const float CITY_DOT_MIN_PIXELS = 2.5;
+const float CITY_DOT_FAR_MAX_PIXELS = 3.5;
+const float CITY_DOT_METRES = 2.0;
+const float CITY_DOT_MAX = 4.0;
+const float CITY_DOT_BRIGHTNESS = 1.2;
 
 #ifdef VERTEX
 #ifndef SINGLE
@@ -160,8 +169,8 @@ void main() {
     }
 #endif
 #ifdef DOT
-    // Spread by the quad corner to a constant size in pixels: in XR at most a 320x200 pixel's
-    // angular size.
+    // Start at a constant pixel size (XR: angularly capped); modern city lights and nearby
+    // aircraft lamps also grow with their projected size.
     v_dot_colour = u_dot_colour != 0u ? a_colour : (u_word & 0xFFu);
     v_dot_uv = vec3(a_corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
@@ -177,6 +186,12 @@ void main() {
         float px = max(vp.y / 200.0 * DOT_SIZE, DOT_MIN_PIXELS);
         if (g.dots.x > 0.0) {
             px = min(px, max(g.dots.x * 0.5 * vp.y * py, DOT_MIN_PIXELS));
+        }
+        if (g.params.w != 0.0 && (v_dot_colour & DOT_CITY) != 0u) {
+            float far_px = clamp(px * CITY_DOT_SCALE, CITY_DOT_MIN_PIXELS, CITY_DOT_FAR_MAX_PIXELS);
+            float lamp = CITY_DOT_METRES * 0.5 * vp.y * py / max(clip.w, 0.01);
+            // Add the footprints' areas for smooth growth on approach or with TGP zoom.
+            px = min(length(vec2(far_px, lamp)), far_px * CITY_DOT_MAX);
         }
         if ((tag & 7u) == 5u) {
             float lamp = AIRCRAFT_DOT_METRES * 0.5 * vp.y * py / max(clip.w, 0.01);
@@ -1190,7 +1205,7 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     uint hi = (v_word >> 8u) & 0xFFu;
     uint lo = v_word & 0xFFu;
 #ifdef DOT
-    lo = v_dot_colour;
+    lo = v_dot_colour & 0xFFu;
 #endif
     if ((uint(g.light_info.w) & 4u) != 0u) {
         return vec4(pal(haze(lo, v_fog)), 1.0);
@@ -1254,6 +1269,10 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     }
     float alpha = 1.0;
 #ifdef DOT
+    if (modern && (v_dot_colour & DOT_CITY) != 0u) {
+        rgb *= CITY_DOT_BRIGHTNESS;
+        alpha = 1.0 - smoothstep(0.2, 1.0, length(v_dot_uv.xy));
+    }
     if (v_dot_uv.z > 1.0) {
         float r = (length(v_dot_uv.xy) * v_dot_uv.z - 1.0) / (v_dot_uv.z - 1.0);
         float k = clamp(1.0 - r, 0.0, 1.0);

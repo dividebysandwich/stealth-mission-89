@@ -162,6 +162,11 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
                 }
             }
             power(&sc.net, &f, &mut g, low);
+            // Style all town lights, including red beacons, within the existing scenery tiers.
+            // Airfield beacons are built separately and retain their ordinary lamp flags.
+            for (colour, _) in &mut g.lamps {
+                *colour |= crate::dots::DOT_CITY;
+            }
         }
         Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near),
         Tier::Far => trees(sc, &f, &mut g, TreeLod::Far),
@@ -774,7 +779,7 @@ fn windows(b: &Building, c: Vec3, d: Vec2, rng: &mut Rng, g: &mut Geom) {
         let side = if rng.chance(0.5) { 1.0 } else { -1.0 };
         let floor = (rng.f() * floors as f64).floor() as f32;
         let x = rng.range(-0.4, 0.4) as f32 * b.l;
-        g.lamp(
+        g.city_lamp(
             WINDOW,
             c + along * x + across * side * (b.w * 0.5 + 0.15) + Vec3::Y * (floor * 3.0 + 1.6),
         );

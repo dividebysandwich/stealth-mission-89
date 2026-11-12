@@ -1038,14 +1038,16 @@ fn spawn_geom(
     // order (dots don't write depth: the later of two overlapping lamps is on top, e.g. a mast's
     // red beacon over its flood lamp).
     if let Some(&(first, _)) = geom.lamps.first() {
-        let (colours, points): (Vec<u8>, Vec<Vec3>) = geom.lamps.into_iter().unzip();
+        let (colours, points): (Vec<u32>, Vec<Vec3>) = geom.lamps.into_iter().unzip();
         let m = meshes.add(dot_batch_coloured(&points, &colours));
+        // Local illumination uses only the palette byte; the visual style stays on the mesh.
+        let colours = colours.into_iter().map(|c| c as u8).collect();
         let radius = points.iter().map(|p| p.length()).fold(0.0, f32::max);
         children.push(
             commands
                 .spawn((
                     Mesh3d(m),
-                    MeshMaterial3d(palette.line_material(first)),
+                    MeshMaterial3d(palette.line_material(first as u8)),
                     dots.clone(),
                     MeshTag(dot_tag | lamp_tag),
                     LampBatch { points, colours, radius },

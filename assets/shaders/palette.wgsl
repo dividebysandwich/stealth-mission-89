@@ -192,6 +192,17 @@ struct VertexOutput {
 // Dot lights: size relative to one 320x200 screen pixel and lower bound in pixels.
 const DOT_SIZE: f32 = 0.6;
 const DOT_MIN_PIXELS: f32 = 2.0;
+// Per-lamp flag above the palette byte (dots.rs `DOT_CITY`), independent of mesh tags.
+const DOT_CITY: u32 = 256u;
+// Modern city lights: a small distant footprint, plus a projected glow as the lamp resolves
+// on approach or with TGP zoom. The effective diameter includes the soft glow around a lamp
+// or window; limit growth in very close views.
+const CITY_DOT_SCALE: f32 = 0.5;
+const CITY_DOT_MIN_PIXELS: f32 = 2.5;
+const CITY_DOT_FAR_MAX_PIXELS: f32 = 3.5;
+const CITY_DOT_METRES: f32 = 2.0;
+const CITY_DOT_MAX: f32 = 4.0;
+const CITY_DOT_BRIGHTNESS: f32 = 1.2;
 // Aircraft lights (level code 5) up close: drawn as a lamp this many metres across, up to
 // AIRCRAFT_DOT_MAX times their size far away.
 const AIRCRAFT_DOT_METRES: f32 = 0.3;
@@ -260,9 +271,9 @@ fn vertex(v: Vertex) -> VertexOutput {
         out.puff_scale = sqrt(s2);
     }
 
-    // Dot lights (dots.rs `dot_batch`: four vertices at each dot's centre) spread by their quad
-    // corner to a constant size in this view's pixels (so the tracking camera's zoom doesn't
-    // magnify them); in XR at most a 320x200 pixel's angular size.
+    // Dot lights (dots.rs `dot_batch`: four vertices at each dot's centre) start at a constant
+    // size in this view's pixels; in XR the base is at most a 320x200 pixel's angular size.
+    // Modern city lights and nearby aircraft lamps also grow with their projected size.
 #ifdef DOT_BATCH
     out.dot_uv = vec3<f32>(v.corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
@@ -279,6 +290,16 @@ fn vertex(v: Vertex) -> VertexOutput {
         if (globals.dots.x > 0.0) {
             px = min(px, max(globals.dots.x * 0.5 * vp.y * view.clip_from_view[1][1], DOT_MIN_PIXELS));
         }
+#ifdef DOT_COLOUR
+        // Modern is a fragment specialization; the shared uniform also reaches this vertex.
+        if (globals.params.w != 0.0 && (v.colour & DOT_CITY) != 0u) {
+            let far_px = clamp(px * CITY_DOT_SCALE, CITY_DOT_MIN_PIXELS, CITY_DOT_FAR_MAX_PIXELS);
+            let lamp = CITY_DOT_METRES * 0.5 * vp.y * view.clip_from_view[1][1] / max(clip.w, 0.01);
+            // Add the footprints' areas: a smooth transition from a distant speck to a
+            // resolved light, increasing its total light on screen as we approach.
+            px = min(length(vec2<f32>(far_px, lamp)), far_px * CITY_DOT_MAX);
+        }
+#endif
         if ((tag & 7u) == 5u) {
             let lamp = AIRCRAFT_DOT_METRES * 0.5 * vp.y * view.clip_from_view[1][1] / max(clip.w, 0.01);
             px = max(px, min(lamp, px * AIRCRAFT_DOT_MAX));
@@ -1616,7 +1637,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     let hi = (word >> 8u) & 0xFFu;
     var lo = word & 0xFFu;
 #ifdef DOT_COLOUR
-    lo = in.dot_colour;
+    lo = in.dot_colour & 0xFFu;
 #endif
     if ((u32(globals.light_info.w) & 4u) != 0u) {
         return vec4<f32>(pal(haze(lo, in.fog)), 1.0);
@@ -1693,6 +1714,13 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     }
     var alpha = 1.0;
 #ifdef DOT_BATCH
+#ifdef DOT_COLOUR
+    if (modern && (in.dot_colour & DOT_CITY) != 0u) {
+        rgb = rgb * CITY_DOT_BRIGHTNESS;
+        // A bright centre fading to zero before the quad's edge, including its corners.
+        alpha = 1.0 - smoothstep(0.2, 1.0, length(in.dot_uv.xy));
+    }
+#endif
     // A goggles halo: the lamp solid in the middle, its bloom fading out round it.
     if (in.dot_uv.z > 1.0) {
         let r = (length(in.dot_uv.xy) * in.dot_uv.z - 1.0) / (in.dot_uv.z - 1.0);

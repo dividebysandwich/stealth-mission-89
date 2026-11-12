@@ -266,6 +266,22 @@ fn suffix_number(name: &str, tag: &str) -> Option<u32> {
     digits.parse().ok()
 }
 
+/// House, village and town models from `tools/theater/libraries` and the regions' `KINDS`.
+/// Use the full model name: the same shape number can be an airfield or vehicle elsewhere.
+fn settlement_model_node(name: &str) -> bool {
+    let Some((model, _)) = name.split_once("_lod") else { return false };
+    let Some((theater, shape)) = model.rsplit_once('_') else { return false };
+    matches!(
+        (theater, shape),
+        ("central_europe" | "ukraine", "026" | "027" | "062")
+            | ("cuba", "026" | "062")
+            | ("korea" | "vietnam", "026")
+            | ("north_cape", "024")
+            | ("libya", "039")
+            | ("persian_gulf" | "middle_east" | "desert_storm", "040")
+    )
+}
+
 /// Parses `_s<slot>v<value>` condition suffixes from a node name.
 fn parse_conds(name: &str) -> Vec<(usize, i16)> {
     let mut out = Vec::new();
@@ -591,6 +607,8 @@ impl ModelAssets<'_> {
             if name.contains("_dots_pal_") {
                 // Single-pixel lights -> fullbright billboards.
                 let color = node_color.unwrap_or(15);
+                let city_mesh =
+                    settlement_model_node(name).then(|| self.dots.city_mesh(color)).flatten();
                 for prim in &mesh.primitives {
                     for p in self.positions(&prim.mesh) {
                         let child = commands
@@ -599,6 +617,9 @@ impl ModelAssets<'_> {
                                 MeshMaterial3d(self.palette.line_material(color)),
                             ))
                             .id();
+                        if let Some(mesh) = city_mesh {
+                            commands.entity(child).insert(Mesh3d(mesh.clone()));
+                        }
                         if let Some(l) = lod {
                             commands.entity(child).insert((
                                 LodMesh(l),
