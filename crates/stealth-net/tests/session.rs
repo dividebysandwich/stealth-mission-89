@@ -919,3 +919,135 @@ fn a_gunner_crews_another_players_kiowa_and_takes_it_over() {
     assert_eq!(w.sim.owner_seat(pb.0), Seat::Gunner);
     assert_eq!(w.sim.pilot_bays(pb.0), &[(20, 1), (22, 1)][..], "his stores went with the aircraft");
 }
+
+/// Bravo crews Alpha's RAH-66 from its rear seat over the network: his trigger fires the chin
+/// gun along his sight, his sight lays his Hellfire out of the bay; Alpha leaves, the aircraft
+/// goes on with Bravo in the gunner's seat (the AI flying).
+#[test]
+fn a_gunner_crews_another_players_comanche_and_takes_it_over() {
+    use stealth_campaign::MissionKind;
+    use stealth_sim::PodAim;
+    use stealth_sim::crew::{CrewCmd, GunnerAim, Seat};
+    let mut w = world();
+    let port = w.server.port().unwrap();
+    let addr = format!("127.0.0.1:{port}");
+    let mut a = Client::connect(&addr, "Alpha").unwrap();
+    let mut b = Client::connect(&addr, "Bravo").unwrap();
+    let mut now = Instant::now();
+    let mut ids = [None, None];
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let ClientEvent::Welcome { id, .. } = e {
+            ids[k] = Some(*id);
+        }
+        ids.iter().all(Option::is_some)
+    }));
+    let (pa, pb) = (ids[0].unwrap(), ids[1].unwrap());
+    // Alpha flies a close air support mission in an RAH-66.
+    let mut started = false;
+    for _ in 0..15 * 600 {
+        now += Duration::from_millis(66);
+        serve(&mut w, now);
+        for c in [&mut a, &mut b] {
+            c.flush(now);
+            c.poll(now);
+        }
+        let offers: Vec<u32> = w
+            .host
+            .state
+            .board
+            .iter()
+            .filter(|o| o.kind == MissionKind::Cas)
+            .map(|o| o.id)
+            .collect();
+        for offer in offers {
+            if let Ok(ev) = w.host.take_mission(&mut w.sim, pa, offer, None, Aircraft::RAH66, None)
+            {
+                w.server.route(&ev);
+                started = true;
+                break;
+            }
+        }
+        if started {
+            break;
+        }
+    }
+    assert!(started, "a close air support mission for the RAH-66");
+    // Hellfires on the left bay door, Stingers on the right.
+    w.sim.set_pilot_loadout(pa.0, &[(20, 3), (21, 6)], 0);
+    // Hovering 300 m up, facing north.
+    let mut ps = w.sim.pilot_input(pa.0);
+    ps.altitude = (300.0 / 0.488) as u16;
+    ps.height = ps.altitude;
+    ps.on_ground = false;
+    ps.gear_up = false;
+    ps.velocity = 0;
+    ps.heading = 0;
+    ps.pitch = 0;
+    ps.roll = 0;
+    let fly = |w: &mut World, a: &mut Client, b: &mut Client, now: &mut Instant, n: usize| {
+        for _ in 0..n {
+            *now += Duration::from_millis(66);
+            serve(w, *now);
+            a.send_input(&ps);
+            for c in [&mut *a, &mut *b] {
+                c.flush(*now);
+                c.poll(*now);
+            }
+        }
+    };
+    fly(&mut w, &mut a, &mut b, &mut now, 30);
+    assert!(w.sim.pilot_in_the_air(pa.0));
+    assert!(w.sim.gunner_seat_free(pa.0));
+    // Bravo takes the rear seat.
+    b.send(&ToServer::Crew(CrewCmd::Join { owner: pa.0 }));
+    fly(&mut w, &mut a, &mut b, &mut now, 15);
+    assert_eq!(w.sim.crew_of(pb.0), Some((pa.0, Seat::Gunner)));
+    // His sight 20 degrees down ahead, the trigger held: the chin gun fires.
+    let ammo = w.sim.as_pilot(pa.0, |s| s.gun_ammo());
+    let pod = Some(PodAim { heading: 0, pitch: -3641, ground: None });
+    let aim = GunnerAim { pod, trigger: true, ..Default::default() };
+    let send = |w: &mut World, a: &mut Client, b: &mut Client, now: &mut Instant, aim, n| {
+        for _ in 0..n {
+            *now += Duration::from_millis(66);
+            serve(w, *now);
+            a.send_input(&ps);
+            b.send_unreliable(&ToServer::Crew(CrewCmd::Aim(aim)));
+            for c in [&mut *a, &mut *b] {
+                c.flush(*now);
+                c.poll(*now);
+            }
+        }
+    };
+    send(&mut w, &mut a, &mut b, &mut now, aim, 30);
+    assert!(w.sim.as_pilot(pa.0, |s| s.gun_ammo()) < ammo, "the gunner fired the chin gun");
+    // His Hellfire from the first station.
+    let aim = GunnerAim { trigger: false, station: Some(0), ..aim };
+    send(&mut w, &mut a, &mut b, &mut now, aim, 5);
+    // The release held until the bay doors are open.
+    for _ in 0..12 {
+        if w.sim.pilot_bays(pa.0)[0].1 == 3 {
+            b.send(&ToServer::Crew(CrewCmd::Fire { station: 0 }));
+        }
+        send(&mut w, &mut a, &mut b, &mut now, aim, 5);
+    }
+    assert_eq!(w.sim.pilot_bays(pa.0)[0], (20, 2), "the gunner's Hellfire is away");
+    // Alpha leaves the aircraft: it goes on with Bravo in the rear seat.
+    a.send(&ToServer::LeaveAircraft);
+    let mut taken = false;
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let ClientEvent::Host(HostEvent::SortieStarted { player, .. }) = e
+            && k == 1
+        {
+            assert_eq!(*player, pb);
+            taken = true;
+        }
+        taken
+    }));
+    assert!(w.sim.pilot_absent(pa.0) && w.sim.pilot_in_the_air(pb.0));
+    assert_eq!(w.sim.owner_seat(pb.0), Seat::Gunner);
+    assert_eq!(
+        w.sim.pilot_bays(pb.0),
+        &[(20, 2), (21, 6)][..],
+        "his stores went with the aircraft"
+    );
+}

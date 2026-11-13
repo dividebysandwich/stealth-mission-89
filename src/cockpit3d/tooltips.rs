@@ -529,7 +529,9 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Rwr => "tip-display-rwr",
         CanvasRole::Tfr => "tip-display-tfr",
         CanvasRole::Hsi => "tip-display-hsi",
-        CanvasRole::Ded if style == PanelStyle::Rah66 => "tip-display-scratchpad",
+        CanvasRole::Ded if matches!(style, PanelStyle::Rah66 | PanelStyle::Rah66Cpg) => {
+            "tip-display-scratchpad"
+        }
         CanvasRole::Ded => "tip-display-ded",
         CanvasRole::Lmpd => "tip-display-lmpd",
         CanvasRole::Rmpd if style == PanelStyle::Ch47 => "tip-display-rmpd-ch47",
@@ -1027,6 +1029,7 @@ mod tests {
             PanelStyle::Ah64,
             PanelStyle::Ah64Cpg,
             PanelStyle::Oh58Cpg,
+            PanelStyle::Rah66Cpg,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));

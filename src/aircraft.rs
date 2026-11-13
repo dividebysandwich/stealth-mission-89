@@ -522,7 +522,13 @@ static RAH66: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: true,
-    gunner_seat: None,
+    // The copilot/gunner's (rear) seat: behind the pilot's seat back at his canopy bow (y 1.84),
+    // ahead of the canopy's end (y 0.82), the head under the flat roof (z 2.58).
+    gunner_seat: Some(CrewSeat {
+        style: PanelStyle::Rah66Cpg,
+        model: "cockpit_rah66_cpg",
+        eye: rah66_point(0.0, 1.16, 2.14),
+    }),
     flight: FlightConstants::rah66,
 };
 
@@ -1035,10 +1041,15 @@ impl AircraftKind {
         self == AircraftKind::OH58
     }
 
+    /// The RAH-66: an armed scout helicopter with a gunner's rear cockpit.
+    pub fn comanche(self) -> bool {
+        self == AircraftKind::RAH66
+    }
+
     /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console, the
-    /// AH-64's front cockpit, the OH-58D's left seat.
+    /// AH-64's front cockpit, the OH-58D's left seat, the RAH-66's rear one.
     pub fn crew_seat(self) -> bool {
-        self.spectre() || self.apache() || self.kiowa()
+        self.spectre() || self.apache() || self.kiowa() || self.comanche()
     }
 
     pub fn rcs_page(self) -> bool {
@@ -1315,6 +1326,11 @@ mod tests {
         assert!((1.84..2.48).contains(&y), "eye {y} m from the mast");
         assert!((1.60..2.40).contains(&z), "eye {z} m high");
         assert!(x.abs() < 0.3, "eye {x} m to the side");
+        let g = (spec.gunner_seat.as_ref().unwrap().eye - Vec3::Y * spec.model_lift) / s;
+        let (x, y, z) = (g.x, -g.z, g.y);
+        assert!((0.82..1.84).contains(&y), "gunner's eye {y} m from the mast");
+        assert!((1.80..2.45).contains(&z), "gunner's eye {z} m high");
+        assert!(x.abs() < 0.01, "gunner's eye {x} m to the side");
     }
 
     /// The OH-58D's eye: in the right seat behind the windshield's top, over the front door

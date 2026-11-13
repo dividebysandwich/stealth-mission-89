@@ -4,8 +4,16 @@
 #   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_rah66.py -- \
 #       assets-src/blend/cockpit_rah66_layout.json assets-src/blend/cockpit_rah66.blend
-# then tools/models/export.sh cockpit_rah66. The layout JSON is written by
-# `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::rah66` (src/cockpit3d/layout.rs).
+# then tools/models/export.sh cockpit_rah66. The copilot/gunner's (rear) cockpit is built the same
+# way round his own eye (`--seat rear`):
+#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#       --python tools/models/build_cockpit_rah66.py -- \
+#       assets-src/blend/cockpit_rah66_cpg_layout.json assets-src/blend/cockpit_rah66_cpg.blend --seat rear
+# then tools/models/export.sh cockpit_rah66_cpg: his panel (`PanelLayout::rah66_cpg`, two enlarged
+# MFDs in place of the AH-64's TEDAC) on the back of the pilot's seat, a shorter glareshield, the
+# pilot's headrest standing over it and the pilot's glareshield further ahead. The layout JSONs are
+# written by `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::rah66` and
+# `PanelLayout::rah66_cpg` (src/cockpit3d/layout.rs).
 #
 # Life size, as the AH-1Z's (tools/models/build_cockpit_ah1z.py, which this follows). Kept from
 # the F-117A's cockpit: the seat with the ejection handle (no ejection: the handle stays), the
@@ -28,7 +36,10 @@ import bmesh
 import bpy
 from mathutils import Euler, Matrix, Quaternion, Vector
 
-layout_path, out = sys.argv[sys.argv.index("--") + 1:][:2]
+args = sys.argv[sys.argv.index("--") + 1:]
+layout_path, out = args[:2]
+# The gunner's rear cockpit (its eye 0.94 m behind and 0.08 m above the pilot's).
+REAR = "--seat" in args and args[args.index("--seat") + 1] == "rear"
 layout = json.load(open(layout_path))
 root = bpy.data.objects["cockpit"]
 mats = bpy.data.materials
@@ -49,8 +60,12 @@ TOP, BOTTOM = -146.0, 130.0
 HOOD_Y = 0.68
 RISE = 0.045
 DROP = 0.012
-GLARE_FRONT = 0.95
+GLARE_FRONT = 0.76 if REAR else 0.95
 HUD_Y = 0.69
+# The rear cockpit: the pilot's eye from the gunner's; the pilot's headrest (half width, fore and
+# aft ends, top over the gunner's glareshield) standing up behind the pilot's head, ahead of it.
+PILOT_EYE = Vector((0.0, 0.94, -0.08))
+HEADREST = (0.15, 0.78, 0.90, 0.17)
 # Pedestal: the layout's keyboard, scratchpad and standby attitude display (PED_RECT, mm) on its
 # face sloping down aft from the panel's bottom edge, the layout's u = PED_U on the centre line and
 # v = PED_V[0] at the top; PED_SLOPE (degrees) below the horizontal, PED_W wide; its column to the
@@ -687,30 +702,51 @@ empty("throttle_pivot", COLLECTIVE_PIVOT, props={"anchor": "throttle_pivot"})
 
 # --- HUD: the glass on the glareshield in front of the pilot, a frame of bars along its outline
 # (posts down to the glareshield, chamfered top corners, top) outside it by half a bar.
+# The rear cockpit has none: the gunner looks at his MFDs and through his helmet display (the
+# pilot's head would be behind a HUD).
 hud = next(o for o in old if o.name.startswith("hud_glass"))
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-k = HUD_Y / (sum(v.y for v in glass) / len(glass))
-hud.location *= k
-hud.data.transform(Matrix.Scale(k, 4))
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-hud_y = sum(v.y for v in glass) / len(glass)
-half_x = max(abs(v.x) for v in glass)
-top = max(v.z for v in glass)
-shoulder = max(v.z for v in glass if abs(abs(v.x) - half_x) < 0.01)
-top_x = min(abs(v.x) for v in glass if abs(v.z - top) < 0.002)
-post_x = half_x + HUD_BAR / 2
-outline = [
-    Vector((-post_x, glare_top)), Vector((-post_x, shoulder)),
-    Vector((-top_x, top + HUD_BAR / 2)), Vector((top_x, top + HUD_BAR / 2)),
-    Vector((post_x, shoulder)), Vector((post_x, glare_top)),
-]
-for a, b in zip(outline, outline[1:]):
-    d = b - a
-    centre = (a + b) / 2
-    rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
-    box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
+if REAR:
+    drop(hud)
+else:
+    bpy.context.view_layer.update()
+    glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
+    k = HUD_Y / (sum(v.y for v in glass) / len(glass))
+    hud.location *= k
+    hud.data.transform(Matrix.Scale(k, 4))
+    bpy.context.view_layer.update()
+    glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
+    hud_y = sum(v.y for v in glass) / len(glass)
+    half_x = max(abs(v.x) for v in glass)
+    top = max(v.z for v in glass)
+    shoulder = max(v.z for v in glass if abs(abs(v.x) - half_x) < 0.01)
+    top_x = min(abs(v.x) for v in glass if abs(v.z - top) < 0.002)
+    post_x = half_x + HUD_BAR / 2
+    outline = [
+        Vector((-post_x, glare_top)), Vector((-post_x, shoulder)),
+        Vector((-top_x, top + HUD_BAR / 2)), Vector((top_x, top + HUD_BAR / 2)),
+        Vector((post_x, shoulder)), Vector((post_x, glare_top)),
+    ]
+    for a, b in zip(outline, outline[1:]):
+        d = b - a
+        centre = (a + b) / 2
+        rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
+        box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
+
+# --- rear cockpit: the pilot's seat back and headrest ahead over the gunner's glareshield, the
+# pilot's glareshield and HUD frame beyond (dark shapes: seen over the headrest's shoulders)
+if REAR:
+    hw, y0, y1, h = HEADREST
+    top_z = glare_top + h
+    yz = [(y0, glare_top - 0.05), (y0, top_z - 0.03), (y0 + 0.03, top_z), (y1 - 0.02, top_z), (y1, top_z - 0.04), (y1, glare_top - 0.05)]
+    prism("dark", "dark", yz, -hw, hw)
+    # The seat back's shoulders, wider, either side under it.
+    prism("dark", "dark", [(y0 + 0.01, glare_top - 0.06), (y0 + 0.01, glare_top + 0.04), (y1, glare_top + 0.06), (y1, glare_top - 0.06)], -0.24, 0.24)
+    # The pilot's glareshield, as his own cockpit's (its top RISE over his panel's top edge).
+    pt = PILOT_EYE + point(0.0, TOP)
+    p_top = pt.z + RISE
+    yz = [(PILOT_EYE.y + HOOD_Y, p_top - 0.02), (PILOT_EYE.y + HOOD_Y, p_top - 0.008), (PILOT_EYE.y + HOOD_Y + 0.015, p_top),
+          (PILOT_EYE.y + 0.95, p_top - DROP), (PILOT_EYE.y + 0.95, pt.z - 0.05), (PILOT_EYE.y + HOOD_Y, pt.z - 0.05)]
+    prism("black", "black", yz, u0 / 1000, u1 / 1000)
 # No approach indexer: a helicopter has no angle of attack to fly the approach by.
 # --- flood lamps: two behind the pilot's head, one under the glareshield
 objs["lamp.002"].location = Vector((0.0, HOOD_Y + 0.04, t.z))

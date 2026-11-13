@@ -862,6 +862,7 @@ mod tests {
             (PanelStyle::Ah64, "cockpit_ah64", "build_cockpit_ah64"),
             (PanelStyle::Ah64Cpg, "cockpit_ah64_cpg", "build_cockpit_ah64_cpg"),
             (PanelStyle::Oh58Cpg, "cockpit_oh58_cpg", "build_cockpit_oh58"),
+            (PanelStyle::Rah66Cpg, "cockpit_rah66_cpg", "build_cockpit_rah66"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -898,6 +899,7 @@ mod tests {
             ("cockpit_ah64", PanelStyle::Ah64),
             ("cockpit_ah64_cpg", PanelStyle::Ah64Cpg),
             ("cockpit_oh58_cpg", PanelStyle::Oh58Cpg),
+            ("cockpit_rah66_cpg", PanelStyle::Rah66Cpg),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -912,8 +914,8 @@ mod tests {
             // The helicopters have no approach indexer.
             let approach = materials.contains(&"approach");
             assert_eq!(approach, !style.helicopter(), "{name}: approach indexer");
-            // The OH-58D has no HUD (its helmet display only).
-            if !matches!(style, PanelStyle::Oh58 | PanelStyle::Oh58Cpg) {
+            // The OH-58D and the RAH-66's gunner have no HUD (their helmet displays only).
+            if !matches!(style, PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Rah66Cpg) {
                 required.push("hud_glass");
             }
             // The generated cockpits' MENU buttons are caps of their up-front controls (atlas
@@ -936,7 +938,7 @@ mod tests {
                 PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Av8b | PanelStyle::Ah64 => {
                     vec!["ded", "trackcam_left", "label_NEAR"]
                 }
-                PanelStyle::Rah66 => {
+                PanelStyle::Rah66 | PanelStyle::Rah66Cpg => {
                     vec!["ded", "trackcam_left", "label_NEAR", "screen_lmpd", "screen_rmpd"]
                 }
                 PanelStyle::Ch47 => {

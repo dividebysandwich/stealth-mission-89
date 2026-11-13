@@ -415,3 +415,79 @@ fn the_kiowa_gunner_fires_a_hellfire_at_his_spot() {
     let (x, y) = hit.expect("the Hellfire hit");
     assert!((x - at.0).abs() <= 8 && (y - at.1).abs() <= 8, "hit {x},{y}, spot {at:?}");
 }
+
+/// A campaign world as [`apache`] with pilot 0 in an RAH-66 instead, Hellfires on the left bay
+/// door and Stingers on the right, hovering as the AH-64 does. Returns the BMP's map point.
+fn comanche() -> (Sim, (i32, i32)) {
+    let (mut sim, at) = apache();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    let airframe =
+        Airframe { helicopter: true, gunship: true, comanche: true, ..Default::default() };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.set_pilot_loadout(0, &[(20, 3), (21, 6)], 0);
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    (sim, at)
+}
+
+#[test]
+fn the_comanche_has_a_gunner_seat() {
+    let (mut sim, _) = comanche();
+    assert!(sim.gunner_seat_free(0));
+    sim.crew_command(0, CrewCmd::Seat(Seat::Gunner)).unwrap();
+    assert_eq!(sim.owner_seat(0), Seat::Gunner);
+    sim.crew_command(0, CrewCmd::Seat(Seat::Pilot)).unwrap();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_of(1), Some((0, Seat::Gunner)));
+    let v = sim.crew_view(1).expect("the gunner's view");
+    assert_eq!(v.stores[0], (20, 3));
+    assert_eq!(v.stores[1], (21, 6));
+    assert!(v.gun_ammo > 0);
+}
+
+/// The RAH-66's gunner's trigger fires the chin gun along his sight (west, at the BMP) while
+/// the pilot's helmet looks north.
+#[test]
+fn the_comanche_gunner_fires_the_chin_gun_along_his_sight() {
+    let (mut sim, at) = comanche();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let aim = GunnerAim { pod: Some(tads_on(at)), trigger: true, ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    let ammo = sim.gun_ammo();
+    for _ in 0..5 {
+        sim.step_pilots(&[(0, hover(at, false))], 15);
+    }
+    assert!(sim.gun_ammo() < ammo, "the gunner fired");
+    let r = rounds(&sim);
+    assert!(!r.is_empty() && r.iter().all(|&(e, n)| e < 0 && n.abs() < -e / 4), "west: {r:?}");
+}
+
+/// The RAH-66's gunner's Hellfire leaves the bay (its doors opening for it) and flies to his
+/// sight's spot.
+#[test]
+fn the_comanche_gunner_fires_a_hellfire_at_his_spot() {
+    let (mut sim, at) = comanche();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let aim = GunnerAim { pod: Some(tads_on(at)), station: Some(0), ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    sim.step_pilots(&[(0, hover(at, false))], 15);
+    let mut hit = None;
+    for k in 0..15 * 30 {
+        // The release is held until the doors are open.
+        if sim.pilot_bays(0)[0].1 == 3 && k % 5 == 0 {
+            sim.crew_command(1, CrewCmd::Fire { station: 0 }).unwrap();
+        }
+        for e in sim.step_pilots(&[(0, hover(at, false))], 15) {
+            if let SimEvent::Explosion { x, y, .. } = e.event {
+                hit.get_or_insert((x, y));
+            }
+        }
+        if hit.is_some() {
+            break;
+        }
+    }
+    assert_eq!(sim.pilot_bays(0)[0], (20, 2), "one Hellfire away");
+    let (x, y) = hit.expect("the Hellfire hit");
+    assert!((x - at.0).abs() <= 8 && (y - at.1).abs() <= 8, "hit {x},{y}, spot {at:?}");
+}

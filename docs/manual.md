@@ -405,7 +405,7 @@ from, and what it does in the game.
 | <img src="images/units/fly_av8b.png" width="160"> | [**AV-8B HARRIER II**](#35-av-8b-harrier-ii) | V/STOL attack jet: vectored thrust, hovers and lands anywhere. |
 | <img src="images/units/fly_uh60.png" width="160"> | [**UH-60 BLACK HAWK**](#36-uh-60-black-hawk) | Unarmed transport helicopter: insertions, rescues, sling loads. The only way to take a place by air. |
 | <img src="images/units/fly_ah1z.png" width="160"> | [**AH-1Z VIPER**](#37-ah-1z-viper) | Attack helicopter: turret gun and Hellfires that follow the pilot's eyes. |
-| <img src="images/units/fly_rah66.png" width="160"> | [**RAH-66 COMANCHE**](#38-rah-66-comanche) | Stealth scout helicopter: barely seen while slow, weapons inside its bay doors. |
+| <img src="images/units/fly_rah66.png" width="160"> | [**RAH-66 COMANCHE**](#38-rah-66-comanche) | Stealth scout helicopter: barely seen while slow, weapons inside its bay doors; a second player can sit in its rear seat as gunner. |
 | <img src="images/units/fly_oh58.png" width="160"> | [**OH-58D KIOWA WARRIOR**](#39-oh-58d-kiowa-warrior) | Armed scout helicopter: small and nimble, a sight above its rotor, Hellfires, Stingers or .50 cal pods; a second player can sit in its left seat as gunner. |
 | <img src="images/units/fly_ch47.png" width="160"> | [**CH-47F CHINOOK**](#310-ch-47f-chinook) | Unarmed tandem-rotor cargo helicopter: sling loads for logistics and resupply. |
 | <img src="images/units/fly_f22.png" width="160"> | [**F-22A RAPTOR**](#311-f-22a-raptor) | Stealth fighter: supercruise, weapons in its bays, the radars barely see it. |
@@ -953,6 +953,24 @@ GEAR, PARK BRAKE, NAV / A-A / A-G, ECM, IRJ, **LASE** (designate); on the pedest
 screen, CHAFF, FLARE, DECOY, DCLT, NVG, MENU, VOL, TIME and AUTO.
 
 ![The RAH-66's cockpit](images/cockpit_rah66.png)
+
+**Two seats.** The pilot sits in front; the rear cockpit is the **copilot/gunner's**, its panel on the
+back of the pilot's seat. There is no TEDAC: the gunner has two enlarged MFDs side by side (with the
+two MPDs outboard of them and the pilot's keys and pedestal), and no HUD, only his helmet display.
+
+- **Changing seats.** In flight, the in-flight menu's **GUNNER'S SEAT** entry moves you to the rear
+  seat (`--seat gunner[@seconds]` from the command line), the AI flying as in the AH-64 (chapter
+  3.14): it keeps the auto-hover or the autopilot, else hovers below 30 kt or takes up the autopilot.
+  The **PILOT'S SEAT** entry takes you back.
+- **In the gunner's seat** the stick slews the targeting pod (as do the slew keys); its picture is on
+  your right MFD, the sensor of interest. The turret gun follows the pod, not your eyes.
+
+**A second player as gunner.** In a campaign another player can crew your Comanche from the
+**FLIGHTS** tab (*JOIN AS GUNNER*), as in the AH-64. His pod replaces yours, so your Hellfires go to his
+laser spot. His trigger fires the turret gun along his pod, his weapon key steps through the gun and
+the kinds of missiles left, and his release opens the bay doors and fires the missile he selected;
+your own trigger and release still work too. If you leave the aircraft or lose your connection, it
+goes on with him in the rear seat and the AI flying. The sortie's kills count for the crew.
 
 **Best for.** Escort (second choice), CAS and intercepting helicopters, and anything that means
 sneaking up on an air defence site at walking pace.

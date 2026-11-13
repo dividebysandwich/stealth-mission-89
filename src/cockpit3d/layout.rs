@@ -60,6 +60,9 @@ pub enum PanelStyle {
     /// The OH-58D's copilot/gunner's (left) seat: the pilot's panel, the gunner's pair of MFDs
     /// his left and right ones, the pilot's his third and fourth.
     Oh58Cpg,
+    /// The RAH-66's copilot/gunner's (rear) cockpit: the pilot's panel with two enlarged MFDs
+    /// (no TEDAC), the multipurpose displays outboard of them.
+    Rah66Cpg,
 }
 
 /// A rectangle in panel pixels.
@@ -305,6 +308,7 @@ impl PanelStyle {
             PanelStyle::Uh60
                 | PanelStyle::Ah1z
                 | PanelStyle::Rah66
+                | PanelStyle::Rah66Cpg
                 | PanelStyle::Oh58
                 | PanelStyle::Oh58Cpg
                 | PanelStyle::Ch47
@@ -335,6 +339,7 @@ impl PanelLayout {
             PanelStyle::Tornado => Self::tornado(),
             PanelStyle::A10 => Self::a10(),
             PanelStyle::Rah66 => Self::rah66(),
+            PanelStyle::Rah66Cpg => Self::rah66_cpg(),
             PanelStyle::Av8b => Self::av8b(),
             PanelStyle::Oh58 => Self::oh58(),
             PanelStyle::Oh58Cpg => Self::oh58_cpg(),
@@ -2365,6 +2370,22 @@ impl PanelLayout {
         }
     }
 
+    /// The RAH-66's copilot/gunner's (rear) cockpit: [`Self::rah66`]'s panel and pedestal, the
+    /// two MFDs enlarged (240 mm wide instead of 200: the gunner's sensor and weapon pages,
+    /// in place of the AH-64's TEDAC) and the multipurpose displays moved out beside them.
+    pub fn rah66_cpg() -> Self {
+        let mut p = Self::rah66();
+        p.style = PanelStyle::Rah66Cpg;
+        let (w, h) = (240.0, 240.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        p.mfds = vec![
+            MfdUnit { side: MfdSide::Left, screen: rect(-258.0, -90.0, w, h), osbs: true },
+            MfdUnit { side: MfdSide::Right, screen: rect(18.0, -90.0, w, h), osbs: true },
+        ];
+        p.lmpd = Some(rect(-388.0, -44.0, 100.0, 140.0));
+        p.rmpd = Some(rect(288.0, -44.0, 100.0, 140.0));
+        p
+    }
+
     /// The OH-58D's panel (millimetres, x right and y down, life size;
     /// `tools/models/build_cockpit_oh58.py`), the F-117A's faces rearranged after the OH-58D's
     /// one wide panel under a deep glareshield, spanning both seats, its origin on the cabin's
@@ -2764,7 +2785,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 16] {
+    fn all() -> [PanelLayout; 17] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -2782,6 +2803,7 @@ mod tests {
             PanelLayout::c130(),
             PanelLayout::ah64(),
             PanelLayout::ah64_cpg(),
+            PanelLayout::rah66_cpg(),
         ]
     }
 
@@ -2872,6 +2894,7 @@ mod tests {
             PanelLayout::c130(),
             PanelLayout::ah64(),
             PanelLayout::ah64_cpg(),
+            PanelLayout::rah66_cpg(),
         ] {
             bezel_buttons_of(&l);
         }

@@ -47,7 +47,7 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 * **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording
 * **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar), AV-8B Harrier II (V/STOL, vectored thrust)
-* **Flyable Helicopters:** UH-60A (Logistics and Insertions), CH-47F Chinook (tandem rotors, sling-load logistics), AH-1Z (with HMD), AH-64D Apache (two seats: a second player can crew it as gunner), RAH-66 Comanche (stealth, internal bays), OH-58D Kiowa Warrior (mast-mounted sight, HMD, optional pylons, a second player can crew it as gunner)
+* **Flyable Helicopters:** UH-60A (Logistics and Insertions), CH-47F Chinook (tandem rotors, sling-load logistics), AH-1Z (with HMD), AH-64D Apache (two seats: a second player can crew it as gunner), RAH-66 Comanche (stealth, internal bays, a second player can crew it as gunner), OH-58D Kiowa Warrior (mast-mounted sight, HMD, optional pylons, a second player can crew it as gunner)
 * **Controllable Air Defenses:** Gepard (manual and radar-guided), Patriot (radar)
 * **Ukraine theater** with drone defense missions and famous landmarks like the Zaporizhzhia NPP
 * **Classic modes:** DOS era flight model, cockpit, HUD and rendering, switchable on their own

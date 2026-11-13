@@ -1461,11 +1461,28 @@ fn world_model_state(
             set(t, &mut s);
         }
     }
-    let door = combat.as_ref().map_or(0, |c| c.sim.bay_door_anim()) as i16;
+    // In another's aircraft (his gunner): its doors and stores as he is told.
+    let ridden = combat.as_ref().and_then(|c| {
+        let me = c.sim.active_pilot();
+        c.sim.crew_view(me).filter(|v| v.owner != me)
+    });
+    let door = combat.as_ref().map_or(0, |c| match ridden {
+        Some(v) => c
+            .sim
+            .remote_pilots()
+            .iter()
+            .find(|p| p.id == v.owner)
+            .map_or(0, |p| p.door_anim.min(2) as i32),
+        None => c.sim.bay_door_anim() as i32,
+    }) as i16;
     // The RAH-66's doors show what is left on them (slots 23 left, 24 right): 0 Hellfires,
     // 1 Stingers, 2 none.
     let door_stores = |i: usize| {
-        combat.as_ref().and_then(|c| c.sim.bays().0.get(i).copied()).map_or(2, |(w, n)| {
+        let bay = match ridden {
+            Some(v) => v.stores.get(i).map(|&(w, n)| (w as i32, n as i32)),
+            None => combat.as_ref().and_then(|c| c.sim.bays().0.get(i).copied()),
+        };
+        bay.map_or(2, |(w, n)| {
             if n <= 0 || w < 0 {
                 2
             } else if w == crate::loadout::STINGER as i32 {
