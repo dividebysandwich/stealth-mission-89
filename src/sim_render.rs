@@ -33,6 +33,7 @@ impl Plugin for SimRenderPlugin {
             .init_resource::<crate::ground_fire::GroundRounds>()
             .init_resource::<crate::sfw::SfwVisuals>()
             .init_resource::<RemoteVisuals>()
+            .init_resource::<crate::pallet_chute::PalletChutes>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(
                 Update,
@@ -44,6 +45,10 @@ impl Plugin for SimRenderPlugin {
                         .run_if(resource_exists::<Combat>),
                     crate::sfw::sync_sfw.run_if(resource_exists::<Combat>),
                     sync_remote_pilots.run_if(resource_exists::<Combat>),
+                    crate::pallet_chute::sync_pallet_chutes
+                        .after(sync_objects)
+                        .after(sync_remote_pilots)
+                        .run_if(resource_exists::<Combat>),
                     own_muzzle_flash.run_if(resource_exists::<Combat>),
                     own_shadow,
                 )
@@ -258,8 +263,10 @@ fn cleanup(
     mut remote: ResMut<RemoteVisuals>,
     mut rounds: ResMut<crate::ground_fire::GroundRounds>,
     mut sfw: ResMut<crate::sfw::SfwVisuals>,
+    mut chutes: ResMut<crate::pallet_chute::PalletChutes>,
 ) {
     *aaa = AaaVisuals::default();
+    *chutes = Default::default();
     *rounds = Default::default();
     *sfw = Default::default();
     *remote = RemoteVisuals::default();
