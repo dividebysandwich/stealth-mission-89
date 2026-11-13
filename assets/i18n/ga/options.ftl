@@ -97,6 +97,10 @@ options-sun-moon = An ghrian agus an ghealach
     .facts =
         An ghrian sa spéir sa lá, an ghealach agus na réaltaí san oíche
         Taispeánann an ghealach céim an mhisin
+options-scenery-distance = Fad an tírdhreacha
+    .facts = Bailte i gcéin: 7–30 km; páirceanna: 24–30 km. Ní athraíonn faid na gcrann. Féadfaidh sonraí uathoibríocha VR faid an tírdhreacha a laghdú.
+options-city-light-distance = Fad shoilse na cathrach
+    .facts = Lampaí sráide, fuinneoga agus soilse rabhaidh foirgneamh, neamhspleách ar fhad an tírdhreacha. Féadfaidh an aimsir an infheictheacht a theorannú.
 options-cloud-quality = Scamaill
 cloud-quality-auto = Uathoibríoch
     .facts = Íseal i VR, ard ar an scáileán

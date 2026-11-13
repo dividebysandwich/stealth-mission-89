@@ -1,6 +1,7 @@
-//! Geometry of one scenery block: the towns' and cities' paved ground, roads with street lamps,
+//! Geometry of one scenery block: the towns' and cities' paved ground, roads with lamp posts,
 //! buildings, pylons and wires (main tier near the viewpoint, the simpler town tier beyond), and
 //! trees (detail tier near the viewpoint, far tier beyond, the thinned distant tier furthest).
+//! City lights stream independently, including the red beacons on tall buildings and masts.
 //! Everything is generated from the network and per-position hashes, so a block looks the same
 //! whenever it is streamed in, and the tree tiers place the same trees (the distant tier a
 //! share of them).
@@ -56,11 +57,13 @@ const DISTANT_TREES: f64 = 0.35;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tier {
-    /// Roads, lamps, buildings, power lines.
+    /// Roads, lamp posts, buildings, power lines.
     Main,
     /// Main beyond its radius, in `COARSE_BLOCK` blocks: plain boxes and spires for the
-    /// buildings, no lamp posts, poles or wires, a window or none per building.
+    /// buildings, no lamp posts, poles or wires.
     Town,
+    /// Street lamps, windows and building beacons, without any opaque geometry.
+    Lights,
     /// Trees.
     Detail,
     /// Distant trees: one small 3-sided cone or double cone per tree (3-6 triangles instead
@@ -77,7 +80,7 @@ impl Tier {
     pub fn block_size(self) -> f64 {
         match self {
             Tier::Fields => FIELD_BLOCK,
-            Tier::Town | Tier::Distant => COARSE_BLOCK,
+            Tier::Town | Tier::Distant | Tier::Lights => COARSE_BLOCK,
             _ => BLOCK,
         }
     }
@@ -145,7 +148,7 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
         Tier::Main | Tier::Town => {
             let low = tier == Tier::Town;
             paving(sc, &f, &mut g);
-            roads(&sc.net, &f, &mut g, low);
+            roads(&sc.net, &f, &mut g, tier);
             for i in sc.net.building_index.around(f.min, f.max()) {
                 let b = &sc.net.buildings[i as usize];
                 // Not in a clearing (round the friendly air defence and its new sites).
@@ -158,10 +161,18 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
                     }
                     low_building(b, &f, &mut g);
                 } else {
-                    building(b, &f, &mut g);
+                    building_mesh(b, &f, &mut g);
                 }
             }
             power(&sc.net, &f, &mut g, low);
+        }
+        Tier::Lights => {
+            city_lights(sc, &f, &mut g);
+            // Most distant blocks are empty: don't sample their terrain or build geometry.
+            if g.lamps.is_empty() {
+                return g;
+            }
+            vary_city_lamps(&f, &mut g);
         }
         Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near),
         Tier::Far => trees(sc, &f, &mut g, TreeLod::Far),
@@ -175,6 +186,146 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
     }
     drape(&sc.hills, &f, &mut g);
     g
+}
+
+/// Give generated settlement lamps stable sizes, independent of the streaming block size
+/// and floating origin. Called here because airfields also use the shared building helpers.
+fn vary_city_lamps(f: &Frame, g: &mut Geom) {
+    for (colour, p) in &mut g.lamps {
+        let h = hash(
+            0x1A_4D ^ u64::from(*colour & 0xFF),
+            (f.o.x + p.x as f64).round() as i64,
+            (f.o.y - p.z as f64).round() as i64,
+            p.y.round() as i64,
+        );
+        // Sum two uniform samples: most lamps stay near normal size, fewer at either end.
+        let size = ((h & 0x7F) + ((h >> 7) & 0x7F) + 1) as u32;
+        *colour |= size << crate::dots::DOT_VARIATION_SHIFT;
+    }
+}
+
+/// The same lamps at every range, without constructing their buildings or road surfaces.
+fn city_lights(sc: &Scenery, f: &Frame, g: &mut Geom) {
+    // Road segments and overlapping lamp posts are owned by 1 km blocks in the main tier.
+    // Keep that ownership and deduplication here, using the light block's common origin.
+    for y in 0..2 {
+        for x in 0..2 {
+            let roads_frame =
+                Frame { o: f.o, min: f.min + DVec2::new(x as f64, y as f64) * BLOCK, size: BLOCK };
+            roads(&sc.net, &roads_frame, g, Tier::Lights);
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    for i in sc.net.building_index.around(f.min, f.max()) {
+        // The index repeats a building in every bucket its footprint touches.
+        if !seen.insert(i) {
+            continue;
+        }
+        let b = &sc.net.buildings[i as usize];
+        if f.contains(b.p) && !sc.cleared(b.p) {
+            building_lights(b, f, g);
+        }
+    }
+}
+
+#[cfg(test)]
+mod light_tests {
+    use super::*;
+    use crate::scenery::ground::Ground;
+    use crate::scenery::network::Road;
+
+    fn scenery() -> Scenery {
+        let mut net = Network::default();
+        for (kind, x, h) in [(Kind::Tower, 500.0, 80.0), (Kind::Mast, 1500.0, 60.0)] {
+            let b = Building {
+                p: DVec2::new(x, 500.0),
+                dir: DVec2::X,
+                kind,
+                l: 20.0,
+                w: 15.0,
+                h,
+                roof: Roof::Flat,
+                wall: 0xE7,
+                roof_colour: 0xE8,
+                seed: 123,
+            };
+            // Each building straddles index buckets: its lights must still appear only once.
+            net.building_index.insert(b.p - 20.0, b.p + 20.0, net.buildings.len() as u32);
+            net.buildings.push(b);
+        }
+        let (a, b) = (DVec2::new(100.0, 100.0), DVec2::new(400.0, 100.0));
+        net.roads.push(Road {
+            pts: vec![a, b],
+            arc: vec![0.0, 300.0],
+            kind: RoadKind::Street,
+            width: 8.0,
+        });
+        net.segments.push((0, 0));
+        net.segment_index.insert(a, b, 0);
+        Scenery {
+            style: None,
+            ground: Ground::default().into(),
+            net: net.into(),
+            airfields: vec![].into(),
+            clearings: vec![],
+            hills: Default::default(),
+        }
+    }
+
+    #[test]
+    fn city_lights_are_owned_once_and_build_no_surfaces() {
+        let sc = scenery();
+        let lights = build(&sc, 0, 0, Tier::Lights, 1.0);
+        assert!(lights.solid.is_empty() && lights.flat.is_empty() && lights.lines.is_empty());
+        assert!(lights.papi.is_empty() && lights.strobes.is_empty());
+        let count = |colour: u8| lights.lamps.iter().filter(|(c, _)| *c as u8 == colour).count();
+        assert_eq!(count(LAMP), 6);
+        assert_eq!(count(BEACON), 3); // One tower beacon, two on the mast.
+        assert!(count(WINDOW) >= 2);
+        assert!(lights.lamps.iter().all(|(c, _)| {
+            c & crate::dots::DOT_CITY != 0 && (c >> crate::dots::DOT_VARIATION_SHIFT) & 0xFF != 0
+        }));
+        assert_eq!(lights.lamps, build(&sc, 0, 0, Tier::Lights, 0.3).lamps);
+        for y in 0..2 {
+            for x in 0..2 {
+                assert!(build(&sc, x, y, Tier::Main, 1.0).lamps.is_empty());
+            }
+        }
+        assert!(build(&sc, 0, 0, Tier::Town, 1.0).lamps.is_empty());
+        assert!(build(&sc, 1, 0, Tier::Lights, 1.0).lamps.is_empty());
+    }
+
+    #[test]
+    fn building_lights_match_the_complete_airfield_building() {
+        let sc = scenery();
+        let f = Frame::new(0, 0, Tier::Lights.block_size());
+        let mut complete = Geom::default();
+        building(&sc.net.buildings[0], &f, &mut complete);
+        let city = build(&sc, 0, 0, Tier::Lights, 1.0);
+        // The palette colours and positions match; only the city lights vary in size.
+        let positions = |g: &Geom, colour: u8| {
+            g.lamps.iter().filter(|(c, _)| *c as u8 == colour).map(|(_, p)| *p).collect::<Vec<_>>()
+        };
+        assert_eq!(positions(&city, WINDOW), positions(&complete, WINDOW));
+        let red = positions(&complete, BEACON);
+        assert_eq!(red.len(), 1);
+        assert!(positions(&city, BEACON).contains(&red[0]));
+        assert!(complete.lamps.iter().all(|(c, _)| c >> crate::dots::DOT_VARIATION_SHIFT == 0));
+    }
+
+    #[test]
+    fn clearing_a_tower_removes_its_windows_and_beacon() {
+        let mut sc = scenery();
+        let before = build(&sc, 0, 0, Tier::Lights, 1.0);
+        sc.clearings.push((sc.net.buildings[0].p, 45.0));
+        let after = build(&sc, 0, 0, Tier::Lights, 1.0);
+        assert!(after.lamps.iter().all(|(c, _)| *c as u8 != WINDOW));
+        assert_eq!(after.lamps.iter().filter(|(c, _)| *c as u8 == BEACON).count(), 2);
+        let streets = |g: &Geom| {
+            g.lamps.iter().filter(|(c, _)| *c as u8 == LAMP).copied().collect::<Vec<_>>()
+        };
+        assert_eq!(streets(&before), streets(&after));
+    }
 }
 
 /// The longest edge of the ground's triangles and lines laid on the hills (metres): well under
@@ -405,8 +556,8 @@ fn paving(sc: &Scenery, f: &Frame, g: &mut Geom) {
     }
 }
 
-/// The roads; `low`: without the lamp posts (the lamps alone).
-fn roads(net: &Network, f: &Frame, g: &mut Geom, low: bool) {
+/// Road surfaces in Main/Town, lamp posts in Main, and the lights alone in Lights.
+fn roads(net: &Network, f: &Frame, g: &mut Geom, tier: Tier) {
     let (min, max) = (f.min, f.max());
     let mut lamps: Vec<DVec2> = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -422,9 +573,14 @@ fn roads(net: &Network, f: &Frame, g: &mut Geom, low: bool) {
             continue;
         }
         let half = road.width * 0.5;
-        strip(g, f, &road.pts, s, half, ROAD_Y, ROAD);
-        // Centre line: keeps distant roads visible like the theaters' line roads.
-        g.line(ROAD, f.at(a, ROAD_Y + 0.05), f.at(b, ROAD_Y + 0.05));
+        if tier != Tier::Lights {
+            strip(g, f, &road.pts, s, half, ROAD_Y, ROAD);
+            // Centre line: keeps distant roads visible like the theaters' line roads.
+            g.line(ROAD, f.at(a, ROAD_Y + 0.05), f.at(b, ROAD_Y + 0.05));
+        }
+        if tier == Tier::Town {
+            continue;
+        }
 
         let (s0, s1) = (road.arc[s], road.arc[s + 1]);
         let mid = (a + b) * 0.5;
@@ -451,11 +607,12 @@ fn roads(net: &Network, f: &Frame, g: &mut Geom, low: bool) {
             lamps.push(foot);
             let top = f.at(foot, 8.5);
             let head = top - dir3(dir.perp()) * sd as f32 * 1.8;
-            if !low {
+            if tier == Tier::Main {
                 g.line(STEEL, f.at(foot, 0.0), top);
                 g.line(STEEL, top, head);
+            } else {
+                g.lamp(LAMP, head - Vec3::Y * 0.2);
             }
-            g.lamp(LAMP, head - Vec3::Y * 0.2);
         }
     }
 }
@@ -485,6 +642,12 @@ pub(super) fn strip(
 }
 
 pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
+    building_mesh(b, f, g);
+    building_lights(b, f, g);
+}
+
+/// Building geometry only; city lights have their own streaming tier.
+fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     let c = f.at(b.p, 0.0);
     let d = dir2(b.dir);
     let along = Vec3::new(d.x, 0.0, d.y);
@@ -510,10 +673,6 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
                 g.block(b.wall, b.wall, &tower, 0.0, th);
                 g.spire(b.roof_colour, &tower, th, t + Vec3::Y * (th + 11.0));
             }
-            if b.kind == Kind::Tower && b.h > 60.0 {
-                g.lamp(BEACON, c + Vec3::Y * (b.h + 1.0));
-            }
-            windows(b, c, d, &mut rng, g);
         }
         Kind::Ruin => ruin(b, c, d, &mut rng, g),
         Kind::Silo => {
@@ -524,7 +683,6 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
         Kind::Chimney => {
             let r = ring(c, 2.4, 8, 0.0);
             g.block(b.wall, b.roof_colour, &r, 0.0, b.h);
-            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
         }
         Kind::Tank => {
             let r = ring(c, b.l * 0.5, 12, 0.0);
@@ -540,8 +698,6 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
         }
         Kind::Mast => {
             lattice(g, c, along, &[(0.0, 1.2), (b.h, 0.4)], 3, (b.h / 8.0) as usize);
-            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
-            g.lamp(BEACON, c + Vec3::Y * (b.h * 0.5));
         }
         Kind::Shelter => {
             // Hardened aircraft shelter: an arched vault along `dir`, door at the front.
@@ -578,7 +734,6 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
                 }
             }
             g.spire(b.roof_colour, &ring(c, 3.2, 10, 0.0), top + 7.8, c + Vec3::Y * b.h);
-            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.3));
         }
         Kind::Windsock => {
             let top = c + Vec3::Y * b.h;
@@ -598,7 +753,6 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
                 g.face(b.wall, &[p, q, tip], (p + q) * 0.5 - top);
                 g.face(b.wall, &[p, q, tip], top - (p + q) * 0.5);
             }
-            g.lamp(BEACON, top + Vec3::Y * 0.4);
         }
         Kind::Sign => {
             let foot = rect(c, d, b.l, b.w);
@@ -618,8 +772,7 @@ fn small(b: &Building) -> bool {
 }
 
 /// A building of the town tier: its outline as a box (a gabled roof for the pitched ones),
-/// towers and tanks as prisms, masts as lines, the beacons kept; small sheds and the
-/// windsocks and signs left out; a lit window or none.
+/// towers and tanks as prisms, masts as lines; small sheds, windsocks and signs left out.
 fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
     let c = f.at(b.p, 0.0);
     let d = dir2(b.dir);
@@ -648,15 +801,6 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                 g.walls(b.wall, &tower, 0.0, th);
                 g.spire(b.roof_colour, &tower, th, t + Vec3::Y * (th + 11.0));
             }
-            if b.kind == Kind::Tower && b.h > 60.0 {
-                g.lamp(BEACON, c + Vec3::Y * (b.h + 1.0));
-            }
-            let mut rng = Rng::new(b.seed);
-            if matches!(b.kind, Kind::Apartment | Kind::Tower) && rng.chance(0.6) {
-                let floor = (rng.f() * (b.h / 3.0).floor().max(1.0) as f64).floor() as f32;
-                let across = Vec3::new(-d.y, 0.0, d.x);
-                g.lamp(WINDOW, c + across * (b.w * 0.5 + 0.15) + Vec3::Y * (floor * 3.0 + 1.6));
-            }
         }
         Kind::Ruin => g.block(SOOT, RUBBLE, &foot, 0.0, b.h * 0.4),
         Kind::Silo | Kind::Tank => {
@@ -664,7 +808,6 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
         }
         Kind::Chimney => {
             g.walls(b.wall, &ring(c, 2.4, 4, 0.0), 0.0, b.h);
-            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
         }
         Kind::WaterTower => {
             g.block(b.wall, b.roof_colour, &ring(c, 4.5, 6, 0.0), b.h - 7.0, b.h);
@@ -672,14 +815,11 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
         }
         Kind::Mast => {
             g.line(STEEL, c, c + Vec3::Y * b.h);
-            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
-            g.lamp(BEACON, c + Vec3::Y * (b.h * 0.5));
         }
         Kind::Shelter => g.block(b.wall, b.wall, &foot, 0.0, b.h * 0.8),
         Kind::Radar => {
             g.walls(b.wall, &rect(c, d, 6.0, 6.0), 0.0, b.h - 9.0);
             g.spire(b.roof_colour, &ring(c, 5.0, 6, 0.0), b.h - 9.0, c + Vec3::Y * b.h);
-            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.3));
         }
         Kind::Windsock | Kind::Sign => {}
     }
@@ -756,6 +896,27 @@ fn ruin(b: &Building, c: Vec3, d: Vec2, rng: &mut Rng, g: &mut Geom) {
             0.0,
             p + Vec3::Y * h,
         );
+    }
+}
+
+/// Building lights without geometry, shared by the city light tier and complete airfields.
+fn building_lights(b: &Building, f: &Frame, g: &mut Geom) {
+    let c = f.at(b.p, 0.0);
+    match b.kind {
+        Kind::House | Kind::Apartment | Kind::Tower => {
+            if b.kind == Kind::Tower && b.h > 60.0 {
+                g.lamp(BEACON, c + Vec3::Y * (b.h + 1.0));
+            }
+            windows(b, c, dir2(b.dir), &mut Rng::new(b.seed), g);
+        }
+        Kind::Chimney => g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5)),
+        Kind::Mast => {
+            g.lamp(BEACON, c + Vec3::Y * (b.h + 0.5));
+            g.lamp(BEACON, c + Vec3::Y * (b.h * 0.5));
+        }
+        Kind::Radar => g.lamp(BEACON, c + Vec3::Y * (b.h + 0.3)),
+        Kind::Windsock => g.lamp(BEACON, c + Vec3::Y * (b.h + 0.4)),
+        _ => {}
     }
 }
 

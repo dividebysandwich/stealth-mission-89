@@ -97,6 +97,10 @@ options-sun-moon = Aurinko ja kuu
     .facts =
         Aurinko taivaalla päivällä, kuu ja tähdet yöllä
         Kuu näyttää tehtävän vaiheen
+options-scenery-distance = Maiseman piirtoetäisyys
+    .facts = Kaukaiset taajamat: 7–30 km; pellot: 24–30 km. Puiden etäisyydet eivät muutu. VR:n automaattinen yksityiskohtaisuus voi lyhentää maiseman etäisyyksiä.
+options-city-light-distance = Kaupunkivalojen etäisyys
+    .facts = Katuvalot, ikkunat ja rakennusten varoitusvalot maiseman piirtoetäisyydestä riippumatta. Sää voi rajoittaa näkyvyyttä.
 options-cloud-quality = Pilvet
 cloud-quality-auto = Auto
     .facts = Matala VR:ssä, korkea näytöllä
