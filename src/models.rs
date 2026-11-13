@@ -27,7 +27,7 @@ impl Plugin for ModelsPlugin {
             .init_resource::<ModelGlobals>()
             .add_systems(
                 PostUpdate,
-                (update_camera_distance, apply_model_state)
+                (update_camera_distance, apply_model_state, lower_runway_marks)
                     .chain()
                     .before(bevy::transform::TransformSystems::Propagate),
             )
@@ -219,6 +219,46 @@ fn below(t: &[Vec3; 3], p: Vec3) -> bool {
 pub struct CondNode {
     pub root: Entity,
     pub conds: Vec<(usize, i16)>,
+}
+
+/// An airbase's runway markings (the `_s11v0` daytime layer of its two finest levels,
+/// tools/models/runway_marks.py): drawn `MARKS_Y` model units over the asphalt to stay clear
+/// of it from afar, they are lowered to just above it as the camera comes close, so they lie
+/// on the runway instead of floating over it. Their footprint (model x, z).
+#[derive(Component)]
+pub struct RunwayMarks {
+    min: Vec2,
+    max: Vec2,
+}
+
+/// The markings' height in the model and the one they are lowered to (model units; the asphalt
+/// is at 0 to 0.06).
+const MARKS_Y: f32 = 0.45;
+const MARKS_LOW_Y: f32 = 0.08;
+/// Within this distance (metres) of the markings they are fully lowered, beyond the second
+/// fully raised.
+const MARKS_NEAR_M: f32 = 300.0;
+const MARKS_FAR_M: f32 = 1500.0;
+
+/// Moves the runway markings down near the camera (`RunwayMarks`).
+fn lower_runway_marks(
+    cameras: Query<(&Camera, &GlobalTransform), Without<crate::camera::OffscreenCamera>>,
+    mut marks: Query<(&RunwayMarks, &GlobalTransform, &mut Transform)>,
+) {
+    let Some((_, cam)) = cameras.iter().find(|(c, _)| c.is_active) else { return };
+    let cam = cam.translation();
+    for (m, gt, mut tf) in &mut marks {
+        // The camera in the model's frame (the node's own offset taken back out).
+        let p = gt.affine().inverse().transform_point3(cam) + tf.translation;
+        let outside = (m.min - p.xz()).max(p.xz() - m.max).max(Vec2::ZERO);
+        let scale = gt.affine().matrix3.x_axis.length();
+        let dist = outside.extend(p.y - MARKS_Y).length() * scale;
+        let raised = ((dist - MARKS_NEAR_M) / (MARKS_FAR_M - MARKS_NEAR_M)).clamp(0.0, 1.0);
+        let y = (MARKS_LOW_Y - MARKS_Y) * (1.0 - raised);
+        if (tf.translation.y - y).abs() > 1e-4 {
+            tf.translation.y = y;
+        }
+    }
 }
 
 /// Sub-object rotated by a state slot angle around its pivot (the node origin).
@@ -585,6 +625,12 @@ impl ModelAssets<'_> {
         if !conds.is_empty() && !name.contains("_pal_") {
             e.insert(CondNode { root, conds });
         }
+        if name.ends_with("_s11v0")
+            && (name.contains("_lod0_") || name.contains("_lod1_"))
+            && let Some(marks) = self.runway_marks(handle)
+        {
+            e.insert(marks);
+        }
 
         if let Some(mesh) = node.mesh.as_ref().and_then(|m| self.meshes.get(m)) {
             let node_color = index_from_name(name);
@@ -788,6 +834,28 @@ impl ModelAssets<'_> {
             todo.extend(n.children.iter().map(|c| (c.clone(), tf, lod0)));
         }
         (lo.x <= hi.x).then(|| (hi - lo).max_element())
+    }
+
+    /// A node whose geometry (its own and its children's) lies flat at the runway markings'
+    /// height: the markings and their footprint.
+    fn runway_marks(&self, handle: &Handle<GltfNode>) -> Option<RunwayMarks> {
+        let mut pts = Vec::new();
+        let mut stack = vec![handle.clone()];
+        while let Some(h) = stack.pop() {
+            let Some(node) = self.nodes.get(&h) else { continue };
+            if let Some(mesh) = node.mesh.as_ref().and_then(|m| self.meshes.get(m)) {
+                for prim in &mesh.primitives {
+                    pts.extend(self.positions(&prim.mesh));
+                }
+            }
+            stack.extend(node.children.iter().cloned());
+        }
+        if pts.is_empty() || pts.iter().any(|p| (p.y - MARKS_Y).abs() > 1e-3) {
+            return None;
+        }
+        let min = pts.iter().fold(Vec2::MAX, |a, p| a.min(p.xz()));
+        let max = pts.iter().fold(Vec2::MIN, |a, p| a.max(p.xz()));
+        Some(RunwayMarks { min, max })
     }
 
     fn positions(&self, mesh: &Handle<Mesh>) -> Vec<Vec3> {
