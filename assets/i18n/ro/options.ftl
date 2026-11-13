@@ -97,6 +97,10 @@ options-sun-moon = Soare și lună
     .facts =
         Soarele pe cer ziua, luna și stelele noaptea
         Luna arată faza din data misiunii
+options-scenery-distance = Distanța peisajului
+    .facts = Localități îndepărtate: 7–30 km; câmpuri: 24–30 km. Distanțele copacilor rămân neschimbate. Detaliile automate VR pot reduce distanțele peisajului.
+options-city-light-distance = Distanța luminilor urbane
+    .facts = Lămpi stradale, ferestre și lumini de avertizare ale clădirilor, independent de distanța peisajului. Vremea poate limita vizibilitatea.
 options-cloud-quality = Nori
 cloud-quality-auto = Auto
     .facts = Scăzută în VR, ridicată pe ecran

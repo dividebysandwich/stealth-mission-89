@@ -97,6 +97,10 @@ options-sun-moon = Sonce in luna
     .facts =
         Podnevi sonce na nebu, ponoči luna in zvezde
         Luna kaže mena misije
+options-scenery-distance = Razdalja pokrajine
+    .facts = Oddaljena naselja: 7–30 km; polja: 24–30 km. Razdalje dreves ostanejo nespremenjene. Samodejne podrobnosti VR lahko skrajšajo razdalje pokrajine.
+options-city-light-distance = Razdalja mestnih luči
+    .facts = Ulične svetilke, okna in opozorilne luči stavb, neodvisno od razdalje pokrajine. Vreme lahko omeji vidljivost.
 options-cloud-quality = Oblaki
 cloud-quality-auto = Samodejno
     .facts = Nizka v VR, visoka na zaslonu

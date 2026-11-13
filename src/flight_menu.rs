@@ -262,6 +262,8 @@ impl Page {
                     TimeOfDay,
                     SunMoon,
                     AutoDetail,
+                    SceneryDistance,
+                    CityLightDistance,
                     Effect(E::Vga),
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),
@@ -401,6 +403,8 @@ enum Item {
     TimeOfDay,
     SunMoon,
     AutoDetail,
+    SceneryDistance,
+    CityLightDistance,
     Cockpit,
     Hud,
     Avionics,
@@ -458,6 +462,8 @@ impl Item {
             Item::TimeOfDay => "fm-time-of-day",
             Item::SunMoon => "fm-sun-moon",
             Item::AutoDetail => "fm-auto-detail",
+            Item::SceneryDistance => "options-scenery-distance",
+            Item::CityLightDistance => "options-city-light-distance",
             Item::Cockpit => "fm-cockpit",
             Item::Hud => "fm-hud",
             Item::Avionics => "fm-avionics",
@@ -500,6 +506,8 @@ impl Item {
             Item::TimeOfDay => style(!s.continuous_time),
             Item::SunMoon => on(s.sun_moon),
             Item::AutoDetail => on(s.vr_auto_detail),
+            Item::SceneryDistance => format!("< {:.0} KM >", s.scenery_distance / 1000.0),
+            Item::CityLightDistance => format!("< {:.0} KM >", s.city_light_distance / 1000.0),
             Item::Cockpit => style(s.classic_cockpit),
             Item::Hud => style(s.classic_hud),
             Item::Avionics => style(s.classic_avionics),
@@ -1412,6 +1420,16 @@ fn navigate(
         Item::Shadows => s.shadows = !s.shadows,
         Item::Lighting => s.local_lights = !s.local_lights,
         Item::AutoDetail => s.vr_auto_detail = !s.vr_auto_detail,
+        Item::SceneryDistance | Item::CityLightDistance => {
+            let distance = if item == Item::SceneryDistance {
+                &mut s.scenery_distance
+            } else {
+                &mut s.city_light_distance
+            };
+            let range = crate::settings::SCENERY_DISTANCE_RANGE;
+            *distance = ((*distance / 1000.0).round() * 1000.0 + dir * 1000.0)
+                .clamp(*range.start(), *range.end());
+        }
         Item::TimeOfDay => s.continuous_time = !s.continuous_time,
         Item::SunMoon => s.sun_moon = !s.sun_moon,
         Item::Cockpit => s.classic_cockpit = !s.classic_cockpit,
@@ -2204,19 +2222,21 @@ mod tests {
             let [_, y0, _, y1] = rects[i];
             item_at(Vec2::new(x, (y0 + y1) / 2.0), Page::Graphics, &s).map(|h| h.1)
         };
-        let r = rects[items.iter().position(|&o| o == Item::PixelSize).unwrap()];
-        let (down, up) = chevron_zones(&Item::PixelSize.value(&s), r).unwrap();
-        // Both chevrons are in the right half of the row, the `<` still steps down.
-        assert!(down[0] > W as f32 / 2.0 && down[2] <= up[0]);
-        let mid = |z: [f32; 4]| (z[0] + z[2]) / 2.0;
-        assert_eq!(at(Item::PixelSize, mid(down)), Some(Press::Down));
-        assert_eq!(at(Item::PixelSize, mid(up)), Some(Press::Up));
-        assert_eq!(at(Item::PixelSize, r[0] + 40.0), Some(Press::Away));
-        assert_eq!(at(Item::PixelSize, (down[2] + up[0]) / 2.0), Some(Press::Away));
-        for x in [r[0] + 40.0, mid(down), mid(up)] {
-            assert_eq!(at(Item::Shaders, x), Some(Press::Entry));
+        for item in [Item::PixelSize, Item::SceneryDistance, Item::CityLightDistance] {
+            let r = rects[items.iter().position(|&o| o == item).unwrap()];
+            let (down, up) = chevron_zones(&item.value(&s), r).unwrap();
+            // Both chevrons are in the right half of the row, the `<` still steps down.
+            assert!(down[0] > W as f32 / 2.0 && down[2] <= up[0]);
+            let mid = |z: [f32; 4]| (z[0] + z[2]) / 2.0;
+            assert_eq!(at(item, mid(down)), Some(Press::Down));
+            assert_eq!(at(item, mid(up)), Some(Press::Up));
+            assert_eq!(at(item, r[0] + 40.0), Some(Press::Away));
+            assert_eq!(at(item, (down[2] + up[0]) / 2.0), Some(Press::Away));
+            for x in [r[0] + 40.0, mid(down), mid(up)] {
+                assert_eq!(at(Item::Shaders, x), Some(Press::Entry));
+            }
+            assert!(up[2] <= r[2] && down[0] >= r[0]);
         }
-        assert!(up[2] <= r[2] && down[0] >= r[0]);
     }
 
     /// Every icon the menus write (`'\u{eXXX}'` here and in `crate::menu`) is in the cut-down

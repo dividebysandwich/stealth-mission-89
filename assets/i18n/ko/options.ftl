@@ -97,6 +97,10 @@ options-sun-moon = 태양과 달
     .facts =
         낮에는 하늘의 태양, 밤에는 달과 별
         달은 임무의 위상을 보여줍니다
+options-scenery-distance = 풍경 표시 거리
+    .facts = 먼 도시: 7–30 km, 농경지: 24–30 km. 나무 표시 거리는 바뀌지 않습니다. VR 자동 세부 설정이 풍경 표시 거리를 줄일 수 있습니다.
+options-city-light-distance = 도시 조명 표시 거리
+    .facts = 가로등, 창문, 건물 경고등의 거리로, 풍경 표시 거리와 독립적입니다. 날씨에 따라 시야가 제한될 수 있습니다.
 options-cloud-quality = 구름
 cloud-quality-auto = 자동
     .facts = VR에서는 낮음, 화면에서는 높음

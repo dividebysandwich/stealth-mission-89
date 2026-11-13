@@ -97,6 +97,10 @@ options-sun-moon = Slunce a měsíc
     .facts =
         Ve dne slunce na obloze, v noci měsíc a hvězdy
         Měsíc ukazuje fázi podle mise
+options-scenery-distance = Vzdálenost scenérie
+    .facts = Vzdálená sídla: 7–30 km; pole: 24–30 km. Vzdálenosti stromů se nemění. Automatické detaily ve VR mohou zkrátit vzdálenosti scenérie.
+options-city-light-distance = Vzdálenost městských světel
+    .facts = Pouliční lampy, okna a výstražná světla budov nezávisle na vzdálenosti scenérie. Počasí může omezit viditelnost.
 options-cloud-quality = Mraky
 cloud-quality-auto = Auto
     .facts = Nízká ve VR, vysoká na obrazovce
