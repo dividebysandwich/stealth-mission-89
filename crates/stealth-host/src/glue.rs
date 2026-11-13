@@ -293,8 +293,12 @@ pub fn sim_objective(sortie: &Sortie) -> Option<(i32, usize)> {
 /// The sortie as a mission (briefing, kneeboard, route, stores): from the base to the target
 /// and back.
 pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) -> Mission {
-    use stealth_mission::{Base, Bay, MapPoint, OrdersLine};
+    use stealth_mission::{Base, Bay, MapPoint, OrdersLine, Plane};
     let mut m = base.clone();
+    // The base mission is generic; the saved rule applies only to an F-117A sortie.
+    let realistic =
+        sortie.aircraft == Aircraft::F117 && state.rules.is_some_and(|r| r.realistic_weapons);
+    m.settings.plane = if realistic { Plane::Lockheed } else { Plane::Fictional };
     let o = &sortie.offer;
     let b = state.site(sortie.base);
     let (bx, by) = b.map_or((0x4000, 0x4000), |s| (s.x, s.y));
@@ -414,11 +418,16 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
         OrdersLine { text: what.into(), color: 11 },
         OrdersLine { text: m.orders.return_to.clone(), color: 11 },
     ];
-    m.loadout.bays =
-        stores(o.kind).iter().map(|&w| Bay { weapon: w, name: String::new(), count: 1 }).collect();
+    // Skip air-to-air missiles before filling the real F-117A's two bays (recon keeps its
+    // camera and HARM instead of the fictional loadout's Sidewinder).
+    m.loadout.bays = stores(o.kind)
+        .into_iter()
+        .filter(|&w| !realistic || !matches!(w, 0 | 1))
+        .map(|w| Bay { weapon: w, name: String::new(), count: 1 })
+        .collect();
     m.loadout.usable_bays = if sortie.aircraft.cargo() || sortie.aircraft.airlifter() {
         0
-    } else if m.settings.plane == stealth_mission::Plane::Lockheed {
+    } else if realistic {
         2
     } else {
         4

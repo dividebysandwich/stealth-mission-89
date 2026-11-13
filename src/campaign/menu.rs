@@ -8,7 +8,7 @@ use stealth_campaign::CampaignSetup;
 use super::ActiveCampaign;
 use crate::layout::{Flow, Span, Split, screen_window};
 use crate::menu::{
-    AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, dropdown, group, icon, section,
+    AMBER, BRIGHT, DIM, MenuState, THEATERS, big_button, dropdown, facts, group, icon, section,
 };
 use crate::mission::MissionData;
 use crate::settings::{AppState, MissionSetup};
@@ -198,6 +198,10 @@ pub fn campaign_window(
                 flow.card(ui, Span::Fixed(220.0), |ui| {
                     let note = Some(t!("cm-rules-note"));
                     crate::menu::simulation_options(ui, &mut settings, note, |ui| {
+                        facts(
+                            ui.checkbox(&mut state.lockheed, t!("mp-realistic-weapons")),
+                            t_lines!("menu-realistic-weapons.facts"),
+                        );
                         ui.checkbox(&mut state.airframe_losses, t!("mp-airframe-losses"));
                         ui.checkbox(&mut state.ai_missions, t!("mp-ai-missions"));
                     });
