@@ -10,8 +10,8 @@
 //! The layout is generated once per theater (`network`), clear of water, concrete and the
 //! theater's own objects (`ground`). Around the viewpoint, 1 km blocks are built into one mesh
 //! per palette colour (`content`), drawn with the palette materials and haze like the theater
-//! models; airfields are built whole at the start. Lamps are batched dots, lit when the
-//! palette's lights come on.
+//! models; airfields are built whole at the start. City lamps, windows and building beacons
+//! stream separately at the selected light distance while the palette's lights are on.
 
 mod airfield;
 pub mod budget;
@@ -110,7 +110,7 @@ fn group_of(tier: Tier) -> Option<&'static Group> {
     match tier {
         Tier::Main | Tier::Town => Some(&TOWNS),
         Tier::Detail | Tier::Far | Tier::Distant => Some(&TREES),
-        Tier::Fields => None,
+        Tier::Fields | Tier::Lights => None,
     }
 }
 
@@ -754,6 +754,7 @@ fn stream_blocks(
     scenery: Res<Scenery>,
     detail: Res<DetailLevel>,
     budget: Res<budget::SceneryBudget>,
+    settings: Res<crate::settings::Settings>,
     palette: Res<Palette>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
     sites: Res<crate::world::StreamSites>,
@@ -764,9 +765,10 @@ fn stream_blocks(
 ) {
     built_now.0 = 0;
     let Ok(anchor) = anchor.single() else { return };
-    let ranges = budget.ranges();
+    let ranges = budget.scenery_ranges(&settings);
     // Alt-D: detail 2 drops the trees, detail 0 and 1 all extra scenery.
     let fields = detail.0 >= 2 && scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
+    let lights = detail.0 >= 2 && scenery.style.is_some() && palette.lights_on();
     let groups: &[&Group] = match (scenery.style.is_some(), detail.0) {
         (false, _) | (_, 0..=1) => &[],
         (_, 2) => &[&TOWNS],
@@ -820,6 +822,13 @@ fn stream_blocks(
             let r = ranges.radius(Tier::Fields).min(max_r);
             around(eye, r, Tier::Fields.block_size(), &mut |bx, by, d| {
                 let w = wanted.entry((Tier::Fields, bx, by)).or_insert(d);
+                *w = w.min(d);
+            });
+        }
+        if lights {
+            let r = ranges.radius(Tier::Lights).min(max_r);
+            around(eye, r, Tier::Lights.block_size(), &mut |bx, by, d| {
+                let w = wanted.entry((Tier::Lights, bx, by)).or_insert(d);
                 *w = w.min(d);
             });
         }
@@ -975,7 +984,7 @@ fn spawn_geom(
     // The coarse tiers' blocks are too big to share one haze level: theirs is per vertex.
     let tag = MeshTag(match tier {
         Tier::Fields => mesh_tag(3, 4, false),
-        Tier::Main => mesh_tag(1, 6, false),
+        Tier::Main | Tier::Lights => mesh_tag(1, 6, false),
         Tier::Town => mesh_tag(1, 6, false) | TAG_VERTEX_HAZE,
         Tier::Distant => mesh_tag(1, 5, false) | TAG_VERTEX_HAZE,
         Tier::Detail | Tier::Far => mesh_tag(1, 5, false),
@@ -1236,8 +1245,8 @@ fn clear_air_defence(
     blocks.0.retain(|&(tier, bx, by), e| {
         let gone = match group_of(tier) {
             Some(g) if std::ptr::eq(g, &TREES) => true,
-            // The buildings of a town block a clearing came to or left.
-            Some(g) if std::ptr::eq(g, &TOWNS) => {
+            // The buildings and their independently streamed lights where a clearing changed.
+            g if tier == Tier::Lights || g.is_some_and(|g| std::ptr::eq(g, &TOWNS)) => {
                 let size = tier.block_size();
                 let min = DVec2::new(bx as f64, by as f64) * size;
                 changed.iter().any(|&(c, r)| {

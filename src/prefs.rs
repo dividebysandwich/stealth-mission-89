@@ -68,6 +68,8 @@ pub struct Prefs {
     pub local_lights: bool,
     pub cloud_quality: crate::weather::CloudQuality,
     pub vr_auto_detail: bool,
+    pub scenery_distance: f32,
+    pub city_light_distance: f32,
     pub continuous_time: bool,
     #[serde(default)]
     pub sun_moon: bool,
@@ -164,6 +166,8 @@ impl Default for Prefs {
             local_lights: false,
             cloud_quality: Default::default(),
             vr_auto_detail: true,
+            scenery_distance: crate::settings::DEFAULT_SCENERY_DISTANCE,
+            city_light_distance: crate::settings::DEFAULT_SCENERY_DISTANCE,
             continuous_time: true,
             sun_moon: true,
             classic_cockpit: false,
@@ -271,6 +275,8 @@ impl Prefs {
             local_lights: s.local_lights,
             cloud_quality: s.cloud_quality,
             vr_auto_detail: s.vr_auto_detail,
+            scenery_distance: s.scenery_distance,
+            city_light_distance: s.city_light_distance,
             continuous_time: s.continuous_time,
             sun_moon: s.sun_moon,
             classic_cockpit: s.classic_cockpit,
@@ -362,6 +368,10 @@ impl Prefs {
         s.local_lights |= self.local_lights;
         s.cloud_quality = self.cloud_quality;
         s.vr_auto_detail &= self.vr_auto_detail;
+        let distances = crate::settings::SCENERY_DISTANCE_RANGE;
+        s.scenery_distance = self.scenery_distance.clamp(*distances.start(), *distances.end());
+        s.city_light_distance =
+            self.city_light_distance.clamp(*distances.start(), *distances.end());
         s.continuous_time |= self.continuous_time;
         s.sun_moon |= self.sun_moon;
         s.classic_cockpit |= self.classic_cockpit;
@@ -428,6 +438,8 @@ impl Prefs {
         self.local_lights = s.local_lights;
         self.cloud_quality = s.cloud_quality;
         self.vr_auto_detail = s.vr_auto_detail;
+        self.scenery_distance = s.scenery_distance;
+        self.city_light_distance = s.city_light_distance;
         self.continuous_time = s.continuous_time;
         self.sun_moon = s.sun_moon;
         self.classic_cockpit = s.classic_cockpit;
@@ -539,6 +551,8 @@ mod tests {
         s.rwr_volume = 0.5;
         s.rwr_tones = crate::sound::RwrTones::Detect;
         s.classic_hud = true;
+        s.scenery_distance = 18_000.0;
+        s.city_light_distance = 30_000.0;
         let p: Prefs =
             serde_json::from_str(&serde_json::to_string(&Prefs::options(&s)).unwrap()).unwrap();
         let mut back = Settings::from_args();
@@ -547,6 +561,17 @@ mod tests {
         let old: Prefs = serde_json::from_str("{}").unwrap();
         assert_eq!((old.master_volume, old.engine_low_pass), (1.0, true));
         assert_eq!((old.rwr_volume, old.rwr_tones), (1.0, crate::sound::RwrTones::All));
+        assert_eq!((old.scenery_distance, old.city_light_distance), (7000.0, 7000.0));
+    }
+
+    #[test]
+    fn scenery_distances_are_clamped_when_loaded() {
+        let p: Prefs =
+            serde_json::from_str(r#"{"scenery_distance": 1000000, "city_light_distance": -1}"#)
+                .unwrap();
+        let mut s = Settings::from_args();
+        p.apply(&mut MenuState::default(), &mut s);
+        assert_eq!((s.scenery_distance, s.city_light_distance), (30_000.0, 7000.0));
     }
 
     #[test]

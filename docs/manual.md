@@ -208,6 +208,13 @@ pages for what can change in flight.
 | **Sound** | *Master*, *Engine*, *Effects*, *Warnings* and *RWR* volumes; *Radar warning tones*: all, detections only, launches only, or off. *Engine low-pass* muffles the engines inside the cockpit. |
 | **Controls** | *Keys and joystick* (1.4). *Head/Eye tracking*. |
 
+*Scenery distance* sets distant towns from 7 to 30 km and farmland from 24 to 30 km.
+*City-light distance* independently sets street lamps, windows and building beacons from 7 to
+30 km. Both default to 7 km and change in 1 km steps. Detailed buildings and tree distances
+stay unchanged. Higher distances load more scenery; automatic VR detail can shorten town
+and farmland ranges, while city lights keep their selected range. Weather still limits how
+far lights can be seen. Changes apply during the flight and are saved for the next run.
+
 ## 1.4 Controls
 
 ![Input mapping](images/controls.png)
@@ -1694,7 +1701,7 @@ back a page; on the first page they close the menu.
 | Page | Entries |
 |---|---|
 | Game | *Cockpit* (F-117A only), *HUD*, *Avionics*, *Auto trim*, *Keep time acceleration*, *Tooltips*, *Cockpit size* (VR only, 70-150 %: the size of the cockpit and the world in the VR headset). The flight model and Tacview are set in the main menu. |
-| Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR). |
+| Graphics | *Shaders*, *Shadows*, *Point lights*, *Time of day*, *Anti-aliasing*, *Sun and moon* (with the classic time of day), *Auto scenery detail* (in VR), *Scenery distance* and *City-light distance* (7–30 km, left / right or the < > arrows). |
 | Effects | The effect switches of OPTIONS > GRAPHICS: shake, flashes, barrage, night lighting, NVG, snow, mist, cloud shadows, sunbeams, vapour, night sky; VGA colours, scanlines and pixelize. |
 | Sound | The *Master*, *Engine*, *Effects*, *Warnings*, *RWR*, *Radio* and *ATC voice* volumes in steps of 10 % (left / right or the < > halves), *Engine low-pass*. |
 | Controls | *Head tracking* (desktop) and *Tracker mouse look*, *Keys and joystick*: the input mapping (chapter 1.4) over the view, in VR on a panel in front of you (point a controller, the trigger clicks); DONE returns to the menu. The key guide. |
