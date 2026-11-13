@@ -194,7 +194,11 @@ const DOT_SIZE: f32 = 0.6;
 const DOT_MIN_PIXELS: f32 = 2.0;
 // Per-lamp flag above the palette byte (dots.rs `DOT_CITY`), independent of mesh tags.
 const DOT_CITY: u32 = 256u;
-// Modern city lights: a small distant footprint, plus a projected glow as the lamp resolves
+// Read the colour from the live material (PAPI), preserving the per-vertex style flags.
+const DOT_MATERIAL_COLOUR: u32 = 512u;
+// Packed size variation from dots.rs: zero is unset, 1..255 spans -1..1 around 128.
+const DOT_VARIATION_SHIFT: u32 = 10u;
+// Modern lamps: a small distant footprint, plus a projected glow as the lamp resolves
 // on approach or with TGP zoom. The effective diameter includes the soft glow around a lamp
 // or window; limit growth in very close views.
 const CITY_DOT_SCALE: f32 = 0.5;
@@ -202,6 +206,7 @@ const CITY_DOT_MIN_PIXELS: f32 = 2.5;
 const CITY_DOT_FAR_MAX_PIXELS: f32 = 3.5;
 const CITY_DOT_METRES: f32 = 2.0;
 const CITY_DOT_MAX: f32 = 4.0;
+const CITY_DOT_VARIATION: f32 = 0.1;
 const CITY_DOT_BRIGHTNESS: f32 = 1.2;
 // Aircraft lights (level code 5) up close: drawn as a lamp this many metres across, up to
 // AIRCRAFT_DOT_MAX times their size far away.
@@ -247,6 +252,9 @@ fn vertex(v: Vertex) -> VertexOutput {
         | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS);
 #ifdef DOT_COLOUR
     out.dot_colour = v.colour;
+    if ((v.colour & DOT_MATERIAL_COLOUR) != 0u) {
+        out.dot_colour = (v.colour & ~0xFFu) | (material.word & 0xFFu);
+    }
 #endif
 #ifdef VERTEX_WORD
     out.word = v.word & 0xFFFFu;
@@ -273,7 +281,7 @@ fn vertex(v: Vertex) -> VertexOutput {
 
     // Dot lights (dots.rs `dot_batch`: four vertices at each dot's centre) start at a constant
     // size in this view's pixels; in XR the base is at most a 320x200 pixel's angular size.
-    // Modern city lights and nearby aircraft lamps also grow with their projected size.
+    // Modern lamps grow with their projected size; other aircraft dots keep their own sizing.
 #ifdef DOT_BATCH
     out.dot_uv = vec3<f32>(v.corner * 2.0, 1.0);
     if (((tag >> 7u) & 1u) == 1u) {
@@ -295,10 +303,13 @@ fn vertex(v: Vertex) -> VertexOutput {
         if (globals.params.w != 0.0 && (v.colour & DOT_CITY) != 0u) {
             let far_px = clamp(px * CITY_DOT_SCALE, CITY_DOT_MIN_PIXELS, CITY_DOT_FAR_MAX_PIXELS);
             let lamp = CITY_DOT_METRES * 0.5 * vp.y * view.clip_from_view[1][1] / max(clip.w, 0.01);
+            let size_code = (v.colour >> DOT_VARIATION_SHIFT) & 0xFFu;
+            let variation = select(0.0, f32(size_code) - 128.0, size_code != 0u);
+            let scale = 1.0 + variation * (CITY_DOT_VARIATION / 127.0);
             // Add the footprints' areas: a smooth transition from a distant speck to a
-            // resolved light, increasing its total light on screen as we approach.
-            px = min(length(vec2<f32>(far_px, lamp)), far_px * CITY_DOT_MAX);
-        }
+            // resolved light. City size variation still obeys the same close-up cap.
+            px = min(length(vec2<f32>(far_px, lamp)) * scale, far_px * CITY_DOT_MAX);
+        } else
 #endif
         if ((tag & 7u) == 5u) {
             let lamp = AIRCRAFT_DOT_METRES * 0.5 * vp.y * view.clip_from_view[1][1] / max(clip.w, 0.01);

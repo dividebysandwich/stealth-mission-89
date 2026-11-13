@@ -162,11 +162,7 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
                 }
             }
             power(&sc.net, &f, &mut g, low);
-            // Style all town lights, including red beacons, within the existing scenery tiers.
-            // Airfield beacons are built separately and retain their ordinary lamp flags.
-            for (colour, _) in &mut g.lamps {
-                *colour |= crate::dots::DOT_CITY;
-            }
+            vary_city_lamps(&f, &mut g);
         }
         Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near),
         Tier::Far => trees(sc, &f, &mut g, TreeLod::Far),
@@ -180,6 +176,22 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
     }
     drape(&sc.hills, &f, &mut g);
     g
+}
+
+/// Give generated settlement lamps stable sizes, independent of the streaming block size
+/// and floating origin. Called here because airfields also use the shared building helpers.
+fn vary_city_lamps(f: &Frame, g: &mut Geom) {
+    for (colour, p) in &mut g.lamps {
+        let h = hash(
+            0x1A_4D ^ u64::from(*colour & 0xFF),
+            (f.o.x + p.x as f64).round() as i64,
+            (f.o.y - p.z as f64).round() as i64,
+            p.y.round() as i64,
+        );
+        // Sum two uniform samples: most lamps stay near normal size, fewer at either end.
+        let size = ((h & 0x7F) + ((h >> 7) & 0x7F) + 1) as u32;
+        *colour |= size << crate::dots::DOT_VARIATION_SHIFT;
+    }
 }
 
 /// The longest edge of the ground's triangles and lines laid on the hills (metres): well under
@@ -779,7 +791,7 @@ fn windows(b: &Building, c: Vec3, d: Vec2, rng: &mut Rng, g: &mut Geom) {
         let side = if rng.chance(0.5) { 1.0 } else { -1.0 };
         let floor = (rng.f() * floors as f64).floor() as f32;
         let x = rng.range(-0.4, 0.4) as f32 * b.l;
-        g.city_lamp(
+        g.lamp(
             WINDOW,
             c + along * x + across * side * (b.w * 0.5 + 0.15) + Vec3::Y * (floor * 3.0 + 1.6),
         );

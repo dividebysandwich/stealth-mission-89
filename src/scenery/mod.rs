@@ -38,7 +38,7 @@ use bevy::mesh::{MeshTag, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task};
 
-use crate::dots::{dot_batch, dot_batch_coloured};
+use crate::dots::{dot_batch_coloured, dot_lamps};
 use crate::models::{ModelAssets, ModelLibrary};
 use crate::palette::{DetailLevel, Palette, REMAP_DETAIL_HIGH};
 use crate::palette_material::{
@@ -1056,7 +1056,7 @@ fn spawn_geom(
         );
     }
     for (phase, points) in geom.strobes {
-        let m = meshes.add(dot_batch(&points));
+        let m = meshes.add(dot_lamps(&points));
         children.push(
             commands
                 .spawn((
@@ -1342,7 +1342,7 @@ fn airfields(
             for l in papi {
                 let light = commands
                     .spawn((
-                        Mesh3d(meshes.add(dot_batch(&[Vec3::ZERO]))),
+                        Mesh3d(meshes.add(dot_lamps(&[Vec3::ZERO]))),
                         MeshMaterial3d(palette.line_material(airfield::PAPI_LOW)),
                         MeshTag(mesh_tag(1, 6, false) | TAG_DOT | dot_size_tenths(PAPI_DOT_TENTHS)),
                         Transform::from_translation(l.pos),

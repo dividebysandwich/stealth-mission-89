@@ -2,9 +2,9 @@
 //! are single pixels (zero-length lines) drawn in a solid palette colour. Here each is a quad
 //! that the palette shader expands around the dot's position to a minimum size in the
 //! pixels of whichever view draws it (main view, XR eyes, tracking camera), drawn with the
-//! line material (solid colour, distance haze). Modern city lights have a small, soft round
-//! footprint far away and grow with their projected size on approach or with zoom. Aircraft
-//! lamps also grow up close; other lights keep their fixed screen size.
+//! line material (solid colour, distance haze). Modern city, airfield and aircraft signal
+//! lights have a small, soft round footprint far away and grow with their projected size on
+//! approach or with zoom. Other dots keep their existing appearance.
 //!
 //! Dots are drawn in the transparent pass (`dot_materials`): as opaque geometry, which writes
 //! depth, tens of thousands of these tiny quads hang the binning pass of the Steam Frame's GPU
@@ -40,8 +40,8 @@ pub struct DotAssets {
 }
 
 impl DotAssets {
-    /// A model lamp with the city style and its palette colour. Other colours are distant
-    /// model silhouettes rather than lights, so they keep the ordinary dot mesh.
+    /// A model lamp with the city-light style and its palette colour, including airfield and
+    /// aircraft signal lights. Distant model silhouettes keep the ordinary dot mesh.
     pub fn city_mesh(&self, colour: u8) -> Option<&Handle<Mesh>> {
         self.city.get(&colour)
     }
@@ -64,13 +64,19 @@ impl DotLight {
 }
 
 /// Per-vertex palette colour (low byte) and flags of a dot batch (otherwise the material's
-/// colour). Flags belong to each lamp, so city lights can share a draw with warning beacons.
+/// colour). Flags belong to each lamp, so lights can share a draw with ordinary dots.
 pub const ATTRIBUTE_DOT_COLOUR: MeshVertexAttribute =
     MeshVertexAttribute::new("DotColour", 0x7D07_0001, VertexFormat::Uint32);
 
-/// Bit above the palette byte in `ATTRIBUTE_DOT_COLOUR`: a city lamp, window or red beacon.
+/// Bit above the palette byte in `ATTRIBUTE_DOT_COLOUR`: use the city-light style for a lamp,
+/// window or signal light, including airfields and aircraft.
 /// Kept separate from mesh tags (which also encode aircraft spotting sizes and light ranges).
 pub const DOT_CITY: u32 = 1 << 8;
+/// Take the palette byte from the live material (PAPI changes red/white), keeping vertex flags.
+pub const DOT_MATERIAL_COLOUR: u32 = 1 << 9;
+/// Bits 10..17 of `ATTRIBUTE_DOT_COLOUR`: city lamp size variation, 1..255 for -10%..+10%
+/// (128 is normal). Zero leaves the size unchanged. See both palette shaders.
+pub const DOT_VARIATION_SHIFT: u32 = 10;
 
 /// A dot batch whose dots have their own palette colours and flags, drawn in the given order.
 pub fn dot_batch_coloured(points: &[Vec3], colours: &[u32]) -> Mesh {
@@ -78,10 +84,19 @@ pub fn dot_batch_coloured(points: &[Vec3], colours: &[u32]) -> Mesh {
     dot_batch(points).with_inserted_attribute(ATTRIBUTE_DOT_COLOUR, colours)
 }
 
+/// Lamps with the city-light style whose colour comes from their material, including PAPI
+/// units that change colour and approach flashers that share one colour.
+pub fn dot_lamps(points: &[Vec3]) -> Mesh {
+    dot_batch(points).with_inserted_attribute(
+        ATTRIBUTE_DOT_COLOUR,
+        vec![DOT_CITY | DOT_MATERIAL_COLOUR; points.len() * 4],
+    )
+}
+
 fn setup_dot_assets(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    // Share these tiny meshes across all settlement models. Their materials still carry the
+    // Share these tiny meshes across all models' lamps. Their materials still carry the
     // plain colour for local illumination; only the vertices carry the city-style flag.
-    let city = [15, 146, 147, 148, 149, 150, 151]
+    let city = [9, 15, 146, 147, 148, 149, 150, 151]
         .into_iter()
         .map(|c| (c, meshes.add(dot_batch_coloured(&[Vec3::ZERO], &[c as u32 | DOT_CITY]))))
         .collect();
