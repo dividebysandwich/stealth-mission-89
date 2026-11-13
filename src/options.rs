@@ -362,6 +362,22 @@ fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
         });
     });
     toggled |= s.cloud_quality != clouds;
+    for (distance, id) in [
+        (&mut s.scenery_distance, "options-scenery-distance"),
+        (&mut s.city_light_distance, "options-city-light-distance"),
+    ] {
+        let range = crate::settings::SCENERY_DISTANCE_RANGE;
+        let mut km = *distance / 1000.0;
+        let slider = egui::Slider::new(&mut km, range.start() / 1000.0..=range.end() / 1000.0)
+            .step_by(1.0)
+            .fixed_decimals(0)
+            .suffix(" km")
+            .text(t!(id));
+        if facts(ui.add(slider), t_lines!(&format!("{id}.facts"))).changed() {
+            *distance = km * 1000.0;
+            toggled = true;
+        }
+    }
     // The classic time of day can still show the sun and the moon.
     if !s.continuous_time {
         ui.indent("sun_moon", |ui| {

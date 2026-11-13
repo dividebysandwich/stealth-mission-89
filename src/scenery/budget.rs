@@ -29,6 +29,7 @@ pub struct Ranges {
     far: f64,
     distant: f64,
     fields: f64,
+    lights: f64,
     pub lod: f32,
     /// Share of the houses the town tier draws.
     pub houses: f64,
@@ -43,6 +44,7 @@ impl Ranges {
             Tier::Far => self.far,
             Tier::Distant => self.distant,
             Tier::Fields => self.fields,
+            Tier::Lights => self.lights,
         }
     }
 }
@@ -56,6 +58,7 @@ const FULL: Ranges = Ranges {
     far: 2000.0,
     distant: 4000.0,
     fields: 24_000.0,
+    lights: 7000.0,
     lod: 1.0,
     houses: 1.0,
 };
@@ -66,22 +69,29 @@ const LEAST: Ranges = Ranges {
     far: 800.0,
     distant: 1600.0,
     fields: 10_000.0,
+    lights: 7000.0,
     lod: 0.4,
     houses: 0.3,
 };
 
 pub fn ranges(level: u8) -> Ranges {
+    interpolate(level, FULL)
+}
+
+fn interpolate(level: u8, full: Ranges) -> Ranges {
     let t = level.min(MAX) as f64 / MAX as f64;
     let mix = |a: f64, b: f64| a * (b / a).powf(t);
     Ranges {
-        main: mix(FULL.main, LEAST.main),
-        town: mix(FULL.town, LEAST.town),
-        detail: mix(FULL.detail, LEAST.detail),
-        far: mix(FULL.far, LEAST.far),
-        distant: mix(FULL.distant, LEAST.distant),
-        fields: mix(FULL.fields, LEAST.fields),
-        lod: mix(FULL.lod as f64, LEAST.lod as f64) as f32,
-        houses: mix(FULL.houses, LEAST.houses),
+        main: mix(full.main, LEAST.main),
+        town: mix(full.town, LEAST.town),
+        detail: mix(full.detail, LEAST.detail),
+        far: mix(full.far, LEAST.far),
+        distant: mix(full.distant, LEAST.distant),
+        fields: mix(full.fields, LEAST.fields),
+        // City lights have their own range, independent of the building budget.
+        lights: full.lights,
+        lod: mix(full.lod as f64, LEAST.lod as f64) as f32,
+        houses: mix(full.houses, LEAST.houses),
     }
 }
 
@@ -94,6 +104,23 @@ pub struct SceneryBudget {
 impl SceneryBudget {
     pub fn ranges(&self) -> Ranges {
         ranges(self.level)
+    }
+
+    /// The selected town and farmland ranges are the VR governor's full-detail ceiling.
+    /// Detailed buildings, all tree tiers and model LODs retain their existing ranges.
+    pub fn scenery_ranges(&self, settings: &Settings) -> Ranges {
+        let range = crate::settings::SCENERY_DISTANCE_RANGE;
+        let town = settings.scenery_distance.clamp(*range.start(), *range.end()) as f64;
+        let t = (town - FULL.town) / (*range.end() as f64 - FULL.town);
+        interpolate(
+            self.level,
+            Ranges {
+                town,
+                fields: FULL.fields + t * (30_000.0 - FULL.fields),
+                lights: settings.city_light_distance.clamp(*range.start(), *range.end()) as f64,
+                ..FULL
+            },
+        )
     }
 }
 
@@ -306,6 +333,36 @@ fn govern(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn selected_distances_are_independent_and_preserve_other_detail() {
+        let mut settings = Settings::from_args();
+        settings.scenery_distance = 7000.0;
+        settings.city_light_distance = 7000.0;
+        for level in 0..=MAX {
+            let budget = SceneryBudget { level };
+            let base = budget.ranges();
+            assert_eq!(budget.scenery_ranges(&settings), base);
+            settings.scenery_distance = 30_000.0;
+            let extended = budget.scenery_ranges(&settings);
+            assert!(extended.town >= base.town && extended.fields >= base.fields);
+            assert_eq!(Ranges { town: base.town, fields: base.fields, ..extended }, base);
+            if level == 0 {
+                assert_eq!((extended.town, extended.fields), (30_000.0, 30_000.0));
+            } else if level == MAX {
+                assert!((extended.town - LEAST.town).abs() < 1e-6);
+                assert!((extended.fields - LEAST.fields).abs() < 1e-6);
+            }
+            settings.city_light_distance = 30_000.0;
+            assert_eq!(budget.scenery_ranges(&settings), Ranges { lights: 30_000.0, ..extended });
+            settings.scenery_distance = 7000.0;
+            assert_eq!(budget.scenery_ranges(&settings), Ranges { lights: 30_000.0, ..base });
+            settings.city_light_distance = 7000.0;
+        }
+        settings.scenery_distance = 18_500.0;
+        let middle = SceneryBudget::default().scenery_ranges(&settings);
+        assert_eq!((middle.town, middle.fields), (18_500.0, 27_000.0));
+    }
 
     const P: f32 = 1.0 / 72.0;
 
