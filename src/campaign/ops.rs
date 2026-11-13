@@ -2084,7 +2084,7 @@ fn briefing(
         b.base = p.base;
     }
     let sortie = preview(&o, b.base, b.aircraft);
-    let m = sortie_mission(&c.mission, c.state(), &sortie);
+    let mut m = sortie_mission(&c.mission, c.state(), &sortie);
     // What the base has of the weapons that run out.
     let stock: Vec<(u8, u32)> = (0..crate::loadout::WEAPONS.len() as u8)
         .filter_map(|w| {
@@ -2168,6 +2168,11 @@ fn briefing(
                                         && b.aircraft != a
                                     {
                                         b.aircraft = a;
+                                        m = sortie_mission(
+                                            &c.mission,
+                                            c.state(),
+                                            &preview(&o, b.base, a),
+                                        );
                                         b.loadout =
                                             crate::loadout::PlannedLoadout::of(&m, kind_of(a));
                                     }

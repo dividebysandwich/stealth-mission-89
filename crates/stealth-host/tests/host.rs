@@ -169,6 +169,87 @@ fn a_campaign_keeps_its_rules() {
     assert_eq!(Host::resume(old, &data, easy).unwrap().rules, easy);
 }
 
+/// The saved rule reaches the briefing's aircraft and stores, only for the F-117A.
+#[test]
+fn a_campaign_briefs_realistic_f117_loadouts() {
+    use stealth_campaign::{MissionKind, Progress, Sortie, WorldView};
+    use stealth_mission::Plane;
+    let data = theater::game_data().unwrap();
+    for realistic in [false, true] {
+        let rules = Rules { realistic_weapons: realistic, ..Default::default() };
+        let mut host = Host::new(setup("central_europe"), &data, rules).unwrap();
+        host.state.tick(0.1, &WorldView::default(), &[]);
+        let saved = serde_json::from_str(&serde_json::to_string(&host.state).unwrap()).unwrap();
+        let resumed = Host::resume(
+            saved,
+            &data,
+            Rules { realistic_weapons: !realistic, ..Default::default() },
+        )
+        .unwrap();
+        for host in [&host, &resumed] {
+            for aircraft in [Aircraft::F117, Aircraft::F16] {
+                for kind in [MissionKind::Recon, MissionKind::Strike] {
+                    let offer = host.state.board.iter().find(|o| o.kind == kind).cloned().unwrap();
+                    let sortie = Sortie {
+                        id: 1,
+                        base: offer.base,
+                        offer,
+                        aircraft,
+                        started: 0.0,
+                        progress: Progress::default(),
+                        flight: 0,
+                        position: 0,
+                        crew: Vec::new(),
+                    };
+                    let m = stealth_host::glue::sortie_mission(&host.mission, &host.state, &sortie);
+                    let real_f117 = realistic && aircraft == Aircraft::F117;
+                    assert_eq!(
+                        m.settings.plane,
+                        if real_f117 { Plane::Lockheed } else { Plane::Fictional }
+                    );
+                    assert_eq!(m.loadout.usable_bays, if real_f117 { 2 } else { 4 });
+                    let weapons: Vec<_> = m
+                        .loadout
+                        .bays
+                        .iter()
+                        .take(m.loadout.usable_bays)
+                        .map(|b| b.weapon)
+                        .collect();
+                    let expected = match (kind, real_f117) {
+                        (MissionKind::Recon, true) => vec![16, 2],
+                        (MissionKind::Recon, false) => vec![16, 0, 2, 0],
+                        (_, true) => vec![6, 8],
+                        (_, false) => vec![6, 8, 6, 0],
+                    };
+                    assert_eq!(weapons, expected, "{aircraft:?}, {kind:?}, realistic={realistic}");
+                }
+            }
+        }
+    }
+}
+
+/// Starting a sortie loads the same restricted stores as its briefing, with no cannon.
+#[test]
+fn a_realistic_f117_flies_its_campaign_loadout() {
+    use stealth_campaign::MissionKind;
+    let setup = setup("central_europe");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(setup.theater, &setup.theater_code).unwrap();
+    for realistic in [false, true] {
+        let rules = Rules { realistic_weapons: realistic, ..Default::default() };
+        let mut host = Host::new(setup.clone(), &data, rules).unwrap();
+        let mut sim = host.new_sim(&sim_data);
+        host.begin(&mut sim);
+        host.tick(&mut sim, 0.1, &[]);
+        let offer = host.state.board.iter().find(|o| o.kind == MissionKind::Recon).unwrap().id;
+        host.take_mission(&mut sim, PlayerId(0), offer, None, Aircraft::F117, None).unwrap();
+        let expected =
+            if realistic { vec![(16, 1), (2, 1)] } else { vec![(16, 1), (0, 1), (2, 1), (0, 1)] };
+        assert_eq!(sim.bays().0, expected, "realistic={realistic}");
+        assert_eq!(sim.has_gun(), !realistic);
+    }
+}
+
 /// A drone wave over Ukraine played out in the simulation: the drones dive into their target
 /// or are shot down.
 #[test]
