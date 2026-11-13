@@ -65,7 +65,7 @@ HUD_Y = 0.69
 # The rear cockpit: the pilot's eye from the gunner's; the pilot's headrest (half width, fore and
 # aft ends, top over the gunner's glareshield) standing up behind the pilot's head, ahead of it.
 PILOT_EYE = Vector((0.0, 0.94, -0.08))
-HEADREST = (0.15, 0.78, 0.90, 0.17)
+HEADREST = (0.15, 0.78, 0.90, 0.07)
 # Pedestal: the layout's keyboard, scratchpad and standby attitude display (PED_RECT, mm) on its
 # face sloping down aft from the panel's bottom edge, the layout's u = PED_U on the centre line and
 # v = PED_V[0] at the top; PED_SLOPE (degrees) below the horizontal, PED_W wide; its column to the
@@ -740,7 +740,7 @@ if REAR:
     yz = [(y0, glare_top - 0.05), (y0, top_z - 0.03), (y0 + 0.03, top_z), (y1 - 0.02, top_z), (y1, top_z - 0.04), (y1, glare_top - 0.05)]
     prism("dark", "dark", yz, -hw, hw)
     # The seat back's shoulders, wider, either side under it.
-    prism("dark", "dark", [(y0 + 0.01, glare_top - 0.06), (y0 + 0.01, glare_top + 0.04), (y1, glare_top + 0.06), (y1, glare_top - 0.06)], -0.24, 0.24)
+    prism("dark", "dark", [(y0 + 0.01, glare_top - 0.06), (y0 + 0.01, glare_top - 0.01), (y1, glare_top + 0.01), (y1, glare_top - 0.06)], -0.24, 0.24)
     # The pilot's glareshield, as his own cockpit's (its top RISE over his panel's top edge).
     pt = PILOT_EYE + point(0.0, TOP)
     p_top = pt.z + RISE
