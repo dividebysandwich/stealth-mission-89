@@ -14,6 +14,7 @@ loadout-out-of-stock = Tidak ada stok untuk misi ini
 loadout-mirror = Sama di kedua sisi
     .facts = Memuat { $station } juga
 loadout-stores = Persenjataan
+loadout-realistic-f117 = Persenjataan F-117A realistis
 loadout-stations = Stasiun
 loadout-click-drawing = Atau klik stasiun pada gambar
 loadout-needs-equipment = Misi membutuhkan kamera atau peralatan khusus

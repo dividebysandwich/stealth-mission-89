@@ -14,6 +14,7 @@ loadout-out-of-stock = Šai misijai krājumā nav
 loadout-mirror = Vienādi abās pusēs
     .facts = Piekar arī { $station }
 loadout-stores = Iekārtas
+loadout-realistic-f117 = Reālistisks F-117A bruņojums
 loadout-stations = Piekares punkti
 loadout-click-drawing = Vai noklikšķiniet uz punkta zīmējumā
 loadout-needs-equipment = Misijai vajadzīga sava kamera vai īpašais aprīkojums

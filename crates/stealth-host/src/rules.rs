@@ -84,6 +84,13 @@ impl Rules {
         }
     }
 
+    /// A sortie's aircraft: the real F-117A also when chosen for the sortie.
+    pub fn sortie_airframe(&self, sortie: &stealth_campaign::Sortie) -> Airframe {
+        let mut a = self.airframe(sortie.aircraft);
+        a.lockheed |= sortie.aircraft == Aircraft::F117 && sortie.realistic;
+        a
+    }
+
     /// An aircraft's simulation traits under these rules (the real F-117A without a cannon).
     pub fn airframe(&self, aircraft: Aircraft) -> Airframe {
         match aircraft {

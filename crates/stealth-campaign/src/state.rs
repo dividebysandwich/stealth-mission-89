@@ -652,6 +652,9 @@ pub struct Sortie {
     /// The other players who sat at his aircraft's gunner's console (or flew it before him).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub crew: Vec<PlayerId>,
+    /// The F-117A as it was (two bays, no cannon), chosen for this sortie in its briefing.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub realistic: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

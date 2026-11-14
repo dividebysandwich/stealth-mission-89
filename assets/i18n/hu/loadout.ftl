@@ -14,6 +14,7 @@ loadout-out-of-stock = Nincs készleten ehhez a küldetéshez
 loadout-mirror = Mindkét oldalon ugyanaz
     .facts = Ide is tölt: { $station }
 loadout-stores = Felszerelés
+loadout-realistic-f117 = Valósághű F-117A fegyverzet
 loadout-stations = Felfüggesztési pontok
 loadout-click-drawing = Vagy kattintson egy pontra a rajzon
 loadout-needs-equipment = A küldetéshez kamera vagy különleges felszerelés kell

@@ -14,6 +14,7 @@ loadout-out-of-stock = Za to misijo ni nič na zalogi
 loadout-mirror = Enako na obeh straneh
     .facts = Naloži tudi: { $station }
 loadout-stores = Oborožitev
+loadout-realistic-f117 = Realistična oborožitev F-117A
 loadout-stations = Nosilci
 loadout-click-drawing = Ali kliknite nosilec na risbi
 loadout-needs-equipment = Misija potrebuje kamero ali posebno opremo

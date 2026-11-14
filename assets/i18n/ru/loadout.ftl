@@ -14,6 +14,7 @@ loadout-out-of-stock = Нет на складе для этой миссии
 loadout-mirror = Одинаково с обеих сторон
     .facts = Также загружает: { $station }
 loadout-stores = Подвеска
+loadout-realistic-f117 = Реалистичное вооружение F-117A
 loadout-stations = Точки подвески
 loadout-click-drawing = Или щёлкните точку на схеме
 loadout-needs-equipment = Миссии нужна камера или специальное оборудование

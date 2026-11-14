@@ -3482,6 +3482,9 @@ crashes, time of day (moonlit nights shorten the enemy's visual range), realisti
 weapons, friendly fire, whether losses cost resources, whether the friendly AI flies missions, and of course the campaign's own options. The weather is the same for
 everybody: the same clouds in the same places, and the same lightning strikes. Each player keeps their own cockpit (classic or
 modern), flight model, avionics, HUD, shaders, shadows and lights, and picks their aircraft for each sortie on the briefing's LOADOUT page.
+In an F-117A, the LOADOUT page's *Realistic F-117A loadout* switch flies that sortie as the real
+aircraft (two bays, no gun, no AIM-9 or AIM-120); under the server's realistic F-117A weapons it is
+always on.
 
 ## 11.5 On the Ops screen
 

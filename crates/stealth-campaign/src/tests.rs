@@ -51,6 +51,11 @@ fn campaign(code: &str, index: usize) -> CampaignState {
 
 const P0: PlayerId = PlayerId(0);
 
+/// Fly an offer in the fictional loadout.
+fn take_offer(offer: u32, base: Option<ObjectId>, aircraft: Aircraft) -> Command {
+    Command::TakeMission { offer, base, aircraft, realistic: false }
+}
+
 /// Player `p` flies over object `at` long enough to count as there.
 fn be_there(c: &mut CampaignState, p: PlayerId, at: ObjectId) {
     let s = c.site(at).unwrap();
@@ -190,12 +195,8 @@ fn a_recon_sortie_gives_intelligence() {
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Recon).unwrap().clone();
     let Objective::Recon { place, object } = offer.objective else { unreachable!() };
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F117 })
-        .expect("take");
-    assert!(
-        c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F117 })
-            .is_err()
-    );
+    c.apply(P0, take_offer(offer.id, None, Aircraft::F117)).expect("take");
+    assert!(c.apply(P0, take_offer(offer.id, None, Aircraft::F117)).is_err());
     let ev = c.tick(1.0, &WorldView::default(), &[Report::PhotoTaken { player: P0, object }]);
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { .. })));
     assert!(
@@ -217,8 +218,7 @@ fn strikes_stop_and_repairs_restore_an_airfield() {
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Strike).unwrap().clone();
     let Objective::Strike { airfield, .. } = offer.objective else { unreachable!() };
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F117 })
-        .unwrap();
+    c.apply(P0, take_offer(offer.id, None, Aircraft::F117)).unwrap();
     let ev = c.tick(
         1.0,
         &WorldView::default(),
@@ -238,8 +238,7 @@ fn an_escort_is_settled_by_its_insertion() {
     c.apply(P0, Command::OrderInsertion { place }).unwrap();
     c.tick(1.0, &WorldView::default(), &[]);
     let escort = c.board.iter().find(|o| o.kind == MissionKind::Escort).unwrap().clone();
-    c.apply(P0, Command::TakeMission { offer: escort.id, base: None, aircraft: Aircraft::F117 })
-        .unwrap();
+    c.apply(P0, take_offer(escort.id, None, Aircraft::F117)).unwrap();
     let Objective::Escort { insertion } = escort.objective else { unreachable!() };
     let from = c.insertion(insertion).unwrap().from;
     be_there(&mut c, P0, from);
@@ -364,8 +363,7 @@ fn players_share_a_plan_locked_while_it_is_flown() {
     c.apply(b, plan(route.clone())).expect("edit");
     assert_eq!(c.plan(offer.id).unwrap().route, route);
     // Flown: locked; the pilot leaves the crew.
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F117 })
-        .expect("take");
+    c.apply(P0, take_offer(offer.id, None, Aircraft::F117)).expect("take");
     assert_eq!(c.plan(offer.id).unwrap().flying, vec![P0]);
     assert_eq!(c.plan(offer.id).unwrap().crew, vec![b]);
     assert!(c.apply(b, plan(Vec::new())).is_err());
@@ -561,8 +559,7 @@ fn an_intercept_succeeds_when_the_helicopters_go_down() {
     let place = enemy_order(&mut c);
     c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Intercept).unwrap().clone();
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F16 })
-        .unwrap();
+    c.apply(P0, take_offer(offer.id, None, Aircraft::F16)).unwrap();
     let (id, _, tags) = enemy_launch(&mut c);
     let down: Vec<Report> = tags
         .iter()
@@ -761,11 +758,8 @@ fn a_raid_grounds_the_ai_but_never_the_players() {
     assert!(c.player_bases().contains(&target));
     c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| !o.kind.ai_flown()).unwrap().clone();
-    c.apply(
-        P0,
-        Command::TakeMission { offer: offer.id, base: Some(target), aircraft: Aircraft::F117 },
-    )
-    .expect("take off from the bombed airfield");
+    c.apply(P0, take_offer(offer.id, Some(target), Aircraft::F117))
+        .expect("take off from the bombed airfield");
 }
 
 #[test]
@@ -773,8 +767,7 @@ fn a_defended_airfield_repels_the_raid() {
     let mut c = campaign("central_europe", 3);
     let (id, target, tags) = raid(&mut c);
     let offer = c.board.iter().find(|o| o.objective == Objective::Defend { raid: id }).unwrap();
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F16 })
-        .unwrap();
+    c.apply(P0, take_offer(offer.id, None, Aircraft::F16)).unwrap();
     // One shot down, the other turns back: repelled.
     let ev = c.tick(
         1.0,
@@ -794,8 +787,7 @@ fn a_defence_ended_early_is_settled_by_the_raid() {
     let mut c = campaign("central_europe", 3);
     let (id, target, _) = raid(&mut c);
     let offer = c.board.iter().find(|o| o.objective == Objective::Defend { raid: id }).unwrap();
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F16 })
-        .unwrap();
+    c.apply(P0, take_offer(offer.id, None, Aircraft::F16)).unwrap();
     be_there(&mut c, P0, target);
     let ev = c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap();
     let CampaignEvent::SortieFinished { record, .. } = &ev[0] else { panic!() };
@@ -1031,8 +1023,7 @@ fn deep_strikes_hit_the_enemys_rear() {
         .expect("a city to interdict")
         .clone();
     let Objective::Interdict { object, .. } = o.objective else { unreachable!() };
-    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::F117 })
-        .unwrap();
+    c.apply(P0, take_offer(o.id, None, Aircraft::F117)).unwrap();
     let before = c.red.materiel;
     let ev =
         c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object, by: Some(P0) }]);
@@ -1044,7 +1035,7 @@ fn deep_strikes_hit_the_enemys_rear() {
 fn eject_over(c: &mut CampaignState, name: &str) -> (Vec<CampaignEvent>, i32, i32) {
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| !o.kind.ai_flown()).unwrap().id;
-    c.apply(P0, Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 }).unwrap();
+    c.apply(P0, take_offer(offer, None, Aircraft::F16)).unwrap();
     let p = &c.places[place_named(c, name) as usize];
     let (x, y) = (p.x + 30, p.y);
     let view = WorldView {
@@ -1075,8 +1066,7 @@ fn a_pilot_down_behind_the_lines_is_rescued() {
     // The wingman covers the helicopter in.
     let b = PlayerId(1);
     c.join("Bravo", 4, |_| false);
-    c.apply(b, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::F16 })
-        .unwrap();
+    c.apply(b, take_offer(offer.id, None, Aircraft::F16)).unwrap();
     let over = WorldView {
         players: vec![PlayerPos {
             id: b,
@@ -1122,7 +1112,7 @@ fn a_pilot_nobody_rescues_is_captured() {
     assert_eq!(c.blue.fighters, fighters - 1);
     // The players still fly.
     let offer = c.board.iter().find(|o| !o.kind.ai_flown()).unwrap().id;
-    c.apply(P0, Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 }).unwrap();
+    c.apply(P0, take_offer(offer, None, Aircraft::F16)).unwrap();
 }
 
 /// Player 0's parachute comes down near the enemy's place `name` and the simulation sends its
@@ -1132,7 +1122,7 @@ fn down_over(c: &mut CampaignState, name: &str) -> (i32, i32) {
     c.resupply_at = f64::MAX;
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| !o.kind.ai_flown()).unwrap().id;
-    c.apply(P0, Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 }).unwrap();
+    c.apply(P0, take_offer(offer, None, Aircraft::F16)).unwrap();
     let p = &c.places[place_named(c, name) as usize];
     let (x, y) = (p.x + 30, p.y);
     c.tick(1.0, &WorldView::default(), &[Report::PilotDown { player: P0, x, y }]);
@@ -1195,7 +1185,7 @@ fn aircraft_in_the_air_are_back_on_the_ground_after_a_load() {
 fn take(c: &mut CampaignState, p: PlayerId, kind: MissionKind) -> (u32, Objective) {
     let o = c.board.iter().find(|o| o.kind == kind).unwrap_or_else(|| panic!("no {kind:?}"));
     let (id, obj) = (o.id, o.objective.clone());
-    c.apply(p, Command::TakeMission { offer: id, base: None, aircraft: Aircraft::F16 }).unwrap();
+    c.apply(p, take_offer(id, None, Aircraft::F16)).unwrap();
     (id, obj)
 }
 
@@ -1288,8 +1278,7 @@ fn objectives_flown_together_are_a_package() {
         .unwrap()
         .clone();
     for (p, o) in [(P0, &sead), (b, &strike)] {
-        c.apply(p, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::F16 })
-            .unwrap();
+        c.apply(p, take_offer(o.id, None, Aircraft::F16)).unwrap();
     }
     let Objective::Sead { sites, .. } = &sead.objective else { unreachable!() };
     let down: Vec<Report> =
@@ -1454,7 +1443,7 @@ fn a_destroyed_target_leaves_the_board_at_once() {
     let Objective::Strike { airfield, .. } = o.objective else { unreachable!() };
     c.tick(1.0, &WorldView::default(), &[Report::ObjectDestroyed { object: airfield, by: None }]);
     assert!(c.board.iter().all(|b| b.id != o.id));
-    let take = Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::F117 };
+    let take = take_offer(o.id, None, Aircraft::F117);
     assert!(c.apply(P0, take).is_err());
 }
 
@@ -1593,7 +1582,7 @@ fn heli_at(x: i32, y: i32, landed: bool) -> WorldView {
 fn fly_insertion(c: &mut CampaignState) -> (u32, ObjectId, Vec<u32>) {
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Insertion).unwrap().id;
-    c.apply(P0, Command::TakeMission { offer, base: None, aircraft: Aircraft::UH60 }).unwrap();
+    c.apply(P0, take_offer(offer, None, Aircraft::UH60)).unwrap();
     let ev = c.tick(1.0, &WorldView::default(), &[]);
     let (id, target, tags) = ev
         .iter()
@@ -1615,9 +1604,8 @@ fn the_helicopter_flies_insertions_and_rescues() {
     c.tick(1.0, &WorldView::default(), &[]);
     let insertion = c.board.iter().find(|o| o.kind == MissionKind::Insertion).unwrap().id;
     let recon = c.board.iter().find(|o| o.kind == MissionKind::Recon).unwrap().id;
-    let take = |c: &mut CampaignState, offer, aircraft| {
-        c.apply(P0, Command::TakeMission { offer, base: None, aircraft })
-    };
+    let take =
+        |c: &mut CampaignState, offer, aircraft| c.apply(P0, take_offer(offer, None, aircraft));
     assert!(take(&mut c, recon, Aircraft::UH60).is_err());
     assert!(take(&mut c, insertion, Aircraft::F16).is_err());
     assert!(
@@ -1739,8 +1727,7 @@ fn a_helicopter_rescue_lands_by_the_pilot_and_brings_him_home() {
         let d = c.downed[0].id;
         c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
         let offer = c.board.iter().find(|o| o.kind == MissionKind::Csar).unwrap().clone();
-        c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::UH60 })
-            .unwrap();
+        c.apply(P0, take_offer(offer.id, None, Aircraft::UH60)).unwrap();
         // Hovering over him (long enough to cover a jet's rescue): he waits.
         for _ in 0..20 {
             c.tick(10.0, &heli_at(x + 5, y, false), &[]);
@@ -1944,7 +1931,7 @@ fn a_player_delivers_a_resupply_by_hovering_at_the_unit() {
     request(&mut c, at);
     c.tick(1.0, &view, &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Resupply).unwrap().id;
-    let take = |a| Command::TakeMission { offer, base: None, aircraft: a };
+    let take = |a| take_offer(offer, None, a);
     assert!(c.apply(P0, take(Aircraft::F16)).is_err());
     c.apply(P0, take(Aircraft::UH60)).unwrap();
     // While he flies it, no AI helicopter.
@@ -2099,7 +2086,7 @@ fn a_gepard_site_is_built_by_one_load_of_cargo() {
     let offer = offers[0].clone();
     assert_eq!((offer.x, offer.y), at);
     assert_eq!(c.site(offer.base).unwrap().kind, SiteKind::Airfield);
-    let take = |a| Command::TakeMission { offer: offer.id, base: None, aircraft: a };
+    let take = |a| take_offer(offer.id, None, a);
     assert!(c.apply(P0, take(Aircraft::F16)).is_err());
     c.apply(P0, take(Aircraft::UH60)).unwrap();
     // Landed at the pad without the cargo: nothing.
@@ -2260,8 +2247,7 @@ fn patriot_sortie() -> (CampaignState, u32, WorldView) {
     let id = designate(&mut c, at, DefenceKind::Patriot).unwrap();
     c.tick(1.0, &WorldView::default(), &[]);
     let offer = c.board.iter().find(|o| o.kind == MissionKind::Logistics).unwrap().clone();
-    c.apply(P0, Command::TakeMission { offer: offer.id, base: None, aircraft: Aircraft::UH60 })
-        .unwrap();
+    c.apply(P0, take_offer(offer.id, None, Aircraft::UH60)).unwrap();
     let b = c.site(c.deployment(id).unwrap().base.unwrap()).unwrap();
     let view = flying_at(b.x, b.y);
     (c, id, view)
@@ -2619,7 +2605,7 @@ fn sorties_get_unique_callsigns_by_mission() {
         .collect();
     assert!(offers.len() >= 2, "two missions");
     let fly = |c: &mut CampaignState, p: PlayerId, offer: u32| {
-        let cmd = Command::TakeMission { offer, base: None, aircraft: Aircraft::F16 };
+        let cmd = take_offer(offer, None, Aircraft::F16);
         c.apply(p, cmd).unwrap();
         let s = c.sortie(p).unwrap();
         (s.flight, s.position)
@@ -2889,8 +2875,7 @@ fn an_escort_keeps_the_enemys_fighters_off_the_helicopters() {
         c.apply(P0, Command::OrderInsertion { place }).unwrap();
         c.tick(1.0, &WorldView::default(), &[]);
         let escort = c.board.iter().find(|o| o.kind == MissionKind::Escort).unwrap().clone();
-        c.apply(P0, Command::TakeMission { offer: escort.id, base: None, aircraft: Aircraft::F16 })
-            .unwrap();
+        c.apply(P0, take_offer(escort.id, None, Aircraft::F16)).unwrap();
         let Objective::Escort { insertion } = escort.objective else { unreachable!() };
         c.tick(tuning::INSERTION_LEAD, &WorldView::default(), &[]);
         let ins = c.insertion(insertion).unwrap().clone();
@@ -3725,15 +3710,10 @@ fn the_player_flies_a_cargo_run_in_the_cargo_jet() {
     let mut c = ai_campaign();
     let (p, b, o) = airlift_offer(&mut c, Munition::Aim120);
     // The cargo jet flies airlifts only, and only it does.
-    let take = |c: &mut CampaignState, a: Aircraft| {
-        c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: a })
-    };
+    let take = |c: &mut CampaignState, a: Aircraft| c.apply(P0, take_offer(o.id, None, a));
     assert!(take(&mut c, Aircraft::F16).is_err());
     let strike = c.board.iter().find(|x| x.kind == MissionKind::Strike).unwrap().id;
-    assert!(
-        c.apply(P0, Command::TakeMission { offer: strike, base: None, aircraft: Aircraft::C5 })
-            .is_err()
-    );
+    assert!(c.apply(P0, take_offer(strike, None, Aircraft::C5)).is_err());
     let ev = take(&mut c, Aircraft::C5).expect("take");
     let s = ev
         .iter()
@@ -3769,7 +3749,7 @@ fn the_player_flies_a_cargo_run_in_the_cargo_jet() {
 fn a_cargo_run_the_player_crashes_with_is_lost_and_one_he_aborts_goes_back_to_the_ai() {
     let mut c = ai_campaign();
     let (_, b, o) = airlift_offer(&mut c, Munition::Harm);
-    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::C5 }).unwrap();
+    c.apply(P0, take_offer(o.id, None, Aircraft::C5)).unwrap();
     let r = c.flown_cargo(P0).unwrap().clone();
     // Aborted: the AI's cargo aircraft flies it soon after.
     c.apply(P0, Command::EndSortie { end: SortieEnd::Aborted }).unwrap();
@@ -3778,7 +3758,7 @@ fn a_cargo_run_the_player_crashes_with_is_lost_and_one_he_aborts_goes_back_to_th
     // Taken again, and crashed: the load is lost, the enemy's intercept is met.
     c.tick(1.0, &WorldView::default(), &[]);
     let o = c.board.iter().find(|x| x.kind == MissionKind::Airlift).unwrap().clone();
-    c.apply(P0, Command::TakeMission { offer: o.id, base: None, aircraft: Aircraft::C5 }).unwrap();
+    c.apply(P0, take_offer(o.id, None, Aircraft::C5)).unwrap();
     c.apply(P0, Command::EndSortie { end: SortieEnd::Crashed }).unwrap();
     assert!(c.cargo_runs.iter().all(|x| x.id != r.id));
     assert!(c.objective_met(&Objective::Cargo { tag: r.tag }, &Progress::default()));

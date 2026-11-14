@@ -169,6 +169,92 @@ fn a_campaign_keeps_its_rules() {
     assert_eq!(Host::resume(old, &data, easy).unwrap().rules, easy);
 }
 
+/// The real F-117A, chosen for one sortie or by the campaign's rule: two bays without the
+/// air-to-air missiles in its briefing, only for the F-117A.
+#[test]
+fn a_sortie_briefs_the_real_f117() {
+    use stealth_campaign::{MissionKind, Progress, Sortie};
+    use stealth_mission::Plane;
+    let data = theater::game_data().unwrap();
+    for rule in [false, true] {
+        let rules = Rules { realistic_weapons: rule, ..Default::default() };
+        let mut host = Host::new(setup("central_europe"), &data, rules).unwrap();
+        host.state.tick(0.1, &stealth_campaign::WorldView::default(), &[]);
+        for chosen in [false, true] {
+            for aircraft in [Aircraft::F117, Aircraft::F16] {
+                for kind in [MissionKind::Recon, MissionKind::Strike] {
+                    let offer = host.state.board.iter().find(|o| o.kind == kind).cloned().unwrap();
+                    let sortie = Sortie {
+                        id: 1,
+                        base: offer.base,
+                        offer,
+                        aircraft,
+                        started: 0.0,
+                        progress: Progress::default(),
+                        flight: 0,
+                        position: 0,
+                        crew: Vec::new(),
+                        realistic: chosen,
+                    };
+                    let m = stealth_host::glue::sortie_mission(&host.mission, &host.state, &sortie);
+                    let real = (rule || chosen) && aircraft == Aircraft::F117;
+                    assert_eq!(
+                        m.settings.plane,
+                        if real { Plane::Lockheed } else { Plane::Fictional }
+                    );
+                    assert_eq!(m.loadout.usable_bays, if real { 2 } else { 4 });
+                    let weapons: Vec<_> = m
+                        .loadout
+                        .bays
+                        .iter()
+                        .take(m.loadout.usable_bays)
+                        .map(|b| b.weapon)
+                        .collect();
+                    let expected = match (kind, real) {
+                        (MissionKind::Recon, true) => vec![16, 2],
+                        (MissionKind::Recon, false) => vec![16, 0, 2, 0],
+                        (_, true) => vec![6, 8],
+                        (_, false) => vec![6, 8, 6, 0],
+                    };
+                    assert_eq!(
+                        weapons, expected,
+                        "{aircraft:?} {kind:?} rule={rule} chosen={chosen}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Taking an F-117A sortie with the real loadout: two bays and no cannon in the simulation,
+/// the choice kept on the sortie (an F-16 ignores it).
+#[test]
+fn a_real_f117_sortie_flies_without_a_cannon() {
+    use stealth_campaign::MissionKind;
+    let setup = setup("central_europe");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(setup.theater, &setup.theater_code).unwrap();
+    for (aircraft, realistic) in
+        [(Aircraft::F117, false), (Aircraft::F117, true), (Aircraft::F16, true)]
+    {
+        let mut host = Host::new(setup.clone(), &data, Rules::default()).unwrap();
+        let mut sim = host.new_sim(&sim_data);
+        host.begin(&mut sim);
+        host.tick(&mut sim, 0.1, &[]);
+        let offer = host.state.board.iter().find(|o| o.kind == MissionKind::Recon).unwrap().id;
+        let stations =
+            if realistic { vec![(16, 1), (2, 1)] } else { vec![(16, 1), (0, 1), (2, 1), (0, 1)] };
+        let stores = stealth_host::Stores { stations: stations.clone(), select: 0, realistic };
+        host.take_mission(&mut sim, PlayerId(0), offer, None, aircraft, Some(stores)).unwrap();
+        let real = realistic && aircraft == Aircraft::F117;
+        assert_eq!(host.state.sortie(PlayerId(0)).unwrap().realistic, real);
+        if aircraft == Aircraft::F117 {
+            assert_eq!(sim.bays().0, stations.as_slice());
+            assert_eq!(sim.has_gun(), !real);
+        }
+    }
+}
+
 /// A drone wave over Ukraine played out in the simulation: the drones dive into their target
 /// or are shot down.
 #[test]
@@ -218,6 +304,7 @@ fn a_sortie_briefs_its_own_target() {
             flight: 0,
             position: 0,
             crew: Vec::new(),
+            realistic: false,
         }
     };
     let cap =
@@ -453,6 +540,7 @@ fn a_sortie_briefs_its_own_base_and_fuel() {
                     flight: 0,
                     position: 0,
                     crew: Vec::new(),
+                    realistic: false,
                 };
                 let m = stealth_host::glue::sortie_mission(generated, &host.state, &s);
                 let b = &m.briefing;
@@ -748,7 +836,11 @@ fn a_sortie_takes_its_stores_out_of_its_base() {
     let o = host.state.board.iter().find(|o| !o.kind.ai_flown()).unwrap().clone();
     let base = o.base;
     let before = host.state.available(base, Munition::Aim120);
-    let stores = stealth_host::Stores { stations: vec![(1, 4), (0, 2), (-1, 0)], select: 0 };
+    let stores = stealth_host::Stores {
+        stations: vec![(1, 4), (0, 2), (-1, 0)],
+        select: 0,
+        ..Default::default()
+    };
     host.take_mission(&mut sim, PlayerId(0), o.id, None, Aircraft::F16, Some(stores.clone()))
         .unwrap();
     assert_eq!(host.state.available(base, Munition::Aim120), before - 4);

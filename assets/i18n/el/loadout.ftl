@@ -14,6 +14,7 @@ loadout-out-of-stock = Δεν υπάρχει απόθεμα για αυτή τη
 loadout-mirror = Ίδιο και στις δύο πλευρές
     .facts = Φορτώνει και το { $station }
 loadout-stores = Φορτία
+loadout-realistic-f117 = Ρεαλιστικός οπλισμός F-117A
 loadout-stations = Σημεία ανάρτησης
 loadout-click-drawing = Ή κάντε κλικ σε σημείο στο σχέδιο
 loadout-needs-equipment = Η αποστολή χρειάζεται την κάμερα ή τον ειδικό εξοπλισμό της

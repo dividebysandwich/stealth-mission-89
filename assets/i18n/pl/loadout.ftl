@@ -14,6 +14,7 @@ loadout-out-of-stock = Brak w zapasie na tę misję
 loadout-mirror = Tak samo po obu stronach
     .facts = Ładuje również: { $station }
 loadout-stores = Podwieszenia
+loadout-realistic-f117 = Realistyczne uzbrojenie F-117A
 loadout-stations = Węzły podwieszeń
 loadout-click-drawing = Lub kliknij węzeł na rysunku
 loadout-needs-equipment = Misja wymaga swojej kamery lub wyposażenia specjalnego

@@ -14,6 +14,7 @@ loadout-out-of-stock = Selle missiooni jaoks pole varusid
 loadout-mirror = Sama mõlemal küljel
     .facts = Laadib ka: { $station }
 loadout-stores = Stores
+loadout-realistic-f117 = Realistlik F-117A relvastus
 loadout-stations = Riputuspunktid
 loadout-click-drawing = Või klõpsake riputuspunktil joonisel
 loadout-needs-equipment = Missioon vajab oma kaamerat või erivarustust

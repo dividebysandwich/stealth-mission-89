@@ -38,6 +38,7 @@ impl CampaignState {
         offer: u32,
         base: Option<ObjectId>,
         aircraft: Aircraft,
+        realistic: bool,
     ) -> Result<Vec<CampaignEvent>, Text> {
         let Some(o) = self.board.iter().find(|o| o.id == offer).cloned() else {
             return Err(text!("ce-off-board"));
@@ -84,6 +85,7 @@ impl CampaignState {
             flight,
             position,
             crew: Vec::new(),
+            realistic: realistic && aircraft == Aircraft::F117,
         };
         let from = self.site(base).map(|s| s.name.clone()).unwrap_or_default();
         self.note(text!("cl-sortie-from", title = o.title.clone(), base = from));

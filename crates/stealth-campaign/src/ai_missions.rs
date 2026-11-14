@@ -822,6 +822,7 @@ impl CampaignState {
             flight,
             position,
             crew: Vec::new(),
+            realistic: false,
         };
         self.ai_missions[k].controlled[slot] = Some(player);
         self.note(text!("cl-took-control", title = offer.title.clone()));
@@ -896,6 +897,7 @@ impl CampaignState {
             flight: s.flight,
             position: s.position,
             crew,
+            realistic: s.realistic,
         };
         // An AI flight's aircraft he took over is `to`'s now.
         for m in &mut self.ai_missions {

@@ -14,6 +14,7 @@ loadout-out-of-stock = Pro tuto misi nejsou na skladě
 loadout-mirror = Stejně na obou stranách
     .facts = Naloží také: { $station }
 loadout-stores = Výzbroj
+loadout-realistic-f117 = Realistická výzbroj F-117A
 loadout-stations = Závěsníky
 loadout-click-drawing = Nebo klikněte na závěsník na nákresu
 loadout-needs-equipment = Mise vyžaduje kameru nebo zvláštní vybavení

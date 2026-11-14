@@ -14,6 +14,7 @@ loadout-out-of-stock = Šiai misijai atsargų nėra
 loadout-mirror = Vienodai abiejose pusėse
     .facts = Pakrauna ir { $station }
 loadout-stores = Krovinys
+loadout-realistic-f117 = Realistiška F-117A ginkluotė
 loadout-stations = Pakabinimo taškai
 loadout-click-drawing = Arba spustelėkite tašką brėžinyje
 loadout-needs-equipment = Misijai reikia jos kameros arba specialios įrangos

@@ -14,6 +14,7 @@ loadout-out-of-stock = Ei varastossa tälle tehtävälle
 loadout-mirror = Sama molemmin puolin
     .facts = Lataa myös { $station }
 loadout-stores = Asekuorma
+loadout-realistic-f117 = Realistinen F-117A-aseistus
 loadout-stations = Ripustimet
 loadout-click-drawing = Tai napsauta ripustinta piirroksessa
 loadout-needs-equipment = Tehtävä tarvitsee kameransa tai erikoisvarusteensa

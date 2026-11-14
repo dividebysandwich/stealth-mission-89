@@ -14,6 +14,7 @@ loadout-out-of-stock = Inget i lager för det här uppdraget
 loadout-mirror = Samma på båda sidor
     .facts = Lastar även { $station }
 loadout-stores = Last
+loadout-realistic-f117 = Realistisk F-117A-beväpning
 loadout-stations = Stationer
 loadout-click-drawing = Eller klicka på en station på ritningen
 loadout-needs-equipment = Uppdraget kräver sin kamera eller sin specialutrustning

@@ -14,6 +14,7 @@ loadout-out-of-stock = L-ebda stokk għal din il-missjoni
 loadout-mirror = L-istess fuq iż-żewġ naħat
     .facts = Jgħabbi { $station } ukoll
 loadout-stores = Armi u tagħbija
+loadout-realistic-f117 = Armamenti realistiċi tal-F-117A
 loadout-stations = Stazzjonijiet
 loadout-click-drawing = Jew ikklikkja fuq stazzjon fid-disinn
 loadout-needs-equipment = Il-missjoni teħtieġ il-kamera jew tagħmir speċjali tagħha

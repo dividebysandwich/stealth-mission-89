@@ -71,6 +71,9 @@ pub enum HostEvent {
 pub struct Stores {
     pub stations: Vec<(i32, i32)>,
     pub select: usize,
+    /// The real F-117A's loadout (two bays, no cannon): taking an F-117A sortie only.
+    #[serde(default)]
+    pub realistic: bool,
 }
 
 pub struct Host {
@@ -266,7 +269,9 @@ impl Host {
         {
             return Err(why);
         }
-        let events = self.state.apply(player, Command::TakeMission { offer, base, aircraft })?;
+        let realistic = stores.as_ref().is_some_and(|s| s.realistic);
+        let events =
+            self.state.apply(player, Command::TakeMission { offer, base, aircraft, realistic })?;
         // Off to fly: his console is unmanned.
         sim.leave_station(player.0);
         let out = self.apply(sim, events);
@@ -298,6 +303,7 @@ impl Host {
                                 .map(|b| (b.weapon as i32, b.count as i32))
                                 .collect(),
                             select: 0,
+                            realistic: sortie.realistic,
                         }
                     }
                 };
@@ -933,7 +939,7 @@ impl Host {
                 }
                 // He flies on from where the AI's aircraft was.
                 CampaignEvent::ControlTaken { player, tag, sortie } => {
-                    let airframe = self.rules.airframe(sortie.aircraft);
+                    let airframe = self.rules.sortie_airframe(sortie);
                     let objective = glue::sim_objective(sortie);
                     let base = sortie.base as usize;
                     let Some(start) = sim.take_control(player.0, *tag, base, objective, airframe)
@@ -965,7 +971,7 @@ impl Host {
                 }
                 CampaignEvent::SortieStarted { player, sortie } => {
                     let base = sortie.base as usize;
-                    let airframe = self.rules.airframe(sortie.aircraft);
+                    let airframe = self.rules.sortie_airframe(sortie);
                     let mut start =
                         sim.respawn_pilot(player.0, base, glue::sim_objective(sortie), airframe);
                     // Flying a cargo run: hunted and escorted as its AI aircraft would be.

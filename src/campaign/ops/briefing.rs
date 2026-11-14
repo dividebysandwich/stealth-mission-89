@@ -147,7 +147,13 @@ pub(super) fn briefing(
         b.route = None;
     }
     let taken = plan.as_ref().is_some_and(|p| p.crew.len() > 1 || !p.flying.is_empty());
-    let mut m = sortie_mission(&c.mission, c.state(), &preview(&o, b.base, b.aircraft));
+    // The sortie as briefed: the real F-117A's when its loadout is.
+    let brief = |c: &ActiveCampaign, b: &Briefing| {
+        let mut s = preview(&o, b.base, b.aircraft);
+        s.realistic = b.aircraft == Airframe::F117 && b.loadout.realistic;
+        sortie_mission(&c.mission, c.state(), &s)
+    };
+    let mut m = brief(c, &b);
     // What the base has of the weapons that run out.
     let stock_of = |c: &ActiveCampaign, base: u16| -> Vec<(u8, u32)> {
         (0..crate::loadout::WEAPONS.len() as u8)
@@ -225,11 +231,7 @@ pub(super) fn briefing(
                                 .show(ui, |ui| {
                                     let changed = aircraft_step(ui, c, &o, &mut b, taken, now);
                                     if changed {
-                                        m = sortie_mission(
-                                            &c.mission,
-                                            c.state(),
-                                            &preview(&o, b.base, b.aircraft),
-                                        );
+                                        m = brief(c, &b);
                                         b.loadout = crate::loadout::PlannedLoadout::of(
                                             &m,
                                             kind_of(b.aircraft),
@@ -262,7 +264,32 @@ pub(super) fn briefing(
                                 kind_of(b.aircraft).name().to_uppercase()
                             );
                             step_heading(ui, Step::Loadout, &title);
-                            let size = egui::vec2(w - 36.0, (h - 24.0 - 160.0).max(300.0));
+                            // The real F-117A: two bays, no air-to-air missiles, no cannon
+                            // (always, under the campaign's realistic weapons rule).
+                            let real = b.aircraft == Airframe::F117;
+                            if real {
+                                let forced = c.rules.realistic_weapons;
+                                let mut on = b.loadout.realistic;
+                                let flipped = ui
+                                    .add_enabled_ui(!forced, |ui| {
+                                        shell::switch(ui, &mut on, t!("loadout-realistic-f117"))
+                                    })
+                                    .inner;
+                                let flipped = crate::menu::facts(
+                                    flipped,
+                                    stealth_i18n::t_lines!("menu-realistic-weapons.facts"),
+                                )
+                                .clicked();
+                                if flipped {
+                                    b.loadout.realistic = on;
+                                    m = brief(c, &b);
+                                    b.loadout =
+                                        crate::loadout::PlannedLoadout::of(&m, kind_of(b.aircraft));
+                                }
+                                ui.add_space(4.0);
+                            }
+                            let extra = if real { shell::TARGET + 4.0 } else { 0.0 };
+                            let size = egui::vec2(w - 36.0, (h - 24.0 - 160.0 - extra).max(300.0));
                             ui.allocate_ui(size, |ui| {
                                 ui.set_min_size(size);
                                 crate::loadout::editor_large(

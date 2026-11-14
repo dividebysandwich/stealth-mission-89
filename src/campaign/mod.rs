@@ -1185,6 +1185,7 @@ pub fn preview(o: &stealth_campaign::MissionOffer, base: u16, aircraft: Airframe
         flight: 0,
         position: 0,
         crew: Vec::new(),
+        realistic: false,
     }
 }
 
@@ -1207,7 +1208,11 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
     for a in std::mem::take(&mut c.actions) {
         let result = match a {
             Action::TakeMission { offer, base, aircraft, loadout, route } => {
-                let stores = Stores { stations: loadout.stations(), select: 0 };
+                let stores = Stores {
+                    stations: loadout.stations(),
+                    select: 0,
+                    realistic: loadout.realistic,
+                };
                 c.take_loadout = Some(loadout);
                 c.take_route = route;
                 host.take_mission(sim, me, offer, base, aircraft, Some(stores))
@@ -1223,7 +1228,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::EndSortie { outcome } => Ok(host.end_sortie(sim, me, outcome)),
             Action::Retask { offer } => host.retask(sim, me, offer),
             Action::Rearm { loadout } => {
-                let stores = Stores { stations: loadout.stations(), select: 0 };
+                let stores = Stores { stations: loadout.stations(), select: 0, ..default() };
                 host.rearm(sim, me, &stores).map(|_| {
                     s.msgs.show(tf!("hud-rearmed"));
                     c.landed = None;
@@ -1235,7 +1240,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::Station(cmd) => host.station(sim, me, cmd),
             Action::TakeControl { tag, loadout, seat } => {
                 let stores = loadout.map(|l| {
-                    let stores = Stores { stations: l.stations(), select: 0 };
+                    let stores = Stores { stations: l.stations(), select: 0, ..default() };
                     c.take_loadout = Some(l);
                     stores
                 });
@@ -1280,7 +1285,11 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
     for a in std::mem::take(&mut c.actions) {
         let msg = match a {
             Action::TakeMission { offer, base, aircraft, loadout, route } => {
-                let stores = Stores { stations: loadout.stations(), select: 0 };
+                let stores = Stores {
+                    stations: loadout.stations(),
+                    select: 0,
+                    realistic: loadout.realistic,
+                };
                 c.take_loadout = Some(loadout);
                 c.take_route = route;
                 ToServer::TakeMission { offer, base, aircraft, stores: Some(stores) }
@@ -1304,14 +1313,16 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
                     a.ended = None;
                     a.has_flown = false;
                 }
-                ToServer::Rearm { stores: Stores { stations: loadout.stations(), select: 0 } }
+                ToServer::Rearm {
+                    stores: Stores { stations: loadout.stations(), select: 0, ..default() },
+                }
             }
             Action::SelectMission { offer, base } => ToServer::Select { offer, base },
             Action::EditPlan { offer, base, route } => ToServer::Plan { offer, base, route },
             Action::Station(cmd) => ToServer::Station(cmd),
             Action::TakeControl { tag, loadout, seat } => {
                 let stores = loadout.map(|l| {
-                    let stores = Stores { stations: l.stations(), select: 0 };
+                    let stores = Stores { stations: l.stations(), select: 0, ..default() };
                     c.take_loadout = Some(l);
                     stores
                 });

@@ -184,6 +184,9 @@ pub enum Command {
         base: Option<ObjectId>,
         #[serde(default)]
         aircraft: Aircraft,
+        /// The real F-117A's loadout (an F-117A only).
+        #[serde(default)]
+        realistic: bool,
     },
     /// Send helicopters with troops against an enemy place.
     OrderInsertion { place: PlaceId },
@@ -448,8 +451,8 @@ impl CampaignState {
     /// Carry out a player's command.
     pub fn apply(&mut self, player: PlayerId, cmd: Command) -> Result<Vec<CampaignEvent>, Text> {
         match cmd {
-            Command::TakeMission { offer, base, aircraft } => {
-                self.take_mission(player, offer, base, aircraft)
+            Command::TakeMission { offer, base, aircraft, realistic } => {
+                self.take_mission(player, offer, base, aircraft, realistic)
             }
             Command::OrderInsertion { place } => self.order_insertion(Some(player), place),
             Command::EndSortie { end } => Ok(self.end_sortie(player, end)),
