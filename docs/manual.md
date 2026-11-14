@@ -31,7 +31,7 @@ your Steam Frame in standalone mode.
 But unlike the old DOS games, you are not constrained to single missions and a randomized career mode. Stealth 
 Mission 89 features a realtime campaign that you can play together with friends and strangers. Fly a variety of 
 aircraft including helicopters, not just the F-117. Construct your own air defense sites, build drone command 
-centers and remotely pilot recon, attack and interceptor drones.
+centers and remotely pilot recon, attack and interceptor drones, quadrotors and jets.
 
 ## CONTENTS
 
@@ -3075,7 +3075,7 @@ radar. It has guarded Washington, D.C. since 2005 and has defended Ukraine since
 | **Gepard** | 1 | Twin 35 mm guns firing airburst rounds, out to 8 km. 640 rounds ready, 640 in stock. |
 | **NASAMS** | 2 | A Sentinel radar with three launchers of six AIM-120s each, out to 40 km. 12 missiles in stock. |
 | **Patriot** | 3 | A radar with launchers of four missiles each, out to 120 km. 8 missiles in stock. |
-| **Drones** | 1 | 4 Stork, 8 FP-2 and 6 interceptor drones (10.4). |
+| **Drones** | 1 | 4 Stork, 8 FP-2, 6 interceptor and 4 X-12 drones (10.4). |
 
 **Designating a site**
 
@@ -3290,8 +3290,8 @@ a car, or less than a phone:
   a drone that costs a few thousand dollars to stop one that costs tens of thousands.
 
 The game puts you on both ends of that war: in the cockpit of a fighter or a Gepard against the Geran
-waves, and at the console of a drone command center that sends its own Storks, strike drones and
-interceptors out over the front.
+waves, and at the console of a drone command center that sends its own Storks, strike drones,
+quadrotor interceptors and X-12 jet interceptors out over the front.
 
 ## 10.2 Drone defense: the single mission
 
@@ -3338,15 +3338,15 @@ mission: you were there and every drone was shot down. A wave costs the enemy 12
 
 Your airfields' Gepards and Stinger teams engage the drones that come within their reach, and a manned
 Gepard (chapter 9.13) is a fine way to spend a wave: its airburst rounds were made for this. A drone
-command center's interceptors (10.4) can meet them on the way.
+command center's interceptors and X-12s (10.4) can meet them on the way.
 
 ## 10.4 The drone command center
 
 Your side can build drone command centers, much as it builds Gepard and Patriot sites, and anyone can
-fly drones from their consoles. A center launches three types of drones, up to five in the air at once.
+fly drones from their consoles. A center launches four types of drones, up to five in the air at once.
 
 **Building and manning a center.** Designate a DRONES site (chapter 9.13) and fly in its one load
-(chapter 9.14). It starts with 4 Storks, 8 FP-2s and 6 interceptors, and orders a resupply as soon as one
+(chapter 9.14). It starts with 4 Storks, 8 FP-2s, 6 interceptors and 4 X-12s, and orders a resupply as soon as one
 type runs out. On the AIR DEFENSE tab, **ENTER** takes you to its console, **LEAVE** back to the Ops screen.
 
 ![The drone command center's console](images/drone_console.png)
@@ -3354,11 +3354,11 @@ type runs out. On the AIR DEFENSE tab, **ENTER** takes you to its console, **LEA
 The desk screen is the ground control station: the drone list on the left, the map with the drones, their
 routes, the terrain's height in shades and contour lines, friendly units and the enemy units your drones
 have found. The large screen shows the selected drone's camera, with a flight path marker in the forward
-view. The screen at the top right shows each drone's battery.
+view. The screen at the top right shows each drone's battery (an X-12's fuel).
 
 **Launching a drone.**
 
-1. Press **NEW DRONE** and pick the type: **STK**, **FP2** or **INT**.
+1. Press **NEW DRONE** and pick the type: **STK**, **FP2**, **INT** or **X-12**.
 2. Click the map to add waypoints (up to 12). Clicking a contact ends the route on it.
 3. Select a waypoint to change it: **TYPE** changes its type, **ALT+** / **ALT-** its height, **DEL**
    deletes it. Drag it to move it. The map's arrows pan, **C** centres, **+** and **-** zoom.
@@ -3368,7 +3368,7 @@ view. The screen at the top right shows each drone's battery.
 | Waypoint | Drones | What it does |
 |---|---|---|
 | **NAV** | All | Fly over it, on to the next. |
-| **LOITER** | All | Circle it until told otherwise (Stork 900 m, FP-2 600 m, interceptor 400 m radius). Must be the last point. |
+| **LOITER** | All | Circle it until told otherwise (Stork 900 m, FP-2 600 m, interceptor 400 m, X-12 1,500 m radius). Must be the last point. |
 | **TERMINATE** | FP-2 | Dive into the ground point. Must be the last point. |
 
 A route that ends without either circles its last point. Waypoints can be changed while the drone flies.
@@ -3376,30 +3376,33 @@ A route that ends without either circles its last point. Waypoints can be change
 **Flying it.** Click a drone or its row to select it. **NEXT** makes the selected waypoint the next one,
 **FWD** switches between the gimballed camera and the forward flight camera. **MANUAL** (or **MAN** on the
 panel) flies it with the stick, rudder and throttle (the stick holds the attitude when released); **AUTO**
-sends it back on its route. The panel's **FLIR**, **ZOOM**, **TRACK** (hold the camera on the point under
+sends it back on its route. Flown by hand, the winged drones (Stork, FP-2, X-12) have no pitch or bank
+limits: hold the stick back and they loop, hold it over and they roll all the way round. The panel's **FLIR**, **ZOOM**, **TRACK** (hold the camera on the point under
 its crosshair) and **SLAVE** (back to the next waypoint) work the camera like a targeting pod. The list
-shows each drone's state: AUTO, LOITER, ATTACK, MANUAL, DIVE, LOCK. A drone with an empty battery goes down
-and is lost.
+shows each drone's state: AUTO, LOITER, ATTACK, MANUAL, DIVE, LOCK. A drone with an empty battery (or an
+X-12 with an empty tank) goes down and is lost.
 
 ## 10.5 The drones
 
 <table>
 <tr>
-<td width="33%"><img src="images/units/ac_stork.png" alt="Stork-100"><br><b>Stork-100</b> surveillance drone</td>
-<td width="33%"><img src="images/units/ac_fp2.png" alt="FP-2"><br><b>FP-2</b> attack drone</td>
-<td width="33%"><img src="images/units/ac_interceptor.png" alt="Interceptor"><br><b>Interceptor</b> quadrotor</td>
+<td width="25%"><img src="images/units/ac_stork.png" alt="Stork-100"><br><b>Stork-100</b> surveillance drone</td>
+<td width="25%"><img src="images/units/ac_fp2.png" alt="FP-2"><br><b>FP-2</b> attack drone</td>
+<td width="25%"><img src="images/units/ac_interceptor.png" alt="Interceptor"><br><b>Interceptor</b> quadrotor</td>
+<td width="25%"><img src="images/units/ac_x12.png" alt="X-12"><br><b>X-12</b> jet interceptor</td>
 </tr>
 </table>
 
-| | Stork-100 | FP-2 | Interceptor |
-|---|---|---|---|
-| Role | Surveillance | One-way attack | Air-to-air, one-way |
-| Cruise / top speed | 90 / 120 km/h | 180 / 215 km/h, 300 km/h in the dive | about 200 km/h at hover throttle / 600 km/h |
-| Endurance | 2.5 h | 1.2 h | about 8 min, less at high throttle |
-| Sensor | Finds air defences and ground units within 6 km | 2 km | None |
-| Cameras | Forward and gimballed zoom | Forward and gimballed | Forward only |
-| Warhead | None | Destroys everything within about 60 m | Detonates within 6 m of its target |
-| Planned height | 800 m | 300 m | 500 m |
+| | Stork-100 | FP-2 | Interceptor | X-12 |
+|---|---|---|---|---|
+| Role | Surveillance | One-way attack | Air-to-air, one-way | Air-to-air, one-way |
+| Cruise / top speed | 90 / 120 km/h | 180 / 215 km/h, 300 km/h in the dive | about 200 km/h at hover throttle / 600 km/h | 500 / 700 km/h |
+| Endurance | 2.5 h | 1.2 h | about 8 min, less at high throttle | 15 min (126 km) at cruise, about 7 min flat out |
+| Sensor | Finds air defences and ground units within 6 km | 2 km | None | None |
+| Cameras | Forward and gimballed zoom | Forward and gimballed | Forward only | Forward only |
+| Lock-on | - | - | 500 m | 3 km |
+| Warhead | None | Destroys everything within about 60 m | Detonates within 6 m of its target | Detonates within 10 m of its target |
+| Planned height | 800 m | 300 m | 500 m | 1,000 m |
 
 **STORK-100.** Slow, quiet and patient. It finds enemy SAM sites, guns, MANPADS teams and armour within 6 km
 and marks them on the map, for every console and every player: the FP-2s can strike them, the war map shows
@@ -3414,6 +3417,14 @@ and it dives into it. If controlled manually, simply put the camera's crosshair 
 full throttle. Fast enough to catch a Geran-2 easily; the jet Geran-3 *can* be caught, but it is very
 difficult. Plan a **LOITER** point in the target's path at its height: the map shows aircraft and drones in
 the air with their heights.
+
+**X-12.** A jet-powered winged interceptor built to hunt the jet Geran-3: a slim aluminium body with an
+orange nose, a carbon delta wing and a small turbojet, launched off the rail like the others. At 700 km/h
+it is faster than any Geran, and with a quarter of an hour of fuel it reaches 126 km out at cruise. It
+cannot hover or turn on the spot like the quadrotor: it flies wide circles (1,500 m) round its loiter point
+and turns like an aircraft. Its seeker locks on the same way as the interceptor's (below), but from as far
+as **3 km**, and keeps the lock out to 8 km. Locked on, it steers itself after its target at up to 15 g,
+at full throttle on AUTO (flown by hand, at your throttle).
 
 **Auto lock-on.** The interceptor locks on by itself to the nearest aircraft or drone within 500 m and about
 20° of its nose. The camera marks the target, the list says LOCK, and from then on it steers itself: open the
@@ -3435,6 +3446,9 @@ closer than any aircraft.
   by hand at full throttle for the last mile.
 - **Watch the batteries.** The interceptor's flight time of eight minutes is short; launch it when the wave 
   is close, not when it is announced, and remember that full throttle eats the battery even more quickly.
+- **X-12s for the jets and the far ones.** Save the X-12s for Geran-3s and for waves still far from the
+  center: loiter one in their path at their height and its 3 km lock does the rest. Against slow Geran-2s
+  close to home the cheaper quadrotor interceptor does the job just as well.
 - **Share the picture.** In multiplayer, what one center's Stork finds, every drone center's FP-2s can strike.
 
 
