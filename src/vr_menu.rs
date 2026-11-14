@@ -195,6 +195,7 @@ fn desktop_input(
         Option<Res<FocusedNonWindowEguiContext>>,
     ),
     mut events: MessageWriter<EguiInputEvent>,
+    mut last_cursor: Local<Option<Vec2>>,
 ) {
     let Ok((context, mut at)) = contexts.single_mut() else {
         if hovered.is_some() {
@@ -208,6 +209,14 @@ fn desktop_input(
     if focused.is_none_or(|f| f.0 != context) {
         commands.insert_resource(FocusedNonWindowEguiContext(context));
     }
+    // Only a mouse that moves on the window takes the pointer: in a flight a resting cursor
+    // still points wherever the head looks (through the mirrored eye), and it would fight the
+    // controller's laser (hover elsewhere, PointerGone cancelling the trigger's click).
+    let cursor = windows.single().ok().and_then(|w| w.cursor_position());
+    if cursor == *last_cursor {
+        return;
+    }
+    *last_cursor = cursor;
     let flight = state.is_some_and(|s| *s.get() == AppState::Flight);
     let pos = if flight {
         // The panel's plane: its local XY, facing +Z.
