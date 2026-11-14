@@ -251,7 +251,7 @@ X12_R = 0.095
 
 def x12():
     """X-12 jet interceptor, about 2.4 m long and 1.4 m across: a slim bare-aluminium tube with
-    black carbon panels along its sides, an orange nose cone with a black tip and a
+    black carbon panels along its top and bottom, an orange nose cone with a black tip and a
     black band behind it, a carbon cropped-delta wing low on the body with a strake running
     forward, a tall swept fin, the turbojet's intake scoop on the back ahead of it, a ventral
     fin and the copper nozzle at the tail (metres; scaled to model units)."""
@@ -261,8 +261,9 @@ def x12():
     tip = [(1.2, 0.0, 0.004, 0.004), (1.18, 0.0, 0.03, 0.03), (1.15, 0.0, 0.048, 0.048)]
     cone = [(1.15, 0.0, 0.048, 0.048), (1.1, 0.0, 0.066, 0.066), (1.03, 0.0, 0.08, 0.08), (0.96, 0.0, 0.09, 0.09)]
     band = [(0.96, 0.0, 0.09, 0.09), (0.9, 0.0, r, r)]
-    # The carbon panels: two long ones along each side, with gaps (stations at their ends).
-    panels = [(0.82, 0.5), (0.4, 0.0), (-0.1, -0.62)]
+    # The carbon panels: three along the top and three along the bottom, with gaps (stations
+    # at their ends).
+    panels = [(0.82, 0.5), (0.42, 0.08), (0.0, -0.3)]
     ends = [y for p in panels for y in p]
     body = [(0.9, 0.0, r, r)] + [(y, 0.0, r, r) for y in ends] + [(-0.9, 0.0, r, r), (-1.08, 0.0, 0.085, 0.085), (-1.14, 0.0, 0.07, 0.07)]
     g.add(loft(tip, X12_BLACK, n=12, power=2.0))
@@ -273,8 +274,8 @@ def x12():
     for pts, c in hull.faces:
         m = sum(pts, mklib.Vector()) / len(pts)
         n = mklib.normal(pts)
-        side = abs(n.x) > 0.8
-        if side and any(lo > m.y > hi for lo, hi in panels):
+        flat = abs(n.z) > 0.8
+        if flat and any(lo > m.y > hi for lo, hi in panels):
             c = mklib.colour(X12_BLACK, n)
         faces.append((pts, c))
     hull.faces = faces
