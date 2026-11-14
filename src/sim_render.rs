@@ -128,6 +128,11 @@ const AAA_TURRET_SLOT: usize = 21;
 const AAA_GUN_SLOT: usize = 22;
 /// Detail level range multiplier of the guns (seen from further than an aircraft's parts).
 const AAA_LOD_RANGE: f32 = 4.0;
+/// The sandbag wall round a defensive position (in `models/aaa.glb`), its radius as built (m),
+/// and how far outside the units in it it stands (m: a Shilka's half length and room).
+const POSITION_MODEL: i32 = AAA_MODELS + 13;
+const POSITION_WALL_M: f64 = 10.0;
+const POSITION_ROOM_M: f64 = 7.0;
 
 /// Aircraft model drawn for an aircraft type's model number.
 fn aircraft_model(model: i32) -> i32 {
@@ -414,6 +419,31 @@ impl Smoothed {
 mod tests {
     use super::*;
 
+    /// Dug-in units in neighbouring cells share one wall; a lone one gets its own; a tank
+    /// and a Shilka driving with a convoy get none.
+    #[test]
+    fn defensive_positions_group_neighbours() {
+        use stealth_sim::aaa::{Fine, GroundKind, GroundUnit};
+        let unit = |kind, x, y| GroundUnit { kind, x, y, ..Default::default() };
+        let mut driving = unit(GroundKind::Zsu, 500, 500);
+        driving.fine = Some(Fine::default());
+        let units = [
+            unit(GroundKind::Manpads, 100, 100),
+            unit(GroundKind::Manpads, 101, 100),
+            unit(GroundKind::Zsu, 101, 101),
+            unit(GroundKind::Manpads, 300, 300),
+            unit(GroundKind::T90, 301, 300),
+            driving,
+        ];
+        let p = defensive_positions(&units);
+        assert_eq!(p.len(), 2);
+        let (x, y, r, first) = p[0];
+        assert_eq!((x, y, first), (101.0, 101.0, 0));
+        let half_diagonal = std::f64::consts::FRAC_1_SQRT_2 * stealth_sim::aaa::M_PER_MAP;
+        assert!((r - (half_diagonal + POSITION_ROOM_M)).abs() < 1e-9);
+        assert_eq!(p[1], (300.5, 300.5, POSITION_ROOM_M, 3));
+    }
+
     /// A missile flying straight at 10 degrees off a map axis at 1200 m/s, the simulation's
     /// way (whole 15.6 m map units at 15 Hz), drawn at 60 Hz: the raw interpolated path changes
     /// direction by degrees from one simulation frame to the next, the smoothed one by a
@@ -520,6 +550,8 @@ struct AaaVisuals {
     /// What each was spawned as (a unit's slot is reused for another kind on a capture).
     kinds: Vec<stealth_sim::aaa::GroundKind>,
     tracers: Vec<Entity>,
+    /// The sandbag walls round the dug-in guns and MANPADS teams (hidden when spare).
+    positions: Vec<Entity>,
     /// Campaign: the AI's missiles at AI aircraft (a glowing dot each).
     ai_missiles: Vec<Entity>,
     material: Option<Handle<PaletteMaterial>>,
@@ -546,6 +578,54 @@ fn bam16(a: f32) -> i16 {
 
 /// Half the span over which a vehicle's slope is measured (metres).
 const VEHICLE_SLOPE_SPAN: f64 = 3.0;
+
+/// Dug in behind sandbags: the guns and MANPADS teams that stand where they were placed (not
+/// armour, nor a Shilka or Gepard driving with a convoy).
+fn dug_in(u: &stealth_sim::aaa::GroundUnit) -> bool {
+    use stealth_sim::aaa::GroundKind as K;
+    !u.gone && u.fine.is_none() && matches!(u.kind, K::Manpads | K::Zsu | K::Gepard)
+}
+
+/// The defensive positions: each group of dug-in units in neighbouring map cells (the
+/// simulation fills a 2x2 block of cells per position), as its centre in map units and the
+/// radius of the wall round it (m), and its first unit.
+fn defensive_positions(units: &[stealth_sim::aaa::GroundUnit]) -> Vec<(f64, f64, f64, usize)> {
+    let dug: Vec<usize> = (0..units.len()).filter(|&i| dug_in(&units[i])).collect();
+    // Groups by flood fill over neighbouring cells.
+    let mut group = vec![usize::MAX; dug.len()];
+    let mut out = Vec::new();
+    for start in 0..dug.len() {
+        if group[start] != usize::MAX {
+            continue;
+        }
+        let g = out.len();
+        group[start] = g;
+        let mut members = vec![start];
+        let mut k = 0;
+        while k < members.len() {
+            let a = &units[dug[members[k]]];
+            for (j, &i) in dug.iter().enumerate() {
+                let b = &units[i];
+                if group[j] == usize::MAX && (a.x - b.x).abs() <= 1 && (a.y - b.y).abs() <= 1 {
+                    group[j] = g;
+                    members.push(j);
+                }
+            }
+            k += 1;
+        }
+        let cells = members.iter().map(|&j| &units[dug[j]]);
+        let (x0, x1) =
+            cells.clone().fold((i32::MAX, i32::MIN), |(lo, hi), u| (lo.min(u.x), hi.max(u.x)));
+        let (y0, y1) =
+            cells.clone().fold((i32::MAX, i32::MIN), |(lo, hi), u| (lo.min(u.y), hi.max(u.y)));
+        let (cx, cy) = ((x0 + x1) as f64 / 2.0 + 0.5, (y0 + y1) as f64 / 2.0 + 0.5);
+        let reach =
+            cells.map(|u| (u.x as f64 + 0.5 - cx).hypot(u.y as f64 + 0.5 - cy)).fold(0.0, f64::max);
+        let first = members.iter().map(|&j| dug[j]).min().unwrap_or(0);
+        out.push((cx, cy, reach * stealth_sim::aaa::M_PER_MAP + POSITION_ROOM_M, first));
+    }
+    out
+}
 
 /// The guns and MANPADS teams turn towards the player as they aim (each placed at its own
 /// heading), show their wreck once destroyed; the Shilkas' shells are yellow tracer streaks like
@@ -681,6 +761,34 @@ fn sync_aaa(
             let el = u.kind.battery_launcher().map_or(u.aim_el, |b| b.elevation());
             s.0[AAA_GUN_SLOT] = bam16(-el);
         }
+    }
+
+    // The sandbag walls round the dug-in units, on the ground and its slope.
+    let positions = defensive_positions(units);
+    if av.positions.len() < positions.len() {
+        let file = library.load(&server, "aaa");
+        while av.positions.len() < positions.len() {
+            let Some(e) = spawn_model(&mut commands, &assets, &file, POSITION_MODEL, false) else {
+                break;
+            };
+            commands.entity(e).insert(crate::models::LodRange(AAA_LOD_RANGE));
+            av.positions.push(e);
+        }
+    }
+    for (k, &e) in av.positions.iter().enumerate() {
+        let Ok((mut pos, mut tf, _, mut vis)) = q.get_mut(e) else { continue };
+        let Some(&(x, y, r, first)) = positions.get(k) else {
+            vis.set_if_neq(Visibility::Hidden);
+            continue;
+        };
+        let flat = map_point(x, y, 0.0);
+        pos.0 = flat + DVec3::Y * ground(flat);
+        // The way in at a heading of its own (golden-angle spread like the units').
+        let heading = (first as f32 * 2.399_963 + 1.0).rem_euclid(std::f32::consts::TAU);
+        tf.rotation = on_slope(pos.0, heading);
+        let across = (r / POSITION_WALL_M) as f32;
+        tf.scale = AIRCRAFT_MODEL_SCALE as f32 * Vec3::new(across, 1.0, across);
+        vis.set_if_neq(Visibility::Inherited);
     }
 
     // Tracers: every gun's shells (the flak's too, until they burst), also those the guns

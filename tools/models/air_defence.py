@@ -43,6 +43,8 @@ BRADLEY = 119
 BMP2 = 120
 NASAMS_LN = 121
 NASAMS_RADAR = 122
+# Sandbag wall round a defensive position (not a unit: drawn round dug-in guns and MANPADS).
+POSITION = 123
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -292,6 +294,26 @@ def manpads():
     shooter = part("aaa_112_lod0_s1v0_part1", soldier(True), intact, (0.3, 0.2, 0), TURRET_SLOT, 0)
     part("aaa_112_lod0_s1v0_part2", launcher(), shooter, (0.16, -0.05, 1.32), GUN_SLOT, 1)
     mesh_obj("aaa_112_lod0_s1v1", manpads_position(True), lod0)
+
+
+# ---------------------------------------------------------------------------- defensive position
+
+
+def position():
+    """A sandbag wall 10 m round, a man high, its foot buried (it stands on sloping ground too),
+    open to the rear for a way in. The client scales it across to fit the units inside."""
+    root, lod0, _ = levels(POSITION, 32769, far_level=False)
+    lod0["radius"] = int(11 * K)
+    g = sandbag_ring(10.0, 1.9, 40, gap=0.35, z0=-0.8)
+    # A top course of lighter bags, so the wall's line shows from above.
+    top = Geo()
+    for k in range(40):
+        a = 2 * math.pi * (k + 0.5) / 40
+        if abs(math.atan2(math.sin(a), math.cos(a))) < 0.175:
+            continue
+        top.add(block(-0.75, 0.75, -0.35, 0.35, 1.05, 1.3, Ramp(0xA1, 0xA2)).rotated_z(-a)
+                .transformed(lambda p, a=a: p + mklib.v3((9.7 * math.sin(a), 9.7 * math.cos(a), 0))))
+    mesh_obj("aaa_123_lod0_wall", g.add(top), lod0)
 
 
 # ------------------------------------------------------------------------------ Patriot launcher
@@ -1203,6 +1225,7 @@ def main():
     bmp2()
     nasams_launcher()
     nasams_radar()
+    position()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

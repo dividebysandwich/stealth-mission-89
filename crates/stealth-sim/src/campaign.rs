@@ -834,10 +834,8 @@ impl Sim {
         let town = self.town_ring(x, y);
         let around = |lo, hi| town.unwrap_or((x, y, lo, hi));
         let water = self.water.clone();
-        let mut add = |rng: &mut Rng, kind, x: i32, y: i32, lo: i32, hi: i32| {
-            let Some((x, y, t)) = crate::aaa::ring_spot(rng, &water, (x, y), lo, hi) else {
-                return;
-            };
+        let mut put = |kind, spot: Option<(i32, i32, f64)>| {
+            let Some((x, y, t)) = spot else { return };
             let mut unit = GroundUnit {
                 kind,
                 x,
@@ -879,45 +877,52 @@ impl Sim {
                 None => {}
             }
         };
+        let spot = |rng: &mut Rng, x: i32, y: i32, lo: i32, hi: i32| {
+            crate::aaa::ring_spot(rng, &water, (x, y), lo, hi)
+        };
+        // A town's MANPADS and guns together in a sandbagged position on its edge.
+        let mut position = crate::aaa::Positions::default();
         match (blue, airfield) {
             (false, true) => {
                 for _ in 0..1 + rng.random(war + 1) {
-                    add(&mut rng, GroundKind::Zsu, x, y, 26, 90);
+                    put(GroundKind::Zsu, spot(&mut rng, x, y, 26, 90));
                 }
                 if war > 0 {
                     let (bx, by) = (x + rng.random(120) - 60, y + rng.random(120) - 60);
                     for _ in 0..2 + rng.random(3) {
-                        add(&mut rng, GroundKind::S60, bx, by, 3, 8);
+                        put(GroundKind::S60, spot(&mut rng, bx, by, 3, 8));
                     }
                 }
-                add(&mut rng, GroundKind::Manpads, x, y, 15, 80);
+                put(GroundKind::Manpads, spot(&mut rng, x, y, 15, 80));
             }
             (false, false) => {
                 let (tx, ty, lo, hi) = around(15, 80);
                 for _ in 0..1 + rng.random(war + 1) {
-                    add(&mut rng, GroundKind::Manpads, tx, ty, lo, hi);
+                    let cell = position.next(&mut rng, &water, (tx, ty), lo, hi);
+                    put(GroundKind::Manpads, cell);
                 }
                 if rng.random(3) < war {
-                    let (tx, ty, lo, hi) = around(20, 70);
-                    add(&mut rng, GroundKind::Zsu, tx, ty, lo, hi);
+                    let cell = position.next(&mut rng, &water, (tx, ty), lo, hi);
+                    put(GroundKind::Zsu, cell);
                 }
             }
             (true, true) => {
                 for _ in 0..2 {
-                    add(&mut rng, GroundKind::Gepard, x, y, 26, 90);
-                    add(&mut rng, GroundKind::Manpads, x, y, 15, 80);
+                    put(GroundKind::Gepard, spot(&mut rng, x, y, 26, 90));
+                    put(GroundKind::Manpads, spot(&mut rng, x, y, 15, 80));
                 }
             }
             (true, false) => {
                 let (tx, ty, lo, hi) = around(15, 60);
-                add(&mut rng, GroundKind::Manpads, tx, ty, lo, hi);
+                let cell = position.next(&mut rng, &water, (tx, ty), lo, hi);
+                put(GroundKind::Manpads, cell);
             }
         }
         // The garrison: two tanks (three at an airfield) and an infantry fighting vehicle.
         let (tank, ifv) = garrison_kinds(blue);
         let (tx, ty, lo, hi) = around(25, 80);
         for kind in [tank, tank, ifv].into_iter().chain(airfield.then_some(tank)) {
-            add(&mut rng, kind, tx, ty, lo, hi);
+            put(kind, spot(&mut rng, tx, ty, lo, hi));
         }
         c.rng = rng;
         c.aaa_target.resize(self.units.len(), None);

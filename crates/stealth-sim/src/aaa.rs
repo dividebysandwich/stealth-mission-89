@@ -69,6 +69,42 @@ pub(crate) fn ring_spot(
     })
 }
 
+/// The map cells of a defensive position from its corner: a 2x2 block (31 m across) holding up
+/// to four guns or MANPADS teams behind one sandbag wall (the client draws it round each group
+/// of neighbouring dug-in units).
+const POSITION_CELLS: [(i32, i32); 4] = [(0, 0), (1, 0), (0, 1), (1, 1)];
+
+/// Spots for a place's dug-in defenders: one position on the ring is filled before the next is
+/// started, so they stand together where they can be seen rather than dotted round it.
+#[derive(Default)]
+pub(crate) struct Positions(Vec<(i32, i32, f64)>);
+
+impl Positions {
+    /// The next free spot (and the bearing out of the place): in the current position, else in a
+    /// new one `lo` to `hi` map units from `centre`. None when no land is found.
+    pub(crate) fn next(
+        &mut self,
+        rng: &mut Rng,
+        water: &Water,
+        centre: (i32, i32),
+        lo: i32,
+        hi: i32,
+    ) -> Option<(i32, i32, f64)> {
+        if self.0.is_empty() {
+            let (x, y, t) = ring_spot(rng, water, centre, lo, hi)?;
+            let mut cells: Vec<_> = POSITION_CELLS
+                .iter()
+                .rev()
+                .map(|&(dx, dy)| ((x + dx).clamp(0x40, 0x7FC0), (y + dy).clamp(0x40, 0x7FC0), t))
+                .filter(|&(x, y, _)| !water.wet(x, y))
+                .collect();
+            cells.dedup_by_key(|c| (c.0, c.1));
+            self.0 = cells;
+        }
+        self.0.pop()
+    }
+}
+
 /// The Gun Dish radar for [`detect`]: lethality (km), threat tier, Doppler.
 const GUN_DISH: (i32, i32, i32) = (12, 1, 1);
 /// SA-14 (missile table index).
@@ -511,23 +547,26 @@ impl Sim {
         let war = self.roe;
         let mut units = Vec::new();
         let water = self.water.clone();
+        let at = |units: &mut Vec<GroundUnit>, kind, spot: Option<(i32, i32, f64)>| {
+            let Some((x, y, t)) = spot else { return };
+            units.push(GroundUnit {
+                kind,
+                x,
+                y,
+                destroyed: false,
+                tracking: false,
+                aim_az: t as f32,
+                aim_el: 0.3,
+                burst: 0,
+                cooldown: 0,
+                rounds: 0,
+                fine: None,
+                gone: false,
+            });
+        };
         let around =
             |rng: &mut Rng, units: &mut Vec<GroundUnit>, x: i32, y: i32, kind, lo: i32, hi: i32| {
-                let Some((x, y, t)) = ring_spot(rng, &water, (x, y), lo, hi) else { return };
-                units.push(GroundUnit {
-                    kind,
-                    x,
-                    y,
-                    destroyed: false,
-                    tracking: false,
-                    aim_az: t as f32,
-                    aim_el: 0.3,
-                    burst: 0,
-                    cooldown: 0,
-                    rounds: 0,
-                    fine: None,
-                    gone: false,
-                });
+                at(units, kind, ring_spot(rng, &water, (x, y), lo, hi));
             };
         let hostile = |o: &GroundObject| o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) == 0;
         // Airfields: Shilkas, and in a war an S-60 battery (2 to 4 guns around one spot).
@@ -573,9 +612,12 @@ impl Sim {
             {
                 continue;
             }
+            // Together in a sandbagged position on the town's edge.
             let (x, y, lo, hi) = self.town_ring(o.x, o.y).unwrap_or((o.x, o.y, 15, 80));
+            let mut position = Positions::default();
             for _ in 0..rng.random(war + 2) {
-                around(&mut rng, &mut units, x, y, GroundKind::Manpads, lo, hi);
+                let spot = position.next(&mut rng, &water, (x, y), lo, hi);
+                at(&mut units, GroundKind::Manpads, spot);
             }
         }
         units.truncate(MAX_UNITS);
