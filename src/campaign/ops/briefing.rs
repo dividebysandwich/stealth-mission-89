@@ -1,10 +1,6 @@
 //! The accepted mission's briefing, over a whole screen: the route map under three steps, the
 //! aircraft (and the base it flies from), its loadout, and the route itself, with TAKE OFF
-//! always at the top right. A pilot's first briefing walks through all three steps before
-//! TAKE OFF is lit (`briefing.json` remembers it is done).
-
-use std::sync::LazyLock;
-use std::sync::atomic::{AtomicBool, Ordering};
+//! always at the top right (and under the route).
 
 use bevy_egui::egui;
 use stealth_campaign::{Aircraft as Airframe, Side};
@@ -56,7 +52,7 @@ pub struct Briefing {
     loadout: crate::loadout::PlannedLoadout,
     window: crate::loadout::LoadoutWindow,
     step: Step,
-    /// The steps looked at (the first briefing's walk through them).
+    /// The steps looked at (ticked in the top bar).
     seen: [bool; 3],
     /// The route's vertical profile is unfolded.
     profile: bool,
@@ -117,35 +113,6 @@ pub(super) fn test_accept() -> Option<Step> {
     })
 }
 
-/// The pilot has walked through a briefing's steps once (`briefing.json`).
-#[derive(serde::Serialize, serde::Deserialize, Debug, Default, Clone, Copy)]
-#[serde(default)]
-struct BriefingPrefs {
-    walked: bool,
-}
-
-const PREFS_FILE: &str = "briefing.json";
-
-static WALKED: LazyLock<AtomicBool> = LazyLock::new(|| {
-    let walked = crate::prefs::load_json::<BriefingPrefs>(PREFS_FILE).unwrap_or_default().walked;
-    // Test aid: `--first-briefing` briefs as the first time.
-    AtomicBool::new(walked && !std::env::args().any(|a| a == "--first-briefing"))
-});
-
-fn walked() -> bool {
-    WALKED.load(Ordering::Relaxed)
-}
-
-fn set_walked() {
-    if walked() {
-        return;
-    }
-    WALKED.store(true, Ordering::Relaxed);
-    if let Err(e) = crate::prefs::save_json(PREFS_FILE, &BriefingPrefs { walked: true }) {
-        bevy::log::warn!("{PREFS_FILE}: {e:#}");
-    }
-}
-
 /// Seconds between a dragged point's updates to the group.
 const SEND_EVERY: f64 = 0.1;
 /// Seconds the group's route is not taken over after a change of this player's went (until
@@ -196,7 +163,6 @@ pub(super) fn briefing(
     let top = egui::Rect::from_min_size(screen.min, egui::vec2(screen.width(), shell::TOP_H));
     let strip = egui::Rect::from_min_size(top.left_bottom(), egui::vec2(screen.width(), STRIP_H));
     let map_rect = egui::Rect::from_min_max(strip.left_bottom(), screen.max);
-    let ready = walked() || b.seen.iter().all(|&s| s);
     let mut back = false;
     let mut take_off = false;
     let mut edit = None;
@@ -218,7 +184,6 @@ pub(super) fn briefing(
                     &mut b,
                     map_wx,
                     map_rect,
-                    ready,
                     &mut route_take_off,
                 );
             });
@@ -226,7 +191,7 @@ pub(super) fn briefing(
             ui.painter().rect_filled(top, 0.0, BG);
             ui.painter().hline(top.x_range(), top.bottom() - 1.0, edge);
             ui.scope_builder(egui::UiBuilder::new().max_rect(top), |ui| {
-                (back, take_off) = top_bar(ui, c, &o, &mut b, ready, room);
+                (back, take_off) = top_bar(ui, c, &o, &mut b, room);
                 take_off |= route_take_off;
             });
             ui.painter().rect_filled(strip, 0.0, BG.gamma_multiply(0.94));
@@ -273,7 +238,7 @@ pub(super) fn briefing(
                                         planner.refit();
                                     }
                                 });
-                            step_footer(ui, &mut b, ready, None);
+                            step_footer(ui, &mut b, None);
                         },
                     );
                 });
@@ -311,7 +276,7 @@ pub(super) fn briefing(
                             });
                             let briefed =
                                 crate::loadout::PlannedLoadout::of(&m, kind_of(b.aircraft));
-                            if step_footer(ui, &mut b, ready, Some(t!("loadout-briefed"))) {
+                            if step_footer(ui, &mut b, Some(t!("loadout-briefed"))) {
                                 b.loadout = briefed;
                             }
                         },
@@ -332,7 +297,6 @@ pub(super) fn briefing(
             let route = r.points.clone();
             c.actions.push(Action::EditPlan { offer: o.id, base: b.base, route });
         }
-        set_walked();
         c.ui.error = None;
         c.aircraft = b.aircraft;
         c.actions.push(Action::TakeMission {
@@ -357,7 +321,6 @@ fn top_bar(
     c: &ActiveCampaign,
     o: &stealth_campaign::MissionOffer,
     b: &mut Briefing,
-    ready: bool,
     room: shell::Room,
 ) -> (bool, bool) {
     let mut back = false;
@@ -428,9 +391,9 @@ fn top_bar(
                 .icon(icon::FLY)
                 .primary()
                 .min_size(egui::vec2(180.0, 50.0));
-            let r = ui.add_enabled(ready, button);
+            let r = ui.add(button);
             take_off = r.clicked();
-            if ready && c.state().outcome.is_none() {
+            if c.state().outcome.is_none() {
                 ui.add(egui::Spinner::new().color(GREEN)).on_hover_text(t!("ops-running"));
             }
         });
@@ -501,9 +464,8 @@ fn step_heading(ui: &mut egui::Ui, step: Step, title: &str) {
     ui.add_space(10.0);
 }
 
-/// A step panel's foot: the previous step, and the next (lit while the first briefing walks
-/// through them).
-fn step_footer(ui: &mut egui::Ui, b: &mut Briefing, ready: bool, reset: Option<&str>) -> bool {
+/// A step panel's foot: the previous step (and a reset), and the next.
+fn step_footer(ui: &mut egui::Ui, b: &mut Briefing, reset: Option<&str>) -> bool {
     let mut reset_clicked = false;
     ui.add_space(8.0);
     let r = ui.max_rect();
@@ -527,7 +489,6 @@ fn step_footer(ui: &mut egui::Ui, b: &mut Briefing, ready: bool, reset: Option<&
                 let button = crate::menu::big_button(&text)
                     .icon(icon::NEXT)
                     .min_size(egui::vec2(200.0, 52.0));
-                let button = if ready { button } else { button.primary() };
                 if ui.add(button).clicked() {
                     b.go(next);
                 }
@@ -679,7 +640,6 @@ fn route_map(
     b: &mut Briefing,
     weather: &MapWeather,
     rect: egui::Rect,
-    ready: bool,
     take_off: &mut bool,
 ) -> Option<Vec<crate::mission::RoutePoint>> {
     let now = ui.input(|i| i.time);
@@ -756,7 +716,7 @@ fn route_map(
         &mut b.profile,
         !locked && b.step == Step::Route,
         b.step == Step::Route,
-        Some(ready),
+        Some(true),
     );
     plan?;
     b.dirty |= route.points != before;
