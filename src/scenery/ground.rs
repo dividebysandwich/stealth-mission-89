@@ -323,6 +323,25 @@ impl Ground {
         })
     }
 
+    /// Whether wires strung from `a` to `b` stay off the airfields: no concrete under them, and
+    /// clear of every runway and its approaches.
+    pub fn span_clear(&self, a: DVec2, b: DVec2) -> bool {
+        let crosses_runway = self.runways.iter().any(|r| {
+            // The runway, its shoulders and 1.5 km of approach at each end.
+            let (half_len, half_width) = (r.half_len + 1500.0, r.half_width + 150.0);
+            let local = |p: DVec2| {
+                let d = p - r.c;
+                DVec2::new(d.dot(r.axis), d.dot(r.axis.perp()))
+            };
+            segment_hits_box(local(a), local(b), DVec2::new(half_len, half_width))
+        });
+        if crosses_runway {
+            return false;
+        }
+        let n = (a.distance(b) / 10.0).ceil().max(1.0) as usize;
+        (0..=n).all(|i| self.top(a.lerp(b, i as f64 / n as f64)) != Some(Surface::Solid))
+    }
+
     /// Not water or concrete at the point, and at least `r` metres from raised geometry
     /// (concrete nearby is fine).
     pub fn is_clear(&self, p: DVec2, r: f64) -> bool {
@@ -685,4 +704,28 @@ fn walk(
     for c in &node.children {
         walk(assets, c, tf, lod0, forest, materials, remap, day, geom);
     }
+}
+
+/// Whether the segment `a`-`b` meets the box centred on the origin with half extents `h`.
+fn segment_hits_box(a: DVec2, b: DVec2, h: DVec2) -> bool {
+    let d = b - a;
+    let (mut t0, mut t1) = (0.0f64, 1.0f64);
+    for (p, v, e) in [(a.x, d.x, h.x), (a.y, d.y, h.y)] {
+        if v.abs() < 1e-12 {
+            if p.abs() > e {
+                return false;
+            }
+            continue;
+        }
+        let (mut s0, mut s1) = ((-e - p) / v, (e - p) / v);
+        if s0 > s1 {
+            std::mem::swap(&mut s0, &mut s1);
+        }
+        t0 = t0.max(s0);
+        t1 = t1.min(s1);
+        if t0 > t1 {
+            return false;
+        }
+    }
+    true
 }

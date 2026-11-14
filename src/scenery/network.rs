@@ -889,6 +889,13 @@ impl Network {
                     && self.building_clear(q, 4.0)
                     && self.town_at(q, 0.95).is_none()
                 {
+                    if run.last().is_some_and(|&l| !ground.span_clear(l, q)) {
+                        if run.len() > 1 {
+                            runs.push(std::mem::take(&mut run));
+                        } else {
+                            run.clear();
+                        }
+                    }
                     run.push(q);
                 } else if run.len() > 1 {
                     runs.push(std::mem::take(&mut run));
@@ -906,8 +913,8 @@ impl Network {
         }
     }
 
-    /// Pylons every ~330 m from `a` to `b`, bending once around obstacles; a pylon that can't
-    /// stand is moved along the line or left out if the span stays under 700 m.
+    /// Pylons every ~330 m from `a` to `b`, bending once around obstacles and airfields; a pylon
+    /// that can't stand is moved along the line or left out if the span stays under 700 m.
     fn pylon_route(
         &self,
         ground: &Ground,
@@ -915,7 +922,7 @@ impl Network {
         a: DVec2,
         b: DVec2,
     ) -> Option<Vec<DVec2>> {
-        let bends = [0.0, 0.12, -0.12, 0.25, -0.25];
+        let bends = [0.0, 0.12, -0.12, 0.25, -0.25, 0.4, -0.4];
         'attempt: for &bend in &bends {
             let mid = (a + b) * 0.5 + (b - a).perp() * bend * rng.range(0.8, 1.2);
             let mut out: Vec<DVec2> = vec![];
@@ -937,8 +944,11 @@ impl Network {
                         None if i != 0 && i != n => {}
                         None => continue 'attempt,
                     }
-                    if out.len() > 1 && out[out.len() - 2].distance(out[out.len() - 1]) > 700.0 {
-                        continue 'attempt;
+                    if out.len() > 1 {
+                        let (l, m) = (out[out.len() - 2], out[out.len() - 1]);
+                        if l.distance(m) > 700.0 || !ground.span_clear(l, m) {
+                            continue 'attempt;
+                        }
                     }
                 }
             }
