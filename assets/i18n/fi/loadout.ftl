@@ -14,6 +14,8 @@ loadout-out-of-stock = Ei varastossa tälle tehtävälle
 loadout-mirror = Sama molemmin puolin
     .facts = Lataa myös { $station }
 loadout-stores = Asekuorma
+loadout-stations = Ripustimet
+loadout-click-drawing = Tai napsauta ripustinta piirroksessa
 loadout-needs-equipment = Tehtävä tarvitsee kameransa tai erikoisvarusteensa
 
 ## Mihin kutakin asetta käytetään (asetyypit 0-20)

@@ -913,7 +913,6 @@ pub(crate) mod icon {
     pub(crate) const DEFEND: char = '\u{e1fe}'; // shield-alert
     pub(crate) const WATCH: char = '\u{e0ba}'; // eye
     pub(crate) const ADD: char = '\u{e081}'; // circle-plus
-    pub(crate) const WARNING: char = '\u{e193}'; // alert-triangle
 }
 
 /// A framed button that lights up (a green gradient, a glowing frame) under the mouse, as the

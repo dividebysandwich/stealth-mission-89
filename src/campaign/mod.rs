@@ -28,7 +28,7 @@ mod logistics;
 mod menu;
 mod front;
 mod ops;
-mod shell;
+pub(crate) mod shell;
 mod war_map;
 pub(crate) mod picture;
 pub mod unit_view;

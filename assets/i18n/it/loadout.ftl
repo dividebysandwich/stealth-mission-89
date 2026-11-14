@@ -14,6 +14,8 @@ loadout-out-of-stock = Nessuno in dotazione per questa missione
 loadout-mirror = Uguale su entrambi i lati
     .facts = Carica anche { $station }
 loadout-stores = Carichi
+loadout-stations = Piloni
+loadout-click-drawing = Oppure fai clic su un pilone nel disegno
 loadout-needs-equipment = La missione richiede la sua telecamera o il suo equipaggiamento speciale
 
 ## A che cosa serve ogni arma (tipi di arma da 0 a 20)

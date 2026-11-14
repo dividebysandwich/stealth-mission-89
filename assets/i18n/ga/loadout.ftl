@@ -14,6 +14,8 @@ loadout-out-of-stock = Gan aon cheann i stoc don mhisean seo
 loadout-mirror = Mar an gcéanna ar an dá thaobh
     .facts = Luchtaíonn { $station } freisin
 loadout-stores = Stóir
+loadout-stations = Stáisiúin
+loadout-click-drawing = Nó cliceáil ar stáisiún ar an líníocht
 loadout-needs-equipment = Teastaíonn a cheamara nó trealamh speisialta ón misean
 
 ## Cad chuige a bhfuil gach arm

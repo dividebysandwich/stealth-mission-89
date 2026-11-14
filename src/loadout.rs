@@ -1835,6 +1835,202 @@ pub fn editor(
     });
 }
 
+/// The editor in large (the campaign's briefing, the headset): the stations as big buttons
+/// over the drawing, the stores as tiles that say what each is for and how many the base has
+/// (no hover text in the headset), the mirror as a switch. `size`: the room it has.
+pub fn editor_large(
+    ui: &mut egui::Ui,
+    w: &mut LoadoutWindow,
+    lo: &mut PlannedLoadout,
+    m: &Mission,
+    size: egui::Vec2,
+    stock: &dyn Fn(u8) -> Option<u32>,
+) {
+    use crate::campaign::shell;
+    let lay = lo.layout();
+    w.selected = w.selected.min(lay.hardpoints.len().saturating_sub(1));
+    let mirror = w.mirror.get_or_insert(true);
+    let left = (size.x * 0.4).clamp(300.0, 520.0);
+    ui.horizontal_top(|ui| {
+        ui.spacing_mut().item_spacing.x = 20.0;
+        ui.vertical(|ui| {
+            ui.set_width(left);
+            section(ui, t!("loadout-stations"));
+            // The stations as buttons, four to a row: the station and what it carries.
+            let n = lay.hardpoints.len();
+            let per_row = n.clamp(1, 4);
+            let gap = 6.0;
+            let bw = (left - gap * (per_row - 1) as f32) / per_row as f32;
+            for row in (0..n).collect::<Vec<_>>().chunks(per_row) {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    for &i in row {
+                        let hp = &lay.hardpoints[i];
+                        let store = lo.stores[i].map_or("-".to_string(), |wpn| {
+                            let n = hp.rounds(wpn);
+                            let name = WEAPONS[wpn as usize].0.split(' ').next().unwrap_or("");
+                            if n > 1 { format!("{n}x {name}") } else { name.to_string() }
+                        });
+                        let on = i == w.selected;
+                        if shell::tile(ui, None, hp.label, Some(&store), on, 60.0, Some(bw))
+                            .clicked()
+                        {
+                            w.selected = i;
+                        }
+                    }
+                });
+            }
+            ui.add_space(8.0);
+            let room = (size.y - ui.min_rect().height() - 30.0).max(120.0);
+            if let Some(i) = diagram(ui, lay, &lo.stores, w.selected, egui::vec2(left, room)) {
+                w.selected = i;
+            }
+            ui.vertical_centered(|ui| {
+                ui.label(egui::RichText::new(t!("loadout-click-drawing")).small().color(DIM));
+            });
+        });
+        ui.vertical(|ui| {
+            let Some(hp) = lay.hardpoints.get(w.selected) else {
+                section(ui, t!("loadout-no-hardpoints"));
+                ui.label(egui::RichText::new(t!("loadout-no-stores")).color(DIM));
+                return;
+            };
+            section(ui, t!(hp.name));
+            if hp.fantasy {
+                ui.label(egui::RichText::new(t!("loadout-fantasy")).small().color(AMBER));
+            }
+            let mut pick = lo.stores[w.selected];
+            let stations = lo.stations();
+            let elsewhere = |wpn: u8| -> u32 {
+                let other = stations.iter().enumerate().filter(|(i, _)| *i != w.selected);
+                other.filter(|(_, s)| s.0 == wpn as i32).map(|(_, s)| s.1.max(0) as u32).sum()
+            };
+            let width = ui.available_width();
+            let tile_w = (width - 8.0) / 2.0;
+            // Room under the tiles for the switch, the warnings and the stores.
+            let list_h = (size.y - 230.0).max(140.0);
+            egui::ScrollArea::vertical()
+                .id_salt("stores_large")
+                .max_height(list_h)
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    let mut tiles: Vec<Option<u8>> = vec![None];
+                    tiles.extend(hp.loads.iter().map(|&w| Some(w)));
+                    for row in tiles.chunks(2) {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 8.0;
+                            for &t in row {
+                                let Some(wpn) = t else {
+                                    let on = pick.is_none();
+                                    if shell::tile(
+                                        ui,
+                                        None,
+                                        t!("loadout-empty"),
+                                        Some(""),
+                                        on,
+                                        64.0,
+                                        Some(tile_w),
+                                    )
+                                    .clicked()
+                                    {
+                                        pick = None;
+                                    }
+                                    continue;
+                                };
+                                let (name, role) = WEAPONS[wpn as usize];
+                                let left = stock(wpn);
+                                let base_has = left
+                                    .is_none_or(|n| n >= hp.rounds(wpn) as u32 + elsewhere(wpn));
+                                let in_stock =
+                                    !out_of_stock(m, wpn) && (base_has || pick == Some(wpn));
+                                let title = format!("{}x {name}", hp.rounds(wpn));
+                                let count = match left {
+                                    _ if !in_stock => t!("loadout-none-in-stock").to_string(),
+                                    Some(n) => t!("loadout-at-base", count = n).to_string(),
+                                    None => String::new(),
+                                };
+                                let sub = if count.is_empty() {
+                                    t!(role).to_string()
+                                } else {
+                                    format!("{}  ·  {count}", t!(role))
+                                };
+                                let on = pick == Some(wpn);
+                                let r = ui
+                                    .add_enabled_ui(in_stock, |ui| {
+                                        shell::tile(
+                                            ui,
+                                            None,
+                                            &title,
+                                            Some(&sub),
+                                            on,
+                                            64.0,
+                                            Some(tile_w),
+                                        )
+                                    })
+                                    .inner;
+                                let why = if base_has {
+                                    t!("loadout-out-of-stock")
+                                } else {
+                                    t!("loadout-base-out")
+                                };
+                                let r = r.on_disabled_hover_text(why);
+                                let mut lines = vec![t!(role)];
+                                lines.extend(employment(wpn as usize));
+                                if facts(r, &lines).clicked() {
+                                    pick = Some(wpn);
+                                }
+                            }
+                        });
+                        ui.add_space(4.0);
+                    }
+                });
+            ui.add_space(6.0);
+            if let Some(j) = hp.mirror {
+                let other = t!(lay.hardpoints[j].name).to_lowercase();
+                facts(
+                    shell::switch(ui, mirror, t!("loadout-mirror")),
+                    &[&t!("loadout-mirror.facts", station = other)],
+                );
+            }
+            let warn = |ui: &mut egui::Ui, text: &str| {
+                egui::Frame::new()
+                    .stroke(egui::Stroke::new(1.0, AMBER))
+                    .inner_margin(egui::Margin::symmetric(10, 6))
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        ui.label(egui::RichText::new(text).color(AMBER));
+                    });
+            };
+            if !hp.excludes.is_empty() {
+                let names: Vec<_> = hp.excludes.iter().map(|&j| lay.hardpoints[j].label).collect();
+                let text = match names[..] {
+                    [a, b] => t!("loadout-empties-two", first = a, second = b),
+                    _ => t!("loadout-empties", stations = names.join(", ")),
+                };
+                warn(ui, &text);
+            }
+            if pick != lo.stores[w.selected] {
+                lo.load(w.selected, pick, *mirror);
+            }
+            if m.loadout.bays.iter().any(|b| b.weapon == 16 || b.weapon == 18) {
+                warn(ui, t!("loadout-needs-equipment"));
+            }
+            section(ui, t!("loadout-stores"));
+            ui.label(egui::RichText::new(lo.summary()).color(GREEN));
+        });
+    });
+}
+
+/// An aircraft's outline from above, fitted into `rect` (the briefing's aircraft cards).
+pub fn silhouette(p: &egui::Painter, rect: egui::Rect, kind: AircraftKind, colour: egui::Color32) {
+    let lay = layout(kind, false);
+    let s = (rect.width() / (2.0 * lay.half_span + 1.0)).min(rect.height() / (lay.length + 1.0));
+    let origin = egui::pos2(rect.center().x, rect.center().y - lay.length * s / 2.0);
+    let pts: Vec<egui::Pos2> =
+        lay.outline.iter().map(|&(x, y)| origin + egui::vec2(x * s, y * s)).collect();
+    p.add(egui::Shape::closed_line(pts, egui::Stroke::new(1.5, colour)));
+}
+
 /// The aircraft from above with its hardpoints; returns the one clicked.
 fn diagram(
     ui: &mut egui::Ui,

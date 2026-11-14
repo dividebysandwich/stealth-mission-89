@@ -14,6 +14,8 @@ loadout-out-of-stock = Δεν υπάρχει απόθεμα για αυτή τη
 loadout-mirror = Ίδιο και στις δύο πλευρές
     .facts = Φορτώνει και το { $station }
 loadout-stores = Φορτία
+loadout-stations = Σημεία ανάρτησης
+loadout-click-drawing = Ή κάντε κλικ σε σημείο στο σχέδιο
 loadout-needs-equipment = Η αποστολή χρειάζεται την κάμερα ή τον ειδικό εξοπλισμό της
 
 ## Ο ρόλος κάθε όπλου (τύποι όπλων 0 έως 20)

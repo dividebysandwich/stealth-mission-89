@@ -12,7 +12,7 @@ use stealth_campaign::{CampaignState, Side};
 use stealth_i18n::t;
 
 use crate::map_draw::{FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView};
-use crate::menu::{BRIGHT, DIM};
+use crate::menu::DIM;
 
 /// Samples per side over the theater (0..0x8000 map units: 2 km each).
 const GRID: usize = 256;
@@ -80,7 +80,8 @@ fn band_image(diff: &[f32], near: &[bool]) -> egui::ColorImage {
             if d < BAND_KM {
                 // Fullest at the line, gone at the band's edge.
                 let a = 1.0 - (d / BAND_KM).powi(2);
-                img[(i, j)] = egui::Color32::from_rgba_unmultiplied(150, 150, 150, (a * 120.0) as u8);
+                img[(i, j)] =
+                    egui::Color32::from_rgba_unmultiplied(150, 150, 150, (a * 120.0) as u8);
             }
         }
     }
@@ -126,7 +127,12 @@ fn key(st: &CampaignState) -> Vec<Side> {
 }
 
 /// Draws the front (band and line) under the places, if its layer is shown.
-pub(super) fn draw(painter: &egui::Painter, view: &MapView, st: &CampaignState, layers: &MapLayers) {
+pub(super) fn draw(
+    painter: &egui::Painter,
+    view: &MapView,
+    st: &CampaignState,
+    layers: &MapLayers,
+) {
     if !layers.shows(Layer::Front) {
         return;
     }
@@ -147,13 +153,17 @@ pub(super) fn draw(painter: &egui::Painter, view: &MapView, st: &CampaignState, 
         ctx.data_mut(|d| d.insert_temp(id, front.clone()));
     }
     let Some(f) = front else { return };
-    let theater = egui::Rect::from_min_max(view.to_screen(0.0, 0.0), view.to_screen(THEATER, THEATER));
+    let theater =
+        egui::Rect::from_min_max(view.to_screen(0.0, 0.0), view.to_screen(THEATER, THEATER));
     let uv = egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
     painter.image(f.band.id(), theater, uv, egui::Color32::WHITE);
     let dark = egui::Stroke::new(4.0, egui::Color32::from_black_alpha(140));
     let light = egui::Stroke::new(1.8, egui::Color32::from_gray(225));
-    let segs: Vec<[egui::Pos2; 2]> =
-        f.line.iter().map(|s| [view.to_screen(s[0].x, s[0].y), view.to_screen(s[1].x, s[1].y)]).collect();
+    let segs: Vec<[egui::Pos2; 2]> = f
+        .line
+        .iter()
+        .map(|s| [view.to_screen(s[0].x, s[0].y), view.to_screen(s[1].x, s[1].y)])
+        .collect();
     let clip = view.rect.expand(4.0);
     for stroke in [dark, light] {
         for s in segs.iter().filter(|s| clip.contains(s[0]) || clip.contains(s[1])) {
@@ -191,7 +201,11 @@ pub(super) fn recent(
         if age < RECENT / 4.0 {
             painter.ctx().request_repaint();
         }
-        painter.circle_stroke(c, 16.0 * k * pulse, egui::Stroke::new(2.5, colour.gamma_multiply(fade)));
+        painter.circle_stroke(
+            c,
+            16.0 * k * pulse,
+            egui::Stroke::new(2.5, colour.gamma_multiply(fade)),
+        );
         let label = if won { t!("map-front-taken") } else { t!("map-front-lost") };
         let font = egui::FontId::monospace(12.0);
         let g = painter.layout_no_wrap(label.to_string(), font, egui::Color32::BLACK);
@@ -202,7 +216,8 @@ pub(super) fn recent(
         painter.rect_filled(box_, 2.0, colour.gamma_multiply(fade));
         painter.galley(box_.center() - g.size() / 2.0, g, egui::Color32::BLACK);
         let mins = (age / 60.0).floor() as i64;
-        let line = if won { t!("mt-taken-ago", mins = mins) } else { t!("mt-lost-ago", mins = mins) };
+        let line =
+            if won { t!("mt-taken-ago", mins = mins) } else { t!("mt-lost-ago", mins = mins) };
         tips.add(c, label, crate::mission::clean_text(&p.name), colour).line(line).reach(16.0 * k);
     }
 }
@@ -218,7 +233,6 @@ pub(super) fn legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
         );
     });
     ui.label(egui::RichText::new(t!("map-legend-front.note")).small().color(DIM));
-    let _ = BRIGHT;
 }
 
 #[cfg(test)]

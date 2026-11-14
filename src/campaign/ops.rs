@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy_egui::{EguiContexts, PrimaryEguiContext, egui};
 use stealth_campaign::weather::Now;
 use stealth_campaign::{
-    Aircraft as Airframe, Due, InsertionState, MissionKind, MissionOffer, Objective, PlayerId,
-    Side, SortieResult, tuning,
+    Aircraft as Airframe, Due, MissionKind, MissionOffer, Objective, PlayerId, Side, SortieResult,
+    tuning,
 };
 use stealth_host::glue::sortie_mission;
 use stealth_mission::Sky;
@@ -15,17 +15,18 @@ use stealth_net::protocol::PlayerStatus;
 use stealth_sim::crew::{CrewCmd, Seat};
 use stealth_sim::station::StationCmd;
 
+mod briefing;
 mod flights;
 
-use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
+use briefing::{Briefing, Step};
+
 use super::shell;
-use crate::layout::{Split, screen_window};
+use super::{Action, ActiveCampaign, Phase, Role, describe, kind_of, preview};
 use crate::map_draw::{
     self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather,
 };
 use crate::menu::{
-    AMBER, BG, BRIGHT, DIM, GREEN, Panel, apply_terminal_style, big_button, footer_rule, icon,
-    section,
+    AMBER, BG, BRIGHT, DIM, GREEN, Panel, apply_terminal_style, big_button, icon, section,
 };
 use crate::settings::AppState;
 use stealth_i18n::{Text, t};
@@ -192,55 +193,6 @@ impl OpsUi {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BriefPage {
-    Map,
-    Loadout,
-}
-
-/// A mission accepted from the board, briefed before take-off.
-struct Briefing {
-    offer: u32,
-    base: u16,
-    /// The aircraft to fly it in.
-    aircraft: Airframe,
-    loadout: crate::loadout::PlannedLoadout,
-    window: crate::loadout::LoadoutWindow,
-    page: BriefPage,
-    /// The route to fly (None until the editor first shows it). In a coop game the plan's,
-    /// with this player's changes not sent yet.
-    route: Option<crate::mission::PlannedRoute>,
-    /// Changed here, not sent to the plan yet.
-    dirty: bool,
-    /// When the last change went (egui time), and until when the plan's route is not taken
-    /// over (its echo is on the way).
-    sent_at: f64,
-    hold_until: f64,
-}
-
-impl Briefing {
-    fn new(
-        offer: u32,
-        base: u16,
-        aircraft: Airframe,
-        loadout: crate::loadout::PlannedLoadout,
-        page: BriefPage,
-    ) -> Self {
-        Self {
-            offer,
-            base,
-            aircraft,
-            loadout,
-            window: default(),
-            page,
-            route: None,
-            dirty: false,
-            sent_at: 0.0,
-            hold_until: 0.0,
-        }
-    }
-}
-
 /// The camera that carries the Ops screen's egui context.
 #[derive(Component, Clone)]
 pub struct OpsCamera;
@@ -382,24 +334,6 @@ pub fn test_take() -> Option<TestTake> {
     Some(a.parse().map_or_else(|_| TestTake::Kind(a.clone()), TestTake::Index))
 }
 
-fn test_accept() -> Option<BriefPage> {
-    let args: Vec<String> = std::env::args().collect();
-    let p = args.iter().position(|a| a == "--campaign-accept").and_then(|i| args.get(i + 1))?;
-    Some(if p == "loadout" { BriefPage::Loadout } else { BriefPage::Map })
-}
-
-/// The Ops window's size, frame included: as high as the screen lets it be up to this.
-const OPS_SIZE: egui::Vec2 = egui::vec2(1232.0, 900.0);
-/// The least height of a tab: a lower window scrolls it.
-const TAB_LEAST: f32 = 300.0;
-/// The height of the BRIEFED button's row under the loadout editor.
-const LOADOUT_BUTTONS: f32 = 60.0;
-/// The board's width from which the missions and their details are side by side, and the least
-/// width of the details.
-const BOARD_SPLIT: f32 = 900.0;
-/// The war map's width from which its side column is beside it and not a drawer over it.
-const SIDE_FROM: f32 = 800.0;
-const DETAIL_LEAST: f32 = 320.0;
 /// Background of an unselected mission row.
 const ROW: egui::Color32 = egui::Color32::from_rgb(9, 29, 21);
 
@@ -521,7 +455,7 @@ pub fn ops_ui(
         return Ok(());
     }
     // Test aid: `--campaign-accept map|loadout` opens the first mission's briefing.
-    if let Some(page) = test_accept()
+    if let Some(page) = briefing::test_accept()
         && !std::mem::replace(&mut c.ui.test_taken, true)
         && let Some(o) = c.state().board.iter().find(|o| o.kind.flyable_by(c.aircraft)).cloned()
     {
@@ -535,7 +469,7 @@ pub fn ops_ui(
     }
     if c.ui.briefing.is_some() {
         let line = wx.as_ref().map(|w| w.1.as_str());
-        briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx);
+        briefing::briefing(ctx, c, &combat.sim, &mut planner, line, &map_wx);
         return Ok(());
     }
     super::designate::test_aid(c, &combat.sim, scenery.as_deref());
@@ -555,7 +489,8 @@ pub fn ops_ui(
         egui::pos2(screen.left(), top.bottom()),
         egui::pos2(screen.left() + shell::RAIL_W, screen.bottom()),
     );
-    let map_rect = egui::Rect::from_min_max(egui::pos2(rail_rect.right(), top.bottom()), screen.max);
+    let map_rect =
+        egui::Rect::from_min_max(egui::pos2(rail_rect.right(), top.bottom()), screen.max);
     egui::Area::new(egui::Id::new("ops_screen"))
         .fixed_pos(screen.min)
         .order(egui::Order::Background)
@@ -584,7 +519,9 @@ pub fn ops_ui(
             ui.painter().rect_filled(rail_rect, 0.0, BG);
             ui.painter().vline(rail_rect.right() - 1.0, rail_rect.y_range(), edge);
             ui.scope_builder(
-                egui::UiBuilder::new().max_rect(rail_rect).layout(egui::Layout::top_down(egui::Align::Min)),
+                egui::UiBuilder::new()
+                    .max_rect(rail_rect)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
                 |ui| rail(ui, c, &notices),
             );
         });
@@ -594,10 +531,9 @@ pub fn ops_ui(
         let shown = shell::slide(ctx, since);
         let at = map_rect.left_top() - egui::vec2((1.0 - shown) * pane_w, 0.0);
         let size = egui::vec2(pane_w, map_rect.height());
-        egui::Area::new(egui::Id::new("ops_pane"))
-            .fixed_pos(at)
-            .order(egui::Order::Middle)
-            .show(ctx, |ui| {
+        egui::Area::new(egui::Id::new("ops_pane")).fixed_pos(at).order(egui::Order::Middle).show(
+            ctx,
+            |ui| {
                 let frame = egui::Frame::new()
                     .fill(BG.gamma_multiply(0.97))
                     .stroke(egui::Stroke::new(2.0, crate::menu::EDGE))
@@ -612,10 +548,22 @@ pub fn ops_ui(
                     let room = ui.available_size();
                     ui.allocate_ui(room, |ui| {
                         ui.set_min_size(room);
-                        pane_body(ui, c, pane, &combat.sim, &sites, &mut notices, &mut voice, &mut deck, &mut bar, settings.vr);
+                        pane_body(
+                            ui,
+                            c,
+                            pane,
+                            &combat.sim,
+                            &sites,
+                            &mut notices,
+                            &mut voice,
+                            &mut deck,
+                            &mut bar,
+                            settings.vr,
+                        );
                     });
                 });
-            });
+            },
+        );
     }
     if c.ui.pane == Some(Pane::Chat) {
         c.ui.chat_seen = notices.log().len();
@@ -630,7 +578,10 @@ pub fn ops_ui(
             bar = Some((unit_view.title.clone(), String::new()));
         } else if c.ui.pane.is_none() {
             let n = c.state().board.len();
-            bar = Some((t!("ops-bar-missions", count = n).to_string(), t!("ops-bar-hint").to_string()));
+            bar = Some((
+                t!("ops-bar-missions", count = n).to_string(),
+                t!("ops-bar-hint").to_string(),
+            ));
             deck.push(
                 Deed::new(Todo::Open(Pane::Missions), t!("ops-tab-missions"), icon::MISSIONS, "")
                     .primary(),
@@ -704,9 +655,16 @@ fn top_bar(
     ui.horizontal_centered(|ui| {
         ui.spacing_mut().item_spacing.x = 10.0;
         // The brand over the rail.
-        let (brand, _) = ui.allocate_exact_size(egui::vec2(shell::RAIL_W, shell::TOP_H), egui::Sense::hover());
+        let (brand, _) =
+            ui.allocate_exact_size(egui::vec2(shell::RAIL_W, shell::TOP_H), egui::Sense::hover());
         let p = ui.painter();
-        p.text(brand.left_center() + egui::vec2(16.0, 0.0), egui::Align2::LEFT_CENTER, "//", egui::FontId::monospace(22.0), crate::menu::EDGE);
+        p.text(
+            brand.left_center() + egui::vec2(16.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            "//",
+            egui::FontId::monospace(22.0),
+            crate::menu::EDGE,
+        );
         if room > Room::Small {
             let name = c.mission.theater_name.to_uppercase();
             let title = t!("ops-top-campaign");
@@ -725,7 +683,8 @@ fn top_bar(
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         if let Some(g) = glyph {
-                            let (r, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
+                            let (r, _) = ui
+                                .allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
                             shell::paint_icon(ui.painter(), r.center(), g, 17.0, DIM);
                         }
                         add(ui);
@@ -737,8 +696,14 @@ fn top_bar(
             ui.label(egui::RichText::new(clock_text(c)).color(BRIGHT));
         });
         chip(ui, None, &mut |ui| {
-            ui.label(egui::RichText::new(t!("ops-blue", count = c.state().held(Side::Blue))).color(FRIENDLY_BLUE));
-            ui.label(egui::RichText::new(t!("ops-red", count = c.state().held(Side::Red))).color(MISSILE_RED));
+            ui.label(
+                egui::RichText::new(t!("ops-blue", count = c.state().held(Side::Blue)))
+                    .color(FRIENDLY_BLUE),
+            );
+            ui.label(
+                egui::RichText::new(t!("ops-red", count = c.state().held(Side::Red)))
+                    .color(MISSILE_RED),
+            );
         });
         if let Some(wx) = wx {
             let r = chip(ui, Some(icon::WEATHER), &mut |ui| {
@@ -752,7 +717,11 @@ fn top_bar(
         }
         chip(ui, Some(icon::MATERIEL), &mut |ui| supply_line(ui, c, room == Room::Full));
         if let Some(server) = &c.server {
-            ui.label(egui::RichText::new(t!("ops-on-server", server = server.to_uppercase())).small().color(FRIENDLY_BLUE));
+            ui.label(
+                egui::RichText::new(t!("ops-on-server", server = server.to_uppercase()))
+                    .small()
+                    .color(FRIENDLY_BLUE),
+            );
         } else if c.role == Role::Host {
             ui.label(egui::RichText::new(t!("ops-serving")).small().color(FRIENDLY_BLUE));
         }
@@ -761,7 +730,12 @@ fn top_bar(
             let exit = if room == Room::Small {
                 shell::square_button(ui, exit_icon(c.role), exit_label(c.role))
             } else {
-                ui.add(big_button(exit_label(c.role)).icon(exit_icon(c.role)).fill(EXIT_RED).min_size(egui::vec2(120.0, 44.0)))
+                ui.add(
+                    big_button(exit_label(c.role))
+                        .icon(exit_icon(c.role))
+                        .fill(EXIT_RED)
+                        .min_size(egui::vec2(120.0, 44.0)),
+                )
             };
             if exit.clicked() {
                 c.ui.confirm_exit = true;
@@ -789,7 +763,11 @@ fn rail(ui: &mut egui::Ui, c: &mut ActiveCampaign, notices: &crate::player_notic
         if pane == Pane::Players {
             ui.add_space(6.0);
             let r = ui.available_rect_before_wrap();
-            ui.painter().hline(r.left() + 12.0..=r.right() - 12.0, r.top(), egui::Stroke::new(1.0, crate::menu::FRAME));
+            ui.painter().hline(
+                r.left() + 12.0..=r.right() - 12.0,
+                r.top(),
+                egui::Stroke::new(1.0, crate::menu::FRAME),
+            );
             ui.add_space(6.0);
         }
         let badge = match pane {
@@ -797,17 +775,22 @@ fn rail(ui: &mut egui::Ui, c: &mut ActiveCampaign, notices: &crate::player_notic
                 shell::Badge::Count(c.state().board.len()).filter_zero()
             }
             Pane::Chat if c.ui.pane != Some(Pane::Chat) => {
-                shell::Badge::Count(notices.log().len().saturating_sub(c.ui.chat_seen)).filter_zero()
+                shell::Badge::Count(notices.log().len().saturating_sub(c.ui.chat_seen))
+                    .filter_zero()
             }
             Pane::Debrief
                 if c.ui.pane != Some(Pane::Debrief)
-                    && c.debrief.as_ref().is_some_and(|d| Some(d.record.id) != c.ui.debrief_seen) =>
+                    && c.debrief
+                        .as_ref()
+                        .is_some_and(|d| Some(d.record.id) != c.ui.debrief_seen) =>
             {
                 shell::Badge::Dot
             }
             _ => shell::Badge::None,
         };
-        if shell::rail_button(ui, pane.icon(), pane.label(), c.ui.pane == Some(pane), badge).clicked() {
+        if shell::rail_button(ui, pane.icon(), pane.label(), c.ui.pane == Some(pane), badge)
+            .clicked()
+        {
             c.ui.toggle(pane);
         }
     }
@@ -837,19 +820,33 @@ fn pane_body(
                 && let Some((title, sub)) = super::air_defence::describe(c, sites, unit)
             {
                 *bar = Some((title.clone(), sub));
-                let mut watch = Deed::new(Todo::Watch { unit, title }, t!("ops-watch"), icon::WATCH, "");
+                let mut watch =
+                    Deed::new(Todo::Watch { unit, title }, t!("ops-watch"), icon::WATCH, "");
                 watch.why = None;
                 deck.push(watch);
                 if sim.units().get(unit).is_some_and(|u| stealth_sim::station::mannable(u.kind)) {
-                    let mut man = Deed::new(Todo::Man { unit: unit as u16 }, t!("ops-control"), icon::CONTROL, t!("ops-control.facts")).primary();
+                    let mut man = Deed::new(
+                        Todo::Man { unit: unit as u16 },
+                        t!("ops-control"),
+                        icon::CONTROL,
+                        t!("ops-control.facts"),
+                    )
+                    .primary();
                     man.why = man_refusal(c, sim, unit);
                     deck.push(man);
                 }
             }
         }
         Pane::Logistics => super::logistics::tab(ui, c, size),
-        Pane::Players => egui::ScrollArea::vertical().id_salt("players_pane").show(ui, |ui| players(ui, c, voice)).inner,
-        Pane::Debrief => egui::ScrollArea::vertical().id_salt("debrief_pane").show(ui, |ui| debrief(ui, c)).inner,
+        Pane::Players => {
+            egui::ScrollArea::vertical()
+                .id_salt("players_pane")
+                .show(ui, |ui| players(ui, c, voice))
+                .inner
+        }
+        Pane::Debrief => {
+            egui::ScrollArea::vertical().id_salt("debrief_pane").show(ui, |ui| debrief(ui, c)).inner
+        }
         Pane::Log => log(ui, c),
         Pane::Chat => chat(ui, c, notices, vr),
     }
@@ -880,10 +877,21 @@ fn action_bar(
                     if bar.is_some() || c.ui.error.is_some() {
                         ui.vertical(|ui| {
                             ui.add_space(4.0);
+                            // As wide as the buttons leave (cut short, the rest on hover).
+                            let text_w = (room - 24.0 - deck.len() as f32 * 240.0).max(160.0);
+                            ui.set_max_width(text_w);
                             if let Some((title, sub)) = bar {
-                                ui.label(egui::RichText::new(title).size(17.0).color(BRIGHT));
+                                let t = egui::Label::new(
+                                    egui::RichText::new(title).size(17.0).color(BRIGHT),
+                                )
+                                .truncate();
+                                ui.add(t);
                                 if !sub.is_empty() {
-                                    ui.label(egui::RichText::new(sub).small().color(DIM));
+                                    let l = egui::Label::new(
+                                        egui::RichText::new(sub).small().color(DIM),
+                                    )
+                                    .truncate();
+                                    ui.add(l).on_hover_text(sub);
                                 }
                             }
                             if let Some(e) = &c.ui.error {
@@ -893,7 +901,8 @@ fn action_bar(
                         ui.add_space(12.0);
                     }
                     for (i, d) in deck.iter().enumerate() {
-                        let mut button = big_button(&d.label).icon(d.icon).min_size(egui::vec2(150.0, 56.0));
+                        let mut button =
+                            big_button(&d.label).icon(d.icon).min_size(egui::vec2(150.0, 56.0));
                         if d.primary {
                             button = button.primary();
                         }
@@ -938,7 +947,11 @@ fn ticker(ctx: &egui::Context, c: &mut ActiveCampaign, map: egui::Rect) {
                     .show(ui, |ui| {
                         ui.set_width(450.0);
                         ui.horizontal_wrapped(|ui| {
-                            ui.label(egui::RichText::new(format!("T+{:02}:{:02}", m / 60, m % 60)).small().color(DIM));
+                            ui.label(
+                                egui::RichText::new(format!("T+{:02}:{:02}", m / 60, m % 60))
+                                    .small()
+                                    .color(DIM),
+                            );
                             ui.label(egui::RichText::new(text).small().color(BRIGHT));
                         });
                     })
@@ -1002,10 +1015,14 @@ fn missions(
             // The capture it prepares: its steps once over the group.
             if let Some((place, steps)) = operation_steps(c, &offers[0], &front) {
                 ui.horizontal(|ui| {
-                    let (r, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
+                    let (r, _) =
+                        ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
                     shell::paint_icon(ui.painter(), r.center(), icon::OBJECTIVE, 15.0, BRIGHT);
                     let text = t!("ops-operation", place = place);
-                    ui.label(egui::RichText::new(text.trim_end_matches(':').to_uppercase()).color(BRIGHT));
+                    ui.label(
+                        egui::RichText::new(text.trim_end_matches(':').to_uppercase())
+                            .color(BRIGHT),
+                    );
                 });
                 ui.horizontal(|ui| task_sequence(ui, &steps, None));
                 ui.add_space(4.0);
@@ -1013,7 +1030,8 @@ fn missions(
             for o in offers {
                 let (bx, by) = from(c, o);
                 let selected = c.ui.selected == Some(o.id);
-                if offer_row(ui, c, o, km(dist(bx, by, o.x, o.y)), selected).clicked() && !selected {
+                if offer_row(ui, c, o, km(dist(bx, by, o.x, o.y)), selected).clicked() && !selected
+                {
                     c.ui.selected = Some(o.id);
                     c.ui.base = None;
                     c.ui.error = None;
@@ -1037,7 +1055,13 @@ fn missions(
 }
 
 /// An offer's row: its kind, title, who is on it and when it is due; its distance and threat.
-fn offer_row(ui: &mut egui::Ui, c: &ActiveCampaign, o: &MissionOffer, km: f32, selected: bool) -> egui::Response {
+fn offer_row(
+    ui: &mut egui::Ui,
+    c: &ActiveCampaign,
+    o: &MissionOffer,
+    km: f32,
+    selected: bool,
+) -> egui::Response {
     let due = match c.state().due(&o.objective) {
         Some(Due::At(t)) => {
             let mins = ((t - c.state().clock) / 60.0).max(0.0).ceil() as i64;
@@ -1049,23 +1073,50 @@ fn offer_row(ui: &mut egui::Ui, c: &ActiveCampaign, o: &MissionOffer, km: f32, s
     let colour = kind_colour(o.kind);
     let frame = egui::Frame::new()
         .fill(if selected { egui::Color32::from_rgb(12, 42, 29) } else { ROW })
-        .stroke(egui::Stroke::new(if selected { 2.0 } else { 1.0 }, if selected { crate::menu::EDGE } else { crate::menu::FRAME }))
+        .stroke(egui::Stroke::new(
+            if selected { 2.0 } else { 1.0 },
+            if selected { crate::menu::EDGE } else { crate::menu::FRAME },
+        ))
         .inner_margin(egui::Margin::symmetric(10, 8));
     let inner = frame.show(ui, |ui| {
         ui.set_width(ui.available_width());
         ui.set_min_height(40.0);
         ui.horizontal(|ui| {
             // The kind in its colour, framed.
-            let g = ui.painter().layout_no_wrap(kind_name(o.kind).to_string(), egui::FontId::monospace(12.0), colour);
+            let g = ui.painter().layout_no_wrap(
+                kind_name(o.kind).to_string(),
+                egui::FontId::monospace(12.0),
+                colour,
+            );
             let (r, _) = ui.allocate_exact_size(egui::vec2(96.0, 26.0), egui::Sense::hover());
-            ui.painter().rect_stroke(r, 0.0, egui::Stroke::new(1.0, colour), egui::StrokeKind::Inside);
-            let g = if g.size().x > 90.0 { ui.painter().layout_no_wrap(kind_name(o.kind).to_string(), egui::FontId::monospace(10.0), colour) } else { g };
+            ui.painter().rect_stroke(
+                r,
+                0.0,
+                egui::Stroke::new(1.0, colour),
+                egui::StrokeKind::Inside,
+            );
+            let g = if g.size().x > 90.0 {
+                ui.painter().layout_no_wrap(
+                    kind_name(o.kind).to_string(),
+                    egui::FontId::monospace(10.0),
+                    colour,
+                )
+            } else {
+                g
+            };
             ui.painter().galley(r.center() - g.size() / 2.0, g, colour);
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing.y = 2.0;
                 let right = 92.0;
                 ui.set_max_width(ui.available_width() - right);
-                ui.add(egui::Label::new(egui::RichText::new(crate::mission::clean_text(&o.title.tr())).size(16.0).color(BRIGHT)).selectable(false));
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(crate::mission::clean_text(&o.title.tr()))
+                            .size(16.0)
+                            .color(BRIGHT),
+                    )
+                    .selectable(false),
+                );
                 let mut line = crew_line(c, o);
                 if !due.is_empty() {
                     line.insert(0, (due.clone(), AMBER));
@@ -1073,16 +1124,29 @@ fn offer_row(ui: &mut egui::Ui, c: &ActiveCampaign, o: &MissionOffer, km: f32, s
                 if !line.is_empty() {
                     ui.horizontal_wrapped(|ui| {
                         for (part, col) in line {
-                            ui.add(egui::Label::new(egui::RichText::new(part).small().color(col)).selectable(false));
+                            ui.add(
+                                egui::Label::new(egui::RichText::new(part).small().color(col))
+                                    .selectable(false),
+                            );
                         }
                     });
                 }
             });
             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
                 ui.spacing_mut().item_spacing.y = 2.0;
-                ui.add(egui::Label::new(egui::RichText::new(format!("{km:.0} km")).color(BRIGHT)).selectable(false));
+                ui.add(
+                    egui::Label::new(egui::RichText::new(format!("{km:.0} km")).color(BRIGHT))
+                        .selectable(false),
+                );
                 if o.threat > 0 {
-                    ui.add(egui::Label::new(egui::RichText::new(t!("ops-threat", threat = o.threat)).small().color(AMBER)).selectable(false));
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(t!("ops-threat", threat = o.threat))
+                                .small()
+                                .color(AMBER),
+                        )
+                        .selectable(false),
+                    );
                 }
             });
         });
@@ -1101,135 +1165,135 @@ fn offer_detail(
     bar: &mut Option<(String, String)>,
 ) {
     let o = o.clone();
-        ui.label(egui::RichText::new(describe_offer(c, &o)).color(DIM));
-        if let Objective::Intercept { insertion } | Objective::Escort { insertion } = o.objective
-            && let Some(t) = c.state().insertion_status(insertion)
-        {
-            ui.label(egui::RichText::new(t.tr()).color(BRIGHT));
-        }
-        // Nobody takes it in time: an AI helicopter does.
-        if let Objective::Resupply { request } = o.objective
-            && let Some(r) = c.state().supply_request(request)
-            && let stealth_campaign::SupplyState::Open { since } = r.state
-        {
-            let wait = stealth_campaign::tuning::SUPPLY_AI_WAIT;
-            let left = (wait - (c.state().clock - since)).max(0.0) as i32;
-            let text = t!("ops-ai-helicopter", time = format!("{}:{:02}", left / 60, left % 60));
-            ui.label(egui::RichText::new(text).color(BRIGHT));
-        }
-        // The site's cargo so far, how long its helipad waits, the AI's turn.
-        if let Objective::Logistics { site, .. } = o.objective
-            && let Some(d) = c.state().deployment(site)
-        {
-            let now = c.state().clock;
-            let left = (d.expires - now).max(0.0) as i32;
-            let text = t!(
-                "ops-cargo-in",
-                delivered = d.delivered.len(),
-                loads = d.loads,
-                time = format!("{}:{:02}", left / 3600, left / 60 % 60)
-            );
-            ui.label(egui::RichText::new(text).color(BRIGHT));
-            let wait = stealth_campaign::tuning::DEPLOY_AI_WAIT;
-            let ai = (wait - (now - d.open_since)).max(0.0) as i32;
-            let text = t!("ops-ai-load", time = format!("{}:{:02}", ai / 60, ai % 60));
-            ui.label(egui::RichText::new(text).color(DIM));
-        }
-        group_label(ui, c, &o);
-        ui.add_space(6.0);
-        if let Some(p) = place_of(&o.objective).and_then(|p| c.state().place(p)) {
-            let intel = p.intel(c.state().clock);
-            let sams = p
-                .defences
-                .iter()
-                .filter(|&&d| c.state().site(d).is_some_and(|s| s.alive()))
-                .count();
-            let line = t!("ops-defences", sams = sams, threat = o.threat);
-            ui.label(if intel { format!("{line}  -  {}", t!("ops-recon-intel")) } else { line });
-        }
-        package_info(ui, c, &o);
-        if o.kind.ai_flown()
-            && let Objective::Insertion { place } = o.objective
-        {
-            deck.push(Deed::new(
-                Todo::OrderInsertion { place },
-                t!("ops-order-insertion"),
-                icon::HELICOPTER,
-                t!("ops-order-insertion.facts"),
-            ));
-        }
-        // The aircraft that flies it: the one last flown if it is made for it, else the best
-        // one for it.
-        let aircraft = o.kind.pick(c.aircraft);
-        // From which base.
-        let mut bases: Vec<(u16, String, i32)> = c
-            .state()
-            .player_bases()
-            .into_iter()
-            .filter_map(|b| {
-                let site = c.state().site(b)?;
-                Some((b, site.name.clone(), dist(site.x, site.y, o.x, o.y)))
-            })
-            .collect();
-        bases.sort_by_key(|b| b.2);
-        // Another player's plan sets the base (a plan nobody is on: its base unless the
-        // player picks another).
-        let plan = c.state().plan(o.id).filter(|_| c.role != Role::Local);
-        let taken = plan.is_some_and(|p| !p.crew.is_empty() || !p.flying.is_empty());
-        let planned = plan.map(|p| p.base).filter(|b| bases.iter().any(|x| x.0 == *b));
-        let chosen = match planned {
-            Some(b) if taken => b,
-            _ => {
-                c.ui.base.filter(|b| bases.iter().any(|x| x.0 == *b)).or(planned).unwrap_or(o.base)
-            }
-        };
-        ui.add_space(4.0);
-        ui.label(egui::RichText::new(t!("ops-from")).small().color(AMBER));
-        ui.add_enabled_ui(!taken, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                for (b, name, d) in bases.iter().take(6) {
-                    let text = format!("{name} {:.0} km", km(*d));
-                    let glyph = (*b == chosen).then_some(icon::DONE);
-                    if shell::button(ui, glyph, &text, *b == chosen, 44.0, None).clicked() {
-                        c.ui.base = Some(*b);
-                        c.ui.focus = Some(egui::vec2(o.x as f32, o.y as f32));
-                    }
+    ui.label(egui::RichText::new(describe_offer(c, &o)).color(DIM));
+    if let Objective::Intercept { insertion } | Objective::Escort { insertion } = o.objective
+        && let Some(t) = c.state().insertion_status(insertion)
+    {
+        ui.label(egui::RichText::new(t.tr()).color(BRIGHT));
+    }
+    // Nobody takes it in time: an AI helicopter does.
+    if let Objective::Resupply { request } = o.objective
+        && let Some(r) = c.state().supply_request(request)
+        && let stealth_campaign::SupplyState::Open { since } = r.state
+    {
+        let wait = stealth_campaign::tuning::SUPPLY_AI_WAIT;
+        let left = (wait - (c.state().clock - since)).max(0.0) as i32;
+        let text = t!("ops-ai-helicopter", time = format!("{}:{:02}", left / 60, left % 60));
+        ui.label(egui::RichText::new(text).color(BRIGHT));
+    }
+    // The site's cargo so far, how long its helipad waits, the AI's turn.
+    if let Objective::Logistics { site, .. } = o.objective
+        && let Some(d) = c.state().deployment(site)
+    {
+        let now = c.state().clock;
+        let left = (d.expires - now).max(0.0) as i32;
+        let text = t!(
+            "ops-cargo-in",
+            delivered = d.delivered.len(),
+            loads = d.loads,
+            time = format!("{}:{:02}", left / 3600, left / 60 % 60)
+        );
+        ui.label(egui::RichText::new(text).color(BRIGHT));
+        let wait = stealth_campaign::tuning::DEPLOY_AI_WAIT;
+        let ai = (wait - (now - d.open_since)).max(0.0) as i32;
+        let text = t!("ops-ai-load", time = format!("{}:{:02}", ai / 60, ai % 60));
+        ui.label(egui::RichText::new(text).color(DIM));
+    }
+    group_label(ui, c, &o);
+    ui.add_space(6.0);
+    if let Some(p) = place_of(&o.objective).and_then(|p| c.state().place(p)) {
+        let intel = p.intel(c.state().clock);
+        let sams =
+            p.defences.iter().filter(|&&d| c.state().site(d).is_some_and(|s| s.alive())).count();
+        let line = t!("ops-defences", sams = sams, threat = o.threat);
+        ui.label(if intel { format!("{line}  -  {}", t!("ops-recon-intel")) } else { line });
+    }
+    package_info(ui, c, &o);
+    if o.kind.ai_flown()
+        && let Objective::Insertion { place } = o.objective
+    {
+        deck.push(Deed::new(
+            Todo::OrderInsertion { place },
+            t!("ops-order-insertion"),
+            icon::HELICOPTER,
+            t!("ops-order-insertion.facts"),
+        ));
+    }
+    // The aircraft that flies it: the one last flown if it is made for it, else the best
+    // one for it.
+    let aircraft = o.kind.pick(c.aircraft);
+    // From which base.
+    let mut bases: Vec<(u16, String, i32)> = c
+        .state()
+        .player_bases()
+        .into_iter()
+        .filter_map(|b| {
+            let site = c.state().site(b)?;
+            Some((b, site.name.clone(), dist(site.x, site.y, o.x, o.y)))
+        })
+        .collect();
+    bases.sort_by_key(|b| b.2);
+    // Another player's plan sets the base (a plan nobody is on: its base unless the
+    // player picks another).
+    let plan = c.state().plan(o.id).filter(|_| c.role != Role::Local);
+    let taken = plan.is_some_and(|p| !p.crew.is_empty() || !p.flying.is_empty());
+    let planned = plan.map(|p| p.base).filter(|b| bases.iter().any(|x| x.0 == *b));
+    let chosen = match planned {
+        Some(b) if taken => b,
+        _ => c.ui.base.filter(|b| bases.iter().any(|x| x.0 == *b)).or(planned).unwrap_or(o.base),
+    };
+    ui.add_space(4.0);
+    ui.label(egui::RichText::new(t!("ops-from")).small().color(AMBER));
+    ui.add_enabled_ui(!taken, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            for (b, name, d) in bases.iter().take(6) {
+                let text = format!("{name} {:.0} km", km(*d));
+                let glyph = (*b == chosen).then_some(icon::DONE);
+                if shell::button(ui, glyph, &text, *b == chosen, 44.0, None).clicked() {
+                    c.ui.base = Some(*b);
+                    c.ui.focus = Some(egui::vec2(o.x as f32, o.y as f32));
                 }
-            });
+            }
         });
-        if taken {
-            ui.label(egui::RichText::new(t!("ops-planned-by-group")).small().color(DIM));
-        }
-        let sortie = preview(&o, chosen, aircraft);
-        let m = sortie_mission(&c.mission, c.state(), &sortie);
-        let loadout = crate::loadout::PlannedLoadout::of(&m, kind_of(aircraft));
-        let text =
-            t!("ops-stores", aircraft = kind_of(aircraft).name(), stores = loadout.summary());
-        ui.label(egui::RichText::new(&text).small().color(DIM));
-        let from = bases.iter().find(|b| b.0 == chosen).map_or(String::new(), |b| format!("{} · {:.0} km", b.1, km(b.2)));
-        *bar = Some((format!("{} - {}", kind_name(o.kind), crate::mission::clean_text(&o.title.tr())), format!("{from} · {text}")));
-        support_button(ui, c, &o);
-        // The AI's flight is up: fly along with it, or take over one of its aircraft.
-        let ai = c.state().ai_mission_for(o.id).filter(|m| m.open()).and_then(|m| m.takeable());
-        if let Some(tag) = ai {
-            let mut deed = Deed::new(
-                Todo::TakeControl { tag, watched: false },
-                t!("ops-take-control"),
-                icon::JOIN,
-                t!("ops-take-control.facts"),
-            );
-            deed.why = take_over_refusal(c);
-            deck.push(deed);
-        }
-        let (accept, mark) = if o.kind.ai_flown() {
-            (t!("ops-fly-uh60"), icon::HELICOPTER)
-        } else if ai.is_some() {
-            (t!("ops-fly-with-ai"), icon::ACCEPT)
-        } else {
-            (t!("ops-accept"), icon::ACCEPT)
-        };
-        let todo = Todo::Accept { offer: o.id, base: chosen, aircraft, loadout };
-        deck.push(Deed::new(todo, accept, mark, "").primary());
+    });
+    if taken {
+        ui.label(egui::RichText::new(t!("ops-planned-by-group")).small().color(DIM));
+    }
+    let sortie = preview(&o, chosen, aircraft);
+    let m = sortie_mission(&c.mission, c.state(), &sortie);
+    let loadout = crate::loadout::PlannedLoadout::of(&m, kind_of(aircraft));
+    let text = t!("ops-stores", aircraft = kind_of(aircraft).name(), stores = loadout.summary());
+    ui.label(egui::RichText::new(&text).small().color(DIM));
+    let from = bases
+        .iter()
+        .find(|b| b.0 == chosen)
+        .map_or(String::new(), |b| format!("{} · {:.0} km", b.1, km(b.2)));
+    *bar = Some((
+        format!("{} - {}", kind_name(o.kind), crate::mission::clean_text(&o.title.tr())),
+        format!("{from} · {text}"),
+    ));
+    support_button(ui, c, &o);
+    // The AI's flight is up: fly along with it, or take over one of its aircraft.
+    let ai = c.state().ai_mission_for(o.id).filter(|m| m.open()).and_then(|m| m.takeable());
+    if let Some(tag) = ai {
+        let mut deed = Deed::new(
+            Todo::TakeControl { tag, watched: false },
+            t!("ops-take-control"),
+            icon::JOIN,
+            t!("ops-take-control.facts"),
+        );
+        deed.why = take_over_refusal(c);
+        deck.push(deed);
+    }
+    let (accept, mark) = if o.kind.ai_flown() {
+        (t!("ops-fly-uh60"), icon::HELICOPTER)
+    } else if ai.is_some() {
+        (t!("ops-fly-with-ai"), icon::ACCEPT)
+    } else {
+        (t!("ops-accept"), icon::ACCEPT)
+    };
+    let todo = Todo::Accept { offer: o.id, base: chosen, aircraft, loadout };
+    deck.push(Deed::new(todo, accept, mark, "").primary());
 }
 
 /// What a footer button does when pressed.
@@ -1309,7 +1373,7 @@ fn do_deed(c: &mut ActiveCampaign, unit_view: &mut super::UnitView, todo: Todo) 
             if c.role != Role::Local {
                 c.actions.push(Action::SelectMission { offer: Some(offer), base });
             }
-            c.ui.briefing = Some(Briefing::new(offer, base, aircraft, loadout, BriefPage::Map));
+            c.ui.briefing = Some(Briefing::new(offer, base, aircraft, loadout, Step::Aircraft));
         }
         Todo::TakeControl { tag, watched } => {
             let loadout = super::control_loadout(c, tag);
@@ -2131,295 +2195,6 @@ fn chat(
     if send && !stealth_net::protocol::chat_text(&c.ui.chat).is_empty() {
         notices.outbox.push(std::mem::take(&mut c.ui.chat));
     }
-}
-
-/// The accepted mission's briefing: the route and what is known of the defences on a map, the
-/// stores to carry; then take off (or back to the board).
-fn briefing(
-    ctx: &egui::Context,
-    c: &mut ActiveCampaign,
-    sim: &stealth_sim::Sim,
-    planner: &mut crate::planner::Planner,
-    weather: Option<&str>,
-    map_wx: &MapWeather,
-) {
-    let Some(mut b) = c.ui.briefing.take() else { return };
-    let Some(o) = c.state().board.iter().find(|o| o.id == b.offer).cloned() else {
-        c.ui.error = Some(Text::new("ce-off-board"));
-        return;
-    };
-    // A coop game: the group's plan sets the base.
-    let coop = c.role != Role::Local;
-    if coop && let Some(p) = c.state().plan(b.offer) {
-        b.base = p.base;
-    }
-    let sortie = preview(&o, b.base, b.aircraft);
-    let m = sortie_mission(&c.mission, c.state(), &sortie);
-    // What the base has of the weapons that run out.
-    let stock: Vec<(u8, u32)> = (0..crate::loadout::WEAPONS.len() as u8)
-        .filter_map(|w| {
-            let m = stealth_campaign::Munition::of_weapon(w as i32)?;
-            let n = c.state().available(b.base, m);
-            (n != u32::MAX).then_some((w, n))
-        })
-        .collect();
-    let stock = |w: u8| stock.iter().find(|s| s.0 == w).map(|s| s.1);
-    let mut back = false;
-    let mut take_off = false;
-    let mut edit = None;
-    let window = screen_window(ctx, "Briefing", OPS_SIZE);
-    Panel::new(t!("ops-briefing"))
-        .after(egui::RichText::new(format!("  {}", kind_name(o.kind))).color(kind_colour(o.kind)))
-        .note(clock_text(c))
-        .window(window, ctx, |ui| {
-            ui.label(egui::RichText::new(o.title.tr()).size(20.0).color(BRIGHT));
-            ui.label(egui::RichText::new(describe_offer(c, &o)).color(DIM));
-            let d = km(dist(m.takeoff.position.x, m.takeoff.position.y, o.x, o.y));
-            ui.label(t!(
-                "ops-briefing-line",
-                base = m.takeoff.name.as_str(),
-                km = d.round() as i64,
-                aircraft = kind_of(b.aircraft).name(),
-                stores = b.loadout.summary()
-            ));
-            if let Some(line) = weather {
-                ui.label(egui::RichText::new(line).color(DIM));
-            }
-            if coop {
-                group_label(ui, c, &o);
-                let (_, flying) = group(c, o.id);
-                if !flying.is_empty() {
-                    let text = t!("ops-route-locked", pilots = flying.join(", "));
-                    ui.label(egui::RichText::new(text).color(AMBER));
-                }
-            }
-            ui.horizontal(|ui| {
-                for (page, label) in [
-                    (BriefPage::Map, t!("ops-route-threats")),
-                    (BriefPage::Loadout, t!("menu-loadout")),
-                ] {
-                    if ui.selectable_label(b.page == page, label).clicked() {
-                        b.page = page;
-                    }
-                }
-            });
-            ui.separator();
-            let split = Split::new(ui, "briefing");
-            // What the heading lines above and the buttons below leave.
-            split.body_sized(ui, |ui, room| {
-                let size = egui::vec2(ui.available_width(), room.max(TAB_LEAST));
-                let height = size.y;
-                ui.allocate_ui(size, |ui| {
-                    ui.set_min_height(height);
-                    match b.page {
-                        BriefPage::Map => {
-                            edit = route_editor(
-                                ui,
-                                c,
-                                sim,
-                                planner,
-                                &m,
-                                &mut b,
-                                map_wx,
-                                egui::vec2(size.x, height),
-                            )
-                        }
-                        BriefPage::Loadout => {
-                            // Wrapped: a row too wide for the window would widen the page.
-                            let row = ui.horizontal_wrapped(|ui| {
-                                ui.label(egui::RichText::new(t!("debrief-aircraft")).color(DIM));
-                                let flyable = crate::aircraft::AircraftKind::ALL
-                                    .into_iter()
-                                    .map(super::airframe_of)
-                                    .filter(|a| c.state().offer_flyable(&o, *a).is_ok());
-                                for a in flyable {
-                                    let label = kind_of(a).name();
-                                    if ui.selectable_label(b.aircraft == a, label).clicked()
-                                        && b.aircraft != a
-                                    {
-                                        b.aircraft = a;
-                                        b.loadout =
-                                            crate::loadout::PlannedLoadout::of(&m, kind_of(a));
-                                    }
-                                }
-                            });
-                            ui.add_space(4.0);
-                            let below = row.response.rect.height() + 4.0 + LOADOUT_BUTTONS;
-                            crate::loadout::editor(
-                                ui,
-                                &mut b.window,
-                                &mut b.loadout,
-                                &m,
-                                (height - below).max(TAB_LEAST - LOADOUT_BUTTONS),
-                                &stock,
-                            );
-                            ui.horizontal(|ui| {
-                                if ui
-                                    .add(big_button(t!("loadout-briefed")).icon(icon::BRIEFED))
-                                    .clicked()
-                                {
-                                    b.loadout =
-                                        crate::loadout::PlannedLoadout::of(&m, kind_of(b.aircraft));
-                                }
-                            });
-                        }
-                    }
-                });
-            });
-            split.footer(ui, |ui| {
-                footer_rule(ui);
-                ui.add_space(6.0);
-                ui.horizontal(|ui| {
-                    back = ui.add(big_button(t!("back")).icon(icon::BACK)).clicked();
-                    if let Some(e) = &c.ui.error {
-                        ui.colored_label(AMBER, e.tr());
-                    }
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        take_off = ui
-                            .add(big_button(t!("ops-take-off")).icon(icon::FLY).primary())
-                            .clicked();
-                        ui.add(egui::Spinner::new().color(GREEN));
-                        ui.label(egui::RichText::new(t!("ops-running")).color(DIM));
-                    });
-                });
-            });
-        });
-    // This player's changes to the group's route.
-    if let Some(route) = edit {
-        c.actions.push(Action::EditPlan { offer: o.id, base: b.base, route });
-    }
-    if take_off {
-        if coop
-            && std::mem::take(&mut b.dirty)
-            && let Some(r) = &b.route
-        {
-            let route = r.points.clone();
-            c.actions.push(Action::EditPlan { offer: o.id, base: b.base, route });
-        }
-        c.ui.error = None;
-        c.aircraft = b.aircraft;
-        c.actions.push(Action::TakeMission {
-            offer: o.id,
-            base: Some(b.base),
-            aircraft: b.aircraft,
-            loadout: b.loadout.clone(),
-            route: b.route.clone(),
-        });
-        return;
-    }
-    if !back {
-        c.ui.briefing = Some(b);
-    } else if coop {
-        c.actions.push(Action::SelectMission { offer: None, base: b.base });
-    }
-}
-
-/// Seconds between a dragged point's updates to the group.
-const SEND_EVERY: f64 = 0.1;
-/// Seconds the group's route is not taken over after a change of this player's went (until
-/// its echo is back).
-const HOLD: f64 = 1.0;
-
-/// The route editor (the mission planner's): drag, add and remove waypoints over the radars
-/// friendly aircraft have detected (and that still stand), with their detection and missile
-/// ranges and the route's exposure; the campaign's places and air picture over the map. In a
-/// coop game the route is the group's (locked while one of them flies it): what to send it.
-#[allow(clippy::too_many_arguments)]
-fn route_editor(
-    ui: &mut egui::Ui,
-    c: &ActiveCampaign,
-    sim: &stealth_sim::Sim,
-    planner: &mut crate::planner::Planner,
-    m: &stealth_mission::Mission,
-    b: &mut Briefing,
-    weather: &MapWeather,
-    size: egui::Vec2,
-) -> Option<Vec<crate::mission::RoutePoint>> {
-    let now = ui.input(|i| i.time);
-    let plan = c.state().plan(b.offer).filter(|_| c.role != Role::Local);
-    let locked = plan.is_some_and(|p| !p.flying.is_empty());
-    let route = b.route.get_or_insert_with(|| {
-        planner.refit();
-        crate::mission::PlannedRoute::of(m)
-    });
-    // The group's route (the others' changes), unless this player's own are on the way.
-    if let Some(p) = plan
-        && (locked || (!planner.dragging() && !b.dirty && now >= b.hold_until))
-    {
-        b.dirty = false;
-        if p.route.is_empty() {
-            route.points = crate::mission::PlannedRoute::of(m).points;
-        } else if route.points != p.route {
-            route.points = p.route.clone();
-        }
-    }
-    let before = route.points.clone();
-    let st = c.state();
-    let known = |i: usize| st.site(i as u16).is_some_and(|x| x.spotted && x.alive());
-    // The SAM sites are the editor's own rings.
-    let mut pic = super::picture::picture(st, &sim);
-    pic.sams.clear();
-    let draw = |painter: &egui::Painter, view: &MapView, layers: &MapLayers, tips: &mut MapTips| {
-        for p in st.places.iter().filter(|p| shows_place(layers, p)) {
-            let col = match p.owner {
-                Side::Blue => FRIENDLY_BLUE,
-                Side::Red => MISSILE_RED,
-                Side::Neutral => DIM,
-            };
-            let c0 = view.to_screen(p.x as f32, p.y as f32);
-            if map_draw::app6() {
-                map_draw::app6_place(painter, c0, affiliation(p.owner), p.airfield.is_some(), 0.9);
-            } else if p.airfield.is_some() {
-                let r = egui::Rect::from_center_size(c0, egui::vec2(9.0, 9.0));
-                painter.rect_stroke(r, 0.0, egui::Stroke::new(1.5, col), egui::StrokeKind::Middle);
-            } else {
-                painter.circle_stroke(c0, 4.5, egui::Stroke::new(1.5, col));
-            }
-            painter.text(
-                c0 + egui::vec2(7.0, 7.0),
-                egui::Align2::LEFT_TOP,
-                &p.name,
-                egui::FontId::monospace(11.0),
-                col,
-            );
-            let production = super::logistics::production_of(st, p);
-            if let Some(kind) = production {
-                super::logistics::production_mark(painter, c0, 1.0, kind);
-            }
-            place_tip(tips, c0, p, st.clock, false, production);
-        }
-        super::picture::draw(painter, view, &pic, layers, tips, 1.0, None);
-    };
-    let legend = |ui: &mut egui::Ui, layers: &mut MapLayers| {
-        place_legend(ui, layers);
-        super::picture::legend(ui, layers, None);
-    };
-    planner.fly(super::kind_of(b.aircraft), true);
-    crate::planner::route_panel(
-        ui,
-        planner,
-        m,
-        route,
-        &known,
-        Some(crate::planner::Overlay { draw: &draw, legend: &legend }),
-        Some(*weather),
-        size,
-        !locked,
-        |ui| {
-            ui.add_space(6.0);
-            ui.label(egui::RichText::new(t!("ops-radars-shown")).small().color(AMBER));
-        },
-    );
-    plan?;
-    b.dirty |= route.points != before;
-    // A dragged point goes a few times a second, everything else at once.
-    if b.dirty && (!planner.dragging() || now - b.sent_at >= SEND_EVERY) {
-        b.dirty = false;
-        b.sent_at = now;
-        b.hold_until = now + HOLD;
-        return Some(route.points.clone());
-    }
-    None
 }
 
 /// The red way out: SAVE & EXIT, or DISCONNECT from a server.

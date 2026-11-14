@@ -14,6 +14,8 @@ loadout-out-of-stock = Nincs készleten ehhez a küldetéshez
 loadout-mirror = Mindkét oldalon ugyanaz
     .facts = Ide is tölt: { $station }
 loadout-stores = Felszerelés
+loadout-stations = Felfüggesztési pontok
+loadout-click-drawing = Vagy kattintson egy pontra a rajzon
 loadout-needs-equipment = A küldetéshez kamera vagy különleges felszerelés kell
 
 ## Mire való az egyes fegyver (0-20. fegyvertípus)

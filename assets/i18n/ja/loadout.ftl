@@ -14,6 +14,8 @@ loadout-out-of-stock = このミッションでは在庫なし
 loadout-mirror = 左右同じ
     .facts = { $station } にも搭載します
 loadout-stores = 兵装
+loadout-stations = ステーション
+loadout-click-drawing = または図のステーションをクリック
 loadout-needs-equipment = ミッションにはカメラまたは特殊装備が必要です
 
 ## What each weapon is for (weapon types 0 to 20)

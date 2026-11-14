@@ -14,6 +14,8 @@ loadout-out-of-stock = Za to misijo ni nič na zalogi
 loadout-mirror = Enako na obeh straneh
     .facts = Naloži tudi: { $station }
 loadout-stores = Oborožitev
+loadout-stations = Nosilci
+loadout-click-drawing = Ali kliknite nosilec na risbi
 loadout-needs-equipment = Misija potrebuje kamero ali posebno opremo
 
 ## Čemu služi posamezno orožje (vrste orožja od 0 do 20)

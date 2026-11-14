@@ -14,6 +14,8 @@ loadout-out-of-stock = 本次任务无库存
 loadout-mirror = 两侧相同
     .facts = 同时装载 { $station }
 loadout-stores = 外挂
+loadout-stations = 挂点
+loadout-click-drawing = 或点击示意图上的挂点
 loadout-needs-equipment = 任务需要其摄像机或特殊设备
 
 ## 各武器的用途（武器类型 0 至 20）

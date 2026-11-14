@@ -148,7 +148,13 @@ fn tag(sites: &[Site], i: usize) -> String {
 }
 
 /// The AIR DEFENSE pane: the new site buttons, then the sites (the list scrolls in `height`).
-pub(super) fn pane(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], height: f32) {
+pub(super) fn pane(
+    ui: &mut egui::Ui,
+    c: &mut ActiveCampaign,
+    sim: &Sim,
+    sites: &[Site],
+    height: f32,
+) {
     if c.ui.defence.is_some_and(|u| !sites.iter().any(|s| s.unit == u)) {
         c.ui.defence = None;
     }
@@ -231,13 +237,26 @@ pub(super) fn hit(view: &MapView, sites: &[Site], pos: egui::Pos2, k: f32) -> Op
 }
 
 /// A site's one-line name ("P2 PATRIOT near Hatzerim") and its state ("auto, radar clear").
-pub(super) fn describe(c: &ActiveCampaign, sites: &[Site], unit: usize) -> Option<(String, String)> {
+pub(super) fn describe(
+    c: &ActiveCampaign,
+    sites: &[Site],
+    unit: usize,
+) -> Option<(String, String)> {
     let i = sites.iter().position(|s| s.unit == unit)?;
     let s = &sites[i];
-    let title = format!("{} {}  {}", tag(sites, i), kind_name(s.kind), t!("ad-near", place = s.near.as_str()));
+    let title = format!(
+        "{} {}  {}",
+        tag(sites, i),
+        kind_name(s.kind),
+        t!("ad-near", place = s.near.as_str())
+    );
     let op = match s.manned {
         Some(p) if p == c.me.0 => t!("ad-you").to_string(),
-        Some(p) => c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or(t!("ad-a-player")).to_string(),
+        Some(p) => c
+            .state()
+            .player_name(stealth_campaign::PlayerId(p))
+            .unwrap_or(t!("ad-a-player"))
+            .to_string(),
         None => t!("ad-auto").to_string(),
     };
     let radar = match s.enemies.first() {
@@ -255,11 +274,6 @@ fn kind_name(kind: GroundKind) -> &'static str {
         GroundKind::DroneCenter => t!("ad-drones"),
         k => k.battery().map_or("PATRIOT", |b| b.label()),
     }
-}
-
-/// The site's place on the map (to show it beside the pane).
-pub(super) fn position(sites: &[Site], unit: usize) -> Option<egui::Vec2> {
-    sites.iter().find(|s| s.unit == unit).map(|s| egui::vec2(s.x as f32, s.y as f32))
 }
 
 /// A site's tooltip: what it is, its tag and place, its rounds and the enemies its radar sees.

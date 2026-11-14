@@ -201,6 +201,10 @@ ops-send = SEND
 
 ops-briefing = MISSION BRIEFING
 ops-briefing-line = From { $base } - { $km } km to the target - { $aircraft } - stores: { $stores }
+brief-choose-aircraft = CHOOSE YOUR AIRCRAFT
+brief-aircraft-for = Aircraft at { $base } for { $kind }
+brief-next = NEXT: { $step }
+brief-from = { $aircraft } from { $base }, { $km } km to the target
 ops-route-locked = Route locked: { $pilots } flying it
 ops-route-threats = ROUTE & THREATS
 ops-take-off = TAKE OFF

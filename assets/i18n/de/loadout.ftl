@@ -14,6 +14,8 @@ loadout-out-of-stock = Für diese Mission nicht vorrätig
 loadout-mirror = Gleich auf beiden Seiten
     .facts = Belädt auch { $station }
 loadout-stores = Außenlasten
+loadout-stations = Stationen
+loadout-click-drawing = Oder eine Station auf der Zeichnung anklicken
 loadout-needs-equipment = Die Mission braucht ihre Kamera oder Sonderausrüstung
 
 ## Wofür jede Waffe dient (Waffentypen 0 bis 20)

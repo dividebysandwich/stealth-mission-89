@@ -14,6 +14,8 @@ loadout-out-of-stock = Nenhum em estoque para esta missão
 loadout-mirror = Igual nos dois lados
     .facts = Carrega também { $station }
 loadout-stores = Cargas
+loadout-stations = Estações
+loadout-click-drawing = Ou clique numa estação no desenho
 loadout-needs-equipment = A missão precisa de sua câmera ou de seu equipamento especial
 
 ## Para que serve cada arma

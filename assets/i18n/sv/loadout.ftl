@@ -14,6 +14,8 @@ loadout-out-of-stock = Inget i lager för det här uppdraget
 loadout-mirror = Samma på båda sidor
     .facts = Lastar även { $station }
 loadout-stores = Last
+loadout-stations = Stationer
+loadout-click-drawing = Eller klicka på en station på ritningen
 loadout-needs-equipment = Uppdraget kräver sin kamera eller sin specialutrustning
 
 ## Vad varje vapen är till för (vapentyp 0 till 20)

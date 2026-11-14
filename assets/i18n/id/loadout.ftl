@@ -14,6 +14,8 @@ loadout-out-of-stock = Tidak ada stok untuk misi ini
 loadout-mirror = Sama di kedua sisi
     .facts = Memuat { $station } juga
 loadout-stores = Persenjataan
+loadout-stations = Stasiun
+loadout-click-drawing = Atau klik stasiun pada gambar
 loadout-needs-equipment = Misi membutuhkan kamera atau peralatan khusus
 
 ## Kegunaan tiap senjata (jenis senjata 0 sampai 20)

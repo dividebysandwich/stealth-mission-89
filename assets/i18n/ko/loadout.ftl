@@ -14,6 +14,8 @@ loadout-out-of-stock = 이 임무에는 재고 없음
 loadout-mirror = 양쪽 동일
     .facts = { $station }에도 탑재합니다
 loadout-stores = 무장
+loadout-stations = 스테이션
+loadout-click-drawing = 또는 그림에서 스테이션을 클릭
 loadout-needs-equipment = 임무에 카메라나 특수 장비가 필요합니다
 
 ## 각 무기의 용도 (무기 유형 0~20)

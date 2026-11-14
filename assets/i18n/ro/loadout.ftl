@@ -14,6 +14,8 @@ loadout-out-of-stock = Niciuna în stoc pentru această misiune
 loadout-mirror = La fel pe ambele părți
     .facts = Încarcă și { $station }
 loadout-stores = Încărcături
+loadout-stations = Puncte de acroșare
+loadout-click-drawing = Sau faceți clic pe un punct pe desen
 loadout-needs-equipment = Misiunea are nevoie de camera sau de echipamentul ei special
 
 ## La ce folosește fiecare armă (tipurile de armă 0 până la 20)

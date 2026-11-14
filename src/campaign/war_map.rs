@@ -11,10 +11,12 @@ use bevy_egui::egui;
 use stealth_campaign::{InsertionState, MissionOffer, Side};
 use stealth_i18n::t;
 
+use super::ActiveCampaign;
 use super::ops::{Pane, affiliation, fit_map, kind_colour, place_legend, place_tip, shows_place};
 use super::shell::{self, GAP, SQUARE};
-use super::ActiveCampaign;
-use crate::map_draw::{self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather};
+use crate::map_draw::{
+    self, FRIENDLY_BLUE, Layer, MISSILE_RED, MapLayers, MapTips, MapView, MapWeather,
+};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, icon};
 
 /// A view of the map: the layers it starts with (each its own, kept for the session).
@@ -48,12 +50,31 @@ impl MapPreset {
         let mut off = match self {
             MapPreset::War => vec![MissileRange, EngagementRange, DefenceReach],
             MapPreset::AirDefence => vec![
-                Insertions, Armour, Guns, Patriots, PatriotReach, Nasams, NasamsReach, Gepards,
-                MissileRange, EngagementRange, Missions, Front,
+                Insertions,
+                Armour,
+                Guns,
+                Patriots,
+                PatriotReach,
+                Nasams,
+                NasamsReach,
+                Gepards,
+                MissileRange,
+                EngagementRange,
+                Missions,
+                Front,
             ],
             MapPreset::Ground => vec![
-                EnemyFighters, FriendlyAircraft, FriendlyHelicopters, Patriots, PatriotReach,
-                Nasams, NasamsReach, Gepards, MissileRange, EngagementRange, DefenceReach,
+                EnemyFighters,
+                FriendlyAircraft,
+                FriendlyHelicopters,
+                Patriots,
+                PatriotReach,
+                Nasams,
+                NasamsReach,
+                Gepards,
+                MissileRange,
+                EngagementRange,
+                DefenceReach,
             ],
             MapPreset::Weather => {
                 vec![MissileRange, EngagementRange, DefenceReach, Insertions, Armour, Guns]
@@ -106,16 +127,22 @@ fn markers(
     st: &stealth_campaign::CampaignState,
     selected: Option<u32>,
 ) -> Vec<Marker> {
-    let mut groups: Vec<(i32, i32, Vec<&MissionOffer>)> = Vec::new();
+    // One marker per objective place (a city and its airfield together), else per target.
+    let mut groups: Vec<(i32, i32, Option<u16>, Vec<&MissionOffer>)> = Vec::new();
     for o in &st.board {
-        match groups.iter_mut().find(|g| g.0 == o.x && g.1 == o.y) {
-            Some(g) => g.2.push(o),
-            None => groups.push((o.x, o.y, vec![o])),
+        let place = st.objective_place(&o.objective);
+        let (x, y) = place.and_then(|p| st.place(p)).map_or((o.x, o.y), |p| (p.x, p.y));
+        match groups
+            .iter_mut()
+            .find(|g| (place.is_some() && g.2 == place) || (g.0 == x && g.1 == y))
+        {
+            Some(g) => g.3.push(o),
+            None => groups.push((x, y, place, vec![o])),
         }
     }
     let font = egui::FontId::monospace(13.0);
     let mut out = Vec::new();
-    for (x, y, offers) in groups {
+    for (x, y, _, offers) in groups {
         let at = view.to_screen(x as f32, y as f32);
         if !view.rect.expand(60.0).contains(at) {
             continue;
@@ -128,10 +155,8 @@ fn markers(
         let g = painter.layout_no_wrap(text, font.clone(), egui::Color32::BLACK);
         let stem = 18.0;
         let size = g.size() + egui::vec2(34.0, 10.0);
-        let mut rect = egui::Rect::from_min_size(
-            egui::pos2(at.x - size.x / 2.0, at.y - stem - size.y),
-            size,
-        );
+        let mut rect =
+            egui::Rect::from_min_size(egui::pos2(at.x - size.x / 2.0, at.y - stem - size.y), size);
         // Over another marker: stacked above it.
         while let Some(o) = out.iter().find(|m: &&Marker| m.rect.expand(2.0).intersects(rect)) {
             rect = rect.translate(egui::vec2(0.0, o.rect.top() - rect.bottom() - 4.0));
@@ -140,11 +165,26 @@ fn markers(
         painter.rect_filled(rect.expand(2.0), 2.0, egui::Color32::BLACK);
         painter.rect_filled(rect, 2.0, if lit { BRIGHT } else { colour });
         if lit {
-            painter.rect_stroke(rect.expand(3.0), 3.0, egui::Stroke::new(3.0, colour), egui::StrokeKind::Outside);
+            painter.rect_stroke(
+                rect.expand(3.0),
+                3.0,
+                egui::Stroke::new(3.0, colour),
+                egui::StrokeKind::Outside,
+            );
         }
         let icon = if urgent { icon::DEFEND } else { icon::MISSIONS };
-        shell::paint_icon(painter, egui::pos2(rect.left() + 14.0, rect.center().y), icon, 15.0, egui::Color32::BLACK);
-        painter.galley(egui::pos2(rect.left() + 26.0, rect.center().y - g.size().y / 2.0), g, egui::Color32::BLACK);
+        shell::paint_icon(
+            painter,
+            egui::pos2(rect.left() + 14.0, rect.center().y),
+            icon,
+            15.0,
+            egui::Color32::BLACK,
+        );
+        painter.galley(
+            egui::pos2(rect.left() + 26.0, rect.center().y - g.size().y / 2.0),
+            g,
+            egui::Color32::BLACK,
+        );
         out.push(Marker { at, rect, offers: offers.iter().map(|o| o.id).collect() });
     }
     out
@@ -219,7 +259,12 @@ pub(super) fn map(
         }
         if let (Some(a), Some(b)) = (st.site(ins.from), st.site(ins.target)) {
             let pts = [at(a.x, a.y), at(b.x, b.y)];
-            painter.extend(egui::Shape::dashed_line(&pts, egui::Stroke::new(1.5, FRIENDLY_BLUE), 6.0, 4.0));
+            painter.extend(egui::Shape::dashed_line(
+                &pts,
+                egui::Stroke::new(1.5, FRIENDLY_BLUE),
+                6.0,
+                4.0,
+            ));
         }
     }
     // The places.
@@ -260,7 +305,7 @@ pub(super) fn map(
     }
     super::front::recent(&painter, &view, st, &layers, &mut tips, k);
     // What the friendly side sees: its aircraft, enemy fighters on radar, known defences.
-    let pic = super::picture::picture(st, &sim);
+    let pic = super::picture::picture(st, sim);
     let watched = unit_view.target.map(|unit| (unit, blink(ui.ctx())));
     super::picture::draw(&painter, &view, &pic, &layers, &mut tips, k, watched);
     if layers.shows(Layer::DefenceReach) {
@@ -282,7 +327,12 @@ pub(super) fn map(
         let base = c.ui.base.unwrap_or(o.base);
         if let Some(b) = st.site(base) {
             let pts = [at(b.x, b.y), at(o.x, o.y)];
-            painter.extend(egui::Shape::dashed_line(&pts, egui::Stroke::new(2.5, colour), 10.0, 6.0));
+            painter.extend(egui::Shape::dashed_line(
+                &pts,
+                egui::Stroke::new(2.5, colour),
+                10.0,
+                6.0,
+            ));
         }
         painter.circle_stroke(at(o.x, o.y), 14.0 * k, egui::Stroke::new(3.0, colour));
     }
@@ -313,8 +363,15 @@ pub(super) fn map(
         egui::UiBuilder::new().max_rect(controls).layout(egui::Layout::top_down(egui::Align::Max)),
         |ui| {
             ui.spacing_mut().item_spacing.y = 8.0;
-            if shell::button(ui, Some(icon::LAYERS), t!("planner-layers"), layers.panel, SQUARE, None)
-                .clicked()
+            if shell::button(
+                ui,
+                Some(icon::LAYERS),
+                t!("planner-layers"),
+                layers.panel,
+                SQUARE,
+                None,
+            )
+            .clicked()
             {
                 layers.panel = !layers.panel;
             }
@@ -322,26 +379,44 @@ pub(super) fn map(
                 shell::overlay_frame().show(ui, |ui| {
                     ui.set_width(280.0);
                     ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
-                        egui::ScrollArea::vertical().max_height(rect.height() * 0.6).show(ui, |ui| {
-                            map_draw::symbology_switch(ui);
-                            ui.add_space(4.0);
-                            super::front::legend(ui, &mut layers);
-                            markers_legend(ui, &mut layers);
-                            place_legend(ui, &mut layers);
-                            layers.legend(ui, Layer::Insertions, t!("ops-legend-insertion"), |p, c0| {
-                                p.extend(egui::Shape::dashed_line(
-                                    &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
-                                    egui::Stroke::new(1.5, FRIENDLY_BLUE),
-                                    6.0,
-                                    4.0,
-                                ));
-                            });
-                            layers.legend(ui, Layer::DefenceReach, t!("ops-legend-defence-reach"), |p, c0| {
-                                p.circle(c0, 6.0, FRIENDLY_BLUE.gamma_multiply(0.2), egui::Stroke::new(1.2, FRIENDLY_BLUE));
-                            });
-                            super::picture::legend(ui, &mut layers, Some(&pic));
-                            map_draw::weather_legend(ui, &mut layers, weather.snow);
-                        });
+                        egui::ScrollArea::vertical().max_height(rect.height() * 0.6).show(
+                            ui,
+                            |ui| {
+                                map_draw::symbology_switch(ui);
+                                ui.add_space(4.0);
+                                super::front::legend(ui, &mut layers);
+                                markers_legend(ui, &mut layers);
+                                place_legend(ui, &mut layers);
+                                layers.legend(
+                                    ui,
+                                    Layer::Insertions,
+                                    t!("ops-legend-insertion"),
+                                    |p, c0| {
+                                        p.extend(egui::Shape::dashed_line(
+                                            &[c0 - egui::vec2(8.0, 0.0), c0 + egui::vec2(8.0, 0.0)],
+                                            egui::Stroke::new(1.5, FRIENDLY_BLUE),
+                                            6.0,
+                                            4.0,
+                                        ));
+                                    },
+                                );
+                                layers.legend(
+                                    ui,
+                                    Layer::DefenceReach,
+                                    t!("ops-legend-defence-reach"),
+                                    |p, c0| {
+                                        p.circle(
+                                            c0,
+                                            6.0,
+                                            FRIENDLY_BLUE.gamma_multiply(0.2),
+                                            egui::Stroke::new(1.2, FRIENDLY_BLUE),
+                                        );
+                                    },
+                                );
+                                super::picture::legend(ui, &mut layers, Some(&pic));
+                                map_draw::weather_legend(ui, &mut layers, weather.snow);
+                            },
+                        );
                     });
                 });
             } else {
@@ -371,12 +446,20 @@ pub(super) fn map(
         ui.scope_builder(egui::UiBuilder::new().max_rect(r), |ui| {
             shell::overlay_frame().show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    shell::paint_icon(ui.painter(), ui.cursor().left_center() + egui::vec2(10.0, 0.0), icon::SINGLE_MISSION, 20.0, BRIGHT);
+                    shell::paint_icon(
+                        ui.painter(),
+                        ui.cursor().left_center() + egui::vec2(10.0, 0.0),
+                        icon::SINGLE_MISSION,
+                        20.0,
+                        BRIGHT,
+                    );
                     ui.add_space(26.0);
                     let text = t!("ds-banner", kind = super::designate::kind_label(kind));
                     ui.label(egui::RichText::new(text).size(16.0).color(BRIGHT));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if shell::button(ui, Some(icon::CANCEL), t!("cancel"), false, 44.0, None).clicked() {
+                        if shell::button(ui, Some(icon::CANCEL), t!("cancel"), false, 44.0, None)
+                            .clicked()
+                        {
                             c.ui.designate = None;
                         }
                     });
@@ -393,7 +476,8 @@ pub(super) fn map(
     let designating = c.ui.designate.is_some();
     let hover = resp.hover_pos().filter(|&p| !over.iter().any(|r| r.contains(p)));
     if !designating && let Some(pos) = hover {
-        let mark = marks.iter().find(|m| m.rect.expand(4.0).contains(pos) || m.at.distance(pos) < 14.0);
+        let mark =
+            marks.iter().find(|m| m.rect.expand(4.0).contains(pos) || m.at.distance(pos) < 14.0);
         let site = super::air_defence::hit(&view, sites, pos, map_draw::BIG * 2.0)
             .filter(|_| layers.shows(Layer::DefenceReach) || preset != MapPreset::AirDefence);
         let picked = super::picture::pick(&view, &pic, pos, k);
@@ -460,7 +544,11 @@ fn test_watch(
     };
     let (unit, name, orbit) = match watch.as_deref() {
         Some("fp2") => match pic.friendly.iter().find(|a| a.spec == stealth_sim::uav::FP2_SPEC) {
-            Some(a) => (UnitRef::Flight { index: a.unit, spec: a.spec }, sim.aircraft_name(a.spec).to_string(), true),
+            Some(a) => (
+                UnitRef::Flight { index: a.unit, spec: a.spec },
+                sim.aircraft_name(a.spec).to_string(),
+                true,
+            ),
             None => return,
         },
         Some("zsu") => match ground(stealth_sim::aaa::GroundKind::Zsu, false, true) {
@@ -476,7 +564,11 @@ fn test_watch(
             None => return,
         },
         _ if std::env::args().any(|a| a == "--campaign-watch") => match pic.friendly.first() {
-            Some(a) => (UnitRef::Flight { index: a.unit, spec: a.spec }, sim.aircraft_name(a.spec).to_string(), false),
+            Some(a) => (
+                UnitRef::Flight { index: a.unit, spec: a.spec },
+                sim.aircraft_name(a.spec).to_string(),
+                false,
+            ),
             None => return,
         },
         _ => return,

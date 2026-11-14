@@ -14,6 +14,8 @@ loadout-out-of-stock = L-ebda stokk għal din il-missjoni
 loadout-mirror = L-istess fuq iż-żewġ naħat
     .facts = Jgħabbi { $station } ukoll
 loadout-stores = Armi u tagħbija
+loadout-stations = Stazzjonijiet
+loadout-click-drawing = Jew ikklikkja fuq stazzjon fid-disinn
 loadout-needs-equipment = Il-missjoni teħtieġ il-kamera jew tagħmir speċjali tagħha
 
 ## Għal xiex hi kull arma (tipi ta' armi 0 sa 20)

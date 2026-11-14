@@ -14,6 +14,8 @@ loadout-out-of-stock = Šiai misijai atsargų nėra
 loadout-mirror = Vienodai abiejose pusėse
     .facts = Pakrauna ir { $station }
 loadout-stores = Krovinys
+loadout-stations = Pakabinimo taškai
+loadout-click-drawing = Arba spustelėkite tašką brėžinyje
 loadout-needs-equipment = Misijai reikia jos kameros arba specialios įrangos
 
 ## Kam skirtas kiekvienas ginklas (ginklų tipai nuo 0 iki 20)

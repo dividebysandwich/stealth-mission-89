@@ -118,6 +118,13 @@ pub struct Planner {
     vertical: Option<(u64, VerticalProfile)>,
     /// The aircraft the route is flown in, and whether in a campaign: its radar signature.
     aircraft: (AircraftKind, bool),
+    /// The route point clicked (its card over the map), and where it was drawn last.
+    selected: Option<usize>,
+    selected_at: Option<egui::Pos2>,
+    /// Large targets for the mouse and the headset's laser (the campaign's briefing), and how
+    /// much of the map's right the LAYERS button stays clear of (a panel over it).
+    big: bool,
+    inset: f32,
 }
 
 impl Planner {
@@ -139,6 +146,11 @@ impl Planner {
     }
 
     /// A route point is being dragged.
+    /// Zooms the view in (`f` < 1) or out around its centre.
+    pub fn zoom(&mut self, f: f32) {
+        self.scale = (self.scale * f).clamp(1.0, 64.0);
+    }
+
     pub fn dragging(&self) -> bool {
         self.drag.is_some()
     }
@@ -739,6 +751,7 @@ pub fn planner_ui(
         *route = PlannedRoute::of(&m);
     }
     planner.fly(aircraft, false);
+    (planner.big, planner.inset) = (false, 0.0);
     let mut open = true;
     let window = screen_window(ctx, "Mission planner", PLANNER_SIZE);
     let note = crate::mission::clean_text(&m.briefing.title).to_ascii_uppercase();
@@ -943,6 +956,346 @@ pub fn route_panel(
     layers.keep(ui.ctx(), "route");
 }
 
+/// The route editor over a whole screen (the campaign's briefing): the map fills `rect`, the
+/// vertical profile along its bottom (folded away unless `profile`), the route's legs, fuel,
+/// radar coverage and exposure in a panel at the right `panel` wide, the clicked point's card
+/// with DELETE and ADD AFTER over the map (the headset has no right click), and the zoom.
+#[allow(clippy::too_many_arguments)]
+pub fn route_screen(
+    ui: &mut egui::Ui,
+    planner: &mut Planner,
+    m: &Mission,
+    route: &mut PlannedRoute,
+    known: &dyn Fn(usize) -> bool,
+    overlay: MapOverlay,
+    weather: MapWeather,
+    rect: egui::Rect,
+    panel: f32,
+    profile: &mut bool,
+    editable: bool,
+    chrome: bool,
+) {
+    use crate::campaign::shell;
+    planner.big = true;
+    planner.inset = if chrome { panel + shell::GAP } else { 0.0 };
+    let rings = planner
+        .sim
+        .as_ref()
+        .map(|s| threat_rings(m, s, planner.profile, &Signature::of(m, planner.aircraft), known))
+        .unwrap_or_default();
+    let off = [&[Layer::EngagementRange][..], &map_draw::WEATHER_LAYERS].concat();
+    let mut layers = MapLayers::of(ui.ctx(), "route", &off);
+    let gap = shell::GAP;
+    // Under a briefing step's panel: the map alone, to look at.
+    if !chrome {
+        planner.selected = None;
+        ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+            ui.set_clip_rect(rect);
+            map_view(
+                ui,
+                planner,
+                m,
+                route,
+                &rings,
+                &mut layers,
+                overlay.as_ref(),
+                &weather,
+                rect.size(),
+                false,
+            );
+        });
+        layers.keep(ui.ctx(), "route");
+        return;
+    }
+    let strip = if *profile { 190.0 } else { 40.0 };
+    let map_rect =
+        egui::Rect::from_min_max(rect.min, egui::pos2(rect.right(), rect.bottom() - strip));
+    ui.scope_builder(egui::UiBuilder::new().max_rect(map_rect), |ui| {
+        ui.set_clip_rect(map_rect);
+        map_view(
+            ui,
+            planner,
+            m,
+            route,
+            &rings,
+            &mut layers,
+            overlay.as_ref(),
+            &weather,
+            map_rect.size(),
+            editable,
+        );
+    });
+    // The profile strip: its fold, then the profile.
+    let strip_rect = egui::Rect::from_min_max(egui::pos2(rect.left(), map_rect.bottom()), rect.max);
+    ui.painter().rect_filled(strip_rect, 0.0, crate::menu::BG);
+    ui.painter().hline(
+        strip_rect.x_range(),
+        strip_rect.top(),
+        egui::Stroke::new(2.0, crate::menu::FRAME),
+    );
+    ui.scope_builder(
+        egui::UiBuilder::new().max_rect(strip_rect.shrink2(egui::vec2(8.0, 4.0))),
+        |ui| {
+            let fold = if *profile { icon::COLLAPSE } else { icon::EXPAND };
+            let head = ui.horizontal(|ui| {
+                let (r, _) = ui.allocate_exact_size(egui::vec2(20.0, 30.0), egui::Sense::hover());
+                shell::paint_icon(ui.painter(), r.center(), fold, 16.0, DIM);
+                // (Unfolded, the profile has its own title.)
+                if !*profile {
+                    ui.label(egui::RichText::new(t!("planner-vprofile")).color(DIM));
+                }
+            });
+            let head = ui.interact(
+                head.response.rect.with_max_x(strip_rect.right() - 16.0),
+                ui.id().with("profile fold"),
+                egui::Sense::click(),
+            );
+            if head.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+                *profile = !*profile;
+            }
+            if *profile {
+                let size = egui::vec2(ui.available_width(), ui.available_height());
+                vertical_view(ui, planner, m, route, &rings, size);
+            }
+        },
+    );
+    // The route panel at the right.
+    let panel_rect = egui::Rect::from_min_max(
+        egui::pos2(map_rect.right() - panel - gap, map_rect.top() + gap),
+        egui::pos2(map_rect.right() - gap, map_rect.bottom() - gap),
+    );
+    ui.scope_builder(egui::UiBuilder::new().max_rect(panel_rect), |ui| {
+        shell::overlay_frame().show(ui, |ui| {
+            ui.set_width(panel_rect.width() - 28.0);
+            ui.label(egui::RichText::new(t!("planner-route")).size(20.0).color(BRIGHT));
+            ui.add_space(6.0);
+            let pts = with_base(m, &route.points);
+            let label = |i: usize| {
+                if i == 0 {
+                    t!("planner-base").to_string()
+                } else {
+                    point_label(&route.points, i - 1)
+                }
+            };
+            egui::ScrollArea::vertical()
+                .id_salt("route_legs")
+                .max_height((panel_rect.height() * 0.35).max(90.0))
+                .show(ui, |ui| {
+                    egui::Grid::new("legs_big").num_columns(3).spacing([16.0, 6.0]).show(
+                        ui,
+                        |ui| {
+                            for i in 1..pts.len() {
+                                let km = (((pts[i].x - pts[i - 1].x) as f64).powi(2)
+                                    + ((pts[i].y - pts[i - 1].y) as f64).powi(2))
+                                .sqrt()
+                                    / PER_KM;
+                                let lit = planner.selected == Some(i - 1);
+                                let ink = if lit { BRIGHT } else { GREEN };
+                                ui.label(
+                                    egui::RichText::new(format!("{} > {}", label(i - 1), label(i)))
+                                        .color(ink),
+                                );
+                                ui.label(egui::RichText::new(format!("{km:4.0} km")).color(ink));
+                                ui.label(egui::RichText::new(leg_time(km)).color(ink));
+                                ui.end_row();
+                            }
+                        },
+                    );
+                });
+            let length = |r: &[RoutePoint]| {
+                PlannedRoute { mission: Default::default(), points: with_base(m, r) }.length()
+                    / PER_KM
+            };
+            let total = length(&route.points);
+            let briefed = length(&PlannedRoute::of(m).points);
+            ui.add_space(6.0);
+            ui.label(
+                egui::RichText::new(t!(
+                    "planner-total",
+                    km = format!("{total:.0}"),
+                    time = leg_time(total)
+                ))
+                .size(17.0)
+                .color(BRIGHT),
+            );
+            ui.label(
+                egui::RichText::new(t!(
+                    "planner-briefed",
+                    km = format!("{briefed:.0}"),
+                    fuel = m.fuel_lbs
+                ))
+                .small()
+                .color(DIM),
+            );
+            ui.add_space(8.0);
+            section(ui, t!("planner-coverage"));
+            let names: Vec<(Profile, String)> =
+                Profile::ALL.iter().map(|&p| (p, p.name().to_string())).collect();
+            let options: Vec<(Profile, Option<char>, &str)> =
+                names.iter().map(|(p, n)| (*p, None, n.as_str())).collect();
+            if let Some(p) = shell::segmented(ui, planner.profile, &options, 44.0) {
+                planner.profile = p;
+            }
+            let detect = exposure(&pts, &rings, |r| r.detect);
+            ui.add_space(6.0);
+            ui.label(
+                egui::RichText::new(t!("planner-detected", km = format!("{detect:.0}")))
+                    .size(18.0)
+                    .color(if detect > 0.0 { AMBER } else { GREEN }),
+            );
+            ui.label(egui::RichText::new(t!("planner-coverage.note")).small().color(DIM));
+            if editable {
+                ui.add_space(8.0);
+                if shell::button(ui, Some(icon::RESET), t!("planner-reset"), false, 48.0, None)
+                    .clicked()
+                {
+                    *route = PlannedRoute::of(m);
+                    planner.selected = None;
+                }
+            } else {
+                ui.label(egui::RichText::new(t!("planner-view-hint")).small().color(DIM));
+            }
+        });
+    });
+    // How to change the route, at the top left.
+    let hint = egui::Rect::from_min_size(
+        map_rect.min + egui::vec2(gap, gap),
+        egui::vec2(map_rect.width() * 0.5, 40.0),
+    );
+    ui.scope_builder(egui::UiBuilder::new().max_rect(hint), |ui| {
+        shell::chip_frame().show(ui, |ui| {
+            let text = if editable { t!("planner-edit-hint-big") } else { t!("planner-view-hint") };
+            ui.label(egui::RichText::new(text).color(BRIGHT));
+        });
+    });
+    // The zoom, left of the route panel at the bottom.
+    let zoom = egui::Rect::from_min_max(
+        egui::pos2(
+            panel_rect.left() - gap - shell::SQUARE,
+            map_rect.bottom() - gap - 3.0 * shell::SQUARE - 16.0,
+        ),
+        egui::pos2(panel_rect.left() - gap, map_rect.bottom() - gap),
+    );
+    ui.scope_builder(egui::UiBuilder::new().max_rect(zoom), |ui| {
+        ui.spacing_mut().item_spacing.y = 8.0;
+        if shell::square_button(ui, icon::ZOOM_IN, t!("map-zoom-in")).clicked() {
+            planner.zoom(0.7);
+        }
+        if shell::square_button(ui, icon::ZOOM_OUT, t!("map-zoom-out")).clicked() {
+            planner.zoom(1.0 / 0.7);
+        }
+        if shell::square_button(ui, icon::FIT, t!("map-fit")).clicked() {
+            planner.refit();
+        }
+    });
+    // The clicked point's card, above it.
+    if let (Some(i), Some(at)) = (planner.selected, planner.selected_at)
+        && map_rect.contains(at)
+    {
+        let w = 340.0;
+        let left = (at.x - 40.0).clamp(map_rect.left() + gap, panel_rect.left() - gap - w);
+        let r = egui::Rect::from_min_size(egui::pos2(left, at.y - 190.0), egui::vec2(w, 160.0));
+        let r =
+            if r.top() < map_rect.top() + gap { r.translate(egui::vec2(0.0, 220.0)) } else { r };
+        ui.scope_builder(egui::UiBuilder::new().max_rect(r), |ui| {
+            shell::overlay_frame().show(ui, |ui| {
+                ui.set_width(w - 28.0);
+                let p = route.points[i];
+                let kind = match p.kind {
+                    RouteKind::Nav => t!("mt-nav-point"),
+                    RouteKind::Primary => t!("sim-primary-target"),
+                    RouteKind::Secondary => t!("mt-secondary-target"),
+                    RouteKind::Land => t!("mt-landing-base"),
+                };
+                let mut close = false;
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(point_label(&route.points, i)).size(18.0).color(BRIGHT),
+                    );
+                    ui.label(egui::RichText::new(kind.to_uppercase()).color(DIM));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        close = shell::square_button(ui, icon::CANCEL, "").clicked();
+                    });
+                });
+                let (from, a) = match i {
+                    0 => (
+                        t!("planner-base").to_string(),
+                        (m.takeoff.position.x, m.takeoff.position.y),
+                    ),
+                    _ => (
+                        point_label(&route.points, i - 1),
+                        (route.points[i - 1].x, route.points[i - 1].y),
+                    ),
+                };
+                let km =
+                    (((p.x - a.0) as f64).powi(2) + ((p.y - a.1) as f64).powi(2)).sqrt() / PER_KM;
+                ui.label(
+                    egui::RichText::new(t!(
+                        "mt-leg",
+                        km = format!("{km:.0}"),
+                        from = from.as_str(),
+                        time = leg_time(km)
+                    ))
+                    .small()
+                    .color(DIM),
+                );
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    let nav = p.kind == RouteKind::Nav;
+                    let can_delete = editable && nav && route.points.len() > 2;
+                    let can_add =
+                        editable && i + 1 < route.points.len() && route.points.len() < MAX_POINTS;
+                    let w = (ui.available_width() - 8.0) / 2.0;
+                    if ui
+                        .add_enabled_ui(can_delete, |ui| {
+                            shell::button(
+                                ui,
+                                Some(icon::DELETE),
+                                t!("delete"),
+                                false,
+                                48.0,
+                                Some(w),
+                            )
+                        })
+                        .inner
+                        .clicked()
+                    {
+                        route.points.remove(i);
+                        close = true;
+                    }
+                    if ui
+                        .add_enabled_ui(can_add, |ui| {
+                            shell::button(
+                                ui,
+                                Some(icon::ADD),
+                                t!("planner-add-after"),
+                                false,
+                                48.0,
+                                Some(w),
+                            )
+                        })
+                        .inner
+                        .clicked()
+                    {
+                        let b = route.points[i + 1];
+                        let mid = RoutePoint {
+                            x: (p.x + b.x) / 2,
+                            y: (p.y + b.y) / 2,
+                            kind: RouteKind::Nav,
+                        };
+                        route.points.insert(i + 1, mid);
+                        planner.selected = Some(i + 1);
+                    }
+                });
+                if close {
+                    planner.selected = None;
+                }
+            });
+        });
+    }
+    layers.keep(ui.ctx(), "route");
+}
+
 #[allow(clippy::too_many_arguments)]
 fn map_view(
     ui: &mut egui::Ui,
@@ -1105,14 +1458,22 @@ fn map_view(
     }
 
     // Input.
-    let hit_point = |pos: egui::Pos2| pts.iter().position(|&p| p.distance(pos) < 9.0);
+    let reach = if planner.big { 20.0 } else { 9.0 };
+    let hit_point = |pos: egui::Pos2| {
+        pts.iter()
+            .enumerate()
+            .map(|(i, &p)| (i, p.distance(pos)))
+            .filter(|(_, d)| *d < reach)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(i, _)| i)
+    };
     // Leg i ends at route point i (leg 0 starts at the base).
     let hit_leg = |pos: egui::Pos2| {
         (1..legs.len()).map(|i| i - 1).find(|&i| {
             let (a, b) = (legs[i], legs[i + 1]);
             let ab = b - a;
             let t = ((pos - a).dot(ab) / ab.length_sq().max(1e-3)).clamp(0.0, 1.0);
-            (a + ab * t).distance(pos) < 6.0
+            (a + ab * t).distance(pos) < if planner.big { 12.0 } else { 6.0 }
         })
     };
     if let Some(pos) = resp.hover_pos().filter(|_| editable) {
@@ -1149,14 +1510,24 @@ fn map_view(
         planner.drag = None;
     }
     if resp.clicked()
-        && editable
         && let Some(pos) = resp.interact_pointer_pos()
-        && hit_point(pos).is_none()
-        && let Some(i) = hit_leg(pos)
-        && route.points.len() < MAX_POINTS
     {
-        let p = to_map(pos);
-        route.points.insert(i, RoutePoint { x: p.x as i32, y: p.y as i32, kind: RouteKind::Nav });
+        // A point: its card; a leg: a new point there; elsewhere: the card closes.
+        planner.selected = hit_point(pos);
+        if planner.selected.is_none()
+            && editable
+            && let Some(i) = hit_leg(pos)
+            && route.points.len() < MAX_POINTS
+        {
+            let p = to_map(pos);
+            route
+                .points
+                .insert(i, RoutePoint { x: p.x as i32, y: p.y as i32, kind: RouteKind::Nav });
+            planner.selected = Some(i);
+        }
+    }
+    if resp.drag_started() && planner.drag.is_some() {
+        planner.selected = planner.drag.map(|d| d.0);
     }
     if resp.secondary_clicked()
         && editable
@@ -1165,40 +1536,61 @@ fn map_view(
         && route.points.len() > 2
     {
         route.points.remove(i);
+        planner.selected = None;
     }
-    let panel = layers_panel(ui, rect, layers, |ui, layers| {
-        layers.legend(ui, Layer::Sams, t!("planner-layer-sams"), |p, c| {
-            map_draw::site_symbol(p, c, 1.0);
-        });
-        layers.types(
-            ui,
-            t!("planner-radar-types"),
-            rings.iter().map(|r| r.name.as_str()).collect(),
-        );
-        layer_legend(ui, layers, Legend::Pulse, t!("planner-layer-pulse"));
-        layer_legend(ui, layers, Legend::Doppler, t!("planner-layer-doppler"));
-        layer_legend(ui, layers, Legend::Missile, t!("planner-missile"));
-        layer_legend(ui, layers, Legend::Engage, t!("pic-engagement-range"));
-        if m.drones.is_some() {
-            layer_legend(ui, layers, Legend::Drone, t!("planner-uav"));
-        }
-        match overlay {
-            Some(o) => (o.legend)(ui, layers),
-            None => layers.legend(ui, Layer::Airfields, t!("planner-layer-airfield"), |p, c| {
-                if map_draw::app6() {
-                    let side = crate::app6::Affiliation::Friend;
-                    return map_draw::app6_place(p, c + egui::vec2(0.0, 1.0), side, true, 0.8);
+    planner.selected = planner.selected.filter(|&i| i < route.points.len());
+    planner.selected_at =
+        planner.selected.map(|i| to_screen(route.points[i].x as f32, route.points[i].y as f32));
+    if let Some(at) = planner.selected_at {
+        painter.circle(at, 18.0, GREEN.gamma_multiply(0.15), egui::Stroke::new(3.0, GREEN));
+    }
+    let panel = layers_panel(
+        ui,
+        rect.with_max_x(rect.right() - planner.inset),
+        layers,
+        planner.big,
+        |ui, layers| {
+            layers.legend(ui, Layer::Sams, t!("planner-layer-sams"), |p, c| {
+                map_draw::site_symbol(p, c, 1.0);
+            });
+            layers.types(
+                ui,
+                t!("planner-radar-types"),
+                rings.iter().map(|r| r.name.as_str()).collect(),
+            );
+            layer_legend(ui, layers, Legend::Pulse, t!("planner-layer-pulse"));
+            layer_legend(ui, layers, Legend::Doppler, t!("planner-layer-doppler"));
+            layer_legend(ui, layers, Legend::Missile, t!("planner-missile"));
+            layer_legend(ui, layers, Legend::Engage, t!("pic-engagement-range"));
+            if m.drones.is_some() {
+                layer_legend(ui, layers, Legend::Drone, t!("planner-uav"));
+            }
+            match overlay {
+                Some(o) => (o.legend)(ui, layers),
+                None => {
+                    layers.legend(ui, Layer::Airfields, t!("planner-layer-airfield"), |p, c| {
+                        if map_draw::app6() {
+                            let side = crate::app6::Affiliation::Friend;
+                            return map_draw::app6_place(
+                                p,
+                                c + egui::vec2(0.0, 1.0),
+                                side,
+                                true,
+                                0.8,
+                            );
+                        }
+                        p.rect_stroke(
+                            egui::Rect::from_center_size(c, egui::vec2(8.0, 8.0)),
+                            0.0,
+                            egui::Stroke::new(1.5, map_draw::FRIENDLY_BLUE),
+                            egui::StrokeKind::Middle,
+                        );
+                    })
                 }
-                p.rect_stroke(
-                    egui::Rect::from_center_size(c, egui::vec2(8.0, 8.0)),
-                    0.0,
-                    egui::Stroke::new(1.5, map_draw::FRIENDLY_BLUE),
-                    egui::StrokeKind::Middle,
-                );
-            }),
-        }
-        map_draw::weather_legend(ui, layers, weather.snow);
-    });
+            }
+            map_draw::weather_legend(ui, layers, weather.snow);
+        },
+    );
     // The tooltip of what is under the pointer (not over the LAYERS panel, nor while a point is
     // dragged), with what a click does there.
     if let Some(pos) = resp.hover_pos().filter(|&p| !panel.contains(p) && planner.drag.is_none()) {
@@ -1271,20 +1663,29 @@ pub(crate) fn layers_panel(
     ui: &mut egui::Ui,
     map: egui::Rect,
     layers: &mut MapLayers,
+    big: bool,
     lines: impl FnOnce(&mut egui::Ui, &mut MapLayers),
 ) -> egui::Rect {
     const WIDTH: f32 = 280.0;
+    let gap = if big { 16.0 } else { 8.0 };
     let area = egui::Rect::from_min_max(
-        egui::pos2(map.right() - WIDTH - 8.0, map.top() + 8.0),
-        egui::pos2(map.right() - 8.0, map.bottom() - 8.0),
+        egui::pos2(map.right() - WIDTH - gap, map.top() + gap),
+        egui::pos2(map.right() - gap, map.bottom() - gap),
     );
     // A child that takes no room in the parent: over the map, not after it (the side column).
     let ui = &mut ui.new_child(
         egui::UiBuilder::new().max_rect(area).layout(egui::Layout::top_down(egui::Align::Max)),
     );
-    let text = format!("{}  {}", t!("planner-layers"), if layers.panel { "^" } else { "v" });
-    if ui.add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel)).clicked()
-    {
+    let clicked = if big {
+        let glyph = Some(crate::menu::icon::LAYERS);
+        crate::campaign::shell::button(ui, glyph, t!("planner-layers"), layers.panel, 56.0, None)
+            .clicked()
+    } else {
+        let text = format!("{}  {}", t!("planner-layers"), if layers.panel { "^" } else { "v" });
+        ui.add(egui::Button::new(egui::RichText::new(text).small()).selected(layers.panel))
+            .clicked()
+    };
+    if clicked {
         layers.panel = !layers.panel;
     }
     if !layers.panel {

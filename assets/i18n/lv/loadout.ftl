@@ -14,6 +14,8 @@ loadout-out-of-stock = Šai misijai krājumā nav
 loadout-mirror = Vienādi abās pusēs
     .facts = Piekar arī { $station }
 loadout-stores = Iekārtas
+loadout-stations = Piekares punkti
+loadout-click-drawing = Vai noklikšķiniet uz punkta zīmējumā
 loadout-needs-equipment = Misijai vajadzīga sava kamera vai īpašais aprīkojums
 
 ## Kam kalpo katrs ierocis (ieroču veidi no 0 līdz 20)

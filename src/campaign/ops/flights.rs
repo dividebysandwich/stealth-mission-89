@@ -163,9 +163,11 @@ pub(super) fn tab(
     let room = height_of(ui);
     // The list over the selected flight's seats.
     ui.vertical(|ui| {
-        egui::ScrollArea::vertical().id_salt("flights").max_height((room * 0.6).max(120.0)).auto_shrink([false, true]).show(
-            ui,
-            |ui| {
+        egui::ScrollArea::vertical()
+            .id_salt("flights")
+            .max_height((room * 0.6).max(120.0))
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
                 for r in &list {
                     let selected = c.ui.flight == Some(r.key);
                     let ink = |col| if selected { super::BG } else { col };
@@ -225,13 +227,15 @@ pub(super) fn tab(
                 if list.is_empty() {
                     ui.label(egui::RichText::new(t!("ops-no-flights")).color(DIM));
                 }
-            },
-        );
+            });
     });
     ui.add_space(8.0);
     ui.vertical(|ui| {
         let Some(r) = list.iter().find(|r| Some(r.key) == c.ui.flight) else { return };
-        *bar = Some((format!("{} · {}", r.callsign, kind_of(r.aircraft).name()), format!("{} · {}", r.title.tr(), r.status)));
+        *bar = Some((
+            format!("{} · {}", r.callsign, kind_of(r.aircraft).name()),
+            format!("{} · {}", r.title.tr(), r.status),
+        ));
         section(ui, kind_of(r.aircraft).name());
         ui.label(egui::RichText::new(r.title.tr()).size(20.0).color(BRIGHT));
         ui.label(egui::RichText::new(&r.status).color(DIM));

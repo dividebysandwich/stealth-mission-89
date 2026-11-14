@@ -17,6 +17,8 @@ loadout-empties-two = Empties stations { $first } and { $second } when loaded
 loadout-mirror = Same on both sides
     .facts = Loads { $station } too
 loadout-stores = Stores
+loadout-stations = Stations
+loadout-click-drawing = Or click a station on the drawing
 loadout-needs-equipment = The mission needs its camera or special equipment
 
 ## What each weapon is for (weapon types 0 to 20)

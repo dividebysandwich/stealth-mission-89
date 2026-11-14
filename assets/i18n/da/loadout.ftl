@@ -14,6 +14,8 @@ loadout-out-of-stock = Ingen på lager til denne mission
 loadout-mirror = Ens på begge sider
     .facts = Lader også { $station }
 loadout-stores = Last
+loadout-stations = Ophæng
+loadout-click-drawing = Eller klik på et ophæng på tegningen
 loadout-needs-equipment = Missionen kræver sit kamera eller sit specialudstyr
 
 ## Hvad hvert våben bruges til

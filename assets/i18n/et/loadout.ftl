@@ -14,6 +14,8 @@ loadout-out-of-stock = Selle missiooni jaoks pole varusid
 loadout-mirror = Sama mõlemal küljel
     .facts = Laadib ka: { $station }
 loadout-stores = Stores
+loadout-stations = Riputuspunktid
+loadout-click-drawing = Või klõpsake riputuspunktil joonisel
 loadout-needs-equipment = Missioon vajab oma kaamerat või erivarustust
 
 ## Mille jaoks iga relv on (relvatüübid 0 kuni 20)
