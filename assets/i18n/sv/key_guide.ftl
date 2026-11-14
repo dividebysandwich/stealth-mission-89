@@ -67,6 +67,7 @@ kg-cam-right = Följekamera åt höger
 kg-camera-zoom-in = Zoom för behållare / kamera in / ut (eller SOI:s)
 kg-lock-cursor = Lås på målet under markören
 kg-swap-soi = Intressesensor (SOI) till den andra MFD:n
+kg-pod-to-helmet = Målpoden dit hjälmsiktet tittar
 kg-flare = Flare (infraröda robotar)
 kg-chaff = Chaff (radarrobotar)
 kg-decoy = Skenmål

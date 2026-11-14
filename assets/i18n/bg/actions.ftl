@@ -76,6 +76,7 @@ action-resupply = Презареждане
 action-day-night = Ден / нощ
 action-lock-cursor = Захват под курсора
 action-swap-soi = Смяна на SOI
+action-pod-to-helmet = Шушулка към шлема
 action-kneeboard = Kneeboard
 action-chat = Чат
 action-camera-zoom-in = Приближаване на камерата

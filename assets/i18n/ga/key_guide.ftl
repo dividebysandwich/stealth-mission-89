@@ -69,6 +69,7 @@ kg-cam-right = Ceamara rianaithe ar dheis
 kg-camera-zoom-in = Súmáil an choimeádáin / ceamara isteach / amach (nó SOI)
 kg-lock-cursor = Glasáil ar an sprioc faoin gcúrsóir
 kg-swap-soi = An braiteoir spéise (SOI) chuig an MFD eile
+kg-pod-to-helmet = An pod díriúcháin chuig an áit a bhfuil radharc an chlogaid ag féachaint
 kg-flare = Flare (diúracáin infridhearga)
 kg-chaff = Chaff (diúracáin radair)
 kg-decoy = Mealladh

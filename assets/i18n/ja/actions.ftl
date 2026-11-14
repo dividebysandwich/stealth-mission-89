@@ -76,6 +76,7 @@ action-resupply = 補給
 action-day-night = 昼夜
 action-lock-cursor = カーソルロック
 action-swap-soi = SOI切替
+action-pod-to-helmet = ポッドをヘルメットへ
 action-kneeboard = ニーボード
 action-chat = チャット
 action-camera-zoom-in = カメラ拡大

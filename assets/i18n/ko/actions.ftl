@@ -75,6 +75,7 @@ action-resupply = 재보급
 action-day-night = 낮 밤
 action-lock-cursor = 커서 락
 action-swap-soi = SOI 전환
+action-pod-to-helmet = 포드를 헬멧으로
 action-kneeboard = 니보드
 action-chat = 채팅
 action-camera-zoom-in = 카메라 확대

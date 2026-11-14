@@ -70,6 +70,7 @@ kg-cam-right = Követőkamera jobbra
 kg-camera-zoom-in = A tároló / kamera nagyítása közelít / távolít (vagy a SOI-é)
 kg-lock-cursor = A kurzor alatti célpont befogása
 kg-swap-soi = Az érdekes érzékelő (SOI) a másik MFD-re
+kg-pod-to-helmet = A célzókonténer oda, ahová a sisakcélzó néz
 kg-flare = Flare (infravörös rakéták ellen)
 kg-chaff = Chaff (radarrakéták ellen)
 kg-decoy = Csalétek

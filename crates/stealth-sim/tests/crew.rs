@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP};
-use stealth_sim::crew::{CrewCmd, GunnerAim, Seat};
+use stealth_sim::crew::{CrewCmd, GunnerAim, Seat, SharedPod};
 use stealth_sim::*;
 
 struct Data {
@@ -306,6 +306,56 @@ fn the_apache_gunner_fires_the_chin_gun_along_his_sight() {
     }
     let r = rounds(&sim);
     assert!(!r.is_empty() && r.iter().all(|&(e, n)| n > 0 && e.abs() < n / 4), "north: {r:?}");
+}
+
+/// The gunner's chin gun follows his helmet sight (north) unless he slaves it to his TADS
+/// (west, at the BMP).
+#[test]
+fn the_apache_gunner_slaves_the_chin_gun_to_his_helmet_or_his_tads() {
+    for (gun_pod, north) in [(false, true), (true, false)] {
+        let (mut sim, at) = apache();
+        sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+        let aim = GunnerAim {
+            pod: Some(tads_on(at)),
+            helmet: Some(PodAim { heading: 0, pitch: -0x100, ground: None }),
+            gun_pod,
+            trigger: true,
+            ..Default::default()
+        };
+        sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+        for _ in 0..5 {
+            sim.step_pilots(&[(0, hover(at, false))], 15);
+        }
+        let r = rounds(&sim);
+        let ok = if north {
+            r.iter().all(|&(e, n)| n > 0 && e.abs() < n / 4)
+        } else {
+            r.iter().all(|&(e, n)| e < 0 && n.abs() < -e / 4)
+        };
+        assert!(!r.is_empty() && ok, "gun_pod {gun_pod}: {r:?}");
+    }
+}
+
+/// The crew's pod is one: whoever of the two moved it last has it, the other's client is told
+/// (a stranger's is ignored), and a new gunner starts with none moved.
+#[test]
+fn the_crew_shares_the_pod_moved_last() {
+    let (mut sim, _) = apache();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_view(0).unwrap().shared_pod, None);
+    let pod =
+        SharedPod { by: 9, heading: 0x4000, pitch: -0x200, at: Some((1000, 2000)), track: None };
+    sim.crew_command(0, CrewCmd::Pod(pod)).unwrap();
+    let seen = sim.crew_view(1).unwrap().shared_pod.expect("the pilot's pod");
+    assert_eq!(seen, SharedPod { by: 0, ..pod });
+    sim.crew_command(1, CrewCmd::Pod(SharedPod { heading: 0xC000, ..pod })).unwrap();
+    let seen = sim.crew_view(0).unwrap().shared_pod.expect("the gunner's pod");
+    assert_eq!((seen.by, seen.heading), (1, 0xC000));
+    sim.crew_command(2, CrewCmd::Pod(pod)).unwrap();
+    assert_eq!(sim.crew_view(0).unwrap().shared_pod.map(|p| p.by), Some(1));
+    sim.crew_command(1, CrewCmd::Leave).unwrap();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_view(0).unwrap().shared_pod, None);
 }
 
 /// The gunner's Hellfire goes from the station he selected (the pilot's Stingers stay

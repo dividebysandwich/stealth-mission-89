@@ -336,6 +336,9 @@ pub struct TgpState {
     cz: bool,
     /// The gun or vehicle (`Sim::units` index) the point track follows.
     pub track: Option<usize>,
+    /// The player moved it this frame (slewed, locked, sent to a steerpoint or to the helmet
+    /// sight): a crew's other seat follows the pod as he has it (`gunner::share_pod`).
+    pub moved: bool,
 }
 
 impl TgpMode {
@@ -2682,7 +2685,7 @@ pub struct PodTrack(pub usize);
 /// The targeting pod: slewed as the SOI, tracking; "lock cursor target" locks the ground point
 /// it holds (then it follows the lock).
 #[allow(clippy::too_many_arguments)]
-fn update_pod(
+pub(crate) fn update_pod(
     time: Res<Time>,
     controls: Res<FlightControls>,
     mut actions: MessageReader<ActionEvent>,
@@ -2700,18 +2703,18 @@ fn update_pod(
     mut locks: MessageWriter<LockRequest>,
     (waypoints, theater): (Res<crate::hud::Waypoints>, Option<Res<crate::world::Theater>>),
 ) {
-    let (mut lock, mut clear) = (false, false);
+    let (mut lock, mut clear, mut to_helmet) = (false, false, false);
     for ActionEvent(a) in actions.read() {
         lock |= *a == Action::LockCursor;
         clear |= *a == Action::ClearTarget;
+        to_helmet |= *a == Action::PodToHelmet;
     }
+    state.av.tgp.moved = false;
     let Ok((a, pos)) = aircraft.single() else { return };
     // The helmet sight, with a helmet-mounted display: the gunship's slaved pod follows it
     // whether its page is up or not (the page shows what it looks at), the Sidewinder seeker
-    // too.
-    // (Not in a gunner's cockpit: the AH-64's gunner lays the gun with the TADS.)
-    let helmet =
-        settings.aircraft.spec().hmd != crate::aircraft::Hmd::None && !settings.gunner_cockpit;
+    // too; a gunner's seat's as the pilot's (his turret gun slaved to it, or to the pod).
+    let helmet = settings.aircraft.spec().hmd != crate::aircraft::Hmd::None;
     let sight = helmet_sight(&eyes, view.view).filter(|_| helmet);
     let body = sight.map(|d| {
         let d = a.orientation.inverse() * d;
@@ -2740,17 +2743,18 @@ fn update_pod(
     } else {
         camera.single().ok().filter(|_| shown && info.live).map(|t| t.forward().as_vec3())
     };
-    // The flat world or the deck under the aircraft, and the hills.
-    let ground = Terrain {
-        y: crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y,
-        hills: theater.map(|t| t.hills.clone()).unwrap_or_default(),
-    };
-    // Over the hills the aircraft's own ground is theirs: the plane under them is the flat world.
-    let ground = if ground.hills.ground_m(pos.0.x, -pos.0.z) > 0.0 {
-        Terrain { y: 0.0, ..ground }
-    } else {
-        ground
-    };
+    let ground = pod_terrain(a, pos.0, theater.as_deref());
+    // The pod to where the helmet sight looks, as if slewed there (it settles into a point
+    // track, onto a unit there).
+    if to_helmet && let Some(d) = state.av.helmet {
+        let tgp = &mut state.av.tgp;
+        tgp.mode = TgpMode::Area(
+            ground_hit(origin, d, &ground).unwrap_or(origin + d.as_dvec3() * POD_SKY),
+        );
+        tgp.track = None;
+        tgp.idle = 0.0;
+        tgp.moved = true;
+    }
     // CZ: point track on the current steerpoint, the pod the SOI to slew on from there.
     let mut cz = false;
     if std::mem::take(&mut state.av.tgp.cz)
@@ -2784,6 +2788,7 @@ fn update_pod(
         Vec2::ZERO
     };
     let tgp = &mut state.av.tgp;
+    tgp.moved |= cz || slew.length() > 0.05 || (lock && soi) || (clear && !turret);
     // A point track on a unit follows it, until slewed off or it is gone.
     if let Some(k) = tgp.track {
         let at = combat.as_deref().and_then(|c| vehicle_at(c, k, &ground));
@@ -2841,6 +2846,36 @@ fn update_pod(
             None => tgp.mode = TgpMode::Slaved,
         }
     }
+}
+
+/// The ground the pod looks at round the aircraft at `pos`: the flat world or the deck under
+/// it, and the hills.
+pub fn pod_terrain(a: &Aircraft, pos: DVec3, theater: Option<&crate::world::Theater>) -> Terrain {
+    let ground = Terrain {
+        y: crate::world::wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y,
+        hills: theater.map(|t| t.hills.clone()).unwrap_or_default(),
+    };
+    // Over the hills the aircraft's own ground is theirs: the plane under them is the flat world.
+    if ground.hills.ground_m(pos.x, -pos.z) > 0.0 { Terrain { y: 0.0, ..ground } } else { ground }
+}
+
+/// The pod follows the one another crew member has (`gunner::follow_pod`): its line of sight
+/// `dir` (world), the ground point it holds and the unit it tracks.
+pub fn follow_pod(
+    tgp: &mut TgpState,
+    origin: DVec3,
+    dir: Vec3,
+    at: Option<DVec3>,
+    track: Option<usize>,
+    ground: &Terrain,
+) {
+    tgp.mode = match at {
+        Some(p) => TgpMode::Point(ground.on(p)),
+        // Above the horizon: a point far out on the line of sight (not a ground point).
+        None => TgpMode::Area(origin + dir.as_dvec3() * POD_SKY),
+    };
+    tgp.track = track.filter(|_| at.is_some());
+    tgp.idle = 0.0;
 }
 
 /// How near a unit the settled pod snaps onto it (metres, across the ground).
@@ -2929,7 +2964,12 @@ fn draw_side_gun_scope(
     // The wing's line, dashed down the middle.
     let mut y = y0;
     while y < y0 + h {
-        c.stroke(Vec2::new(x0 + w / 2.0, y), Vec2::new(x0 + w / 2.0, (y + 3.0).min(y0 + h)), 1.0, col);
+        c.stroke(
+            Vec2::new(x0 + w / 2.0, y),
+            Vec2::new(x0 + w / 2.0, (y + 3.0).min(y0 + h)),
+            1.0,
+            col,
+        );
         y += 6.0;
     }
     if let (Some(los), Ok((a, _))) = (p.state.av.tgp.los, p.aircraft.single()) {

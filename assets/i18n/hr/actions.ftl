@@ -76,6 +76,7 @@ action-resupply = Opskrba
 action-day-night = Dan / noć
 action-lock-cursor = Zaključaj pod kursorom
 action-swap-soi = Promijeni SOI
+action-pod-to-helmet = Pod prema kacigi
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Zum kamere naprijed

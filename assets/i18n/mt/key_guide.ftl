@@ -70,6 +70,7 @@ kg-cam-right = Tracking camera lejn il-lemin
 kg-camera-zoom-in = Zoom tal-kontenitur / tal-kamera ersaq / bogħod (jew dak tas-SOI)
 kg-lock-cursor = Illokkja l-mira taħt il-kursur
 kg-swap-soi = Sensor of interest lejn l-MFD l-ieħor
+kg-pod-to-helmet = Il-pod tal-immirar lejn fejn qed iħares il-mira tal-elmu
 kg-flare = Flare (missili infrared)
 kg-chaff = Chaff (missili tar-radar)
 kg-decoy = Decoy

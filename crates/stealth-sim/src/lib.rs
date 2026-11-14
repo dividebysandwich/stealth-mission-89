@@ -569,6 +569,8 @@ impl Sim {
                 crew_cmd: Commands::default(),
                 crew_fire: None,
                 crew_gun: false,
+                crew_sight: None,
+                crew_pod: None,
                 crew_launch: None,
                 crew_rounds: Vec::new(),
             },

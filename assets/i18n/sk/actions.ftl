@@ -76,6 +76,7 @@ action-resupply = Zásobovanie
 action-day-night = Deň / noc
 action-lock-cursor = Zamknúť kurzor
 action-swap-soi = Prepnúť SOI
+action-pod-to-helmet = Pod na prilbu
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Priblíženie kamery

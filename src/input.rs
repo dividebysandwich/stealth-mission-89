@@ -165,6 +165,8 @@ pub enum Action {
     LockCursor,
     /// Modern avionics: the sensor of interest moves to the other MFD.
     SwapSoi,
+    /// The targeting pod to where the helmet sight looks (then it settles there as if slewed).
+    PodToHelmet,
     /// Kneeboard: desktop, shows it over the view and turns its pages; VR, shows or hides the
     /// board on the thigh.
     Kneeboard,
@@ -419,6 +421,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::Enter, FireWeapon),
         (None, K::NumpadEnter, LockCursor),
         (Alt, K::KeyS, SwapSoi),
+        (None, K::KeyL, PodToHelmet),
         (None, K::BracketRight, CameraZoomIn),
         (None, K::BracketLeft, CameraZoomOut),
         (None, K::Digit1, Flare),

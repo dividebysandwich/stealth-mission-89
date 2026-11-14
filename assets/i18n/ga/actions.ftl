@@ -75,6 +75,7 @@ action-resupply = Athsholáthar
 action-day-night = Lá / oíche
 action-lock-cursor = Glasáil faoin gcúrsóir
 action-swap-soi = Athraigh SOI
+action-pod-to-helmet = Pod chuig an gclogad
 action-kneeboard = Clár glúine
 action-chat = Comhrá
 action-camera-zoom-in = Súmáil an cheamara isteach

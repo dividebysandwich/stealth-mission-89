@@ -68,6 +68,7 @@ kg-cam-right = 跟踪摄像机朝右
 kg-camera-zoom-in = 吊舱/摄像机缩放 拉近 / 拉远（或 SOI 的）
 kg-lock-cursor = 锁定光标下的目标
 kg-swap-soi = 将 sensor of interest 切换到另一块 MFD
+kg-pod-to-helmet = 瞄准吊舱转向头盔瞄准具所看之处
 kg-flare = 热诱弹（红外导弹）
 kg-chaff = Chaff（雷达导弹）
 kg-decoy = 诱饵

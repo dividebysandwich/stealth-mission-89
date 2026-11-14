@@ -75,6 +75,7 @@ action-resupply = Papildymas
 action-day-night = Diena / naktis
 action-lock-cursor = Užfiksuoti žymeklį
 action-swap-soi = Keisti SOI
+action-pod-to-helmet = Pod į šalmą
 action-kneeboard = Kneeboard
 action-chat = Pokalbis
 action-camera-zoom-in = Kameros priartinimas

@@ -75,6 +75,7 @@ action-resupply = Ανεφοδιασμός
 action-day-night = Ημέρα / νύχτα
 action-lock-cursor = Κλείδωμα κάτω από τον κέρσορα
 action-swap-soi = Αλλαγή SOI
+action-pod-to-helmet = Pod στο κράνος
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Ζουμ κάμερας μέσα

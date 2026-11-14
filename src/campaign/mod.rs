@@ -1319,7 +1319,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::LeaveAircraft => ToServer::LeaveAircraft,
             // The console's aim goes often: one lost is said again by the next.
-            Action::Crew(cmd @ CrewCmd::Aim(_)) => {
+            Action::Crew(cmd @ (CrewCmd::Aim(_) | CrewCmd::Pod(_))) => {
                 client.send_unreliable(&ToServer::Crew(cmd));
                 continue;
             }

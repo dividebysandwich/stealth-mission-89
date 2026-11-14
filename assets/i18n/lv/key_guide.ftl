@@ -67,6 +67,7 @@ kg-cam-right = Izsekošanas kamera pa labi
 kg-camera-zoom-in = Konteinera / kameras tālummaiņa tuvināt / tālināt (vai SOI)
 kg-lock-cursor = Notvert mērķi zem kursora
 kg-swap-soi = Sensors SOI uz otru MFD
+kg-pod-to-helmet = Mērķēšanas konteiners turp, kur skatās ķiveres tēmēklis
 kg-flare = Siltuma lamatas (infrasarkanās raķetes)
 kg-chaff = Chaff (radara raķetes)
 kg-decoy = Mānekļi

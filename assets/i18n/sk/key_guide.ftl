@@ -69,6 +69,7 @@ kg-cam-right = Sledovacia kamera vpravo
 kg-camera-zoom-in = Zoom kontajnera / kamery priblížiť / oddialiť (alebo SOI)
 kg-lock-cursor = Zamknúť cieľ pod kurzorom
 kg-swap-soi = Snímač záujmu (SOI) na druhé MFD
+kg-pod-to-helmet = Zameriavací pod tam, kam sa pozerá prilbový zameriavač
 kg-flare = Flare (infračervené rakety)
 kg-chaff = Chaff (radarové rakety)
 kg-decoy = Návnada

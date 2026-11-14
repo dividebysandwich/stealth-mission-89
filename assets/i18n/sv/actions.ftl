@@ -75,6 +75,7 @@ action-resupply = Återförsörjning
 action-day-night = Dag / natt
 action-lock-cursor = Lås på markören
 action-swap-soi = Byt SOI
+action-pod-to-helmet = Pod till hjälm
 action-kneeboard = Kneeboard
 action-chat = Chatt
 action-camera-zoom-in = Kamerazoom in

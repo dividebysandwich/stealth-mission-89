@@ -76,6 +76,7 @@ action-resupply = Reżupplament
 action-day-night = Nhar / lejl
 action-lock-cursor = Illokkja kursur
 action-swap-soi = Biddel is-SOI
+action-pod-to-helmet = Pod lejn l-elmu
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Zoom in tal-kamera

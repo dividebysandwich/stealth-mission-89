@@ -75,6 +75,7 @@ action-resupply = Поповнення запасів
 action-day-night = День / ніч
 action-lock-cursor = Захоплення курсором
 action-swap-soi = Обмін SOI
+action-pod-to-helmet = Контейнер на шолом
 action-kneeboard = Планшет на коліно
 action-chat = Чат
 action-camera-zoom-in = Камера: збільшити

@@ -80,6 +80,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[CameraZoomIn, CameraZoomOut]), "kg-camera-zoom-in"),
                 (Actions(&[LockCursor]), "kg-lock-cursor"),
                 (Actions(&[SwapSoi]), "kg-swap-soi"),
+                (Actions(&[PodToHelmet]), "kg-pod-to-helmet"),
             ],
         ),
         (

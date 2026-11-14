@@ -494,6 +494,10 @@ fn vr_console(
         press(ConsoleKey::Flir);
     }
     if !console {
+        // In a gunner's cockpit the left X sends the pod where the helmet looks.
+        if left.just_pressed(BUTTON_PRIMARY) {
+            actions.write(ActionEvent(Action::PodToHelmet));
+        }
         return;
     }
     if left.just_pressed(BUTTON_THUMB) {

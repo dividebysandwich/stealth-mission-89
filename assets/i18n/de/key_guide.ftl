@@ -67,6 +67,7 @@ kg-cam-right = Verfolgerkamera nach rechts
 kg-camera-zoom-in = Pod- / Kamerazoom hinein / hinaus (oder der des SOI)
 kg-lock-cursor = Ziel unter dem Cursor aufschalten
 kg-swap-soi = Sensor of Interest auf das andere MFD
+kg-pod-to-helmet = Zielbehälter dorthin, wo das Helmvisier hinschaut
 kg-flare = Flare (Infrarotraketen)
 kg-chaff = Chaff (Radarraketen)
 kg-decoy = Täuschkörper

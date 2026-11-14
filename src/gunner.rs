@@ -21,7 +21,7 @@
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use stealth_sim::crew::{CrewCmd, GunnerAim, Seat};
+use stealth_sim::crew::{CrewCmd, GunnerAim, Seat, SharedPod};
 
 use crate::avionics::{Format, LockRequest, PodDesignate, PodTrack, TgpMode};
 use crate::camera::{View, ViewState};
@@ -49,6 +49,8 @@ impl Plugin for GunnerPlugin {
                     .after(crate::script::ScriptSet)
                     .before(FlightSystems),
                 orbit.before(FlightSystems).after(console),
+                follow_pod.after(crate::combat::CombatSystems).before(crate::avionics::update_pod),
+                share_pod.after(crate::avionics::update_pod),
                 (send_aim, panel, draw_screen, draw_info)
                     .chain()
                     .after(crate::trackcam::update_camera),
@@ -87,12 +89,31 @@ pub struct GunnerState {
     height: Option<f32>,
     /// `--seat gunner@<s>` done.
     test_seat: bool,
-    /// Another's AH-64: the station whose missiles he selected (None: the chin gun).
+    /// Another's AH-64: the station whose missiles he selected (None: the chin gun), and the
+    /// chin gun slaved to the pod (else to his helmet sight).
     station: Option<u8>,
+    gun_pod: bool,
+    /// The crew's shared pod: when the player last moved his (s, `Time::elapsed_secs`), the
+    /// pod last sent and seconds since.
+    pod_moved: Option<f32>,
+    pod_sent: Option<SharedPod>,
+    pod_since: f32,
+}
+
+/// The chin gun is slaved to the pod (else to the helmet sight): another's gunner's own choice,
+/// else the simulation's.
+pub fn gun_on_pod(sim: &stealth_sim::Sim, state: Option<&GunnerState>) -> bool {
+    match state.filter(|s| s.at == Some(true)) {
+        Some(s) => s.station.is_none() && s.gun_pod,
+        None => sim.gun_on_pod(),
+    }
 }
 
 /// How often the aim goes again unchanged (s): it goes unreliable.
 const AIM_REFRESH: f32 = 0.25;
+/// The crew's pod stays the player's this long after he moved it (s), until the server says
+/// whose it is (the other's moves meanwhile wait).
+const POD_GRACE: f32 = 1.0;
 /// The orbit's bank: the radius is the turn's at this bank and the speed, a margin under the
 /// autopilot's 30 degrees.
 const ORBIT_BANK: f32 = 0.47;
@@ -476,8 +497,14 @@ fn send_aim(
     let mut cmds = Vec::new();
     for crate::input::ActionEvent(a) in actions.read() {
         match *a {
+            // The chin gun is two entries, as the pilot's: slaved to the helmet, then the pod.
             crate::input::Action::SelectWeapon if cockpit => {
-                state.station = next(state.station);
+                if gun && state.station.is_none() && !state.gun_pod {
+                    state.gun_pod = true;
+                } else {
+                    state.gun_pod = false;
+                    state.station = next(state.station);
+                }
             }
             crate::input::Action::SelectWeapon => state.gun ^= 1,
             crate::input::Action::FireWeapon if cockpit => {
@@ -520,6 +547,8 @@ fn send_aim(
         trigger: state.trigger,
         gun: state.gun,
         station: if cockpit { state.station } else { None },
+        helmet: mfd.av.helmet.map(|d| crate::combat::sight_aim(d, None)),
+        gun_pod: state.gun_pod,
     };
     state.since += time.delta_secs();
     if state.sent != Some(aim) || state.since >= AIM_REFRESH {
@@ -528,6 +557,87 @@ fn send_aim(
         cmds.push(CrewCmd::Aim(aim));
     }
     c.actions.extend(cmds.into_iter().map(crate::campaign::Action::Crew));
+}
+
+/// The crew's shared pod, when another player is aboard: my client and his, the pod moved
+/// last (`CrewView::shared_pod`), mine or his. None alone (or not in a crew).
+fn crew_pod(combat: &Combat) -> Option<(u8, Option<SharedPod>)> {
+    let me = combat.sim.active_pilot();
+    let v = combat.sim.crew_view(me)?;
+    let other = if v.owner == me { v.gunner } else { Some(v.owner) };
+    other.filter(|&o| o != me).map(|_| (me, v.shared_pod))
+}
+
+/// The other crew member moved the pod last: mine follows it (not while I move mine, until the
+/// server has it as mine).
+fn follow_pod(
+    combat: Option<Res<Combat>>,
+    state: Res<GunnerState>,
+    mut mfd: ResMut<crate::mfd::MfdState>,
+    player: Query<(&Aircraft, &WorldPos), With<Player>>,
+    theater: Option<Res<crate::world::Theater>>,
+    settings: Res<crate::settings::Settings>,
+    time: Res<Time>,
+) {
+    let Some(c) = combat.as_deref() else { return };
+    let Some((me, Some(pod))) = crew_pod(c) else { return };
+    let mine = state.pod_moved.is_some_and(|t| time.elapsed_secs() - t < POD_GRACE);
+    let Ok((a, pos)) = player.single() else { return };
+    if pod.by == me || mine {
+        return;
+    }
+    let origin = pos.0 + (a.orientation * settings.aircraft.spec().pod_origin()).as_dvec3();
+    let ground = crate::avionics::pod_terrain(a, pos.0, theater.as_deref());
+    let bam = |b: f32| b / 65536.0 * std::f32::consts::TAU;
+    let (h, p) = (bam(pod.heading as f32), bam(pod.pitch as f32));
+    let dir = Vec3::new(h.sin() * p.cos(), p.sin(), -h.cos() * p.cos());
+    let at = pod.at.map(|(e, n)| crate::world::wu_to_bevy(e as f64, n as f64, 0.0));
+    let track = pod.track.map(|k| k as usize);
+    crate::avionics::follow_pod(&mut mfd.av.tgp, origin, dir, at, track, &ground);
+}
+
+/// I moved the pod (or it is mine still, as I moved it last): it goes to the server for the
+/// other crew member's pod to follow.
+fn share_pod(
+    combat: Option<Res<Combat>>,
+    mut state: ResMut<GunnerState>,
+    mfd: Res<crate::mfd::MfdState>,
+    mut campaign: Option<ResMut<crate::campaign::ActiveCampaign>>,
+    time: Res<Time>,
+) {
+    let crew = combat.as_deref().and_then(crew_pod);
+    let (Some((me, shared)), Some(c)) = (crew, campaign.as_deref_mut()) else {
+        state.pod_moved = None;
+        state.pod_sent = None;
+        return;
+    };
+    let now = time.elapsed_secs();
+    if mfd.av.tgp.moved {
+        state.pod_moved = Some(now);
+    }
+    let moving = state.pod_moved.is_some_and(|t| now - t < POD_GRACE);
+    if !moving && shared.is_none_or(|s| s.by != me) {
+        state.pod_sent = None;
+        return;
+    }
+    let Some(aim) = crate::combat::pod_aim(&mfd.av.tgp) else { return };
+    let tgp = &mfd.av.tgp;
+    let pod = SharedPod {
+        by: me,
+        heading: aim.heading,
+        pitch: aim.pitch,
+        at: tgp.los_ground.map(|p| {
+            let (e, n, _) = crate::world::bevy_to_wu(p);
+            (e.round() as i32, n.round() as i32)
+        }),
+        track: tgp.track.and_then(|k| u16::try_from(k).ok()),
+    };
+    state.pod_since += time.delta_secs();
+    if state.pod_sent != Some(pod) || state.pod_since >= AIM_REFRESH {
+        state.pod_sent = Some(pod);
+        state.pod_since = 0.0;
+        c.actions.push(crate::campaign::Action::Crew(CrewCmd::Pod(pod)));
+    }
 }
 
 /// The station of the next kind of missile left after `from`'s (None, the chin gun, first and

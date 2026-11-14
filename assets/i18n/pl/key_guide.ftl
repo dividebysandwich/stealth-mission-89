@@ -67,6 +67,7 @@ kg-cam-right = Kamera śledząca w prawo
 kg-camera-zoom-in = Zbliżenie gondoli / kamery bliżej / dalej (lub SOI)
 kg-lock-cursor = Namierzyć cel pod kursorem
 kg-swap-soi = Czujnik główny (SOI) na drugi MFD
+kg-pod-to-helmet = Zasobnik celowniczy tam, gdzie patrzy celownik nahełmowy
 kg-flare = Flara (pociski na podczerwień)
 kg-chaff = Chaff (pociski radarowe)
 kg-decoy = Wabik

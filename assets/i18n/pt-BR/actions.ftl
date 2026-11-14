@@ -75,6 +75,7 @@ action-resupply = Reabastecer
 action-day-night = Dia / noite
 action-lock-cursor = Travar sob o cursor
 action-swap-soi = Trocar SOI
+action-pod-to-helmet = Pod para o capacete
 action-kneeboard = Prancheta de perna
 action-chat = Chat
 action-camera-zoom-in = Aproximar a câmera

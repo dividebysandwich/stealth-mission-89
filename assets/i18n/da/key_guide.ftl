@@ -69,6 +69,7 @@ kg-cam-right = Sporingskamera til højre
 kg-camera-zoom-in = Zoom for beholder / kamera ind / ud (eller SOI's)
 kg-lock-cursor = Lås på målet under markøren
 kg-swap-soi = Sensor of interest til den anden MFD
+kg-pod-to-helmet = Målpod'en derhen, hvor hjelmsigtet kigger
 kg-flare = Flare (infrarøde missiler)
 kg-chaff = Chaff (radarmissiler)
 kg-decoy = Lokkemiddel

@@ -45,6 +45,28 @@ pub struct GunnerAim {
     pub gun: u8,
     #[serde(default)]
     pub station: Option<u8>,
+    /// Where his helmet sight looks, and his turret gun slaved to the pod (else to the helmet
+    /// sight, as the pilot's: the gun selected twice).
+    #[serde(default)]
+    pub helmet: Option<PodAim>,
+    #[serde(default)]
+    pub gun_pod: bool,
+}
+
+/// The crew's targeting pod, one for both seats: as the crew member who last moved it has it
+/// (the other's follows it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct SharedPod {
+    /// The player who moved it (the server sets it to the sender).
+    pub by: u8,
+    /// Its line of sight (BAM heading clockwise from north, pitch up).
+    pub heading: u16,
+    pub pitch: i16,
+    /// The ground point it looks at (world units east, north; None: above the horizon or out
+    /// of range).
+    pub at: Option<(i32, i32)>,
+    /// The gun or vehicle (`Sim::units` index) it tracks.
+    pub track: Option<u16>,
 }
 
 /// What a player does about a seat.
@@ -62,6 +84,8 @@ pub enum CrewCmd {
     Designate { at: Option<(i32, i32)>, unit: Option<u16> },
     /// The AH-64's gunner fires a missile from this station.
     Fire { station: u8 },
+    /// The owner or his gunner moved the crew's targeting pod (sent while it is his).
+    Pod(SharedPod),
 }
 
 /// What a crew member's client is told of the aircraft he is in (with his own state): the
@@ -87,6 +111,9 @@ pub struct CrewView {
     /// The owner's engines (`PlayerState::engine`), for the gunner's sound.
     #[serde(default)]
     pub engine: [u8; 3],
+    /// The crew's targeting pod as the one who last moved it has it (None: neither has yet).
+    #[serde(default)]
+    pub shared_pod: Option<SharedPod>,
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
@@ -199,6 +226,8 @@ impl Sim {
                     self.pl.crew_fire = None;
                 }
                 self.activate(back);
+                // A new crew: each pod as it was until one of them moves it.
+                self.with_pilot(owner, |sim| sim.pl.crew_pod = None);
                 Ok(())
             }
             CrewCmd::Leave => {
@@ -240,6 +269,20 @@ impl Sim {
             CrewCmd::Fire { station } => {
                 self.gunner_seat_of(player)?;
                 self.with_pilot(player, |sim| sim.pl.crew_fire = Some(station));
+                Ok(())
+            }
+            // Only with two aboard (else nobody follows it).
+            CrewCmd::Pod(pod) => {
+                let owner = self
+                    .crews()
+                    .iter()
+                    .find(|c| c.gunner.is_some() && (c.owner == player || c.gunner == Some(player)))
+                    .map(|c| c.owner);
+                if let Some(owner) = owner {
+                    self.with_pilot(owner, |sim| {
+                        sim.pl.crew_pod = Some(SharedPod { by: player, ..pod })
+                    });
+                }
                 Ok(())
             }
         }
@@ -309,10 +352,16 @@ impl Sim {
         let aim = self.parked[g].crew_aim;
         let cmd = std::mem::take(&mut self.parked[g].crew_cmd);
         let fire = self.parked[g].crew_fire.take();
-        ps.pod = aim.pod;
+        // The crew's one pod: as the gunner has it, unless the owner moved it last.
+        let shared = self.pilot_ref(k).crew_pod;
+        if shared.is_none_or(|s| s.by as usize == g) {
+            ps.pod = aim.pod;
+        }
         if self.pl.id as usize == k && (self.pl.apache || self.pl.kiowa || self.pl.comanche) {
             let turret = self.pl.apache || self.pl.comanche;
             self.pl.crew_gun = turret && aim.trigger && aim.station.is_none();
+            // His gun along his own sight: the pod, or his helmet sight.
+            self.pl.crew_sight = if aim.gun_pod { aim.pod } else { aim.helmet.or(aim.pod) };
             if fire.is_some() {
                 self.pl.crew_launch = fire;
             }
@@ -359,6 +408,7 @@ impl Sim {
             }),
             gun_firing: owner.gun_firing,
             engine: owner.last_input.engine,
+            shared_pod: owner.crew_pod.filter(|_| c.gunner.is_some()),
         })
     }
 
@@ -397,6 +447,7 @@ impl Sim {
         p.log = log;
         p.crew_aim = GunnerAim::default();
         p.crew_cmd = Commands::default();
+        p.crew_pod = None;
         let start = p.last_input.clone();
         self.pl = p;
         self.pl.rounds.resize(nb, Bullet::default());

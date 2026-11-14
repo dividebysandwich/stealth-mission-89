@@ -949,9 +949,15 @@ impl Sim {
     /// Where the active pilot's turret points: an attack helicopter's follows the helmet sight
     /// or the targeting pod (`gun_pod`) as far as it turns (None: a fixed cannon, or no sight,
     /// along the nose).
-    /// The AH-64's gunner fires it along his own sight (the pod).
+    /// The AH-64's gunner fires it along his own sight (his pod or his helmet sight).
     pub(crate) fn turret_aim(&self, ps: &PlayerState) -> Option<(i32, i32)> {
-        let sight = if self.pl.gun_pod || self.pl.crew_gun { ps.pod } else { ps.helmet.or(ps.pod) };
+        let sight = if self.pl.crew_gun {
+            self.pl.crew_sight.or(ps.pod)
+        } else if self.pl.gun_pod {
+            ps.pod
+        } else {
+            ps.helmet.or(ps.pod)
+        };
         let pod = sight.filter(|_| self.pl.gunship)?;
         let p = &self.pl.p;
         let az = s16(pod.heading as i32 - p.heading).clamp(-TURRET_AZIMUTH, TURRET_AZIMUTH);

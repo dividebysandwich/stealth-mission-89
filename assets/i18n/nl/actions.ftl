@@ -75,6 +75,7 @@ action-resupply = Bevoorrading
 action-day-night = Dag / nacht
 action-lock-cursor = Vergrendelen onder cursor
 action-swap-soi = SOI wisselen
+action-pod-to-helmet = Pod naar helm
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Camera inzoomen

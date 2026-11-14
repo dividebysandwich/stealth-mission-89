@@ -69,6 +69,7 @@ kg-cam-right = Camera de urmărire dreapta
 kg-camera-zoom-in = Zoom container / cameră apropie / depărtează (sau cel al SOI)
 kg-lock-cursor = Blocare pe ținta de sub cursor
 kg-swap-soi = Senzorul de interes pe celălalt MFD
+kg-pod-to-helmet = Containerul de ochire spre unde privește vizorul de pe cască
 kg-flare = Flare (rachete cu infraroșu)
 kg-chaff = Chaff (rachete radar)
 kg-decoy = Momeală

@@ -69,6 +69,7 @@ kg-cam-right = 추적 카메라 우측
 kg-camera-zoom-in = 포드/카메라 줌 확대 / 축소 (또는 SOI의 것)
 kg-lock-cursor = 커서 아래 표적 락온
 kg-swap-soi = 관심 센서를 다른 MFD로
+kg-pod-to-helmet = 표적 포드를 헬멧 조준기가 보는 곳으로
 kg-flare = 플레어 (적외선 미사일)
 kg-chaff = 채프 (레이더 미사일)
 kg-decoy = 디코이

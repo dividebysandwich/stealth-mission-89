@@ -70,6 +70,7 @@ kg-cam-right = Tracking camera ke kanan
 kg-camera-zoom-in = Zoom pod / kamera perbesar / perkecil (atau milik SOI)
 kg-lock-cursor = Kunci sasaran di bawah kursor
 kg-swap-soi = Sensor of interest (SOI) ke MFD lain
+kg-pod-to-helmet = Pod penjejak ke arah pandangan bidikan helm
 kg-flare = Flare (rudal inframerah)
 kg-chaff = Chaff (rudal radar)
 kg-decoy = Umpan

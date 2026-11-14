@@ -259,6 +259,12 @@ pub struct Pilot {
     /// gunner's (the host tests their hits even when the owner's client reports his own).
     #[serde(skip)]
     pub(crate) crew_gun: bool,
+    /// The sight the gunner's gun follows (his pod or his helmet sight).
+    #[serde(skip)]
+    pub(crate) crew_sight: Option<PodAim>,
+    /// The owner's: the crew's targeting pod as the one who last moved it has it.
+    #[serde(skip)]
+    pub(crate) crew_pod: Option<crate::crew::SharedPod>,
     #[serde(skip)]
     pub(crate) crew_launch: Option<u8>,
     #[serde(skip)]

@@ -69,6 +69,7 @@ kg-cam-right = Jälgimiskaamera paremale
 kg-camera-zoom-in = Konteineri / kaamera suum lähemale / kaugemale (või SOI oma)
 kg-lock-cursor = Lukusta sihtmärk kursori all
 kg-swap-soi = Sensor of interest teisele MFD-le
+kg-pod-to-helmet = Sihtimiskonteiner sinna, kuhu kiivrisiht vaatab
 kg-flare = Flare (infrapunaraketid)
 kg-chaff = Chaff (radariraketid)
 kg-decoy = Peibutis

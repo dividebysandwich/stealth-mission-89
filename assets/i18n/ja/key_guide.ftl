@@ -69,6 +69,7 @@ kg-cam-right = トラッキングカメラ右
 kg-camera-zoom-in = ポッド/カメラのズーム 拡大 / 縮小 (またはSOIのもの)
 kg-lock-cursor = カーソル下の目標をロック
 kg-swap-soi = SOI をもう一方の MFD へ
+kg-pod-to-helmet = ターゲティングポッドをヘルメット照準の方向へ
 kg-flare = フレア（赤外線ミサイル用）
 kg-chaff = チャフ（レーダーミサイル用）
 kg-decoy = デコイ

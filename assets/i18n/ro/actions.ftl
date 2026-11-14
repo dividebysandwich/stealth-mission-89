@@ -76,6 +76,7 @@ action-resupply = Reaprovizionare
 action-day-night = Zi / noapte
 action-lock-cursor = Blocare cursor
 action-swap-soi = Schimbare SOI
+action-pod-to-helmet = Pod spre cască
 action-kneeboard = Planșetă
 action-chat = Chat
 action-camera-zoom-in = Cameră mărire

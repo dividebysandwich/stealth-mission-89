@@ -69,6 +69,7 @@ kg-cam-right = Kamera za praćenje desno
 kg-camera-zoom-in = Zumiranje kontejnera / kamere približi / udalji (ili SOI)
 kg-lock-cursor = Zaključaj cilj pod kursorom
 kg-swap-soi = Senzor od interesa (SOI) na drugi MFD
+kg-pod-to-helmet = Ciljnički pod tamo kamo gleda nišan na kacigi
 kg-flare = Flare (infracrveni projektili)
 kg-chaff = Chaff (radarski projektili)
 kg-decoy = Mamac

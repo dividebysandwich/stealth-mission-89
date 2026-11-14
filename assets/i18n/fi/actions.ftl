@@ -76,6 +76,7 @@ action-resupply = Täydennys
 action-day-night = Päivä / yö
 action-lock-cursor = Lukitse kursorin kohde
 action-swap-soi = Vaihda SOI
+action-pod-to-helmet = Pod kypärään
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Kameran lähennys

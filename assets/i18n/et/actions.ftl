@@ -76,6 +76,7 @@ action-resupply = Täiendus
 action-day-night = Päev / öö
 action-lock-cursor = Lukusta kursori all
 action-swap-soi = Vaheta SOI
+action-pod-to-helmet = Pod kiivrile
 action-kneeboard = Kneeboard
 action-chat = Vestlus
 action-camera-zoom-in = Kaamera suum sisse

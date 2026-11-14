@@ -654,7 +654,7 @@ pub(crate) fn pod_aim(tgp: &crate::avionics::TgpState) -> Option<stealth_sim::Po
 }
 
 /// A line of sight (world direction) and its ground point for the sim.
-fn sight_aim(d: Vec3, ground: Option<DVec3>) -> stealth_sim::PodAim {
+pub(crate) fn sight_aim(d: Vec3, ground: Option<DVec3>) -> stealth_sim::PodAim {
     let heading = to_bam(d.x.atan2(-d.z)).round() as i32 as u16;
     let pitch = to_bam(d.y.clamp(-1.0, 1.0).asin()).round() as i32 as i16;
     let ground = ground.map(|p| {
@@ -1126,6 +1126,7 @@ struct Outputs<'w, 's> {
     orders: ResMut<'w, MissionOrders>,
     campaign: Option<Res<'w, crate::campaign::ActiveCampaign>>,
     theater: Option<Res<'w, crate::world::Theater>>,
+    gunner: Option<Res<'w, crate::gunner::GunnerState>>,
 }
 
 /// Map units -> world units (east, north).
@@ -1417,7 +1418,9 @@ fn publish(
         mut orders,
         campaign,
         theater,
+        gunner,
     } = out;
+    let gun_on_pod = crate::gunner::gun_on_pod(&combat.sim, gunner.as_deref());
     // Achieved stays achieved (a campaign sortie's objective is ticked by the campaign).
     for (k, done) in [o.primary_done, o.secondary_done].into_iter().enumerate() {
         if done && !orders.done[k] {
@@ -1474,7 +1477,7 @@ fn publish(
     let gun = sim.has_gun().then(|| sim.gun_ammo().max(0) as u32);
     let gun_selected = sim.gun_selected();
     let gun_slave =
-        settings.aircraft.spec().turret.then_some(if sim.gun_on_pod() { "TGP" } else { "HMS" });
+        settings.aircraft.spec().turret.then_some(if gun_on_pod { "TGP" } else { "HMS" });
     let stations: Vec<(Option<usize>, u32)> = sim
         .bays()
         .0
@@ -2007,8 +2010,7 @@ fn publish(
             hills: theater.as_ref().map(|t| t.hills.clone()).unwrap_or_default(),
         };
         // The turret along the sight the gun is slaved to (as `Sim::turret_aim`).
-        let sight =
-            if sim.gun_on_pod() { mfd.av.tgp.los } else { mfd.av.helmet.or(mfd.av.tgp.los) };
+        let sight = if gun_on_pod { mfd.av.tgp.los } else { mfd.av.helmet.or(mfd.av.tgp.los) };
         let barrel = sight.filter(|_| settings.aircraft.spec().turret);
         let barrel = barrel.map(|d| a.orientation * turret_dir(a.orientation.inverse() * d));
         let cue = gun_cue(&a, pos, eye, target, air, &ground, barrel);
@@ -2023,8 +2025,7 @@ fn publish(
         // The chin gun along the sight it is slaved to (as `Sim::turret_aim`), the TADS along
         // the pod's line of sight.
         let body = |d: Vec3| a.orientation.inverse() * d;
-        let sight =
-            if sim.gun_on_pod() { mfd.av.tgp.los } else { mfd.av.helmet.or(mfd.av.tgp.los) };
+        let sight = if gun_on_pod { mfd.av.tgp.los } else { mfd.av.helmet.or(mfd.av.tgp.los) };
         new_cues.chin_gun = sight.map(|d| crate::avionics::pod_angles(turret_dir(body(d))));
         new_cues.tads_azimuth = mfd.av.tgp.los.map(|d| crate::avionics::pod_angles(body(d)).0);
     }

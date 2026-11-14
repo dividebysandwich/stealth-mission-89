@@ -69,6 +69,7 @@ kg-cam-right = Sledilna kamera desno
 kg-camera-zoom-in = Povečava kontejnerja / kamere približaj / oddalji (ali SOI)
 kg-lock-cursor = Zakleni cilj pod kazalcem
 kg-swap-soi = Sensor of interest (SOI) na drugi MFD
+kg-pod-to-helmet = Ciljni pod tja, kamor gleda merek na čeladi
 kg-flare = Toplotna vaba (infrardeči izstrelki)
 kg-chaff = Chaff (radarski izstrelki)
 kg-decoy = Vaba

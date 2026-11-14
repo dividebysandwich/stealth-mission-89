@@ -76,6 +76,7 @@ action-resupply = Utánpótlás
 action-day-night = Nappal / éjszaka
 action-lock-cursor = Befogás a kurzor alatt
 action-swap-soi = SOI váltása
+action-pod-to-helmet = Pod a sisakhoz
 action-kneeboard = Kneeboard
 action-chat = Csevegés
 action-camera-zoom-in = Kamera nagyítása

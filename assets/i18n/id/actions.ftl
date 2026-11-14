@@ -75,6 +75,7 @@ action-resupply = Pasokan ulang
 action-day-night = Siang malam
 action-lock-cursor = Kunci kursor
 action-swap-soi = Tukar SOI
+action-pod-to-helmet = Pod ke helm
 action-kneeboard = Papan lutut
 action-chat = Obrolan
 action-camera-zoom-in = Zoom in kamera

@@ -70,6 +70,7 @@ kg-cam-right = Câmera de rastreamento à direita
 kg-camera-zoom-in = Zoom do casulo / câmera aproximar / afastar (ou o do SOI)
 kg-lock-cursor = Travar o alvo sob o cursor
 kg-swap-soi = Sensor de interesse (SOI) no outro MFD
+kg-pod-to-helmet = Pod de designação para onde a mira do capacete olha
 kg-flare = Flare (mísseis infravermelhos)
 kg-chaff = Chaff (mísseis radar)
 kg-decoy = Isca

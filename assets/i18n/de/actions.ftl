@@ -76,6 +76,7 @@ action-resupply = Nachschub
 action-day-night = Tag / Nacht
 action-lock-cursor = Unter dem Cursor aufschalten
 action-swap-soi = SOI wechseln
+action-pod-to-helmet = Pod auf Helm
 action-kneeboard = Kniebrett
 action-chat = Chat
 action-camera-zoom-in = Kamera heranzoomen

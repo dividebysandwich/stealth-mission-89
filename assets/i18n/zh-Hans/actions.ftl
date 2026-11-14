@@ -75,6 +75,7 @@ action-resupply = 补给
 action-day-night = 昼夜
 action-lock-cursor = 锁定光标
 action-swap-soi = 切换 SOI
+action-pod-to-helmet = 吊舱指向头盔
 action-kneeboard = 膝板
 action-chat = 聊天
 action-camera-zoom-in = 摄像机放大

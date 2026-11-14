@@ -76,6 +76,7 @@ action-resupply = Resupply
 action-day-night = Day night
 action-lock-cursor = Lock cursor
 action-swap-soi = Swap soi
+action-pod-to-helmet = Pod to helmet
 action-kneeboard = Kneeboard
 action-chat = Chat
 action-camera-zoom-in = Camera zoom in

@@ -70,6 +70,7 @@ kg-cam-right = Tracking camera right
 kg-camera-zoom-in = Pod / camera zoom in / out (or the SOI's)
 kg-lock-cursor = Lock the target under the cursor
 kg-swap-soi = Sensor of interest to the other MFD
+kg-pod-to-helmet = Targeting pod to where the helmet sight looks
 kg-flare = Flare (infrared missiles)
 kg-chaff = Chaff (radar missiles)
 kg-decoy = Decoy

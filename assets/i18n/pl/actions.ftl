@@ -75,6 +75,7 @@ action-resupply = Uzupełnienie zapasów
 action-day-night = Dzień / noc
 action-lock-cursor = Namierzenie pod kursorem
 action-swap-soi = Zmiana SOI
+action-pod-to-helmet = Zasobnik do hełmu
 action-kneeboard = Kneeboard
 action-chat = Czat
 action-camera-zoom-in = Przybliżenie kamery

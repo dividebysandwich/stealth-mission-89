@@ -69,6 +69,7 @@ kg-cam-right = Sekimo kamera dešinėn
 kg-camera-zoom-in = Konteinerio / kameros mastelis artinti / tolinti (arba SOI)
 kg-lock-cursor = Užfiksuoti taikinį po žymekliu
 kg-swap-soi = Dominantis jutiklis į kitą MFD
+kg-pod-to-helmet = Taikymo konteineris ten, kur žiūri šalmo taikiklis
 kg-flare = Šiluminis spąstas (infraraudonųjų spindulių raketoms)
 kg-chaff = Chaff (radaro raketoms)
 kg-decoy = Spąstas

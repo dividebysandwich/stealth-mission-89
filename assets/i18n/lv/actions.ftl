@@ -75,6 +75,7 @@ action-resupply = Krājumu papildināšana
 action-day-night = Diena / nakts
 action-lock-cursor = Notvert zem kursora
 action-swap-soi = Mainīt SOI
+action-pod-to-helmet = Pods uz ķiveri
 action-kneeboard = Kneeboard
 action-chat = Čats
 action-camera-zoom-in = Kameras tuvināšana

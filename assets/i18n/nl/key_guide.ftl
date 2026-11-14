@@ -67,6 +67,7 @@ kg-cam-right = Volgcamera rechts
 kg-camera-zoom-in = Zoom van pod / camera in / uit (of die van de SOI)
 kg-lock-cursor = Het doel onder de cursor vergrendelen
 kg-swap-soi = Sensor of interest (SOI) naar de andere MFD
+kg-pod-to-helmet = Targeting pod naar waar het helmvizier kijkt
 kg-flare = Flare (infraroodraketten)
 kg-chaff = Chaff (radarraketten)
 kg-decoy = Lokvogel
