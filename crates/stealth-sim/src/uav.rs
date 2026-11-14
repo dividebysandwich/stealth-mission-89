@@ -146,10 +146,8 @@ pub struct Perf {
     pub loiter_radius: f64,
     /// The height a new waypoint gets (m over the ground).
     pub altitude: f64,
-    /// How quickly it banks, pitches and speeds up (1: a winged drone); the steepest pitch
-    /// flown by hand (rad).
+    /// How quickly it banks, pitches and speeds up (1: a winged drone).
     pub agility: f64,
-    pub pitch: f64,
     /// An interceptor: the throttle that just holds it up (it sinks under it), its battery
     /// drains with the throttle. 0: a winged drone, its battery drains with its speed.
     pub hover: f64,
@@ -181,7 +179,6 @@ impl UavKind {
                 loiter_radius: 900.0,
                 altitude: 800.0,
                 agility: 1.0,
-                pitch: 0.45,
                 hover: 0.0,
             },
             UavKind::Fp2 => Perf {
@@ -195,7 +192,6 @@ impl UavKind {
                 loiter_radius: 600.0,
                 altitude: 300.0,
                 agility: 1.0,
-                pitch: 0.45,
                 hover: 0.0,
             },
             // Its cruise is the speed of its hover throttle (`Perf::throttle_speed`).
@@ -210,7 +206,6 @@ impl UavKind {
                 loiter_radius: 400.0,
                 altitude: 500.0,
                 agility: 4.0,
-                pitch: 1.0,
                 hover: 0.2,
             },
             // 126 km on its 15 minutes of fuel at cruise.
@@ -225,7 +220,6 @@ impl UavKind {
                 loiter_radius: 1500.0,
                 altitude: 1000.0,
                 agility: 2.5,
-                pitch: 0.8,
                 hover: 0.0,
             },
         }
@@ -546,10 +540,10 @@ fn axes(u: &Uav) -> ([f64; 3], [f64; 3], [f64; 3]) {
     (f, sub(mul(r0, cb), mul(u0, sb)), add(mul(u0, cb), mul(r0, sb)))
 }
 
-/// A drone's heading, pitch and bank from its nose and top (its pitch at most `QUAD_PITCH`).
-fn set_attitude(u: &mut Uav, f: [f64; 3], up: [f64; 3]) {
+/// A drone's heading, pitch and bank from its nose and top (its pitch at most `max_pitch`).
+fn set_attitude(u: &mut Uav, f: [f64; 3], up: [f64; 3], max_pitch: f64) {
     u.heading = f[0].atan2(f[1]);
-    u.pitch = f[2].clamp(-1.0, 1.0).asin().clamp(-QUAD_PITCH, QUAD_PITCH);
+    u.pitch = f[2].clamp(-1.0, 1.0).asin().clamp(-max_pitch, max_pitch);
     let (sh, ch, sp, cp) = (u.heading.sin(), u.heading.cos(), u.pitch.sin(), u.pitch.cos());
     u.bank = dot(up, [ch, -sh, 0.0]).atan2(dot(up, [-sh * sp, -ch * sp, cp]));
 }
@@ -569,8 +563,26 @@ fn body_rates(u: &mut Uav, roll: f64, pitch: f64, yaw: f64, dt: f64) {
     let f = add(mul(f, cy), mul(right(f), sy));
     let r = right(f);
     let (sb, cb) = ((roll * dt).sin(), (roll * dt).cos());
-    set_attitude(u, f, add(mul(up, cb), mul(r, sb)));
+    set_attitude(u, f, add(mul(up, cb), mul(r, sb)), QUAD_PITCH);
     u.heading = wrap(u.heading + 9.81 * u.bank.sin() / u.speed.max(20.0) * dt);
+}
+
+/// A winged drone's stick: rolled about its nose and pitched about its wings at these rates
+/// (rad/s), as far as it is held (loops and rolls all the way round).
+fn winged_rates(u: &mut Uav, roll: f64, pitch: f64, dt: f64) {
+    let (f, right, up) = axes(u);
+    let (sa, ca) = ((pitch * dt).sin(), (pitch * dt).cos());
+    let (f, up) = (add(mul(f, ca), mul(up, sa)), sub(mul(up, ca), mul(f, sa)));
+    let (sb, cb) = ((roll * dt).sin(), (roll * dt).cos());
+    set_attitude(u, f, add(mul(up, cb), mul(right, sb)), std::f64::consts::FRAC_PI_2);
+}
+
+/// How fast a winged drone's bank turns its heading, times g / speed: a coordinated turn's
+/// tan(bank), no faster than at a 72 degree bank (on its side, on its back), dying away as it
+/// points straight up or down.
+fn bank_turn(bank: f64, pitch: f64) -> f64 {
+    let steep = ((std::f64::consts::FRAC_PI_2 - pitch.abs()) / 0.35).min(1.0);
+    bank.sin() / bank.cos().abs().max(0.3) * steep
 }
 
 /// An interceptor turns its nose towards direction `want` (m: east, north, up) by at most
@@ -1014,13 +1026,11 @@ impl Sim {
             direct = true;
             thrust = Some((p.throttle_speed(throttle), throttle));
         } else {
-            // The stick rolls and pitches it (held where it is let go), the rudder skids the
-            // nose round, the throttle sets the speed.
+            // The stick rolls and pitches it about its own axes, without limits (held where it
+            // is let go), the rudder skids the nose round, the throttle sets the speed.
             let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
             u.heading = wrap(u.heading + u.yaw as f64 * YAW_RATE * dt);
-            let max_bank = p.bank * 1.2;
-            u.bank = (u.bank + roll * ROLL_RATE * ag * dt).clamp(-max_bank, max_bank);
-            u.pitch = (u.pitch + pitch * PITCH_RATE * ag * dt).clamp(-p.pitch, p.pitch);
+            winged_rates(&mut u, roll * ROLL_RATE * ag, pitch * PITCH_RATE * ag, dt);
             let want_v = p.throttle_speed(throttle);
             // Nose down picks up speed, nose up loses it.
             let v = want_v - u.pitch.sin() * 40.0;
@@ -1028,7 +1038,7 @@ impl Sim {
         }
         if !direct {
             // A coordinated turn: the bank turns the heading.
-            u.heading = wrap(u.heading + 9.81 * u.bank.tan() / u.speed.max(1.0) * dt);
+            u.heading = wrap(u.heading + 9.81 * bank_turn(u.bank, u.pitch) / u.speed.max(1.0) * dt);
         }
         if quad {
             // Its flight path follows the nose (with too little throttle, sinking), as hard as

@@ -311,6 +311,68 @@ fn a_sam_site_finds_a_drone_within_two_km() {
     assert!(fired || sim.uavs().is_empty(), "the SAM site never engaged it");
 }
 
+/// An FP-2 flying straight with its wings level (climbing towards a loiter point 20 km off at
+/// 800 m), flown by hand: the sim, its id.
+fn fp2_by_hand() -> (Sim, u16) {
+    let (mut sim, k, _, _) = center();
+    let at = off(&sim, k, 20_000.0, 0.0);
+    launch(&mut sim, UavKind::Fp2, vec![wp(at, 800.0, WpKind::Loiter)]).unwrap();
+    let id = sim.uavs()[0].id;
+    run(&mut sim, 120);
+    sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
+    let u = &sim.uavs()[0];
+    assert!(u.bank.abs() < 0.05 && u.pitch.abs() < 0.2, "bank {} pitch {}", u.bank, u.pitch);
+    (sim, id)
+}
+
+#[test]
+fn a_winged_drone_loops_with_the_stick_held_back() {
+    let (mut sim, id) = fp2_by_hand();
+    let (h0, p0) = (sim.uavs()[0].heading, sim.uavs()[0].pitch);
+    let alt0 = sim.uavs()[0].pos[2];
+    stick(&mut sim, id, 0.0, 1.0, 1.0);
+    // Up through the vertical, over the top on its back, down and level again: a whole turn
+    // of 2 pi at the pitch rate.
+    let (mut steepest, mut inverted) = (0.0_f64, false);
+    let turn = (std::f64::consts::TAU / 0.4 * 15.0).round() as i32;
+    for _ in 0..turn {
+        frames(&mut sim, 1);
+        let u = &sim.uavs()[0];
+        steepest = steepest.max(u.pitch);
+        inverted |= u.bank.abs() > 3.0 && u.pitch.abs() < 0.3;
+    }
+    stick(&mut sim, id, 0.0, 0.0, 1.0);
+    frames(&mut sim, 1);
+    let u = &sim.uavs()[0];
+    assert!(steepest > 1.5, "steepest {steepest}");
+    assert!(inverted, "never on its back over the top");
+    assert!(
+        (u.pitch - p0).abs() < 0.1 && u.bank.abs() < 0.1,
+        "pitch {p0} -> {} bank {}",
+        u.pitch,
+        u.bank
+    );
+    assert!(wrap(u.heading - h0).abs() < 0.1, "heading {h0} -> {}", u.heading);
+    assert!((u.pos[2] - alt0).abs() < 100.0, "{alt0} -> {} m", u.pos[2]);
+}
+
+#[test]
+fn a_winged_drone_rolls_all_the_way_round() {
+    let (mut sim, id) = fp2_by_hand();
+    stick(&mut sim, id, 1.0, 0.0, 1.0);
+    let mut inverted = false;
+    let turn = (std::f64::consts::TAU / 0.8 * 15.0).round() as i32;
+    for _ in 0..turn {
+        frames(&mut sim, 1);
+        inverted |= sim.uavs()[0].bank.abs() > 3.0;
+    }
+    stick(&mut sim, id, 0.0, 0.0, 1.0);
+    frames(&mut sim, 1);
+    let u = &sim.uavs()[0];
+    assert!(inverted, "never on its back");
+    assert!(u.bank.abs() < 0.1, "bank {}", u.bank);
+}
+
 /// An interceptor launched to loiter 2 km out at 500 m, flown by hand from 60 s on (level, at
 /// the loiter's height): the sim, its center, its id.
 fn interceptor() -> (Sim, usize, u16) {
