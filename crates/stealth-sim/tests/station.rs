@@ -267,6 +267,7 @@ fn a_launcher_refills_from_the_stockpile_in_real_time() {
         stock: 2,
         stock2: 0,
         stock3: 0,
+        stock4: 0,
     }]);
     let l2 = sim.battery_launchers(radar)[1];
     sim.units_mut()[l2].rounds = 0;
@@ -636,6 +637,7 @@ fn no_nasams_reload_without_the_missiles_for_it() {
         stock: 8,
         stock2: 0,
         stock3: 0,
+        stock4: 0,
     }]);
     let l = sim.battery_launchers(radar);
     for &k in &l {

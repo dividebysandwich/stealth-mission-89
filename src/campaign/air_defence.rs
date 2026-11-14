@@ -7,7 +7,7 @@ use bevy_egui::egui;
 use stealth_i18n::t;
 use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::station::{
-    FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, INTERCEPTOR_STOCK, STORK_STOCK, StationCmd,
+    FP2_STOCK, GEPARD_REACH, GEPARD_ROUNDS, INTERCEPTOR_STOCK, STORK_STOCK, StationCmd, X12_STOCK,
     initial_stock, mannable,
 };
 use stealth_sim::{Sim, fflags};
@@ -417,7 +417,7 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
         }
         key(ui, t!("ad-stock"));
         if drones {
-            // One short bar for each kind of drone (Stork, FP-2, interceptor), together as
+            // One short bar for each kind of drone (Stork, FP-2, interceptor, X-12), together as
             // wide as the others' bar and number.
             let w = BAR_W + STOCK_W + ui.spacing().item_spacing.x;
             let layout = egui::Layout::left_to_right(egui::Align::Center);
@@ -425,13 +425,18 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
                 ui.set_min_width(w);
                 ui.spacing_mut().item_spacing.x = 2.0;
                 let stock = sim.uav_stock(s.unit);
-                let full = [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK];
-                let names = [("S", "Stork"), ("F", "FP-2"), ("I", t!("ad-interceptors"))];
+                let full = [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK, X12_STOCK];
+                let names = [
+                    ("S", "Stork"),
+                    ("F", "FP-2"),
+                    ("I", t!("ad-interceptors")),
+                    ("X", "X-12".into()),
+                ];
                 for ((n, full), (short, name)) in stock.into_iter().zip(full).zip(names) {
                     let r = ui.label(egui::RichText::new(short).monospace().color(DIM));
                     r.on_hover_text(name);
                     // Room for the letter, the one-digit count and the gaps.
-                    bar(ui, n, full, w / 3.0 - 30.0, stock_col(n));
+                    bar(ui, n, full, (w / 4.0 - 30.0).max(8.0), stock_col(n));
                     value(ui, egui::RichText::new(n.to_string()).color(stock_col(n)), 12.0);
                     ui.add_space(4.0);
                 }

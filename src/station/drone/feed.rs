@@ -32,8 +32,10 @@ const AHEAD: f64 = 3.0;
 const AHEAD_MIN: f64 = 2500.0;
 /// The camera under the drone (m).
 const BELOW: f64 = 0.4;
-/// An interceptor's view marks the enemy aircraft this close (m).
+/// An interceptor's view marks the enemy aircraft this close (m), an X-12's this many times
+/// as far as it locks on.
 const AIR_MARKS: f64 = 4000.0;
+const X12_AIR_MARKS: f64 = 2.0;
 
 /// The drone's position as drawn (Bevy world).
 fn drone_eye(combat: &Combat, u: &Uav) -> Option<DVec3> {
@@ -251,7 +253,8 @@ pub(super) fn draw(
     let bat = (u.battery * 100.0).round() as i32;
     let end = u.endurance() as i32;
     let bcol = if bat < 20 { RED } else { col };
-    let battery = format!("BAT {bat}% {}", super::map::duration(end));
+    let tank = if u.kind.jet() { "FUEL" } else { "BAT" };
+    let battery = format!("{tank} {bat}% {}", super::map::duration(end));
     stroke_text_at(cv, 46.0, 20.0, &battery, 5.0, 0.8, bcol, Align::Left);
     if u.mode == UavMode::Dive {
         stroke_text_at(cv, w / 2.0, 32.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
@@ -338,7 +341,11 @@ fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
         let at = wu_to_bevy(e, n, z);
         let d = at - eo.eye;
         let range = d.length();
-        if range > AIR_MARKS {
+        let marks = match u.kind {
+            stealth_sim::uav::UavKind::X12 => u.kind.lock_range().0 * X12_AIR_MARKS,
+            _ => AIR_MARKS,
+        };
+        if range > marks {
             continue;
         }
         let Some(p) = project(d.as_vec3()) else { continue };

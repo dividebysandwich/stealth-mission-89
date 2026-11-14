@@ -28,6 +28,10 @@
   below about 6 kHz): four slightly detuned motors, each a buzz at its rotation with the
   three-bladed propeller's blade passes, wavering as the controller trims them, over the
   propellers' wash.
+- x12.flac: a drone command center's X-12 jet interceptor heard around, its small turbojet at
+  cruise (the game plays it up to a seventh higher at full throttle): a much higher, thinner
+  scream than a fighter's engine, the shaft at about 100 000 rpm, the compressor's and the
+  turbine's blade passes wavering a little, over the exhaust's rush and hiss.
 
 They loop seamlessly: the noise is synthesized in the frequency domain (periodic in the loop
 length) and every tone and pulse train repeats a whole number of times per loop.
@@ -287,6 +291,38 @@ def interceptor():
     return np.tanh(1.8 * mix / np.max(np.abs(mix)))
 
 
+def x12():
+    t = 3.0
+    rng_x = np.random.default_rng(106)
+    n = int(t * RATE)
+    k = np.arange(n) / n
+    norm = lambda x: x / np.max(np.abs(x))
+
+    def noise(shape):
+        f = np.fft.rfftfreq(n, 1.0 / RATE)
+        spec = shape(np.maximum(f, 1e-3)) * np.exp(2j * np.pi * rng_x.random(len(f)))
+        spec[0] = 0.0
+        return norm(np.fft.irfft(spec, n))
+
+    def whine(hz, depth):
+        # A tone wavering in pitch (phase modulation by a periodic slow wobble keeps it looping).
+        wobble = noise(lambda f: band(f, 0.5, 6.0, 2.0))
+        return np.sin(2 * np.pi * round(hz * t) * k + depth * wobble + rng_x.uniform(0, 2 * np.pi))
+
+    # The shaft at ~1 650 Hz and its harmonic (the rotor's imbalance), the compressor's blade
+    # passes (the scream) and the turbine's above it.
+    shaft = whine(1650.0, 2.0) + 0.4 * whine(3300.0, 4.0)
+    compressor = whine(4950.0, 6.0) + 0.5 * whine(6600.0, 8.0) + 0.3 * whine(9900.0, 12.0)
+    turbine = whine(11550.0, 14.0)
+    # The exhaust: a rush higher than a big engine's roar, the intake's hiss.
+    rush = noise(lambda f: band(f, 250, 2500, 1.2) + 0.4 * band(f, 2500, 7000, 1.5))
+    hiss = noise(lambda f: band(f, 4000, 13000, 1.5))
+    flutter = 1.0 + 0.15 * noise(lambda f: band(f, 4, 25, 2.0))
+    mix = (0.45 * norm(shaft) + 0.6 * norm(compressor) * flutter + 0.15 * turbine
+           + 0.8 * rush + 0.12 * hiss)
+    return np.tanh(1.4 * mix / np.max(np.abs(mix)))
+
+
 LOOPS = {
     "helicopter.flac": helicopter,
     "heli_rotor.flac": heli_rotor,
@@ -298,6 +334,7 @@ LOOPS = {
     "ch47_rotor.flac": ch47_rotor,
     "ch47_turbine.flac": ch47_turbine,
     "chinook.flac": chinook,
+    "x12.flac": x12,
 }
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 """Builds the remake's own aircraft models (Geran-2 / Geran-3 attack drones, the Mi-24 Hind
-from mi24.py, the drone command center's FP-2 attack drone, Stork-100 surveillance drone and
-quadrotor interceptor) in Blender:
+from mi24.py, the drone command center's FP-2 attack drone, Stork-100 surveillance drone, quadrotor
+interceptor and X-12 jet interceptor) in Blender:
 
     blender -b --factory-startup --python-exit-code 1 --python tools/models/drones.py -- assets/models/drones.glb
 
@@ -33,6 +33,7 @@ HIND = 102
 FP2 = 103
 STORK = 104
 INTERCEPTOR = 105
+X12 = 106
 
 # Model units per metre (a unit is WU / 8).
 K = 8.0 * 1_048_576 / 512_000
@@ -237,6 +238,65 @@ def interceptor():
     return g.scaled(K), props
 
 
+# ------------------------------------------------------------------------------------------ X-12
+
+SILVER = Ramp(0xE0, 0xE6)
+X12_BLACK = Ramp(0xEC, 0xEF)
+ORANGE = Ramp(0x5C, 0x5E)
+COPPER = Ramp(0xCE, 0xCF)
+INTAKE = 38
+# The fuselage's radius.
+X12_R = 0.095
+
+
+def x12():
+    """X-12 jet interceptor, about 2.4 m long and 1.4 m across: a slim bare-aluminium tube with
+    black carbon panels along its sides, an orange nose cone with a black tip and a
+    black band behind it, a carbon cropped-delta wing low on the body with a strake running
+    forward, a tall swept fin, the turbojet's intake scoop on the back ahead of it, a ventral
+    fin and the copper nozzle at the tail (metres; scaled to model units)."""
+    g = Geo()
+    r = X12_R
+    # The nose cone (black tip, orange, a black band), the body, the tail tapering to the nozzle.
+    tip = [(1.2, 0.0, 0.004, 0.004), (1.18, 0.0, 0.03, 0.03), (1.15, 0.0, 0.048, 0.048)]
+    cone = [(1.15, 0.0, 0.048, 0.048), (1.1, 0.0, 0.066, 0.066), (1.03, 0.0, 0.08, 0.08), (0.96, 0.0, 0.09, 0.09)]
+    band = [(0.96, 0.0, 0.09, 0.09), (0.9, 0.0, r, r)]
+    # The carbon panels: two long ones along each side, with gaps (stations at their ends).
+    panels = [(0.82, 0.5), (0.4, 0.0), (-0.1, -0.62)]
+    ends = [y for p in panels for y in p]
+    body = [(0.9, 0.0, r, r)] + [(y, 0.0, r, r) for y in ends] + [(-0.9, 0.0, r, r), (-1.08, 0.0, 0.085, 0.085), (-1.14, 0.0, 0.07, 0.07)]
+    g.add(loft(tip, X12_BLACK, n=12, power=2.0))
+    g.add(loft(cone, ORANGE, n=12, power=2.0))
+    g.add(loft(band, X12_BLACK, n=12, power=2.0))
+    hull = loft(body, SILVER, n=12, power=2.0)
+    faces = []
+    for pts, c in hull.faces:
+        m = sum(pts, mklib.Vector()) / len(pts)
+        n = mklib.normal(pts)
+        side = abs(n.x) > 0.8
+        if side and any(lo > m.y > hi for lo, hi in panels):
+            c = mklib.colour(X12_BLACK, n)
+        faces.append((pts, c))
+    hull.faces = faces
+    g.add(hull)
+    g.add(frustum((0, -1.14, 0), (0, -1.22, 0), 0.07, 0.058, COPPER, n=12))
+    g.face(mklib.ring((0, -1.222, 0), 0.042, 0.042, 12), INTAKE, centre=(0, -1.1, 0))
+    # The strake and the cropped-delta wing, a little under the body's middle.
+    z = -0.02
+    g.add(mklib.wing((0, 0.8, z), 1.8, (0.17, 0.32, z), 1.32, X12_BLACK, t=0.03, peak=0.4))
+    g.add(mklib.wing((0.17, 0.32, z), 1.32, (0.7, -0.72, z), 0.26, X12_BLACK, t=0.035, t_tip=0.04, peak=0.4))
+    # The turbojet's intake scoop on the back, its mouth dark.
+    g.add(loft([(-0.3, 0.1, 0.055, 0.045), (-0.36, 0.105, 0.062, 0.052), (-0.62, 0.1, 0.065, 0.055), (-0.74, 0.08, 0.05, 0.03)],
+               X12_BLACK, n=10, power=3.0))
+    g.face(mklib.ring((0, -0.298, 0.1), 0.045, 0.036, 10, power=3.0), INTAKE, centre=(0, -0.4, 0.1))
+    # The tall swept fin and the ventral fin.
+    g.add(mklib.wing((0, -0.62, r - 0.01), 0.52, (0, -0.98, 0.58), 0.22, X12_BLACK, t=0.04, vertical=True, mirror=False, peak=0.4))
+    g.add(mklib.wing((0, -0.82, -r + 0.01), 0.3, (0, -1.0, -0.2), 0.14, X12_BLACK, t=0.05, vertical=True, mirror=False, peak=0.4))
+    g.line((-0.7, -0.72, z), (-0.7, -0.98, z), RED)
+    g.line((0.7, -0.72, z), (0.7, -0.98, z), GREEN)
+    return g.scaled(K)
+
+
 def model(index, geo, prop=None, prop_at=None):
     name = "drones_%03d" % index
     root = empty(name)
@@ -271,6 +331,7 @@ def main():
     model(FP2, *fp2())
     model(STORK, *stork())
     model(INTERCEPTOR, *interceptor())
+    model(X12, x12())
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

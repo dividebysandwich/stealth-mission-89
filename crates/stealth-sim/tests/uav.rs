@@ -4,8 +4,10 @@ use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::{GroundKind, GroundUnit, M_PER_MAP};
-use stealth_sim::station::{FP2_STOCK, INTERCEPTOR_STOCK, STORK_STOCK, StationCmd};
-use stealth_sim::uav::{LOCK_RANGE, MAX_AIRBORNE, Seen, UavKind, UavMode, UavWp, WpKind};
+use stealth_sim::station::{FP2_STOCK, INTERCEPTOR_STOCK, STORK_STOCK, StationCmd, X12_STOCK};
+use stealth_sim::uav::{
+    LOCK_RANGE, MAX_AIRBORNE, Seen, UavKind, UavMode, UavWp, WpKind, X12_LOCK_RANGE,
+};
 use stealth_sim::*;
 
 struct Data {
@@ -94,7 +96,7 @@ fn a_stork_climbs_off_the_rail_and_circles_its_loiter_point() {
     let (mut sim, k, _, _) = center();
     let at = off(&sim, k, 2500.0, 0.0);
     launch(&mut sim, UavKind::Stork, vec![wp(at, 600.0, WpKind::Loiter)]).unwrap();
-    assert_eq!(sim.uav_stock(k), [STORK_STOCK - 1, FP2_STOCK, INTERCEPTOR_STOCK]);
+    assert_eq!(sim.uav_stock(k), [STORK_STOCK - 1, FP2_STOCK, INTERCEPTOR_STOCK, X12_STOCK]);
     run(&mut sim, 1);
     let f = sim.uavs()[0].flight as usize;
     assert_eq!(sim.flights()[f].spec, UavKind::Stork.spec());
@@ -136,7 +138,7 @@ fn five_drones_fly_at_once_and_the_rail_needs_its_time() {
         launch(&mut sim, kind, route()).unwrap();
     }
     assert_eq!(sim.uavs().len(), MAX_AIRBORNE);
-    assert_eq!(sim.uav_stock(k), [0, FP2_STOCK - 1, INTERCEPTOR_STOCK]);
+    assert_eq!(sim.uav_stock(k), [0, FP2_STOCK - 1, INTERCEPTOR_STOCK, X12_STOCK]);
     run(&mut sim, 16);
     let why = launch(&mut sim, UavKind::Fp2, route()).unwrap_err();
     assert!(why.contains("in the air"), "{why}");
@@ -315,7 +317,7 @@ fn interceptor() -> (Sim, usize, u16) {
     let (mut sim, k, _, _) = center();
     let at = off(&sim, k, 2000.0, 0.0);
     launch(&mut sim, UavKind::Interceptor, vec![wp(at, 500.0, WpKind::Loiter)]).unwrap();
-    assert_eq!(sim.uav_stock(k), [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK - 1]);
+    assert_eq!(sim.uav_stock(k), [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK - 1, X12_STOCK]);
     let id = sim.uavs()[0].id;
     run(&mut sim, 60);
     sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
@@ -579,6 +581,69 @@ fn an_interceptor_ignores_a_drone_behind_it_or_too_far() {
     run(&mut sim, 3);
     geran_ahead(&mut sim, LOCK_RANGE * 2.0);
     run(&mut sim, 1);
+    assert_eq!(sim.uavs()[0].lock, None);
+}
+
+/// An X-12 launched to loiter 6 km out at 1000 m, 60 s on: the sim, its center, its id.
+fn x12() -> (Sim, usize, u16) {
+    let (mut sim, k, _, _) = center();
+    let at = off(&sim, k, 6000.0, 0.0);
+    launch(&mut sim, UavKind::X12, vec![wp(at, 1000.0, WpKind::Loiter)]).unwrap();
+    assert_eq!(sim.uav_stock(k), [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK, X12_STOCK - 1]);
+    let id = sim.uavs()[0].id;
+    run(&mut sim, 60);
+    (sim, k, id)
+}
+
+#[test]
+fn an_x12_flies_126_km_in_a_quarter_hour_and_700_kmh_flat_out() {
+    let (mut sim, _, id) = x12();
+    let u = &sim.uavs()[0];
+    assert_eq!(u.mode, UavMode::Auto);
+    assert!(u.pos[2] > 700.0, "climbed to {} m", u.pos[2]);
+    // Level at cruise: a quarter of an hour on a full tank, 126 km.
+    sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
+    let perf = UavKind::X12.perf();
+    // (Still banked as it was: the drain goes with the speed alone.)
+    stick(&mut sim, id, 0.0, 0.0, perf.speed_throttle(perf.cruise) as f32);
+    run(&mut sim, 20);
+    let u = &sim.uavs()[0];
+    let full = u.endurance() / u.battery as f64;
+    let km = full * u.speed / 1000.0;
+    assert!((870.0..930.0).contains(&full), "{full} s on a full tank");
+    assert!((120.0..132.0).contains(&km), "{km} km at {} m/s", u.speed);
+    fly(&mut sim, id, 0.0, 1.0);
+    run(&mut sim, 20);
+    let u = &sim.uavs()[0];
+    assert!((680.0..=701.0).contains(&(u.speed * 3.6)), "{} km/h", u.speed * 3.6);
+}
+
+#[test]
+fn an_x12_locks_on_from_further_and_hunts_a_drone_down_by_itself() {
+    let (mut sim, _, _) = x12();
+    // Out of its circle, level: a Geran 2.4 km ahead (beyond an interceptor's reach).
+    let ahead = X12_LOCK_RANGE * 0.8;
+    assert!(ahead > LOCK_RANGE * 2.0);
+    let j = geran_ahead(&mut sim, ahead);
+    frames(&mut sim, 2);
+    assert_eq!(sim.uavs()[0].lock, Some(j as u16));
+    let mut ev = Vec::new();
+    for _ in 0..40 {
+        ev.extend(run(&mut sim, 1));
+        if sim.uavs().is_empty() {
+            break;
+        }
+    }
+    assert!(sim.uavs().is_empty(), "never hit it");
+    assert!(sim.flights()[j].flags & fflags::DESTROYED != 0);
+    assert!(ev.iter().any(|e| matches!(e, SimEvent::AircraftDestroyed { unit, .. } if *unit == j)));
+}
+
+#[test]
+fn an_x12_ignores_a_drone_beyond_its_reach() {
+    let (mut sim, _, _) = x12();
+    geran_ahead(&mut sim, X12_LOCK_RANGE * 1.3);
+    frames(&mut sim, 2);
     assert_eq!(sim.uavs()[0].lock, None);
 }
 

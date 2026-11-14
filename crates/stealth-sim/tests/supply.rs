@@ -174,6 +174,7 @@ fn a_delivery_fills_the_stockpile() {
         stock: 1,
         stock2: 0,
         stock3: 0,
+        stock4: 0,
     }]);
     assert_eq!(sim.stockpile(radar), 1);
     sim.restock(radar);

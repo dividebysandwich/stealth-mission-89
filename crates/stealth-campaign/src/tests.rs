@@ -2156,7 +2156,15 @@ fn a_nasams_site_takes_two_loads() {
     assert_eq!(offers.len(), 2);
     assert!(offers[0].title.starts_with("NASAMS 1/2"), "{}", offers[0].title);
     assert!(c.deployment(id).unwrap().title().starts_with("NASAMS site near"));
-    let s = DefenceStock { x: 1, y: 2, kind: DefenceKind::Nasams, stock: 9, stock2: 0, stock3: 0 };
+    let s = DefenceStock {
+        x: 1,
+        y: 2,
+        kind: DefenceKind::Nasams,
+        stock: 9,
+        stock2: 0,
+        stock3: 0,
+        stock4: 0,
+    };
     let back: DefenceStock = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
     assert_eq!(back, s);
 }
@@ -2165,11 +2173,21 @@ fn a_nasams_site_takes_two_loads() {
 fn saves_from_before_the_drones_say_patriot() {
     let old = r#"{"x":1,"y":2,"patriot":true,"stock":5}"#;
     let s: DefenceStock = serde_json::from_str(old).unwrap();
-    assert_eq!((s.kind, s.stock, s.stock2, s.stock3), (DefenceKind::Patriot, 5, 0, -1));
+    assert_eq!(
+        (s.kind, s.stock, s.stock2, s.stock3, s.stock4),
+        (DefenceKind::Patriot, 5, 0, -1, -1)
+    );
     let old = r#"{"x":1,"y":2,"patriot":false,"stock":5}"#;
     assert_eq!(serde_json::from_str::<DefenceStock>(old).unwrap().kind, DefenceKind::Gepard);
-    let new =
-        DefenceStock { x: 1, y: 2, kind: DefenceKind::Drones, stock: 3, stock2: 7, stock3: 2 };
+    let new = DefenceStock {
+        x: 1,
+        y: 2,
+        kind: DefenceKind::Drones,
+        stock: 3,
+        stock2: 7,
+        stock3: 2,
+        stock4: 1,
+    };
     let back: DefenceStock = serde_json::from_str(&serde_json::to_string(&new).unwrap()).unwrap();
     assert_eq!(back, new);
 }

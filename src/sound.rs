@@ -44,7 +44,8 @@
 //! - The other aircraft are heard around, the AI's and the other players': jets and the Geran-3
 //!   (`jet.flac`, a recording), the propeller-driven Geran-2 (`engine.flac`, a recording),
 //!   helicopters (`helicopter.flac`, a CH-47 `chinook.flac`) and a drone command center's quadrotor interceptors
-//!   (`interceptor.flac`, as at 20% throttle, its motors two octaves up at full throttle),
+//!   (`interceptor.flac`, as at 20% throttle, its motors two octaves up at full throttle) and
+//!   X-12s (`x12.flac`, a small turbojet's whine at cruise),
 //!   placed by direction with stereo
 //!   panning that follows the head, fading with distance, with a Doppler shift. Only at
 //!   level 3.
@@ -399,6 +400,9 @@ const HELICOPTER_VOLUME: f32 = 0.8;
 const QUAD_RANGE: f32 = 2_000.0;
 const QUAD_REF: f32 = 60.0;
 const QUAD_VOLUME: f32 = 0.7;
+const MICROJET_RANGE: f32 = 4_000.0;
+const MICROJET_REF: f32 = 120.0;
+const MICROJET_VOLUME: f32 = 0.8;
 const DISTANT_MAX: usize = 6;
 /// A SAM launch: heard up to this range (m), at full volume within the reference distance (m).
 const LAUNCH_RANGE: f32 = 10_000.0;
@@ -444,7 +448,7 @@ struct SoundBank {
     /// The AH-64's 30 mm chain gun's loop and tail.
     cannon30: Option<(Handle<AudioSource>, Handle<AudioSource>)>,
     /// The other aircraft's loops, by `Engine`.
-    distant: [Option<Handle<AudioSource>>; 5],
+    distant: [Option<Handle<AudioSource>>; 6],
     launch: Option<Handle<AudioSource>>,
     /// The vehicles' guns, near and far: the tank's, the autocannon's.
     guns: [Option<(Handle<AudioSource>, Handle<AudioSource>)>; 2],
@@ -493,6 +497,8 @@ enum Engine {
     Quad,
     /// A tandem-rotor helicopter (the CH-47).
     Tandem,
+    /// A drone command center's X-12, its small turbojet.
+    MicroJet,
 }
 
 impl Engine {
@@ -505,12 +511,19 @@ impl Engine {
                 (HELICOPTER_RANGE, HELICOPTER_REF, HELICOPTER_VOLUME)
             }
             Engine::Quad => (QUAD_RANGE, QUAD_REF, QUAD_VOLUME),
+            Engine::MicroJet => (MICROJET_RANGE, MICROJET_REF, MICROJET_VOLUME),
         }
     }
 }
 
-const DISTANT_FILES: [&str; 5] =
-    ["jet.flac", "engine.flac", "helicopter.flac", "interceptor.flac", "chinook.flac"];
+const DISTANT_FILES: [&str; 6] = [
+    "jet.flac",
+    "engine.flac",
+    "helicopter.flac",
+    "interceptor.flac",
+    "chinook.flac",
+    "x12.flac",
+];
 
 /// Another aircraft heard: an AI flight unit or another player.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1389,6 +1402,7 @@ fn distant_aircraft(
         .filter_map(|(i, u, _)| {
             let quad =
                 sim.uav_of_flight(i).filter(|d| d.kind == stealth_sim::uav::UavKind::Interceptor);
+            let x12 = sim.uav_of_flight(i).filter(|d| d.kind == stealth_sim::uav::UavKind::X12);
             let engine = match sim.aircraft_kind(u.spec) {
                 AircraftKind::Plane => Engine::Jet,
                 AircraftKind::Helicopter => Engine::Helicopter,
@@ -1396,6 +1410,7 @@ fn distant_aircraft(
                     Engine::Jet
                 }
                 AircraftKind::Drone if quad.is_some() => Engine::Quad,
+                AircraftKind::Drone if x12.is_some() => Engine::MicroJet,
                 AircraftKind::Drone => Engine::Propeller,
             };
             // An interceptor's motors spin up with the throttle (the loop is at its hover
@@ -1406,7 +1421,16 @@ fn distant_aircraft(
                     let hover = d.kind.perf().hover;
                     4f32.powf(((d.throttle() - hover) / (1.0 - hover)) as f32)
                 }
-                None => 1.0,
+                // An X-12's turbojet (the loop is at cruise) winds up a fifth with the throttle,
+                // and flames out with its tank empty.
+                None => match x12 {
+                    Some(d) if d.battery <= 0.0 => return None,
+                    Some(d) => {
+                        let cruise = d.kind.perf().speed_throttle(d.kind.perf().cruise);
+                        1.0 + 0.25 * (d.throttle() - cruise) as f32
+                    }
+                    None => 1.0,
+                },
             };
             let (east, north, alt) = unit_position(combat.prev_flights.get(i), &u, combat.alpha);
             in_range(Heard::Unit(i), engine, wu_to_bevy(east, north, alt), rev)

@@ -417,6 +417,7 @@ fn an_ai_helicopter_brings_a_requested_resupply() {
         stock: 0,
         stock2: 0,
         stock3: 0,
+        stock4: 0,
     }]);
     host.station(&mut sim, me, StationCmd::Man { unit: k as u16 }).unwrap();
     host.station(&mut sim, me, StationCmd::RequestResupply).unwrap();
@@ -486,6 +487,7 @@ fn an_empty_stockpile_orders_a_resupply() {
         stock: 1,
         stock2: 0,
         stock3: 0,
+        stock4: 0,
     }]);
     let l = sim.battery_launchers(radar)[0];
     sim.units_mut()[l].rounds = 0;

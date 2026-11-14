@@ -132,10 +132,8 @@ pub fn buttons(ui: &DroneUi, uavs: &[Uav]) -> Vec<(Button, [f32; 4], &'static st
         None => out.push((Button::NewDrone, [4.0, 208.0, SIDEBAR - 8.0, 26.0], "NEW DRONE", true)),
         Some(p) => {
             let w = (SIDEBAR - 12.0) / 2.0;
-            let kw = (SIDEBAR - 16.0) / 3.0;
-            for (k, kind) in
-                [UavKind::Stork, UavKind::Fp2, UavKind::Interceptor].into_iter().enumerate()
-            {
+            let kw = (SIDEBAR - 20.0) / 4.0;
+            for (k, kind) in UavKind::ALL.into_iter().enumerate() {
                 let on = p.kind != kind;
                 let at = [4.0 + k as f32 * (kw + 4.0), 150.0, kw, 22.0];
                 out.push((Button::Kind(kind), at, kind.short(), on));
@@ -725,7 +723,7 @@ fn waypoint(cv: &mut Canvas, ui: &DroneUi, q: Vec2, w: &UavWp, kind: UavKind, co
 }
 
 /// A drone: an arrowhead along its heading (a surveillance drone's open, an attack drone's
-/// filled, an interceptor's a slim dart with a cross bar).
+/// filled, an interceptor's a slim dart with a cross bar, an X-12's a slim delta with a tail).
 fn drone(cv: &mut Canvas, p: Vec2, heading: f32, kind: UavKind, col: u8) {
     let f = Vec2::new(heading.sin(), -heading.cos());
     let r = Vec2::new(-f.y, f.x);
@@ -736,6 +734,11 @@ fn drone(cv: &mut Canvas, p: Vec2, heading: f32, kind: UavKind, col: u8) {
         UavKind::Interceptor => {
             cv.triangle([a, p - f * 4.0 + r * 2.5, p - f * 4.0 - r * 2.5], col);
             cv.stroke(p - f * 2.0 + r * 5.0, p - f * 2.0 - r * 5.0, 1.2, col);
+        }
+        UavKind::X12 => {
+            let tail = p - f * 3.0;
+            cv.polyline(&[p + f * 8.0, tail + r * 5.0, tail - r * 5.0, p + f * 8.0], 1.2, col);
+            cv.stroke(p, p - f * 6.0, 1.2, col);
         }
     }
 }
@@ -782,7 +785,7 @@ fn aircraft(cv: &mut Canvas, sim: &Sim, ui: &DroneUi) {
 /// The list: the drones in the air (or the launch being planned), the stock and the rail.
 fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) {
     cv.stroke(Vec2::new(SIDEBAR, 0.0), Vec2::new(SIDEBAR, CANVAS.1 as f32), 1.0, DARK);
-    let [stork, fp2, int] = sim.uav_stock(m.unit);
+    let [stork, fp2, int, x12] = sim.uav_stock(m.unit);
     let n = uavs.len();
     let max = stealth_sim::uav::MAX_AIRBORNE;
     stroke_text_at(cv, 6.0, 9.0, &format!("DRONES {n}/{max}"), 7.0, 1.0, WHITE, Align::Left);
@@ -790,8 +793,8 @@ fn sidebar(cv: &mut Canvas, sim: &Sim, m: &Manning, ui: &DroneUi, uavs: &[Uav]) 
     let (rail, col) =
         if wait > 0 { (format!("RAIL {wait} S"), YELLOW) } else { ("RAIL RDY".into(), GREEN) };
     stroke_text_at(cv, SIDEBAR - 6.0, 9.0, &rail, 5.0, 0.8, col, Align::Right);
-    let stock = format!("STOCK STK {stork} FP2 {fp2} INT {int}");
-    let col = if stork + fp2 + int > 0 { GREY } else { RED };
+    let stock = format!("STOCK STK {stork} FP2 {fp2} INT {int} X12 {x12}");
+    let col = if stork + fp2 + int + x12 > 0 { GREY } else { RED };
     stroke_text_at(cv, 6.0, 23.0, &stock, 5.0, 0.8, col, Align::Left);
     if let Some(p) = &ui.plan {
         plan(cv, p);
@@ -877,7 +880,9 @@ fn plan(cv: &mut Canvas, p: &super::Plan) {
     let hint = match p.kind {
         UavKind::Stork => ["END ON A LOITER POINT", ""],
         UavKind::Fp2 => ["END ON A TERMINATE POINT", "(OR LOITER: SURVEY)"],
-        UavKind::Interceptor => ["LOITER IN THEIR PATH", "AT THEIR HEIGHT (ALT+/-)"],
+        UavKind::Interceptor | UavKind::X12 => {
+            ["LOITER IN THEIR PATH", "AT THEIR HEIGHT (ALT+/-)"]
+        }
     };
     for (i, l) in hint.iter().enumerate() {
         stroke_text_at(cv, 6.0, ROW_Y + 72.0 + i as f32 * 12.0, l, 5.0, 0.8, GREY, Align::Left);

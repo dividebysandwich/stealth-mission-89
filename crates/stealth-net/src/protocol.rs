@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 42;
+pub const PROTOCOL: u16 = 43;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -297,6 +297,7 @@ mod tests {
             StationCmd::Burst,
             StationCmd::Launch { kind: UavKind::Fp2, route: route.clone() },
             StationCmd::Launch { kind: UavKind::Interceptor, route: route.clone() },
+            StationCmd::Launch { kind: UavKind::X12, route: route.clone() },
             StationCmd::Route { uav: 4, route },
             StationCmd::Next { uav: 4, wp: 1 },
             StationCmd::Manual { uav: 2, on: true },
@@ -336,6 +337,7 @@ mod tests {
         let defence = DefenceState {
             stock2: vec![0, 3],
             stock3: vec![0, 6],
+            stock4: vec![0, 4],
             stations: vec![Station {
                 unit: 4,
                 pilot: 1,

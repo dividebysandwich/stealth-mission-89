@@ -1013,7 +1013,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             .nth(1)
             .and_then(|n| n.parse::<u32>().ok())
         && let Some(u) = s.combat.sim.uavs().iter().find(|u| {
-            u.kind == stealth_sim::uav::UavKind::Interceptor
+            u.kind.hunter()
                 && u.mode == stealth_sim::uav::UavMode::Auto
                 && u.pos[2] > 150.0
                 && u.pitch.abs() < 0.1

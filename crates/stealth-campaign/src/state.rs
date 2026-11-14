@@ -1187,7 +1187,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
 
 /// A friendly air defence unit's stockpile: where (map units), what it is, how much
 /// (missiles, rounds; a drone command center's surveillance drones, its attack drones in
-/// `stock2` and its interceptors in `stock3`).
+/// `stock2`, its interceptors in `stock3` and its X-12s in `stock4`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DefenceStock {
     pub x: i32,
@@ -1200,6 +1200,9 @@ pub struct DefenceStock {
     /// -1: saved before the interceptors (the center keeps its stockpile).
     #[serde(default = "unsaved")]
     pub stock3: i32,
+    /// -1: saved before the X-12s.
+    #[serde(default = "unsaved")]
+    pub stock4: i32,
 }
 
 fn unsaved() -> i32 {

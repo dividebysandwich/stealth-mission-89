@@ -673,7 +673,7 @@ fn press(
         }
         B::NewDrone => {
             let stock = sim.uav_stock(m.unit);
-            let kind = [UavKind::Stork, UavKind::Fp2, UavKind::Interceptor]
+            let kind = UavKind::ALL
                 .into_iter()
                 .find(|k| stock[k.stock_index()] > 0)
                 .unwrap_or(UavKind::Stork);
@@ -684,7 +684,7 @@ fn press(
         B::Kind(kind) => {
             if let Some(p) = ui.plan.as_mut() {
                 p.kind = kind;
-                // A surveillance drone or an interceptor loiters where an attack drone would
+                // A surveillance drone or a hunter loiters where an attack drone would
                 // terminate.
                 for w in &mut p.route {
                     if kind != UavKind::Fp2 && w.kind == WpKind::Terminate {
@@ -843,6 +843,7 @@ fn test_aid(
         .map(|k| match k {
             "fp2" => UavKind::Fp2,
             "int" => UavKind::Interceptor,
+            "x12" => UavKind::X12,
             _ => UavKind::Stork,
         })
         .collect();
@@ -859,7 +860,7 @@ fn test_aid(
                 .min_by(|a, b| dist((a.x, a.y)).total_cmp(&dist((b.x, b.y))))
         };
         let target = match kind {
-            UavKind::Interceptor => {
+            UavKind::Interceptor | UavKind::X12 => {
                 Some(air().map_or((home.0, home.1 - (3000.0 / M_PER_MAP) as i32), |f| (f.x, f.y)))
             }
             UavKind::Fp2 => sim
@@ -877,12 +878,12 @@ fn test_aid(
         };
         let Some(t) = target else { return };
         let alt = match (kind, air()) {
-            (UavKind::Interceptor, Some(f)) => (f.alt as f64 * crate::world::WU) as f32,
+            (UavKind::Interceptor | UavKind::X12, Some(f)) => (f.alt as f64 * crate::world::WU) as f32,
             _ => kind.perf().altitude as f32,
         };
         let route = match kind {
             UavKind::Fp2 => vec![UavWp { x: t.0, y: t.1, alt, kind: WpKind::Terminate }],
-            UavKind::Stork | UavKind::Interceptor => {
+            UavKind::Stork | UavKind::Interceptor | UavKind::X12 => {
                 // How much of the way back from the target: 4.5 km of it, an interceptor's
                 // all but 3 km from the center.
                 let d = dist(t).max(1.0);

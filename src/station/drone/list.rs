@@ -80,10 +80,10 @@ pub(super) fn draw(
     if uavs.is_empty() {
         stroke_text_at(cv, w / 2.0, 70.0, "NONE", 7.0, 1.0, GREY, Align::Centre);
     }
-    let [stork, fp2, int] = sim.uav_stock(m.unit);
+    let [stork, fp2, int, x12] = sim.uav_stock(m.unit);
     let wait = sim.uav_rail_wait(m.unit);
     let rail = if wait > 0 { format!("RAIL {wait} S") } else { "RAIL READY".into() };
-    let stock = format!("STOCK: STK {stork} FP-2 {fp2} INT {int}  {rail}");
-    let col = if stork + fp2 + int > 0 { GREY } else { RED };
+    let stock = format!("STOCK: STK {stork} FP-2 {fp2} INT {int} X-12 {x12}  {rail}");
+    let col = if stork + fp2 + int + x12 > 0 { GREY } else { RED };
     stroke_text_at(cv, 8.0, h - 10.0, &stock, 6.0, 0.9, col, Align::Left);
 }

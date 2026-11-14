@@ -176,7 +176,9 @@ Testing and screenshots
   --campaign-man <n>|drone|nasams
                                man the n-th friendly console, or a free drone center (NASAMS)
   --campaign-geran <n> [km]    an enemy Geran-2 raid km (2) ahead of the first interceptor up
-  --drone-launch stork|fp2     at it, launch a drone at the nearest enemy air defence
+  --drone-launch stork|fp2|int|x12[,...]
+                               at it, launch drones at the nearest enemy air defence (a
+                               hunter towards the nearest enemy aircraft)
   --drone-manual               flown by hand
   --drone-forward              its forward-looking camera
   --drone-flir                 its camera in FLIR (thermal)

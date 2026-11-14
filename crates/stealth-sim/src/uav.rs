@@ -4,9 +4,11 @@
 //! **FP-2** attack drones, which dive into a ground point and blow up there, and
 //! **interceptors**, small quadrotors as fast as 600 km/h with a battery for minutes, which
 //! lock on to an aircraft or drone in front of them within [`LOCK_RANGE`] (whoever's: they
-//! can't tell friend from foe) and fly it down while the pilot opens the throttle. Into the
-//! ground, an interceptor's warhead goes off too, wrecking whatever stands there, friendly or
-//! not.
+//! can't tell friend from foe) and fly it down while the pilot opens the throttle, and
+//! **X-12s**, jet powered winged interceptors as fast as 700 km/h with fuel for 15 minutes
+//! (126 km), built to hunt the jet Gerans: they lock on the same way from as far as
+//! [`X12_LOCK_RANGE`]. Into the ground, an interceptor's warhead goes off too, wrecking
+//! whatever stands there, friendly or not.
 //!
 //! * A drone flies its route by itself (**auto**): through its nav points, round a **loiter**
 //!   point on a wide circle, or into a **terminate** point (FP-2 only) in a steep dive. A route
@@ -79,6 +81,14 @@ const EMPTY: f32 = 0.0;
 pub const LOCK_RANGE: f64 = 500.0;
 pub const LOCK_CONE: f64 = 0.35;
 const LOCK_BREAK: f64 = 1500.0;
+/// An X-12 locks on this close (m, its seeker's reach) and lets go further than
+/// `X12_LOCK_BREAK` (m).
+pub const X12_LOCK_RANGE: f64 = 3000.0;
+const X12_LOCK_BREAK: f64 = 8000.0;
+/// An X-12 pulls this many g at most chasing its target; its proximity fuse goes off this
+/// close (m).
+const X12_G: f64 = 15.0;
+const X12_FUSE: f64 = 10.0;
 /// An interceptor's flight path follows its nose this quickly (1/s), with this many g at most;
 /// with too little throttle it sinks up to `SINK` m/s.
 pub const TURN_G: f64 = 20.0;
@@ -103,6 +113,7 @@ const FALL: f64 = 45.0;
 pub const FP2_SPEC: i32 = 33;
 pub const STORK_SPEC: i32 = 34;
 pub const INTERCEPTOR_SPEC: i32 = 35;
+pub const X12_SPEC: i32 = 45;
 
 /// What a drone is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -114,6 +125,9 @@ pub enum UavKind {
     Fp2,
     /// A quadrotor interceptor: very fast, minutes of battery, a warhead against aircraft.
     Interceptor,
+    /// X-12: a winged jet interceptor, faster still, a quarter of an hour of fuel, a warhead
+    /// against aircraft (the jet Gerans), locking on from further.
+    X12,
 }
 
 /// How a drone flies (m, m/s, rad, s).
@@ -199,7 +213,52 @@ impl UavKind {
                 pitch: 1.0,
                 hover: 0.2,
             },
+            // 126 km on its 15 minutes of fuel at cruise.
+            UavKind::X12 => Perf {
+                cruise: 140.0,
+                max: 700.0 / 3.6,
+                stall: 40.0,
+                dive: 230.0,
+                climb: 40.0,
+                bank: 1.2,
+                endurance: 15.0 * 60.0,
+                loiter_radius: 1500.0,
+                altitude: 1000.0,
+                agility: 2.5,
+                pitch: 0.8,
+                hover: 0.0,
+            },
         }
+    }
+
+    /// Every kind, in the order the console lists them.
+    pub const ALL: [UavKind; 4] =
+        [UavKind::Stork, UavKind::Fp2, UavKind::Interceptor, UavKind::X12];
+
+    /// It hunts aircraft: locks on to them and flies into them (an interceptor, an X-12).
+    pub fn hunter(self) -> bool {
+        matches!(self, UavKind::Interceptor | UavKind::X12)
+    }
+
+    /// A hunter locks on this close (m) and lets go further than the second (m).
+    pub fn lock_range(self) -> (f64, f64) {
+        match self {
+            UavKind::X12 => (X12_LOCK_RANGE, X12_LOCK_BREAK),
+            _ => (LOCK_RANGE, LOCK_BREAK),
+        }
+    }
+
+    /// A hunter's warhead goes off this close to its target (m).
+    fn fuse(self) -> f64 {
+        match self {
+            UavKind::X12 => X12_FUSE,
+            _ => INTERCEPT_FUSE,
+        }
+    }
+
+    /// It burns fuel (a jet) rather than drains a battery.
+    pub fn jet(self) -> bool {
+        self == UavKind::X12
     }
 
     /// "STORK", "FP-2".
@@ -208,6 +267,7 @@ impl UavKind {
             UavKind::Stork => "STORK",
             UavKind::Fp2 => "FP-2",
             UavKind::Interceptor => "INTERCEPTOR",
+            UavKind::X12 => "X-12",
         }
     }
 
@@ -224,30 +284,31 @@ impl UavKind {
             UavKind::Stork => STORK_SPEC,
             UavKind::Fp2 => FP2_SPEC,
             UavKind::Interceptor => INTERCEPTOR_SPEC,
+            UavKind::X12 => X12_SPEC,
         }
     }
 
-    /// Its stockpile at a center (`DefenceState::stock`, `stock2`, `stock3`).
+    /// Its stockpile at a center (`DefenceState::stock`, `stock2`, `stock3`, `stock4`).
     pub fn stock_index(self) -> usize {
         match self {
             UavKind::Stork => 0,
             UavKind::Fp2 => 1,
             UavKind::Interceptor => 2,
+            UavKind::X12 => 3,
         }
     }
 
-    /// It has a TGP (an interceptor only looks ahead).
+    /// It has a TGP (an interceptor, an X-12 only looks ahead).
     pub fn tgp(self) -> bool {
-        self != UavKind::Interceptor
+        !self.hunter()
     }
 
-    /// The camera sees the enemy's air defences this far (an interceptor's never looks for
-    /// them).
+    /// The camera sees the enemy's air defences this far (a hunter's never looks for them).
     pub fn sensor(self) -> f64 {
         match self {
             UavKind::Stork => STORK_SENSOR,
             UavKind::Fp2 => FP2_SENSOR,
-            UavKind::Interceptor => 0.0,
+            UavKind::Interceptor | UavKind::X12 => 0.0,
         }
     }
 }
@@ -364,6 +425,7 @@ impl Uav {
             UavKind::Stork => format!("STK-{}", self.id),
             UavKind::Fp2 => format!("FP2-{}", self.id),
             UavKind::Interceptor => format!("INT-{}", self.id),
+            UavKind::X12 => format!("X12-{}", self.id),
         }
     }
 
@@ -604,10 +666,10 @@ impl Sim {
         self.uavs().iter().filter(move |u| u.center as usize == center)
     }
 
-    /// A center's drones in stock: surveillance, attack, interceptors.
-    pub fn uav_stock(&self, center: usize) -> [i32; 3] {
-        let Some(d) = self.defence() else { return [0; 3] };
-        [&d.stock, &d.stock2, &d.stock3].map(|s| s.get(center).copied().unwrap_or(0))
+    /// A center's drones in stock: surveillance, attack, interceptors, X-12s.
+    pub fn uav_stock(&self, center: usize) -> [i32; 4] {
+        let Some(d) = self.defence() else { return [0; 4] };
+        [&d.stock, &d.stock2, &d.stock3, &d.stock4].map(|s| s.get(center).copied().unwrap_or(0))
     }
 
     /// Why station `st` can't launch a `kind` drone on `route` now (None: it can).
@@ -753,6 +815,7 @@ impl Sim {
             UavKind::Stork => &mut d.stock,
             UavKind::Fp2 => &mut d.stock2,
             UavKind::Interceptor => &mut d.stock3,
+            UavKind::X12 => &mut d.stock4,
         };
         stock[k] -= 1;
         let p = kind.perf();
@@ -895,6 +958,16 @@ impl Sim {
             u.bank -= u.bank * (2.0 * dt).min(1.0);
             u.pitch = (-0.08_f64).max(u.pitch - 0.2 * dt);
             u.speed += ((p.stall * 1.1) - u.speed) * (0.3 * dt).min(1.0);
+        } else if let Some((tp, tv)) = chase.filter(|_| !quad) {
+            // An X-12: its nose (and its way) round at where the target will be as hard as
+            // `X12_G` lets it, flat out (or at the throttle flown by hand).
+            let aim = intercept(u.pos, u.speed, tp, tv);
+            let (to, max) = (sub(aim, u.pos), X12_G * 9.81 / u.speed.max(20.0) * dt);
+            steer_along(&mut u, to, max, dt);
+            direct = true;
+            let t = if u.mode == UavMode::Manual { u.ctrl[2] as f64 } else { 1.0 };
+            let v = p.throttle_speed(t) - u.pitch.sin() * 40.0;
+            u.speed += (v.clamp(p.stall, p.dive) - u.speed).clamp(-4.0 * ag * dt, 4.0 * ag * dt);
         } else if let Some((tp, tv)) = chase {
             // The nose at where the target will be, leading the flight path round (past it by
             // as much as the path still has to swing).
@@ -930,7 +1003,7 @@ impl Sim {
             if quad {
                 thrust = Some((want_v, p.speed_throttle(want_v).max(p.hover)));
             } else {
-                u.speed += (want_v - u.speed).clamp(-3.0 * dt, 3.0 * dt);
+                u.speed += (want_v - u.speed).clamp(-3.0 * ag * dt, 3.0 * ag * dt);
             }
         } else if quad {
             // The stick rolls and pitches it and the rudder yaws it (held where they are let
@@ -946,12 +1019,12 @@ impl Sim {
             let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
             u.heading = wrap(u.heading + u.yaw as f64 * YAW_RATE * dt);
             let max_bank = p.bank * 1.2;
-            u.bank = (u.bank + roll * ROLL_RATE * dt).clamp(-max_bank, max_bank);
-            u.pitch = (u.pitch + pitch * PITCH_RATE * dt).clamp(-p.pitch, p.pitch);
+            u.bank = (u.bank + roll * ROLL_RATE * ag * dt).clamp(-max_bank, max_bank);
+            u.pitch = (u.pitch + pitch * PITCH_RATE * ag * dt).clamp(-p.pitch, p.pitch);
             let want_v = p.throttle_speed(throttle);
             // Nose down picks up speed, nose up loses it.
             let v = want_v - u.pitch.sin() * 40.0;
-            u.speed += (v.clamp(p.stall, p.dive) - u.speed).clamp(-4.0 * dt, 4.0 * dt);
+            u.speed += (v.clamp(p.stall, p.dive) - u.speed).clamp(-4.0 * ag * dt, 4.0 * ag * dt);
         }
         if !direct {
             // A coordinated turn: the bank turns the heading.
@@ -988,7 +1061,7 @@ impl Sim {
         // The interceptor's warhead: where its way and the target's pass closest this frame.
         let hit = chase.and_then(|(tp, tv)| {
             let step = sub(sub(u.pos, from), mul(tv, dt));
-            (crate::aaa::closest(sub(from, tp), step) < INTERCEPT_FUSE).then_some(u.lock?)
+            (crate::aaa::closest(sub(from, tp), step) < u.kind.fuse()).then_some(u.lock?)
         });
         // Into the ground under it (`ground` looks ahead: a hill on the way is no crash yet).
         let under = self.uav_ground_here(u.pos);
@@ -1085,7 +1158,7 @@ impl Sim {
                 }
             }
             self.msg(text!("sim-impact", weapon = u.label()));
-        } else if u.kind == UavKind::Interceptor {
+        } else if u.kind.hunter() {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -6 });
             self.uav_blast_units(x, y, QUAD_BLAST);
             // The building, vehicle or site there (the nearest tile object, as a bomb's).
@@ -1139,24 +1212,25 @@ impl Sim {
         self.ai_kill(j);
     }
 
-    /// The interceptors' locks: one without finds the nearest aircraft or drone (of either side)
-    /// within `LOCK_RANGE` and `LOCK_CONE` of its nose; a lock goes when its target is gone or
-    /// further than `LOCK_BREAK`.
+    /// The interceptors' and X-12s' locks: one without finds the nearest aircraft or drone (of
+    /// either side) within its lock range (`UavKind::lock_range`) and `LOCK_CONE` of its nose;
+    /// a lock goes when its target is gone or too far.
     fn uav_locks(&mut self) {
         let targets: Vec<(usize, [f64; 3])> =
             self.interceptor_targets().map(|j| (j, flight_metres(&self.flights[j]))).collect();
         let mut news = Vec::new();
         for (n, u) in self.uavs().iter().enumerate() {
-            if u.kind != UavKind::Interceptor {
+            if !u.kind.hunter() {
                 continue;
             }
+            let (range, gone) = u.kind.lock_range();
             let lock = if u.battery <= EMPTY || u.mode == UavMode::Launch {
                 None
             } else if let Some(j) = u.lock {
                 targets
                     .iter()
                     .find(|e| e.0 == j as usize)
-                    .filter(|e| len(sub(e.1, u.pos)) < LOCK_BREAK)
+                    .filter(|e| len(sub(e.1, u.pos)) < gone)
                     .map(|_| j)
             } else {
                 let nose = [
@@ -1168,7 +1242,7 @@ impl Sim {
                     .iter()
                     .map(|&(j, p)| (j, sub(p, u.pos)))
                     .map(|(j, r)| (j, len(r), dot(r, nose)))
-                    .filter(|&(_, d, along)| d < LOCK_RANGE && along > d * LOCK_CONE.cos())
+                    .filter(|&(_, d, along)| d < range && along > d * LOCK_CONE.cos())
                     .min_by(|a, b| a.1.total_cmp(&b.1))
                     .map(|(j, ..)| j as u16)
             };

@@ -41,6 +41,7 @@ pub const GEPARD_STOCK: i32 = 640;
 pub const STORK_STOCK: i32 = 4;
 pub const FP2_STOCK: i32 = 8;
 pub const INTERCEPTOR_STOCK: i32 = 6;
+pub const X12_STOCK: i32 = 4;
 /// Real seconds to refill a launcher (or a Gepard).
 pub const REFILL_SECONDS: f32 = 240.0;
 /// The PAC-3's reach (m): no shots at a track further out (it gets less against a target
@@ -190,6 +191,9 @@ pub struct DefenceState {
     /// Per AAA unit: a drone command center's interceptor drones.
     #[serde(default)]
     pub stock3: Vec<i32>,
+    /// Per AAA unit: a drone command center's X-12 jet interceptors.
+    #[serde(default)]
+    pub stock4: Vec<i32>,
     /// Per AAA unit: real seconds left of a launcher's or Gepard's refill (0: none).
     pub refill: Vec<f32>,
     /// The drone command centers' drones in the air, the last one's number, and what the
@@ -218,6 +222,9 @@ pub struct SavedStock {
     /// -1: not saved (a save from before the interceptors), the unit keeps its stockpile.
     #[serde(default = "unsaved")]
     pub stock3: i32,
+    /// The X-12s (-1: a save from before them).
+    #[serde(default = "unsaved")]
+    pub stock4: i32,
 }
 
 fn unsaved() -> i32 {
@@ -244,6 +251,11 @@ pub fn initial_stock2(kind: GroundKind) -> i32 {
 /// The third stockpile a unit starts with: a drone command center's interceptor drones.
 pub fn initial_stock3(kind: GroundKind) -> i32 {
     if kind == GroundKind::DroneCenter { INTERCEPTOR_STOCK } else { 0 }
+}
+
+/// The fourth stockpile a unit starts with: a drone command center's X-12s.
+pub fn initial_stock4(kind: GroundKind) -> i32 {
+    if kind == GroundKind::DroneCenter { X12_STOCK } else { 0 }
 }
 
 /// A unit's load when full.
@@ -383,6 +395,10 @@ impl Sim {
         d.stock3.truncate(n);
         for u in &self.units[d.stock3.len()..] {
             d.stock3.push(initial_stock3(u.kind));
+        }
+        d.stock4.truncate(n);
+        for u in &self.units[d.stock4.len()..] {
+            d.stock4.push(initial_stock4(u.kind));
         }
         d.refill.resize(n, 0.0);
     }
@@ -947,6 +963,7 @@ impl Sim {
                     stock: d.stock.get(k).copied().unwrap_or(0),
                     stock2: d.stock2.get(k).copied().unwrap_or(0),
                     stock3: d.stock3.get(k).copied().unwrap_or(0),
+                    stock4: d.stock4.get(k).copied().unwrap_or(0),
                 }
             })
             .collect()
@@ -969,6 +986,9 @@ impl Sim {
                 d.stock2[k] = s.stock2;
                 if s.stock3 >= 0 {
                     d.stock3[k] = s.stock3;
+                }
+                if s.stock4 >= 0 {
+                    d.stock4[k] = s.stock4;
                 }
             }
         }

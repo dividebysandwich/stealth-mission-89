@@ -209,6 +209,7 @@ impl Host {
                 stock: s.stock,
                 stock2: s.stock2,
                 stock3: s.stock3,
+                stock4: s.stock4,
             })
             .collect();
         sim.restore_stocks(&stocks);
@@ -601,6 +602,10 @@ impl Host {
                 d.stock3.get(k).copied().unwrap_or(0),
                 stealth_sim::station::initial_stock3(u.kind),
             )
+            && full(
+                d.stock4.get(k).copied().unwrap_or(0),
+                stealth_sim::station::initial_stock4(u.kind),
+            )
         {
             return Err(text!("ce-stockpile-full"));
         }
@@ -628,7 +633,10 @@ impl Host {
                             empty(&d.stock)
                         }
                         GroundKind::DroneCenter => {
-                            empty(&d.stock) || empty(&d.stock2) || empty(&d.stock3)
+                            empty(&d.stock)
+                                || empty(&d.stock2)
+                                || empty(&d.stock3)
+                                || empty(&d.stock4)
                         }
                         _ => false,
                     }
@@ -661,6 +669,7 @@ impl Host {
                     stock: s.stock,
                     stock2: s.stock2,
                     stock3: s.stock3,
+                    stock4: s.stock4,
                 })
             })
             .collect();
