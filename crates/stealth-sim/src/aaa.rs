@@ -410,10 +410,49 @@ struct Track {
     emv: i32,
     on_ground: bool,
     lockheed: bool,
+    helicopter: bool,
     comanche: bool,
     rcs: i32,
     low_level_ft: i32,
     aspect: Option<crate::radar::Pose>,
+}
+
+/// A crew spots a helicopter by eye at this share of the day's or night's visual range when
+/// it is up against the sky, ...
+const HELI_SIZE: f64 = 0.75;
+/// ... at this share of that when it hugs the ground, ...
+const HELI_LOW: f64 = 0.25;
+/// ... growing to the full one at this height (ft above the ground).
+const HELI_SKYLINE_FT: f64 = 500.0;
+/// The RAH-66 is smaller still (and quieter).
+const COMANCHE_SIZE: f64 = 0.6;
+/// The crew hears a helicopter this close (m) whatever the light, the RAH-66 half as far.
+const HELI_HEARD_M: f64 = 400.0;
+/// Once spotted, a helicopter stays seen out to this many times the spotting range.
+const HELI_KEEP: f64 = 1.5;
+
+/// How far (m) a gun crew or a MANPADS team spots a helicopter by eye: `light_km` the visual
+/// range in the light of the day or the night, `height_ft` the helicopter's height above the
+/// ground, `haze_km` the weather's visibility (0: a classic clear sky) and `rain` a storm
+/// overhead.
+pub(crate) fn heli_spot_m(
+    light_km: i32,
+    height_ft: i32,
+    comanche: bool,
+    haze_km: i32,
+    rain: bool,
+) -> f64 {
+    let sky = (height_ft.max(0) as f64 / HELI_SKYLINE_FT).min(1.0);
+    let mut m = light_km as f64 * 1000.0 * HELI_SIZE * (HELI_LOW + (1.0 - HELI_LOW) * sky);
+    let haze = if haze_km > 0 { haze_km.clamp(4, 40) } else { 40 };
+    m *= 0.5 + 0.5 * haze as f64 / 40.0;
+    if rain {
+        m *= 0.5;
+    }
+    if comanche {
+        m *= COMANCHE_SIZE;
+    }
+    m.max(if comanche { HELI_HEARD_M / 2.0 } else { HELI_HEARD_M })
 }
 
 /// What the AAA does to the player in one frame.
@@ -647,6 +686,7 @@ impl Sim {
                     emv: self.pl.emv,
                     on_ground: self.pl.on_ground,
                     lockheed: self.pl.lockheed,
+                    helicopter: self.pl.helicopter,
                     comanche: self.pl.comanche,
                     rcs: self.pl.rcs(self.opts.campaign),
                     low_level_ft: self.pl.low_level_ft(),
@@ -660,6 +700,8 @@ impl Sim {
         let mut units = std::mem::take(&mut self.units);
         self.aaa_pilot.resize(units.len(), tracks[0].k as u8);
         let vis_km = self.visual_range();
+        let light_km = self.visual_light_km();
+        let haze_km = if self.weather.any() { self.weather.vis_km } else { 0 };
         // Accuracy: one standard deviation (radians) with a radar track / laid by eye.
         let skill = 1.5 - 0.2 * self.diff as f64;
         let mut fired: Vec<Shell> = Vec::new();
@@ -711,7 +753,16 @@ impl Sim {
             let dist = len(d);
             let (v0, reach, ceiling) = u.kind.gun();
             let range_km = approx(s16(t.p.mx - u.x), s16(t.p.my - u.y)) >> 6;
-            let seen = range_km < vis_km
+            // A helicopter is a small sight, low against the trees and the hills: the crew
+            // spots it much closer in than a jet, and keeps it a little further once it has it.
+            let in_sight = if t.helicopter {
+                let rain = self.weather.has_storms() && self.weather.under_storm(u.x, u.y, 0);
+                let spot = heli_spot_m(light_km, t.p.height, t.comanche, haze_km, rain);
+                d[0].hypot(d[1]) < if u.tracking { spot * HELI_KEEP } else { spot }
+            } else {
+                range_km < vis_km
+            };
+            let seen = in_sight
                 && !on_ground
                 && (!self.weather.any()
                     || self.weather.los_clear((u.x, u.y, 0), (t.p.mx, t.p.my, t.p.alt.max(0))))
@@ -1033,6 +1084,22 @@ mod tests {
         }
         assert!(best < 2.0, "missed by {best} m");
         assert!(az > 0.0 && t > 2.0 && t < 2.3);
+    }
+
+    #[test]
+    fn helicopters_are_spotted_close_in_when_low() {
+        let spot = |h, c, haze, rain| heli_spot_m(8, h, c, haze, rain);
+        // By day a low helicopter is spotted inside a Shilka's reach, one up high far out.
+        assert_eq!(spot(0, false, 0, false), 1500.0);
+        assert_eq!(spot(800, false, 0, false), 6000.0);
+        assert!(spot(250, false, 0, false) > spot(50, false, 0, false));
+        // The RAH-66 closer, the night, the haze and the rain closer still.
+        assert_eq!(spot(0, true, 0, false), 900.0);
+        assert!(heli_spot_m(4, 0, false, 0, false) < spot(0, false, 0, false));
+        assert!(spot(0, false, 8, false) < spot(0, false, 40, false));
+        assert!(spot(0, false, 0, true) < spot(0, false, 0, false));
+        // Close in it is heard.
+        assert_eq!(heli_spot_m(2, 0, true, 8, true), HELI_HEARD_M / 2.0);
     }
 
     #[test]

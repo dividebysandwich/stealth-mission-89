@@ -1536,11 +1536,15 @@ impl Sim {
     /// night (classic), or with a light level from 2 km on a moonless night to 8 by day;
     /// halved in a storm.
     pub fn visual_range(&self) -> i32 {
-        let base = match self.visual_light {
+        self.visual_light_km() >> self.visual_shift()
+    }
+
+    /// [`Sim::visual_range`] in a clear sky: the light alone.
+    pub(crate) fn visual_light_km(&self) -> i32 {
+        match self.visual_light {
             None => 8 >> self.night as i32,
             Some(l) => 2 + l as i32 * 6 / 255,
-        };
-        base >> self.visual_shift()
+        }
     }
 
     pub fn player(&self) -> PlayerView {

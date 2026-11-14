@@ -1758,6 +1758,10 @@ fn visual_range_follows_the_light() {
 }
 
 fn aaa_mission(d: &Data) -> (Mission, Sim) {
+    aaa_mission_with(d, SimOptions::default())
+}
+
+fn aaa_mission_with(d: &Data, opts: SimOptions) -> (Mission, Sim) {
     let s = MissionSettings {
         theater: 3,
         roe: 2,
@@ -1767,14 +1771,24 @@ fn aaa_mission(d: &Data) -> (Mission, Sim) {
         ..Default::default()
     };
     let m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(0x4321)).unwrap();
-    let sim = Sim::with_options(&d.sim, &m, SimOptions { air_defence: true, ..Default::default() });
+    let sim = Sim::with_options(&d.sim, &m, SimOptions { air_defence: true, ..opts });
     (m, sim)
 }
 
 /// One unit of `kind` in a sandbox, the player hovering `north` map units north of it.
 fn aaa_duel(kind: aaa::GroundKind, north: i32, alt: u16, light: u8) -> Vec<SimEvent> {
+    aaa_duel_with(SimOptions::default(), kind, north, alt, light)
+}
+
+fn aaa_duel_with(
+    opts: SimOptions,
+    kind: aaa::GroundKind,
+    north: i32,
+    alt: u16,
+    light: u8,
+) -> Vec<SimEvent> {
     let d = data();
-    let (m, mut sim) = aaa_mission(d);
+    let (m, mut sim) = aaa_mission_with(d, opts);
     let (x, y) = sandbox(&mut sim, &m);
     sim.set_visual_light(Some(light));
     let unit = aaa::GroundUnit {
@@ -1858,6 +1872,32 @@ fn manpads_need_to_see_the_player() {
     // 3 km away at 2000 ft: by day the team sees and fires, on a moonless night it does not.
     assert!(fired(&aaa_duel(aaa::GroundKind::Manpads, 192, 2000, 255)));
     assert!(!fired(&aaa_duel(aaa::GroundKind::Manpads, 192, 2000, 0)));
+}
+
+/// The crews spot a helicopter by eye much closer in than a jet, the lower the closer, the
+/// RAH-66 closer still, and closer by night.
+#[test]
+fn low_helicopters_get_close_unseen() {
+    let heli = SimOptions { helicopter: true, ..Default::default() };
+    let comanche = SimOptions { gunship: true, comanche: true, ..heli.clone() };
+    let flak = |ev: &[SimEvent]| ev.iter().any(|e| matches!(e, SimEvent::Flak { .. }));
+    let fired = |ev: &[SimEvent]| {
+        ev.iter()
+            .any(|e| matches!(e, SimEvent::MissileLaunched { launcher: Launcher::Manpads(0), .. }))
+    };
+    let s60 = aaa::GroundKind::S60;
+    // 3 km from an S-60 at 100 ft by day: a jet draws flak, a helicopter not until it climbs.
+    assert!(flak(&aaa_duel(s60, 192, 100, 255)));
+    assert!(!flak(&aaa_duel_with(heli.clone(), s60, 192, 100, 255)));
+    assert!(flak(&aaa_duel_with(heli.clone(), s60, 192, 1000, 255)));
+    // 1.5 km at 50 ft: the helicopter is seen, the RAH-66 not; by night neither.
+    assert!(flak(&aaa_duel_with(heli.clone(), s60, 96, 50, 255)));
+    assert!(!flak(&aaa_duel_with(comanche.clone(), s60, 96, 50, 255)));
+    assert!(!flak(&aaa_duel_with(heli.clone(), s60, 96, 50, 85)));
+    // A MANPADS team 3 km away fires at one up at 2000 ft, not at one down at 100.
+    let manpads = aaa::GroundKind::Manpads;
+    assert!(fired(&aaa_duel_with(heli.clone(), manpads, 192, 2000, 255)));
+    assert!(!fired(&aaa_duel_with(heli, manpads, 192, 100, 255)));
 }
 
 /// The scripted ten-minute flights with the air defences, in every theater.
