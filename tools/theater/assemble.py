@@ -54,6 +54,9 @@ CARRIER = K("carrier")
 
 # Room on land all round an object (metres): its footprint and the shore's refinement.
 DRY_MARGIN = 150
+# Half extents of an airfield, the runway and its aprons (metres east, north; runways run
+# north-south).
+FIELD_HALF = (700, 1300)
 
 # Layouts of a LOD1 cell (2 km square): (metres east, metres north of the cell centre, kind).
 # The first entry of a site is its main object (the SAM sites' radar).
@@ -266,7 +269,7 @@ class Layout:
             if not (2048 <= x < geo.THEATER_M - 2048 and 2048 <= y < geo.THEATER_M - 2048):
                 print("airbase beyond the theater's edge:", name)
                 continue
-            c1, r1 = self.cell(1, x, y)
+            c1, r1 = self.field_cell(name, x, y)
             c2, r2 = c1 >> 2, r1 >> 2
             # Runway centred on the LOD1 cell, the model on the LOD2 level.
             cx, cy = (c1 * 4096 + 2048), (r1 * 4096 + 2048)
@@ -348,9 +351,37 @@ class Layout:
                     if self.land(px, py):
                         self.put(1, px, py, 103)
 
+    def field_dry(self, c1, r1):
+        """Whether an airfield centred on LOD1 cell (c1, r1) stays clear of all water."""
+        cx, cy = self.centre_m(1, c1, r1)
+        hx, hy = FIELD_HALF[0] + DRY_MARGIN, FIELD_HALF[1] + DRY_MARGIN
+        nx, ny = math.ceil(hx / 100), math.ceil(hy / 100)
+        return all(self.land(cx + hx * i / nx, cy + hy * j / ny)
+                   for i in range(-nx, nx + 1) for j in range(-ny, ny + 1))
+
+    def field_cell(self, name, x, y):
+        """LOD1 cell for an airfield: the one under it, or the nearest one within 12 km whose
+        field is all on dry land (coastal and riverside bases)."""
+        c1, r1 = self.cell(1, x, y)
+        if self.field_dry(c1, r1):
+            return c1, r1
+        best = None
+        for dc in range(-6, 7):
+            for dr in range(-6, 7):
+                cx, cy = self.centre_m(1, c1 + dc, r1 + dr)
+                d = math.hypot(cx - x, cy - y)
+                if d < 12_000 and (best is None or d < best[0]) and self.field_dry(c1 + dc, r1 + dr):
+                    best = (d, c1 + dc, r1 + dr)
+        if best is None:
+            print("airbase on water, no dry ground near:", name)
+            return c1, r1
+        print("airbase %s moved %.1f km off the water" % (name, best[0] / 1000))
+        return best[1], best[2]
+
     def on_field(self, x, y, margin=0.0):
         """Within an airfield: the runway and its aprons (runways run north-south)."""
-        return any(abs(x - fx) < 700 + margin and abs(y - fy) < 1300 + margin for fx, fy in self.fields)
+        return any(abs(x - fx) < FIELD_HALF[0] + margin and abs(y - fy) < FIELD_HALF[1] + margin
+                   for fx, fy in self.fields)
 
     def ashore(self, x, y):
         """The point, or the nearest dry land within 4 km (a town on its river or coast)."""

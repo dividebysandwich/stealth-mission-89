@@ -482,7 +482,7 @@ fn a_gepard_kill_is_credited_to_the_gun() {
     let enemy = find(&sim, 0x001, Some("Komarno"));
     sim.spawn_striker(enemy, home, 8, false);
     // On its way in (it flies at about 300 m).
-    sim.place_gepard(13900, 28580);
+    sim.place_gepard(13900, 28700);
     let gepard = sim.units().iter().position(|u| u.kind == GroundKind::Gepard);
     for _ in 0..40 * 60 {
         let ev = run(&mut sim, &idle(), 1);
