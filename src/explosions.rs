@@ -584,7 +584,7 @@ fn downwash(
     }
     *owed += DOWNWASH_RATE * k * time.delta_secs();
     // The deck under the aircraft, or the ground at each puff (the rolling hills).
-    let deck = a.over_deck.then(|| a.ground_altitude as f64 * crate::world::WU);
+    let deck = a.over_deck.then_some(a.ground_altitude as f64 * crate::world::WU);
     let ground = |q: DVec3| {
         deck.unwrap_or_else(|| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(q.x, -q.z) as f64))
     };

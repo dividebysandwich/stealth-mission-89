@@ -597,13 +597,15 @@ mod tests {
 
     #[test]
     fn spans_and_exposure() {
-        let mut r = FlightRecord::default();
-        r.spans = vec![
-            Span { site: 4, start: 0, end: Some(30) },
-            Span { site: 5, start: 15, end: Some(45) },
-            Span { site: 4, start: 60, end: None },
-        ];
-        r.frame = 90;
+        let r = FlightRecord {
+            spans: vec![
+                Span { site: 4, start: 0, end: Some(30) },
+                Span { site: 5, start: 15, end: Some(45) },
+                Span { site: 4, start: 60, end: None },
+            ],
+            frame: 90,
+            ..Default::default()
+        };
         let e = r.exposure();
         // Frames 0..45 and 60..90.
         assert_eq!(e.tracked_s, 75.0 / FS as f32);

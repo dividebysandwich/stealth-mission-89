@@ -150,6 +150,7 @@ pub(super) struct Picker<'w, 's> {
     /// VR: the headset's eye cameras (or glvr's head), children of the tracking root (the
     /// `EyeCamera`).
     eye_roots: Query<'w, 's, (), With<EyeCamera>>,
+    #[allow(clippy::type_complexity)]
     headset: Query<
         'w,
         's,

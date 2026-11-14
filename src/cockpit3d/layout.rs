@@ -302,6 +302,7 @@ fn tedac_labels(s: PxRect) -> Vec<Placed> {
 
 impl PanelStyle {
     /// A helicopter's cockpit: no approach indexer (no angle of attack to fly the approach by).
+    #[cfg(test)]
     pub fn helicopter(self) -> bool {
         matches!(
             self,

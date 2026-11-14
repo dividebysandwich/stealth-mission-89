@@ -260,6 +260,7 @@ const CONTOUR: u8 = DARK;
 const CONTOUR_MAJOR: u8 = GREY;
 
 /// Makes the map's details once the flight's scenery is laid out (it shares the layout).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn detail(
     mut commands: Commands,
     manning: Option<Res<Manning>>,

@@ -613,9 +613,7 @@ impl Sim {
                 self.flight_pilot[i as usize] = k;
             }
         }
-        for s in 0..ENEMY_SLOTS {
-            self.proj[s] = Projectile::default();
-        }
+        self.proj[..ENEMY_SLOTS].fill(Projectile::default());
         for &(s, m, k) in &w.enemy {
             if (s as usize) < ENEMY_SLOTS {
                 self.proj[s as usize] = m;

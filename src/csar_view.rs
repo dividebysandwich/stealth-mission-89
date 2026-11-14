@@ -370,6 +370,7 @@ fn spawn_vr_screen(
 
 /// The controllers pointing at the screen: the laser, the hovered button, trigger presses.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn vr_pointer(
     mut hands: ResMut<Hands>,
     offset: Res<RigOffset>,

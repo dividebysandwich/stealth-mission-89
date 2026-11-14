@@ -39,11 +39,11 @@ pub struct MapView {
 }
 
 impl MapView {
-    pub fn to_screen(&self, x: f32, y: f32) -> egui::Pos2 {
+    pub fn to_screen(self, x: f32, y: f32) -> egui::Pos2 {
         self.rect.center() + (egui::vec2(x, y) - self.centre) / self.scale
     }
 
-    pub fn to_map(&self, p: egui::Pos2) -> egui::Vec2 {
+    pub fn to_map(self, p: egui::Pos2) -> egui::Vec2 {
         self.centre + (p - self.rect.center()) * self.scale
     }
 

@@ -531,8 +531,7 @@ impl Sim {
             };
         let hostile = |o: &GroundObject| o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) == 0;
         // Airfields: Shilkas, and in a war an S-60 battery (2 to 4 guns around one spot).
-        for i in self.ground_units..self.objects.len() {
-            let o = self.objects[i];
+        for &o in &self.objects[self.ground_units..] {
             if o.flags & oflags::AIRFIELD == 0 || !hostile(&o) || (o.x, o.y) == (0, 0) {
                 continue;
             }

@@ -294,7 +294,7 @@ impl Host {
                                 .loadout
                                 .bays
                                 .iter()
-                                .take(m.loadout.usable_bays as usize)
+                                .take(m.loadout.usable_bays)
                                 .map(|b| (b.weapon as i32, b.count as i32))
                                 .collect(),
                             select: 0,
@@ -1011,7 +1011,7 @@ pub fn formation(k: usize) -> (i32, i32) {
         return (lead, 0);
     }
     let row = (k as i32 + 1) / 2;
-    let right = k % 2 == 0;
+    let right = k.is_multiple_of(2);
     let along = lead - row * STEP_BACK - if right { STEP_BACK / 3 } else { 0 };
     (along, if right { STEP_SIDE } else { -STEP_SIDE })
 }

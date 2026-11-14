@@ -422,6 +422,7 @@ fn interior_follows_eye(
 }
 
 /// A campaign sortie in another aircraft than the last one: its model (and shadow) instead.
+#[allow(clippy::type_complexity)]
 fn respawn_own_model(
     mut commands: Commands,
     settings: Res<crate::settings::Settings>,

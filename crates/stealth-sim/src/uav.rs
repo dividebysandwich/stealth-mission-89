@@ -916,7 +916,7 @@ impl Sim {
             let want_h = d[0].atan2(d[1]);
             let want_p = d[2].atan2(d[0].hypot(d[1]));
             let turn = wrap(want_h - u.heading);
-            u.heading = wrap(u.heading + turn.clamp(-1.0 * dt, 1.0 * dt));
+            u.heading = wrap(u.heading + turn.clamp(-dt, 1.0 * dt));
             u.bank = (turn * 2.0).clamp(-p.bank, p.bank);
             u.pitch += (want_p - u.pitch).clamp(-0.8 * dt, 0.8 * dt);
             u.speed += (p.dive - u.speed).min(15.0 * dt);

@@ -400,6 +400,7 @@ fn despawn_hand_spaces(mut commands: Commands, q: Query<Entity, With<HandSpace>>
 }
 
 /// Controller state and poses into `Hands` (cockpit frame = scaled rig offset * tracking-root frame).
+#[allow(clippy::too_many_arguments)]
 fn read_hands(
     actions: Res<XrActions>,
     session: Res<OxrSession>,

@@ -465,7 +465,7 @@ impl Server {
             id,
             server: self.name.clone(),
             rules: host.rules,
-            state: host.state.clone(),
+            state: Box::new(host.state.clone()),
             resume,
         };
         self.send(conn, Channel::Reliable, &welcome);
@@ -531,7 +531,7 @@ impl Server {
         let world = due.then(|| sim.world_fast());
         let (shells, ai_shells) = sim.take_new_shells();
         let sync = self.sync_timer >= SYNC_EVERY || (self.campaign_dirty && self.sync_timer >= 1.0);
-        let campaign = sync.then(|| encode(&ToClient::Campaign(host.state.clone())));
+        let campaign = sync.then(|| encode(&ToClient::Campaign(Box::new(host.state.clone()))));
         if sync {
             self.sync_timer = 0.0;
             self.campaign_dirty = false;
@@ -573,7 +573,7 @@ impl Server {
                 let pilot = (r.snap_repeat > 0 || r.snap_age >= SNAP_REFRESH).then(|| {
                     r.snap_repeat = r.snap_repeat.saturating_sub(1);
                     r.snap_age = 0;
-                    snap
+                    Box::new(snap)
                 });
                 let fast = ToClient::Fast {
                     step: self.frame,
@@ -621,7 +621,7 @@ impl Server {
         let near = |p: &RemotePilot| {
             p.id == me
                 || (p.view.wx - at.wx).abs().max((p.view.wy - at.wy).abs()) < FAR
-                || (round + p.id as u32) % FAR_EVERY == 0
+                || (round + p.id as u32).is_multiple_of(FAR_EVERY)
         };
         WorldFast {
             present: world.pilots.iter().map(|p| p.id).collect(),

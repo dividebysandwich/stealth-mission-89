@@ -274,6 +274,7 @@ fn place_panel(
 }
 
 /// The controller pointing at the panel: the laser, the pointer position, trigger and scroll.
+#[allow(clippy::type_complexity)]
 fn pointer(
     hands: Res<Hands>,
     panels: Query<&Transform, With<VrMenuPanel>>,

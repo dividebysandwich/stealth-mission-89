@@ -136,10 +136,8 @@ impl Sim {
         let Some(t) = res else { return -1 };
         let (mx, my) = t.map_pos();
         let (mx, my) = (mx & 0xFFFF, my & 0xFFFF);
-        for i in 1..self.objects.len() {
-            if self.objects[i].x == mx && self.objects[i].y == my {
-                return i as i32;
-            }
+        if let Some(i) = self.objects.iter().skip(1).position(|o| o.x == mx && o.y == my) {
+            return i as i32 + 1;
         }
         if let Some(o) = self.objects.get_mut(0) {
             o.x = mx;

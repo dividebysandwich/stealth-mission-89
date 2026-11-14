@@ -21,7 +21,7 @@ const MAX_FRAMES: usize = 30;
 
 #[derive(Resource)]
 pub enum NetLink {
-    Host(Server),
+    Host(Box<Server>),
     Client(Client),
 }
 

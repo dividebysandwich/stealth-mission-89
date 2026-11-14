@@ -134,13 +134,12 @@ fn opposing_columns_halt_and_fight() {
     }
     // A tank fires a round every 5 to 9 s; the autocannons fire bursts a few tenths apart.
     let mut last: Vec<Option<usize>> = vec![None; sim.units().len()];
-    let mut frame = 0;
     let mut cannon = 0;
     let ps = idle();
     let (_, mut again) = campaign();
     again.spawn_convoy(1, true, &blue, &[(X, Y), (X + 30 * KM, Y)]);
     again.spawn_convoy(2, false, &red, &[(X + 12 * KM, Y), (X - 20 * KM, Y)]);
-    for _ in 0..600 * 15 {
+    for frame in 0..600 * 15 {
         for e in again.step(&ps, 15) {
             if let SimEvent::GroundShot { from, gun, kill, hit, .. } = e {
                 assert!(!kill || hit);
@@ -155,7 +154,6 @@ fn opposing_columns_halt_and_fight() {
                 last[from] = Some(frame);
             }
         }
-        frame += 1;
     }
     // They closed in far enough for the infantry fighting vehicles' autocannons too.
     assert!(cannon > 10, "{cannon} autocannon rounds");

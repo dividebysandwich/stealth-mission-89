@@ -176,7 +176,7 @@ impl Client {
         Some(match msg {
             ToClient::Welcome { id, server, rules, state, resume } => {
                 self.id = Some(id);
-                ClientEvent::Welcome { id, server, rules, state: Box::new(state), resume }
+                ClientEvent::Welcome { id, server, rules, state, resume }
             }
             ToClient::Reject { reason, text } => {
                 self.closed = true;
@@ -188,12 +188,12 @@ impl Client {
                     return None;
                 }
                 self.last_step = Some(step);
-                ClientEvent::Fast { step, world: Box::new(world), tick, pilot: pilot.map(Box::new) }
+                ClientEvent::Fast { step, world: Box::new(world), tick, pilot }
             }
             ToClient::Slow(s) => ClientEvent::Slow(Box::new(s)),
             ToClient::Events(e) => ClientEvent::Events(e),
             ToClient::Host(e) => ClientEvent::Host(e),
-            ToClient::Campaign(s) => ClientEvent::Campaign(Box::new(s)),
+            ToClient::Campaign(s) => ClientEvent::Campaign(s),
             ToClient::Error(e) => ClientEvent::Error(e),
             ToClient::Roster(r) => ClientEvent::Roster(r),
             ToClient::Chat { from, text } => ClientEvent::Chat { from, text },

@@ -373,16 +373,16 @@ impl Sim {
         let d = &mut c.defence;
         let n = self.units.len();
         d.stock.truncate(n);
-        for k in d.stock.len()..n {
-            d.stock.push(initial_stock(self.units[k].kind));
+        for u in &self.units[d.stock.len()..] {
+            d.stock.push(initial_stock(u.kind));
         }
         d.stock2.truncate(n);
-        for k in d.stock2.len()..n {
-            d.stock2.push(initial_stock2(self.units[k].kind));
+        for u in &self.units[d.stock2.len()..] {
+            d.stock2.push(initial_stock2(u.kind));
         }
         d.stock3.truncate(n);
-        for k in d.stock3.len()..n {
-            d.stock3.push(initial_stock3(self.units[k].kind));
+        for u in &self.units[d.stock3.len()..] {
+            d.stock3.push(initial_stock3(u.kind));
         }
         d.refill.resize(n, 0.0);
     }

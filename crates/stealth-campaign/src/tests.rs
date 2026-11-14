@@ -651,7 +651,7 @@ fn a_sam_kill_draws_enemy_sead_at_the_battery() {
     let view = patriot_view(&c, true);
     c.tick(1.0, &view, &[]);
     let kill = Report::SamKill { aaa: 0, side: Side::Red };
-    c.tick(1.0, &view, &[kill.clone()]);
+    c.tick(1.0, &view, std::slice::from_ref(&kill));
     let sead: Vec<&Raid> = c.raids.iter().filter(|r| r.sam.is_some()).collect();
     assert_eq!(sead.len(), 1, "{:?}", c.raids);
     let (id, sam) = (sead[0].id, sead[0].sam.unwrap());
@@ -661,7 +661,7 @@ fn a_sam_kill_draws_enemy_sead_at_the_battery() {
         offer.is_some_and(|o| o.title.ends_with("SAM battery") && (o.x, o.y) == (sam.x, sam.y))
     );
     // One raid per battery, and not again so soon.
-    c.tick(1.0, &view, &[kill.clone()]);
+    c.tick(1.0, &view, std::slice::from_ref(&kill));
     assert_eq!(c.raids.iter().filter(|r| r.sam.is_some()).count(), 1);
     // The escort, then the SEAD aircraft.
     c.tick(tuning::RAID_LEAD - tuning::RAID_ESCORT_LEAD + 1.0, &view, &[]);

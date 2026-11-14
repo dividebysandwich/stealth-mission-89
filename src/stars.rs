@@ -49,7 +49,7 @@ pub struct Star {
 
 /// The catalogue, brightest first.
 pub fn catalogue() -> impl Iterator<Item = Star> {
-    CATALOGUE.chunks_exact(6).map(|b| Star {
+    CATALOGUE.as_chunks::<6>().0.iter().map(|b| Star {
         ra: u16::from_le_bytes([b[0], b[1]]) as f64 / 65536.0 * TAU,
         dec: i16::from_le_bytes([b[2], b[3]]) as f64 / 32767.0 * FRAC_PI_2,
         mag: b[4] as i8 as f32 / 10.0,
@@ -96,7 +96,7 @@ pub fn grid() -> &'static (Vec<u8>, usize) {
             let t = &mut texels[cell * 4..][..4];
             let dir = DVec3::new(s.dec.cos() * s.ra.cos(), s.dec.cos() * s.ra.sin(), s.dec.sin());
             match &mut kept[cell] {
-                Some((d, mag)) if d.angle_between(dir) < RESOLVED as f64 => {
+                Some((d, mag)) if d.angle_between(dir) < RESOLVED => {
                     *mag = -2.5 * (10f32.powf(-0.4 * *mag) + 10f32.powf(-0.4 * s.mag)).log10();
                     t[2] = mag_code(*mag);
                 }
@@ -200,14 +200,15 @@ mod tests {
     #[test]
     fn grid_keeps_the_bright_stars() {
         let (texels, dropped) = grid();
-        let kept = texels.chunks_exact(4).filter(|t| t[2] != 0).count();
+        let kept = texels.as_chunks::<4>().0.iter().filter(|t| t[2] != 0).count();
         eprintln!("kept {kept}, dropped {dropped}");
         assert!(kept + dropped < 9096 && *dropped < 200);
         // A cell's star is its brightest: every star brighter than magnitude 3.5 shows, the
         // close doubles as one (Alpha Centauri, -0.27 together).
         let bright = |m: f32| catalogue().filter(|s| s.mag < m).count();
-        let shown =
-            |m: f32| texels.chunks_exact(4).filter(|t| t[2] != 0 && t[2] < mag_code(m)).count();
+        let shown = |m: f32| {
+            texels.as_chunks::<4>().0.iter().filter(|t| t[2] != 0 && t[2] < mag_code(m)).count()
+        };
         eprintln!("brighter than 3.5: {} shown of {}", shown(3.5), bright(3.5));
         assert!(shown(3.5) >= bright(3.5) - 3);
         assert_eq!(shown(-0.2), 3);

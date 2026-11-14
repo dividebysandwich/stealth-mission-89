@@ -432,6 +432,7 @@ fn spawn(mut commands: Commands, font: Res<crate::i18n::UiFont>) {
 }
 
 /// Places, sizes and lights the controls' nodes for the window and the fingers.
+#[allow(clippy::type_complexity)]
 fn place(
     state: Res<TouchState>,
     mut parts: Query<(

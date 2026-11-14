@@ -374,6 +374,7 @@ fn tab_at(p: Vec2) -> Option<usize> {
 /// Tabs: the mouse on the overlay or the board, VR fingertips on the board. The key guide
 /// scrolls with the wheel over it (not while looking around: that zooms) and the VR thumbsticks.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn interact(
     mut kb: ResMut<Kneeboard>,
     pointer: Res<crate::input::FlightControls>,

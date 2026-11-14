@@ -40,7 +40,7 @@ impl OptionsWindow {
     pub fn from_args() -> Self {
         let args: Vec<String> = std::env::args().collect();
         if args.iter().any(|a| a == "--open-voices") {
-            return Self { open: true, voices: true, tab: Tab::Sound, ..default() };
+            return Self { open: true, voices: true, tab: Tab::Sound };
         }
         let Some(i) = args.iter().position(|a| a == "--open-options") else {
             return Self::default();

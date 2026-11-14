@@ -420,8 +420,8 @@ impl GroundRadar {
         let (rx0, ry0) = (rect.0.min(w), rect.1.min(h));
         let (rx1, ry1) = (rect.2.clamp(rx0, w), rect.3.clamp(ry0, h));
         for y in ry0..ry1 {
-            for px in pic.rgba[(y * w + rx0) * 4..(y * w + rx1) * 4].chunks_exact_mut(4) {
-                px.copy_from_slice(&[0, 0, 0, 255]);
+            for px in pic.rgba[(y * w + rx0) * 4..(y * w + rx1) * 4].as_chunks_mut::<4>().0 {
+                *px = [0, 0, 0, 255];
             }
         }
         if !self.on {

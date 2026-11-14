@@ -603,13 +603,13 @@ pub fn draw_engines(c: &mut Canvas, fonts: &Fonts, r: &EngineReadings) {
     let mut y = 114;
     for (name, v, max, amber, red) in rows {
         fonts.text(c, 4, y, name.as_bytes(), GREY);
-        for e in 0..2 {
+        for (e, &ve) in v.iter().enumerate() {
             let x = 40 + e as i32 * 44;
-            let low = name == "OIL P" && v[e] < 25.0;
-            let col = if low { RED } else { colour(v[e], 0.0, amber, red, false) };
-            let text = format!("{:>4.0}", v[e]);
+            let low = name == "OIL P" && ve < 25.0;
+            let col = if low { RED } else { colour(ve, 0.0, amber, red, false) };
+            let text = format!("{:>4.0}", ve);
             fonts.text(c, x, y, text.as_bytes(), col);
-            bar_h(c, x + 18, y + 1, 20, 5, v[e] / max, col);
+            bar_h(c, x + 18, y + 1, 20, 5, ve / max, col);
         }
         y += 11;
     }

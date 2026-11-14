@@ -61,6 +61,7 @@ struct Label {
 /// Spawns, names, places and removes the labels of the other pilots in the air or on the
 /// ground (not under a parachute).
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn labels(
     mut commands: Commands,
     combat: Res<Combat>,

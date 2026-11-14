@@ -76,6 +76,7 @@ impl CampaignState {
             .into_iter()
             .map(|p| (self.places[p as usize].x, self.places[p as usize].y))
             .collect();
+        #[allow(clippy::type_complexity)]
         let mut from: Vec<((i32, i32), (i32, i32), i32)> = bases
             .iter()
             .filter_map(|&b| {

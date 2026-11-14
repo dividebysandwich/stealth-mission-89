@@ -89,6 +89,7 @@ pub fn lapped_scaling(t: f32) -> f32 {
     hann_window(t - k0) + hann_window(t - (k0 + 1.0))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn ridge_packet_value(
     uv: Vec3,
     n: Vec3,

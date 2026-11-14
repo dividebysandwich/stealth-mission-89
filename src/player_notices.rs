@@ -268,6 +268,7 @@ struct Back;
 /// The panel next to the HUD glass's lower right corner, upright and facing back (level on
 /// the screen), its bottom level with the glass's.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn cockpit_panel(
     mut commands: Commands,
     notices: Res<PlayerNotices>,
@@ -398,6 +399,7 @@ const NO_GLASS_CORNER: Vec3 = Vec3::new(0.06, -0.21, -0.70);
 
 /// Draws the panel's lines and places it right of the glass's lower right corner `c`.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn place_panel(
     c: Vec3,
     notices: &PlayerNotices,
@@ -420,7 +422,7 @@ fn place_panel(
 ) {
     // The field's text with a blinking cursor.
     let field = notices.typing.as_ref().map(|t| {
-        let blink = (time.elapsed_secs() * 2.0) as u32 % 2 == 0;
+        let blink = ((time.elapsed_secs() * 2.0) as u32).is_multiple_of(2);
         format!("{t}{}", if blink { "_" } else { " " })
     });
     let mut lines = lines(shown);

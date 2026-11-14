@@ -370,11 +370,10 @@ fn instruments(c: &mut Canvas, atlas: &Canvas, fonts: &Fonts, f: &HudFrame, col:
 fn speed_tape(c: &mut Canvas, fonts: &Fonts, knots: i32, col: u8) {
     let (q, r) = (knots / 50, knots % 50);
     let mut y = r * 2 / 5 + 90;
-    let mut di = q - 1;
     let mut tick0 = None;
     let mut floor = None;
     c.set_clip(0, 22, 319, 82);
-    for _ in 0..5 {
+    for di in q - 1..q + 4 {
         y -= 20;
         if di < 0 {
             // Values below zero: no label, and the tick strip stops at the zero mark.
@@ -383,7 +382,6 @@ fn speed_tape(c: &mut Canvas, fonts: &Fonts, knots: i32, col: u8) {
             fonts.text(c, 49, y, format!(" {:03}", di * 50).as_bytes(), col);
         }
         tick0.get_or_insert(y + 2);
-        di += 1;
     }
     c.set_clip(0, 0, 319, HUD_BOTTOM);
     tape_ticks(c, 71, tick0.unwrap_or(CY), floor, col, false);
@@ -394,8 +392,7 @@ fn alt_tape(c: &mut Canvas, fonts: &Fonts, alt: i32, col: u8) {
     c.set_clip(0, 22, 319, 82);
     let mut labels: Vec<(i32, Vec<u8>)> = Vec::new();
     let mut floor = None;
-    let tick0;
-    if q == 0 {
+    let tick0 = if q == 0 {
         let (h, rem) = (r / 100, r % 100);
         let mut y = rem * 2 / 10 + 90;
         let mut di = h - 1;
@@ -422,7 +419,7 @@ fn alt_tape(c: &mut Canvas, fonts: &Fonts, alt: i32, col: u8) {
             }
             count -= 1;
         }
-        tick0 = labels.first().map_or(CY, |l| l.0 + 2);
+        labels.first().map_or(CY, |l| l.0 + 2)
     } else {
         let mut y = r * 2 / 100 + 90;
         // The slot for the lowest label shows "900" when it is the 0 ft mark (classic quirk).
@@ -432,8 +429,8 @@ fn alt_tape(c: &mut Canvas, fonts: &Fonts, alt: i32, col: u8) {
             let s = if v == 0 { b"900".to_vec() } else { format!("{v:>2}K").into_bytes() };
             labels.push((y, s));
         }
-        tick0 = labels[0].0 + 2;
-    }
+        labels[0].0 + 2
+    };
     for (y, s) in &labels {
         fonts.text(c, 255, *y, s, col);
     }
@@ -498,7 +495,6 @@ fn pitch_ladder(c: &mut Canvas, fonts: &Fonts, pitch: i16, roll: i16, col: u8) {
         tens = -tens - 1;
     }
     let mut y = frac + 104;
-    let mut dl = tens - 2;
     // Rotation by roll in Q15 fixed point (sin of -roll):
     // x' = cos*x - s*y (truncated), y' = 0.75*(cos*y + s*x) as (3*a*b >> 16) >> 1.
     let (cf, sf) = (bcos(-(roll as i32)), bsin(-(roll as i32)));
@@ -514,8 +510,9 @@ fn pitch_ladder(c: &mut Canvas, fonts: &Fonts, pitch: i16, roll: i16, col: u8) {
     };
     let ridx = ((roll as u16) >> 10) as usize;
     let lidx = (((roll as u16).wrapping_add(0x8000)) >> 10) as usize;
-    for _ in 0..5 {
+    for dl in tens - 2..tens + 3 {
         // Polylines in ladder units: (points, label anchor indices).
+        #[allow(clippy::type_complexity)]
         let (segs, anchors): (Vec<Vec<(i32, i32)>>, (usize, usize, usize, usize)) = match dl {
             9 => (vec![vec![(-50, y), (50, y)]], (0, 0, 0, 1)),
             0 | -9 => (vec![vec![(-50, y), (-12, y)], vec![(13, y), (50, y)]], (0, 0, 1, 1)),
@@ -551,7 +548,6 @@ fn pitch_ladder(c: &mut Canvas, fonts: &Fonts, pitch: i16, roll: i16, col: u8) {
             fonts.text(c, x, y, NAMES[li], col);
         }
         y -= 52;
-        dl += 1;
     }
     c.set_clip(0, 0, 319, HUD_BOTTOM);
 }

@@ -137,6 +137,7 @@ impl StoreLoads {
 /// What a model has hung: per station, the weapon type, its rounds' and its rack's entities.
 #[derive(Component, Default)]
 pub struct Hung {
+    #[allow(clippy::type_complexity)]
     stations: Vec<Option<(i32, Vec<Entity>, Option<Entity>)>>,
     /// Frames spent looking for a station's node not spawned yet.
     waited: u32,
@@ -177,6 +178,7 @@ fn own_loads(
 
 /// The stores hung on the models as loaded, each round shown while it is still on its station.
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn hang_stores(
     mut commands: Commands,
     mut library: ResMut<ModelLibrary>,
@@ -265,6 +267,7 @@ fn hang_stores(
 
 /// Where each station's next store hangs on the own aircraft (from the model as last drawn),
 /// for the simulation to launch it from there.
+#[allow(clippy::type_complexity)]
 fn aim_hardpoints(
     mut combat: ResMut<Combat>,
     settings: Res<crate::settings::Settings>,

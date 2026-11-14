@@ -696,6 +696,7 @@ const SCENERY_REACH: f64 = 4.0;
 /// against the models' plane hulls of visible tile objects, and the aircraft against the
 /// generated scenery.
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn detect_collision(
     mut collision: ResMut<PlayerCollision>,
     settings: Res<crate::settings::Settings>,
@@ -809,7 +810,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.kills.clear();
     combat.steps = 0;
     let Ok((mut a, pos)) = player.single_mut() else { return };
-    let mut a = &mut *a;
+    let a = &mut *a;
     let campaign = combat.sim.campaign().is_some();
     if combat.quit && combat.sim.mission_end().is_none() && !campaign {
         // Down and waiting for the rescue, an abort is a capture.
@@ -834,7 +835,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             combat.accum -= dt;
             let cmd = std::mem::take(&mut combat.pending);
             let mut ps = player_state(
-                &a,
+                a,
                 pos,
                 controls.gun,
                 controls.fire,
@@ -853,7 +854,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                 client.send_hit(hit);
             }
         }
-        let ps = player_state(&a, pos, false, false, collision.0, &hud, &mfd, &view, default());
+        let ps = player_state(a, pos, false, false, collision.0, &hud, &mfd, &view, default());
         combat.sim.set_local_player(&ps);
         // The server's frames play out a little behind, at a steady pace; what came between
         // them (changes, events) goes in order with them.
@@ -875,7 +876,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                 }
                 SimMsg::Events(events) => {
                     for e in events {
-                        take_event(combat, e, &mut a, &mut fx);
+                        take_event(combat, e, a, &mut fx);
                     }
                 }
                 SimMsg::Fast(step, w, tick, mine) => {
@@ -928,7 +929,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         combat.steps += 1;
         let cmd = std::mem::take(&mut combat.pending);
         let mut ps =
-            player_state(&a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
+            player_state(a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
         // The AH-64's gunner fires whatever the pilot's master mode (`gunner`).
         ps.mode_weapons &= !settings.gunner_cockpit;
         ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
@@ -958,7 +959,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             if e.event.is_private() && e.pilot != 0 {
                 continue;
             }
-            take_event(combat, e.event, &mut a, &mut fx);
+            take_event(combat, e.event, a, &mut fx);
         }
         combat.record.telemetry = telemetry(a);
         combat.record.sample(&combat.sim);

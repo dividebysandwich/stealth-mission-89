@@ -168,7 +168,7 @@ fn a_player_joins_flies_and_returns() {
         step: 0,
         world: w.sim.world_fast(),
         tick: w.sim.pilot_tick(me.0),
-        pilot: Some(w.sim.pilot_snap(me.0)),
+        pilot: Some(Box::new(w.sim.pilot_snap(me.0))),
     });
     sizes.0 = fast.len();
     let slow = w.sim.world_slow(&mut Default::default());

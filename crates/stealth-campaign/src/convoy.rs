@@ -321,6 +321,7 @@ impl CampaignState {
 
     /// The convoys to put in a new simulation (after a load): those on their way, from where
     /// they were, and the vehicles of those that stopped short of a place to stand there.
+    #[allow(clippy::type_complexity)]
     pub fn convoys_to_place(&self) -> Vec<(u32, Side, Vec<ConvoyUnit>, Vec<(i32, i32)>, bool)> {
         self.convoys
             .iter()

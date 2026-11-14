@@ -224,7 +224,7 @@ fn find_sites(
         return;
     }
     let seed = mission.as_ref().map_or(1, |m| m.0.weather.seed);
-    barrage.rng = (seed as u32).wrapping_mul(0x9E37_79B9) | 1;
+    barrage.rng = seed.wrapping_mul(0x9E37_79B9) | 1;
     let mut towns = scenery.towns();
     if towns.is_empty() {
         for o in &theater.world.objects {

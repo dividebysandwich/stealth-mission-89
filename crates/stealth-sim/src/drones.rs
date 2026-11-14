@@ -78,7 +78,7 @@ impl Sim {
         } else {
             0
         };
-        let mv = cdiv(((0x8000 - u.pitch) & 0xFFFF) * u.speed >> 15, fs);
+        let mv = cdiv((((0x8000 - u.pitch) & 0xFFFF) * u.speed) >> 15, fs);
         let h = self.trig.cos_mul(u.pitch, mv);
         u.wx = u.wx.wrapping_add(self.trig.sin_mul(u.heading, h));
         u.wy = u.wy.wrapping_sub(self.trig.cos_mul(u.heading, h));

@@ -325,7 +325,9 @@ pub fn spawn_background(
 ) -> Entity {
     // Seen from inside: invert the winding so back-face culling keeps the inner side.
     let mesh = meshes.add(
-        Mesh::from(Sphere::new(BACKGROUND_RADIUS).mesh().uv(64, 64))
+        Sphere::new(BACKGROUND_RADIUS)
+            .mesh()
+            .uv(64, 64)
             .with_inverted_winding()
             .expect("sphere mesh has indices"),
     );

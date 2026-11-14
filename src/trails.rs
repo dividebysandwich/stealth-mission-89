@@ -25,7 +25,7 @@ use bevy::render::render_resource::{
 };
 use bevy::render::storage::ShaderBuffer;
 use bevy::shader::ShaderRef;
-use stealth_sim::{N_PROJ, fflags};
+use stealth_sim::fflags;
 
 use crate::combat::{Combat, CombatSystems, unit_position};
 use crate::flight::{Aircraft, Player};
@@ -379,8 +379,7 @@ fn update_trails(
         }
     }
     let projs = sim.projectiles();
-    for s in 0..N_PROJ {
-        let m = projs[s];
+    for (s, &m) in projs.iter().enumerate() {
         // Smoke while the motor burns, from where the missile is drawn.
         if m.ttl == 0 || !is_missile(m.spec) || !m.motor_visible() {
             continue;

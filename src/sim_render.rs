@@ -206,6 +206,7 @@ pub(crate) struct SimVisuals {
     aircraft: HashMap<usize, (Entity, (i32, bool), SpotDot, Entity)>,
     /// Projectile model, spec and missile dot with its current look: the motor's glow
     /// (`TRACER`), black by day (`COASTING`) or white at night (`COASTING_NIGHT`).
+    #[allow(clippy::type_complexity)]
     pub(crate) proj: [Option<(Entity, i32, Option<(Entity, u8)>)>; N_PROJ],
     /// Flares, chaff and decoys: the player's by slot (unit `usize::MAX`), the AI aircraft's by
     /// flight unit and slot.
@@ -255,6 +256,7 @@ fn solid_material(
         .clone()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cleanup(
     mut commands: Commands,
     q: Query<Entity, With<SimObject>>,
@@ -468,6 +470,7 @@ pub fn attitude(heading: i32, pitch: i32, roll: i32) -> Quat {
 /// (slot, period s, flashes as (start s, length s)). White strobes flash once a second
 /// (fighters) or twice in quick succession (transports, like airliner strobes); red beacons at
 /// about 50 a minute, as their rotating mirrors look from outside.
+#[allow(clippy::type_complexity)]
 const ANTICOLLISION: [(usize, f32, &[(f32, f32)]); 3] = [
     (18, 1.0, &[(0.0, 0.07)]),
     (19, 1.2, &[(0.0, 0.06), (0.14, 0.06)]),
@@ -1020,12 +1023,12 @@ pub(crate) fn sync_objects(
         }
         let friendly = sim.friendly_unit(i, u.spec);
         let key = (model, friendly);
-        if vis.aircraft.get(&i).is_some_and(|&(_, k, ..)| k != key) {
-            if let Some((e, ..)) = vis.aircraft.remove(&i) {
-                commands.entity(e).try_despawn();
-            }
+        if vis.aircraft.get(&i).is_some_and(|&(_, k, ..)| k != key)
+            && let Some((e, ..)) = vis.aircraft.remove(&i)
+        {
+            commands.entity(e).try_despawn();
         }
-        if !vis.aircraft.contains_key(&i) {
+        if let std::collections::hash_map::Entry::Vacant(slot) = vis.aircraft.entry(i) {
             let file = library.load(&server, model_file(model));
             let Some(e) = spawn_model(&mut commands, &assets, &file, model, friendly) else {
                 continue;
@@ -1046,7 +1049,7 @@ pub(crate) fn sync_objects(
             let at = crate::aircraft::landing_light(model);
             let landing =
                 crate::landing_lights::spawn(&mut commands, &landing, e, at, scale, helicopter);
-            vis.aircraft.insert(i, (e, key, dot, landing));
+            slot.insert((e, key, dot, landing));
         }
         seen.insert(i);
         let nav = sim.aircraft_lights(i);
@@ -1122,10 +1125,10 @@ pub(crate) fn sync_objects(
     for s in 0..N_PROJ {
         let m = projs[s];
         let model = if m.ttl != 0 { projectile_model(&combat, &m) } else { -1 };
-        if vis.proj[s].is_some_and(|(_, sp, _)| m.ttl == 0 || sp != m.spec) {
-            if let Some((e, ..)) = vis.proj[s].take() {
-                commands.entity(e).try_despawn();
-            }
+        if vis.proj[s].is_some_and(|(_, sp, _)| m.ttl == 0 || sp != m.spec)
+            && let Some((e, ..)) = vis.proj[s].take()
+        {
+            commands.entity(e).try_despawn();
         }
         if m.ttl == 0 {
             continue;
@@ -1189,6 +1192,7 @@ pub(crate) fn sync_objects(
     // (the simulation keeps them at the player's altitude, or the AI aircraft's), the decoy
     // hangs in the air.
     let view_z = sim.player().view_z as f32;
+    #[allow(clippy::type_complexity)]
     let live: Vec<((usize, usize), (i32, i32, i32), f32)> = sim
         .countermeasures()
         .iter()
@@ -1413,6 +1417,7 @@ fn projectile_model(combat: &Combat, m: &stealth_sim::Projectile) -> i32 {
 /// anti-collision lights (18-20, the AI aircraft's rule), a swing wing's sweep (21/22), the C-5's
 /// flaps (29).
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn world_model_state(
     time: Res<Time>,
     palette: Option<Res<crate::palette::Palette>>,
@@ -1467,13 +1472,10 @@ fn world_model_state(
         c.sim.crew_view(me).filter(|v| v.owner != me)
     });
     let door = combat.as_ref().map_or(0, |c| match ridden {
-        Some(v) => c
-            .sim
-            .remote_pilots()
-            .iter()
-            .find(|p| p.id == v.owner)
-            .map_or(0, |p| p.door_anim.min(2) as i32),
-        None => c.sim.bay_door_anim() as i32,
+        Some(v) => {
+            c.sim.remote_pilots().iter().find(|p| p.id == v.owner).map_or(0, |p| p.door_anim.min(2))
+        }
+        None => c.sim.bay_door_anim(),
     }) as i16;
     // The RAH-66's doors show what is left on them (slots 23 left, 24 right): 0 Hellfires,
     // 1 Stingers, 2 none.
@@ -1616,6 +1618,7 @@ pub struct OwnShadow;
 const SHADOW_COLOUR: u8 = 239;
 
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn own_shadow(
     mut commands: Commands,
     mut library: ResMut<ModelLibrary>,
@@ -1722,6 +1725,7 @@ fn muzzle_flash_on(time: &Time, id: u8) -> bool {
 
 /// The own cannon's muzzle flash in the external views, as the other pilots see it.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn own_muzzle_flash(
     mut commands: Commands,
     combat: Res<Combat>,
@@ -1839,10 +1843,10 @@ pub(crate) fn sync_remote_pilots(
             continue;
         }
         let spec = crate::aircraft::AircraftKind::of_remote(p).spec();
-        if vis.planes.get(&p.id).is_some_and(|v| v.1 != spec.model) {
-            if let Some((e, ..)) = vis.planes.remove(&p.id) {
-                commands.entity(e).try_despawn();
-            }
+        if vis.planes.get(&p.id).is_some_and(|v| v.1 != spec.model)
+            && let Some((e, ..)) = vis.planes.remove(&p.id)
+        {
+            commands.entity(e).try_despawn();
         }
         if !vis.planes.contains_key(&p.id) {
             let Some(e) = assets.spawn(&mut commands, &file, spec.model, LEVEL_AIRCRAFT, true)

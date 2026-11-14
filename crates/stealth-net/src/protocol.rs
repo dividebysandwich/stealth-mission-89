@@ -174,7 +174,7 @@ pub enum ToClient {
         id: PlayerId,
         server: String,
         rules: Rules,
-        state: CampaignState,
+        state: Box<CampaignState>,
         /// He comes back within the grace period: his sortie goes on.
         resume: Option<Resume>,
     },
@@ -191,7 +191,7 @@ pub enum ToClient {
         step: u32,
         world: WorldFast,
         tick: PilotTick,
-        pilot: Option<PilotSnap>,
+        pilot: Option<Box<PilotSnap>>,
     },
     /// What changed now and then.
     Slow(WorldSlow),
@@ -200,7 +200,7 @@ pub enum ToClient {
     /// The campaign's news, and the player's sorties.
     Host(HostEvent),
     /// The whole campaign (now and then: the board, the places, the log).
-    Campaign(CampaignState),
+    Campaign(Box<CampaignState>),
     /// A command failed.
     /// A command failed: why, translated where it is shown.
     Error(stealth_i18n::Text),

@@ -147,7 +147,7 @@ fn flame_mesh(rect: bool) -> Mesh {
     };
     // Consecutive points of `ring` joined into walls (a square's sides are not joined round
     // their corners).
-    let joined = |j: usize| !rect || (j + 1) % (SIDES / 4 + 1) != 0;
+    let joined = |j: usize| !rect || !(j + 1).is_multiple_of(SIDES / 4 + 1);
     let core = |t: f32| CORE.1 * (1.0 - t).powf(0.8);
     let sheath = |t: f32| SHEATH.1 * (1.0 + 0.25 * t) * (1.0 - t * t * t).max(0.0).sqrt();
     for (layer, length, radius) in

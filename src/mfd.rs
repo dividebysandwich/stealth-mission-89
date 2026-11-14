@@ -982,6 +982,7 @@ fn move_waypoint(wps: &mut Waypoints, state: &MfdState, heading: f64, d: Vec2, p
 /// F8, the WAY page in edit mode: the keypad moves the selected waypoint over the map (the
 /// course line follows it); the mode ends when the page is left. With the modern avionics F8
 /// makes the page the SOI, and the keys move the waypoint only while it is.
+#[allow(clippy::too_many_arguments)]
 fn edit_waypoints(
     mut actions: MessageReader<ActionEvent>,
     mut commands: MessageReader<MfdCommand>,
@@ -1248,12 +1249,12 @@ impl GeometrySource<'_> {
                 };
                 match data.primitive_topology() {
                     PrimitiveTopology::TriangleList => {
-                        for t in idx.chunks_exact(3) {
+                        for t in idx.as_chunks::<3>().0 {
                             out.push((vec![pos[t[0]], pos[t[1]], pos[t[2]]], colour));
                         }
                     }
                     PrimitiveTopology::LineList => {
-                        for l in idx.chunks_exact(2) {
+                        for l in idx.as_chunks::<2>().0 {
                             lines.push((pos[l[0]], pos[l[1]], colour));
                         }
                     }

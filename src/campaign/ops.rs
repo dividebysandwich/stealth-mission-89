@@ -444,10 +444,10 @@ pub fn ops_ui(
         Panel::new(&title).window(window, ctx, |ui| {
             ui.label(egui::RichText::new(t!("ops-ground-crew")).color(DIM));
             ui.horizontal(|ui| {
-                if ui.add(big_button(t!("ops-rearm")).icon(icon::REARM)).clicked() {
-                    if let Some(loadout) = loadout.as_deref().cloned() {
-                        c.actions.push(Action::Rearm { loadout });
-                    }
+                if ui.add(big_button(t!("ops-rearm")).icon(icon::REARM)).clicked()
+                    && let Some(loadout) = loadout.as_deref().cloned()
+                {
+                    c.actions.push(Action::Rearm { loadout });
                 }
                 if ui
                     .add(big_button(t!("ops-end-sortie")).icon(icon::END_SORTIE).primary())

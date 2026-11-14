@@ -100,6 +100,7 @@ fn noise(t: f32, seed: f32, hz: [f32; 3]) -> f32 {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn shake(
     mut shake: ResMut<Shake>,
     time: Res<Time>,

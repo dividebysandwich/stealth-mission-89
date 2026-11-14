@@ -92,6 +92,7 @@ impl Frame {
 }
 
 /// Direction of the first active view camera relative to the aircraft's nose.
+#[allow(clippy::type_complexity)]
 fn look(
     a: &Aircraft,
     cameras: &Query<(&Camera, &GlobalTransform), (With<Camera3d>, Without<OffscreenCamera>)>,
@@ -102,6 +103,7 @@ fn look(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn status(
     mut stats: ResMut<Stats>,
     time: Res<Time<Real>>,

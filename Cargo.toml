@@ -5,7 +5,7 @@ exclude = ["vendor"]
 
 [workspace.package]
 edition = "2024"
-version = "0.8.7"
+version = "0.8.8"
 license = "GPL-3.0-only"
 
 [workspace.dependencies]

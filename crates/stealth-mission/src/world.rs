@@ -249,6 +249,7 @@ impl TheaterData {
     /// theater (row 0 at the north edge, map y south), drawn triangle by triangle: much faster
     /// than asking cell by cell.
     pub fn water_grid(&self, dim: usize) -> Vec<bool> {
+        #[allow(clippy::type_complexity)]
         let mut top: Vec<Option<((usize, usize, usize), bool)>> = vec![None; dim * dim];
         if self.ground.is_empty() {
             return vec![false; dim * dim];

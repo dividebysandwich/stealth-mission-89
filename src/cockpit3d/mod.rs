@@ -411,6 +411,7 @@ fn sync_materials(
 
 /// Every cockpit material's shader variant follows its `unlit` and the lighting options, and
 /// its darkness the night's (also materials created later).
+#[allow(clippy::too_many_arguments)]
 fn sync_shading(
     settings: Res<Settings>,
     sky: Res<crate::sky::Sky>,

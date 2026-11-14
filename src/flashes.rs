@@ -98,6 +98,7 @@ fn light_at(look: &Look, i: f32, d: f64) -> f32 {
 /// The player's projectile slots (the enemy's are below).
 const PLAYER_SLOTS: std::ops::Range<usize> = 8..stealth_sim::N_PROJ;
 
+#[allow(clippy::too_many_arguments)]
 fn update(
     mut bursts: ResMut<Bursts>,
     mut flying: Local<[bool; stealth_sim::N_PROJ]>,

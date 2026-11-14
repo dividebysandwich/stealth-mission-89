@@ -135,7 +135,7 @@ fn helicopter_missions_are_short() {
     let km = |a: MapPoint, b: MapPoint| {
         (((a.x - b.x) as f64).powi(2) + ((a.y - b.y) as f64).powi(2)).sqrt() * 15.625 / 1000.0
     };
-    for theater in 0..data.theaters.len() {
+    for (theater, name) in THEATER_NAMES.iter().enumerate().take(data.theaters.len()) {
         let mut longest: f64 = 0.0;
         let (mut n, mut forward, mut total) = (0, 0, 0.0);
         for seed in 0..40u16 {
@@ -168,7 +168,7 @@ fn helicopter_missions_are_short() {
         }
         eprintln!(
             "{}: mean {:.0} km, longest {longest:.0} km, forward {forward}/{n}",
-            THEATER_NAMES[theater],
+            name,
             total / n as f64
         );
         all += total / n as f64;

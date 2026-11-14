@@ -299,6 +299,7 @@ pub struct Sim {
     /// A host's: where the flight units were in the last steps, and the clients' reports of
     /// gun hits for the next step (`claims`).
     #[serde(skip)]
+    #[allow(clippy::type_complexity)]
     pub(crate) flight_history: std::collections::VecDeque<(u32, Vec<(i32, i32, i32)>)>,
     #[serde(skip)]
     pub(crate) pending_claims: Vec<(u8, claims::GunHit)>,

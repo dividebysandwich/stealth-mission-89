@@ -41,14 +41,8 @@ impl Plugin for ModelsPlugin {
 /// 17 = rotor angle, 18/19/20 = aircraft anti-collision lights lit (`sim_render::anticollision`),
 /// 21/22 = a swing wing's right and left outer wing swept back (`aircraft::WING_SLOTS`).
 /// Angles use a 16-bit binary angle (0x10000 = 360 degrees).
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Default)]
 pub struct ModelState(pub [i16; 32]);
-
-impl Default for ModelState {
-    fn default() -> Self {
-        Self([0; 32])
-    }
-}
 
 /// Global state slot values added to every model's own slots: the continuously turning angles
 /// of slots 15/16 (radar antennas) and 17 (rotors), driven in flight.
@@ -324,6 +318,7 @@ fn parse_conds(name: &str) -> Vec<(usize, i16)> {
 /// targets get the detail of their on-screen size instead of disappearing past the last level.
 /// The recon cameras and the campaign's unit view share the tracking camera's levels: the
 /// nearest of them counts.
+#[allow(clippy::type_complexity)]
 fn update_camera_distance(
     cameras: Query<(&Camera, &GlobalTransform), Without<crate::camera::OffscreenCamera>>,
     track: Query<(&Camera, &GlobalTransform), With<crate::trackcam::TrackCamera>>,
@@ -380,6 +375,7 @@ pub struct LodRange(pub f32);
 #[derive(Component, Clone, Copy)]
 pub struct LodBias(pub f32);
 
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn apply_model_state(
     roots: Query<(&ModelState, &CameraDistance, Option<&LodRange>, Option<&LodBias>)>,
     mut lods: Query<

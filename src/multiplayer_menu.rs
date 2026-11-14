@@ -747,7 +747,7 @@ fn multiplayer_window(
                     }
                     let c = ActiveCampaign::with_host(name, h, Role::Host);
                     c.save();
-                    commands.insert_resource(NetLink::Host(server));
+                    commands.insert_resource(NetLink::Host(Box::new(server)));
                     crate::campaign::start(&mut commands, c, &mut setup, &tables.start_dir);
                     w.open = false;
                     next.set(AppState::Flight);
