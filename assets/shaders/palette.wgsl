@@ -19,6 +19,7 @@ const TAG_SMOKE: u32 = 8192u;
 const TAG_SMOKE_FIRE: u32 = 16384u;
 // Warm object (palette_material.rs `TAG_WARM`).
 const TAG_WARM: u32 = 2048u;
+const TAG_HOT: u32 = 131072u;
 const TAG_DOT_NEAR: u32 = 4096u;
 // Aircraft spotting dot (palette_material.rs `TAG_DOT_SPOT`).
 const TAG_DOT_SPOT: u32 = 32768u;
@@ -175,7 +176,8 @@ struct VertexOutput {
     @location(5) @interpolate(flat) puff_sun: vec3<f32>,
     @location(6) @interpolate(flat) puff_scale: vec3<f32>,
     // Bit 0: warm object or dot light (FLIR); bit 1: aircraft (level code 5); bit 2: spotting
-    // dot; bit 3: the hills' ground; bit 4: lit as flat ground.
+    // dot; bit 3: the hills' ground; bit 4: lit as flat ground; bit 5: hot (a unit, a fire or a
+    // dot light: white in the FLIR picture).
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
@@ -233,7 +235,9 @@ fn vertex(v: Vertex) -> VertexOutput {
     let tag = mesh_functions::get_tag(v.instance_index);
     out.warm = select(0u, 1u, (tag & (TAG_WARM | 128u)) != 0u) | select(0u, 2u, (tag & 7u) == 5u)
         | select(0u, 4u, (tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u))
-        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS);
+        | select(0u, 8u, (tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS)
+        | select(0u, 32u, (tag & 128u) != 0u
+            || (tag & (TAG_WARM | TAG_HOT | TAG_SMOKE | TAG_DOT_SPOT)) == (TAG_WARM | TAG_HOT));
 #ifdef DOT_COLOUR
     out.dot_colour = v.colour;
 #endif
@@ -1324,8 +1328,9 @@ fn nvg(rgb: vec3<f32>, clip: vec4<f32>) -> vec3<f32> {
 }
 
 // FLIR (tracking camera only, picked by its picture size): a black and white thermal picture
-// with warm objects (mesh tag `TAG_WARM`, dot lights) bright and the scenery dark; haze
-// fades warm objects into the background.
+// with the hot units, fires and dot lights (mesh tag `TAG_HOT`) white, the warm buildings
+// (`TAG_WARM`) a little lighter than the dark scenery, so the units stand out among them;
+// haze fades them into the background (the hot ones less).
 // The targeting pod's or a recon camera's picture: no shadow maps there (lighting.rs
 // `no_offscreen_shadows`).
 fn offscreen_view() -> bool {
@@ -1336,12 +1341,18 @@ fn flir_view() -> bool {
     return globals.params.z != 0.0 && all(abs(view.viewport.zw - globals.dots.zw) < vec2<f32>(0.5));
 }
 
+// The warm buildings' level (before the shade's share), and the most haze takes of the hot.
+const FLIR_WARM: f32 = 0.5;
+const FLIR_HOT_HAZE: f32 = 0.4;
+
 fn flir(rgb: vec3<f32>, warm: u32, fog_f: f32) -> vec3<f32> {
     let s = sqrt(dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722)));
     let cold = 0.3 + 0.25 * s;
     var v = cold;
-    if ((warm & 1u) != 0u) {
-        v = mix(0.85 + 0.15 * s, cold, clamp(fog_f / 24.0, 0.0, 0.6));
+    if ((warm & 32u) != 0u) {
+        v = mix(0.95 + 0.05 * s, cold, clamp(fog_f / 24.0, 0.0, FLIR_HOT_HAZE));
+    } else if ((warm & 1u) != 0u) {
+        v = mix(FLIR_WARM + 0.12 * s, cold, clamp(fog_f / 24.0, 0.0, 0.6));
     }
     return vec3<f32>(pow(v, 2.2));
 }

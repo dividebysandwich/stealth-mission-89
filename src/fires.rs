@@ -20,7 +20,7 @@ use crate::lighting::LightEmitter;
 use crate::mission::ActiveMission;
 use crate::palette::Palette;
 use crate::palette_material::{
-    FLAG_CLOUD, FLAG_CLOUD_SOFT, FLAG_LINE, PaletteMaterial, PaletteParams, TAG_SMOKE,
+    FLAG_CLOUD, FLAG_CLOUD_SOFT, FLAG_LINE, PaletteMaterial, PaletteParams, TAG_HOT, TAG_SMOKE,
     TAG_SMOKE_FIRE, TAG_WARM, mesh_tag,
 };
 use crate::settings::{AppState, SetupSet};
@@ -510,7 +510,7 @@ fn stream(
                         .spawn((
                             Mesh3d(fires.flame.clone()),
                             MeshMaterial3d(flame_material(colour)),
-                            MeshTag(mesh_tag(1, 0, true) | TAG_WARM),
+                            MeshTag(mesh_tag(1, 0, true) | TAG_WARM | TAG_HOT),
                             Transform::from_scale(Vec3::ZERO),
                             bevy::light::NotShadowCaster,
                         ))

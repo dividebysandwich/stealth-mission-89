@@ -300,8 +300,9 @@ def manpads():
 
 
 def position():
-    """A sandbag wall 10 m round, a man high, its foot buried (it stands on sloping ground too),
-    open to the rear for a way in. The client scales it across to fit the units inside."""
+    """A sandbag wall 10 m round, chest high, its foot buried (for sloping ground),
+    open to the rear for a way in. The client scales it across to fit the units inside; `_cold`:
+    not warm in the FLIR picture like the units."""
     root, lod0, _ = levels(POSITION, 32769, far_level=False)
     lod0["radius"] = int(11 * K)
     g = sandbag_ring(10.0, 1.9, 40, gap=0.35, z0=-0.8)
@@ -313,7 +314,7 @@ def position():
             continue
         top.add(block(-0.75, 0.75, -0.35, 0.35, 1.05, 1.3, Ramp(0xA1, 0xA2)).rotated_z(-a)
                 .transformed(lambda p, a=a: p + mklib.v3((9.7 * math.sin(a), 9.7 * math.cos(a), 0))))
-    mesh_obj("aaa_123_lod0_wall", g.add(top), lod0)
+    mesh_obj("aaa_123_lod0_cold", g.add(top), lod0)
 
 
 # ------------------------------------------------------------------------------ Patriot launcher

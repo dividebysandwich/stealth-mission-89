@@ -11,7 +11,7 @@ use bevy::gltf::{Gltf, GltfMaterial, GltfMesh, GltfNode};
 use bevy::prelude::*;
 
 use crate::palette::{Palette, index_from_name};
-use crate::palette_material::{LEVEL_AIRCRAFT, PaletteMaterial, TAG_WARM, mesh_tag};
+use crate::palette_material::{LEVEL_AIRCRAFT, PaletteMaterial, TAG_HOT, TAG_WARM, mesh_tag};
 use bevy::mesh::MeshTag;
 
 /// Largest tile object counted as warm in the FLIR picture (metres across / high): buildings
@@ -664,7 +664,14 @@ impl ModelAssets<'_> {
                         self.palette.material(color)
                     };
                     let (flat, warm) = self.shape_class(&prim.mesh, tag.0 & 7);
-                    let child_tag = if warm { MeshTag(tag.0 | TAG_WARM) } else { tag.clone() };
+                    // Units are hot in the FLIR picture, but not their `_cold` parts (the
+                    // sandbag wall round a defensive position).
+                    let child_tag = match (warm, tag.0 & 7 == LEVEL_AIRCRAFT) {
+                        _ if name.ends_with("_cold") => tag.clone(),
+                        (true, true) => MeshTag(tag.0 | TAG_WARM | TAG_HOT),
+                        (true, false) => MeshTag(tag.0 | TAG_WARM),
+                        (false, _) => tag.clone(),
+                    };
                     let child = commands
                         .spawn((Mesh3d(prim.mesh.clone()), MeshMaterial3d(material), child_tag))
                         .id();

@@ -40,9 +40,13 @@ pub const FLAG_NIGHT_DIM: u32 = 64;
 /// Polygon in a water colour (sea and lakes): a faint grid of dots low over it shows the
 /// height (the shader's `water_dots`).
 pub const FLAG_WATER: u32 = 256;
-/// Mesh tag bit of warm objects (aircraft, vehicles, buildings, fires): bright in the FLIR
-/// picture, everything else cold.
+/// Mesh tag bit of warm objects (aircraft, vehicles, buildings, fires): lighter than the cold
+/// ground in the FLIR picture.
 pub const TAG_WARM: u32 = 1 << 11;
+/// With `TAG_WARM`: hot, near white in the FLIR picture (aircraft, vehicles, guns and MANPADS
+/// teams, missiles, fires), so they stand out from the merely warm buildings round them. Not
+/// with `TAG_SMOKE`, `TAG_DOT_SPOT` or `TAG_DOT`, whose bits 16.. carry other things.
+pub const TAG_HOT: u32 = 1 << 17;
 /// Mesh tag bit of dim dot lights (runway edge, threshold and taxiway lamps): they fade out at
 /// a shorter range than the others (the shader's `DOT_NEAR`).
 pub const TAG_DOT_NEAR: u32 = 1 << 12;

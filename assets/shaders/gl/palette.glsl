@@ -67,6 +67,7 @@ const uint LIGHT_MOON_KEY = 4u;
 const uint TAG_SMOKE = 8192u;
 const uint TAG_SMOKE_FIRE = 16384u;
 const uint TAG_WARM = 2048u;
+const uint TAG_HOT = 131072u;
 const uint TAG_DOT_NEAR = 4096u;
 const uint TAG_DOT_SPOT = 32768u;
 const uint TAG_DOT_FAR = 2147483648u;
@@ -103,7 +104,8 @@ out vec3 v_world;
 flat out uint v_fog;
 flat out float v_fog_f;
 // Bit 0: warm object or dot light (FLIR); bit 1: aircraft; bit 2: spotting dot; bit 3: the
-// hills' ground; bit 4: lit as flat ground (the hills' skirts).
+// hills' ground; bit 4: lit as flat ground (the hills' skirts); bit 5: hot (FLIR: a unit, a
+// fire or a dot light).
 flat out uint v_warm;
 #ifdef CLOUD
 // Smoke volumes, in the plume's local space (unit radius, y 0..1): position (w: noise offset),
@@ -142,7 +144,9 @@ void main() {
     v_warm = ((tag & (TAG_WARM | 128u)) != 0u ? 1u : 0u) | (((tag & 7u) == 5u) ? 2u : 0u)
         | ((tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u) ? 4u : 0u)
         | ((tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS ? 8u : 0u)
-        | (u_word == WORD_PER_VERTEX && (a_word & WORD_FLAT_LIT) != 0u ? 16u : 0u);
+        | (u_word == WORD_PER_VERTEX && (a_word & WORD_FLAT_LIT) != 0u ? 16u : 0u)
+        | ((tag & 128u) != 0u
+            || (tag & (TAG_WARM | TAG_HOT | TAG_SMOKE | TAG_DOT_SPOT)) == (TAG_WARM | TAG_HOT) ? 32u : 0u);
 #ifdef CLOUD
     v_puff_pos = vec4(0.0);
     v_puff_eye = vec4(0.0);
@@ -883,12 +887,18 @@ bool flir_view() {
     return g.params.z != 0.0 && all(lessThan(abs(u_viewport - g.dots.zw), vec2(0.5)));
 }
 
+// The warm buildings' level (before the shade's share), and the most haze takes of the hot.
+const float FLIR_WARM = 0.5;
+const float FLIR_HOT_HAZE = 0.4;
+
 vec3 flir(vec3 rgb) {
     float s = sqrt(dot(rgb, vec3(0.2126, 0.7152, 0.0722)));
     float cold = 0.3 + 0.25 * s;
     float v = cold;
-    if ((v_warm & 1u) != 0u) {
-        v = mix(0.85 + 0.15 * s, cold, clamp(v_fog_f / 24.0, 0.0, 0.6));
+    if ((v_warm & 32u) != 0u) {
+        v = mix(0.95 + 0.05 * s, cold, clamp(v_fog_f / 24.0, 0.0, FLIR_HOT_HAZE));
+    } else if ((v_warm & 1u) != 0u) {
+        v = mix(FLIR_WARM + 0.12 * s, cold, clamp(v_fog_f / 24.0, 0.0, 0.6));
     }
     return vec3(pow(v, 2.2));
 }
