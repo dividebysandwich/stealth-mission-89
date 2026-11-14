@@ -200,6 +200,8 @@ pub(super) fn briefing(
     let mut back = false;
     let mut take_off = false;
     let mut edit = None;
+    // TAKE OFF at the route panel's bottom right too.
+    let mut route_take_off = false;
     // The map under it all, the top bar and the strip over it.
     egui::Area::new(egui::Id::new("briefing_screen"))
         .fixed_pos(screen.min)
@@ -207,13 +209,25 @@ pub(super) fn briefing(
         .show(ctx, |ui| {
             ui.set_min_size(screen.size());
             ui.scope_builder(egui::UiBuilder::new().max_rect(map_rect), |ui| {
-                edit = route_map(ui, c, sim, planner, &m, &mut b, map_wx, map_rect);
+                edit = route_map(
+                    ui,
+                    c,
+                    sim,
+                    planner,
+                    &m,
+                    &mut b,
+                    map_wx,
+                    map_rect,
+                    ready,
+                    &mut route_take_off,
+                );
             });
             let edge = egui::Stroke::new(2.0, crate::menu::FRAME);
             ui.painter().rect_filled(top, 0.0, BG);
             ui.painter().hline(top.x_range(), top.bottom() - 1.0, edge);
             ui.scope_builder(egui::UiBuilder::new().max_rect(top), |ui| {
                 (back, take_off) = top_bar(ui, c, &o, &mut b, ready, room);
+                take_off |= route_take_off;
             });
             ui.painter().rect_filled(strip, 0.0, BG.gamma_multiply(0.94));
             ui.painter().hline(strip.x_range(), strip.bottom() - 1.0, edge);
@@ -665,6 +679,8 @@ fn route_map(
     b: &mut Briefing,
     weather: &MapWeather,
     rect: egui::Rect,
+    ready: bool,
+    take_off: &mut bool,
 ) -> Option<Vec<crate::mission::RoutePoint>> {
     let now = ui.input(|i| i.time);
     let plan = c.state().plan(b.offer).filter(|_| c.role != Role::Local);
@@ -727,7 +743,7 @@ fn route_map(
     };
     planner.fly(kind_of(b.aircraft), true);
     let panel = 420.0_f32.min(rect.width() * 0.32);
-    crate::planner::route_screen(
+    *take_off = crate::planner::route_screen(
         ui,
         planner,
         m,
@@ -740,6 +756,7 @@ fn route_map(
         &mut b.profile,
         !locked && b.step == Step::Route,
         b.step == Step::Route,
+        Some(ready),
     );
     plan?;
     b.dirty |= route.points != before;

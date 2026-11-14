@@ -41,6 +41,7 @@ ops-leave-host = SALVARE E SMETTERE DI OSPITARE LA CAMPAGNA?
     .text = I giocatori collegati vengono disconnessi e la guerra si ferma finché non la si riprende. Gli aerei in volo vanno perduti; le inserzioni in corso ripartono dalla loro base.
 ops-leave-client = DISCONNETTERSI DAL SERVER?
     .text = La campagna prosegue sul server; qui non viene salvato nulla. La sortita in corso termina.
+ops-leave-stay = Per restare, scegli un altro pulsante a sinistra.
 ops-unit-destroyed = { $unit } distrutto: ritorno alle operazioni
 
 ## Missioni

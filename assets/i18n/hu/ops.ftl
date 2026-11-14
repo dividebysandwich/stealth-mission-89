@@ -41,6 +41,7 @@ ops-leave-host = MENTED ÉS LEÁLLÍTOD A KAMPÁNY SZOLGÁLTATÁSÁT?
     .text = A csatlakozott játékosok leválasztódnak, és a háború megáll, amíg folytatod. A levegőben lévő gépek elvesznek; a folyamatban lévő deszantok újra a bázisról indulnak.
 ops-leave-client = LEVÁLASZTÓDSZ A SZERVERRŐL?
     .text = A kampány a szerveren tovább megy; itt semmi nem mentődik. A bevetésed véget ér.
+ops-leave-stay = A maradáshoz válasszon egy másik gombot bal oldalt.
 ops-unit-destroyed = Megsemmisült: { $unit }; vissza a műveletekhez
 
 ## Küldetések

@@ -41,6 +41,7 @@ ops-leave-host = ENREGISTRER ET ARRÊTER DE SERVIR LA CAMPAGNE ?
     .text = Les joueurs connectés sont déconnectés et la guerre s'arrête jusqu'à ce que vous la repreniez. Les appareils en vol sont perdus ; les insertions en cours repartent de leur base.
 ops-leave-client = SE DÉCONNECTER DU SERVEUR ?
     .text = La campagne continue sur le serveur ; rien n'est enregistré ici. Votre sortie se termine.
+ops-leave-stay = Pour rester, choisissez un autre bouton à gauche.
 ops-unit-destroyed = { $unit } détruit : retour aux opérations
 
 ## Missions

@@ -41,6 +41,7 @@ ops-leave-host = SAGLABĀT UN PārTRAUKT KAMPAŅAS SERVERA DARBĪBU?
     .text = Pievienojušies spēlētāji tiek atvienoti, un karš apstājas, līdz jūs turpināsiet. Gaisā esošās lidmašīnas tiek zaudētas; notiekošie desanti sākas no jauna no savas bāzes.
 ops-leave-client = ATSAVIENOTIES NO SERVERA?
     .text = Kampaņa turpinās serverī; šeit nekas netiek saglabāts. Jūsu lidojums beidzas.
+ops-leave-stay = Lai paliktu, kreisajā pusē izvēlieties citu pogu.
 ops-unit-destroyed = { $unit } iznīcināta: atpakaļ pie operācijām
 
 ## Misijas

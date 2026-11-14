@@ -41,6 +41,7 @@ ops-leave-host = SALVAR E PARAR DE HOSPEDAR A CAMPANHA?
     .text = Os jogadores conectados são desconectados e a guerra para até você continuá-la. As aeronaves no ar são perdidas; as infiltrações em andamento recomeçam da sua base.
 ops-leave-client = DESCONECTAR DO SERVIDOR?
     .text = A campanha continua no servidor; nada é salvo aqui. Sua surtida termina.
+ops-leave-stay = Para ficar, escolha outro botão à esquerda.
 ops-unit-destroyed = { $unit } destruído: de volta às operações
 
 ## Missões

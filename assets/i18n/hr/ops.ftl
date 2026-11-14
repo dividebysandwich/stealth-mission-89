@@ -41,6 +41,7 @@ ops-leave-host = SPREMITI I PRESTATI POSLUŽIVATI KAMPANJU?
     .text = Igrači koji su se pridružili bit će odspojeni i rat staje dok ga ne nastavite. Zrakoplovi u zraku su izgubljeni; desanti u tijeku počinju ponovno iz svoje baze.
 ops-leave-client = PREKINUTI VEZU S POSLUŽITELJEM?
     .text = Kampanja se nastavlja na poslužitelju; ovdje se ništa ne sprema. Vaš borbeni let završava.
+ops-leave-stay = Za ostanak odaberite drugi gumb lijevo.
 ops-unit-destroyed = Jedinica uništena ({ $unit }): povratak u operacije
 
 ## Misije

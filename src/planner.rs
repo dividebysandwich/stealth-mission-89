@@ -974,8 +974,10 @@ pub fn route_screen(
     profile: &mut bool,
     editable: bool,
     chrome: bool,
-) {
+    take_off: Option<bool>,
+) -> bool {
     use crate::campaign::shell;
+    let mut pressed = false;
     planner.big = true;
     planner.inset = if chrome { panel + shell::GAP } else { 0.0 };
     let rings = planner
@@ -1005,7 +1007,7 @@ pub fn route_screen(
             );
         });
         layers.keep(ui.ctx(), "route");
-        return;
+        return false;
     }
     let strip = if *profile { 190.0 } else { 40.0 };
     let map_rect =
@@ -1144,17 +1146,29 @@ pub fn route_screen(
                     .color(if detect > 0.0 { AMBER } else { GREEN }),
             );
             ui.label(egui::RichText::new(t!("planner-coverage.note")).small().color(DIM));
-            if editable {
-                ui.add_space(8.0);
-                if shell::button(ui, Some(icon::RESET), t!("planner-reset"), false, 48.0, None)
-                    .clicked()
+            if !editable {
+                ui.label(egui::RichText::new(t!("planner-view-hint")).small().color(DIM));
+            }
+            // RESET at the left, TAKE OFF (the briefing's) at the bottom right.
+            ui.add_space(10.0);
+            ui.horizontal(|ui| {
+                if editable
+                    && shell::button(ui, Some(icon::RESET), t!("planner-reset"), false, 52.0, None)
+                        .clicked()
                 {
                     *route = PlannedRoute::of(m);
                     planner.selected = None;
                 }
-            } else {
-                ui.label(egui::RichText::new(t!("planner-view-hint")).small().color(DIM));
-            }
+                if let Some(enabled) = take_off {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let button = big_button(t!("ops-take-off"))
+                            .icon(icon::FLY)
+                            .primary()
+                            .min_size(egui::vec2(170.0, 52.0));
+                        pressed = ui.add_enabled(enabled, button).clicked();
+                    });
+                }
+            });
         });
     });
     // How to change the route, at the top left.
@@ -1294,6 +1308,7 @@ pub fn route_screen(
         });
     }
     layers.keep(ui.ctx(), "route");
+    pressed
 }
 
 #[allow(clippy::too_many_arguments)]

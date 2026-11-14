@@ -41,6 +41,7 @@ ops-leave-host = SAVE AND STOP SERVING THE CAMPAIGN?
     .text = The players who joined are disconnected and the war stops until you continue it. Aircraft in the air are lost; insertions under way start again from their base.
 ops-leave-client = DISCONNECT FROM THE SERVER?
     .text = The campaign goes on on the server; nothing is saved here. Your sortie ends.
+ops-leave-stay = To stay, pick another button on the left.
 ops-unit-destroyed = { $unit } destroyed: back to operations
 
 ## Missions

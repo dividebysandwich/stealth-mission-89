@@ -41,6 +41,7 @@ ops-leave-host = SALVESTA JA LÕPETA KAMPAANIA KORRALDAMINE?
     .text = Liitunud mängijate ühendus katkeb ja sõda peatub, kuni sa seda jätkad. Õhus olevad õhusõidukid lähevad kaduma; pooleliolevad dessandid algavad uuesti oma baasist.
 ops-leave-client = KATKESTA ÜHENDUS SERVERIGA?
     .text = Kampaania jätkub serveris; siia midagi ei salvestata. Sinu lend lõpeb.
+ops-leave-stay = Jäämiseks valige vasakult mõni muu nupp.
 ops-unit-destroyed = { $unit } hävitatud: tagasi operatsioonide juurde
 
 ## Missioonid

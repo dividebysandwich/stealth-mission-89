@@ -41,6 +41,7 @@ ops-leave-host = TALLENNA JA LOPETA KAMPANJAN ISÄNNÖINTI?
     .text = Liittyneiden pelaajien yhteys katkeaa ja sota pysähtyy, kunnes jatkat sitä. Ilmassa olevat koneet menetetään; käynnissä olevat maihinnousut alkavat alusta tukikohdasta.
 ops-leave-client = KATKAISE YHTEYS PALVELIMEEN?
     .text = Kampanja jatkuu palvelimella; täällä ei tallenneta mitään. Lentosi päättyy.
+ops-leave-stay = Jos haluat jäädä, valitse toinen painike vasemmalta.
 ops-unit-destroyed = Tuhottu: { $unit }. Takaisin operaatioihin
 
 ## Tehtävät

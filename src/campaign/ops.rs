@@ -42,6 +42,9 @@ pub enum Pane {
     Debrief,
     Log,
     Chat,
+    /// Leaving the campaign: SAVE & EXIT or DISCONNECT, confirmed in the pane (any other rail
+    /// button is the way back).
+    Exit,
 }
 
 impl Pane {
@@ -67,6 +70,7 @@ impl Pane {
             Pane::Debrief => t!("ops-tab-debrief"),
             Pane::Log => t!("ops-tab-log"),
             Pane::Chat => t!("ops-tab-chat"),
+            Pane::Exit => t!("menu-quit"),
         }
     }
 
@@ -80,6 +84,7 @@ impl Pane {
             Pane::Debrief => icon::DEBRIEF,
             Pane::Log => icon::LOG,
             Pane::Chat => icon::CHAT,
+            Pane::Exit => icon::QUIT,
         }
     }
 
@@ -161,8 +166,8 @@ pub struct OpsUi {
     pub test_crewed: bool,
     /// The accepted mission's briefing (map and loadout) before take-off.
     briefing: Option<Briefing>,
-    /// SAVE & EXIT asks first.
-    pub(super) confirm_exit: bool,
+    /// SAVE & EXIT was confirmed in its pane.
+    pub(super) leave: bool,
     /// The chat message being typed on the CHAT pane.
     chat: String,
 }
@@ -302,6 +307,7 @@ pub fn test_pane() -> Option<Option<Pane>> {
         "log" => Some(Pane::Log),
         "players" => Some(Pane::Players),
         "chat" => Some(Pane::Chat),
+        "exit" => Some(Pane::Exit),
         _ => Some(Pane::Missions),
     })
 }
@@ -542,7 +548,12 @@ pub fn ops_ui(
                     let inner = size - egui::vec2(28.0, 16.0);
                     ui.set_min_size(inner);
                     ui.set_max_size(inner);
-                    if shell::heading(ui, Some(pane.icon()), pane.label(), true) {
+                    if shell::heading(
+                        ui,
+                        Some(pane.icon()),
+                        if pane == Pane::Exit { exit_label(c.role) } else { pane.label() },
+                        true,
+                    ) {
                         c.ui.open(None);
                     }
                     let room = ui.available_size();
@@ -604,37 +615,8 @@ pub fn ops_ui(
             .fixed_size(egui::vec2(820.0_f32.min(screen.width() - pane_w - 140.0), 0.0));
         Panel::new(t!("menu-campaign")).window(window, ctx, |ui| end_screen(ui, c));
     }
-    let mut leave = false;
     super::designate::confirm(ctx, c);
-    if c.ui.confirm_exit {
-        let window = egui::Window::new("Leave the campaign")
-            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-            .collapsible(false)
-            .resizable(false)
-            .title_bar(false)
-            .order(egui::Order::Foreground);
-        let id = match c.role {
-            Role::Local => "ops-leave-local",
-            Role::Host => "ops-leave-host",
-            Role::Client => "ops-leave-client",
-        };
-        let (title, text) = (t!(id), t!(&format!("{id}.text")));
-        let button = exit_label(c.role);
-        Panel::new(title).window(window, ctx, |ui| {
-            ui.label(egui::RichText::new(text).color(DIM));
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                if ui.add(big_button(button).icon(exit_icon(c.role)).fill(EXIT_RED)).clicked() {
-                    leave = true;
-                }
-                if ui.add(big_button(t!("cancel")).icon(icon::CANCEL)).clicked() {
-                    c.ui.confirm_exit = false;
-                }
-            });
-        });
-    }
-    if leave {
-        c.ui.confirm_exit = false;
+    if std::mem::take(&mut c.ui.leave) {
         c.save();
         c.exit = true;
         next.set(AppState::Menu);
@@ -727,19 +709,6 @@ fn top_bar(
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add_space(6.0);
-            let exit = if room == Room::Small {
-                shell::square_button(ui, exit_icon(c.role), exit_label(c.role))
-            } else {
-                ui.add(
-                    big_button(exit_label(c.role))
-                        .icon(exit_icon(c.role))
-                        .fill(EXIT_RED)
-                        .min_size(egui::vec2(120.0, 44.0)),
-                )
-            };
-            if exit.clicked() {
-                c.ui.confirm_exit = true;
-            }
             if shell::square_button(ui, icon::OPTIONS, t!("menu-options.short")).clicked() {
                 menu.open_options = true;
             }
@@ -794,6 +763,37 @@ fn rail(ui: &mut egui::Ui, c: &mut ActiveCampaign, notices: &crate::player_notic
             c.ui.toggle(pane);
         }
     }
+    // The way out at the bottom.
+    ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
+        ui.add_space(6.0);
+        let on = c.ui.pane == Some(Pane::Exit);
+        let label = exit_label(c.role);
+        if shell::rail_button(ui, icon::QUIT, label, on, shell::Badge::None).clicked() {
+            c.ui.toggle(Pane::Exit);
+        }
+    });
+}
+
+/// The EXIT pane: what leaving does, and the button that does it.
+fn exit_pane(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
+    let id = match c.role {
+        Role::Local => "ops-leave-local",
+        Role::Host => "ops-leave-host",
+        Role::Client => "ops-leave-client",
+    };
+    ui.label(egui::RichText::new(t!(id)).size(18.0).color(BRIGHT));
+    ui.add_space(8.0);
+    ui.label(egui::RichText::new(t!(&format!("{id}.text"))).color(DIM));
+    ui.add_space(16.0);
+    let button = big_button(exit_label(c.role))
+        .icon(exit_icon(c.role))
+        .fill(EXIT_RED)
+        .min_size(egui::vec2(ui.available_width(), 56.0));
+    if ui.add(button).clicked() {
+        c.ui.leave = true;
+    }
+    ui.add_space(12.0);
+    ui.label(egui::RichText::new(t!("ops-leave-stay")).small().color(DIM));
 }
 
 /// What a pane holds.
@@ -849,6 +849,7 @@ fn pane_body(
         }
         Pane::Log => log(ui, c),
         Pane::Chat => chat(ui, c, notices, vr),
+        Pane::Exit => exit_pane(ui, c),
     }
 }
 

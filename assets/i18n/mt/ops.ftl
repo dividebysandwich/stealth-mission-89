@@ -41,6 +41,7 @@ ops-leave-host = TIĦŻEN U TWAQQAF L-OSPITAR TAL-KAMPANJA?
     .text = Il-plejers li ngħaqdu jiġu skonnettjati u l-gwerra tieqaf sakemm tkompliha. L-inġenji tal-ajru fl-ajru jintilfu; l-inserzjonijiet għaddejjin jerġgħu jibdew mill-bażi tagħhom.
 ops-leave-client = TISKONNETTJA MIS-SERVER?
     .text = Il-kampanja tkompli fuq is-server; xejn ma jinħażen hawn. It-titjira tiegħek tintemm.
+ops-leave-stay = Biex tibqa', agħżel buttuna oħra fuq ix-xellug.
 ops-unit-destroyed = { $unit } meqrud: lura għall-operazzjonijiet
 
 ## Missjonijiet

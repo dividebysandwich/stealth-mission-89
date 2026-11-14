@@ -41,6 +41,7 @@ ops-leave-host = SPARA OCH SLUTA VARA VÄRD FÖR KAMPANJEN?
     .text = Spelarna som gått med kopplas från och kriget står stilla tills du fortsätter det. Flygplan i luften går förlorade; insättningar som pågår börjar om från sin bas.
 ops-leave-client = KOPPLA FRÅN SERVERN?
     .text = Kampanjen fortsätter på servern; ingenting sparas här. Din flygning avslutas.
+ops-leave-stay = Välj en annan knapp till vänster för att stanna.
 ops-unit-destroyed = { $unit } förstörd: tillbaka till operationerna
 
 ## Uppdrag

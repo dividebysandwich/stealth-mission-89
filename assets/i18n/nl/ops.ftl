@@ -41,6 +41,7 @@ ops-leave-host = OPSLAAN EN STOPPEN MET HOSTEN VAN DE CAMPAGNE?
     .text = De spelers die zijn aangesloten, worden losgekoppeld en de oorlog stopt tot je hem hervat. Toestellen in de lucht gaan verloren; lopende inzetten beginnen opnieuw vanaf hun basis.
 ops-leave-client = VERBINDING MET DE SERVER VERBREKEN?
     .text = De campagne gaat door op de server; hier wordt niets opgeslagen. Je vlucht eindigt.
+ops-leave-stay = Kies links een andere knop om te blijven.
 ops-unit-destroyed = { $unit } vernietigd: terug naar de operaties
 
 ## Missies

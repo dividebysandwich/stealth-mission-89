@@ -41,6 +41,7 @@ ops-leave-host = AN FEACHTAS A SHÁBHÁIL AGUS FREASTAL A STOPADH?
     .text = Dícheanglaítear na himreoirí a tháinig isteach agus stopann an cogadh go dtí go leanann tú air. Cailltear aerárthaigh san aer; tosaíonn insealbhuithe atá ar siúl arís óna mbunáit.
 ops-leave-client = DÍCHEANGAIL ÓN FHREASTALAÍ?
     .text = Leanann an feachtas ar aghaidh ar an bhfreastalaí; ní shábháiltear tada anseo. Críochnaíonn d'eitilt.
+ops-leave-stay = Chun fanacht, roghnaigh cnaipe eile ar chlé.
 ops-unit-destroyed = Scriosadh: { $unit }. Ar ais chuig na hoibríochtaí
 
 ## Misin

@@ -41,6 +41,7 @@ ops-leave-host = SPEICHERN UND DAS HOSTEN DER KAMPAGNE BEENDEN?
     .text = Die beigetretenen Spieler werden getrennt und der Krieg hält an, bis Sie ihn fortsetzen. Flugzeuge in der Luft gehen verloren; laufende Luftlandungen beginnen wieder an ihrer Basis.
 ops-leave-client = VOM SERVER TRENNEN?
     .text = Die Kampagne geht auf dem Server weiter; hier wird nichts gespeichert. Ihr Einsatz endet.
+ops-leave-stay = Zum Bleiben links einen anderen Knopf wählen.
 ops-unit-destroyed = { $unit } zerstört: zurück zum Einsatzbildschirm
 
 ## Missionen

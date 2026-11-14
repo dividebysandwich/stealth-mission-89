@@ -41,6 +41,7 @@ ops-leave-host = SIMPAN DAN HENTIKAN PENYELENGGARAAN KAMPANYE?
     .text = Pemain yang bergabung akan terputus dan perang berhenti sampai Anda melanjutkannya. Pesawat yang sedang di udara hilang; penurunan pasukan yang sedang berjalan dimulai ulang dari pangkalannya.
 ops-leave-client = PUTUSKAN DARI SERVER?
     .text = Kampanye terus berjalan di server; tidak ada yang disimpan di sini. Sorti Anda berakhir.
+ops-leave-stay = Untuk tetap, pilih tombol lain di kiri.
 ops-unit-destroyed = { $unit } hancur: kembali ke operasi
 
 ## Misi

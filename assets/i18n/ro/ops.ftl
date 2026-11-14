@@ -41,6 +41,7 @@ ops-leave-host = SALVAȚI ȘI OPRIȚI GĂZDUIREA CAMPANIEI?
     .text = Jucătorii alăturați sunt deconectați, iar războiul se oprește până îl continuați. Aeronavele aflate în aer sunt pierdute; debarcările în curs reîncep de la baza lor.
 ops-leave-client = VĂ DECONECTAȚI DE LA SERVER?
     .text = Campania continuă pe server; nimic nu este salvat aici. Zborul dumneavoastră se încheie.
+ops-leave-stay = Pentru a rămâne, alegeți alt buton din stânga.
 ops-unit-destroyed = { $unit } distrus: înapoi la operațiuni
 
 ## Misiuni

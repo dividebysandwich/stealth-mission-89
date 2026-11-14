@@ -41,6 +41,7 @@ ops-leave-host = GEM OG STOP HOSTING AF KAMPAGNEN?
     .text = De spillere, der er kommet med, frakobles, og krigen står stille, til du fortsætter den. Fly i luften går tabt; indsættelser i gang starter forfra fra deres base.
 ops-leave-client = FRAKOBL FRA SERVEREN?
     .text = Kampagnen fortsætter på serveren; intet gemmes her. Din flyvning slutter.
+ops-leave-stay = Vælg en anden knap til venstre for at blive.
 ops-unit-destroyed = { $unit } ødelagt: tilbage til operationer
 
 ## Missioner

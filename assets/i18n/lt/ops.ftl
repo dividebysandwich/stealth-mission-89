@@ -41,6 +41,7 @@ ops-leave-host = IŠSAUGOTI IR NUSTOTI TEIKTI KAMPANIJĄ?
     .text = Prisijungę žaidėjai atjungiami, o karas sustoja, kol jį tęsite. Ore esantys orlaiviai prarandami; vykstantys desantavimai prasideda iš naujo nuo savo bazės.
 ops-leave-client = ATSIJUNGTI NUO SERVERIO?
     .text = Kampanija tęsiasi serveryje; čia niekas neišsaugoma. Jūsų skrydis baigiasi.
+ops-leave-stay = Norėdami likti, kairėje pasirinkite kitą mygtuką.
 ops-unit-destroyed = Dalinys „{ $unit }“ sunaikintas: grįžtama į operacijas
 
 ## Misijos

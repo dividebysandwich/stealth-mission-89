@@ -41,6 +41,7 @@ ops-leave-host = ULOŽIT A PŘESTAT HOSTOVAT KAMPAŇ?
     .text = Připojení hráči budou odpojeni a válka se zastaví, dokud v ní nepokračujete. Letadla ve vzduchu jsou ztracena; probíhající výsadky začnou znovu ze své základny.
 ops-leave-client = ODPOJIT SE OD SERVERU?
     .text = Kampaň běží dál na serveru; zde se nic neukládá. Váš bojový let končí.
+ops-leave-stay = Chcete-li zůstat, vyberte jiné tlačítko vlevo.
 ops-unit-destroyed = { $unit } zničen: zpět k operacím
 
 ## Mise

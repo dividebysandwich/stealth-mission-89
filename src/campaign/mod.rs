@@ -402,9 +402,9 @@ impl ActiveCampaign {
         ops::exit_icon(self.role)
     }
 
-    /// Asks to leave the campaign, as the board's way-out button does.
+    /// Asks to leave the campaign: the rail's EXIT pane.
     pub fn ask_exit(&mut self) {
-        self.ui.confirm_exit = true;
+        self.ui.open(Some(ops::Pane::Exit));
     }
 
     /// Saves the campaign (alone or as the listen server).

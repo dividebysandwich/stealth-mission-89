@@ -41,6 +41,7 @@ ops-leave-host = SHRANIM IN PRENEHAM GOSTITI KAMPANJO?
     .text = Pridruženi igralci so odklopljeni in vojna se ustavi, dokler je ne nadaljujete. Letala v zraku so izgubljena; izkrcanja v teku se začnejo znova z njihove baze.
 ops-leave-client = PREKINEM POVEZAVO S STREŽNIKOM?
     .text = Kampanja se na strežniku nadaljuje; tukaj se nič ne shrani. Vaš bojni let se konča.
+ops-leave-stay = Če želite ostati, izberite drug gumb na levi.
 ops-unit-destroyed = { $unit } uničen: nazaj na operacije
 
 ## Misije

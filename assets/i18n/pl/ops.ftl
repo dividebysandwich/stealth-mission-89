@@ -41,6 +41,7 @@ ops-leave-host = ZAPISAĆ I PRZESTAĆ UDOSTĘPNIAĆ KAMPANIĘ?
     .text = Gracze, którzy dołączyli, zostaną rozłączeni, a wojna zatrzyma się do czasu jej wznowienia. Samoloty w powietrzu zostaną utracone; trwające desanty wyruszą ponownie ze swoich baz.
 ops-leave-client = ROZŁĄCZYĆ Z SERWEREM?
     .text = Kampania trwa dalej na serwerze; nic nie zostanie tu zapisane. Bieżący lot bojowy się zakończy.
+ops-leave-stay = Aby zostać, wybierz inny przycisk po lewej.
 ops-unit-destroyed = Zniszczono: { $unit } - powrót do operacji
 
 ## Misje
