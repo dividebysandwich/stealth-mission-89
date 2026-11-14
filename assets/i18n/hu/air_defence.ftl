@@ -22,6 +22,7 @@ ad-a-player = Egy játékos
 ds-new-site = Új állás
 ds-hint = Jelölj ki egy helyet: UH-60-asok 24 órán belül egy ottani helikopter-leszállóhelyre szállítják a rakományát
 ds-click-hint = Kattints a térképen oda, ahová kerül - jobb klikk: mégse
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Nem nyílt terepen van
 ds-new-gepard = Új Gepard-állás - kattints a kijelöléshez
 ds-new-patriot = Új Patriot-állás - kattints a kijelöléshez

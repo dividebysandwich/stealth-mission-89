@@ -22,6 +22,7 @@ ad-a-player = Een speler
 ds-new-site = Nieuwe stelling
 ds-hint = Wijs een plek aan: UH-60's vliegen de lading binnen 24 u naar een helikopterplatform daar
 ds-click-hint = Klik op de kaart waar hij komt - rechtsklik: annuleren
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Niet op open terrein
 ds-new-gepard = Nieuwe Gepard-stelling - klik om aan te wijzen
 ds-new-patriot = Nieuwe Patriot-stelling - klik om aan te wijzen

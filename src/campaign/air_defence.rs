@@ -4,7 +4,6 @@
 //! button to man it.
 
 use bevy_egui::egui;
-use stealth_campaign::Side;
 use stealth_i18n::t;
 use stealth_sim::aaa::{GroundKind, M_PER_MAP};
 use stealth_sim::station::{
@@ -13,13 +12,11 @@ use stealth_sim::station::{
 };
 use stealth_sim::{Sim, fflags};
 
-use super::ops::{fit_map, man_refusal};
+use super::ops::man_refusal;
 use super::{Action, ActiveCampaign};
 use crate::map_draw::{self, FRIENDLY_BLUE, MISSILE_RED, MapTips, MapView};
 use crate::menu::{AMBER, BRIGHT, DIM, GREEN, icon, icon_text, section};
 
-/// The list's width (points).
-const LIST_W: f32 = 430.0;
 /// A card's field name, ready count, stock bar and stock count widths (points).
 const KEY_W: f32 = 52.0;
 const BAR_W: f32 = 120.0;
@@ -29,7 +26,7 @@ const STOCK_W: f32 = 32.0;
 const GEPARD_MAP_REACH: f32 = (GEPARD_REACH / M_PER_MAP) as f32;
 
 /// A friendly air defence site a player can man.
-struct Site {
+pub(super) struct Site {
     unit: usize,
     x: i32,
     y: i32,
@@ -50,7 +47,7 @@ struct Site {
     enemies: Vec<(String, f32)>,
 }
 
-fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
+pub(super) fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
     let st = c.state();
     let mut out: Vec<Site> = (0..sim.units().len())
         .filter(|&k| sim.aaa_blue(k) && mannable(sim.units()[k].kind))
@@ -150,72 +147,30 @@ fn tag(sites: &[Site], i: usize) -> String {
     format!("{letter}{n}")
 }
 
-/// The AIR DEFENSE tab.
-pub(super) fn tab(
-    ui: &mut egui::Ui,
-    c: &mut ActiveCampaign,
-    sim: &Sim,
-    planner: &mut crate::planner::Planner,
-    scenery: Option<&crate::scenery::Scenery>,
-    size: egui::Vec2,
-) {
-    let sites = sites(c, sim);
+/// The AIR DEFENSE pane: the new site buttons, then the sites (the list scrolls in `height`).
+pub(super) fn pane(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], height: f32) {
     if c.ui.defence.is_some_and(|u| !sites.iter().any(|s| s.unit == u)) {
         c.ui.defence = None;
     }
-    ui.horizontal_top(|ui| {
-        map(ui, c, sim, &sites, planner, scenery, egui::vec2(size.x - LIST_W, size.y));
-        ui.vertical(|ui| {
-            ui.set_width(LIST_W - 12.0);
-            super::designate::buttons(ui, c);
-            ui.add_space(6.0);
-            map_draw::symbology_switch(ui);
-            // The list scrolls in what the map's height leaves under the buttons.
-            let above = ui.min_rect().height();
-            list(ui, c, sim, &sites, size.y - above);
-        });
-    });
+    let top = ui.cursor().top();
+    super::designate::buttons(ui, c);
+    ui.add_space(6.0);
+    map_draw::symbology_switch(ui);
+    let above = ui.cursor().top() - top;
+    list(ui, c, sim, sites, height - above);
 }
 
-/// The war map, dimmed, with the sites and their reach on it and the enemy aircraft the
-/// friendly side sees. A click on a site selects it.
-fn map(
-    ui: &mut egui::Ui,
-    c: &mut ActiveCampaign,
-    sim: &Sim,
+/// The sites on the war map in its AIR DEFENSE view: their reach filled (the selected site's
+/// brighter), their symbols and tags (P1, G2 ..), with tooltips.
+pub(super) fn overlay(
+    painter: &egui::Painter,
+    view: &MapView,
     sites: &[Site],
-    planner: &mut crate::planner::Planner,
-    scenery: Option<&crate::scenery::Scenery>,
-    size: egui::Vec2,
+    selected: Option<usize>,
+    tips: &mut MapTips,
+    k: f32,
 ) {
-    let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
-    fit_map(c, rect);
-    let view = MapView { rect, centre: c.ui.centre, scale: c.ui.scale };
-    let (mut centre, mut scale) = (c.ui.centre, c.ui.scale);
-    view.pan_zoom(ui, &resp, &mut centre, &mut scale);
-    (c.ui.centre, c.ui.scale) = (centre, scale);
-    let painter = ui.painter_at(rect);
-    planner.draw_map(&painter, &view, &c.mission.theater_code.to_ascii_lowercase());
-    painter.rect_filled(rect, 0.0, egui::Color32::from_black_alpha(140));
     let at = |x: i32, y: i32| view.to_screen(x as f32, y as f32);
-    let st = c.state();
-    let k = map_draw::BIG;
-    let mut tips = MapTips::grown(k);
-    for p in &st.places {
-        let col = match p.owner {
-            Side::Blue => FRIENDLY_BLUE,
-            Side::Red => MISSILE_RED,
-            Side::Neutral => DIM,
-        }
-        .gamma_multiply(0.5);
-        painter.circle_filled(at(p.x, p.y), 2.5 * k, col);
-        let production = super::logistics::production_of(st, p);
-        if let Some(kind) = production {
-            super::logistics::production_mark(&painter, at(p.x, p.y), k, kind);
-        }
-        super::ops::place_tip(&mut tips, at(p.x, p.y), p, st.clock, true, production);
-    }
-    // The reach: filled, the selected site's brighter; then the symbols over all of them.
     for s in sites.iter().filter(|s| !s.destroyed) {
         let reach = match s.kind {
             GroundKind::Gepard => GEPARD_MAP_REACH,
@@ -224,8 +179,8 @@ fn map(
             k => k.battery().map_or(0.0, |b| b.map_range()),
         };
         let r = (reach / view.scale).max(4.0);
-        let chosen = c.ui.defence == Some(s.unit);
-        let (fill, stroke) = if chosen { (0.16, 2.0) } else { (0.07, 1.2) };
+        let chosen = selected == Some(s.unit);
+        let (fill, stroke) = if chosen { (0.16, 2.5) } else { (0.07, 1.2) };
         painter.circle(
             at(s.x, s.y),
             r,
@@ -233,20 +188,6 @@ fn map(
             egui::Stroke::new(stroke, if chosen { BRIGHT } else { FRIENDLY_BLUE }),
         );
     }
-    let pic = super::picture::picture(st, sim);
-    for a in &pic.fighters {
-        map_draw::scaled(&painter, at(a.x, a.y), k, |p, c| {
-            super::picture::aircraft(p, c, a, MISSILE_RED);
-        });
-        super::picture::aircraft_tip(&mut tips, at(a.x, a.y), a, false);
-    }
-    for a in &pic.friendly {
-        map_draw::scaled(&painter, at(a.x, a.y), k, |p, c| {
-            super::picture::aircraft(p, c, a, FRIENDLY_BLUE.gamma_multiply(0.6));
-        });
-        super::picture::aircraft_tip(&mut tips, at(a.x, a.y), a, true);
-    }
-    let mut hovered = None;
     let mut named = Vec::new();
     for (i, s) in sites.iter().enumerate() {
         let p = at(s.x, s.y);
@@ -254,12 +195,12 @@ fn map(
         if s.destroyed {
             painter.circle_stroke(p, 5.0 * k, egui::Stroke::new(1.5, DIM));
         } else {
-            map_draw::scaled(&painter, p, k, |pa, p| super::picture::defence(pa, p, kind, 0.8));
+            map_draw::scaled(painter, p, k, |pa, p| super::picture::defence(pa, p, kind, 0.8));
         }
         if s.manned.is_some() {
             painter.circle_stroke(p, map_draw::halo(9.0) * k, egui::Stroke::new(1.5, GREEN));
         }
-        site_tip(&mut tips, p, s, &tag(sites, i));
+        site_tip(tips, p, s, &tag(sites, i));
         // Named unless another's name is there already (crowded sites: the list has them).
         if !named.iter().any(|q: &egui::Pos2| q.distance(p) < 16.0 * k) {
             named.push(p);
@@ -272,34 +213,53 @@ fn map(
                 },
                 egui::Align2::LEFT_BOTTOM,
                 tag(sites, i),
-                egui::FontId::monospace(11.0),
+                egui::FontId::monospace(13.0),
                 col,
             );
         }
-        if resp.hover_pos().is_some_and(|h| h.distance(p) < 10.0 * k) {
-            hovered = Some(s.unit);
-        }
     }
-    super::designate::waiting(&painter, &view, c.state());
-    let designating = c.ui.designate.is_some();
-    super::designate::pointer(ui, &painter, &view, &resp, c, sim, scenery);
-    if let Some(u) = hovered.filter(|_| !designating) {
-        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
-        if resp.clicked() {
-            c.ui.defence = Some(u);
-            c.ui.defence_scroll = true;
-        }
+}
+
+/// The site under the pointer on the map.
+pub(super) fn hit(view: &MapView, sites: &[Site], pos: egui::Pos2, k: f32) -> Option<usize> {
+    sites
+        .iter()
+        .map(|s| (s.unit, view.to_screen(s.x as f32, s.y as f32).distance(pos)))
+        .filter(|(_, d)| *d < 10.0 * k)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(u, _)| u)
+}
+
+/// A site's one-line name ("P2 PATRIOT near Hatzerim") and its state ("auto, radar clear").
+pub(super) fn describe(c: &ActiveCampaign, sites: &[Site], unit: usize) -> Option<(String, String)> {
+    let i = sites.iter().position(|s| s.unit == unit)?;
+    let s = &sites[i];
+    let title = format!("{} {}  {}", tag(sites, i), kind_name(s.kind), t!("ad-near", place = s.near.as_str()));
+    let op = match s.manned {
+        Some(p) if p == c.me.0 => t!("ad-you").to_string(),
+        Some(p) => c.state().player_name(stealth_campaign::PlayerId(p)).unwrap_or(t!("ad-a-player")).to_string(),
+        None => t!("ad-auto").to_string(),
+    };
+    let radar = match s.enemies.first() {
+        None => t!("ad-clear").to_string(),
+        Some((_, km)) => format!("{} - {km:.0} km", s.enemies.len()),
+    };
+    let sub = format!("{} {op}  ·  {} {radar}", t!("ad-op"), t!("ad-radar"));
+    Some((title, sub))
+}
+
+/// A site's kind as the list names it (PATRIOT, GEPARD ..).
+fn kind_name(kind: GroundKind) -> &'static str {
+    match kind {
+        GroundKind::Gepard => "GEPARD",
+        GroundKind::DroneCenter => t!("ad-drones"),
+        k => k.battery().map_or("PATRIOT", |b| b.label()),
     }
-    if !designating {
-        tips.show(&resp, hovered.map(|_| t!("mt-click-select")));
-    }
-    painter.text(
-        rect.left_bottom() + egui::vec2(8.0, -8.0),
-        egui::Align2::LEFT_BOTTOM,
-        t!("ad-map-hint"),
-        egui::FontId::monospace(11.0),
-        DIM,
-    );
+}
+
+/// The site's place on the map (to show it beside the pane).
+pub(super) fn position(sites: &[Site], unit: usize) -> Option<egui::Vec2> {
+    sites.iter().find(|s| s.unit == unit).map(|s| egui::vec2(s.x as f32, s.y as f32))
 }
 
 /// A site's tooltip: what it is, its tag and place, its rounds and the enemies its radar sees.
@@ -354,7 +314,7 @@ fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], he
                 ))
                 .inner_margin(6.0);
             let r = frame.show(ui, |ui| {
-                ui.set_width(LIST_W - 40.0);
+                ui.set_width(ui.available_width());
                 entry(ui, c, sim, s, &tag(sites, i));
             });
             // Not `interact(click)`: the frame's response sits over the ENTER button and
@@ -362,6 +322,7 @@ fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], he
             let r = r.response;
             if r.contains_pointer() && ui.input(|i| i.pointer.primary_clicked()) {
                 c.ui.defence = Some(s.unit);
+                c.ui.focus = Some(egui::vec2(s.x as f32, s.y as f32));
             }
             if chosen && std::mem::take(&mut c.ui.defence_scroll) {
                 r.scroll_to_me(Some(egui::Align::Center));
@@ -373,17 +334,13 @@ fn list(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, sites: &[Site], he
 
 fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &str) {
     ui.horizontal(|ui| {
-        let kind = match s.kind {
-            GroundKind::Gepard => "GEPARD",
-            GroundKind::DroneCenter => t!("ad-drones"),
-            k => k.battery().map_or("PATRIOT", |b| b.label()),
-        };
+        let kind = kind_name(s.kind);
         ui.label(egui::RichText::new(format!("{tag} {kind}")).strong().color(FRIENDLY_BLUE));
         ui.label(egui::RichText::new(t!("ad-near", place = s.near.as_str())).color(DIM));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let why = man_refusal(c, sim, s.unit);
             let button = egui::Button::new(icon_text(ui, icon::CONTROL, t!("ad-enter")))
-                .min_size(egui::vec2(80.0, 24.0));
+                .min_size(egui::vec2(110.0, 44.0));
             let r = ui.add_enabled(why.is_none(), button);
             if r.clicked() {
                 c.ui.error = None;

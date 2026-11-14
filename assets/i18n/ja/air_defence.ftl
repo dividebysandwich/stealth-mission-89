@@ -22,6 +22,7 @@ ad-a-player = プレイヤー
 ds-new-site = 新陣地
 ds-hint = 地点を指定：UH-60が24時間以内にそこのヘリパッドへ資材を運ぶ
 ds-click-hint = 設置場所をマップでクリック - 右クリック：キャンセル
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = 開けた土地ではありません
 ds-new-gepard = 新しいゲパルト陣地 - クリックして指定
 ds-new-patriot = 新しいパトリオット陣地 - クリックして指定

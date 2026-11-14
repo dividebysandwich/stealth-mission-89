@@ -22,6 +22,7 @@ ad-a-player = Un giocatore
 ds-new-site = Nuovo sito
 ds-hint = Designare un punto: gli UH-60 portano il suo carico a una piazzola lì entro 24 h
 ds-click-hint = Cliccare sulla mappa dove va - clic destro: annulla
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Non su terreno aperto
 ds-new-gepard = Nuovo sito Gepard - cliccare per designarlo
 ds-new-patriot = Nuovo sito Patriot - cliccare per designarlo

@@ -22,6 +22,7 @@ ad-a-player = En spelare
 ds-new-site = Ny gruppering
 ds-hint = Utse en plats: UH-60 flyger dess last till en helikopterplatta där inom 24 h
 ds-click-hint = Klicka på kartan där den ska stå - högerklick: avbryt
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Inte på öppen mark
 ds-new-gepard = Ny Gepard-gruppering - klicka för att utse
 ds-new-patriot = Ny Patriot-gruppering - klicka för att utse

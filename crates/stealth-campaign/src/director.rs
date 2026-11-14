@@ -167,8 +167,10 @@ impl CampaignState {
     ) {
         self.patriots_lost.retain(|&k| k != place);
         self.log_war(side, MOMENTUM_CAPTURE);
+        let now = self.clock;
         let p = &mut self.places[place as usize];
         p.owner = side;
+        p.captured_at = Some(now);
         p.intel_until = None;
         p.red_intel_until = None;
         // The new owner's guns and armour, at full strength.

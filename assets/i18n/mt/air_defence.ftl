@@ -22,6 +22,7 @@ ad-a-player = Plejer
 ds-new-site = Sit ġdid
 ds-hint = Agħżel post: l-UH-60 iġibu l-merkanzija tiegħu f'heliport hemmhekk fi żmien 24 siegħa
 ds-click-hint = Ikklikkja fuq il-mappa fejn imur - klikk tal-lemin: ikkanċella
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Mhux fuq art miftuħa
 ds-new-gepard = Sit Gepard ġdid - ikklikkja biex tagħżlu
 ds-new-patriot = Sit Patriot ġdid - ikklikkja biex tagħżlu

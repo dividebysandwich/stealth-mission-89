@@ -22,6 +22,7 @@ ad-a-player = Hráč
 ds-new-site = Nové stanoviště
 ds-hint = Určete místo: UH-60 dopraví jeho náklad na heliport tam do 24 h
 ds-click-hint = Klikněte na mapu, kam má jít - pravé tlačítko: zrušit
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Není na volném terénu
 ds-new-gepard = Nové stanoviště Gepard - klikněte pro určení
 ds-new-patriot = Nové stanoviště Patriot - klikněte pro určení

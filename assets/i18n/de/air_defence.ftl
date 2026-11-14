@@ -22,6 +22,7 @@ ad-a-player = Ein Spieler
 ds-new-site = Neuer Standort
 ds-hint = Einen Platz bestimmen: UH-60 fliegen seine Fracht binnen 24 h zu einem Hubschrauberlandeplatz dort
 ds-click-hint = Auf der Karte anklicken, wo er hinkommt - Rechtsklick: abbrechen
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Nicht auf freiem Gelände
 ds-new-gepard = Neuer Gepard-Standort - zum Bestimmen klicken
 ds-new-patriot = Neuer Patriot-Standort - zum Bestimmen klicken

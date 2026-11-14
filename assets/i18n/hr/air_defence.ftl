@@ -22,6 +22,7 @@ ad-a-player = Igrač
 ds-new-site = Novi položaj
 ds-hint = Odredite mjesto: UH-60 dovoze teret na helidrom ondje u roku od 24 h
 ds-click-hint = Kliknite na kartu gdje ide - desni klik: odustani
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Nije na otvorenom terenu
 ds-new-gepard = Novi položaj Gepard - kliknite za određivanje
 ds-new-patriot = Novi položaj Patriot - kliknite za određivanje

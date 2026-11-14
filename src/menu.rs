@@ -423,7 +423,7 @@ fn despawn_menu_camera(mut commands: Commands, q: Query<Entity, With<MenuCamera>
 // (`flight_menu::colours`).
 pub(crate) const BG: egui::Color32 = egui::Color32::from_rgb(5, 18, 13);
 pub(crate) const FIELD: egui::Color32 = egui::Color32::from_rgb(9, 29, 21);
-const HOVER: egui::Color32 = egui::Color32::from_rgb(16, 69, 47);
+pub(crate) const HOVER: egui::Color32 = egui::Color32::from_rgb(16, 69, 47);
 /// Frames of fields, buttons and groups.
 pub(crate) const FRAME: egui::Color32 = egui::Color32::from_rgb(19, 84, 56);
 pub(crate) const GREEN: egui::Color32 = egui::Color32::from_rgb(108, 251, 174);
@@ -431,9 +431,9 @@ pub(crate) const DIM: egui::Color32 = egui::Color32::from_rgb(27, 136, 82);
 pub(crate) const BRIGHT: egui::Color32 = egui::Color32::from_rgb(183, 255, 216);
 pub(crate) const AMBER: egui::Color32 = egui::Color32::from_rgb(255, 176, 0);
 /// The panels' glowing edge; a lit button's fill from top to bottom.
-const EDGE: egui::Color32 = egui::Color32::from_rgb(61, 231, 140);
-const LIT_TOP: egui::Color32 = egui::Color32::from_rgb(31, 156, 91);
-const LIT_BOTTOM: egui::Color32 = egui::Color32::from_rgb(23, 111, 70);
+pub(crate) const EDGE: egui::Color32 = egui::Color32::from_rgb(61, 231, 140);
+pub(crate) const LIT_TOP: egui::Color32 = egui::Color32::from_rgb(31, 156, 91);
+pub(crate) const LIT_BOTTOM: egui::Color32 = egui::Color32::from_rgb(23, 111, 70);
 
 /// Width of the VEHICLE column (the aircraft preview above the choices).
 pub(crate) const VEHICLE_WIDTH: f32 = 260.0;
@@ -888,6 +888,32 @@ pub(crate) mod icon {
     pub(crate) const KEYS: char = '\u{e355}'; // joystick
     pub(crate) const PLAN_ROUTE: char = '\u{e53e}'; // route
     pub(crate) const LOADOUT: char = '\u{e2ff}'; // bomb
+    // The campaign screen's rail, map controls and briefing.
+    pub(crate) const MISSIONS: char = '\u{e180}'; // target
+    pub(crate) const FLIGHTS: char = '\u{e1de}'; // plane
+    pub(crate) const AIR_DEFENCE: char = '\u{e158}'; // shield
+    pub(crate) const SUPPLY: char = '\u{e194}'; // truck
+    pub(crate) const PLAYERS: char = MULTIPLAYER;
+    pub(crate) const DEBRIEF: char = '\u{e04f}'; // award
+    pub(crate) const LOG: char = '\u{e45f}'; // scroll-text
+    pub(crate) const CHAT: char = '\u{e117}'; // message-square
+    pub(crate) const LAYERS: char = '\u{e52a}'; // layers-2
+    pub(crate) const ZOOM_IN: char = '\u{e13d}'; // plus
+    pub(crate) const ZOOM_OUT: char = '\u{e11c}'; // minus
+    pub(crate) const FIT: char = '\u{e112}'; // maximize
+    pub(crate) const NEXT: char = '\u{e06f}'; // chevron-right
+    pub(crate) const COLLAPSE: char = '\u{e06d}'; // chevron-down
+    pub(crate) const EXPAND: char = '\u{e070}'; // chevron-up
+    pub(crate) const WAR: char = CAMPAIGN;
+    pub(crate) const GROUND: char = '\u{e2b4}'; // swords
+    pub(crate) const WEATHER: char = '\u{e216}'; // cloud-sun
+    pub(crate) const CLOCK: char = '\u{e087}'; // clock-4
+    pub(crate) const MATERIEL: char = '\u{e129}'; // package
+    pub(crate) const OBJECTIVE: char = '\u{e0d1}'; // flag
+    pub(crate) const DEFEND: char = '\u{e1fe}'; // shield-alert
+    pub(crate) const WATCH: char = '\u{e0ba}'; // eye
+    pub(crate) const ADD: char = '\u{e081}'; // circle-plus
+    pub(crate) const WARNING: char = '\u{e193}'; // alert-triangle
 }
 
 /// A framed button that lights up (a green gradient, a glowing frame) under the mouse, as the

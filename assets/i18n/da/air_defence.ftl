@@ -22,6 +22,7 @@ ad-a-player = En spiller
 ds-new-site = Ny stilling
 ds-hint = Udpeg et sted: UH-60'er flyver dets last til en helikopterplads der inden for 24 t
 ds-click-hint = Klik på kortet, hvor den skal stå - højreklik: annullér
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Ikke på åbent terræn
 ds-new-gepard = Ny Gepard-stilling - klik for at udpege
 ds-new-patriot = Ny Patriot-stilling - klik for at udpege

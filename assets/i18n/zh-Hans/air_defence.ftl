@@ -22,6 +22,7 @@ ad-a-player = 一名玩家
 ds-new-site = 新阵地
 ds-hint = 指定地点：UH-60 会在 24 小时内把物资运到那里的直升机停机坪
 ds-click-hint = 在地图上点击放置位置 - 右键：取消
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = 不在开阔地面上
 ds-new-gepard = 新 Gepard 阵地 - 点击指定
 ds-new-patriot = 新 Patriot 阵地 - 点击指定

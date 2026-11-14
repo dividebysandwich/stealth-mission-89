@@ -22,6 +22,7 @@ ad-a-player = Seorang pemain
 ds-new-site = Posisi baru
 ds-hint = Tentukan lokasi: UH-60 menerbangkan muatannya ke helipad di sana dalam 24 jam
 ds-click-hint = Klik peta di tempat tujuannya - klik kanan: batal
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Tidak di tanah terbuka
 ds-new-gepard = Posisi Gepard baru - klik untuk menentukan
 ds-new-patriot = Posisi Patriot baru - klik untuk menentukan

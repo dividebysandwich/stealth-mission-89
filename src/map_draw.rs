@@ -648,6 +648,13 @@ pub enum Layer {
     /// Where a unit opens fire.
     EngagementRange,
     Drones,
+    /// The campaign's mission markers: the board's offers at their objectives.
+    Missions,
+    /// The friendly air defence sites' reach, filled, with their tags (P1, G2 ..).
+    DefenceReach,
+    /// The campaign's front: the contested band between the sides, its line, and the places
+    /// taken or lost lately.
+    Front,
     Clouds,
     /// Rain or snow.
     Precipitation,

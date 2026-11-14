@@ -209,6 +209,9 @@ pub struct Place {
     /// at a friendly place: its strikes may follow).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub red_intel_until: Option<f64>,
+    /// When it last changed hands (campaign time): the map marks it taken or lost for a while.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub captured_at: Option<f64>,
 }
 
 impl Place {
@@ -1562,6 +1565,7 @@ impl CampaignState {
                         armour_repair_at: None,
                         guns_repair_at: None,
                         red_intel_until: None,
+                        captured_at: None,
                     });
                     places.len() - 1
                 }

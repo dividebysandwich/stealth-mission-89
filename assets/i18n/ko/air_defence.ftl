@@ -22,6 +22,7 @@ ad-a-player = 다른 플레이어
 ds-new-site = 새 진지
 ds-hint = 위치를 지정하십시오: UH-60이 24시간 안에 그곳 헬기 패드로 화물을 수송합니다
 ds-click-hint = 설치할 곳을 지도에서 클릭 - 오른쪽 클릭: 취소
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = 개활지가 아닙니다
 ds-new-gepard = 새 게파르트 진지 - 클릭하여 지정
 ds-new-patriot = 새 패트리엇 진지 - 클릭하여 지정

@@ -22,6 +22,7 @@ ad-a-player = Ένας παίκτης
 ds-new-site = Νέα θέση
 ds-hint = Ορίστε ένα σημείο: τα UH-60 μεταφέρουν το φορτίο του σε ελικοδρόμιο εκεί μέσα σε 24 h
 ds-click-hint = Κάντε κλικ στον χάρτη όπου πηγαίνει - δεξί κλικ: ακύρωση
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Όχι σε ανοιχτό έδαφος
 ds-new-gepard = Νέα θέση Gepard - κλικ για ορισμό
 ds-new-patriot = Νέα θέση Patriot - κλικ για ορισμό

@@ -22,6 +22,7 @@ ad-a-player = Играч
 ds-new-site = Нова позиция
 ds-hint = Посочете място: UH-60 ще докарат товара му на хеликоптерна площадка там до 24 ч
 ds-click-hint = Щракнете на картата къде да бъде - десен бутон: отказ
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Не е на открит терен
 ds-new-gepard = Нова позиция Gepard - щракнете, за да я посочите
 ds-new-patriot = Нова позиция Patriot - щракнете, за да я посочите

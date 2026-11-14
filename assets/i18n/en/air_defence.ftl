@@ -22,6 +22,7 @@ ad-a-player = A player
 ds-new-site = New site
 ds-hint = Designate a spot: UH-60s fly its cargo to a helipad there within 24 h
 ds-click-hint = Click the map where it goes - right click: cancel
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Not on open ground
 ds-too-steep = Too steep a hillside
 ds-new-gepard = New Gepard site - click to designate

@@ -22,6 +22,7 @@ ad-a-player = Igralec
 ds-new-site = Novo mesto
 ds-hint = Določite mesto: UH-60 pripeljejo tovor na heliport tam v 24 h
 ds-click-hint = Kliknite na zemljevid, kam gre - desni klik: prekliči
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Ni na odprtem terenu
 ds-new-gepard = Novo mesto Gepard - kliknite za določitev
 ds-new-patriot = Novo mesto Patriot - kliknite za določitev

@@ -7,8 +7,8 @@ use stealth_i18n::{Text, t};
 use stealth_sim::crew::Seat;
 
 use super::{
-    AI_GREY, ActiveCampaign, BOARD_SPLIT, BRIGHT, DETAIL_LEAST, DIM, Deed, Flow, GREEN, Phase,
-    ROW, Span, Todo, height_of, icon, kind_of, section, take_over_refusal,
+    AI_GREY, ActiveCampaign, BRIGHT, DIM, Deed, GREEN, Phase, ROW, Todo, height_of, icon, kind_of,
+    section, take_over_refusal,
 };
 
 /// A flight of the list: a player's aircraft or one of an AI flight's.
@@ -152,19 +152,18 @@ pub(super) fn tab(
     ui: &mut egui::Ui,
     c: &mut ActiveCampaign,
     sim: &stealth_sim::Sim,
-    width: f32,
+    _width: f32,
     deck: &mut Vec<Deed>,
+    bar: &mut Option<(String, String)>,
 ) {
     let list = rows(c, sim);
     if c.ui.flight.is_none_or(|k| !list.iter().any(|r| r.key == k)) {
         c.ui.flight = list.first().map(|r| r.key);
     }
     let room = height_of(ui);
-    let left = if width < BOARD_SPLIT { width } else { width * 0.52 };
-    let mut flow = Flow::new(ui);
-    flow.card(ui, Span::Fixed(left), |ui| {
-        section(ui, t!("ops-section-flights"));
-        egui::ScrollArea::vertical().id_salt("flights").max_height((room - 40.0).max(120.0)).show(
+    // The list over the selected flight's seats.
+    ui.vertical(|ui| {
+        egui::ScrollArea::vertical().id_salt("flights").max_height((room * 0.6).max(120.0)).auto_shrink([false, true]).show(
             ui,
             |ui| {
                 for r in &list {
@@ -229,8 +228,10 @@ pub(super) fn tab(
             },
         );
     });
-    flow.card(ui, Span::Fill(DETAIL_LEAST), |ui| {
+    ui.add_space(8.0);
+    ui.vertical(|ui| {
         let Some(r) = list.iter().find(|r| Some(r.key) == c.ui.flight) else { return };
+        *bar = Some((format!("{} · {}", r.callsign, kind_of(r.aircraft).name()), format!("{} · {}", r.title.tr(), r.status)));
         section(ui, kind_of(r.aircraft).name());
         ui.label(egui::RichText::new(r.title.tr()).size(20.0).color(BRIGHT));
         ui.label(egui::RichText::new(&r.status).color(DIM));
@@ -274,5 +275,4 @@ pub(super) fn tab(
             deck.push(deed);
         }
     });
-    flow.finish(ui);
 }

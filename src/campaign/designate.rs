@@ -50,7 +50,7 @@ pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
             for &kind in row {
                 let on = c.ui.designate == Some(kind);
                 let button =
-                    egui::Button::new(kind_label(kind)).min_size(egui::vec2(w, 30.0)).selected(on);
+                    egui::Button::new(kind_label(kind)).min_size(egui::vec2(w, 48.0)).selected(on);
                 if ui.add(button).clicked() {
                     c.ui.designate = if on { None } else { Some(kind) };
                     c.ui.error = None;
@@ -67,7 +67,7 @@ pub(super) fn buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
 }
 
 /// "GEPARD" (the map's and the buttons' name of a site's kind).
-fn kind_label(kind: DefenceKind) -> &'static str {
+pub(super) fn kind_label(kind: DefenceKind) -> &'static str {
     match kind {
         DefenceKind::Gepard => "GEPARD",
         DefenceKind::Patriot => "PATRIOT",

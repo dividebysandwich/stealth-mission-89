@@ -22,6 +22,7 @@ ad-a-player = Un jucător
 ds-new-site = Amplasament nou
 ds-hint = Desemnați un loc: UH-60 îi aduc încărcătura la un heliport acolo în 24 h
 ds-click-hint = Faceți clic pe hartă unde va fi - clic dreapta: anulare
+ds-banner = Click the map to place the { $kind } site
 ds-not-open-ground = Nu este pe teren deschis
 ds-new-gepard = Amplasament Gepard nou - clic pentru a-l desemna
 ds-new-patriot = Amplasament Patriot nou - clic pentru a-l desemna

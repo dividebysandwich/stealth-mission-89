@@ -26,7 +26,10 @@ mod air_defence;
 mod designate;
 mod logistics;
 mod menu;
+mod front;
 mod ops;
+mod shell;
+mod war_map;
 pub(crate) mod picture;
 pub mod unit_view;
 
@@ -582,7 +585,7 @@ fn begin(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     }
     let base = stealth_host::glue::default_base(c.state());
     park(c, &mut s, base);
-    c.ui.tab = ops::test_tab().unwrap_or(ops::Tab::Board);
+    c.ui.open(ops::test_pane().unwrap_or(None));
     // A returning client's sortie goes on where his aircraft is.
     if let Some(r) = c.resume.take() {
         begin_sortie(c, &mut s, &r.sortie, &r.state);
@@ -1099,7 +1102,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         if *t > END_SECONDS {
             let base = c.parked;
             park(c, &mut s, base);
-            c.ui.tab = ops::test_tab().unwrap_or(ops::Tab::Debrief);
+            c.ui.open(ops::test_pane().unwrap_or(Some(ops::Pane::Debrief)));
         }
     }
     // The sky's clock.
