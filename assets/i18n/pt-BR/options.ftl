@@ -97,6 +97,10 @@ options-sun-moon = Sol e lua
     .facts =
         O sol no céu de dia, a lua e as estrelas à noite
         A lua mostra a fase da missão
+options-scenery-distance = Distância do cenário
+    .facts = Cidades distantes: 7–30 km; campos: 24–30 km. As distâncias das árvores não mudam. O detalhamento automático em RV pode reduzir as distâncias do cenário.
+options-city-light-distance = Distância das luzes urbanas
+    .facts = Postes, janelas e luzes de sinalização dos edifícios, independentes da distância do cenário. O clima pode limitar a visibilidade.
 options-cloud-quality = Nuvens
 cloud-quality-auto = Auto
     .facts = Baixa em RV, alta na tela

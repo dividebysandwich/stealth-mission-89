@@ -97,6 +97,10 @@ options-sun-moon = Słońce i księżyc
     .facts =
         Słońce na niebie w dzień, księżyc i gwiazdy w nocy
         Księżyc pokazuje fazę z misji
+options-scenery-distance = Zasięg scenerii
+    .facts = Odległe miejscowości: 7–30 km; pola: 24–30 km. Zasięgi drzew pozostają bez zmian. Automatyczna szczegółowość VR może zmniejszyć zasięgi scenerii.
+options-city-light-distance = Zasięg świateł miejskich
+    .facts = Latarnie, okna i światła ostrzegawcze budynków, niezależnie od zasięgu scenerii. Pogoda może ograniczyć widoczność.
 options-cloud-quality = Chmury
 cloud-quality-auto = Auto
     .facts = Niska w VR, wysoka na ekranie

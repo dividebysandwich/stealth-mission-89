@@ -97,6 +97,10 @@ options-sun-moon = Xemx u qamar
     .facts =
         Ix-xemx fis-sema bin-nhar, il-qamar u l-istilel bil-lejl
         Il-qamar juri l-fażi tal-missjoni
+options-scenery-distance = Distanza tal-pajsaġġ
+    .facts = Bliet imbiegħda: 7–30 km; għelieqi: 24–30 km. Id-distanzi tas-siġar ma jinbidlux. Id-dettall awtomatiku tal-VR jista’ jqassar id-distanzi tal-pajsaġġ.
+options-city-light-distance = Distanza tad-dwal tal-belt
+    .facts = Lampi tat-toroq, twieqi u dwal ta’ twissija tal-bini, indipendenti mid-distanza tal-pajsaġġ. It-temp jista’ jillimita l-viżibbiltà.
 options-cloud-quality = Sħab
 cloud-quality-auto = Awtomatiku
     .facts = Baxx fil-VR, għoli fuq l-iskrin

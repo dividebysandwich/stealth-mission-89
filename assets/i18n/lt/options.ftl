@@ -97,6 +97,10 @@ options-sun-moon = Saulė ir Mėnulis
     .facts =
         Saulė danguje dieną, Mėnulis ir žvaigždės naktį
         Mėnulis rodo misijos fazę
+options-scenery-distance = Kraštovaizdžio nuotolis
+    .facts = Tolimos gyvenvietės: 7–30 km; laukai: 24–30 km. Medžių nuotoliai nesikeičia. Automatinis VR detalumas gali sumažinti kraštovaizdžio nuotolius.
+options-city-light-distance = Miesto šviesų nuotolis
+    .facts = Gatvių žibintai, langai ir pastatų įspėjamosios šviesos, nepriklausomai nuo kraštovaizdžio nuotolio. Oras gali riboti matomumą.
 options-cloud-quality = Debesys
 cloud-quality-auto = Auto
     .facts = Žema VR, aukšta ekrane

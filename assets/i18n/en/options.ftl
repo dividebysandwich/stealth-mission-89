@@ -98,6 +98,10 @@ options-sun-moon = Sun and moon
     .facts =
         The sun in the sky by day, the moon and the stars by night
         The moon shows the mission's phase
+options-scenery-distance = Scenery distance
+    .facts = Distant towns: 7–30 km; farmland: 24–30 km. Tree ranges stay unchanged. Automatic VR detail may shorten scenery ranges.
+options-city-light-distance = City-light distance
+    .facts = Street lamps, windows and building beacons, independent of scenery distance. Weather may limit visibility.
 options-cloud-quality = Clouds
 cloud-quality-auto = Auto
     .facts = Low in VR, high on the screen

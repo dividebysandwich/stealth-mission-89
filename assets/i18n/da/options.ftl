@@ -97,6 +97,10 @@ options-sun-moon = Sol og måne
     .facts =
         Solen på himlen om dagen, månen og stjernerne om natten
         Månen viser missionens fase
+options-scenery-distance = Landskabsafstand
+    .facts = Fjerne byer: 7–30 km; marker: 24–30 km. Træernes afstande er uændrede. Automatisk VR-detaljeniveau kan forkorte landskabsafstandene.
+options-city-light-distance = Afstand for bylys
+    .facts = Gadelamper, vinduer og advarselslys på bygninger, uafhængigt af landskabsafstanden. Vejret kan begrænse sigtbarheden.
 options-cloud-quality = Skyer
 cloud-quality-auto = Auto
     .facts = Lav i VR, høj på skærmen

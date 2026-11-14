@@ -97,6 +97,10 @@ options-sun-moon = Päike ja kuu
     .facts =
         Päike taevas päeval, kuu ja tähed öösel
         Kuu näitab missiooni faasi
+options-scenery-distance = Maastiku kuvamiskaugus
+    .facts = Kauged asulad: 7–30 km; põllud: 24–30 km. Puude kaugused ei muutu. VR-i automaatne detailsus võib maastiku kaugusi vähendada.
+options-city-light-distance = Linnatulede kuvamiskaugus
+    .facts = Tänavalambid, aknad ja hoonete hoiatustuled, sõltumata maastiku kuvamiskaugusest. Ilm võib nähtavust piirata.
 options-cloud-quality = Pilved
 cloud-quality-auto = Auto
     .facts = Madal VR-is, kõrge ekraanil

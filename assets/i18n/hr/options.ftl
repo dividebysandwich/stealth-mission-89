@@ -97,6 +97,10 @@ options-sun-moon = Sunce i Mjesec
     .facts =
         Sunce na nebu danju, Mjesec i zvijezde noću
         Mjesec prikazuje mijenu misije
+options-scenery-distance = Udaljenost krajolika
+    .facts = Udaljena naselja: 7–30 km; polja: 24–30 km. Udaljenosti stabala ostaju nepromijenjene. Automatska razina detalja u VR-u može smanjiti udaljenosti krajolika.
+options-city-light-distance = Udaljenost gradskih svjetala
+    .facts = Ulične svjetiljke, prozori i upozoravajuća svjetla zgrada, neovisno o udaljenosti krajolika. Vrijeme može ograničiti vidljivost.
 options-cloud-quality = Oblaci
 cloud-quality-auto = Auto
     .facts = Niska u VR-u, visoka na zaslonu

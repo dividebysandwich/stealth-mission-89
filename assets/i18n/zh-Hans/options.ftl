@@ -97,6 +97,10 @@ options-sun-moon = 太阳和月亮
     .facts =
         白天天空中有太阳，夜间有月亮和星星
         月亮显示任务当天的月相
+options-scenery-distance = 景物距离
+    .facts = 远处城镇：7–30公里；农田：24–30公里。树木距离保持不变。VR自动细节可能缩短景物距离。
+options-city-light-distance = 城市灯光距离
+    .facts = 路灯、窗户和建筑警示灯的距离，独立于景物距离。天气可能限制能见度。
 options-cloud-quality = 云
 cloud-quality-auto = 自动
     .facts = VR 中为低，屏幕上为高

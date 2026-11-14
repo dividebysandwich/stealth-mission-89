@@ -97,6 +97,10 @@ options-sun-moon = Zon en maan
     .facts =
         De zon aan de hemel overdag, de maan en de sterren 's nachts
         De maan toont de fase van de missie
+options-scenery-distance = Landschapsafstand
+    .facts = Verre plaatsen: 7–30 km; akkers: 24–30 km. Boomafstanden blijven ongewijzigd. Automatische VR-details kunnen de landschapsafstanden verkorten.
+options-city-light-distance = Afstand stadslichten
+    .facts = Straatlampen, ramen en waarschuwingslichten op gebouwen, onafhankelijk van de landschapsafstand. Het weer kan het zicht beperken.
 options-cloud-quality = Wolken
 cloud-quality-auto = Auto
     .facts = Laag in VR, hoog op het scherm

@@ -59,6 +59,10 @@ pub struct Settings {
     /// VR: the scenery's detail follows the frame rate (`scenery::budget`), on unless
     /// `--no-auto-detail`.
     pub vr_auto_detail: bool,
+    /// Distant town range (metres); farmland interpolates from 24 to 30 km with it.
+    pub scenery_distance: f32,
+    /// City lamps, windows and beacons, streamed independently of buildings (metres).
+    pub city_light_distance: f32,
     /// `--continuous-time`: the sun and moon move with the mission clock, the palette follows
     /// the sun, moonlight sets the enemy's night sight (sky.rs); off, the classic drift.
     pub continuous_time: bool,
@@ -187,6 +191,10 @@ pub const PLAYER_LABEL_SIZE_RANGE: std::ops::RangeInclusive<f32> = 0.1..=2.0;
 pub const SEAT_HEIGHT_RANGE: std::ops::RangeInclusive<f32> = -0.15..=0.15;
 /// The coop radio microphone's gain, lowest and highest.
 pub const MIC_GAIN_RANGE: (f32, f32) = (0.25, 4.0);
+
+/// Scenery and city-light streaming distances: main's default through the extended range.
+pub const DEFAULT_SCENERY_DISTANCE: f32 = 7000.0;
+pub const SCENERY_DISTANCE_RANGE: std::ops::RangeInclusive<f32> = 7000.0..=30_000.0;
 
 /// What the next flight looks like (filled by the menu or command-line flags).
 #[derive(Resource, Debug, Clone)]
@@ -352,6 +360,8 @@ impl Settings {
             local_lights: has("--local-lights"),
             cloud_quality: Default::default(),
             vr_auto_detail: !has("--no-auto-detail"),
+            scenery_distance: DEFAULT_SCENERY_DISTANCE,
+            city_light_distance: DEFAULT_SCENERY_DISTANCE,
             continuous_time: has("--continuous-time"),
             sun_moon: has("--sun-moon"),
             classic_cockpit: has("--classic-cockpit"),

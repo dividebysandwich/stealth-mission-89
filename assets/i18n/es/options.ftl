@@ -97,6 +97,10 @@ options-sun-moon = Sol y luna
     .facts =
         El sol en el cielo de día, la luna y las estrellas de noche
         La luna muestra la fase de la misión
+options-scenery-distance = Distancia del escenario
+    .facts = Poblaciones lejanas: 7–30 km; campos: 24–30 km. Las distancias de los árboles no cambian. El detalle automático en RV puede reducir las distancias del escenario.
+options-city-light-distance = Distancia de luces urbanas
+    .facts = Farolas, ventanas y balizas de edificios, independientes de la distancia del escenario. El tiempo puede limitar la visibilidad.
 options-cloud-quality = Nubes
 cloud-quality-auto = Auto
     .facts = Baja en RV, alta en pantalla

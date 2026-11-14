@@ -97,6 +97,10 @@ options-sun-moon = Sol och måne
     .facts =
         Solen på himlen om dagen, månen och stjärnorna om natten
         Månen visar uppdragets fas
+options-scenery-distance = Landskapsavstånd
+    .facts = Avlägsna orter: 7–30 km; åkrar: 24–30 km. Trädens avstånd är oförändrade. Automatisk VR-detaljnivå kan förkorta landskapsavstånden.
+options-city-light-distance = Avstånd för stadsljus
+    .facts = Gatlyktor, fönster och varningsljus på byggnader, oberoende av landskapsavståndet. Vädret kan begränsa sikten.
 options-cloud-quality = Moln
 cloud-quality-auto = Auto
     .facts = Låg i VR, hög på skärmen

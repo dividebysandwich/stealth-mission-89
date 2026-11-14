@@ -97,6 +97,10 @@ options-sun-moon = Sole e luna
     .facts =
         Il sole nel cielo di giorno, la luna e le stelle di notte
         La luna mostra la fase della missione
+options-scenery-distance = Distanza dello scenario
+    .facts = Centri abitati lontani: 7–30 km; campi: 24–30 km. Le distanze degli alberi restano invariate. Il dettaglio automatico in VR può ridurre le distanze dello scenario.
+options-city-light-distance = Distanza delle luci urbane
+    .facts = Lampioni, finestre e luci di segnalazione degli edifici, indipendenti dalla distanza dello scenario. Il meteo può limitare la visibilità.
 options-cloud-quality = Nuvole
 cloud-quality-auto = Auto
     .facts = Bassa in VR, alta sullo schermo

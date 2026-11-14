@@ -169,6 +169,7 @@ pub(super) fn stream_skin(
     anchor: Query<&WorldPos, With<WorldAnchor>>,
     detail: Res<DetailLevel>,
     budget: Res<budget::SceneryBudget>,
+    settings: Res<crate::settings::Settings>,
     mut skin: ResMut<Skin>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
@@ -184,7 +185,7 @@ pub(super) fn stream_skin(
     // the blocks whose centre is in its range (by the same measure, so the flat fields and
     // the hills' agree).
     let farmland = detail.0 >= 2 && scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
-    let fields_r = budget.ranges().radius(Tier::Fields);
+    let fields_r = budget.scenery_ranges(&settings).radius(Tier::Fields);
     debug_assert_eq!(CHUNK, FIELD_BLOCK);
     // Chunks wanted: what they are built as and their distance.
     let wanted = chunks_around(eye, range, hills, |bx, by| {

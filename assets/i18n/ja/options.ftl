@@ -97,6 +97,10 @@ options-sun-moon = 太陽と月
     .facts =
         昼は空に太陽、夜は月と星
         月はミッションの月齢を示します
+options-scenery-distance = 風景の表示距離
+    .facts = 遠方の市街地：7–30 km、農地：24–30 km。樹木の距離は変わりません。VRの自動詳細設定により風景の距離が短縮される場合があります。
+options-city-light-distance = 街の灯りの表示距離
+    .facts = 街灯、窓、建物の警告灯の距離を風景の表示距離とは独立して設定します。天候により視認距離が制限される場合があります。
 options-cloud-quality = 雲
 cloud-quality-auto = 自動
     .facts = VRでは低、画面では高

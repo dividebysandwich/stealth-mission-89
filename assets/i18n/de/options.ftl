@@ -97,6 +97,10 @@ options-sun-moon = Sonne und Mond
     .facts =
         Tagsüber die Sonne am Himmel, nachts Mond und Sterne
         Der Mond zeigt die Phase der Mission
+options-scenery-distance = Landschaftsreichweite
+    .facts = Entfernte Ortschaften: 7–30 km; Felder: 24–30 km. Baumreichweiten bleiben unverändert. Automatische VR-Details können die Landschaftsreichweite verkürzen.
+options-city-light-distance = Stadtlichtreichweite
+    .facts = Straßenlampen, Fenster und Gebäudewarnlichter, unabhängig von der Landschaftsreichweite. Das Wetter kann die Sicht begrenzen.
 options-cloud-quality = Wolken
 cloud-quality-auto = Auto
     .facts = Niedrig in VR, hoch am Bildschirm

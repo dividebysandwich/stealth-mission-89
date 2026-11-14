@@ -97,6 +97,10 @@ options-sun-moon = Soleil et lune
     .facts =
         Le soleil dans le ciel le jour, la lune et les étoiles la nuit
         La lune montre la phase de la mission
+options-scenery-distance = Distance du décor
+    .facts = Villes lointaines : 7–30 km ; champs : 24–30 km. Les distances des arbres restent inchangées. Le détail automatique en VR peut réduire les distances du décor.
+options-city-light-distance = Distance des lumières urbaines
+    .facts = Lampadaires, fenêtres et balises des bâtiments, indépendamment de la distance du décor. La météo peut limiter la visibilité.
 options-cloud-quality = Nuages
 cloud-quality-auto = Auto
     .facts = Faible en VR, élevée à l'écran

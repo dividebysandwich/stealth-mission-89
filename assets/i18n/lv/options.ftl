@@ -97,6 +97,10 @@ options-sun-moon = Saule un Mēness
     .facts =
         Saule debesīs dienā, Mēness un zvaigznes naktī
         Mēness parāda misijas fāzi
+options-scenery-distance = Ainavas attālums
+    .facts = Tālas apdzīvotas vietas: 7–30 km; lauki: 24–30 km. Koku attālumi nemainās. Automātiskā VR detalizācija var samazināt ainavas attālumus.
+options-city-light-distance = Pilsētas gaismu attālums
+    .facts = Ielu lampas, logi un ēku brīdinājuma gaismas neatkarīgi no ainavas attāluma. Laikapstākļi var ierobežot redzamību.
 options-cloud-quality = Mākoņi
 cloud-quality-auto = Auto
     .facts = Zema VR, augsta ekrānā

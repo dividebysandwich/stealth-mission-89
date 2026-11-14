@@ -97,6 +97,10 @@ options-sun-moon = Matahari dan bulan
     .facts =
         Matahari di langit pada siang hari, bulan dan bintang pada malam hari
         Bulan menunjukkan fase misi
+options-scenery-distance = Jarak pemandangan
+    .facts = Permukiman jauh: 7–30 km; ladang: 24–30 km. Jarak pepohonan tidak berubah. Detail VR otomatis dapat memperpendek jarak pemandangan.
+options-city-light-distance = Jarak lampu kota
+    .facts = Lampu jalan, jendela, dan lampu peringatan bangunan, terpisah dari jarak pemandangan. Cuaca dapat membatasi jarak pandang.
 options-cloud-quality = Awan
 cloud-quality-auto = Otomatis
     .facts = Rendah di VR, tinggi di layar

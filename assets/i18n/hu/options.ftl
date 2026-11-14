@@ -97,6 +97,10 @@ options-sun-moon = Nap és hold
     .facts =
         Nappal a nap az égen, éjjel a hold és a csillagok
         A hold a küldetés fázisát mutatja
+options-scenery-distance = Táj megjelenítési távolsága
+    .facts = Távoli települések: 7–30 km; szántóföldek: 24–30 km. A fák távolságai változatlanok. Az automatikus VR-részletesség csökkentheti a táj távolságait.
+options-city-light-distance = Városi fények távolsága
+    .facts = Utcai lámpák, ablakok és épületek jelzőfényei, a táj távolságától függetlenül. Az időjárás korlátozhatja a látótávolságot.
 options-cloud-quality = Felhők
 cloud-quality-auto = Auto
     .facts = Alacsony VR-ben, magas a képernyőn
