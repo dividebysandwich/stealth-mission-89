@@ -223,8 +223,11 @@ fn a_drone_flown_by_hand_turns_with_the_stick() {
     run(&mut sim, 10);
     sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
     let h0 = sim.uavs()[0].heading;
+    // Rolled into a bank and let go: it turns.
     let fly = StationCmd::Fly { uav: id, roll: 1.0, pitch: 0.0, yaw: 0.0, throttle: 1.0 };
     sim.station_command(ME, fly).unwrap();
+    frames(&mut sim, 8);
+    stick(&mut sim, id, 0.0, 0.0, 1.0);
     run(&mut sim, 3);
     let h1 = sim.uavs()[0].heading;
     assert!((h1 - h0).rem_euclid(std::f64::consts::TAU) > 0.2, "{h0} -> {h1}");
@@ -328,32 +331,39 @@ fn fp2_by_hand() -> (Sim, u16) {
 #[test]
 fn a_winged_drone_loops_with_the_stick_held_back() {
     let (mut sim, id) = fp2_by_hand();
-    let (h0, p0) = (sim.uavs()[0].heading, sim.uavs()[0].pitch);
-    let alt0 = sim.uavs()[0].pos[2];
+    let h0 = sim.uavs()[0].heading;
+    // Speed first: down 30 degrees at full throttle.
+    stick(&mut sim, id, 0.0, -1.0, 1.0);
+    while sim.uavs()[0].pitch > -0.5 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, 1.0);
+    run(&mut sim, 8);
+    let v0 = sim.uavs()[0].speed;
+    assert!(v0 > 75.0, "{v0} m/s");
+    // Up through the vertical, over the top on its back, down and level again.
     stick(&mut sim, id, 0.0, 1.0, 1.0);
-    // Up through the vertical, over the top on its back, down and level again: a whole turn
-    // of 2 pi at the pitch rate.
-    let (mut steepest, mut inverted) = (0.0_f64, false);
-    let turn = (std::f64::consts::TAU / 0.4 * 15.0).round() as i32;
-    for _ in 0..turn {
+    let (mut steepest, mut inverted, mut slowest) = (0.0_f64, false, v0);
+    let mut was_over = false;
+    for _ in 0..30 * 15 {
         frames(&mut sim, 1);
         let u = &sim.uavs()[0];
         steepest = steepest.max(u.pitch);
+        slowest = slowest.min(u.speed);
         inverted |= u.bank.abs() > 3.0 && u.pitch.abs() < 0.3;
+        was_over |= inverted;
+        if was_over && u.bank.abs() < 0.5 && u.pitch > -0.1 {
+            break;
+        }
     }
     stick(&mut sim, id, 0.0, 0.0, 1.0);
     frames(&mut sim, 1);
     let u = &sim.uavs()[0];
     assert!(steepest > 1.5, "steepest {steepest}");
     assert!(inverted, "never on its back over the top");
-    assert!(
-        (u.pitch - p0).abs() < 0.1 && u.bank.abs() < 0.1,
-        "pitch {p0} -> {} bank {}",
-        u.pitch,
-        u.bank
-    );
-    assert!(wrap(u.heading - h0).abs() < 0.1, "heading {h0} -> {}", u.heading);
-    assert!((u.pos[2] - alt0).abs() < 100.0, "{alt0} -> {} m", u.pos[2]);
+    assert!(slowest < v0 - 20.0, "{v0} m/s, over the top {slowest} m/s");
+    assert!(u.pitch.abs() < 0.3 && u.bank.abs() < 0.5, "pitch {} bank {}", u.pitch, u.bank);
+    assert!(wrap(u.heading - h0).abs() < 0.3, "heading {h0} -> {}", u.heading);
 }
 
 #[test]
@@ -361,16 +371,18 @@ fn a_winged_drone_rolls_all_the_way_round() {
     let (mut sim, id) = fp2_by_hand();
     stick(&mut sim, id, 1.0, 0.0, 1.0);
     let mut inverted = false;
-    let turn = (std::f64::consts::TAU / 0.8 * 15.0).round() as i32;
+    // A whole turn at 1.2 rad/s.
+    // (Its rate builds up after the stick as it dies away after it.)
+    let turn = (std::f64::consts::TAU / 1.2 * 15.0).round() as i32;
     for _ in 0..turn {
         frames(&mut sim, 1);
         inverted |= sim.uavs()[0].bank.abs() > 3.0;
     }
     stick(&mut sim, id, 0.0, 0.0, 1.0);
-    frames(&mut sim, 1);
+    run(&mut sim, 1);
     let u = &sim.uavs()[0];
     assert!(inverted, "never on its back");
-    assert!(u.bank.abs() < 0.1, "bank {}", u.bank);
+    assert!(u.bank.abs() < 0.25, "bank {}", u.bank);
 }
 
 /// An interceptor launched to loiter 2 km out at 500 m, flown by hand from 60 s on (level, at
@@ -420,12 +432,99 @@ fn a_drone_keeps_its_attitude_when_the_stick_is_let_go() {
     stick(&mut sim, id, -1.0, 1.0, 0.5);
     frames(&mut sim, 6);
     stick(&mut sim, id, 0.0, 0.0, 0.5);
-    frames(&mut sim, 1);
+    // Its rates die away after the stick (its inertia) ...
+    frames(&mut sim, 8);
     let (b1, p1) = (sim.uavs()[0].bank, sim.uavs()[0].pitch);
     assert!(b1 < b0 - 0.2 && p1 > 0.1, "bank {b0} -> {b1}, pitch {p1}");
+    // ... and it holds its attitude (its wing slowly rolling it out of the slip).
+    run(&mut sim, 1);
+    let u = &sim.uavs()[0];
+    assert!((u.bank - b1).abs() < 0.1 && (u.pitch - p1).abs() < 0.1, "{} {}", u.bank, u.pitch);
+}
+
+#[test]
+fn a_winged_drone_s_roll_carries_on_a_little_after_the_stick() {
+    let (mut sim, id) = fp2_by_hand();
+    let t = sim.uavs()[0].ctrl[2];
+    stick(&mut sim, id, 1.0, 0.0, t);
+    // Its rate takes its time to build up: under its full 1.2 rad/s at first.
+    frames(&mut sim, 3);
+    let early = sim.uavs()[0].bank;
+    assert!((0.05..0.2).contains(&early), "bank {early} after 0.2 s");
+    frames(&mut sim, 7);
+    let b0 = sim.uavs()[0].bank;
+    stick(&mut sim, id, 0.0, 0.0, t);
+    frames(&mut sim, 15);
+    let b1 = sim.uavs()[0].bank;
+    assert!(b1 - b0 > 0.15, "bank {b0} -> {b1} after the stick was let go");
+    frames(&mut sim, 8);
+    assert!((sim.uavs()[0].bank - b1).abs() < 0.05, "still rolling");
+}
+
+#[test]
+fn a_winged_drone_trades_speed_for_height() {
+    let (mut sim, id) = fp2_by_hand();
+    let t = sim.uavs()[0].ctrl[2];
+    let (v0, alt0) = (sim.uavs()[0].speed, sim.uavs()[0].pos[2]);
+    // Nose 30 degrees up at the same throttle: it climbs and slows.
+    stick(&mut sim, id, 0.0, 1.0, t);
+    while sim.uavs()[0].pitch < 0.5 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, t);
+    run(&mut sim, 5);
+    let u = &sim.uavs()[0];
+    assert!(
+        u.pos[2] > alt0 + 50.0 && u.speed < v0 - 10.0,
+        "{alt0} m {v0} m/s -> {} m {} m/s",
+        u.pos[2],
+        u.speed
+    );
+    // Nose 30 degrees down, the throttle closed: it gains it back.
+    stick(&mut sim, id, 0.0, -1.0, 0.0);
+    while sim.uavs()[0].pitch > -0.5 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, 0.0);
+    run(&mut sim, 6);
+    assert!(sim.uavs()[0].speed > v0, "{v0} -> {} m/s", sim.uavs()[0].speed);
+}
+
+#[test]
+fn a_winged_drone_stalls_slow_and_drops_its_nose_till_it_flies_again() {
+    let (mut sim, id) = fp2_by_hand();
+    // The throttle closed, the nose held 20 degrees up: it slows till the wing stalls.
+    stick(&mut sim, id, 0.0, 1.0, 0.0);
+    while sim.uavs()[0].pitch < 0.35 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, 0.0);
+    let mut stalled = false;
+    for _ in 0..15 * 15 {
+        frames(&mut sim, 1);
+        stalled |= sim.uavs()[0].stalled();
+        if stalled {
+            break;
+        }
+    }
+    let u = &sim.uavs()[0];
+    assert!(stalled && u.speed < 40.0, "never stalled ({} m/s)", u.speed);
+    let v0 = u.speed;
+    // Its nose drops by itself; held nose up it mushes on at the stall's edge ...
+    let p0 = u.pitch;
     run(&mut sim, 3);
     let u = &sim.uavs()[0];
-    assert!((u.bank - b1).abs() < 1e-6 && (u.pitch - p1).abs() < 1e-6, "{} {}", u.bank, u.pitch);
+    assert!(u.pitch < p0 - 0.1, "pitch {p0} -> {}", u.pitch);
+    assert!(u.aoa() > 0.15, "aoa {}", u.aoa());
+    // ... pushed level, it picks up speed and flies again.
+    stick(&mut sim, id, 0.0, -1.0, 0.0);
+    while sim.uavs()[0].pitch > -0.1 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, 0.0);
+    run(&mut sim, 3);
+    let u = &sim.uavs()[0];
+    assert!(!u.stalled() && u.speed > v0 + 5.0, "aoa {} {v0} -> {} m/s", u.aoa(), u.speed);
 }
 
 /// The angle (rad) between two directions.
@@ -494,13 +593,16 @@ fn a_winged_drone_s_rudder_skids_its_nose_round() {
         run(&mut sim, 10);
         sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
         let t = sim.uavs()[0].ctrl[2];
+        let b0 = sim.uavs()[0].bank;
         rudder(&mut sim, id, yaw, t);
         run(&mut sim, 2);
-        sim.uavs()[0].heading
+        let u = &sim.uavs()[0];
+        assert!(yaw == 0.0 || (u.bank - b0) * yaw as f64 > 0.1, "bank {b0} -> {}", u.bank);
+        u.heading
     };
-    // Full left rudder for 2 s: 0.3 rad further left than without.
+    // Full left rudder for 2 s: it skids, its wing rolls it left and it turns left.
     let skid = wrap(heading(-1.0) - heading(0.0));
-    assert!((-0.35..-0.25).contains(&skid), "{skid}");
+    assert!(skid < -0.12, "{skid}");
 }
 
 /// A heading difference in -pi..pi.
@@ -516,8 +618,24 @@ fn an_interceptor_flies_eight_minutes_at_a_fifth_of_its_throttle() {
     let u = &sim.uavs()[0];
     let full = u.endurance() / u.battery as f64;
     assert!((470.0..490.0).contains(&full), "{full} s on a full battery");
-    // Level at that throttle.
-    let alt = u.pos[2];
+    // Its wings level (it was circling) ...
+    while sim.uavs()[0].bank.abs() > 0.03 {
+        let roll = -sim.uavs()[0].bank.signum() as f32 * 0.1;
+        stick(&mut sim, id, roll, 0.0, 0.2);
+        frames(&mut sim, 1);
+    }
+    // ... level at that throttle, its nose a little up for its wings.
+    let up = |sim: &mut Sim, pitch: f64, throttle: f32| {
+        let sign = (pitch - sim.uavs()[0].pitch).signum() as f32;
+        fly(sim, id, sign * 0.2, throttle);
+        while (pitch - sim.uavs()[0].pitch) * sign as f64 > 0.0 {
+            frames(sim, 1);
+        }
+        fly(sim, id, 0.0, throttle);
+    };
+    up(&mut sim, 0.06, 0.2);
+    run(&mut sim, 3);
+    let alt = sim.uavs()[0].pos[2];
     run(&mut sim, 20);
     assert!((sim.uavs()[0].pos[2] - alt).abs() < 30.0, "{alt} -> {}", sim.uavs()[0].pos[2]);
     // Full throttle: 600 km/h, the battery five times as quick.
@@ -527,9 +645,24 @@ fn an_interceptor_flies_eight_minutes_at_a_fifth_of_its_throttle() {
     assert!(u.speed * 3.6 > 560.0, "{} km/h", u.speed * 3.6);
     let full = u.endurance() / u.battery as f64;
     assert!((90.0..100.0).contains(&full), "{full} s on a full battery");
-    // Under a fifth it can't hold its height, even with the stick back.
-    fly(&mut sim, id, 1.0, 0.05);
+    // Pointed straight up at a fifth it holds itself up; under it, it can't.
+    fly(&mut sim, id, 0.0, 0.2);
+    up(&mut sim, 1.44, 0.0);
+    // (Its motors stopped till it has coasted up to a stop.)
+    while sim.uavs()[0].vel[2] > 1.0 {
+        frames(&mut sim, 1);
+    }
+    fly(&mut sim, id, 0.0, 0.2);
     let alt = sim.uavs()[0].pos[2];
+    run(&mut sim, 5);
+    let u = &sim.uavs()[0];
+    assert!(
+        (u.pos[2] - alt).abs() < 10.0 && u.speed < 10.0,
+        "{alt} -> {} m, {} m/s",
+        u.pos[2],
+        u.speed
+    );
+    fly(&mut sim, id, 0.0, 0.05);
     run(&mut sim, 5);
     assert!(sim.uavs()[0].pos[2] < alt - 20.0, "{alt} -> {}", sim.uavs()[0].pos[2]);
 }
@@ -667,15 +800,18 @@ fn an_x12_flies_126_km_in_a_quarter_hour_and_700_kmh_flat_out() {
     sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
     let perf = UavKind::X12.perf();
     // (Still banked as it was: the drain goes with the speed alone.)
-    stick(&mut sim, id, 0.0, 0.0, perf.speed_throttle(perf.cruise) as f32);
+    stick(&mut sim, id, 0.0, 0.0, perf.level_throttle(perf.cruise) as f32);
     run(&mut sim, 20);
     let u = &sim.uavs()[0];
     let full = u.endurance() / u.battery as f64;
     let km = full * u.speed / 1000.0;
-    assert!((870.0..930.0).contains(&full), "{full} s on a full tank");
+    assert!((870.0..950.0).contains(&full), "{full} s on a full tank");
     assert!((120.0..132.0).contains(&km), "{km} km at {} m/s", u.speed);
+    // Flat out it takes its time getting there (its thrust against its drag).
     fly(&mut sim, id, 0.0, 1.0);
-    run(&mut sim, 20);
+    run(&mut sim, 15);
+    assert!(sim.uavs()[0].speed * 3.6 < 650.0, "{} km/h", sim.uavs()[0].speed * 3.6);
+    run(&mut sim, 35);
     let u = &sim.uavs()[0];
     assert!((680.0..=701.0).contains(&(u.speed * 3.6)), "{} km/h", u.speed * 3.6);
 }

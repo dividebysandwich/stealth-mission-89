@@ -998,6 +998,7 @@ mod tests {
                 climb_out: 0.0,
                 lock,
                 vel: [0.0; 3],
+                rate: [0.0; 3],
             }),
             flown_by_player: false,
             route_ground: vec![],

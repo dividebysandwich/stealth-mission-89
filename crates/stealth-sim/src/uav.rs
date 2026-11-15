@@ -13,10 +13,12 @@
 //! * A drone flies its route by itself (**auto**): through its nav points, round a **loiter**
 //!   point on a wide circle, or into a **terminate** point (FP-2 only) in a steep dive. A route
 //!   without either ends in a circle round its last point.
-//! * Taken over (**manual**), it follows the console's stick and throttle: the stick rolls and
-//!   pitches it (released, it keeps its attitude), the throttle sets its speed. An interceptor
-//!   turns its nose almost at once; its flight path swings round after it with at most
-//!   [`TURN_G`].
+//! * Taken over (**manual**), it flies by its flight model (`fly_by_hand`): the stick rolls
+//!   and pitches it, its rates following after its inertia (released, it keeps its attitude),
+//!   the throttle sets its thrust against its drag and gravity, so climbing costs it speed
+//!   and diving gains it. A winged drone's wing lifts with its angle of attack and stalls past
+//!   [`STALL_AOA`]; its nose follows its track. An interceptor turns its nose almost at once;
+//!   its flight path swings round after it on its X wings with at most [`TURN_G`].
 //! * Its battery runs down with the throttle; empty, it glides down (an interceptor, without
 //!   wings, drops) and is lost. An interceptor under [`Perf::hover`] throttle can't hold its
 //!   height. The enemy's
@@ -95,13 +97,31 @@ pub const TURN_G: f64 = 20.0;
 const RESPONSE: f64 = 2.5;
 const SINK: f64 = 30.0;
 /// The stick's roll and pitch rates and the rudder's yaw rate at full deflection (rad/s): a
-/// winged drone's, an interceptor's (which also turns its nose this fast at a locked target).
-const ROLL_RATE: f64 = 0.8;
-const PITCH_RATE: f64 = 0.4;
-const YAW_RATE: f64 = 0.15;
+/// winged drone's (its roll and pitch times its `Perf::agility`), an interceptor's (which also
+/// turns its nose this fast at a locked target).
+const ROLL_RATE: f64 = 1.2;
+const PITCH_RATE: f64 = 0.6;
+const YAW_RATE: f64 = 0.5;
 const QUAD_ROLL_RATE: f64 = 4.0;
 const QUAD_PITCH_RATE: f64 = 3.0;
 const QUAD_YAW_RATE: f64 = 3.0;
+/// Gravity (m/s²).
+const G: f64 = 9.81;
+/// A wing stalls past this angle of attack (rad): its lift breaks down and its nose drops.
+pub const STALL_AOA: f64 = 0.25;
+/// Flown by hand, a winged drone's nose swings round after its track this quickly (1/s per
+/// rad, at cruise), a sideslip rolls it towards the wing the wind comes from (its dihedral)
+/// this quickly,
+/// and stalled, its nose drops this quickly (1/s per rad over 60% of the stall's angle).
+const WEATHERVANE: f64 = 3.0;
+const DIHEDRAL: f64 = 0.6;
+const STALL_DROP: f64 = 8.0;
+/// A winged drone's fuselage pushes sideways in a slip with this much of its wing's lift; the
+/// wing's induced drag is this much times its lift coefficient squared.
+const SIDE: f64 = 0.15;
+const INDUCED: f64 = 0.25;
+/// An interceptor's X wings: their push across the airflow per m/s of speed and m/s across.
+const QUAD_LIFT: f64 = 0.03;
 /// The steepest climb or dive an interceptor's nose holds (rad).
 const QUAD_PITCH: f64 = 1.45;
 /// An interceptor's warhead goes off this close to its target (m).
@@ -151,6 +171,10 @@ pub struct Perf {
     /// An interceptor: the throttle that just holds it up (it sinks under it), its battery
     /// drains with the throttle. 0: a winged drone, its battery drains with its speed.
     pub hover: f64,
+    /// Flown by hand: the most g its wings pull, and the seconds its roll, pitch and yaw rates
+    /// take to catch up with the stick (its inertia).
+    pub g: f64,
+    pub lag: f64,
 }
 
 impl Perf {
@@ -162,6 +186,34 @@ impl Perf {
     /// The throttle that flies a speed.
     pub fn speed_throttle(&self, v: f64) -> f64 {
         ((v - self.stall * 1.1) / (self.max - self.stall * 1.1)).clamp(0.0, 1.0)
+    }
+
+    /// Flown by hand: its drag (m/s² at 1 m/s, growing with the speed squared). A winged
+    /// drone's at full throttle leaves it its `climb` at cruise; an interceptor's matches its
+    /// full thrust at `max`.
+    pub fn drag(&self) -> f64 {
+        if self.hover > 0.0 {
+            G / self.hover / (self.max * self.max)
+        } else {
+            G * self.climb / self.cruise / (self.max * self.max - self.cruise * self.cruise)
+        }
+    }
+
+    /// Flown by hand: full throttle's thrust (m/s²), which flies it level at `max` (an
+    /// interceptor: holds it up pointed straight up at `hover` throttle).
+    pub fn thrust(&self) -> f64 {
+        self.drag() * self.max * self.max
+    }
+
+    /// A winged drone's lift (m/s² at 1 m/s and 1 rad angle of attack, growing with the speed
+    /// squared): 1 g at its stall speed just short of the stall.
+    pub fn lift(&self) -> f64 {
+        G / (self.stall * self.stall * STALL_AOA)
+    }
+
+    /// The throttle that flies a winged drone level at speed `v` by hand.
+    pub fn level_throttle(&self, v: f64) -> f64 {
+        (v / self.max).powi(2).clamp(0.0, 1.0)
     }
 }
 
@@ -180,6 +232,8 @@ impl UavKind {
                 altitude: 800.0,
                 agility: 1.0,
                 hover: 0.0,
+                g: 3.5,
+                lag: 0.4,
             },
             UavKind::Fp2 => Perf {
                 cruise: 50.0,
@@ -193,6 +247,8 @@ impl UavKind {
                 altitude: 300.0,
                 agility: 1.0,
                 hover: 0.0,
+                g: 5.0,
+                lag: 0.3,
             },
             // Its cruise is the speed of its hover throttle (`Perf::throttle_speed`).
             UavKind::Interceptor => Perf {
@@ -207,6 +263,8 @@ impl UavKind {
                 altitude: 500.0,
                 agility: 4.0,
                 hover: 0.2,
+                g: TURN_G,
+                lag: 0.05,
             },
             // 126 km on its 15 minutes of fuel at cruise.
             UavKind::X12 => Perf {
@@ -221,6 +279,8 @@ impl UavKind {
                 altitude: 1000.0,
                 agility: 2.5,
                 hover: 0.0,
+                g: X12_G,
+                lag: 0.2,
             },
         }
     }
@@ -406,10 +466,15 @@ pub struct Uav {
     /// An interceptor: the enemy aircraft (flight unit) it is locked on to.
     #[serde(default)]
     pub lock: Option<u16>,
-    /// An interceptor: its velocity (m/s: east, north, up), which follows its nose (`heading`,
-    /// `pitch` and `bank` are its attitude).
+    /// Its velocity (m/s: east, north, up), which follows its nose (`heading`, `pitch` and
+    /// `bank` are its attitude): an interceptor's always, a winged drone's flown by hand (else
+    /// along its nose).
     #[serde(default)]
     pub vel: [f64; 3],
+    /// Flown by hand: its roll, pitch and yaw rates (rad/s, right, up, right), which follow the
+    /// stick and rudder after `Perf::lag`.
+    #[serde(default)]
+    pub rate: [f64; 3],
 }
 
 impl Uav {
@@ -446,8 +511,23 @@ impl Uav {
         let p = self.kind.perf();
         match self.mode {
             UavMode::Manual => self.ctrl[2] as f64,
-            _ => p.speed_throttle(self.speed).max(p.hover),
+            _ if p.hover > 0.0 => p.speed_throttle(self.speed).max(p.hover),
+            _ => p.level_throttle(self.speed),
         }
+    }
+
+    /// The angle (rad) the air meets its wing at from below (flown by hand).
+    pub fn aoa(&self) -> f64 {
+        let (f, _, up) = axes(self);
+        (-dot(self.vel, up)).atan2(dot(self.vel, f))
+    }
+
+    /// A winged drone flown by hand past its stall.
+    pub fn stalled(&self) -> bool {
+        self.mode == UavMode::Manual
+            && self.kind.perf().hover == 0.0
+            && len(self.vel) > 0.0
+            && self.aoa().abs() > STALL_AOA
     }
 
     /// Seconds of flight left at this drain.
@@ -548,10 +628,9 @@ fn set_attitude(u: &mut Uav, f: [f64; 3], up: [f64; 3], max_pitch: f64) {
     u.bank = dot(up, [ch, -sh, 0.0]).atan2(dot(up, [-sh * sp, -ch * sp, cp]));
 }
 
-/// An interceptor's stick and rudder: rolled about its nose, pitched about its wings and yawed
-/// about its top at these rates (rad/s), the nose drifting round with the bank as the X wings
-/// lift.
-fn body_rates(u: &mut Uav, roll: f64, pitch: f64, yaw: f64, dt: f64) {
+/// A drone turned about its own axes at these rates (rad/s): rolled about its nose (right),
+/// pitched about its wings (up), yawed about its top (right), its pitch at most `max_pitch`.
+fn turn_body(u: &mut Uav, [roll, pitch, yaw]: [f64; 3], max_pitch: f64, dt: f64) {
     let (f, _, up) = axes(u);
     let (sa, ca) = ((pitch * dt).sin(), (pitch * dt).cos());
     let (f, up) = (add(mul(f, ca), mul(up, sa)), sub(mul(up, ca), mul(f, sa)));
@@ -563,18 +642,103 @@ fn body_rates(u: &mut Uav, roll: f64, pitch: f64, yaw: f64, dt: f64) {
     let f = add(mul(f, cy), mul(right(f), sy));
     let r = right(f);
     let (sb, cb) = ((roll * dt).sin(), (roll * dt).cos());
-    set_attitude(u, f, add(mul(up, cb), mul(r, sb)), QUAD_PITCH);
-    u.heading = wrap(u.heading + 9.81 * u.bank.sin() / u.speed.max(20.0) * dt);
+    set_attitude(u, f, add(mul(up, cb), mul(r, sb)), max_pitch);
 }
 
-/// A winged drone's stick: rolled about its nose and pitched about its wings at these rates
-/// (rad/s), as far as it is held (loops and rolls all the way round).
-fn winged_rates(u: &mut Uav, roll: f64, pitch: f64, dt: f64) {
+/// A wing's lift coefficient (per rad, so 1 g at the stall speed just short of the stall) at an
+/// angle of attack: growing with the angle up to `STALL_AOA`, then broken down to 60% of it and
+/// falling away to nothing side on to the air.
+fn lift_coefficient(aoa: f64) -> f64 {
+    let a = aoa.abs();
+    let cl =
+        if a <= STALL_AOA { a } else { 0.6 * STALL_AOA * (a.cos() / STALL_AOA.cos()).max(0.0) };
+    cl.copysign(aoa)
+}
+
+/// A drone flown by hand, one frame of `dt` s. Its roll, pitch and yaw rates follow the stick
+/// and rudder after `Perf::lag` (released, it holds its attitude); thrust along its nose, drag,
+/// gravity and its wings move it.
+///
+/// * A winged drone's wing lifts with its angle of attack and its speed squared, at most
+///   `Perf::g`; slow, its controls go soft; past `STALL_AOA` its lift breaks down, its drag
+///   grows and its nose drops. Its nose swings round after its track; a sideslip rolls it
+///   towards the wing the wind comes from (the rudder turns it so); climbing costs speed,
+///   diving gains it;
+///   its engine stopped, it glides.
+/// * An interceptor's X wings swing its way after its nose from any side, as hard as
+///   `TURN_G`; its motors hold it up pointed straight up at `Perf::hover` throttle.
+fn fly_by_hand(u: &mut Uav, dt: f64) {
+    let p = u.kind.perf();
+    let quad = p.hover > 0.0;
+    let throttle = if u.battery > EMPTY { u.ctrl[2] as f64 } else { 0.0 };
     let (f, right, up) = axes(u);
-    let (sa, ca) = ((pitch * dt).sin(), (pitch * dt).cos());
-    let (f, up) = (add(mul(f, ca), mul(up, sa)), sub(mul(up, ca), mul(f, sa)));
-    let (sb, cb) = ((roll * dt).sin(), (roll * dt).cos());
-    set_attitude(u, f, add(mul(up, cb), mul(right, sb)), std::f64::consts::FRAC_PI_2);
+    let v = len(u.vel);
+    let (vf, vr) = (dot(u.vel, f), dot(u.vel, right));
+    let aoa = u.aoa();
+    let beta = vr.atan2(vf);
+    // The rates catch up with the stick (a wing's, as much of them as the air lets it).
+    let (rates, soft) = if quad {
+        ([QUAD_ROLL_RATE, QUAD_PITCH_RATE, QUAD_YAW_RATE], 1.0)
+    } else {
+        let soft = (v / (1.2 * p.stall)).powi(2).min(1.0);
+        ([ROLL_RATE * p.agility, PITCH_RATE * p.agility, YAW_RATE], soft)
+    };
+    let stick = [u.ctrl[0] as f64, u.ctrl[1] as f64, u.yaw as f64];
+    let k = (dt / p.lag).min(1.0);
+    for a in 0..3 {
+        u.rate[a] += (stick[a] * rates[a] * soft - u.rate[a]) * k;
+    }
+    let mut turn = u.rate;
+    if !quad {
+        let air = (v / p.cruise).min(2.0);
+        turn[0] -= DIHEDRAL * beta.clamp(-1.0, 1.0) * air;
+        // Stalled, the nose drops till the wing flies again, well under the stall.
+        if aoa.abs() > STALL_AOA {
+            let past = aoa.abs() - 0.6 * STALL_AOA;
+            turn[1] -= STALL_DROP * past.min(1.5) * aoa.signum() * (v / p.stall).clamp(0.5, 1.5);
+        }
+    }
+    let max_pitch = if quad { QUAD_PITCH } else { std::f64::consts::FRAC_PI_2 };
+    turn_body(u, turn, max_pitch, dt);
+    if !quad && v > 0.1 {
+        // Its nose swings round after its track (as much as its way runs level).
+        let level = u.vel[0].hypot(u.vel[1]);
+        let swing = (WEATHERVANE * (v / p.cruise).min(2.0) * level / v * dt).min(1.0);
+        // (Not while its track runs behind its nose, over the top of a loop.)
+        let off = wrap(u.vel[0].atan2(u.vel[1]) - u.heading);
+        u.heading = wrap(u.heading + off * swing * off.cos().max(0.0));
+    }
+    // Thrust, gravity, the wings and drag.
+    let mut acc = add([0.0, 0.0, -G], mul(f, p.thrust() * throttle));
+    if v > 0.1 {
+        let way = mul(u.vel, 1.0 / v);
+        let mut drag = p.drag() * v * v;
+        let cap = |a: [f64; 3], most: f64| mul(a, (most / len(a).max(1e-9)).min(1.0));
+        if quad {
+            let across = sub(u.vel, mul(f, vf));
+            acc = add(acc, cap(mul(across, -QUAD_LIFT * v), p.g * G));
+        } else {
+            let k = p.lift() * v * v;
+            let cl = lift_coefficient(aoa);
+            // Square to the way, in the plane of the way and its top.
+            let normal = sub(up, mul(way, dot(up, way)));
+            let n = len(normal);
+            if n > 1e-6 {
+                let lift = (k * cl).clamp(-p.g * G, p.g * G);
+                acc = add(acc, mul(normal, lift / n));
+            }
+            acc = add(acc, mul(right, (-SIDE * p.lift() * v * vr).clamp(-2.0 * G, 2.0 * G)));
+            let s = STALL_AOA.sin();
+            let broken = ((aoa.abs().min(std::f64::consts::FRAC_PI_2).sin() - s) / (1.0 - s))
+                .max(0.0)
+                * STALL_AOA;
+            drag += k * (INDUCED * cl * cl + broken);
+        }
+        acc = sub(acc, mul(way, drag.min(v / dt)));
+    }
+    u.vel = add(u.vel, mul(acc, dt));
+    u.pos = add(u.pos, mul(u.vel, dt));
+    u.speed = len(u.vel);
 }
 
 /// How fast a winged drone's bank turns its heading, times g / speed: a coordinated turn's
@@ -756,10 +920,14 @@ impl Sim {
                 match (u.mode, on) {
                     (UavMode::Dive | UavMode::Launch, _) => return Err("Not now".into()),
                     (_, true) => {
+                        let t = u.throttle();
                         u.mode = UavMode::Manual;
-                        let t = u.kind.perf().speed_throttle(u.speed);
                         u.ctrl = [0.0, 0.0, t as f32];
                         u.yaw = 0.0;
+                        u.rate = [0.0; 3];
+                        if u.kind.perf().hover == 0.0 {
+                            u.vel = mul(axes(u).0, u.speed);
+                        }
                     }
                     (_, false) => u.mode = UavMode::Auto,
                 }
@@ -850,6 +1018,7 @@ impl Sim {
             climb_out: CLIMB_OUT,
             lock: None,
             vel: [0.0; 3],
+            rate: [0.0; 3],
         };
         d.uavs.push(uav);
         let n = d.uavs.len() - 1;
@@ -960,7 +1129,11 @@ impl Sim {
         let mut direct = false;
         // An interceptor's speed along its nose and its throttle (None: its motors stopped).
         let mut thrust: Option<(f64, f64)> = None;
-        if u.battery <= EMPTY && quad {
+        // Flown by hand (not chasing a locked target): by its flight model.
+        let by_hand = u.mode == UavMode::Manual && chase.is_none() && !(quad && u.battery <= EMPTY);
+        if by_hand {
+            fly_by_hand(&mut u, dt);
+        } else if u.battery <= EMPTY && quad {
             // No wings: it tumbles and drops.
             u.bank = wrap(u.bank + 1.5 * dt);
             u.pitch += (-1.3 - u.pitch).clamp(-dt, dt);
@@ -1017,30 +1190,14 @@ impl Sim {
             } else {
                 u.speed += (want_v - u.speed).clamp(-3.0 * ag * dt, 3.0 * ag * dt);
             }
-        } else if quad {
-            // The stick rolls and pitches it and the rudder yaws it (held where they are let
-            // go), the throttle drives it along its nose.
-            let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
-            let yaw = u.yaw as f64 * QUAD_YAW_RATE;
-            body_rates(&mut u, roll * QUAD_ROLL_RATE, pitch * QUAD_PITCH_RATE, yaw, dt);
-            direct = true;
-            thrust = Some((p.throttle_speed(throttle), throttle));
-        } else {
-            // The stick rolls and pitches it about its own axes, without limits (held where it
-            // is let go), the rudder skids the nose round, the throttle sets the speed.
-            let [roll, pitch, throttle] = u.ctrl.map(|c| c as f64);
-            u.heading = wrap(u.heading + u.yaw as f64 * YAW_RATE * dt);
-            winged_rates(&mut u, roll * ROLL_RATE * ag, pitch * PITCH_RATE * ag, dt);
-            let want_v = p.throttle_speed(throttle);
-            // Nose down picks up speed, nose up loses it.
-            let v = want_v - u.pitch.sin() * 40.0;
-            u.speed += (v.clamp(p.stall, p.dive) - u.speed).clamp(-4.0 * ag * dt, 4.0 * ag * dt);
         }
-        if !direct {
+        if !direct && !by_hand {
             // A coordinated turn: the bank turns the heading.
-            u.heading = wrap(u.heading + 9.81 * bank_turn(u.bank, u.pitch) / u.speed.max(1.0) * dt);
+            u.heading = wrap(u.heading + G * bank_turn(u.bank, u.pitch) / u.speed.max(1.0) * dt);
         }
-        if quad {
+        if by_hand {
+            // Moved by its flight model already.
+        } else if quad {
             // Its flight path follows the nose (with too little throttle, sinking), as hard as
             // `TURN_G` lets it; with the motors stopped it falls.
             let acc = match thrust {
@@ -1063,6 +1220,10 @@ impl Sim {
             u.pos[0] += u.heading.sin() * h;
             u.pos[1] += u.heading.cos() * h;
             u.pos[2] += u.speed * u.pitch.sin() * dt;
+            u.vel = mul(axes(&u).0, u.speed);
+        }
+        if !by_hand {
+            u.rate = [0.0; 3];
         }
         let on_target = dive_at.is_some_and(|t| {
             let d = [t[0] - u.pos[0], t[1] - u.pos[1], t[2] - u.pos[2]];

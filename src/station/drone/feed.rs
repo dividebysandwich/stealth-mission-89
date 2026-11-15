@@ -258,6 +258,8 @@ pub(super) fn draw(
     stroke_text_at(cv, 46.0, 20.0, &battery, 5.0, 0.8, bcol, Align::Left);
     if u.mode == UavMode::Dive {
         stroke_text_at(cv, w / 2.0, 32.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
+    } else if u.stalled() {
+        stroke_text_at(cv, w / 2.0, 32.0, "STALL", 7.0, 1.0, RED, Align::Centre);
     }
     if let Some(j) = u.lock {
         let name = combat.sim.flights().get(j as usize).map(|f| combat.sim.aircraft_name(f.spec));

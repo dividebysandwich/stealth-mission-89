@@ -1426,7 +1426,7 @@ fn distant_aircraft(
                 None => match x12 {
                     Some(d) if d.battery <= 0.0 => return None,
                     Some(d) => {
-                        let cruise = d.kind.perf().speed_throttle(d.kind.perf().cruise);
+                        let cruise = d.kind.perf().level_throttle(d.kind.perf().cruise);
                         1.0 + 0.25 * (d.throttle() - cruise) as f32
                     }
                     None => 1.0,
