@@ -33,6 +33,8 @@ use crate::palette_material::{
 use crate::settings::{AppState, SetupSet};
 use crate::world::{FloatingOrigin, WU, WorldPos, wu_to_bevy};
 
+mod billboard;
+
 pub struct WeatherPlugin;
 
 impl Plugin for WeatherPlugin {
@@ -42,9 +44,10 @@ impl Plugin for WeatherPlugin {
             FastCloudsPlugin,
         ))
         .init_resource::<WeatherState>()
+        .init_resource::<billboard::Billboards>()
         .insert_resource(lod_policy())
         .add_systems(OnEnter(AppState::Flight), setup_weather.in_set(SetupSet::Spawn))
-        .add_systems(OnExit(AppState::Flight), teardown_weather)
+        .add_systems(OnExit(AppState::Flight), (teardown_weather, billboard::reset))
         .add_systems(
             Update,
             turbulence
@@ -71,7 +74,8 @@ impl Plugin for WeatherPlugin {
         )
         .add_systems(
             PostUpdate,
-            shade_clouds
+            (shade_clouds, billboard::hide_volumes, billboard::draw_billboards)
+                .chain()
                 .after(crate::lighting::LightingSystems)
                 .before(CloudSystems)
                 .run_if(in_state(AppState::Flight)),
@@ -645,7 +649,8 @@ fn stream_clouds(
     }
 }
 
-/// A cumulus or cumulonimbus's radius (m), for its shadow (`Effects::cloud_shadows`).
+/// A cumulus or cumulonimbus's radius (m), for its shadow (`Effects::cloud_shadows`); marks
+/// the streamed clouds.
 #[derive(Component)]
 struct CloudShade {
     r: f32,
@@ -881,15 +886,24 @@ fn shade_clouds(
     }
 }
 
-/// How finely the volumetric clouds are drawn (`Settings::cloud_quality`, OPTIONS).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+/// How the clouds are drawn (`Settings::cloud_quality`, OPTIONS): as billboards, or how finely
+/// the volumetric clouds are marched.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum CloudQuality {
     /// Low in VR, high on the screen.
-    #[default]
     Auto,
+    /// Camera-facing puffs instead of the volumetric clouds (`billboard_clouds.rs`): the
+    /// Steam Frame's default.
+    Billboard,
     Low,
     Medium,
     High,
+}
+
+impl Default for CloudQuality {
+    fn default() -> Self {
+        if crate::effects::HEAVY_EFFECTS_OFF { CloudQuality::Billboard } else { CloudQuality::Auto }
+    }
 }
 
 /// A cloud quality's march: finest wavelet scales, march steps, the self shadow and view pixels
@@ -903,12 +917,28 @@ pub struct CloudLevel {
 }
 
 impl CloudQuality {
-    pub const ALL: [CloudQuality; 4] =
-        [CloudQuality::Auto, CloudQuality::Low, CloudQuality::Medium, CloudQuality::High];
+    pub const ALL: [CloudQuality; 5] = [
+        CloudQuality::Auto,
+        CloudQuality::Billboard,
+        CloudQuality::Low,
+        CloudQuality::Medium,
+        CloudQuality::High,
+    ];
+
+    /// `--clouds <name>`: auto, billboard, low, medium or high.
+    pub fn parse(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|q| q.id().strip_prefix("cloud-quality-") == Some(name))
+    }
+
+    /// Billboard puffs instead of the volumetric clouds.
+    pub fn billboard(self) -> bool {
+        self == CloudQuality::Billboard
+    }
 
     fn id(self) -> &'static str {
         match self {
             CloudQuality::Auto => "cloud-quality-auto",
+            CloudQuality::Billboard => "cloud-quality-billboard",
             CloudQuality::Low => "cloud-quality-low",
             CloudQuality::Medium => "cloud-quality-medium",
             CloudQuality::High => "cloud-quality-high",
@@ -931,7 +961,7 @@ impl CloudQuality {
             CloudQuality::Auto => {
                 (if vr { CloudQuality::Low } else { CloudQuality::High }).level(vr)
             }
-            CloudQuality::Low => CloudLevel {
+            CloudQuality::Low | CloudQuality::Billboard => CloudLevel {
                 j_cap: 1,
                 h_cap: 2,
                 step_count: 6,

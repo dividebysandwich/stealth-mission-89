@@ -761,8 +761,10 @@ impl Extractor {
                 list.items.push(item);
             }
         }
-        for (common, _) in q.particles.iter(world) {
-            self.effect_item(cull, list, meshes, &common, Effect::Particle, [0; 8]);
+        for (common, m) in q.particles.iter(world) {
+            let raw = world.get_resource::<Assets<ParticleMaterial>>().and_then(|a| a.get(&m.0));
+            let raw = raw.map_or([0; 8], |m| vec4_raw(m.params));
+            self.effect_item(cull, list, meshes, &common, Effect::Particle, raw);
         }
         let materials = world.resource::<Assets<TrailMaterial>>();
         for (common, material) in q.trails.iter(world) {

@@ -118,7 +118,7 @@ pub struct Prefs {
     pub language: Option<stealth_i18n::Language>,
     pub effects: crate::effects::Effects,
     /// 0: saved before the Steam Frame's default effects (`Effects::HEAVY_EFFECTS_OFF`), 1:
-    /// after.
+    /// after, 2: after its default billboard clouds.
     #[serde(default)]
     pub effects_version: u32,
     pub gif_scale: u8,
@@ -128,7 +128,7 @@ pub struct Prefs {
 }
 
 const VR_SCALE_VERSION: u32 = 2;
-const EFFECTS_VERSION: u32 = 1;
+const EFFECTS_VERSION: u32 = 2;
 
 impl Default for Prefs {
     fn default() -> Self {
@@ -233,14 +233,19 @@ impl Prefs {
             self.vr_cockpit_scale = DEFAULT_VR_COCKPIT_SCALE;
             self.vr_scale_version = VR_SCALE_VERSION;
         }
-        if self.effects_version < EFFECTS_VERSION {
-            if crate::effects::HEAVY_EFFECTS_OFF {
-                self.effects.mist = false;
-                self.effects.cloud_shadows = false;
-                self.effects.vapour = false;
-            }
-            self.effects_version = EFFECTS_VERSION;
+        if self.effects_version < 1 && crate::effects::HEAVY_EFFECTS_OFF {
+            self.effects.mist = false;
+            self.effects.cloud_shadows = false;
+            self.effects.vapour = false;
         }
+        // The billboard clouds, the Steam Frame's own default since version 2.
+        if self.effects_version < 2
+            && crate::effects::HEAVY_EFFECTS_OFF
+            && self.cloud_quality == crate::weather::CloudQuality::Auto
+        {
+            self.cloud_quality = crate::weather::CloudQuality::Billboard;
+        }
+        self.effects_version = EFFECTS_VERSION;
     }
 
     pub fn from_state(menu: &MenuState, s: &Settings) -> Self {
@@ -366,7 +371,9 @@ impl Prefs {
         s.msaa &= self.msaa;
         s.shadows |= self.shadows;
         s.local_lights |= self.local_lights;
-        s.cloud_quality = self.cloud_quality;
+        if !std::env::args().any(|a| a == "--clouds") {
+            s.cloud_quality = self.cloud_quality;
+        }
         s.vr_auto_detail &= self.vr_auto_detail;
         let distances = crate::settings::SCENERY_DISTANCE_RANGE;
         s.scenery_distance = self.scenery_distance.clamp(*distances.start(), *distances.end());

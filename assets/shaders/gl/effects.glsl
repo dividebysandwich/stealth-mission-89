@@ -62,6 +62,7 @@ layout(location = 3) in vec2 a_look;
 out vec2 v_uv;
 out vec4 v_colour;
 out vec2 v_look;
+out float v_fade;
 #endif
 #if defined(TRAIL) || defined(BOLT)
 layout(location = 1) in vec3 a_tangent;
@@ -97,6 +98,15 @@ void main() {
     v_uv = a_corner.xy;
     v_colour = a_colour;
     v_look = a_look;
+    // Billboard clouds (u_raw: `ParticleMaterial::params`): fade into the haze far out and
+    // away right in front of the eye.
+    v_fade = 1.0;
+    vec4 params = raw_vec4(0);
+    if (params.x > 0.0) {
+        float d = distance(centre, eye);
+        v_fade = (1.0 - smoothstep(0.3 * params.y, params.y, d))
+            * smoothstep(0.25 * a_corner.z, 1.1 * a_corner.z, d);
+    }
 #endif
 #if defined(TRAIL) || defined(BOLT)
     vec3 t = normalize((u_model * vec4(a_tangent, 0.0)).xyz);
@@ -156,6 +166,7 @@ layout(location = 0) out vec4 o_colour;
 in vec2 v_uv;
 in vec4 v_colour;
 in vec2 v_look;
+in float v_fade;
 #endif
 #if defined(TRAIL) || defined(BOLT)
 in vec2 v_side;
@@ -218,9 +229,21 @@ void main() {
     if (r >= 1.0) { discard; }
     float n = noise2(v_uv * 2.6 + vec2(v_look.y * 17.0, v_look.y * 31.0));
     float edge = 0.55 + 0.45 * n;
-    float a = v_colour.a * (1.0 - smoothstep(edge * 0.55, edge, r));
+    float a = v_colour.a * v_fade * (1.0 - smoothstep(edge * 0.55, edge, r));
     if (a <= 0.004) { discard; }
     float glow = v_look.x;
+    vec4 params = raw_vec4(0);
+    if (params.x > 0.0) {
+        // Billboard cloud: the ramp's shade from the CPU, a little lumpiness, the lightning.
+        vec3 c = v_colour.rgb * (0.86 + 0.24 * n + 0.08 * v_uv.y) + vec3(0.55, 0.58, 0.75) * params.z;
+        if (flir_view()) { c = vec3(0.2); }
+        if (g.params.w == 0.0) {
+            if (a < bayer4(uvec2(gl_FragCoord.xy) + uvec2(1u, 3u))) { discard; }
+            a = 1.0;
+        }
+        o_colour = vec4(c, a);
+        return;
+    }
     vec3 rgb = v_colour.rgb * (1.0 + glow * (1.0 - r) * 0.9);
     float light = mix(NIGHT, 1.0, clamp(g.light_info.y, 0.0, 1.0));
     rgb = mix(rgb * light * (0.8 + 0.35 * n + 0.15 * v_uv.y), rgb, glow);

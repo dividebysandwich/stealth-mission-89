@@ -358,7 +358,9 @@ impl Settings {
             vr,
             shadows: has("--shadows"),
             local_lights: has("--local-lights"),
-            cloud_quality: Default::default(),
+            cloud_quality: get(&a, "--clouds")
+                .and_then(|n| crate::weather::CloudQuality::parse(&n))
+                .unwrap_or_default(),
             vr_auto_detail: !has("--no-auto-detail"),
             scenery_distance: DEFAULT_SCENERY_DISTANCE,
             city_light_distance: DEFAULT_SCENERY_DISTANCE,

@@ -78,11 +78,19 @@ impl Plugin for ExplosionsPlugin {
 
 #[derive(Asset, TypePath, Clone, Debug)]
 pub struct ParticleMaterial {
-    unused: Vec4,
+    /// x: 1 for billboard clouds (`weather::billboard`), y: their haze distance (metres), z:
+    /// the lightning's flash on them; zero for the explosions' puffs.
+    pub params: Vec4,
     globals: Handle<ShaderBuffer>,
 }
 
-crate::palette_material::globals_bind_group!(ParticleMaterial, unused);
+impl ParticleMaterial {
+    pub fn new(params: Vec4, globals: &Handle<ShaderBuffer>) -> Self {
+        Self { params, globals: globals.clone() }
+    }
+}
+
+crate::palette_material::globals_bind_group!(ParticleMaterial, params);
 
 impl Material for ParticleMaterial {
     fn vertex_shader() -> ShaderRef {
@@ -1688,10 +1696,7 @@ fn simulate(
     });
 
     if p.material.is_none() {
-        p.material = Some(
-            puff_materials
-                .add(ParticleMaterial { unused: Vec4::ZERO, globals: palette.globals.clone() }),
-        );
+        p.material = Some(puff_materials.add(ParticleMaterial::new(Vec4::ZERO, &palette.globals)));
     }
     let eye =
         cams.single().map(|g| origin.origin + g.translation().as_dvec3()).unwrap_or(origin.origin);

@@ -1,7 +1,9 @@
 // Explosion particles (explosions.rs): camera-facing quads batched into one mesh, each vertex
 // pushed out along the view's right / up axes in the vertex shader so the quads face whichever
 // view draws them (main view, XR eyes, tracking camera). Soft round puffs with a little noise:
-// fireballs glow, smoke and dust take the daylight.
+// fireballs glow, smoke and dust take the daylight. In cloud mode (`params.x`, the billboard
+// clouds: weather/billboard.rs) the puffs come shaded from the cloud ramp, fade into the haze
+// far out and away right in front of the eye.
 
 #import bevy_pbr::{
     mesh_functions,
@@ -27,7 +29,8 @@ struct Globals {
 // Brightness of unlit smoke at night.
 const NIGHT: f32 = 0.18;
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> unused: vec4<f32>;
+// x: cloud mode, y: haze distance (metres), z: lightning flash (`ParticleMaterial::params`).
+@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> params: vec4<f32>;
 // Storage, or a uniform buffer where there are none (WebGL2: palette_material.rs).
 #if AVAILABLE_STORAGE_BUFFER_BINDINGS > 0
 @group(#{MATERIAL_BIND_GROUP}) @binding(1) var<storage, read> globals: Globals;
@@ -52,7 +55,19 @@ struct VertexOutput {
     @location(0) uv: vec2<f32>,
     @location(1) colour: vec4<f32>,
     @location(2) look: vec2<f32>,
+    // Cloud mode: the puff's fade with distance.
+    @location(3) fade: f32,
 };
+
+// Lightning colour on the clouds (`BOLT_COLOR` in palette.wgsl).
+const BOLT_COLOR: vec3<f32> = vec3<f32>(0.55, 0.58, 0.75);
+
+// Cloud mode: a puff `d` metres from the eye, of radius `r`, fades into the haze far out and
+// away right in front of the eye (flying through a cloud).
+fn cloud_fade(d: f32, r: f32) -> f32 {
+    let haze = 1.0 - smoothstep(0.3 * params.y, params.y, d);
+    return haze * smoothstep(0.25 * r, 1.1 * r, d);
+}
 
 @vertex
 fn vertex(v: Vertex) -> VertexOutput {
@@ -68,6 +83,10 @@ fn vertex(v: Vertex) -> VertexOutput {
     out.uv = v.corner.xy;
     out.colour = v.colour;
     out.look = v.look;
+    out.fade = 1.0;
+    if (params.x > 0.0) {
+        out.fade = cloud_fade(distance(centre, view.world_position), v.corner.z);
+    }
     return out;
 }
 
@@ -107,11 +126,25 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     // Lumpy edge: the radius at which the puff fades varies with the angle and the seed.
     let n = noise(in.uv * 2.6 + vec2<f32>(in.look.y * 17.0, in.look.y * 31.0));
     let edge = 0.55 + 0.45 * n;
-    var a = in.colour.a * (1.0 - smoothstep(edge * 0.55, edge, r));
+    var a = in.colour.a * in.fade * (1.0 - smoothstep(edge * 0.55, edge, r));
     if (a <= 0.004) {
         discard;
     }
     let glow = in.look.x;
+    if (params.x > 0.0) {
+        // Billboard cloud: the ramp's shade from the CPU, a little lumpiness, the lightning.
+        var c = in.colour.rgb * (0.86 + 0.24 * n + 0.08 * in.uv.y) + BOLT_COLOR * params.z;
+        if (globals.params.z != 0.0 && all(abs(view.viewport.zw - globals.dots.zw) < vec2<f32>(0.5))) {
+            c = vec3<f32>(0.2);
+        }
+        if (globals.params.w == 0.0) {
+            if (a < bayer4(vec2<u32>(in.clip_position.xy) + vec2<u32>(1u, 3u))) {
+                discard;
+            }
+            a = 1.0;
+        }
+        return vec4<f32>(c, a);
+    }
     // Fireballs are hotter (whiter) in the middle.
     var rgb = in.colour.rgb * (1.0 + glow * (1.0 - r) * 0.9);
     // Lit puffs: darker underside / noisy shading, dimmed at night.
