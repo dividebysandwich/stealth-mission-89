@@ -893,3 +893,32 @@ fn a_center_in_the_hills_launches_its_drones_clear_of_the_ground() {
         assert!(u.pos[2] > ground(u), "at {} m over ground at {} m", u.pos[2], ground(u));
     }
 }
+
+#[test]
+fn propeller_drones_climb_better_by_hand_with_the_same_top_speed() {
+    for kind in [UavKind::Stork, UavKind::Fp2] {
+        let p = kind.perf();
+        assert!(p.hand_climb > p.climb * 1.15, "{kind:?}");
+        // Level flat out at `max` still, `hand_climb` to spare at cruise.
+        assert!((p.thrust(p.max) - p.drag() * p.max * p.max).abs() < 1e-9, "{kind:?}");
+        let spare = p.thrust(p.cruise) - p.drag() * p.cruise * p.cruise;
+        assert!((spare / 9.81 * p.cruise - p.hand_climb).abs() < 1e-6, "{kind:?}");
+        assert!((p.level_throttle(p.max) - 1.0).abs() < 1e-9, "{kind:?}");
+    }
+    // The X-12's jet is as it was.
+    let p = UavKind::X12.perf();
+    assert_eq!(p.thrust(0.0), p.thrust(p.max));
+    // Flown: an FP-2 at full throttle, its nose held up, climbs about 9 m/s (7 before).
+    let (mut sim, id) = fp2_by_hand();
+    stick(&mut sim, id, 0.0, 1.0, 1.0);
+    while sim.uavs()[0].pitch < 0.25 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, 1.0);
+    run(&mut sim, 15);
+    let alt = sim.uavs()[0].pos[2];
+    run(&mut sim, 5);
+    let u = &sim.uavs()[0];
+    let rate = (u.pos[2] - alt) / 5.0;
+    assert!((8.0..10.5).contains(&rate) && u.speed > 30.0, "{rate} m/s at {} m/s", u.speed);
+}

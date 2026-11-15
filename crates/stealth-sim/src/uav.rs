@@ -175,6 +175,9 @@ pub struct Perf {
     /// take to catch up with the stick (its inertia).
     pub g: f64,
     pub lag: f64,
+    /// Flown by hand: its climb at cruise at full throttle (m/s; a propeller's thrust falls
+    /// away with the speed, so this can be more than `climb` with the same `max`).
+    pub hand_climb: f64,
 }
 
 impl Perf {
@@ -199,10 +202,16 @@ impl Perf {
         }
     }
 
-    /// Flown by hand: full throttle's thrust (m/s²), which flies it level at `max` (an
-    /// interceptor: holds it up pointed straight up at `hover` throttle).
-    pub fn thrust(&self) -> f64 {
-        self.drag() * self.max * self.max
+    /// Flown by hand: full throttle's thrust (m/s²) at speed `v` (m/s), which flies it level
+    /// at `max` (an interceptor: holds it up pointed straight up at `hover` throttle). A
+    /// propeller's falls away with the speed, leaving it `hand_climb` at cruise.
+    pub fn thrust(&self, v: f64) -> f64 {
+        let fall = if self.hover > 0.0 {
+            0.0
+        } else {
+            G * (self.hand_climb - self.climb) / (self.cruise * (self.max - self.cruise))
+        };
+        (self.drag() * self.max * self.max + fall * (self.max - v)).max(0.0)
     }
 
     /// A winged drone's lift (m/s² at 1 m/s and 1 rad angle of attack, growing with the speed
@@ -213,7 +222,7 @@ impl Perf {
 
     /// The throttle that flies a winged drone level at speed `v` by hand.
     pub fn level_throttle(&self, v: f64) -> f64 {
-        (v / self.max).powi(2).clamp(0.0, 1.0)
+        (self.drag() * v * v / self.thrust(v).max(1e-9)).clamp(0.0, 1.0)
     }
 }
 
@@ -234,6 +243,7 @@ impl UavKind {
                 hover: 0.0,
                 g: 3.5,
                 lag: 0.4,
+                hand_climb: 3.8,
             },
             UavKind::Fp2 => Perf {
                 cruise: 50.0,
@@ -249,6 +259,7 @@ impl UavKind {
                 hover: 0.0,
                 g: 5.0,
                 lag: 0.3,
+                hand_climb: 6.0,
             },
             // Its cruise is the speed of its hover throttle (`Perf::throttle_speed`).
             UavKind::Interceptor => Perf {
@@ -265,6 +276,7 @@ impl UavKind {
                 hover: 0.2,
                 g: TURN_G,
                 lag: 0.05,
+                hand_climb: 25.0,
             },
             // 126 km on its 15 minutes of fuel at cruise.
             UavKind::X12 => Perf {
@@ -281,6 +293,7 @@ impl UavKind {
                 hover: 0.0,
                 g: X12_G,
                 lag: 0.2,
+                hand_climb: 40.0,
             },
         }
     }
@@ -709,7 +722,7 @@ fn fly_by_hand(u: &mut Uav, dt: f64) {
         u.heading = wrap(u.heading + off * swing * off.cos().max(0.0));
     }
     // Thrust, gravity, the wings and drag.
-    let mut acc = add([0.0, 0.0, -G], mul(f, p.thrust() * throttle));
+    let mut acc = add([0.0, 0.0, -G], mul(f, p.thrust(v) * throttle));
     if v > 0.1 {
         let way = mul(u.vel, 1.0 / v);
         let mut drag = p.drag() * v * v;
