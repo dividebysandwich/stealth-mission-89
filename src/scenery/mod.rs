@@ -124,7 +124,7 @@ fn group_of(tier: Tier) -> Option<&'static Group> {
 }
 
 /// Streaming radius around the stream sites (the recon photos' targets), metres.
-const SITE_RADIUS: f64 = 1500.0;
+pub(super) const SITE_RADIUS: f64 = 1500.0;
 
 /// Building blocks (nearest first) stops for the frame after this long (at least one a frame):
 /// a coarse block is several times the work of a near one.

@@ -39,6 +39,8 @@ const LIFT: f32 = 0.05;
 /// least this, and this share of the grid's spacing (coarser grids cut the hilltops lower).
 const SKIRT: f32 = 6.0;
 const SKIRT_PER_STEP: f32 = 0.4;
+/// The hills are drawn this far round a stream site (metres): out to the second grid level.
+const SITE_RANGE: f64 = 8000.0;
 /// Chunks being built at once.
 const BUILDING: usize = 4;
 /// Size of the buckets the polygons are sorted into (metres).
@@ -119,26 +121,43 @@ fn chunk_min(bx: i32, by: i32) -> DVec2 {
     DVec2::new(bx as f64, by as f64) * CHUNK
 }
 
-/// The chunks to draw around `eye` (metres east, north) out to `range`, by the grid level of
-/// their nearest point: a `SPAN[0]` chunk near, bigger ones further out. With what they are
-/// built as (`fields`: a `CHUNK` block has the farmland's fields) and their distance.
+/// The chunks to draw around the `eyes` (metres east, north), each out to its range, by the
+/// grid level of their point nearest an eye: a `SPAN[0]` chunk near, bigger ones further out.
+/// With what they are built as (`fields`: a `CHUNK` block has the farmland's fields) and their
+/// distance.
 fn chunks_around(
-    eye: DVec2,
-    range: f64,
+    eyes: &[(DVec2, f64)],
     hills: &stealth_sim::hills::Hills,
     fields: impl Fn(i32, i32) -> bool,
 ) -> HashMap<Key, (Kind, f64)> {
     let top = SPAN[SPAN.len() - 1];
     let side = CHUNK * top as f64;
-    let (lo, hi) =
-        (((eye - range) / side).floor().as_ivec2(), ((eye + range) / side).floor().as_ivec2());
-    let mut todo: Vec<Key> =
-        (lo.y..=hi.y).flat_map(|y| (lo.x..=hi.x).map(move |x| (x * top, y * top, top))).collect();
+    let mut todo: Vec<Key> = Vec::new();
+    for &(eye, range) in eyes {
+        let (lo, hi) =
+            (((eye - range) / side).floor().as_ivec2(), ((eye + range) / side).floor().as_ivec2());
+        for y in lo.y..=hi.y {
+            for x in lo.x..=hi.x {
+                let k = (x * top, y * top, top);
+                if !todo.contains(&k) {
+                    todo.push(k);
+                }
+            }
+        }
+    }
     let mut out = HashMap::new();
     while let Some((bx, by, span)) = todo.pop() {
         let min = chunk_min(bx, by);
         let size = CHUNK * span as f64;
-        let d = eye.clamp(min, min + size).distance(eye);
+        let Some(d) = eyes
+            .iter()
+            .map(|&(eye, range)| (eye.clamp(min, min + size).distance(eye), range))
+            .filter(|&(d, range)| d < range)
+            .map(|(d, _)| d)
+            .reduce(f64::min)
+        else {
+            continue;
+        };
         let Some(l) = level(d) else { continue };
         if span > SPAN[l] {
             let h = span / 2;
@@ -170,6 +189,7 @@ pub(super) fn stream_skin(
     scenery: Res<Scenery>,
     palette: Res<Palette>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
+    sites: Res<crate::world::StreamSites>,
     detail: Res<DetailLevel>,
     budget: Res<budget::SceneryBudget>,
     settings: Res<crate::settings::Settings>,
@@ -181,9 +201,22 @@ pub(super) fn stream_skin(
         return;
     }
     let Ok(anchor) = anchor.single() else { return };
-    let (east, north, _) = bevy_to_wu(anchor.0);
-    let eye = DVec2::new(east, north) * WU;
-    let range = STEPS[STEPS.len() - 1].0;
+    let ground = |p: DVec3| {
+        let (east, north, _) = bevy_to_wu(p);
+        DVec2::new(east, north) * WU
+    };
+    // Around the viewpoint out to the hills' range; around the places streamed in for a
+    // camera looking at them from afar (`StreamSites`) as finely as near the viewpoint.
+    let eyes: Vec<(DVec2, f64)> = std::iter::once((ground(anchor.0), STEPS[STEPS.len() - 1].0))
+        .chain(
+            sites
+                .points
+                .iter()
+                .chain(&sites.follow)
+                .chain(&sites.pod)
+                .map(|&p| (ground(p), SITE_RANGE)),
+        )
+        .collect();
     // The farmland as `stream_blocks` lays it (its fields under the hills are drawn here): in
     // the blocks whose centre is in its range (by the same measure, so the flat fields and
     // the hills' agree).
@@ -191,9 +224,13 @@ pub(super) fn stream_skin(
     let fields_r = budget.scenery_ranges(&settings).radius(Tier::Fields);
     debug_assert_eq!(CHUNK, FIELD_BLOCK);
     // Chunks wanted: what they are built as and their distance.
-    let wanted = chunks_around(eye, range, hills, |bx, by| {
+    let wanted = chunks_around(&eyes, hills, |bx, by| {
         let c = chunk_min(bx, by) + CHUNK * 0.5;
-        farmland && c.distance(eye) < fields_r + CHUNK * 0.5
+        // As `stream_blocks` lays them: out to the fields' range, round a site within its radius.
+        let near = |eye: DVec2, r: f64| c.distance(eye) < r + CHUNK * 0.5;
+        farmland
+            && (near(eyes[0].0, fields_r)
+                || eyes[1..].iter().any(|e| near(e.0, fields_r.min(super::SITE_RADIUS))))
     });
     // Finished builds replace their chunk's mesh.
     let done: Vec<Key> =
@@ -657,7 +694,7 @@ mod tests {
         let hills = stealth_sim::hills::Hills::from_bytes(vec![255; 1024 * 1024]).unwrap();
         let eye = DVec2::new(250_000.0, 260_000.0);
         let range = STEPS[STEPS.len() - 1].0;
-        let chunks = chunks_around(eye, range, &hills, |_, _| true);
+        let chunks = chunks_around(&[(eye, range)], &hills, |_, _| true);
         let keys: Vec<Key> = chunks.keys().copied().collect();
         for (i, a) in keys.iter().enumerate() {
             for b in &keys[i + 1..] {
@@ -678,6 +715,36 @@ mod tests {
         }
         // Far fewer than a 4 km chunk each.
         assert!(chunks.len() * 3 < area as usize, "{} chunks", chunks.len());
+    }
+
+    /// A stream site far from the viewpoint gets the finest grid round it, as the viewpoint
+    /// does, and the chunks still don't overlap.
+    #[test]
+    fn site_gets_fine_chunks() {
+        let hills = stealth_sim::hills::Hills::from_bytes(vec![255; 1024 * 1024]).unwrap();
+        let eye = DVec2::new(250_000.0, 260_000.0);
+        let site = eye + DVec2::new(24_000.0, 0.0);
+        let at = |chunks: &HashMap<Key, (Kind, f64)>, p: DVec2| {
+            let b = (p / CHUNK).floor().as_ivec2();
+            chunks
+                .iter()
+                .find(|(k, _)| b.x >= k.0 && b.x < k.0 + k.2 && b.y >= k.1 && b.y < k.1 + k.2)
+                .map(|(_, ((l, _), _))| *l)
+        };
+        let range = STEPS[STEPS.len() - 1].0;
+        let alone = chunks_around(&[(eye, range)], &hills, |_, _| false);
+        assert_eq!(at(&alone, site), Some(3));
+        let both = chunks_around(&[(eye, range), (site, SITE_RANGE)], &hills, |_, _| false);
+        assert_eq!(at(&both, site), Some(0));
+        assert_eq!(at(&both, eye), Some(0));
+        let keys: Vec<Key> = both.keys().copied().collect();
+        for (i, a) in keys.iter().enumerate() {
+            for b in &keys[i + 1..] {
+                let apart =
+                    a.0 + a.2 <= b.0 || b.0 + b.2 <= a.0 || a.1 + a.2 <= b.1 || b.1 + b.2 <= a.1;
+                assert!(apart, "{a:?} {b:?}");
+            }
+        }
     }
 
     /// Flat ground all under full hills is covered on every grid level; next to flat ground
