@@ -142,6 +142,23 @@ pub struct AxisMapping {
 }
 
 impl AxisMapping {
+    /// A mapping with the control's usual direction and dead zone: a stick or hat pushed
+    /// forward reads negative, so the throttle, looking up and zooming in are inverted.
+    pub fn new(control: AxisControl, device: String, code: u32) -> Self {
+        let invert =
+            matches!(control, AxisControl::Throttle | AxisControl::LookY | AxisControl::ViewZoom);
+        let deadzone = match control {
+            AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom => 0.0,
+            AxisControl::SlewX
+            | AxisControl::SlewY
+            | AxisControl::LookX
+            | AxisControl::LookY
+            | AxisControl::ViewZoom => 0.1,
+            _ => 0.05,
+        };
+        Self { control, device, code, invert, deadzone }
+    }
+
     /// The control's value from the raw axis value (-1..1): -1..1 for the stick and rudder,
     /// 0..1 for the throttle, the nozzles and the zoom.
     pub fn output(&self, raw: f32) -> f32 {
@@ -159,6 +176,23 @@ pub struct ButtonMapping {
     pub target: ButtonTarget,
     pub device: String,
     pub source: Source,
+}
+
+impl ButtonMapping {
+    /// The raw code of the button or axis.
+    pub fn code(&self) -> u32 {
+        match self.source {
+            Source::Button(c) | Source::AxisPositive(c) | Source::AxisNegative(c) => c,
+        }
+    }
+}
+
+/// A control or target a built-in device layout binds (`hotas_profiles`), as the player clears
+/// it.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Slot {
+    Axis(AxisControl),
+    Button(ButtonTarget),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -444,6 +478,11 @@ pub struct InputConfig {
     /// Mouse buttons for the gun and the actions (a mapping from before them gets the
     /// defaults).
     pub mouse: Vec<MouseMapping>,
+    /// The built-in layouts of known sticks, throttles and pedals (`hotas_profiles`) under the
+    /// mapping: a control or target the mapping doesn't bind does what the layout says.
+    pub device_defaults: bool,
+    /// The built-in layouts' bindings the player cleared.
+    pub cleared_defaults: Vec<Slot>,
     /// Mapping version (`migrate`); files from before the versions read 0.
     #[serde(default)]
     pub version: u32,
@@ -471,6 +510,8 @@ impl Default for InputConfig {
             vr_grab: [VrGrab::default(); 2],
             keys: crate::input::default_key_mappings(),
             mouse: default_mouse_mappings(),
+            device_defaults: true,
+            cleared_defaults: Vec::new(),
             version: VERSION,
         }
     }
@@ -583,19 +624,30 @@ impl InputConfig {
     /// Binds an axis, taking it away from any other control.
     pub fn bind_axis(&mut self, control: AxisControl, device: String, code: u32) {
         self.axes.retain(|m| m.control != control && !(m.device == device && m.code == code));
-        // A stick or hat pushed forward reads negative: up looks up, zooms in.
-        let invert =
-            matches!(control, AxisControl::Throttle | AxisControl::LookY | AxisControl::ViewZoom);
-        let deadzone = match control {
-            AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom => 0.0,
-            AxisControl::SlewX
-            | AxisControl::SlewY
-            | AxisControl::LookX
-            | AxisControl::LookY
-            | AxisControl::ViewZoom => 0.1,
-            _ => 0.05,
-        };
-        self.axes.push(AxisMapping { control, device, code, invert, deadzone });
+        self.axes.push(AxisMapping::new(control, device, code));
+    }
+
+    /// Whether the mapping binds this device input to anything.
+    fn uses(&self, device: &str, code: u32) -> bool {
+        self.axes.iter().any(|m| m.device == device && m.code == code)
+            || self.buttons.iter().any(|m| m.device == device && m.code() == code)
+    }
+
+    /// Whether a built-in layout's axis binding counts: the mapping binds neither its control
+    /// nor its axis, and the player hasn't cleared it.
+    fn takes_default_axis(&self, m: &AxisMapping) -> bool {
+        self.device_defaults
+            && !self.cleared_defaults.contains(&Slot::Axis(m.control))
+            && !self.axes.iter().any(|a| a.control == m.control)
+            && !self.uses(&m.device, m.code)
+    }
+
+    /// Whether a built-in layout's button binding counts (as `takes_default_axis`).
+    fn takes_default_button(&self, m: &ButtonMapping) -> bool {
+        self.device_defaults
+            && !self.cleared_defaults.contains(&Slot::Button(m.target))
+            && self.button(m.target).is_none()
+            && !self.uses(&m.device, m.code())
     }
 
     /// Binds a button, taking it away from any other target.
@@ -662,6 +714,11 @@ pub struct Device {
     /// The key by the platform's name, as older mappings named a device with a product name.
     alias: String,
     usb_id: Option<(u16, u16)>,
+    /// The device's built-in layout, if it is a known model.
+    profile: Option<&'static crate::hotas_profiles::Profile>,
+    /// The layout's bindings, under this device's key (the first device of the model only).
+    default_axes: Vec<AxisMapping>,
+    default_buttons: Vec<ButtonMapping>,
     /// The standard gamepad layout's inputs and their raw codes, as Bevy's gamepad layer sees
     /// the device (through gilrs' mapping: an SDL one, else gilrs' fallback Xbox layout, which
     /// makes every HOTAS a gamepad there).
@@ -692,7 +749,11 @@ impl Device {
             .iter()
             .filter_map(|&(g, a)| Some((pad.axis_code(g)?.into_u32(), GamepadInput::Axis(a))));
         let standard = buttons.chain(axes).collect();
-        Self { name: pad.name().to_string(), product, usb_id, standard, ..default() }
+        let profile = usb_id.and_then(crate::hotas_profiles::find);
+        if let Some(p) = profile {
+            info!("joystick {}: built-in layout {}", pad.name(), p.name);
+        }
+        Self { name: pad.name().to_string(), product, usb_id, profile, standard, ..default() }
     }
 
     /// gilrs sends values for digital buttons too. Read these directly so analog releases
@@ -719,6 +780,20 @@ impl Device {
             Source::AxisPositive(c) => axes.get(&c).is_some_and(|v| *v > 0.5),
             Source::AxisNegative(c) => axes.get(&c).is_some_and(|v| *v < -0.5),
         }
+    }
+
+    /// The built-in layout's bindings, for the first device of its model only (a second one of
+    /// a pair is left for the player to bind).
+    fn set_defaults(&mut self) {
+        let first = self
+            .key
+            .rsplit_once(" #")
+            .is_none_or(|(_, n)| n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()));
+        (self.default_axes, self.default_buttons) =
+            match (self.profile, crate::hotas_profiles::PLATFORM) {
+                (Some(p), Some(platform)) if first => p.mappings(&self.key, platform),
+                _ => Default::default(),
+            };
     }
 
     /// The buttons pressed since the last poll.
@@ -783,6 +858,7 @@ fn assign_keys(devices: &mut HashMap<gilrs::GamepadId, Device>) {
         let d = devices.get_mut(&id).unwrap();
         d.key = key(d.product.as_deref().unwrap_or(&d.name), d.usb_id);
         d.alias = if d.product.is_some() { key(&d.name, d.usb_id) } else { d.key.clone() };
+        d.set_defaults();
     }
 }
 
@@ -979,6 +1055,39 @@ impl Hotas {
         bound_standard(self.devices.values(), config)
     }
 
+    /// The axis mappings in effect: the player's, then the connected devices' built-in
+    /// layouts' where the player's leave them free.
+    pub fn axes<'a>(&'a self, config: &'a InputConfig) -> impl Iterator<Item = &'a AxisMapping> {
+        effective_axes(self.devices.values(), config)
+    }
+
+    /// The button mappings in effect (as `axes`).
+    pub fn buttons<'a>(
+        &'a self,
+        config: &'a InputConfig,
+    ) -> impl Iterator<Item = &'a ButtonMapping> {
+        effective_buttons(self.devices.values(), config)
+    }
+
+    /// The built-in layout's binding the dialog shows for an axis control the player's
+    /// mapping doesn't bind.
+    pub fn default_axis<'a>(
+        &'a self,
+        config: &'a InputConfig,
+        control: AxisControl,
+    ) -> Option<&'a AxisMapping> {
+        self.axes(config).find(|m| m.control == control).filter(|m| !config.axes.contains(m))
+    }
+
+    /// The built-in layout's binding the dialog shows for a target (as `default_axis`).
+    pub fn default_button<'a>(
+        &'a self,
+        config: &'a InputConfig,
+        target: ButtonTarget,
+    ) -> Option<&'a ButtonMapping> {
+        self.buttons(config).find(|m| m.target == target).filter(|m| !config.buttons.contains(m))
+    }
+
     fn poll(&mut self) {
         for d in self.devices.values_mut() {
             d.prev_buttons.clone_from(&d.buttons);
@@ -1038,17 +1147,35 @@ fn mapped<'a>(
     by_key.or_else(by_name).into_iter()
 }
 
+/// The player's axis mappings, then the devices' built-in layouts' they leave free.
+fn effective_axes<'a>(
+    devices: impl Iterator<Item = &'a Device>,
+    config: &'a InputConfig,
+) -> impl Iterator<Item = &'a AxisMapping> {
+    let defaults = devices.flat_map(|d| &d.default_axes).filter(|m| config.takes_default_axis(m));
+    config.axes.iter().chain(defaults)
+}
+
+/// The player's button mappings, then the devices' built-in layouts' they leave free.
+fn effective_buttons<'a>(
+    devices: impl Iterator<Item = &'a Device>,
+    config: &'a InputConfig,
+) -> impl Iterator<Item = &'a ButtonMapping> {
+    let defaults =
+        devices.flat_map(|d| &d.default_buttons).filter(|m| config.takes_default_button(m));
+    config.buttons.iter().chain(defaults)
+}
+
 /// The standard gamepad layout's inputs that the mapping binds, with their device's USB ids and
 /// name: those only do what they are bound to (a Windows joystick's buttons 0 to 3 are the
-/// layout's X, A, B and Y, its axes 3 and 4 the triggers).
+/// layout's X, A, B and Y, its axes 3 and 4 the triggers). A device with a built-in layout in
+/// use is a joystick, not a gamepad: none of its inputs follow the gamepad layout.
 fn bound_standard<'a>(
     devices: impl Iterator<Item = &'a Device> + Clone,
     config: &'a InputConfig,
 ) -> Vec<BoundStandard<'a>> {
-    let buttons = config.buttons.iter().map(|m| match m.source {
-        Source::Button(c) | Source::AxisPositive(c) | Source::AxisNegative(c) => (&m.device, c),
-    });
-    let axes = config.axes.iter().map(|m| (&m.device, m.code));
+    let buttons = effective_buttons(devices.clone(), config).map(|m| (&m.device, m.code()));
+    let axes = effective_axes(devices.clone(), config).map(|m| (&m.device, m.code));
     let mut out = Vec::new();
     for (device, code) in buttons.chain(axes) {
         for d in mapped(devices.clone(), device) {
@@ -1057,6 +1184,11 @@ fn bound_standard<'a>(
                     out.push((d.usb_id, d.name.as_str(), input));
                 }
             }
+        }
+    }
+    for d in devices {
+        if config.device_defaults && !(d.default_axes.is_empty() && d.default_buttons.is_empty()) {
+            out.extend(d.standard.iter().map(|&(_, input)| (d.usb_id, d.name.as_str(), input)));
         }
     }
     out
@@ -1073,7 +1205,7 @@ pub fn read_hotas(
 ) {
     hotas.poll();
     if block.0 {
-        for m in &config.buttons {
+        for m in hotas.buttons(&config) {
             // The radio talks over the Ops screen and the menus too.
             if m.target == ButtonTarget::Action(Action::Ptt) {
                 controls.talk |= hotas.active(&m.device, m.source, false);
@@ -1091,7 +1223,8 @@ pub fn read_hotas(
     }
     // At a console only the stick, the rudder, the camera's zoom and the triggers pass.
     let console = block.0;
-    for m in &config.axes {
+    let axes: Vec<AxisMapping> = hotas.axes(&config).cloned().collect();
+    for m in &axes {
         if console
             && !matches!(
                 m.control,
@@ -1142,7 +1275,7 @@ pub fn read_hotas(
             _ => {}
         }
     }
-    for m in &config.buttons {
+    for m in hotas.buttons(&config) {
         let now = hotas.active(&m.device, m.source, false);
         let pressed = now && !hotas.active(&m.device, m.source, true);
         hold_button(m.target, now, pressed, console, &mut controls, &mut actions);
@@ -1303,6 +1436,67 @@ mod tests {
             bound_standard([&pad].into_iter(), &c).into_iter().map(|b| b.2).collect();
         assert!(bound.contains(&GamepadInput::Button(GamepadButton::LeftTrigger2)));
         assert!(bound.contains(&GamepadInput::Button(GamepadButton::RightTrigger2)));
+    }
+
+    /// A known device's built-in layout applies where the mapping leaves it free: a control
+    /// bound elsewhere, an input bound to something else, a cleared binding or the layouts off
+    /// drop it; a second device of the model gets none.
+    #[test]
+    fn built_in_layouts_fill_the_free_controls() {
+        use crate::hotas_profiles::{Platform, find};
+        let profile = find((0x044f, 0xb10a)).expect("the T.16000M has a layout");
+        let mut stick = Device {
+            name: "T.16000M".into(),
+            key: "T.16000M [044f:b10a]".into(),
+            usb_id: Some((0x044f, 0xb10a)),
+            profile: Some(profile),
+            standard: vec![(0x10120, GamepadInput::Button(GamepadButton::South))],
+            ..default()
+        };
+        (stick.default_axes, stick.default_buttons) = profile.mappings(&stick.key, Platform::Linux);
+        let mut second = Device { key: "T.16000M [044f:b10a] #2".into(), ..stick.clone() };
+        second.set_defaults();
+        assert!(second.default_axes.is_empty() && second.default_buttons.is_empty());
+
+        let devices = [&stick, &second];
+        let mut c = InputConfig::default();
+        let roll = |c: &InputConfig| {
+            effective_axes(devices.into_iter(), c).find(|m| m.control == AxisControl::Roll).cloned()
+        };
+        let fire = |c: &InputConfig| {
+            effective_buttons(devices.into_iter(), c)
+                .find(|m| m.target == ButtonTarget::Action(Action::FireWeapon))
+                .map(|m| m.source)
+        };
+        assert_eq!(roll(&c).map(|m| m.code), Some(0x30000));
+        assert_eq!(fire(&c), Some(Source::Button(0x10120)));
+        // A gamepad layout input under a built-in layout does nothing else.
+        assert!(
+            bound_standard(devices.into_iter(), &c)
+                .iter()
+                .any(|b| b.2 == GamepadInput::Button(GamepadButton::South))
+        );
+
+        // Roll on the pedals: the stick's X no longer rolls.
+        c.bind_axis(AxisControl::Roll, "Pedals".into(), 0x30005);
+        assert_eq!(roll(&c).map(|m| m.device), Some("Pedals".into()));
+        // The trigger bound to the gun: it no longer also fires the weapon.
+        c.bind_button(ButtonTarget::Gun, stick.key.clone(), Source::Button(0x10120));
+        assert_eq!(fire(&c), None);
+        c.buttons.clear();
+        assert!(fire(&c).is_some());
+        c.cleared_defaults.push(Slot::Button(ButtonTarget::Action(Action::FireWeapon)));
+        assert_eq!(fire(&c), None);
+        c.cleared_defaults.clear();
+        c.device_defaults = false;
+        assert_eq!(fire(&c), None);
+        assert_eq!(effective_axes(devices.into_iter(), &c).count(), 1);
+
+        // Saved and read back; an older file turns the layouts on.
+        let back: InputConfig = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+        assert_eq!(back, c);
+        let partial: InputConfig = serde_json::from_str("{}").unwrap();
+        assert!(partial.device_defaults);
     }
 
     /// The TGP zoom axis is a lever over the zoom steps, holding a step near its edges.

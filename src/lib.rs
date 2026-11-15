@@ -55,6 +55,7 @@ mod headtrack;
 mod help;
 mod hmd;
 mod hotas;
+mod hotas_profiles;
 mod hud;
 mod i18n;
 mod input;

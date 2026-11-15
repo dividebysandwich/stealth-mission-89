@@ -14,8 +14,8 @@ use bevy::prelude::*;
 use bevy_egui::egui;
 
 use crate::hotas::{
-    AxisControl, ButtonTarget, Device, Hotas, InputConfig, MouseInput, Source, VrGrab, VrHand,
-    VrInput, action_name, default_vr_buttons,
+    AxisControl, AxisMapping, ButtonTarget, Device, Hotas, InputConfig, MouseInput, Slot, Source,
+    VrGrab, VrHand, VrInput, action_name, default_vr_buttons,
 };
 use crate::input::{Action, Mods, default_key_mappings};
 use crate::key_guide::{SEARCH_MAX, caret_shown, holds, search_query};
@@ -69,7 +69,7 @@ impl InputDialog {
             (target.map(|m| m.target), crate::input::key_label(mods, key))
         });
         let button = || {
-            if let Some(m) = config.buttons.iter().find(|m| hotas.just_pressed(&m.device, m.source))
+            if let Some(m) = hotas.buttons(config).find(|m| hotas.just_pressed(&m.device, m.source))
             {
                 return Some((Some(m.target), binding_label(&m.device, &m.source.label())));
             }
@@ -251,7 +251,7 @@ fn binding_label(device: &str, source: &str) -> String {
 
 /// A binding in the dialog's rows: the device's name cut short (without its USB ids), the whole
 /// `binding_label` on hover, so that a long name doesn't push the row's buttons off the window.
-fn binding_cell(ui: &mut egui::Ui, device: &str, source: &str) -> egui::Response {
+fn binding_cell(ui: &mut egui::Ui, device: &str, source: &str, builtin: bool) -> egui::Response {
     /// Characters of the device's name shown.
     const NAME: usize = 16;
     let name = device.rfind(" [").map_or(device, |i| &device[..i]);
@@ -260,7 +260,40 @@ fn binding_cell(ui: &mut egui::Ui, device: &str, source: &str) -> egui::Response
     } else {
         name.to_string()
     };
-    ui.label(format!("{short}: {source}")).on_hover_text(binding_label(device, source))
+    let text = egui::RichText::new(format!("{short}: {source}"));
+    if builtin {
+        ui.label(text.color(GREEN)).on_hover_text(format!(
+            "{}\n{}",
+            binding_label(device, source),
+            t!("input-builtin")
+        ))
+    } else {
+        ui.label(text).on_hover_text(binding_label(device, source))
+    }
+}
+
+/// An axis row's binding, invert, dead zone and value cells (`builtin`: the built-in layout's,
+/// drawn as such).
+fn axis_cells(ui: &mut egui::Ui, m: &mut AxisMapping, hotas: &Hotas, builtin: bool) {
+    binding_cell(ui, &m.device, &t!("input-axis", n = m.code & 0xffff), builtin);
+    ui.checkbox(&mut m.invert, t!("input-invert"));
+    if m.control.lever() {
+        ui.label("");
+    } else {
+        ui.scope(|ui| {
+            ui.spacing_mut().slider_width = 70.0;
+            ui.add(egui::Slider::new(&mut m.deadzone, 0.0..=0.5).fixed_decimals(2))
+                .on_hover_text(t!("input-dead-zone"));
+        });
+    }
+    let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
+    let fill = match (m.control, v) {
+        (_, None) => 0.0,
+        (AxisControl::Throttle | AxisControl::Nozzle, Some(v)) => v,
+        (_, Some(v)) => (v + 1.0) / 2.0,
+    };
+    let text = v.map_or(t!("input-move-it").to_string(), |v| format!("{v:+.2}"));
+    ui.add(egui::ProgressBar::new(fill).desired_width(90.0).text(text));
 }
 
 /// Modifier keys, which only count together with another key.
@@ -368,9 +401,8 @@ pub fn show(
     dialog.jump_to_pressed(ctx, config, hotas, keys);
 
     let value = |control| {
-        config
-            .axes
-            .iter()
+        hotas
+            .axes(config)
             .find(|m| m.control == control)
             .and_then(|m| hotas.axis(&m.device, m.code).map(|raw| m.output(raw)))
     };
@@ -439,6 +471,8 @@ pub fn show(
                     }
                     ui.checkbox(&mut config.gamepad_defaults, t!("input-gamepad"))
                         .on_hover_text(t!("input-gamepad.facts"));
+                    ui.checkbox(&mut config.device_defaults, t!("input-device-defaults"))
+                        .on_hover_text(t!("input-device-defaults.facts"));
                     match &dialog.status {
                         Some(text) => ui.colored_label(AMBER, text),
                         None => ui.label(egui::RichText::new(t!("input-help")).color(DIM)),
@@ -470,41 +504,20 @@ pub fn show(
                             let what = Binding::Axis(control);
                             ui.label(control.name());
                             let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
+                            let builtin = hotas.default_axis(config, control).cloned();
                             let mapping = config.axes.iter_mut().find(|m| m.control == control);
-                            match mapping {
-                                Some(m) => {
-                                    binding_cell(
-                                        ui,
-                                        &m.device,
-                                        &t!("input-axis", n = m.code & 0xffff),
-                                    );
-                                    ui.checkbox(&mut m.invert, t!("input-invert"));
-                                    if control.lever() {
-                                        ui.label("");
-                                    } else {
-                                        ui.scope(|ui| {
-                                            ui.spacing_mut().slider_width = 70.0;
-                                            ui.add(
-                                                egui::Slider::new(&mut m.deadzone, 0.0..=0.5)
-                                                    .fixed_decimals(2),
-                                            )
-                                            .on_hover_text(t!("input-dead-zone"));
-                                        });
+                            match (mapping, builtin) {
+                                (Some(m), _) => axis_cells(ui, m, hotas, false),
+                                // The built-in layout's: changing its invert or dead zone makes
+                                // it the player's.
+                                (None, Some(mut m)) => {
+                                    let before = m.clone();
+                                    axis_cells(ui, &mut m, hotas, true);
+                                    if m != before {
+                                        config.axes.push(m);
                                     }
-                                    let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
-                                    let fill = match (control, v) {
-                                        (_, None) => 0.0,
-                                        (AxisControl::Throttle | AxisControl::Nozzle, Some(v)) => v,
-                                        (_, Some(v)) => (v + 1.0) / 2.0,
-                                    };
-                                    let text = v.map_or(t!("input-move-it").to_string(), |v| {
-                                        format!("{v:+.2}")
-                                    });
-                                    ui.add(
-                                        egui::ProgressBar::new(fill).desired_width(90.0).text(text),
-                                    );
                                 }
-                                None => {
+                                (None, None) => {
                                     ui.label(
                                         egui::RichText::new(if capturing {
                                             t!("input-move-axis")
@@ -519,7 +532,11 @@ pub fn show(
                                 }
                             }
                             row_buttons(ui, what, capturing, &mut start, || {
-                                config.axes.retain(|m| m.control != control)
+                                if config.axes.iter().any(|m| m.control == control) {
+                                    config.axes.retain(|m| m.control != control);
+                                } else {
+                                    config.cleared_defaults.push(Slot::Axis(control));
+                                }
                             });
                             ui.end_row();
                         }
@@ -606,8 +623,14 @@ pub fn show(
                             });
                             let what = Binding::Button(target);
                             let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
-                            match config.button(target) {
-                                Some(m) => binding_cell(ui, &m.device, &m.source.label()),
+                            let builtin = hotas.default_button(config, target);
+                            match config.button(target).or(builtin) {
+                                Some(m) => binding_cell(
+                                    ui,
+                                    &m.device,
+                                    &m.source.label(),
+                                    builtin.is_some(),
+                                ),
                                 None => ui.label(
                                     egui::RichText::new(if capturing {
                                         t!("input-press-button")
@@ -618,7 +641,11 @@ pub fn show(
                                 ),
                             };
                             let buttons = row_buttons(ui, what, capturing, &mut start, || {
-                                config.buttons.retain(|m| m.target != target)
+                                if config.button(target).is_some() {
+                                    config.buttons.retain(|m| m.target != target);
+                                } else {
+                                    config.cleared_defaults.push(Slot::Button(target));
+                                }
                             });
                             if let Some((jumped, scroll)) = &mut dialog.jump
                                 && *jumped == target
@@ -662,6 +689,9 @@ pub fn show(
                 {
                     config.axes.clear();
                     config.buttons.clear();
+                    // The built-in layouts too (the checkbox brings them back).
+                    config.device_defaults = false;
+                    config.cleared_defaults.clear();
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui

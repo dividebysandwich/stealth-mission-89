@@ -586,7 +586,7 @@ fn read_devices(
             s.jump |= pad.just_pressed(GamepadButton::South);
         }
     }
-    for m in &config.axes {
+    for m in hotas.axes(config) {
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
         let v = m.output(raw);
         match m.control {
@@ -598,7 +598,7 @@ fn read_devices(
             _ => {}
         }
     }
-    for m in &config.buttons {
+    for m in hotas.buttons(config) {
         match m.target {
             ButtonTarget::Gun => s.run |= hotas.active(&m.device, m.source, false),
             ButtonTarget::Action(crate::input::Action::FireWeapon) => {

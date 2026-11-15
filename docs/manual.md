@@ -241,6 +241,19 @@ change is saved at once.
   triggers for the throttle, face buttons for fire, gun, weapon select and bay doors, Start for the
   menu. Binding one of these buttons to an action takes it over (some joysticks report a button,
   often button 9, as the gamepad's Start: bind it to free it from the menu).
+- **Known joysticks** work without mapping too (*Built-in layouts for known joysticks*, on by
+  default; Linux and Windows): the Thrustmaster T.16000M, TWCS, T.Flight HOTAS X / 4, T.Flight
+  Stick X, HOTAS Warthog stick and throttle and T-Rudder; the Logitech Extreme 3D Pro; the Saitek /
+  Logitech X52, X52 Pro, X-55 and X56 sticks and throttles and Pro Flight rudder pedals; the VKB
+  Gladiator NXT EVO and Gunfighter SCG / MCG; the Virpil Constellation Alpha (Prime) right grips on
+  the MongoosT-50CM3 and WarBRD-D bases (in their factory configuration); the CH Fighterstick,
+  Combatstick, Pro Throttle and Pro Pedals. Their axes fly, steer and throttle; the trigger fires
+  (the gun, with a weapon release button for the selected weapon), the point-of-view hat looks
+  around (on the Warthog it trims), a targeting hat locks (up: nearest target, right: next target,
+  down: drop the locks, left: designate), a countermeasures hat dispenses (up: flare, down: chaff,
+  right: decoy, left: ECM) and a throttle's slew stick moves the sensor cursor. Built-in bindings
+  show green in the list. Anything you bind or clear yourself overrides them; *CLEAR ALL* turns the
+  built-in layouts off. Only the first of two identical devices gets the layout.
 
 ![VR controller mapping](images/controls_vr.png)
 
