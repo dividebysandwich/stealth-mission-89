@@ -607,16 +607,20 @@ fn stream_tiles(
             }
             // Objects stand on the rolling hills (their ground overlays are drawn on them by
             // the scenery's `skin`); mountains rise from the flat world.
-            if !theater.hills.is_flat() && lod <= 2 {
+            // Flat ground overlays stay in the flat world, hidden where the skin covers them.
+            if !theater.hills.is_flat() {
                 let special = model_file == "special_targets";
                 let size = *raised
                     .entry((special, shape))
                     .or_insert_with(|| assets.raised_size(gltf, &name));
                 let unit_m = (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
-                if size.is_some_and(|s| s * unit_m < HILLS_RIGID_MAX_M) {
+                if lod <= 2 && size.is_some_and(|s| s * unit_m < HILLS_RIGID_MAX_M) {
                     let (east, north, _) = bevy_to_wu(pos);
                     pos.y += theater.hills.ground_m(east * WU, north * WU) as f64;
                     commands.entity(e).insert(OnHills);
+                }
+                if size.is_none() && o.z == 0 && !ship {
+                    commands.entity(e).insert(crate::scenery::FlatGround::default());
                 }
             }
             commands.entity(e).insert((

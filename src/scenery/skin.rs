@@ -7,6 +7,8 @@
 
 use std::collections::HashMap;
 
+use bevy::camera::primitives::Aabb;
+use bevy::camera::visibility::NoFrustumCulling;
 use bevy::light::NotShadowCaster;
 use bevy::math::{DVec2, DVec3};
 use bevy::mesh::{MeshTag, PrimitiveTopology};
@@ -263,6 +265,150 @@ pub(super) fn stream_skin(
 /// A hills chunk entity.
 #[derive(Component)]
 pub struct SkinChunk;
+
+/// Flat ground of the flat world (a theater ground overlay, a block's farmland fields): hidden
+/// while the hills' skin is drawn over all of it, where it would only be drawn under the hills.
+#[derive(Component, Default)]
+pub struct FlatGround {
+    /// Its ground (metres east, north: min, max), once its meshes' bounds are known.
+    area: Option<[DVec2; 2]>,
+    cover: Cover,
+}
+
+/// How the hills cover a `FlatGround`.
+#[derive(Clone, Copy, Default, PartialEq, Debug)]
+enum Cover {
+    /// Not looked at yet.
+    #[default]
+    Unknown,
+    /// Not all of it.
+    Never,
+    /// All of it while the `CHUNK` blocks it lies on are drawn on grid levels up to `level`
+    /// (the coarser grids' triangles reach further out to the ground between the hills).
+    Under { level: usize, blocks: [IVec2; 2] },
+}
+
+/// Bigger flat ground is never all under the hills (theater-wide overlays).
+const COVER_MAX_M: f64 = 16_000.0;
+/// Time spent a frame checking flat ground against the hills.
+const COVER_TIME: std::time::Duration = std::time::Duration::from_micros(1500);
+
+/// Whether the hills rise above the flat world at every point of the finest grid in a
+/// rectangle (metres east, north), so every skin triangle with a corner in it is drawn.
+fn rises_over(hills: &stealth_sim::hills::Hills, lo: DVec2, hi: DVec2) -> bool {
+    let (i0, j0) = ((lo / GRID_M).floor().as_ivec2().x, (lo / GRID_M).floor().as_ivec2().y);
+    let (i1, j1) = ((hi / GRID_M).ceil().as_ivec2().x, (hi / GRID_M).ceil().as_ivec2().y);
+    (j0..=j1).all(|j| (i0..=i1).all(|i| hills.height_m(i as f64 * GRID_M, j as f64 * GRID_M) > 0.0))
+}
+
+/// How the hills cover flat ground over a rectangle (metres east, north).
+fn cover(hills: &stealth_sim::hills::Hills, [lo, hi]: [DVec2; 2]) -> Cover {
+    if (hi - lo).max_element() > COVER_MAX_M || !hills.any_in(lo.x, lo.y, 0.0) {
+        return Cover::Never;
+    }
+    // A point's triangle on a grid has its corners within a grid step of it.
+    let mut level = None;
+    for (l, &(_, step)) in STEPS.iter().enumerate() {
+        if !rises_over(hills, lo - step, hi + step) {
+            break;
+        }
+        level = Some(l);
+    }
+    match level {
+        None => Cover::Never,
+        Some(level) => Cover::Under {
+            level,
+            blocks: [(lo / CHUNK).floor().as_ivec2(), (hi / CHUNK).floor().as_ivec2()],
+        },
+    }
+}
+
+/// The grid level of the skin chunk drawn over a `CHUNK` block, if any.
+fn drawn_at(skin: &Skin, bx: i32, by: i32) -> Option<usize> {
+    let mut spans = SPAN.to_vec();
+    spans.dedup();
+    spans.into_iter().find_map(|span| {
+        let key = (bx - bx.rem_euclid(span), by - by.rem_euclid(span), span);
+        skin.chunks.get(&key).map(|((l, _), _)| *l)
+    })
+}
+
+/// A mesh's bounds (once worked out) and where it is.
+type MeshBounds = (Option<&'static Aabb>, &'static GlobalTransform);
+
+/// The ground of new `FlatGround` from its meshes' bounds (after the transforms are
+/// propagated, so they are this frame's).
+pub(super) fn measure_flat_ground(
+    origin: Res<crate::world::FloatingOrigin>,
+    mut flats: Query<(Entity, &mut FlatGround)>,
+    children: Query<&Children>,
+    meshes: Query<MeshBounds, (With<Mesh3d>, Without<NoFrustumCulling>)>,
+) {
+    for (e, mut f) in &mut flats {
+        if f.area.is_some() {
+            continue;
+        }
+        let (mut lo, mut hi) = (DVec2::MAX, DVec2::MIN);
+        let mut ready = true;
+        for d in std::iter::once(e).chain(children.iter_descendants(e)) {
+            let Ok((aabb, gt)) = meshes.get(d) else { continue };
+            let Some(aabb) = aabb else {
+                ready = false;
+                break;
+            };
+            let (c, h) = (Vec3::from(aabb.center), Vec3::from(aabb.half_extents));
+            for k in 0..8 {
+                let s = Vec3::new(
+                    if k & 1 == 0 { -1.0 } else { 1.0 },
+                    if k & 2 == 0 { -1.0 } else { 1.0 },
+                    if k & 4 == 0 { -1.0 } else { 1.0 },
+                );
+                let p = gt.transform_point(c + h * s).as_dvec3() + origin.origin;
+                let w = DVec2::new(p.x, -p.z);
+                (lo, hi) = (lo.min(w), hi.max(w));
+            }
+        }
+        if !ready {
+            continue;
+        }
+        if lo.x > hi.x {
+            f.cover = Cover::Never;
+            f.area = Some([DVec2::ZERO; 2]);
+        } else {
+            f.area = Some([lo, hi]);
+        }
+    }
+}
+
+/// Hides the flat ground the skin is drawn over, shows it again where it is not.
+pub(super) fn hide_covered_ground(
+    scenery: Res<Scenery>,
+    skin: Res<Skin>,
+    mut flats: Query<(&mut FlatGround, &mut Visibility)>,
+) {
+    let hills = &scenery.hills;
+    // New hills (the level pads came): check everything again.
+    let fresh = scenery.is_changed();
+    let start = bevy::platform::time::Instant::now();
+    for (mut f, mut vis) in &mut flats {
+        if fresh && f.cover != Cover::Unknown && f.area.is_some_and(|a| a[0] != a[1]) {
+            f.cover = Cover::Unknown;
+        }
+        if f.cover == Cover::Unknown
+            && let Some(area) = f.area
+            && start.elapsed() < COVER_TIME
+        {
+            f.cover = if hills.is_flat() { Cover::Never } else { cover(hills, area) };
+        }
+        let hide = match f.cover {
+            Cover::Under { level, blocks: [lo, hi] } => (lo.y..=hi.y).all(|by| {
+                (lo.x..=hi.x).all(|bx| drawn_at(&skin, bx, by).is_some_and(|l| l <= level))
+            }),
+            _ => false,
+        };
+        vis.set_if_neq(if hide { Visibility::Hidden } else { Visibility::Inherited });
+    }
+}
 
 pub(super) fn cleanup(mut commands: Commands, mut skin: ResMut<Skin>) {
     for (_, (_, e)) in skin.chunks.drain() {
@@ -531,6 +677,35 @@ mod tests {
         }
         // Far fewer than a 4 km chunk each.
         assert!(chunks.len() * 3 < area as usize, "{} chunks", chunks.len());
+    }
+
+    /// Flat ground all under full hills is covered on every grid level; next to flat ground
+    /// between the hills it is not.
+    #[test]
+    fn flat_ground_under_the_hills() {
+        let hills = stealth_sim::hills::Hills::from_bytes(vec![255; 1024 * 1024]).unwrap();
+        // Find a spot where the hills rise everywhere around, and one at their foot.
+        let (mut under, mut foot) = (None, None);
+        for k in 0..400 {
+            let p = DVec2::new(200_000.0 + k as f64 * 1000.0, 250_000.0);
+            let area = [p, p + 300.0];
+            match cover(&hills, area) {
+                Cover::Under { level, .. } if level == STEPS.len() - 1 => under = Some(area),
+                Cover::Never => foot = Some(area),
+                _ => {}
+            }
+        }
+        let under = under.expect("a spot under the hills");
+        assert!(foot.is_some(), "a spot at the hills' foot");
+        let Cover::Under { blocks, .. } = cover(&hills, under) else { unreachable!() };
+        assert_eq!(blocks[0], (under[0] / CHUNK).floor().as_ivec2());
+        // Drawn only while a skin chunk is there.
+        let mut skin = Skin::default();
+        assert_eq!(drawn_at(&skin, blocks[0].x, blocks[0].y), None);
+        let b = blocks[0];
+        let key = (b.x - b.x.rem_euclid(2), b.y - b.y.rem_euclid(2), 2);
+        skin.chunks.insert(key, ((2, 0), Entity::PLACEHOLDER));
+        assert_eq!(drawn_at(&skin, b.x, b.y), Some(2));
     }
 
     #[test]

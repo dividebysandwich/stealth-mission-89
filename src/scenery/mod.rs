@@ -27,6 +27,7 @@ mod hills_mask;
 mod network;
 mod obstacles;
 mod skin;
+pub use skin::FlatGround;
 mod style;
 
 use std::collections::HashMap;
@@ -71,6 +72,7 @@ impl Plugin for SceneryPlugin {
                     (
                         stream_blocks,
                         skin::stream_skin,
+                        skin::hide_covered_ground,
                         airfields,
                         lamps_at_night,
                         papi_lights,
@@ -89,6 +91,13 @@ impl Plugin for SceneryPlugin {
                     .run_if(in_state(AppState::Flight)),
             );
         // (In the browser the layout is made on the main thread: there it waits for the flight.)
+        app.add_systems(
+            PostUpdate,
+            skin::measure_flat_ground
+                .after(bevy::transform::TransformSystems::Propagate)
+                .after(bevy::camera::visibility::VisibilitySystems::CalculateBounds)
+                .run_if(in_state(AppState::Flight)),
+        );
         if !cfg!(target_arch = "wasm32") {
             app.add_systems(Update, prefetch_layout.run_if(in_state(AppState::Menu)));
         }
@@ -1016,17 +1025,20 @@ fn spawn_geom(
         children.push(e);
     }
     if let Some(m) = multicolour_mesh(palette, geom.flat) {
-        children.push(
-            commands
-                .spawn((
-                    Mesh3d(meshes.add(m.0)),
-                    MeshMaterial3d(palette.per_vertex.clone()),
-                    m.1,
-                    tag.clone(),
-                    bevy::light::NotShadowCaster,
-                ))
-                .id(),
-        );
+        let e = commands
+            .spawn((
+                Mesh3d(meshes.add(m.0)),
+                MeshMaterial3d(palette.per_vertex.clone()),
+                m.1,
+                tag.clone(),
+                bevy::light::NotShadowCaster,
+            ))
+            .id();
+        // The farmland's fields are drawn on the hills by the skin.
+        if tier == Tier::Fields {
+            commands.entity(e).insert(skin::FlatGround::default());
+        }
+        children.push(e);
     }
     for (c, lines) in geom.lines {
         children.push(
