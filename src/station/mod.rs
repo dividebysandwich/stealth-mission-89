@@ -390,12 +390,14 @@ fn slew_of(v: f32) -> f32 {
 }
 
 /// The hand controller: the flight controls' stick slews a Gepard's turret, a press of its
-/// triggers fires a burst (and never the parked aircraft's weapons).
+/// triggers fires a burst, at the drone command center locks on (and never fires the parked
+/// aircraft's weapons).
 fn hand_controller(
     manning: Option<Res<Manning>>,
     mut c: Option<ResMut<ActiveCampaign>>,
     mut controls: ResMut<crate::input::FlightControls>,
     mut ui: ResMut<ConsoleUi>,
+    mut drones: ResMut<drone::DroneUi>,
 ) {
     // The gunner's console has its own (`gunner`).
     let Some(m) = manning.filter(|m| !m.gunner()) else { return };
@@ -403,6 +405,12 @@ fn hand_controller(
     controls.gun = false;
     controls.fire = false;
     let Some(c) = c.as_deref_mut() else { return };
+    // The drone command center: a press locks the selected interceptor on, or lets go (`drone`).
+    if m.drones() {
+        drones.fire |= trigger && !ui.trigger;
+        ui.trigger = trigger;
+        return;
+    }
     if !m.gepard() {
         return;
     }

@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 45;
+pub const PROTOCOL: u16 = 46;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -302,6 +302,7 @@ mod tests {
             StationCmd::Next { uav: 4, wp: 1 },
             StationCmd::Manual { uav: 2, on: true },
             StationCmd::Fly { uav: 2, roll: -0.5, pitch: 0.25, yaw: 0.5, throttle: 0.75 },
+            StationCmd::UavLock { uav: 2, on: true },
         ] {
             let m = ToServer::Station(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));

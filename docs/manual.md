@@ -3445,9 +3445,10 @@ and turns like an aircraft. Its seeker locks on the same way as the interceptor'
 as **3 km**, and keeps the lock out to 8 km. Locked on, it steers itself after its target at up to 15 g,
 at full throttle on AUTO (flown by hand, at your throttle).
 
-**Auto lock-on.** The interceptor locks on by itself to the nearest aircraft or drone within 500 m and about
-20° of its nose. The camera marks the target, the list says LOCK, and from then on it steers itself: open the
-throttle and let it close in. It loses the lock beyond 1.5 km. It can't tell friend from foe, so keep it away
+**Lock-on.** Press fire (the fire key, the stick's trigger, a gamepad's fire button) and the interceptor
+locks on to the aircraft or drone nearest its flight path marker, within 500 m and inside the circle drawn
+round the marker (about 20°); yellow brackets mark what it would lock on to. The camera boxes the target, the list says LOCK, and from then on it steers
+itself: open the throttle and let it close in. Press fire again to let go. It loses the lock beyond 1.5 km. It can't tell friend from foe, so keep it away
 from friendly aircraft; a crash into the ground sets off its warhead too, friendly units nearby included.
 
 **Against air defences.** The enemy's radars and gunners find a drone only within 2 km, and their shells and

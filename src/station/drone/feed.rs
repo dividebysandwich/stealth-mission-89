@@ -5,7 +5,8 @@
 //! an attack drone those within 2 km). Flown by hand it looks ahead, under a flight display.
 //! An interceptor only looks ahead: diamonds mark the aircraft in its view within `AIR_MARKS` m
 //! (their range and how far above or below; the friendly side's blue, as it would lock on to
-//! them too), a box the one it locked on to.
+//! them too), a circle round the flight path marker within which fire locks on, a box the one
+//! it locked on to.
 //! The view ahead is fixed to the airframe: it pitches and rolls with the drone. Without a
 //! drone selected the camera rests.
 
@@ -268,6 +269,8 @@ pub(super) fn draw(
         if u.mode == UavMode::Manual {
             stroke_text_at(cv, w / 2.0, 70.0, "THROTTLE UP", 5.0, 0.8, RED, Align::Centre);
         }
+    } else if u.kind.hunter() && u.mode != UavMode::Launch {
+        stroke_text_at(cv, w / 2.0, h - 26.0, "FIRE TO LOCK", 5.0, 0.8, GREY, Align::Centre);
     }
     if let Some(eo) = eo.filter(|_| picture) {
         if forward {
@@ -327,14 +330,15 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
 }
 
 /// The interceptor's view: a diamond on each aircraft ahead within `AIR_MARKS` (its range in
-/// km, how many metres above or below; yellow the enemy's, blue the friendly side's), a box on
-/// the one it is locked on to, and the circle within which it locks on.
+/// km, how many metres above or below; yellow the enemy's, blue the friendly side's), yellow
+/// brackets round those fire would lock on to, a box on the one it is locked on to, and the circle round the flight path marker within which fire
+/// locks on.
 fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let project = projection(eo);
     let sim = &combat.sim;
-    // The lock cone round the nose.
-    let o = Vec2::new(w / 2.0, h / 2.0);
+    // The lock cone round the way it goes.
+    let o = path_marker(u, eo);
     let f = 256.0 * crate::mfd::cam_magnification(eo.zoom) * w / crate::trackcam::WIDE.0;
     let r = (stealth_sim::uav::LOCK_CONE as f32).tan() * f;
     if u.lock.is_none() {
@@ -358,6 +362,14 @@ fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
             continue;
         }
         let locked = u.lock == Some(j as u16);
+        // Fire would lock on to it: within reach, inside the circle round the marker.
+        let lockable = u.lock.is_none()
+            && range < u.kind.lock_range().0
+            && d.as_vec3().normalize_or_zero().dot(way(u).normalize_or_zero())
+                > (stealth_sim::uav::LOCK_CONE as f32).cos();
+        if lockable {
+            bracket(cv, p, 9.0, YELLOW);
+        }
         let col = if locked {
             RED
         } else if sim.friendly_unit(j, t.spec) {
@@ -612,6 +624,26 @@ fn projection(eo: &ConsoleEo) -> impl Fn(Vec3) -> Option<Vec2> {
     }
 }
 
+/// Where the flight path marker is in the picture (held inside it): along the drone's way (a
+/// winged drone's along its nose).
+fn path_marker(u: &Uav, eo: &ConsoleEo) -> Vec2 {
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
+    projection(eo)(way(u)).map_or(Vec2::new(w / 2.0, h / 2.0), |p| {
+        p.clamp(Vec2::new(30.0, 10.0), Vec2::new(w - 30.0, h - 10.0))
+    })
+}
+
+/// The way the drone goes (Bevy world; at rest, along its nose), as the simulation's lock
+/// takes it (`Sim::uav_lock_target`).
+fn way(u: &Uav) -> Vec3 {
+    let w = if u.vel.iter().any(|&v| v != 0.0) {
+        u.vel
+    } else {
+        [u.heading.sin() * u.pitch.cos(), u.heading.cos() * u.pitch.cos(), u.pitch.sin()]
+    };
+    Vec3::new(w[0] as f32, w[2] as f32, -w[1] as f32)
+}
+
 /// Corner brackets round a point.
 fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
     for sx in [-1.0, 1.0] {
@@ -653,16 +685,7 @@ fn horizon(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
             stroke_text_at(cv, l.x, l.y, &format!("{deg:.0}"), 5.0, 0.8, col, Align::Left);
         }
     }
-    // Its way (east, north, up): a winged drone's along its nose.
-    let way = if u.vel.iter().any(|&v| v != 0.0) {
-        u.vel
-    } else {
-        [u.heading.sin() * u.pitch.cos(), u.heading.cos() * u.pitch.cos(), u.pitch.sin()]
-    };
-    let way = Vec3::new(way[0] as f32, way[2] as f32, -way[1] as f32);
-    // Held inside the picture.
-    let p =
-        project(way).map_or(o, |p| p.clamp(Vec2::new(30.0, 10.0), Vec2::new(w - 30.0, h - 10.0)));
+    let p = path_marker(u, eo);
     cv.stroke(p - Vec2::new(16.0, 0.0), p - Vec2::new(5.0, 0.0), 1.4, YELLOW);
     cv.stroke(p + Vec2::new(5.0, 0.0), p + Vec2::new(16.0, 0.0), 1.4, YELLOW);
     cv.stroke(p - Vec2::new(0.0, 5.0), p - Vec2::new(0.0, 10.0), 1.4, YELLOW);

@@ -152,6 +152,12 @@ pub enum StationCmd {
         yaw: f32,
         throttle: f32,
     },
+    /// An interceptor or X-12 locks on to the aircraft nearest its flight path marker (within
+    /// its lock range and `uav::LOCK_CONE`), or lets go of its lock.
+    UavLock {
+        uav: u16,
+        on: bool,
+    },
 }
 
 /// A manned console.
@@ -464,7 +470,8 @@ impl Sim {
             | StationCmd::Route { .. }
             | StationCmd::Next { .. }
             | StationCmd::Manual { .. }
-            | StationCmd::Fly { .. }) => self.uav_command(&st, cmd).map_err(Text::raw)?,
+            | StationCmd::Fly { .. }
+            | StationCmd::UavLock { .. }) => self.uav_command(&st, cmd).map_err(Text::raw)?,
         }
         Ok(())
     }

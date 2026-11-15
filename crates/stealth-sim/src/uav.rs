@@ -3,8 +3,9 @@
 //! sensor finds every enemy air defence unit and SAM site within [`STORK_SENSOR`] of them,
 //! **FP-2** attack drones, which dive into a ground point and blow up there, and
 //! **interceptors**, small quadrotors as fast as 600 km/h with a battery for minutes, which
-//! lock on to an aircraft or drone in front of them within [`LOCK_RANGE`] (whoever's: they
-//! can't tell friend from foe) and fly it down while the pilot opens the throttle, and
+//! lock on when the pilot fires (`StationCmd::UavLock`) to the aircraft or drone nearest their
+//! flight path marker within [`LOCK_RANGE`] (whoever's: they can't tell friend from foe) and
+//! fly it down while the pilot opens the throttle, and
 //! **X-12s**, jet powered winged interceptors as fast as 700 km/h with fuel for 15 minutes
 //! (126 km), built to hunt the jet Gerans: they lock on the same way from as far as
 //! [`X12_LOCK_RANGE`]. Into the ground, an interceptor's warhead goes off too, wrecking
@@ -78,8 +79,8 @@ const BLAST: f64 = 4.0;
 const QUAD_BLAST: f64 = 2.0;
 /// A battery this low (fraction) glides down.
 const EMPTY: f32 = 0.0;
-/// An interceptor locks on to an enemy aircraft this close (m) and this far off its nose (rad,
-/// its camera's view), and lets go of it further than `LOCK_BREAK` (m).
+/// An interceptor locks on to an aircraft this close (m) and this far off its flight path (rad,
+/// within its camera's view), and lets go of it further than `LOCK_BREAK` (m).
 pub const LOCK_RANGE: f64 = 500.0;
 pub const LOCK_CONE: f64 = 0.35;
 const LOCK_BREAK: f64 = 1500.0;
@@ -954,6 +955,27 @@ impl Sim {
                 u.ctrl = [roll.clamp(-1.0, 1.0), pitch.clamp(-1.0, 1.0), throttle.clamp(0.0, 1.0)];
                 u.yaw = yaw.clamp(-1.0, 1.0);
             }
+            C::UavLock { uav, on } => {
+                let k = self.station_uav(st, uav)?;
+                let u = &self.uavs()[k];
+                if !u.kind.hunter() {
+                    return Err("Only an interceptor locks on".into());
+                }
+                if !on {
+                    self.defence_mut().uavs[k].lock = None;
+                    return Ok(());
+                }
+                if u.battery <= EMPTY || u.mode == UavMode::Launch {
+                    return Err("Not now".into());
+                }
+                let Some(j) = self.uav_lock_target(k) else {
+                    return Err("Nothing to lock on to".into());
+                };
+                let label = u.label();
+                let name = self.ac_type(self.flights[j].spec).name.clone();
+                self.msg(text!("sim-locked-on", weapon = label, target = name));
+                self.defence_mut().uavs[k].lock = Some(j as u16);
+            }
             _ => return Err("Not a drone command".into()),
         }
         Ok(())
@@ -1396,39 +1418,39 @@ impl Sim {
         self.ai_kill(j);
     }
 
-    /// The interceptors' and X-12s' locks: one without finds the nearest aircraft or drone (of
-    /// either side) within its lock range (`UavKind::lock_range`) and `LOCK_CONE` of its nose;
-    /// a lock goes when its target is gone or too far.
+    /// What hunter `n` locks on to when told to (`StationCmd::UavLock`): of the aircraft and
+    /// drones (either side's) within its lock range (`UavKind::lock_range`) and `LOCK_CONE` of
+    /// its flight path marker (where it is going; at rest, its nose), the one nearest the marker.
+    pub fn uav_lock_target(&self, n: usize) -> Option<usize> {
+        let u = self.uavs().get(n)?;
+        let (range, _) = u.kind.lock_range();
+        let speed = len(u.vel);
+        let way = if speed > 1.0 { mul(u.vel, 1.0 / speed) } else { axes(u).0 };
+        self.interceptor_targets()
+            .map(|j| (j, sub(flight_metres(&self.flights[j]), u.pos)))
+            .map(|(j, r)| (j, len(r), dot(r, way) / len(r).max(1e-6)))
+            .filter(|&(_, d, cos)| d < range && cos > LOCK_CONE.cos())
+            .max_by(|a, b| a.2.total_cmp(&b.2))
+            .map(|(j, ..)| j)
+    }
+
+    /// The interceptors' and X-12s' locks (put on by the player, `StationCmd::UavLock`): a lock
+    /// goes when its target is gone or too far, or the drone is out of battery.
     fn uav_locks(&mut self) {
         let targets: Vec<(usize, [f64; 3])> =
             self.interceptor_targets().map(|j| (j, flight_metres(&self.flights[j]))).collect();
         let mut news = Vec::new();
         for (n, u) in self.uavs().iter().enumerate() {
-            if !u.kind.hunter() {
-                continue;
-            }
-            let (range, gone) = u.kind.lock_range();
+            let Some(j) = u.lock.filter(|_| u.kind.hunter()) else { continue };
+            let (_, gone) = u.kind.lock_range();
             let lock = if u.battery <= EMPTY || u.mode == UavMode::Launch {
                 None
-            } else if let Some(j) = u.lock {
+            } else {
                 targets
                     .iter()
                     .find(|e| e.0 == j as usize)
                     .filter(|e| len(sub(e.1, u.pos)) < gone)
                     .map(|_| j)
-            } else {
-                let nose = [
-                    u.heading.sin() * u.pitch.cos(),
-                    u.heading.cos() * u.pitch.cos(),
-                    u.pitch.sin(),
-                ];
-                targets
-                    .iter()
-                    .map(|&(j, p)| (j, sub(p, u.pos)))
-                    .map(|(j, r)| (j, len(r), dot(r, nose)))
-                    .filter(|&(_, d, along)| d < range && along > d * LOCK_CONE.cos())
-                    .min_by(|a, b| a.1.total_cmp(&b.1))
-                    .map(|(j, ..)| j as u16)
             };
             if lock != u.lock {
                 news.push((n, lock));
@@ -1436,22 +1458,15 @@ impl Sim {
         }
         for (n, lock) in news {
             let label = self.uavs()[n].label();
-            match lock {
-                Some(j) => {
-                    let name = self.ac_type(self.flights[j as usize].spec).name.clone();
-                    self.msg(text!("sim-locked-on", weapon = label, target = name));
-                }
-                None if self.uavs()[n].battery > EMPTY => {
-                    self.msg(text!("sim-lost-lock", weapon = label))
-                }
-                None => {}
+            if self.uavs()[n].battery > EMPTY {
+                self.msg(text!("sim-lost-lock", weapon = label));
             }
             self.defence_mut().uavs[n].lock = lock;
         }
     }
 
     /// Once a frame: drones shot down or whose center is gone are lost, the batteries run down,
-    /// the interceptors lock on, and once a second the drones look for the enemy's air
+    /// the interceptors' locks hold or break, and once a second the drones look for the enemy's air
     /// defences.
     pub(crate) fn update_uavs(&mut self) {
         let Some(d) = self.defence() else { return };

@@ -17,8 +17,9 @@
 //!   it back on the next waypoint), brackets on the enemy air defences the drone sees. Flown by
 //!   hand (MAN, the map's MANUAL, or the stick moved while looking ahead): the main screen
 //!   shows the view ahead with a flight display, the stick and throttle fly it. An
-//!   interceptor has only the view ahead: it marks the aircraft in front and the one it locked
-//!   on to (the drone then steers itself, the throttle closes in).
+//!   interceptor has only the view ahead: it marks the aircraft in front; fire locks on to the
+//!   one nearest its flight path marker (the drone then steers itself, the throttle closes
+//!   in), fire again lets go.
 //! * The drone list (`list`, the screen top right): each drone's battery.
 
 mod feed;
@@ -150,6 +151,9 @@ pub struct DroneUi {
     /// `--drone-launch`: drones launched, and those selected.
     tested: u8,
     test_picked: Vec<u16>,
+    /// Fire was pressed (`station::hand_controller`): the selected interceptor locks on, or
+    /// lets go of its lock.
+    pub(super) fire: bool,
 }
 
 impl Default for DroneUi {
@@ -174,6 +178,7 @@ impl Default for DroneUi {
             stick_moved: false,
             tested: 0,
             test_picked: Vec::new(),
+            fire: false,
         }
     }
 }
@@ -435,6 +440,17 @@ fn input(
                 }
             }
             _ => {}
+        }
+    }
+    // Fire (the keyboard's, the stick's trigger, a gamepad's): the selected interceptor locks
+    // on to the aircraft nearest its flight path marker, or lets go.
+    if std::mem::take(&mut ui.fire) {
+        match selected(&ui, &uavs) {
+            Some(u) if u.kind.hunter() => {
+                send(StationCmd::UavLock { uav: u.id, on: u.lock.is_none() })
+            }
+            Some(_) => {}
+            None => ui.say("Select a drone first"),
         }
     }
     for d in drags.read() {

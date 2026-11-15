@@ -689,6 +689,11 @@ fn geran_ahead(sim: &mut Sim, ahead: f64) -> usize {
 
 /// A Geran-2 of a side (`blue`: the friendly one's) put `ahead` m in front of the interceptor.
 fn drone_ahead(sim: &mut Sim, ahead: f64, blue: bool) -> usize {
+    drone_at(sim, ahead, 0.0, blue)
+}
+
+/// A Geran-2 put `ahead` m in front of the interceptor and `right` m to its right.
+fn drone_at(sim: &mut Sim, ahead: f64, right: f64, blue: bool) -> usize {
     let home = (3..sim.objects().len())
         .find(|&i| sim.place_name(i).eq_ignore_ascii_case("Neuburg"))
         .expect("Neuburg");
@@ -702,7 +707,8 @@ fn drone_ahead(sim: &mut Sim, ahead: f64, blue: bool) -> usize {
     let j = sim.spawn_drone(home, far, 77, blue);
     run(sim, 2);
     let u = sim.uavs()[0].clone();
-    let (e, n) = (u.pos[0] + u.heading.sin() * ahead, u.pos[1] + u.heading.cos() * ahead);
+    let (s, c) = u.heading.sin_cos();
+    let (e, n) = (u.pos[0] + s * ahead + c * right, u.pos[1] + c * ahead - s * right);
     let wu = 512_000.0 / 1_048_576.0;
     let f = &mut sim.flights_mut()[j];
     f.wx = (e / wu) as i32;
@@ -713,6 +719,11 @@ fn drone_ahead(sim: &mut Sim, ahead: f64, blue: bool) -> usize {
     j
 }
 
+/// The player fires: the drone locks on (or lets go).
+fn lock(sim: &mut Sim, id: u16, on: bool) -> Result<(), stealth_i18n::Text> {
+    sim.station_command(ME, StationCmd::UavLock { uav: id, on })
+}
+
 #[test]
 fn an_interceptor_locks_on_to_a_drone_ahead_and_destroys_it_at_full_throttle() {
     let (mut sim, _, id) = interceptor();
@@ -720,6 +731,9 @@ fn an_interceptor_locks_on_to_a_drone_ahead_and_destroys_it_at_full_throttle() {
     run(&mut sim, 3);
     let j = geran_ahead(&mut sim, LOCK_RANGE * 0.8);
     run(&mut sim, 1);
+    // Only when the player fires.
+    assert_eq!(sim.uavs()[0].lock, None);
+    lock(&mut sim, id, true).unwrap();
     assert_eq!(sim.uavs()[0].lock, Some(j as u16));
     fly(&mut sim, id, 0.0, 1.0);
     let mut ev = Vec::new();
@@ -741,7 +755,28 @@ fn an_interceptor_cannot_tell_a_friendly_drone_from_an_enemy() {
     run(&mut sim, 3);
     let j = drone_ahead(&mut sim, LOCK_RANGE * 0.8, true);
     run(&mut sim, 1);
+    lock(&mut sim, id, true).unwrap();
     assert_eq!(sim.uavs()[0].lock, Some(j as u16));
+}
+
+#[test]
+fn an_interceptor_locks_on_to_the_drone_nearest_its_flight_path_and_lets_go_again() {
+    let (mut sim, _, id) = interceptor();
+    fly(&mut sim, id, 0.0, 0.2);
+    run(&mut sim, 3);
+    // The nearer one 10 degrees off the way it flies, the further one on it.
+    let near = drone_at(&mut sim, 200.0, 200.0 * 0.18, false);
+    let on = drone_at(&mut sim, LOCK_RANGE * 0.8, 0.0, false);
+    frames(&mut sim, 1);
+    lock(&mut sim, id, true).unwrap();
+    assert_eq!(sim.uavs()[0].lock, Some(on as u16), "not the nearer one ({near})");
+    run(&mut sim, 1);
+    assert_eq!(sim.uavs()[0].lock, Some(on as u16));
+    // Fired again: it lets go and stays let go.
+    lock(&mut sim, id, false).unwrap();
+    assert_eq!(sim.uavs()[0].lock, None);
+    run(&mut sim, 1);
+    assert_eq!(sim.uavs()[0].lock, None);
 }
 
 #[test]
@@ -770,12 +805,14 @@ fn an_interceptor_ignores_a_drone_behind_it_or_too_far() {
     run(&mut sim, 3);
     geran_ahead(&mut sim, -300.0);
     run(&mut sim, 1);
+    assert!(lock(&mut sim, id, true).is_err());
     assert_eq!(sim.uavs()[0].lock, None);
     let (mut sim, _, id) = interceptor();
     fly(&mut sim, id, 0.0, 0.2);
     run(&mut sim, 3);
     geran_ahead(&mut sim, LOCK_RANGE * 2.0);
     run(&mut sim, 1);
+    assert!(lock(&mut sim, id, true).is_err());
     assert_eq!(sim.uavs()[0].lock, None);
 }
 
@@ -818,12 +855,13 @@ fn an_x12_flies_126_km_in_a_quarter_hour_and_700_kmh_flat_out() {
 
 #[test]
 fn an_x12_locks_on_from_further_and_hunts_a_drone_down_by_itself() {
-    let (mut sim, _, _) = x12();
+    let (mut sim, _, id) = x12();
     // Out of its circle, level: a Geran 2.4 km ahead (beyond an interceptor's reach).
     let ahead = X12_LOCK_RANGE * 0.8;
     assert!(ahead > LOCK_RANGE * 2.0);
     let j = geran_ahead(&mut sim, ahead);
     frames(&mut sim, 2);
+    lock(&mut sim, id, true).unwrap();
     assert_eq!(sim.uavs()[0].lock, Some(j as u16));
     let mut ev = Vec::new();
     for _ in 0..40 {
@@ -839,9 +877,10 @@ fn an_x12_locks_on_from_further_and_hunts_a_drone_down_by_itself() {
 
 #[test]
 fn an_x12_ignores_a_drone_beyond_its_reach() {
-    let (mut sim, _, _) = x12();
+    let (mut sim, _, id) = x12();
     geran_ahead(&mut sim, X12_LOCK_RANGE * 1.3);
     frames(&mut sim, 2);
+    assert!(lock(&mut sim, id, true).is_err());
     assert_eq!(sim.uavs()[0].lock, None);
 }
 
