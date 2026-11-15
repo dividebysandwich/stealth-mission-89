@@ -1,6 +1,7 @@
 //! Geometry of one scenery block: the towns' and cities' paved ground, roads with lamp posts,
 //! buildings, pylons and wires (main tier near the viewpoint, the simpler town tier beyond), and
-//! trees (detail tier near the viewpoint, far tier beyond, the thinned distant tier furthest).
+//! trees (detail tier near the viewpoint, far tier beyond, the thinned distant tier of crossed
+//! silhouettes furthest).
 //! City lights stream independently, including the red beacons on tall buildings and masts.
 //! Everything is generated from the network and per-position hashes, so a block looks the same
 //! whenever it is streamed in, and the tree tiers place the same trees (the distant tier a
@@ -70,7 +71,7 @@ pub enum Tier {
     /// of 10-30), no bushes or trunks.
     Far,
     /// Far trees beyond the far tier, in `COARSE_BLOCK` blocks: `DISTANT_TREES` of them,
-    /// wider.
+    /// wider, each two crossed vertical silhouettes (`cross_tree`).
     Distant,
     /// Farmland: fields and the shelterbelt strips, in `FIELD_BLOCK` blocks.
     Fields,
@@ -91,7 +92,7 @@ impl Tier {
 enum TreeLod {
     Near,
     Far,
-    /// Far, `DISTANT_TREES` of them, wider.
+    /// Far, `DISTANT_TREES` of them, wider, as crossed silhouettes.
     Distant,
 }
 
@@ -1239,6 +1240,9 @@ fn tree_at(g: &mut Geom, rng: &mut Rng, kind: Tree, c: Vec3, h: f32, phase: f32,
     let far = lod != TreeLod::Near;
     // The distant tier's fewer trees cover as much ground.
     let w = if lod == TreeLod::Distant { (1.0 / DISTANT_TREES).sqrt() as f32 } else { 1.0 };
+    if lod == TreeLod::Distant {
+        return cross_tree(g, rng, kind, c, h, phase, w);
+    }
     match kind {
         Tree::Conifer if far => {
             let col = rng.pick(&[0xAD, 0xAE]);
@@ -1290,6 +1294,54 @@ fn tree_at(g: &mut Geom, rng: &mut Rng, kind: Tree, c: Vec3, h: f32, phase: f32,
                 g.face(0xA8, &[top, tip, mid - side], Vec3::Y);
                 g.face(0xA8, &[top, tip, mid - side], -Vec3::Y);
             }
+        }
+    }
+}
+
+/// A distant tree as two crossed vertical silhouettes (`w` times as wide): each plane is drawn
+/// from both sides (back faces are culled), so the tree keeps its outline from every
+/// direction, half of it lit and half in shade like the near shapes.
+fn cross_tree(g: &mut Geom, rng: &mut Rng, kind: Tree, c: Vec3, h: f32, phase: f32, w: f32) {
+    // The outline in a plane: (across, up) in metres, a convex polygon.
+    let (col, outline): (u8, &[(f32, f32)]) = match kind {
+        Tree::Conifer => {
+            let r = h * 0.27 * w;
+            (rng.pick(&[0xAD, 0xAE]), &[(-r, h * 0.06), (r, h * 0.06), (0.0, h)])
+        }
+        Tree::Broadleaf => {
+            let r = h * 0.33 * w;
+            let col = rng.pick(&[0xAB, 0xAC, 0xAD]);
+            (
+                col,
+                &[
+                    (-r * 0.35, h * 0.22),
+                    (r * 0.35, h * 0.22),
+                    (r, h * 0.5),
+                    (r * 0.75, h * 0.85),
+                    (0.0, h),
+                    (-r * 0.75, h * 0.85),
+                    (-r, h * 0.5),
+                ],
+            )
+        }
+        Tree::Palm => {
+            let r = h * 0.38 * w;
+            (0xA8, &[(-r, h * 0.82), (0.0, h * 0.7), (r, h * 0.82), (0.0, h * 1.05)])
+        }
+    };
+    // Palms keep a trunk: a thin wedge in each plane.
+    let trunk = kind == Tree::Palm;
+    for k in 0..2 {
+        let a = phase + k as f32 * std::f32::consts::FRAC_PI_2;
+        let across = Vec3::new(a.cos(), 0.0, a.sin());
+        let out = Vec3::new(-across.z, 0.0, across.x);
+        let pts: Vec<Vec3> = outline.iter().map(|&(x, y)| c + across * x + Vec3::Y * y).collect();
+        g.face(col, &pts, out);
+        g.face(col, &pts, -out);
+        if trunk {
+            let t = [c - across * 0.5, c + across * 0.5, c + Vec3::Y * h * 0.8];
+            g.face(0xCC, &t, out);
+            g.face(0xCC, &t, -out);
         }
     }
 }
