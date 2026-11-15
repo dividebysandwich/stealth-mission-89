@@ -1,5 +1,6 @@
-//! The front on the war map: where the places held by each side meet. A grey band is the
-//! contested ground between them, a line runs through its middle, and the places taken or lost
+//! The front on the war map: where the places held by each side meet. A band is the contested
+//! ground between them, blue on the friendly half and red on the enemy half, a line runs
+//! through its middle, and the places taken or lost
 //! in the last hour are marked.
 //!
 //! The ground is split by nearest place: a point belongs to the side whose place is nearer,
@@ -67,7 +68,8 @@ fn field(st: &CampaignState) -> Option<(Vec<f32>, Vec<bool>)> {
     Some((diff, near))
 }
 
-/// The band's picture: grey where contested, fading out at its edges.
+/// The band's picture where contested: blue on the friendly side of the line, red on the enemy
+/// side, fullest at the line and fading out at the band's edges.
 fn band_image(diff: &[f32], near: &[bool]) -> egui::ColorImage {
     let mut img = egui::ColorImage::filled([GRID, GRID], egui::Color32::TRANSPARENT);
     for j in 0..GRID {
@@ -80,8 +82,9 @@ fn band_image(diff: &[f32], near: &[bool]) -> egui::ColorImage {
             if d < BAND_KM {
                 // Fullest at the line, gone at the band's edge.
                 let a = 1.0 - (d / BAND_KM).powi(2);
+                let c = if diff[k] > 0.0 { FRIENDLY_BLUE } else { MISSILE_RED };
                 img[(i, j)] =
-                    egui::Color32::from_rgba_unmultiplied(150, 150, 150, (a * 120.0) as u8);
+                    egui::Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), (a * 120.0) as u8);
             }
         }
     }
@@ -225,8 +228,9 @@ pub(super) fn recent(
 /// The front's legend line, with its layer's checkbox.
 pub(super) fn legend(ui: &mut egui::Ui, layers: &mut MapLayers) {
     layers.legend(ui, Layer::Front, t!("map-legend-front"), |p, c0| {
-        let band = egui::Rect::from_center_size(c0, egui::vec2(16.0, 10.0));
-        p.rect_filled(band, 0.0, egui::Color32::from_gray(150).gamma_multiply(0.5));
+        let blue = egui::Rect::from_min_size(c0 - egui::vec2(8.0, 5.0), egui::vec2(8.0, 10.0));
+        p.rect_filled(blue, 0.0, FRIENDLY_BLUE.gamma_multiply(0.5));
+        p.rect_filled(blue.translate(egui::vec2(8.0, 0.0)), 0.0, MISSILE_RED.gamma_multiply(0.5));
         p.line_segment(
             [c0 - egui::vec2(0.0, 6.0), c0 + egui::vec2(0.0, 6.0)],
             egui::Stroke::new(1.8, egui::Color32::from_gray(225)),
