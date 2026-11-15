@@ -73,8 +73,8 @@ const WP_REACHED: f64 = 150.0;
 const CLEARANCE: f64 = 120.0;
 /// An FP-2's warhead goes off this close to its terminate point (m).
 const FUSE: f64 = 10.0;
-/// An FP-2's warhead destroys the air defence units this close (map units, about 60 m; as
-/// `aaa_damage` does a bomb's), an interceptor's smaller one about 30 m.
+/// An FP-2's or X-12's warhead destroys the air defence units this close (map units, about
+/// 60 m; as `aaa_damage` does a bomb's), an interceptor's smaller one about 30 m.
 const BLAST: f64 = 4.0;
 const QUAD_BLAST: f64 = 2.0;
 /// A battery this low (fraction) glides down.
@@ -1341,8 +1341,9 @@ impl Sim {
         }
     }
 
-    /// Drone `n` hit the ground: an FP-2 blows up (the enemy's guns and SAM sites there with
-    /// it), an interceptor too (whatever stands there, friendly or not), a Stork breaks up.
+    /// Drone `n` hit the ground: an FP-2 or an X-12 blows up (the guns there and the enemy's
+    /// SAM sites, radars and vehicles with it), an interceptor too (whatever stands there,
+    /// friendly or not, in a smaller blast), a Stork breaks up.
     /// Either way it is gone.
     fn uav_impact(&mut self, n: usize) {
         let u = self.defence_mut().uavs.remove(n);
@@ -1352,7 +1353,7 @@ impl Sim {
             f.reported = true;
         }
         self.flights[i].flags = 0;
-        if u.kind == UavKind::Fp2 {
+        if matches!(u.kind, UavKind::Fp2 | UavKind::X12) {
             self.emit(SimEvent::Explosion { x, y, alt: 0, kind: -6 });
             self.uav_blast_units(x, y, BLAST);
             let o = self.find_object_at(x, y);
@@ -1545,6 +1546,14 @@ impl Sim {
     pub fn set_uav_battery(&mut self, n: usize, charge: f32) {
         if let Some(u) = self.campaign.as_mut().and_then(|c| c.defence.uavs.get_mut(n)) {
             u.battery = charge;
+        }
+    }
+
+    /// Test aid: drone `n` moved to `pos` (m: east, north, height), its attitude and motion
+    /// kept.
+    pub fn set_uav_pos(&mut self, n: usize, pos: [f64; 3]) {
+        if let Some(u) = self.campaign.as_mut().and_then(|c| c.defence.uavs.get_mut(n)) {
+            u.pos = pos;
         }
     }
 

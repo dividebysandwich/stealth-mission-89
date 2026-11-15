@@ -799,6 +799,49 @@ fn an_interceptor_into_the_ground_blows_up_what_stands_there_friendly_or_not() {
 }
 
 #[test]
+fn an_x12_flown_into_a_sam_site_destroys_it_as_an_fp2_would() {
+    let (mut sim, k, site, radar) = center();
+    let s = sim.objects()[site];
+    sim.objects_mut()[site].unit_type = radar;
+    let at = off(&sim, k, 6000.0, 0.0);
+    launch(&mut sim, UavKind::X12, vec![wp(at, 1000.0, WpKind::Loiter)]).unwrap();
+    let id = sim.uavs()[0].id;
+    run(&mut sim, 60);
+    sim.station_command(ME, StationCmd::Manual { uav: id, on: true }).unwrap();
+    // Nose straight down (the stick let go then: it holds that attitude), then put right over
+    // the site, a gun 45 m off it (beyond an interceptor's blast).
+    let p = sim.uavs()[0].pos;
+    sim.set_uav_pos(0, [p[0], p[1], 4000.0]);
+    // The loiter left it banked: wings level first.
+    while sim.uavs()[0].bank.abs() > 0.05 {
+        let roll = -sim.uavs()[0].bank.signum() as f32 * 0.2;
+        stick(&mut sim, id, roll, 0.0, 0.0);
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, -1.0, 0.0);
+    while sim.uavs()[0].pitch > -1.4 {
+        frames(&mut sim, 1);
+    }
+    stick(&mut sim, id, 0.0, 0.0, 1.0);
+    let (e, n) = (s.x as f64 * M_PER_MAP, (0x8000 - s.y) as f64 * M_PER_MAP);
+    sim.set_uav_pos(0, [e + 5.0, n + 5.0, 400.0]);
+    let gun = sim.units().len();
+    let unit = GroundUnit { kind: GroundKind::Zsu, x: s.x + 3, y: s.y, ..Default::default() };
+    sim.units_mut().push(unit);
+    let mut ev = Vec::new();
+    for _ in 0..60 * 15 {
+        if sim.uavs().is_empty() {
+            break;
+        }
+        ev.extend(sim.step(&idle(), 15));
+    }
+    assert!(sim.uavs().is_empty(), "never came down");
+    assert!(sim.objects()[site].flags & oflags::DESTROYED != 0, "the site stands");
+    assert!(sim.units()[gun].destroyed, "the gun stands");
+    assert!(ev.iter().any(|e| matches!(e, SimEvent::GroundDestroyed { .. })));
+}
+
+#[test]
 fn an_interceptor_ignores_a_drone_behind_it_or_too_far() {
     let (mut sim, _, id) = interceptor();
     fly(&mut sim, id, 0.0, 0.2);

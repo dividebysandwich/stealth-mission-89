@@ -3443,7 +3443,8 @@ it is faster than any Geran, and with a quarter of an hour of fuel it reaches 12
 cannot hover or turn on the spot like the quadrotor: it flies wide circles (1,500 m) round its loiter point
 and turns like an aircraft. Its seeker locks on the same way as the interceptor's (below), but from as far
 as **3 km**, and keeps the lock out to 8 km. Locked on, it steers itself after its target at up to 15 g,
-at full throttle on AUTO (flown by hand, at your throttle).
+at full throttle on AUTO (flown by hand, at your throttle). Its warhead is as heavy as the FP-2's: flown
+by hand into a SAM site, a radar or a gun, it destroys it and every ground unit within about 60 m.
 
 **Lock-on.** Press fire (the fire key, the stick's trigger, a gamepad's fire button) and the interceptor
 locks on to the aircraft or drone nearest its flight path marker, within 500 m and inside the circle drawn
