@@ -2,6 +2,9 @@
 [build]
 target = "web/index.html"
 dist = "dist/web"
+# No <link rel="preload"> for the wasm and its scripts: the game downloads only after PLAY IN
+# BROWSER (web/loader.js), not as soon as the first screen opens.
+pattern_preload = ""
 
 # The version and gzipped copies for the server, and the WebGL2 build in gl/ (web/post_build.sh).
 [[hooks]]

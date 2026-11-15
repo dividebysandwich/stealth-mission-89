@@ -331,22 +331,6 @@ menu-download = STIAHNUŤ
         Desktopová hra pre Windows, Linux a macOS
         S VR a multiplayerom
         Steam Deck a Steam Frame: AppImage pre Linux
-web-play = HRAŤ V PREHLIADAČI
-    .facts = Priamo tu, nič sa neinštaluje
-web-download-platforms = Windows, Linux a macOS, Steam Deck a Steam Frame
-web-download-version = Prečo sťahovať?
-web-gives-vr = VR
-    .why = Lietajte vo VR na akomkoľvek headsete kompatibilnom s OpenXR a na Steam Frame
-web-gives-multiplayer = Lepší multiplayer
-    .why = Priame spojenie UDP so servermi pre menšie oneskorenie
-web-gives-server = Vlastný server
-    .why = Založte coop kampaň alebo spustite dedikovaný server
-web-gives-head-tracking = Sledovanie hlavy
-    .why = Trackery typu TrackIR cez OpenTrack
-web-gives-tacview = Tacview
-    .why = Záznamy letov a telemetria v reálnom čase
-web-gives-keep = Navždy vaše
-    .why = Ak web zanikne, stále máte vlastnú kópiu
 menu-discord = DISCORD
     .facts =
         Lietajte spolu, hláste chyby a zdieľajte misie
@@ -424,8 +408,6 @@ menu-terrain = Terén
         Reliéf terénu
         Klasický: plochá zem pôvodnej hry (hory zostávajú)
         Realistický: zvlnené pahorkatiny a vyššie vysočiny; pozemné jednotky, stanovištia SAM aj piloti sa za nimi môžu ukryť
-web-github = GITHUB
-    .facts = Zdrojový kód
 aircraft-oh58 =
     .facts =
         Ozbrojený prieskumný vrtuľník, hbitý

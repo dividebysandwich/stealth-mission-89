@@ -1,11 +1,10 @@
-//! The main menu's music: looped from the menu's start (the browser's: from PLAY IN BROWSER),
-//! faded out over `FADE` seconds once the menu is left (a flight, a campaign, a multiplayer
-//! game), under the master and music volumes.
+//! The main menu's music: looped from the menu's start (in the browser, the page's PLAY IN
+//! BROWSER click lets it make sound), faded out over `FADE` seconds once the menu is left (a
+//! flight, a campaign, a multiplayer game), under the master and music volumes.
 
 use bevy::audio::{AudioSink, PlaybackSettings, Volume};
 use bevy::prelude::*;
 
-use crate::menu::MenuState;
 use crate::settings::Settings;
 
 const TRACK: &str = "music/menu01.ogg";
@@ -19,16 +18,14 @@ pub(super) struct MenuMusic {
     fading: bool,
 }
 
-/// In the menu: the music starts (again, replacing one still fading out), in the browser only
-/// once the player chose to play there (the page's first click also lets it make sound).
+/// In the menu: the music starts (again, replacing one still fading out).
 pub(super) fn start(
     mut commands: Commands,
     server: Res<AssetServer>,
     settings: Res<Settings>,
-    menu: Option<Res<MenuState>>,
     playing: Query<(Entity, &MenuMusic)>,
 ) {
-    if menu.is_some_and(|m| m.web_gateway_up()) || playing.iter().any(|(_, m)| !m.fading) {
+    if playing.iter().any(|(_, m)| !m.fading) {
         return;
     }
     for (e, _) in &playing {

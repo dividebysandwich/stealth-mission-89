@@ -331,22 +331,6 @@ menu-download = DOWNLOAD
         Computerspillet til Windows, Linux og macOS
         Med VR og multiplayer
         Steam Deck og Steam Frame: Linux-AppImage
-web-play = SPIL I BROWSEREN
-    .facts = Lige her, ingen installation
-web-download-platforms = Windows, Linux og macOS, Steam Deck og Steam Frame
-web-download-version = Hvorfor hente?
-web-gives-vr = VR
-    .why = Flyv i VR med et vilkårligt OpenXR-kompatibelt headset og Steam Frame
-web-gives-multiplayer = Bedre multiplayer
-    .why = Direkte UDP-forbindelse til servere for mindre lag
-web-gives-server = Kør din egen server
-    .why = Vær vært for en coop-kampagne, eller kør en dedikeret server
-web-gives-head-tracking = Head tracking
-    .why = Trackere i TrackIR-stil via OpenTrack
-web-gives-tacview = Tacview
-    .why = Flyoptagelser og telemetri i realtid
-web-gives-keep = Din for altid
-    .why = Hvis hjemmesiden forsvinder, har du stadig din egen kopi
 menu-discord = DISCORD
     .facts =
         Flyv sammen, rapportér fejl og del missioner
@@ -424,8 +408,6 @@ menu-terrain = Terræn
         Terrænhøjde
         Klassisk: den flade jord i det oprindelige spil (bjergene bliver)
         Realistisk: bølgende bakker og højere højland; jordenheder, SAM-steder og piloter kan gemme sig bag dem
-web-github = GITHUB
-    .facts = Kildekoden
 aircraft-oh58 =
     .facts =
         Bevæbnet rekognosceringshelikopter, adræt

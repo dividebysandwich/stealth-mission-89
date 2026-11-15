@@ -331,22 +331,6 @@ menu-download = ИЗТЕГЛЯНЕ
         Настолната игра за Windows, Linux и macOS
         С VR и многопотребителски режим
         Steam Deck и Steam Frame: Linux AppImage
-web-play = ИГРА В БРАУЗЪРА
-    .facts = Точно тук, без инсталиране
-web-download-platforms = Windows, Linux и macOS, Steam Deck и Steam Frame
-web-download-version = Защо да изтегляте?
-web-gives-vr = VR
-    .why = Летете във VR с всеки OpenXR-съвместим шлем и със Steam Frame
-web-gives-multiplayer = По-добър многопотребителски режим
-    .why = Директна UDP връзка със сървърите за по-малко забавяне
-web-gives-server = Собствен сървър
-    .why = Създайте coop кампания или пуснете специализиран сървър
-web-gives-head-tracking = Проследяване на главата
-    .why = Тракери от тип TrackIR чрез OpenTrack
-web-gives-tacview = Tacview
-    .why = Записи на полети и телеметрия в реално време
-web-gives-keep = Остава ваша
-    .why = Ако уебсайтът спре, вие пак имате собствено копие
 menu-discord = DISCORD
     .facts =
         Летете заедно, докладвайте грешки и споделяйте мисии
@@ -424,8 +408,6 @@ menu-terrain = Терен
         Релеф на терена
         Класически: равната земя на оригиналната игра (планините остават)
         Реалистичен: вълнообразни хълмове и по-високи възвишения; наземните части, позициите SAM и пилотите могат да се крият зад тях
-web-github = GITHUB
-    .facts = Изходният код
 aircraft-oh58 =
     .facts =
         Въоръжен разузнавателен хеликоптер, маневрен

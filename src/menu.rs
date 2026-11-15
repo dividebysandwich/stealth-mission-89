@@ -91,8 +91,6 @@ pub struct MenuState {
     pub moon: Option<u8>,
     /// The mission screen (single mission or career sortie) instead of the main menu.
     pub mission_screen: bool,
-    /// The browser build: the first screen (play here, or download the desktop game) is up.
-    web_gateway: bool,
     /// Multiplayer: the player's name, the last server joined ("host[:port]"), and how this
     /// game serves (name, empty: "<player>'s campaign"; port, players).
     pub player_name: String,
@@ -106,11 +104,6 @@ pub struct MenuState {
 }
 
 impl MenuState {
-    /// The browser build's first screen is up (`web_gateway`).
-    pub fn web_gateway_up(&self) -> bool {
-        self.web_gateway
-    }
-
     /// Career mode: the next sortie of the pilot's tour.
     pub fn start_career(&mut self, p: &crate::career::Pilot, t: &crate::career::Tour) {
         self.career = Some(p.key());
@@ -180,7 +173,6 @@ impl Default for MenuState {
                 ["--open-mission", "--open-planner", "--open-loadout", "--open-saves"]
                     .contains(&a.as_str())
             }),
-            web_gateway: cfg!(target_arch = "wasm32"),
             player_name: String::new(),
             server_addr: String::new(),
             server_name: String::new(),
@@ -834,14 +826,10 @@ pub(crate) mod icon {
     pub(crate) const MULTIPLAYER: char = '\u{e1a4}'; // users
     pub(crate) const OPTIONS: char = '\u{e29a}'; // sliders-horizontal
     pub(crate) const QUIT: char = '\u{e140}'; // power
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) const BROWSER: char = '\u{e0e8}'; // globe
     /// The browser's DOWNLOAD, a voice's DOWNLOAD.
     pub(crate) const DOWNLOAD: char = '\u{e0b2}'; // download
     #[cfg(target_arch = "wasm32")]
     pub(crate) const DISCORD: char = '\u{e116}'; // message-circle
-    #[cfg(target_arch = "wasm32")]
-    pub(crate) const GITHUB: char = '\u{e28d}'; // git-fork
     pub(crate) const BACK: char = '\u{e048}'; // arrow-left
     /// NEW MISSION, NEW SORTIE.
     pub(crate) const NEW_MISSION: char = '\u{e2c5}'; // dices
@@ -1531,13 +1519,9 @@ fn download_url() -> String {
     format!("{origin}{}download.html", &path[..path.rfind('/').map_or(0, |i| i + 1)])
 }
 
-/// The game's Discord server (also on the browser build's loading screen, web/index.html).
+/// The game's Discord server (also on the browser build's first screen, web/index.html).
 #[cfg(target_arch = "wasm32")]
 const DISCORD_URL: &str = "https://discord.gg/zjjGeKKpC";
-
-/// The game's source on GitHub.
-#[cfg(target_arch = "wasm32")]
-const GITHUB_URL: &str = "https://github.com/dividebysandwich/stealth-mission-89/";
 
 /// A full-screen-width menu window in the terminal style.
 pub(crate) fn menu_window(ctx: &egui::Context, id: &str, width: f32) -> egui::Window<'static> {
@@ -1567,62 +1551,6 @@ const MAIN_RESERVED: f32 = 150.0;
 /// Width of the menu's wide windows.
 pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
     (ctx.content_rect().width() - 32.0).clamp(600.0, 1400.0)
-}
-
-/// What the download has that the browser build has not (`web_gateway`), with the reason.
-#[cfg(target_arch = "wasm32")]
-const DOWNLOAD_GIVES: [&str; 6] = [
-    "web-gives-vr",
-    "web-gives-multiplayer",
-    "web-gives-server",
-    "web-gives-head-tracking",
-    "web-gives-tacview",
-    "web-gives-keep",
-];
-
-/// The browser build's first screen: play in the browser or download the desktop game, beside
-/// what the download version adds.
-#[cfg(target_arch = "wasm32")]
-fn web_gateway(ctx: &egui::Context, state: &mut MenuState) {
-    let wide = |text: &str| big_button(text).min_size(egui::vec2(300.0, 50.0));
-    let width = (ctx.content_rect().width() - 32.0).clamp(600.0, 820.0);
-    Panel::new(t!("menu-title")).note(t!("menu-subtitle")).window(
-        menu_window(ctx, "Stealth Mission 89", width),
-        ctx,
-        |ui| {
-            ui.horizontal_top(|ui| {
-                ui.vertical(|ui| {
-                    ui.set_width(300.0);
-                    if ui.add(wide(t!("web-play")).icon(icon::BROWSER)).clicked() {
-                        state.web_gateway = false;
-                    }
-                    ui.label(egui::RichText::new(t!("web-play.facts")).color(DIM));
-                    ui.add_space(14.0);
-                    if ui.add(wide(t!("menu-download")).icon(icon::DOWNLOAD)).clicked() {
-                        ui.ctx().open_url(egui::OpenUrl::new_tab(download_url()));
-                    }
-                    ui.label(egui::RichText::new(t!("web-download-platforms")).color(DIM));
-                    ui.add_space(14.0);
-                    if ui.add(wide(t!("web-github")).icon(icon::GITHUB)).clicked() {
-                        ui.ctx().open_url(egui::OpenUrl::new_tab(GITHUB_URL));
-                    }
-                    ui.label(egui::RichText::new(t!("web-github.facts")).color(DIM));
-                });
-                ui.add_space(16.0);
-                ui.vertical(|ui| {
-                    group(ui, t!("web-download-version"), |ui| {
-                        for id in DOWNLOAD_GIVES {
-                            ui.label(egui::RichText::new(format!("> {}", t!(id))).color(GREEN));
-                            ui.label(
-                                egui::RichText::new(t!(&format!("{id}.why"))).size(14.0).color(DIM),
-                            );
-                            ui.add_space(2.0);
-                        }
-                    });
-                });
-            });
-        },
-    );
 }
 
 /// The top level: what to play.
@@ -1893,15 +1821,9 @@ pub(crate) fn menu_ui(
     let realistic_before = state.realistic(settings.aircraft);
     // One window at a time: the open dialog replaces the screen it was opened from.
     let dialogs = dialog.open || options.open || career.open || campaign.open || multiplayer.open;
-    // The browser build first asks whether to play here or download (never up on the desktop).
-    let gateway = state.web_gateway && !state.mission_screen && !dialogs;
-    #[cfg(target_arch = "wasm32")]
-    if gateway {
-        web_gateway(ctx, &mut state);
-    }
     // The main menu steps aside while the player walks the apron behind it (menu_scene.rs).
     let walking = walking.is_some_and(|w| w.hides_menu());
-    if !state.mission_screen && !dialogs && !gateway && !walking {
+    if !state.mission_screen && !dialogs && !walking {
         main_screen(
             ctx,
             &mut state,

@@ -331,22 +331,6 @@ menu-download = DOWNLOADEN
         Het desktopspel voor Windows, Linux en macOS
         Met VR en multiplayer
         Steam Deck en Steam Frame: de Linux-AppImage
-web-play = SPELEN IN DE BROWSER
-    .facts = Hier en nu, niets te installeren
-web-download-platforms = Windows, Linux en macOS, Steam Deck en Steam Frame
-web-download-version = Waarom downloaden?
-web-gives-vr = VR
-    .why = Vlieg in VR met elke OpenXR-compatibele headset en de Steam Frame
-web-gives-multiplayer = Betere multiplayer
-    .why = Directe UDP-verbinding met servers voor minder lag
-web-gives-server = Host je eigen server
-    .why = Host een coöpcampagne, of draai een dedicated server
-web-gives-head-tracking = Hoofdtracking
-    .why = Trackers in TrackIR-stijl via OpenTrack
-web-gives-tacview = Tacview
-    .why = Vluchtopnames en realtime telemetrie
-web-gives-keep = Voor altijd van jou
-    .why = Als de website uitvalt, heb je nog je eigen kopie
 menu-discord = DISCORD
     .facts =
         Vlieg samen, meld bugs en deel missies
@@ -425,8 +409,6 @@ menu-terrain = Terrein
         Terreinhoogte
         Klassiek: de vlakke grond van het oorspronkelijke spel (bergen blijven)
         Realistisch: glooiende heuvels en hoger hoogland; grondeenheden, SAM-sites en piloten kunnen zich erachter verschuilen
-web-github = GITHUB
-    .facts = De broncode
 aircraft-oh58 =
     .facts =
         Bewapende verkenningshelikopter, wendbaar

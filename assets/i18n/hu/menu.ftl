@@ -331,22 +331,6 @@ menu-download = LETÖLTÉS
         Az asztali játék Windowsra, Linuxra és macOS-re
         VR-rel és többjátékos móddal
         Steam Deck és Steam Frame: a Linux AppImage
-web-play = JÁTÉK A BÖNGÉSZŐBEN
-    .facts = Itt helyben, semmit sem kell telepíteni
-web-download-platforms = Windows, Linux és macOS, Steam Deck és Steam Frame
-web-download-version = Miért érdemes letölteni?
-web-gives-vr = VR
-    .why = Repüljön VR-ban bármely OpenXR-kompatibilis headsettel és a Steam Frame-mel
-web-gives-multiplayer = Jobb többjátékos mód
-    .why = Közvetlen UDP-kapcsolat a szerverekhez, kisebb késleltetéssel
-web-gives-server = Saját szerver hosztolása
-    .why = Kooperatív kampány hosztolása, vagy dedikált szerver futtatása
-web-gives-head-tracking = Fejkövetés
-    .why = TrackIR-típusú követők az OpenTracken keresztül
-web-gives-tacview = Tacview
-    .why = Repülésfelvételek és valós idejű telemetria
-web-gives-keep = Örökre az Öné
-    .why = Ha a weboldal leáll, megvan a saját példánya
 menu-discord = DISCORD
     .facts =
         Repüljenek együtt, jelentsék a hibákat és osszák meg a küldetéseket
@@ -424,8 +408,6 @@ menu-terrain = Terep
         Terepdomborzat
         Klasszikus: az eredeti játék sík talaja (a hegyek maradnak)
         Valósághű: hullámos dombok és magasabb fennsíkok; a földi egységek, a SAM-állások és a pilóták elbújhatnak mögöttük
-web-github = GITHUB
-    .facts = A forráskód
 aircraft-oh58 =
     .facts =
         Fegyveres felderítő helikopter, fürge

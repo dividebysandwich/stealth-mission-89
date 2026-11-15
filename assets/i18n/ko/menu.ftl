@@ -331,22 +331,6 @@ menu-download = 다운로드
         Windows, Linux, macOS용 데스크톱 게임
         VR과 멀티플레이어 지원
         Steam Deck과 Steam Frame: Linux AppImage
-web-play = 브라우저에서 플레이
-    .facts = 바로 여기서, 설치 필요 없음
-web-download-platforms = Windows, Linux, macOS, Steam Deck, Steam Frame
-web-download-version = 왜 내려받나요?
-web-gives-vr = VR
-    .why = OpenXR 호환 헤드셋과 Steam Frame에서 VR로 비행
-web-gives-multiplayer = 더 나은 멀티플레이어
-    .why = 서버에 직접 UDP 연결로 지연 감소
-web-gives-server = 나만의 서버 호스팅
-    .why = 협동 캠페인을 호스팅하거나 전용 서버 운영
-web-gives-head-tracking = 헤드 트래킹
-    .why = OpenTrack을 통한 TrackIR 방식 트래커
-web-gives-tacview = Tacview
-    .why = 비행 기록과 실시간 텔레메트리
-web-gives-keep = 영구 보관
-    .why = 웹사이트가 닫혀도 내 사본이 남아 있음
 menu-discord = DISCORD
     .facts =
         함께 비행하고, 버그를 제보하고, 임무를 공유
@@ -424,8 +408,6 @@ menu-terrain = 지형
         지형 고도
         클래식: 원작 게임의 평평한 지면입니다 (산은 그대로)
         사실적: 완만한 언덕과 높은 고원. 지상 부대, SAM 기지, 조종사가 그 뒤에 숨을 수 있습니다
-web-github = GITHUB
-    .facts = 소스 코드
 aircraft-oh58 =
     .facts =
         무장 정찰 헬리콥터, 민첩함

@@ -331,22 +331,6 @@ menu-download = ΛΗΨΗ
         Το παιχνίδι για υπολογιστή, για Windows, Linux και macOS
         Με VR και πολλούς παίκτες
         Steam Deck και Steam Frame: το AppImage για Linux
-web-play = ΠΑΙΞΤΕ ΣΤΟΝ ΠΕΡΙΗΓΗΤΗ
-    .facts = Εδώ και τώρα, χωρίς εγκατάσταση
-web-download-platforms = Windows, Linux και macOS, Steam Deck και Steam Frame
-web-download-version = Γιατί να κατεβάσετε;
-web-gives-vr = VR
-    .why = Πετάξτε σε VR με κάθε headset συμβατό με OpenXR και με το Steam Frame
-web-gives-multiplayer = Καλύτερο multiplayer
-    .why = Άμεση σύνδεση UDP με τους διακομιστές για μικρότερη καθυστέρηση
-web-gives-server = Φιλοξενήστε τον δικό σας διακομιστή
-    .why = Φιλοξενήστε μια εκστρατεία συνεργασίας ή τρέξτε έναν αποκλειστικό διακομιστή
-web-gives-head-tracking = Παρακολούθηση κεφαλιού
-    .why = Αισθητήρες τύπου TrackIR μέσω OpenTrack
-web-gives-tacview = Tacview
-    .why = Καταγραφές πτήσης και τηλεμετρία πραγματικού χρόνου
-web-gives-keep = Δικό σας για πάντα
-    .why = Αν η ιστοσελίδα πάψει να λειτουργεί, κρατάτε το δικό σας αντίγραφο
 menu-discord = DISCORD
     .facts =
         Πετάξτε μαζί, αναφέρετε σφάλματα και μοιραστείτε αποστολές
@@ -424,8 +408,6 @@ menu-terrain = Έδαφος
         Ανάγλυφο εδάφους
         Κλασικό: το επίπεδο έδαφος του αρχικού παιχνιδιού (τα βουνά μένουν)
         Ρεαλιστικό: κυματιστοί λόφοι και ψηλότερα υψίπεδα· χερσαίες μονάδες, θέσεις SAM και πιλότοι μπορούν να κρυφτούν πίσω τους
-web-github = GITHUB
-    .facts = Ο πηγαίος κώδικας
 aircraft-oh58 =
     .facts =
         Οπλισμένο ελικόπτερο αναγνώρισης, ευκίνητο

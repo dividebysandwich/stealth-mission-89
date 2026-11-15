@@ -331,22 +331,6 @@ menu-download = NIŻŻEL
         Il-logħba desktop għal Windows, Linux u macOS
         Bil-VR u l-multiplayer
         Steam Deck u Steam Frame: l-AppImage għal Linux
-web-play = LAGĦAB FIL-BROWSER
-    .facts = Hawn stess, xejn x'tinstalla
-web-download-platforms = Windows, Linux u macOS, Steam Deck u Steam Frame
-web-download-version = Għala tniżżel?
-web-gives-vr = VR
-    .why = Itir f'VR fuq kwalunkwe headset kompatibbli ma' OpenXR u s-Steam Frame
-web-gives-multiplayer = Multiplayer aħjar
-    .why = Konnessjoni UDP diretta mas-servers għal inqas lag
-web-gives-server = Oħloq server tiegħek
-    .why = Oħloq kampanja coop, jew mexxi server dedikat
-web-gives-head-tracking = Traċċar tar-ras
-    .why = Trackers stil TrackIR permezz ta' OpenTrack
-web-gives-tacview = Tacview
-    .why = Reġistrazzjonijiet tat-titjir u telemetrija fil-ħin reali
-web-gives-keep = Tiegħek għal dejjem
-    .why = Jekk is-sit jaqa' xorta jibqagħlek il-kopja tiegħek
 menu-discord = DISCORD
     .facts =
         Ittajjru flimkien, irrapporta bugs u aqsam missjonijiet
@@ -424,8 +408,6 @@ menu-terrain = Art
         Rilief tal-art
         Klassiku: l-art ċatta tal-logħba oriġinali (il-muntanji jibqgħu)
         Realistiku: għoljiet mewġin u plateaux ogħla; l-unitajiet fuq l-art, is-siti SAM u l-piloti jistgħu jistaħbew warajhom
-web-github = GITHUB
-    .facts = Il-kodiċi tas-sors
 aircraft-oh58 =
     .facts =
         Ħelikopter tal-iskoperta armat, aġli

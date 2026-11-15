@@ -331,22 +331,6 @@ menu-download = UNDUH
         Game desktop untuk Windows, Linux dan macOS
         Dengan VR dan multiplayer
         Steam Deck dan Steam Frame: AppImage Linux
-web-play = MAIN DI BROWSER
-    .facts = Langsung di sini, tanpa instalasi
-web-download-platforms = Windows, Linux dan macOS, Steam Deck dan Steam Frame
-web-download-version = Mengapa mengunduh?
-web-gives-vr = VR
-    .why = Terbang dalam VR dengan headset apa pun yang kompatibel dengan OpenXR dan Steam Frame
-web-gives-multiplayer = Multiplayer lebih baik
-    .why = Koneksi UDP langsung ke server untuk lag lebih kecil
-web-gives-server = Jadikan server milik Anda
-    .why = Jadi host kampanye koop, atau jalankan server khusus
-web-gives-head-tracking = Pelacakan kepala
-    .why = Pelacak ala TrackIR lewat OpenTrack
-web-gives-tacview = Tacview
-    .why = Rekaman penerbangan dan telemetri real-time
-web-gives-keep = Jadi milik Anda
-    .why = Jika situs web mati, Anda tetap punya salinan sendiri
 menu-discord = DISCORD
     .facts =
         Terbang bersama, laporkan bug dan bagikan misi
@@ -424,8 +408,6 @@ menu-terrain = Medan
         Relief medan
         Klasik: tanah datar permainan aslinya (pegunungan tetap ada)
         Realistis: perbukitan bergelombang dan dataran tinggi; unit darat, lokasi SAM, dan pilot dapat bersembunyi di baliknya
-web-github = GITHUB
-    .facts = Kode sumber
 aircraft-oh58 =
     .facts =
         Helikopter pengintai bersenjata, lincah

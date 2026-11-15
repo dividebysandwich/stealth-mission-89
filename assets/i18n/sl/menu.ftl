@@ -331,22 +331,6 @@ menu-download = PRENOS
         Namizna igra za Windows, Linux in macOS
         Z VR in večigralskim načinom
         Steam Deck in Steam Frame: Linux AppImage
-web-play = IGRAJ V BRSKALNIKU
-    .facts = Kar tukaj, brez namestitve
-web-download-platforms = Windows, Linux in macOS, Steam Deck in Steam Frame
-web-download-version = Zakaj prenesti?
-web-gives-vr = VR
-    .why = Letite v VR z vsemi očali, združljivimi z OpenXR, in s Steam Frame
-web-gives-multiplayer = Boljši večigralski način
-    .why = Neposredna povezava UDP s strežniki za manj zakasnitve
-web-gives-server = Gostite svoj strežnik
-    .why = Gostite kampanjo za sodelovanje ali zaženite namenski strežnik
-web-gives-head-tracking = Sledenje glavi
-    .why = Sledilniki v slogu TrackIR prek OpenTrack
-web-gives-tacview = Tacview
-    .why = Posnetki letov in telemetrija v realnem času
-web-gives-keep = Vaše za vedno
-    .why = Če spletno mesto preneha delovati, imate še vedno svojo kopijo
 menu-discord = DISCORD
     .facts =
         Letite skupaj, prijavite napake in delite misije
@@ -424,8 +408,6 @@ menu-terrain = Teren
         Relief terena
         Klasičen: ravna tla izvirne igre (gore ostanejo)
         Realističen: valoviti griči in višje planote; kopenske enote, mesta SAM in piloti se lahko skrijejo za njimi
-web-github = GITHUB
-    .facts = Izvorna koda
 aircraft-oh58 =
     .facts =
         Oboroženi izvidniški helikopter, okreten

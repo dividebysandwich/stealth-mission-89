@@ -331,22 +331,6 @@ menu-download = LAADI ALLA
         Töölauamäng Windowsile, Linuxile ja macOS-ile
         VR-i ja mitmikmänguga
         Steam Deck ja Steam Frame: Linuxi AppImage
-web-play = MÄNGI BRAUSERIS
-    .facts = Just siin, midagi pole vaja paigaldada
-web-download-platforms = Windows, Linux ja macOS, Steam Deck ja Steam Frame
-web-download-version = Miks alla laadida?
-web-gives-vr = VR
-    .why = Lenda VR-is mis tahes OpenXR-iga ühilduva peakomplekti ja Steam Frame'iga
-web-gives-multiplayer = Parem mitmikmäng
-    .why = Otsene UDP-ühendus serveritega väiksema viivituse jaoks
-web-gives-server = Oma server
-    .why = Korralda koostöökampaania või käivita dedikeeritud server
-web-gives-head-tracking = Pea jälgimine
-    .why = TrackIR-tüüpi jälgijad OpenTracki kaudu
-web-gives-tacview = Tacview
-    .why = Lennusalvestised ja reaalaja telemeetria
-web-gives-keep = Jääb sulle
-    .why = Kui veebileht kaob, on sul oma koopia alles
 menu-discord = DISCORD
     .facts =
         Lenda koos, teata vigadest ja jaga missioone
@@ -424,8 +408,6 @@ menu-terrain = Maastik
         Maastiku reljeef
         Klassikaline: algse mängu lame maa (mäed jäävad)
         Realistlik: lainjad künkad ja kõrgemad kõrgendikud; maaüksused, SAM-kohad ja piloodid võivad nende taha peituda
-web-github = GITHUB
-    .facts = Lähtekood
 aircraft-oh58 =
     .facts =
         Relvastatud luurehelikopter, väle

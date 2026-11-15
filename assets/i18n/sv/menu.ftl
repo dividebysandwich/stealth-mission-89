@@ -331,22 +331,6 @@ menu-download = LADDA NER
         Skrivbordsspelet för Windows, Linux och macOS
         Med VR och flerspelare
         Steam Deck och Steam Frame: Linux-AppImage
-web-play = SPELA I WEBBLÄSAREN
-    .facts = Precis här, inget att installera
-web-download-platforms = Windows, Linux och macOS, Steam Deck och Steam Frame
-web-download-version = Varför ladda ner?
-web-gives-vr = VR
-    .why = Flyg i VR med valfritt OpenXR-kompatibelt headset och Steam Frame
-web-gives-multiplayer = Bättre flerspelare
-    .why = Direkt UDP-anslutning till servrar för mindre fördröjning
-web-gives-server = Var värd för din egen server
-    .why = Var värd för en samarbetskampanj, eller kör en dedikerad server
-web-gives-head-tracking = Head tracking
-    .why = Trackers av TrackIR-typ via OpenTrack
-web-gives-tacview = Tacview
-    .why = Flyginspelningar och telemetri i realtid
-web-gives-keep = Din att behålla
-    .why = Om webbplatsen försvinner har du fortfarande din egen kopia
 menu-discord = DISCORD
     .facts =
         Flyg tillsammans, rapportera buggar och dela uppdrag
@@ -424,8 +408,6 @@ menu-terrain = Terräng
         Terränghöjd
         Klassisk: den platta marken i originalspelet (bergen finns kvar)
         Realistisk: böljande kullar och högre högland; markenheter, SAM-platser och piloter kan gömma sig bakom dem
-web-github = GITHUB
-    .facts = Källkoden
 aircraft-oh58 =
     .facts =
         Beväpnad spaningshelikopter, kvick

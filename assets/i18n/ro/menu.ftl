@@ -331,22 +331,6 @@ menu-download = DESCARCĂ
         Jocul pentru desktop, pentru Windows, Linux și macOS
         Cu VR și multiplayer
         Steam Deck și Steam Frame: AppImage pentru Linux
-web-play = JOACĂ ÎN BROWSER
-    .facts = Chiar aici, nimic de instalat
-web-download-platforms = Windows, Linux și macOS, Steam Deck și Steam Frame
-web-download-version = De ce să descărcați?
-web-gives-vr = VR
-    .why = Zburați în VR cu orice cască compatibilă OpenXR și cu Steam Frame
-web-gives-multiplayer = Multiplayer mai bun
-    .why = Conexiune UDP directă la servere, pentru mai puțină latență
-web-gives-server = Găzduiți propriul server
-    .why = Găzduiți o campanie cooperativă sau rulați un server dedicat
-web-gives-head-tracking = Urmărirea capului
-    .why = Trackere de tip TrackIR prin OpenTrack
-web-gives-tacview = Tacview
-    .why = Înregistrări de zbor și telemetrie în timp real
-web-gives-keep = Rămâne al dumneavoastră
-    .why = Dacă site-ul dispare, aveți în continuare propria copie
 menu-discord = DISCORD
     .facts =
         Zburați împreună, raportați erori și împărtășiți misiuni
@@ -424,8 +408,6 @@ menu-terrain = Teren
         Relieful terenului
         Clasic: solul plat al jocului original (munții rămân)
         Realist: dealuri ondulate și podișuri mai înalte; unitățile terestre, amplasamentele SAM și piloții se pot ascunde în spatele lor
-web-github = GITHUB
-    .facts = Codul sursă
 aircraft-oh58 =
     .facts =
         Elicopter de recunoaștere înarmat, agil

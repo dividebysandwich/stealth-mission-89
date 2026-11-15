@@ -331,22 +331,6 @@ menu-download = ÍOSLÓDÁIL
         An cluiche deisce do Windows, Linux agus macOS
         Le VR agus illúinteoir
         Steam Deck agus Steam Frame: an AppImage Linux
-web-play = IMIR SAN BHRABHSÁLAÍ
-    .facts = Anseo díreach, gan aon rud le suiteáil
-web-download-platforms = Windows, Linux agus macOS, Steam Deck agus Steam Frame
-web-download-version = Cén fáth íoslódáil?
-web-gives-vr = VR
-    .why = Eitil i VR le haon cheannsraith atá comhoiriúnach le OpenXR agus an Steam Frame
-web-gives-multiplayer = Illúinteoir níos fearr
-    .why = Nasc díreach UDP le freastalaithe le haga moille níos lú
-web-gives-server = Óstáil do fhreastalaí féin
-    .why = Óstáil togra comhoibríoch, nó reáchtáil freastalaí tiomnaithe
-web-gives-head-tracking = Rianú cinn
-    .why = Rianairí cosúil le TrackIR trí OpenTrack
-web-gives-tacview = Tacview
-    .why = Taifid eitilte agus telemetry fíor-ama
-web-gives-keep = Leatsa go deo
-    .why = Má thiteann an suíomh gréasáin, tá do chóip féin agat fós
 menu-discord = DISCORD
     .facts =
         Eitil le chéile, tuairiscigh fabhtanna agus roinn misin
@@ -424,8 +408,6 @@ menu-terrain = Tír-raon
         Airde an tír-raoin
         Clasaiceach: talamh réidh an bhunchluiche (fanann na sléibhte)
         Réalaíoch: cnoic thonnacha agus tailte arda níos airde; is féidir le haonaid talún, suíomhanna SAM agus píolótaí dul i bhfolach taobh thiar díobh
-web-github = GITHUB
-    .facts = An cód foinse
 aircraft-oh58 =
     .facts =
         Héileacaptar taiscéalaíochta armtha, bríomhar

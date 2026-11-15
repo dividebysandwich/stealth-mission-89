@@ -331,22 +331,6 @@ menu-download = 下载
         适用于 Windows、Linux 和 macOS 的桌面版游戏
         支持 VR 和多人游戏
         Steam Deck 和 Steam Frame：Linux AppImage
-web-play = 在浏览器中游玩
-    .facts = 就在这里，无需安装
-web-download-platforms = Windows、Linux 和 macOS，Steam Deck 和 Steam Frame
-web-download-version = 为什么要下载？
-web-gives-vr = VR
-    .why = 使用任何兼容 OpenXR 的头显和 Steam Frame 以 VR 飞行
-web-gives-multiplayer = 更好的多人游戏
-    .why = 直接 UDP 连接服务器，延迟更低
-web-gives-server = 自建服务器
-    .why = 创建合作战役，或运行专用服务器
-web-gives-head-tracking = 头部追踪
-    .why = 通过 OpenTrack 支持 TrackIR 类追踪器
-web-gives-tacview = Tacview
-    .why = 飞行记录和实时遥测
-web-gives-keep = 永久保留
-    .why = 即使网站关闭，您仍拥有自己的副本
 menu-discord = DISCORD
     .facts =
         一起飞行、报告错误、分享任务
@@ -423,8 +407,6 @@ menu-terrain = 地形
     .facts =
         地形起伏
         经典：原版游戏的平坦地面（山脉保留）¶ 真实：起伏的丘陵和更高的高地；地面单位、SAM 阵地和飞行员可以躲在其后
-web-github = GITHUB
-    .facts = 源代码
 aircraft-oh58 =
     .facts =
         武装侦察直升机，灵活

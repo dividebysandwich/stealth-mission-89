@@ -331,22 +331,6 @@ menu-download = ATSISIŲSTI
         Kompiuterinis žaidimas Windows, Linux ir macOS
         Su VR ir daugiavičiu žaidimu
         Steam Deck ir Steam Frame: Linux AppImage
-web-play = ŽAISTI NARŠYKLĖJE
-    .facts = Čia pat, nieko diegti nereikia
-web-download-platforms = Windows, Linux ir macOS, Steam Deck ir Steam Frame
-web-download-version = Kodėl atsisiųsti?
-web-gives-vr = VR
-    .why = Skraidykite VR su bet kokia OpenXR suderinama ausine ir Steam Frame
-web-gives-multiplayer = Geresnis daugiavietis žaidimas
-    .why = Tiesioginis UDP ryšys su serveriais, mažesnis vėlinimas
-web-gives-server = Savas serveris
-    .why = Sukurkite coop kampaniją arba paleiskite dedikuotą serverį
-web-gives-head-tracking = Galvos sekimas
-    .why = TrackIR tipo sekikliai per OpenTrack
-web-gives-tacview = Tacview
-    .why = Skrydžių įrašai ir telemetrija realiuoju laiku
-web-gives-keep = Lieka jums
-    .why = Jei svetainė išsijungtų, vis tiek turėsite savo kopiją
 menu-discord = DISCORD
     .facts =
         Skraidykite kartu, praneškite apie klaidas ir dalinkitės misijomis
@@ -424,8 +408,6 @@ menu-terrain = Reljefas
         Vietovės reljefas
         Klasikinis: pradinio žaidimo plokščia žemė (kalnai lieka)
         Realistinis: banguotos kalvos ir aukštesnės aukštumos; antžeminiai daliniai, SAM vietos ir pilotai gali už jų pasislėpti
-web-github = GITHUB
-    .facts = Šaltinio kodas
 aircraft-oh58 =
     .facts =
         Ginkluotas žvalgybos sraigtasparnis, vikrus

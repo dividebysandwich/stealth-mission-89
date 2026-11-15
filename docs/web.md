@@ -43,8 +43,10 @@ and site. Clearing the site's data deletes them.
 - the command line options
 - the `SM89_*` environment variables
 
-The first screen asks whether to play in the browser or download, beside a list of what the
-download adds. The main menu shows DOWNLOAD instead of QUIT. It opens `web/download.html`,
+The first screen, plain HTML in `web/index.html`, asks whether to play in the browser or download,
+beside a list of what the download adds. The game only downloads after PLAY IN BROWSER (`?play`
+skips the choice): `web/loader.js` waits for it, and `pattern_preload` in `Trunk.toml` keeps
+Trunk from preloading the wasm. The main menu shows DOWNLOAD instead of QUIT. It opens `web/download.html`,
 which offers the desktop releases. The page links to the GitHub release of the version in
 `Cargo.toml`, which a Trunk hook writes to `version.js` at build time. So a build of a version
 that has no release yet links to files that don't exist yet.

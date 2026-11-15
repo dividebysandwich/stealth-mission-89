@@ -331,22 +331,6 @@ menu-download = LATAA
         Työpöytäpeli Windowsille, Linuxille ja macOS:lle
         VR:llä ja moninpelillä
         Steam Deck ja Steam Frame: Linuxin AppImage
-web-play = PELAA SELAIMESSA
-    .facts = Tässä ja nyt, mitään ei tarvitse asentaa
-web-download-platforms = Windows, Linux ja macOS, Steam Deck ja Steam Frame
-web-download-version = Miksi ladata?
-web-gives-vr = VR
-    .why = Lennä VR:ssä millä tahansa OpenXR-yhteensopivalla laitteella ja Steam Framella
-web-gives-multiplayer = Parempi moninpeli
-    .why = Suora UDP-yhteys palvelimiin pienemmällä viiveellä
-web-gives-server = Isännöi oma palvelin
-    .why = Isännöi yhteistyökampanja tai aja dedikoitua palvelinta
-web-gives-head-tracking = Pään seuranta
-    .why = TrackIR-tyyliset seurantalaitteet OpenTrackin kautta
-web-gives-tacview = Tacview
-    .why = Lentotallenteet ja reaaliaikainen telemetria
-web-gives-keep = Pysyy sinulla
-    .why = Vaikka verkkosivusto menisi alas, oma kopiosi säilyy
 menu-discord = DISCORD
     .facts =
         Lennä yhdessä, ilmoita virheistä ja jaa tehtäviä
@@ -424,8 +408,6 @@ menu-terrain = Maasto
         Maaston korkeus
         Klassinen: alkuperäisen pelin tasainen maa (vuoret pysyvät)
         Realistinen: aaltoilevat kukkulat ja korkeammat ylängöt; maayksiköt, SAM-paikat ja lentäjät voivat piiloutua niiden taakse
-web-github = GITHUB
-    .facts = Lähdekoodi
 aircraft-oh58 =
     .facts =
         Aseistettu tiedustelukopteri, ketterä

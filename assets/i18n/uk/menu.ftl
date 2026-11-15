@@ -331,22 +331,6 @@ menu-download = ЗАВАНТАЖИТИ
         Настільна гра для Windows, Linux і macOS
         З VR і мультиплеєром
         Steam Deck і Steam Frame: Linux AppImage
-web-play = ГРАТИ У БРАУЗЕРІ
-    .facts = Просто тут, нічого встановлювати не треба
-web-download-platforms = Windows, Linux і macOS, Steam Deck і Steam Frame
-web-download-version = Навіщо завантажувати?
-web-gives-vr = VR
-    .why = Літайте у VR на будь-якому шоломі з підтримкою OpenXR та на Steam Frame
-web-gives-multiplayer = Кращий мультиплеєр
-    .why = Пряме UDP-з'єднання із серверами для меншої затримки
-web-gives-server = Власний сервер
-    .why = Запустіть кооперативну кампанію або виділений сервер
-web-gives-head-tracking = Трекінг голови
-    .why = Трекери типу TrackIR через OpenTrack
-web-gives-tacview = Tacview
-    .why = Записи польотів і телеметрія в реальному часі
-web-gives-keep = Лишається у вас
-    .why = Якщо сайт перестане працювати, у вас лишається власна копія
 menu-discord = DISCORD
     .facts =
         Літайте разом, повідомляйте про помилки та діліться місіями
@@ -424,8 +408,6 @@ menu-terrain = Рельєф
         Рельєф місцевості
         Класичний: плоска земля оригінальної гри (гори залишаються)
         Реалістичний: горбиста місцевість і високі нагір'я; наземні частини, позиції SAM і пілоти можуть за ними ховатися
-web-github = GITHUB
-    .facts = Вихідний код
 aircraft-oh58 =
     .facts =
         Озброєний розвідувальний гелікоптер, маневровий

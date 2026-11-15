@@ -331,22 +331,6 @@ menu-download = ダウンロード
         Windows、Linux、macOS 向けのデスクトップ版
         VR とマルチプレイヤー対応
         Steam Deck と Steam Frame：Linux AppImage
-web-play = ブラウザでプレイ
-    .facts = ここですぐに、インストール不要
-web-download-platforms = Windows、Linux、macOS、Steam Deck、Steam Frame
-web-download-version = ダウンロードする理由
-web-gives-vr = VR
-    .why = OpenXR 対応のヘッドセットと Steam Frame で VR 飛行
-web-gives-multiplayer = より良いマルチプレイヤー
-    .why = サーバーへの UDP 直接接続でラグが少ない
-web-gives-server = 自分のサーバーをホスト
-    .why = 協力キャンペーンをホスト、または専用サーバーを運用
-web-gives-head-tracking = ヘッドトラッキング
-    .why = OpenTrack 経由で TrackIR 型のトラッカーに対応
-web-gives-tacview = Tacview
-    .why = 飛行の記録とリアルタイムテレメトリ
-web-gives-keep = 手元に残せます
-    .why = ウェブサイトが落ちても、自分のコピーが残ります
 menu-discord = DISCORD
     .facts =
         一緒に飛び、バグを報告し、ミッションを共有
@@ -424,8 +408,6 @@ menu-terrain = 地形
         地形の起伏
         クラシック：元のゲームの平坦な地面です (山は残ります)
         リアル：起伏のある丘と高地。地上部隊、SAMサイト、パイロットは背後に隠れられます
-web-github = GITHUB
-    .facts = ソースコード
 aircraft-oh58 =
     .facts =
         武装偵察ヘリコプター、機敏

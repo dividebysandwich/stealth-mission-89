@@ -331,22 +331,6 @@ menu-download = POBRAĆ
         Wersja gry na komputer: Windows, Linux i macOS
         Z VR i grą wieloosobową
         Steam Deck i Steam Frame: AppImage dla Linuksa
-web-play = GRAĆ W PRZEGLĄDARCE
-    .facts = Tutaj, bez instalowania
-web-download-platforms = Windows, Linux i macOS, Steam Deck i Steam Frame
-web-download-version = Po co pobierać?
-web-gives-vr = VR
-    .why = Latanie w VR na każdym zestawie zgodnym z OpenXR oraz na Steam Frame
-web-gives-multiplayer = Lepsza gra wieloosobowa
-    .why = Bezpośrednie połączenie UDP z serwerami, mniejsze opóźnienia
-web-gives-server = Własny serwer
-    .why = Prowadzenie kampanii kooperacyjnej lub uruchomienie serwera dedykowanego
-web-gives-head-tracking = Śledzenie głowy
-    .why = Trackery typu TrackIR przez OpenTrack
-web-gives-tacview = Tacview
-    .why = Nagrania lotów i telemetria w czasie rzeczywistym
-web-gives-keep = Na zawsze Twoje
-    .why = Gdy strona przestanie działać, kopia zostaje u Ciebie
 menu-discord = DISCORD
     .facts =
         Wspólne latanie, zgłaszanie błędów i dzielenie się misjami
@@ -424,8 +408,6 @@ menu-terrain = Teren
         Rzeźba terenu
         Klasyczna: płaski grunt oryginalnej gry (góry zostają)
         Realistyczna: pofałdowane wzgórza i wyższe wyżyny; jednostki naziemne, stanowiska SAM i piloci mogą się za nimi ukryć
-web-github = GITHUB
-    .facts = Kod źródłowy
 aircraft-oh58 =
     .facts =
         Uzbrojony śmigłowiec zwiadowczy, zwrotny

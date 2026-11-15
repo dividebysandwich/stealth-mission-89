@@ -331,22 +331,6 @@ menu-download = HERUNTERLADEN
         Das Desktop-Spiel für Windows, Linux und macOS
         Mit VR und Mehrspieler
         Steam Deck und Steam Frame: das Linux-AppImage
-web-play = IM BROWSER SPIELEN
-    .facts = Gleich hier, ohne Installation
-web-download-platforms = Windows, Linux und macOS, Steam Deck und Steam Frame
-web-download-version = Warum herunterladen?
-web-gives-vr = VR
-    .why = Fliegen Sie in VR mit jedem OpenXR-kompatiblen Headset und dem Steam Frame
-web-gives-multiplayer = Besserer Mehrspieler
-    .why = Direkte UDP-Verbindung zu den Servern für weniger Lag
-web-gives-server = Eigenen Server betreiben
-    .why = Betreiben Sie eine Koop-Kampagne oder einen dedizierten Server
-web-gives-head-tracking = Head Tracking
-    .why = Tracker im Stil von TrackIR über OpenTrack
-web-gives-tacview = Tacview
-    .why = Flugaufzeichnungen und Telemetrie in Echtzeit
-web-gives-keep = Für immer Ihres
-    .why = Fällt die Website aus, behalten Sie Ihre eigene Kopie
 menu-discord = DISCORD
     .facts =
         Gemeinsam fliegen, Fehler melden und Missionen teilen
@@ -424,8 +408,6 @@ menu-terrain = Gelände
         Geländehöhe
         Klassisch: der flache Boden des Originalspiels (Berge bleiben)
         Realistisch: Hügelland und höhere Hochländer; Bodeneinheiten, SAM-Stellungen und Piloten können sich dahinter verstecken
-web-github = GITHUB
-    .facts = Der Quellcode
 aircraft-oh58 =
     .facts =
         Bewaffneter Aufklärungshubschrauber, wendig

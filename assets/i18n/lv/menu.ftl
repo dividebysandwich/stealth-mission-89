@@ -331,22 +331,6 @@ menu-download = LEJUPIELĀDĒT
         Galddatora spēle operētājsistēmām Windows, Linux un macOS
         Ar VR un daudzspēlētāju režīmu
         Steam Deck un Steam Frame: Linux AppImage
-web-play = SPĒLĒT PĀRLŪKĀ
-    .facts = Tieši šeit, nekas nav jāinstalē
-web-download-platforms = Windows, Linux un macOS, Steam Deck un Steam Frame
-web-download-version = Kāpēc lejupielādēt?
-web-gives-vr = VR
-    .why = Lidojiet VR ar jebkuru OpenXR saderīgu austiņu komplektu un Steam Frame
-web-gives-multiplayer = Labāks daudzspēlētāju režīms
-    .why = Tiešs UDP savienojums ar serveriem mazākai aizkavei
-web-gives-server = Izveidojiet savu serveri
-    .why = Izveidojiet kopīgu kampaņu vai palaidiet dedicētu serveri
-web-gives-head-tracking = Galvas izsekošana
-    .why = TrackIR tipa sekotāji caur OpenTrack
-web-gives-tacview = Tacview
-    .why = Lidojumu ieraksti un telemetrija reāllaikā
-web-gives-keep = Paliek jums
-    .why = Ja vietne pazūd, jums paliek sava kopija
 menu-discord = DISCORD
     .facts =
         Lidojiet kopā, ziņojiet par kļūdām un dalieties ar misijām
@@ -424,8 +408,6 @@ menu-terrain = Reljefs
         Reljefa augstums
         Klasisks: oriģinālās spēles līdzenā zeme (kalni paliek)
         Reālistisks: viļņoti pakalni un augstāki augstieni; zemes vienības, SAM vietas un piloti var tajos paslēpties
-web-github = GITHUB
-    .facts = Pirmkods
 aircraft-oh58 =
     .facts =
         Bruņots izlūkošanas helikopters, veikls

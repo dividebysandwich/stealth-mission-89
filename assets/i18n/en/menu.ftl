@@ -342,24 +342,6 @@ menu-download = DOWNLOAD
         The desktop game for Windows, Linux and macOS
         With VR and multiplayer
         Steam Deck and Steam Frame: the Linux AppImage
-web-play = PLAY IN BROWSER
-    .facts = Right here, nothing to install
-web-download-platforms = Windows, Linux and macOS, Steam Deck and Steam Frame
-web-download-version = Why download?
-web-github = GITHUB
-    .facts = The source code
-web-gives-vr = VR
-    .why = Fly in VR on any OpenXR-compatible headset and the Steam Frame
-web-gives-multiplayer = Better multiplayer
-    .why = Direct UDP connection to servers for less lag
-web-gives-server = Host your own server
-    .why = Host a coop campaign, or run a dedicated server
-web-gives-head-tracking = Head tracking
-    .why = TrackIR-style trackers through OpenTrack
-web-gives-tacview = Tacview
-    .why = Flight recordings and real-time telemetry
-web-gives-keep = Yours to keep
-    .why = If the website goes down you still have your own copy
 menu-discord = DISCORD
     .facts =
         Fly together, report bugs and share missions

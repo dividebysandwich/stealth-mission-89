@@ -8,6 +8,10 @@ const t = key => (window.SM89_T ? window.SM89_T(key) : key.toUpperCase());
 const mb = bytes => (bytes / 1048576).toFixed(1);
 const wire = (bytes, total) => (window.SM89_WASM_GZ ? (bytes / total) * window.SM89_WASM_GZ : bytes);
 
+// The game downloads once the player chose to play in the browser (index.html): Trunk's script
+// imports this module, so it waits here before it fetches the wasm.
+await window.SM89_PLAY;
+
 export default function loader() {
   return {
     onStart() {
