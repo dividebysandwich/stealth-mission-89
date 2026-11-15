@@ -154,6 +154,8 @@ pub struct DroneUi {
     /// Fire was pressed (`station::hand_controller`): the selected interceptor locks on, or
     /// lets go of its lock.
     pub(super) fire: bool,
+    /// A launch sent: the drones in the air then (the new one is selected once it is up).
+    launching: Option<Vec<u16>>,
 }
 
 impl Default for DroneUi {
@@ -179,6 +181,7 @@ impl Default for DroneUi {
             tested: 0,
             test_picked: Vec::new(),
             fire: false,
+            launching: None,
         }
     }
 }
@@ -404,6 +407,13 @@ fn input(
     ui.cams.retain(|(id, _)| ids.contains(id));
     if ui.edit.as_ref().is_some_and(|(id, _)| !ids.contains(id)) {
         ui.edit = None;
+    }
+    // The drone just launched is selected (its camera on the main screen).
+    if let Some(before) = &ui.launching
+        && let Some(&id) = ids.iter().find(|id| !before.contains(id))
+    {
+        ui.launching = None;
+        select(&mut ui, &uavs, id, &mut send);
     }
     for ConsoleButton(k) in keys.read() {
         match *k {
@@ -747,6 +757,7 @@ fn press(
                 return;
             }
             send(StationCmd::Launch { kind: p.kind, route: p.route });
+            ui.launching = Some(uavs.iter().map(|u| u.id).collect());
             ui.plan = None;
             ui.wp = None;
         }
