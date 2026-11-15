@@ -533,6 +533,8 @@ pub fn ops_ui(
         });
     // The pane over the map's left, sliding in.
     if let Some(pane) = c.ui.pane {
+        // The rail may have opened or changed the pane since the map was drawn.
+        let pane_w = shell::pane_width(screen.width(), pane.wide());
         let since = *c.ui.pane_since.get_or_insert(now);
         let shown = shell::slide(ctx, since);
         let at = map_rect.left_top() - egui::vec2((1.0 - shown) * pane_w, 0.0);
