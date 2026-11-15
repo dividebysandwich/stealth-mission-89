@@ -1242,17 +1242,22 @@ pub(crate) fn footer_rule(ui: &mut egui::Ui) {
 
 type SettingsMut<'a> = ResMut<'a, crate::settings::Settings>;
 
+/// The order the menus list the theaters in (`THEATERS` indices, which stay as they are for
+/// saves, the network and the simulation): the modern drone wars first, then the classics.
+pub const THEATER_ORDER: [usize; 12] = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8];
+
 /// The theaters as a list of radio buttons, or a dropdown where the window is too small
 /// (`compact`, from `Split::compact`).
 pub(crate) fn theater_options(ui: &mut egui::Ui, theater: &mut usize, compact: bool) {
     section(ui, t!("section-theater"));
     if compact {
-        let options = (0..THEATERS.len())
+        let options = THEATER_ORDER
+            .into_iter()
             .map(|i| (i, crate::i18n::theater_name(i), crate::i18n::theater_facts(i)));
         dropdown(ui, "theater", theater, options);
         return;
     }
-    for i in 0..THEATERS.len() {
+    for i in THEATER_ORDER {
         facts(
             ui.radio_value(theater, i, crate::i18n::theater_name(i)),
             crate::i18n::theater_facts(i),
@@ -2193,6 +2198,16 @@ fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every theater is listed once, Ukraine, the Gulf of Finland and the Suwalki Gap first.
+    #[test]
+    fn theater_order_lists_each_once() {
+        let mut seen = THEATER_ORDER.to_vec();
+        seen.sort_unstable();
+        assert_eq!(seen, (0..THEATERS.len()).collect::<Vec<_>>());
+        let first: Vec<&str> = THEATER_ORDER[..3].iter().map(|&i| THEATERS[i].0).collect();
+        assert_eq!(first, ["ukraine", "gulf_of_finland", "suwalki"]);
+    }
 
     /// The desktop window and larger keep the full size; a phone on its side zooms out to fit
     /// its height, never below the floor.
