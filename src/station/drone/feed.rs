@@ -280,6 +280,9 @@ pub(super) fn draw(
         }
     }
     ladders(cv, u, col);
+    // Flown by hand, the lever as the console holds it (the drone follows a moment later).
+    let thr = if u.mode == UavMode::Manual { ui.throttle } else { u.throttle() as f32 };
+    throttle_gauge(cv, u, thr, col);
     // Flying by the forward view: a heading tape on top and the waypoint at the bottom; else
     // the HSI.
     if forward {
@@ -436,6 +439,28 @@ fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
     stroke_text_at(cv, 22.0, bottom + 9.0, "KT", 5.0, 0.8, col, Align::Centre);
     tape(cv, w - 40.0, w - 4.0, true, u.pos[2] as f32, 2.5, 25.0, 100.0);
     stroke_text_at(cv, w - 22.0, bottom + 9.0, "M", 5.0, 0.8, col, Align::Centre);
+}
+
+/// The throttle beside the speed tape: a bar filled to it, the percent under it (yellow flown
+/// by hand), an interceptor's hover throttle ticked.
+fn throttle_gauge(cv: &mut Canvas, u: &Uav, thr: f32, col: u8) {
+    let h = FEED_CANVAS.1 as f32;
+    let (x0, x1, top, bottom) = (50.0, 62.0, 60.0, h - 60.0);
+    let col = if u.mode == UavMode::Manual { YELLOW } else { col };
+    let y = |t: f32| bottom - (bottom - top) * t.clamp(0.0, 1.0);
+    cv.frame(Vec2::new(x0, top), Vec2::new(x1, bottom), 1.0, col);
+    let fill = y(thr);
+    if bottom - fill >= 1.0 {
+        let (x, w) = (x0 as i32 + 2, (x1 - x0) as i32 - 3);
+        cv.fill_rect(x, fill as i32, w, (bottom - fill) as i32, col);
+    }
+    let hover = u.kind.perf().hover as f32;
+    if hover > 0.0 {
+        cv.stroke(Vec2::new(x1, y(hover)), Vec2::new(x1 + 4.0, y(hover)), 1.0, col);
+    }
+    let pct = format!("{:.0}", thr.clamp(0.0, 1.0) * 100.0);
+    stroke_text_at(cv, (x0 + x1) / 2.0, bottom + 9.0, &pct, 5.0, 0.8, col, Align::Centre);
+    stroke_text_at(cv, (x0 + x1) / 2.0, top - 7.0, "THR", 5.0, 0.8, col, Align::Centre);
 }
 
 /// The bearing (rad) and distance (km) to the next waypoint.
