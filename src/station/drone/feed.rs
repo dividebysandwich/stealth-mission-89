@@ -318,6 +318,7 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
         let km = (t - eo.eye).length() / 1000.0;
         stroke_text_at(cv, o.x + 26.0, o.y + 12.0, &format!("{km:.1}"), 6.0, 0.9, col, Align::Left);
     }
+    gimbal_azimuth(cv, u, eo, col);
     let project = projection(eo);
     for (at, name) in seen(sim, u) {
         let Some(p) = project((at - eo.eye).as_vec3()) else { continue };
@@ -327,6 +328,38 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
         bracket(cv, p, 7.0, RED);
         stroke_text_at(cv, p.x, p.y - 12.0, &name, 5.0, 0.8, RED, Align::Centre);
     }
+}
+
+/// How far the TGP looks left or right of the nose: a scale under the top lines (from 180
+/// left to 180 right, the nose in the middle), a caret at the camera's azimuth and its
+/// degrees beside the scale.
+fn gimbal_azimuth(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
+    let w = FEED_CANVAS.0 as f32;
+    let (cx, y, half) = (w / 2.0, 44.0, 72.0);
+    // The camera's bearing (Bevy world: x east, -z north) less the drone's heading.
+    let bearing = eo.dir.x.atan2(-eo.dir.z) as f64;
+    let rel = (bearing - u.heading + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
+        - std::f64::consts::PI;
+    let deg = rel.to_degrees() as f32;
+    cv.stroke(Vec2::new(cx - half, y), Vec2::new(cx + half, y), 1.0, col);
+    for k in -4..=4 {
+        let x = cx + half * k as f32 / 4.0;
+        let len = match k {
+            0 => 6.0,
+            _ if k % 2 == 0 => 4.0,
+            _ => 2.5,
+        };
+        cv.stroke(Vec2::new(x, y), Vec2::new(x, y - len), 1.0, col);
+    }
+    let x = cx + half * (deg / 180.0).clamp(-1.0, 1.0);
+    let tip = Vec2::new(x, y + 1.5);
+    cv.triangle([tip, tip + Vec2::new(-3.5, 5.5), tip + Vec2::new(3.5, 5.5)], col);
+    let side = if deg.round() == 0.0 {
+        String::from("000")
+    } else {
+        format!("{}{:03.0}", if deg < 0.0 { "L" } else { "R" }, deg.abs())
+    };
+    stroke_text_at(cv, cx + half + 6.0, y - 1.0, &format!("AZ {side}"), 5.0, 0.8, col, Align::Left);
 }
 
 /// The interceptor's view: a diamond on each aircraft ahead within `AIR_MARKS` (its range in
