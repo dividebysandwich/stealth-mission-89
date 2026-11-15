@@ -1687,6 +1687,24 @@ fn water_glitter(p: vec2<f32>, r: vec3<f32>, l: vec3<f32>, across: f32, t: f32, 
     return on * shown * shown * strength * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
 }
 
+// How much of the sun (x) and the moon (y) reaches the water at `world`, for its highlights:
+// none in the shadow of vehicles and scenery (the key light's shadow maps, with the shadows
+// option) or of the clouds (with cloud shadows; any real shade hides them).
+fn water_light(world: vec3<f32>) -> vec2<f32> {
+    var key = 1.0;
+    let flags = u32(globals.ambient.w);
+#ifdef PALETTE_SHADOWS
+    if ((flags & LIGHT_SHADOWS) != 0u && globals.shadow.y > 0.0 && !offscreen_view()) {
+        let view_z = (view.view_from_world * vec4<f32>(world, 1.0)).z;
+        key = sun_shadow(world, vec3<f32>(0.0, 1.0, 0.0), view_z, false);
+    }
+#endif
+#ifdef PALETTE_CLOUD_SHADOWS
+    key *= clamp(1.0 - 4.0 * (1.0 - cloud_shadow(world)), 0.0, 1.0);
+#endif
+    return select(vec2<f32>(key, 1.0), vec2<f32>(1.0, key), (flags & LIGHT_MOON_KEY) != 0u);
+}
+
 fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
     let v = normalize(dir);
     let p = world.xz + globals.noise.xy;
@@ -1699,14 +1717,19 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32,
     let f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
     let mirror = f * WATER_MIRROR * (0.8 + 0.4 * smoothstep(-0.6, 0.6, m));
     var c = mix(rgb * (1.0 + WATER_TINT * m), mirrored_sky(r), mirror);
+    let lights = water_light(world);
     let sun = globals.sun;
     let moon = globals.moon;
-    let sparkle = water_sparkle(p, v, n, sun.xyz, foot, t) * sun.w * sun_colour(sun.y)
-        + water_sparkle(p, v, n, moon.xyz, foot, t) * moon.w * MOON_TINT;
-    let glitter = water_glitter(p, r, sun.xyz, across, t, rough) * sun.w * sun_colour(sun.y)
-        + water_glitter(p, r, moon.xyz, across, t, rough) * moon.w * MOON_TINT;
     let far = 1.0 - smoothstep(GLITTER_NEAR, GLITTER_FAR, length(dir));
-    c += (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER * far) * (1.0 - dark);
+    // The light's path, its sparkle and the glitter.
+    let sun_hl = pow(max(dot(r, sun.xyz), 0.0), 250.0) * WATER_PATH
+        + water_sparkle(p, v, n, sun.xyz, foot, t) * WATER_SPARKLE
+        + water_glitter(p, r, sun.xyz, across, t, rough) * WATER_GLITTER * far;
+    let moon_hl = pow(max(dot(r, moon.xyz), 0.0), 250.0) * WATER_PATH
+        + water_sparkle(p, v, n, moon.xyz, foot, t) * WATER_SPARKLE
+        + water_glitter(p, r, moon.xyz, across, t, rough) * WATER_GLITTER * far;
+    c += (sun_hl * sun.w * sun_colour(sun.y) * lights.x + moon_hl * moon.w * MOON_TINT * lights.y)
+        * (1.0 - dark);
     return c;
 }
 
@@ -1959,9 +1982,12 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
             rgb = pal(select(lo, hi, ((px.x + px.y) & 1u) == 1u));
         }
     }
+    // The water's dots, the low-power stand-in for its reflections (`PALETTE_WATER`).
+#ifndef PALETTE_WATER
     if ((material.flags & FLAG_WATER) != 0u) {
         rgb = water_dots(rgb, in.world_position, deriv, modern);
     }
+#endif
 #ifdef PALETTE_DETAIL
     // Flat ground: the hills, the scenery's ground and what lies at the flat world's level (not
     // a ship's deck); not warm objects, aircraft, dots or water.

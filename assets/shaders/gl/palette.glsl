@@ -1298,6 +1298,11 @@ float water_glitter(vec2 p, vec3 r, vec3 l, float across, float t, float rough) 
     return on * shown * shown * strength * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
 }
 
+// palette.wgsl `water_light`: no sun shadow maps here, the cloud shadows only.
+vec2 water_light(vec3 world) {
+    return vec2(clamp(1.0 - 4.0 * (1.0 - cloud_shadow(world)), 0.0, 1.0), 1.0);
+}
+
 vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, float dark) {
     vec3 v = normalize(dir);
     vec2 p = world.xz + g.noise.xy;
@@ -1310,13 +1315,16 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, 
     float f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
     float mirror = f * WATER_MIRROR * (0.8 + 0.4 * smoothstep(-0.6, 0.6, m));
     vec3 c = mix(rgb * (1.0 + WATER_TINT * m), mirrored_sky(r), mirror);
-    vec3 sparkle = water_sparkle(p, v, n, g.sun.xyz, foot, t) * g.sun.w * sun_colour(g.sun.y)
-        + water_sparkle(p, v, n, g.moon.xyz, foot, t) * g.moon.w * MOON_TINT;
-    vec3 glitter = water_glitter(p, r, g.sun.xyz, across, t, rough) * g.sun.w * sun_colour(g.sun.y)
-        + water_glitter(p, r, g.moon.xyz, across, t, rough) * g.moon.w * MOON_TINT;
+    vec2 lights = water_light(world);
     float far = 1.0 - smoothstep(GLITTER_NEAR, GLITTER_FAR, length(dir));
-    return c + (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER * far)
-        * (1.0 - dark);
+    float sun_hl = pow(max(dot(r, g.sun.xyz), 0.0), 250.0) * WATER_PATH
+        + water_sparkle(p, v, n, g.sun.xyz, foot, t) * WATER_SPARKLE
+        + water_glitter(p, r, g.sun.xyz, across, t, rough) * WATER_GLITTER * far;
+    float moon_hl = pow(max(dot(r, g.moon.xyz), 0.0), 250.0) * WATER_PATH
+        + water_sparkle(p, v, n, g.moon.xyz, foot, t) * WATER_SPARKLE
+        + water_glitter(p, r, g.moon.xyz, across, t, rough) * WATER_GLITTER * far;
+    return c + (sun_hl * g.sun.w * sun_colour(g.sun.y) * lights.x
+        + moon_hl * g.moon.w * MOON_TINT * lights.y) * (1.0 - dark);
 }
 #endif
 
@@ -1463,7 +1471,8 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     } else {
         rgb = modern ? (pal(lo) + pal(hi)) * 0.5 : pal(((px.x + px.y) & 1u) == 1u ? hi : lo);
     }
-    if ((u_flags & FLAG_WATER) != 0u) {
+    // The water's dots, the low-power stand-in for its reflections (`REFLECT`).
+    if ((u_flags & FLAG_WATER) != 0u && g.reflections.y == 0.0) {
         rgb = water_dots(rgb, v_world, face, foot, gdx, gdy, modern);
     }
 #ifdef DETAIL
