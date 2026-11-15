@@ -1247,7 +1247,8 @@ pub fn read_hotas(
             return;
         }
     }
-    // At a console only the stick, the rudder, the camera's zoom and the triggers pass.
+    // At a console only the stick, the rudder, the camera's zoom and slew and the triggers pass
+    // (the slew to a drone's TGP).
     let console = block.0;
     let axes: Vec<AxisMapping> = hotas.axes(&config).cloned().collect();
     for m in &axes {
@@ -1259,6 +1260,8 @@ pub fn read_hotas(
                     | AxisControl::Yaw
                     | AxisControl::Throttle
                     | AxisControl::TgpZoom
+                    | AxisControl::SlewX
+                    | AxisControl::SlewY
             )
         {
             continue;
@@ -1269,6 +1272,12 @@ pub fn read_hotas(
             AxisControl::Roll => controls.roll = crate::input::stronger(controls.roll, v),
             AxisControl::Pitch => controls.pitch = crate::input::stronger(controls.pitch, v),
             AxisControl::Yaw => controls.yaw = crate::input::stronger(controls.yaw, v),
+            AxisControl::SlewX if console => {
+                controls.console_slew.x = crate::input::stronger(controls.console_slew.x, v)
+            }
+            AxisControl::SlewY if console => {
+                controls.console_slew.y = crate::input::stronger(controls.console_slew.y, v)
+            }
             AxisControl::SlewX => controls.slew.x = crate::input::stronger(controls.slew.x, v),
             AxisControl::SlewY => controls.slew.y = crate::input::stronger(controls.slew.y, v),
             AxisControl::LookX => controls.look.x = crate::input::stronger(controls.look.x, v),

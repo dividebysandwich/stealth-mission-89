@@ -336,6 +336,7 @@ fn run_script(
     controls.pitch = script.axes.pitch;
     controls.yaw = script.axes.yaw;
     controls.slew = script.axes.slew;
+    controls.console_slew = script.axes.slew;
     controls.fire |= script.axes.trigger;
     controls.gun |= script.axes.gun;
     controls.mark |= script.axes.mark;

@@ -345,6 +345,9 @@ pub struct FlightControls {
     pub collective_rate: f32,
     /// At a console: the throttle keys held, -1 (back) .. 1 (forward) (a drone flown by hand).
     pub console_throttle: f32,
+    /// At a console: the slew keys (the numeric keypad) and axes, -1..1 (x right, y up): a
+    /// drone's TGP (`slew` stays still there, for the parked aircraft's avionics).
+    pub console_slew: Vec2,
     /// Fixed wing: the throttle moving while a throttle key is held past `THROTTLE_HOLD_S`, -1
     /// (down) .. 1 (up); a press alone steps it (`Action::ThrottleUp`/`Down`).
     pub throttle_rate: f32,
@@ -610,6 +613,7 @@ fn read_keyboard(
         *nozzle_since = None;
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
+        controls.console_slew = Vec2::ZERO;
         controls.view_zoom = 0.0;
         controls.look = Vec2::ZERO;
         return;
@@ -706,10 +710,12 @@ fn read_keyboard(
         }
     }
     controls.slew = slew.clamp(Vec2::splat(-1.0), Vec2::ONE);
+    controls.console_slew = Vec2::ZERO;
     if block.0 {
-        // At a console: only the stick, the rudder and the triggers and the throttle keys (a
-        // drone's).
+        // At a console: only the stick, the rudder and the triggers and the throttle and slew
+        // keys (a drone's).
         controls.console_throttle = controls.collective_rate;
+        controls.console_slew = controls.slew;
         controls.mark = false;
         controls.collective_rate = 0.0;
         controls.throttle_rate = 0.0;
@@ -902,7 +908,7 @@ mod tests {
             .add_systems(Update, read_keyboard);
         let press = |app: &mut App| {
             let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
-            for k in [KeyCode::ArrowRight, KeyCode::Enter, KeyCode::Equal] {
+            for k in [KeyCode::ArrowRight, KeyCode::Enter, KeyCode::Equal, KeyCode::Numpad8] {
                 keys.press(k);
             }
             app.update();
@@ -910,11 +916,14 @@ mod tests {
         };
         let c = press(&mut app);
         assert!(c.roll == 0.0 && !c.fire, "blocked: {c:?}");
+        assert_eq!(c.console_slew, Vec2::ZERO, "blocked: {c:?}");
         app.world_mut().resource_mut::<ConsoleStick>().0 = true;
         app.world_mut().resource_mut::<ButtonInput<KeyCode>>().clear();
         let c = press(&mut app);
         assert!(c.roll > 0.5 && c.fire, "at a console: {c:?}");
         assert_eq!(c.collective_rate, 0.0, "no throttle");
+        // The keypad slews a drone's TGP, not the parked aircraft's sensors.
+        assert_eq!((c.console_slew, c.slew), (Vec2::Y, Vec2::ZERO), "slew: {c:?}");
         let events = app.world().resource::<Messages<ActionEvent>>();
         assert!(events.iter_current_update_messages().next().is_none(), "no actions");
     }

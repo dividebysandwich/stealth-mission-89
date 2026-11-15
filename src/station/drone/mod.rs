@@ -250,7 +250,8 @@ fn expo(v: f32) -> f32 {
 }
 
 /// The stick and the throttle: a drone flown by hand follows them, else the stick slews the
-/// selected drone's camera over the ground.
+/// selected drone's camera over the ground; the slew keys (the numeric keypad) slew it either
+/// way.
 fn stick(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
@@ -295,11 +296,16 @@ fn stick(
                 throttle: ui.throttle,
             }));
         }
-        return;
+    } else {
+        ui.eased = [0.0; 3];
     }
-    ui.eased = [0.0; 3];
-    // The TGP: the stick moves the point it holds across the picture (finer zoomed in).
-    if (roll == 0.0 && pitch == 0.0) || forward {
+    // The TGP: the slew keys (and on auto the stick) move the point it holds across the
+    // picture (finer zoomed in).
+    let mut slew = controls.console_slew;
+    if u.mode != UavMode::Manual {
+        slew = (slew + Vec2::new(roll, pitch)).clamp(Vec2::splat(-1.0), Vec2::ONE);
+    }
+    if slew == Vec2::ZERO || forward {
         return;
     }
     let id = u.id;
@@ -311,7 +317,7 @@ fn stick(
     let right = DVec2::new(-ahead.y, ahead.x);
     let range = (look - eye).length().max(20.0) + u.pos[2] / M_PER_MAP;
     let k = range * SLEW as f64 / crate::mfd::cam_magnification(cam.zoom) as f64 * dt as f64;
-    let moved = look + (right * roll as f64 + ahead * pitch as f64) * k;
+    let moved = look + (right * slew.x as f64 + ahead * slew.y as f64) * k;
     ui.cam_mut(id).track = Some(moved);
 }
 
