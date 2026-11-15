@@ -66,6 +66,7 @@ fm-effect-snow = HÓ
 fm-effect-mist = TALAJKÖD
 fm-effect-cloud-shadows = FELHŐÁRNYÉKOK
 fm-effect-ground-detail = TALAJRÉSZLETEK
+fm-effect-glass = ÜVEGTÜKRÖZŐDÉS
 fm-effect-vapour = GŐZ ÉS POR
 fm-effect-night-sky = ÉJSZAKAI ÉGBOLT
 fm-effect-vga = VGA-SZÍNEK

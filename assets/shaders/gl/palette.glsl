@@ -48,6 +48,8 @@ layout(std140) uniform Globals {
     // The stars' frame (palette.wgsl).
     vec4 star_frame[3];
     vec4 ground_detail;
+    // Reflections (the `REFLECT` variants): x 1 on glass.
+    vec4 reflections;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -1181,6 +1183,37 @@ vec3 ground_detail(vec3 rgb, vec3 world, float foot, uint rows) {
 }
 #endif
 
+#ifdef REFLECT
+// palette.wgsl `mirrored_sky`, `glint`, `glass_reflection` (the `REFLECT` variants, compiled
+// while a reflection is on: `Effects::glass`).
+vec3 mirrored_sky(vec3 r) {
+    vec3 b = band_f(vec3(r.x, max(r.y, 0.0), r.z));
+    uint k = uint(b.y);
+    vec3 c = mix(pal(uint(b.x) + k), pal(uint(b.x) + min(k + 1u, 15u)), b.z);
+    return c * (1.0 - night_dark());
+}
+
+vec3 glint(vec3 r, float sharp) {
+    vec3 s = pow(max(dot(r, g.sun.xyz), 0.0), sharp) * g.sun.w * sun_colour(g.sun.y);
+    vec3 m = pow(max(dot(r, g.moon.xyz), 0.0), sharp) * g.moon.w * MOON_TINT;
+    return s + m;
+}
+
+const float GLASS_F0 = 0.3;
+const float GLASS_GLINT = 4.0;
+const float GLASS_SHEEN = 0.35;
+
+vec3 glass_reflection(vec3 rgb, vec3 face, vec3 dir, float dark) {
+    vec3 n = normalize(face);
+    if (dot(n, dir) > 0.0) { n = -n; }
+    vec3 v = normalize(dir);
+    vec3 r = reflect(v, n);
+    float f = GLASS_F0 + (1.0 - GLASS_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
+    vec3 shine = glint(r, 600.0) * GLASS_GLINT + glint(r, 40.0) * GLASS_SHEEN;
+    return mix(rgb, mirrored_sky(r), f) + shine * (1.0 - dark);
+}
+#endif
+
 vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     vec3 dir = v_world - eye_pos();
     bool modern = g.params.w != 0.0;
@@ -1357,6 +1390,11 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         }
         rgb = rgb * (1.0 - dark);
     }
+#ifdef REFLECT
+    if (g.reflections.x != 0.0 && !is_line && hi == 0xFFu && (lo == 0x90u || lo == 0x91u)) {
+        rgb = glass_reflection(rgb, face, dir, dark);
+    }
+#endif
     float dl = length(dir);
     if (!is_line) {
         rgb = ground_mist(rgb * cloud_shadow(v_world), v_world, dl);

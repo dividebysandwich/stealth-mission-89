@@ -194,6 +194,10 @@ effect-ground-detail = Maapinna detailid
     .facts =
         Kaasaegsed varjutajad: tasane maa näitab lähedalt oma pinda
         Viljaread põldudel, puhmad rohus, betooni ja asfaldi tekstuur
+effect-glass = Peegeldused klaasis
+    .facts =
+        Kaasaegsed varjutajad: klaas peegeldab taevast
+        Kabiinikuplid, aknad ja klaastornid püüavad päikese ja kuu sära
 effect-vapour = Aur ja rootori allavool
     .facts =
         Järskudel manöövritel auruvööd tiivaotstest

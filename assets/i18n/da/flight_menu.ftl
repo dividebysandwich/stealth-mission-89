@@ -66,6 +66,7 @@ fm-effect-snow = SNE
 fm-effect-mist = JORDTÅGE
 fm-effect-cloud-shadows = SKYSKYGGER
 fm-effect-ground-detail = TERRÆNDETALJER
+fm-effect-glass = SPEJLINGER I GLAS
 fm-effect-vapour = DAMP OG STØV
 fm-effect-night-sky = NATTEHIMMEL
 fm-effect-vga = VGA-FARVER

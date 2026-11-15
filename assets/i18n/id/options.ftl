@@ -194,6 +194,10 @@ effect-ground-detail = Detail tanah
     .facts =
         Shader modern: tanah datar menampakkan permukaannya dari dekat
         Barisan tanaman di ladang, rumpun di rumput, butiran pada beton dan aspal
+effect-glass = Pantulan kaca
+    .facts =
+        Shader modern: kaca memantulkan langit
+        Kanopi, jendela, dan menara kaca menangkap kilau matahari dan bulan
 effect-vapour = Uap dan aliran rotor
     .facts =
         Saat manuver tajam, jejak uap dari ujung sayap

@@ -194,6 +194,10 @@ effect-ground-detail = Talajrészletek
     .facts =
         Modern árnyalók: a sík talaj közelről megmutatja a felszínét
         Vetéssorok a földeken, csomók a fűben, szemcsézettség a betonon és az aszfalton
+effect-glass = Üvegtükröződés
+    .facts =
+        Modern árnyalók: az üveg tükrözi az eget
+        A kabintetők, ablakok és üvegtornyok megcsillantják a nap és a hold fényét
 effect-vapour = Pára és rotorleáramlás
     .facts =
         Éles manővereknél párafátyol a szárnyvégeken

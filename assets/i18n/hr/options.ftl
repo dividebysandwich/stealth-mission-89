@@ -194,6 +194,10 @@ effect-ground-detail = Detalji tla
     .facts =
         Moderni shaderi: ravno tlo izbliza pokazuje svoju površinu
         Redovi usjeva na poljima, busenovi u travi, zrnatost betona i asfalta
+effect-glass = Odsjaji u staklu
+    .facts =
+        Moderni shaderi: staklo zrcali nebo
+        Kabine, prozori i stakleni tornjevi hvataju odsjaj sunca i mjeseca
 effect-vapour = Para i struja rotora
     .facts =
         Pri oštrim manevrima tragovi pare s vrhova krila

@@ -194,6 +194,10 @@ effect-ground-detail = Detalhe do solo
     .facts =
         Shaders modernos: o solo plano mostra sua superfície de perto
         Fileiras de plantio nos campos, tufos na grama, textura no concreto e no asfalto
+effect-glass = Reflexos no vidro
+    .facts =
+        Shaders modernos: o vidro reflete o céu
+        Canopis, janelas e torres de vidro captam o brilho do sol e da lua
 effect-vapour = Vapor e fluxo do rotor
     .facts =
         Em curvas fechadas, rastros de vapor nas pontas das asas

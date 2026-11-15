@@ -194,6 +194,10 @@ effect-ground-detail = Szczegóły podłoża
     .facts =
         Nowoczesne shadery: płaski teren z bliska pokazuje swoją powierzchnię
         Rzędy upraw na polach, kępy w trawie, ziarno betonu i asfaltu
+effect-glass = Odbicia w szkle
+    .facts =
+        Nowoczesne shadery: szkło odbija niebo
+        Osłony kabin, okna i szklane wieżowce łapią blask słońca i księżyca
 effect-vapour = Para i podmuch wirnika
     .facts =
         Przy ostrych manewrach smugi pary z końców skrzydeł

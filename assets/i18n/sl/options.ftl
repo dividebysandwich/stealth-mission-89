@@ -194,6 +194,10 @@ effect-ground-detail = Podrobnosti tal
     .facts =
         Sodobni senčilniki: ravna tla od blizu pokažejo svojo površino
         Vrste posevkov na poljih, šopi v travi, zrnatost betona in asfalta
+effect-glass = Odsevi v steklu
+    .facts =
+        Sodobni senčilniki: steklo zrcali nebo
+        Pokrovi kabin, okna in stekleni stolpi ujamejo blesk sonca in lune
 effect-vapour = Para in tok rotorja
     .facts =
         Pri ostrih manevrih sledi pare s konic kril

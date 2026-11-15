@@ -192,6 +192,10 @@ effect-ground-detail = 地面细节
     .facts =
         现代着色器：近处可见平地的表面
         田里的作物行、草地上的草丛、混凝土和沥青的颗粒
+effect-glass = 玻璃反射
+    .facts =
+        现代着色器：玻璃映出天空
+        座舱盖、窗户和玻璃大楼闪耀着日光和月光
 effect-vapour = 水汽与下洗气流
     .facts =
         急转弯时翼尖拖出水汽

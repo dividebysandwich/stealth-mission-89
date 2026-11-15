@@ -194,6 +194,10 @@ effect-ground-detail = Terrændetaljer
     .facts =
         Moderne shadere: den flade jord viser sin overflade tæt på
         Afgrøderækker på markerne, totter i græsset, kornet beton og asfalt
+effect-glass = Spejlinger i glas
+    .facts =
+        Moderne shadere: glas spejler himlen
+        Cockpitglas, vinduer og glastårne fanger solens og månens glimt
 effect-vapour = Damp og rotorvind
     .facts =
         Ved hårde manøvrer dampstriber fra vingespidserne

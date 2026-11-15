@@ -194,6 +194,10 @@ effect-ground-detail = Detalle del terreno
     .facts =
         Shaders modernos: el suelo llano muestra su superficie de cerca
         Surcos en los campos, matas en la hierba, grano en el hormigón y el asfalto
+effect-glass = Reflejos en el cristal
+    .facts =
+        Shaders modernos: el cristal refleja el cielo
+        Cabinas, ventanas y torres de cristal captan el destello del sol y de la luna
 effect-vapour = Vapor y corriente descendente
     .facts =
         En virajes cerrados, estelas de vapor en las puntas de ala

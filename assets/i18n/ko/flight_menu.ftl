@@ -66,6 +66,7 @@ fm-effect-snow = 눈
 fm-effect-mist = 지면 안개
 fm-effect-cloud-shadows = 구름 그림자
 fm-effect-ground-detail = 지면 세부
+fm-effect-glass = 유리 반사
 fm-effect-vapour = 증기와 먼지
 fm-effect-night-sky = 밤하늘
 fm-effect-vga = VGA 색상

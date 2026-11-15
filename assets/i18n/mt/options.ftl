@@ -194,6 +194,10 @@ effect-ground-detail = Dettall tal-art
     .facts =
         Shaders moderni: l-art ċatta turi l-wiċċ tagħha mill-qrib
         Ringieli ta' uċuħ fl-għelieqi, ċmieren fil-ħaxix, ħbub fuq il-konkrit u l-asfalt
+effect-glass = Riflessjonijiet fil-ħġieġ
+    .facts =
+        Shaders moderni: il-ħġieġ jirrifletti s-sema
+        Kanopji, twieqi u torrijiet tal-ħġieġ jaqbdu d-dija tax-xemx u tal-qamar
 effect-vapour = Fwar u fluss tar-rotor
     .facts =
         F'manuvri ħorox, linji ta' fwar mill-ponot tal-ġwienaħ

@@ -194,6 +194,10 @@ effect-ground-detail = Bodemdetail
     .facts =
         Moderne shaders: de vlakke grond toont van dichtbij zijn oppervlak
         Gewasrijen op de akkers, pollen in het gras, korrel op beton en asfalt
+effect-glass = Weerspiegelingen in glas
+    .facts =
+        Moderne shaders: glas weerspiegelt de lucht
+        Cockpitkappen, ramen en glazen torens vangen de glinstering van zon en maan
 effect-vapour = Damp en rotorwind
     .facts =
         Bij scherpe manoeuvres dampsporen van de vleugeltippen

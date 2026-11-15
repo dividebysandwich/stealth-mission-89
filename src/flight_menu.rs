@@ -265,6 +265,7 @@ impl Page {
                     SceneryDistance,
                     CityLightDistance,
                     Effect(E::GroundDetail),
+                    Effect(E::Glass),
                     Effect(E::Vga),
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),

@@ -124,6 +124,8 @@ struct Globals {
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
     ground_detail: vec4<f32>,
+    // Reflections (`PALETTE_GLASS`): x 1 on glass.
+    reflections: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -1544,6 +1546,38 @@ fn ground_detail(rgb: vec3<f32>, world: vec3<f32>, foot: f32, rows: u32) -> vec3
     return rgb * max(tone, 0.0) * clamp(lit, DETAIL_SHADE_MIN, DETAIL_SHADE_MAX);
 }
 
+// Reflections (`PALETTE_GLASS`): the sky's bands in a mirrored direction (its lowest band
+// for one turned below the horizon).
+fn mirrored_sky(r: vec3<f32>) -> vec3<f32> {
+    let b = band_f(vec3<f32>(r.x, max(r.y, 0.0), r.z));
+    let k = u32(b.y);
+    let c = mix(pal(u32(b.x) + k), pal(u32(b.x) + min(k + 1u, 15u)), b.z);
+    return c * (1.0 - night_dark());
+}
+
+// The sun's and the moon's glint in a mirrored direction; `sharp`: its Phong exponent.
+fn glint(r: vec3<f32>, sharp: f32) -> vec3<f32> {
+    let s = pow(max(dot(r, globals.sun.xyz), 0.0), sharp) * globals.sun.w * sun_colour(globals.sun.y);
+    let m = pow(max(dot(r, globals.moon.xyz), 0.0), sharp) * globals.moon.w * MOON_TINT;
+    return s + m;
+}
+
+// Glass (canopies, windows: colours 0x90 and 0x91) mirrors the sky, more at a glancing angle
+// (Schlick's Fresnel), and the sun or the moon as a sharp glint.
+const GLASS_F0: f32 = 0.3;
+const GLASS_GLINT: f32 = 4.0;
+const GLASS_SHEEN: f32 = 0.35;
+
+fn glass_reflection(rgb: vec3<f32>, face: vec3<f32>, dir: vec3<f32>, dark: f32) -> vec3<f32> {
+    var n = normalize(face);
+    if (dot(n, dir) > 0.0) { n = -n; }
+    let v = normalize(dir);
+    let r = reflect(v, n);
+    let f = GLASS_F0 + (1.0 - GLASS_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
+    let shine = glint(r, 600.0) * GLASS_GLINT + glint(r, 40.0) * GLASS_SHEEN;
+    return mix(rgb, mirrored_sky(r), f) + shine * (1.0 - dark);
+}
+
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
 // uniform control flow, which a branch or return on a varying ends.
 struct Deriv {
@@ -1829,6 +1863,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         }
         rgb = rgb * (1.0 - dark);
     }
+#ifdef PALETTE_GLASS
+    if (!is_line && hi == 0xFFu && (lo == 0x90u || lo == 0x91u)) {
+        rgb = glass_reflection(rgb, deriv.face, dir, dark);
+    }
+#endif
     let d = length(dir);
     if (!is_line) {
         rgb = atmosphere(rgb, in.world_position, d);

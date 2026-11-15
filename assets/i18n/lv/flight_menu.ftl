@@ -66,6 +66,7 @@ fm-effect-snow = SNIEGS
 fm-effect-mist = ZEMES MIGLA
 fm-effect-cloud-shadows = MĀKOŅU ĒNAS
 fm-effect-ground-detail = ZEMES DETAĻAS
+fm-effect-glass = ATSPĪDUMI STIKLĀ
 fm-effect-vapour = TVAIKS UN PUTEKĻI
 fm-effect-night-sky = NAKTS DEBESIS
 fm-effect-vga = VGA KRĀSAS

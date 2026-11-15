@@ -65,6 +65,7 @@ fm-effect-snow = SCHNEE
 fm-effect-mist = BODENNEBEL
 fm-effect-cloud-shadows = WOLKENSCHATTEN
 fm-effect-ground-detail = BODENDETAILS
+fm-effect-glass = GLASSPIEGELUNGEN
 fm-effect-vapour = DAMPF UND STAUB
 fm-effect-night-sky = NACHTHIMMEL
 fm-effect-vga = VGA-FARBEN

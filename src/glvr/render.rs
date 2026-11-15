@@ -86,10 +86,15 @@ struct Programs {
     /// Without and with the lighting options (`LIT`); objects and the background also
     /// without and with the ground detail (`DETAIL`, the second pair).
     object: [Program; 4],
+    /// The objects' variants with the reflections (`REFLECT`, `Globals.reflections`), in
+    /// `object`'s order: compiled when a reflection is first switched on.
+    reflect: Option<[Program; 4]>,
     background: [Program; 4],
     cloud: [Program; 2],
     dot: Program,
     effects: Vec<Program>,
+    /// For one view (not both eyes).
+    single: bool,
 }
 
 impl Programs {
@@ -105,23 +110,39 @@ impl Programs {
                 compile(gl, PALETTE_SHADER, &format!("{one}{kind}\n#define LIT"))?,
             ])
         };
-        let four = |kind: &str| -> Result<[Program; 4], String> {
-            let [a, b] = both(kind)?;
-            let [c, d] = both(&format!("{kind}\n#define DETAIL"))?;
-            Ok([a, b, c, d])
-        };
         Ok(Programs {
-            object: four("")?,
-            background: four("#define BACKGROUND")?,
+            object: four(gl, single, "")?,
+            reflect: None,
+            background: four(gl, single, "#define BACKGROUND")?,
             cloud: both("#define CLOUD")?,
             dot: compile(gl, PALETTE_SHADER, &format!("{one}#define DOT"))?,
             effects,
+            single,
         })
+    }
+
+    /// Compiles the objects' reflection variants, if not yet.
+    fn want_reflect(&mut self, gl: &glow::Context) -> Result<(), String> {
+        if self.reflect.is_none() {
+            self.reflect = Some(four(gl, self.single, "#define REFLECT")?);
+        }
+        Ok(())
+    }
+
+    /// The objects' program: with or without the lighting options, the ground detail and
+    /// the reflections.
+    fn object(&self, lit: usize, detail: usize, reflect: bool) -> &Program {
+        let i = lit + 2 * detail;
+        match &self.reflect {
+            Some(r) if reflect => &r[i],
+            _ => &self.object[i],
+        }
     }
 
     fn all(&self) -> impl Iterator<Item = &Program> {
         self.object
             .iter()
+            .chain(self.reflect.iter().flatten())
             .chain(&self.background)
             .chain(&self.cloud)
             .chain([&self.dot])
@@ -242,9 +263,40 @@ pub struct Stats {
 /// ground bands, params and sun (266 vec4s).
 const AMBIENT_W: usize = 266 * 16 + 12;
 
-/// Byte offset of `Globals.ground_detail.x` (the ground detail on) from the end: the last
-/// vec4.
-const GROUND_DETAIL_FROM_END: usize = 16;
+/// Byte offset of `Globals.ground_detail.x` (the ground detail on) from the end: the
+/// second-to-last vec4.
+const GROUND_DETAIL_FROM_END: usize = 32;
+/// Byte offset of `Globals.reflections` (the reflections on) from the end: the last vec4.
+const REFLECTIONS_FROM_END: usize = 16;
+
+/// Whether the Globals' float `from_end` bytes before their end is set.
+fn globals_flag(globals: &[u8], from_end: usize) -> bool {
+    globals
+        .len()
+        .checked_sub(from_end)
+        .and_then(|at| globals.get(at..at + 4))
+        .is_some_and(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]) != 0.0)
+}
+
+/// Whether any reflection is on (`Globals.reflections` x or y).
+fn reflections_on(globals: &[u8]) -> bool {
+    globals_flag(globals, REFLECTIONS_FROM_END) || globals_flag(globals, REFLECTIONS_FROM_END - 4)
+}
+
+/// A palette program's variants without and with the lighting options (`LIT`) and the ground
+/// detail (`DETAIL`, the second pair), with `kind`'s defines.
+fn four(gl: &glow::Context, single: bool, kind: &str) -> Result<[Program; 4], String> {
+    let one = if single { "#define SINGLE\n" } else { "" };
+    let both = |kind: &str| -> Result<[Program; 2], String> {
+        Ok([
+            compile(gl, PALETTE_SHADER, &format!("{one}{kind}"))?,
+            compile(gl, PALETTE_SHADER, &format!("{one}{kind}\n#define LIT"))?,
+        ])
+    };
+    let [a, b] = both(kind)?;
+    let [c, d] = both(&format!("{kind}\n#define DETAIL"))?;
+    Ok([a, b, c, d])
+}
 
 /// Words (4 bytes) of an instance in the instance buffer: the model matrix and the mesh tag.
 const INSTANCE_WORDS: usize = 17;
@@ -858,6 +910,10 @@ impl Renderer {
             // (The offscreen images are sRGB.)
             gl.enable(glow::FRAMEBUFFER_SRGB);
         }
+        if reflections_on(&list.globals) {
+            self.eyes.want_reflect(&self.gl)?;
+            self.single.want_reflect(&self.gl)?;
+        }
         let mut stats = Stats { culled: list.culled, ..default() };
         for view in &list.egui {
             self.draw_egui(view)?;
@@ -1306,14 +1362,10 @@ impl Renderer {
             .get(AMBIENT_W..AMBIENT_W + 4)
             .is_some_and(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]) != 0.0)
             as usize;
-        // The ground detail's variants while it is on (`Globals.ground_detail.x`).
-        let detail = list
-            .globals
-            .len()
-            .checked_sub(GROUND_DETAIL_FROM_END)
-            .and_then(|at| list.globals.get(at..at + 4))
-            .is_some_and(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]) != 0.0)
-            as usize;
+        // The ground detail's variants while it is on (`Globals.ground_detail.x`), the
+        // reflections' while one is (`Globals.reflections`).
+        let detail = globals_flag(&list.globals, GROUND_DETAIL_FROM_END) as usize;
+        let reflect = reflections_on(&list.globals);
         // The palette meshes, instanced by mesh and material.
         let mut instances = Vec::new();
         let world =
@@ -1339,7 +1391,7 @@ impl Renderer {
         // Opaque: the world, the cloud surfaces, the stratus sheets (alpha to coverage), the
         // background sphere behind them.
         for (p, groups, coverage) in [
-            (&programs.object[lit + 2 * detail], &world, false),
+            (programs.object(lit, detail, reflect), &world, false),
             (&programs.cloud[lit], &clouds[0], false),
             (&programs.cloud[lit], &clouds[1], true),
             (&programs.background[lit + 2 * detail], &background, false),

@@ -194,6 +194,10 @@ effect-ground-detail = Detaliile solului
     .facts =
         Shadere moderne: terenul plat își arată suprafața de aproape
         Rânduri de culturi pe câmpuri, smocuri în iarbă, granulație pe beton și asfalt
+effect-glass = Reflexii în sticlă
+    .facts =
+        Shadere moderne: sticla oglindește cerul
+        Carlingile, ferestrele și turnurile de sticlă prind sclipirea soarelui și a lunii
 effect-vapour = Vapori și curent de rotor
     .facts =
         La manevre strânse, dâre de vapori la vârfurile aripilor

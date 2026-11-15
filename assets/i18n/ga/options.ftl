@@ -194,6 +194,10 @@ effect-ground-detail = Mionsonraí na talún
     .facts =
         Scáthóirí nua-aimseartha: taispeánann an talamh cothrom a dhromchla in aice láimhe
         Sraitheanna barr ar na páirceanna, tomóga san fhéar, gráinne ar choincréit agus ar tharramhacadam
+effect-glass = Frithchaitheamh gloine
+    .facts =
+        Scáthóirí nua-aimseartha: léiríonn an ghloine an spéir
+        Ceannbhrait, fuinneoga agus túir ghloine ag breith ar loinnir na gréine agus na gealaí
 effect-vapour = Gal agus sruth rótair
     .facts =
         Le hainlithe géara, rianta gaile ó bharr na sciathán

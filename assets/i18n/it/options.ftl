@@ -194,6 +194,10 @@ effect-ground-detail = Dettaglio del terreno
     .facts =
         Shader moderni: il terreno piatto mostra da vicino la sua superficie
         File di coltura nei campi, ciuffi nell'erba, grana su cemento e asfalto
+effect-glass = Riflessi sul vetro
+    .facts =
+        Shader moderni: il vetro riflette il cielo
+        Tettucci, finestre e torri di vetro colgono il bagliore del sole e della luna
 effect-vapour = Vapore e flusso del rotore
     .facts =
         Nelle virate strette, scie di vapore dalle estremità alari

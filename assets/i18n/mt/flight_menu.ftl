@@ -66,6 +66,7 @@ fm-effect-snow = BORRA
 fm-effect-mist = ĊPAR MAL-ART
 fm-effect-cloud-shadows = DELLIJIET TAS-SĦAB
 fm-effect-ground-detail = DETTALL TAL-ART
+fm-effect-glass = RIFLESSJONIJIET FIL-ĦĠIEĠ
 fm-effect-vapour = SETGĦA U TRAB
 fm-effect-night-sky = SEMA TAL-LEJL
 fm-effect-vga = KULURI VGA

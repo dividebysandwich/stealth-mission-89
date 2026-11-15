@@ -226,6 +226,10 @@ effect-ground-detail = Ground detail
     .facts =
         Modern shaders: the flat ground shows its surface up close
         Crop rows on the fields, tufts on the grass, grain on concrete and tarmac
+effect-glass = Glass reflections
+    .facts =
+        Modern shaders: glass mirrors the sky
+        Canopies, windows and glass towers catch the sun's and the moon's glint
 effect-vapour = Vapour and downwash
     .facts =
         Pulling hard, vapour trails from the wingtips

@@ -66,6 +66,7 @@ fm-effect-snow = LUMI
 fm-effect-mist = MAAUDU
 fm-effect-cloud-shadows = PILVEVARJUD
 fm-effect-ground-detail = MAAPINNA DETAILID
+fm-effect-glass = PEEGELDUSED KLAASIS
 fm-effect-vapour = AUR JA TOLM
 fm-effect-night-sky = ÖÖTAEVAS
 fm-effect-vga = VGA VÄRVID

@@ -194,6 +194,10 @@ effect-ground-detail = Detail terénu
     .facts =
         Moderní shadery: rovná zem zblízka ukazuje svůj povrch
         Řádky plodin na polích, trsy v trávě, zrnitost betonu a asfaltu
+effect-glass = Odrazy ve skle
+    .facts =
+        Moderní shadery: sklo zrcadlí oblohu
+        Překryty kabin, okna a skleněné věže zachytí odlesk slunce a měsíce
 effect-vapour = Pára a proud od rotoru
     .facts =
         Při ostrých manévrech stopy páry z konců křídel

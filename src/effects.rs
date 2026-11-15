@@ -29,6 +29,9 @@ pub struct Effects {
     /// Surface detail on the flat ground up close: crop rows on the fields, tufts on the
     /// grass, grain on concrete and tarmac (palette.wgsl `ground_detail`).
     pub ground_detail: bool,
+    /// Modern shading: the sky and the sun's or moon's glint mirrored in glass (canopies,
+    /// windows; palette.wgsl `glass_reflection`).
+    pub glass: bool,
     /// Shafts of sunlight through the gaps of a broken deck (sunbeams.rs).
     pub sunbeams: bool,
     /// Wingtip vortices pulling hard, rotor downwash dust and spray (trails.rs, explosions.rs).
@@ -78,8 +81,8 @@ impl Effects {
 /// The sizes of a pixelize block the player can choose (screen pixels).
 pub const PIXEL_BLOCKS: std::ops::RangeInclusive<u32> = 2..=5;
 
-/// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows, vapour and the
-/// ground's detail start off.
+/// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows, vapour, the ground's
+/// detail and the reflections start off.
 /// Compiled into the world shader mist and cloud shadows cost its GPU (Adreno 750) about 1.4
 /// and 2.4 ms a frame in VR, even with no mist or clouds about; a helicopter's downwash dust
 /// near the ground about 1.7 ms; enough to drop the frame rate from 72 to 36 fps. Also the
@@ -99,6 +102,7 @@ impl Default for Effects {
             mist: !HEAVY_EFFECTS_OFF,
             cloud_shadows: !HEAVY_EFFECTS_OFF,
             ground_detail: !HEAVY_EFFECTS_OFF,
+            glass: !HEAVY_EFFECTS_OFF,
             sunbeams: true,
             vapour: !HEAVY_EFFECTS_OFF,
             night_sky: true,
@@ -125,6 +129,7 @@ pub enum Effect {
     Mist,
     CloudShadows,
     GroundDetail,
+    Glass,
     Sunbeams,
     Vapour,
     NightSky,
@@ -137,7 +142,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const ALL: [Effect; 18] = [
+    pub const ALL: [Effect; 19] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -147,6 +152,7 @@ impl Effect {
         Effect::Mist,
         Effect::CloudShadows,
         Effect::GroundDetail,
+        Effect::Glass,
         Effect::Sunbeams,
         Effect::Vapour,
         Effect::NightSky,
@@ -170,6 +176,7 @@ impl Effect {
             Effect::Mist => "mist",
             Effect::CloudShadows => "cloud-shadows",
             Effect::GroundDetail => "ground-detail",
+            Effect::Glass => "glass",
             Effect::Sunbeams => "sunbeams",
             Effect::Vapour => "vapour",
             Effect::NightSky => "night-sky",
@@ -208,6 +215,7 @@ impl Effect {
             Effect::Mist => e.mist,
             Effect::CloudShadows => e.cloud_shadows,
             Effect::GroundDetail => e.ground_detail,
+            Effect::Glass => e.glass,
             Effect::Sunbeams => e.sunbeams,
             Effect::Vapour => e.vapour,
             Effect::NightSky => e.night_sky,
@@ -231,6 +239,7 @@ impl Effect {
             Effect::Mist => e.mist = on,
             Effect::CloudShadows => e.cloud_shadows = on,
             Effect::GroundDetail => e.ground_detail = on,
+            Effect::Glass => e.glass = on,
             Effect::Sunbeams => e.sunbeams = on,
             Effect::Vapour => e.vapour = on,
             Effect::NightSky => e.night_sky = on,
@@ -319,5 +328,7 @@ mod tests {
         assert!(!Effects::default().sharp(ViewPart::Hud));
         assert_eq!(Effects::default().ground_detail, !HEAVY_EFFECTS_OFF);
         assert!(!Effects::parse("-ground-detail").ground_detail);
+        assert_eq!(Effects::default().glass, !HEAVY_EFFECTS_OFF);
+        assert!(Effects::parse("none,glass").glass);
     }
 }

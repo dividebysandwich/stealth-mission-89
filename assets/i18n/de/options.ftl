@@ -194,6 +194,10 @@ effect-ground-detail = Bodendetails
     .facts =
         Moderne Shader: der flache Boden zeigt aus der Nähe seine Oberfläche
         Saatreihen auf den Feldern, Büschel im Gras, Körnung auf Beton und Asphalt
+effect-glass = Glasspiegelungen
+    .facts =
+        Moderne Shader: Glas spiegelt den Himmel
+        Kanzeln, Fenster und Glastürme fangen das Glitzern von Sonne und Mond ein
 effect-vapour = Kondensstreifen und Abwind
     .facts =
         Bei harten Manövern Kondensstreifen an den Flügelspitzen

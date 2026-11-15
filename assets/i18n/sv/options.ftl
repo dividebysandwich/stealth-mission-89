@@ -194,6 +194,10 @@ effect-ground-detail = Markdetaljer
     .facts =
         Moderna shaders: den platta marken visar sin yta på nära håll
         Grödrader på åkrarna, tuvor i gräset, struktur i betong och asfalt
+effect-glass = Speglingar i glas
+    .facts =
+        Moderna shaders: glas speglar himlen
+        Cockpitkupor, fönster och glastorn fångar solens och månens glimt
 effect-vapour = Ånga och rotorvind
     .facts =
         Vid hårda svängar kondensstrimmor från vingspetsarna

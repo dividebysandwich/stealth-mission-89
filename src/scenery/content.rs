@@ -627,6 +627,15 @@ pub(super) fn building(b: &Building, f: &Frame, g: &mut Geom) {
 }
 
 /// Building geometry only; city lights have their own streaming tier.
+/// The glass of the city towers' curtain walls (the aircraft canopies' colour, mirroring the
+/// sky with `Effects::glass`).
+const GLASS: u8 = 0x90;
+
+/// A building's wall colour: a third of the city towers are clad in glass.
+fn wall_colour(b: &Building) -> u8 {
+    if b.kind == Kind::Tower && hash(b.seed, 0, 0, 11) % 3 == 0 { GLASS } else { b.wall }
+}
+
 fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     let c = f.at(b.p, 0.0);
     let d = dir2(b.dir);
@@ -635,7 +644,7 @@ fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     let foot = rect(c, d, b.l, b.w);
     match b.kind {
         Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
-            g.walls(b.wall, &foot, 0.0, b.h);
+            g.walls(wall_colour(b), &foot, 0.0, b.h);
             let rise = match b.kind {
                 Kind::Shed => b.w * 0.18,
                 Kind::Church => b.w * 0.6,
@@ -763,7 +772,7 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                 return;
             }
             match b.roof {
-                Roof::Flat => g.block(b.wall, b.roof_colour, &foot, 0.0, b.h),
+                Roof::Flat => g.block(wall_colour(b), b.roof_colour, &foot, 0.0, b.h),
                 Roof::Gable | Roof::Hip => {
                     let rise = match b.kind {
                         Kind::Shed => b.w * 0.18,

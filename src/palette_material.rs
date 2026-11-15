@@ -423,6 +423,9 @@ pub struct Globals {
     /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
     /// `DETAIL_PERIOD`.
     pub ground_detail: Vec4,
+    /// Reflections (`FX_GLASS`): x 1 on glass. Must stay the last field (glvr reads it from
+    /// the end of the bytes).
+    pub reflections: Vec4,
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -448,8 +451,11 @@ pub const FX_STRATUS: u32 = 128;
 pub const FX_MODERN: u32 = 256;
 /// The flat ground's surface detail up close (`Effects::ground_detail`, modern shading).
 pub const FX_DETAIL: u32 = 512;
+/// The sky and the sun mirrored in glass: canopies and windows (`Effects::glass`, modern
+/// shading).
+pub const FX_GLASS: u32 = 1024;
 pub const SKY_VARIANTS: [u32; 4] = [0, FX_STARS, FX_STRATUS, FX_STARS | FX_STRATUS];
-const FX_DEFS: [(u32, &str); 10] = [
+const FX_DEFS: [(u32, &str); 11] = [
     (FX_MIST, "PALETTE_MIST"),
     (FX_CLOUD_SHADOWS, "PALETTE_CLOUD_SHADOWS"),
     (FX_BURST, "PALETTE_BURST"),
@@ -460,6 +466,7 @@ const FX_DEFS: [(u32, &str); 10] = [
     (FX_STRATUS, "PALETTE_STRATUS"),
     (FX_MODERN, "PALETTE_MODERN"),
     (FX_DETAIL, "PALETTE_DETAIL"),
+    (FX_GLASS, "PALETTE_GLASS"),
 ];
 
 /// The background's variant for the sky now (`FX_STARS`, `FX_STRATUS`).
@@ -483,6 +490,12 @@ pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
         | bit(retro.x + retro.y > 0.0, FX_RETRO)
         | bit(modern, FX_MODERN)
         | bit(ground_detail(settings), FX_DETAIL)
+        | bit(glass(settings), FX_GLASS)
+}
+
+/// Glass mirrors the sky (`Effects::glass`, modern shading only).
+pub fn glass(settings: &crate::settings::Settings) -> bool {
+    settings.effects.glass && settings.modern_shading
 }
 
 /// The flat ground's surface detail is drawn (`Effects::ground_detail`, modern shading only).
@@ -542,6 +555,7 @@ impl Default for Globals {
             shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
             star_frame: [Vec4::ZERO; 3],
             ground_detail: Vec4::ZERO,
+            reflections: Vec4::ZERO,
         }
     }
 }

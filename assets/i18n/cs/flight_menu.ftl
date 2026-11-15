@@ -66,6 +66,7 @@ fm-effect-snow = SNÍH
 fm-effect-mist = PŘÍZEMNÍ MLHA
 fm-effect-cloud-shadows = STÍNY MRAKŮ
 fm-effect-ground-detail = DETAIL TERÉNU
+fm-effect-glass = ODRAZY VE SKLE
 fm-effect-vapour = PÁRA A PRACH
 fm-effect-night-sky = NOČNÍ OBLOHA
 fm-effect-vga = BARVY VGA
