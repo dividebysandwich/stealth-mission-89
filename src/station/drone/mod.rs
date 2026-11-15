@@ -12,10 +12,11 @@
 //!   set the selected waypoint's height. The map shows the aircraft and drones in the air with
 //!   their heights, to put an interceptor where it will meet one.
 //! * The selected drone's camera (`feed`): in the map's picture in picture, on the main screen
-//!   with MAIN (one camera, `trackcam`: one place at a time). Its TGP: the stick slews it over
-//!   the ground (TRACK holds it on a point, SLAVE puts it back on the next waypoint), brackets
-//!   on the enemy air defences the drone sees. Flown by hand (MAN, the map's MANUAL): the main
-//!   screen shows the view ahead with a flight display, the stick and throttle fly it. An
+//!   with MAIN (one camera, `trackcam`: one place at a time). Its TGP: the stick and the slew
+//!   keys (the numeric keypad) slew it over the ground (TRACK holds it on a point, SLAVE puts
+//!   it back on the next waypoint), brackets on the enemy air defences the drone sees. Flown by
+//!   hand (MAN, the map's MANUAL, or the stick moved while looking ahead): the main screen
+//!   shows the view ahead with a flight display, the stick and throttle fly it. An
 //!   interceptor has only the view ahead: it marks the aircraft in front and the one it locked
 //!   on to (the drone then steers itself, the throttle closes in).
 //! * The drone list (`list`, the screen top right): each drone's battery.
@@ -66,6 +67,10 @@ const SLEW: f32 = 0.6;
 const ZOOM_REPEAT: f32 = 0.35;
 /// Seconds between the stick's commands to a drone flown by hand.
 const FLY_PERIOD: f32 = 0.06;
+/// The stick moved this far takes a drone on auto over by hand (the arrow keys move it about
+/// 0.7), again no sooner than `TAKE_OVER_WAIT` (s) while the command goes through.
+const TAKE_OVER: f32 = 0.3;
+const TAKE_OVER_WAIT: f32 = 0.5;
 /// The keyboard's throttle keys move it this fast (of full, a second).
 const THROTTLE_KEYS: f32 = 0.5;
 /// The stick a drone is flown by eases to where it is held this fast (of full, a second): the
@@ -129,6 +134,10 @@ pub struct DroneUi {
     /// The throttle (0..1) for a drone flown by hand.
     pub throttle: f32,
     fly: (f32, [f32; 4]),
+    /// Seconds before the stick may take a drone over again.
+    take_wait: f32,
+    /// The drone last seen flown by hand (its id).
+    by_hand: Option<u16>,
     /// The stick (roll, pitch) and the rudder as eased to where they are held.
     eased: [f32; 3],
     /// A message (a refused command) and how long it shows yet (s).
@@ -156,6 +165,8 @@ impl Default for DroneUi {
             cams: Vec::new(),
             throttle: 0.5,
             fly: (0.0, [0.0; 4]),
+            take_wait: 0.0,
+            by_hand: None,
             eased: [0.0; 3],
             note: None,
             placed: false,
@@ -249,9 +260,9 @@ fn expo(v: f32) -> f32 {
     v.signum() * ((1.0 - STICK_EXPO) * a + STICK_EXPO * a * a * a)
 }
 
-/// The stick and the throttle: a drone flown by hand follows them, else the stick slews the
-/// selected drone's camera over the ground; the slew keys (the numeric keypad) slew it either
-/// way.
+/// The stick and the throttle. Looking ahead, the stick flies the drone (one on auto is taken
+/// over by hand when it moves); on the TGP it slews the camera over the ground (a drone flown
+/// by hand meanwhile holds its attitude), as the slew keys (the numeric keypad) always do.
 fn stick(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
@@ -271,12 +282,23 @@ fn stick(
     ui.throttle = (ui.throttle + controls.console_throttle * THROTTLE_KEYS * dt).clamp(0.0, 1.0);
     let uavs = center_uavs(&combat, &m);
     let Some(u) = selected(&ui, &uavs) else { return };
-    let dead = |v: f32| if v.abs() < 0.04 { 0.0 } else { v };
-    let (roll, pitch) = (dead(controls.roll), dead(controls.pitch));
     let forward = forward(&ui, u);
+    ui.take_wait -= dt;
+    let moved = [controls.roll, controls.pitch, controls.yaw].iter().any(|v| v.abs() > TAKE_OVER);
+    if forward && u.mode == UavMode::Auto && moved && ui.take_wait <= 0.0 {
+        ui.take_wait = TAKE_OVER_WAIT;
+        c.actions.push(Action::Station(StationCmd::Manual { uav: u.id, on: true }));
+    }
+    // Just taken over: the throttle goes on where the drone had it (no jump).
+    let by_hand = (u.mode == UavMode::Manual).then_some(u.id);
+    if by_hand.is_some() && ui.by_hand != by_hand {
+        ui.throttle = u.ctrl[2];
+    }
+    ui.by_hand = by_hand;
     if u.mode == UavMode::Manual {
         let step = STICK_EASE * dt;
-        let axes = [controls.roll, controls.pitch, controls.yaw].map(expo);
+        let stick = if forward { [controls.roll, controls.pitch, controls.yaw] } else { [0.0; 3] };
+        let axes = stick.map(expo);
         for (e, v) in ui.eased.iter_mut().zip(axes) {
             *e += (v - *e).clamp(-step, step);
         }
@@ -299,13 +321,15 @@ fn stick(
     } else {
         ui.eased = [0.0; 3];
     }
-    // The TGP: the slew keys (and on auto the stick) move the point it holds across the
-    // picture (finer zoomed in).
-    let mut slew = controls.console_slew;
-    if u.mode != UavMode::Manual {
-        slew = (slew + Vec2::new(roll, pitch)).clamp(Vec2::splat(-1.0), Vec2::ONE);
+    // The TGP: the slew keys and the stick move the point it holds across the picture (finer
+    // zoomed in).
+    if forward {
+        return;
     }
-    if slew == Vec2::ZERO || forward {
+    let dead = |v: f32| if v.abs() < 0.04 { 0.0 } else { v };
+    let stick = Vec2::new(dead(controls.roll), dead(controls.pitch));
+    let slew = (controls.console_slew + stick).clamp(Vec2::splat(-1.0), Vec2::ONE);
+    if slew == Vec2::ZERO {
         return;
     }
     let id = u.id;
