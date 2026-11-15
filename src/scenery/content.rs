@@ -172,6 +172,7 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
             if g.lamps.is_empty() {
                 return g;
             }
+            vary_city_lamps(&f, &mut g);
         }
         Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near),
         Tier::Far => trees(sc, &f, &mut g, TreeLod::Far),
@@ -185,6 +186,22 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
     }
     drape(&sc.hills, &f, &mut g);
     g
+}
+
+/// Give generated settlement lamps stable sizes, independent of the streaming block size
+/// and floating origin. Called here because airfields also use the shared building helpers.
+fn vary_city_lamps(f: &Frame, g: &mut Geom) {
+    for (colour, p) in &mut g.lamps {
+        let h = hash(
+            0x1A_4D ^ u64::from(*colour & 0xFF),
+            (f.o.x + p.x as f64).round() as i64,
+            (f.o.y - p.z as f64).round() as i64,
+            p.y.round() as i64,
+        );
+        // Sum two uniform samples: most lamps stay near normal size, fewer at either end.
+        let size = ((h & 0x7F) + ((h >> 7) & 0x7F) + 1) as u32;
+        *colour |= size << crate::dots::DOT_VARIATION_SHIFT;
+    }
 }
 
 /// The same lamps at every range, without constructing their buildings or road surfaces.
@@ -261,10 +278,13 @@ mod light_tests {
         let lights = build(&sc, 0, 0, Tier::Lights, 1.0);
         assert!(lights.solid.is_empty() && lights.flat.is_empty() && lights.lines.is_empty());
         assert!(lights.papi.is_empty() && lights.strobes.is_empty());
-        let count = |colour: u8| lights.lamps.iter().filter(|(c, _)| *c == colour).count();
+        let count = |colour: u8| lights.lamps.iter().filter(|(c, _)| *c as u8 == colour).count();
         assert_eq!(count(LAMP), 6);
         assert_eq!(count(BEACON), 3); // One tower beacon, two on the mast.
         assert!(count(WINDOW) >= 2);
+        assert!(lights.lamps.iter().all(|(c, _)| {
+            c & crate::dots::DOT_CITY != 0 && (c >> crate::dots::DOT_VARIATION_SHIFT) & 0xFF != 0
+        }));
         assert_eq!(lights.lamps, build(&sc, 0, 0, Tier::Lights, 0.3).lamps);
         for y in 0..2 {
             for x in 0..2 {
@@ -282,12 +302,15 @@ mod light_tests {
         let mut complete = Geom::default();
         building(&sc.net.buildings[0], &f, &mut complete);
         let city = build(&sc, 0, 0, Tier::Lights, 1.0);
-        let windows =
-            |g: &Geom| g.lamps.iter().filter(|(c, _)| *c == WINDOW).copied().collect::<Vec<_>>();
-        assert_eq!(windows(&city), windows(&complete));
-        let red: Vec<_> = complete.lamps.iter().filter(|(c, _)| *c == BEACON).collect();
+        // The palette colours and positions match; only the city lights vary in size.
+        let positions = |g: &Geom, colour: u8| {
+            g.lamps.iter().filter(|(c, _)| *c as u8 == colour).map(|(_, p)| *p).collect::<Vec<_>>()
+        };
+        assert_eq!(positions(&city, WINDOW), positions(&complete, WINDOW));
+        let red = positions(&complete, BEACON);
         assert_eq!(red.len(), 1);
-        assert!(city.lamps.contains(&(red[0].0, red[0].1)));
+        assert!(positions(&city, BEACON).contains(&red[0]));
+        assert!(complete.lamps.iter().all(|(c, _)| c >> crate::dots::DOT_VARIATION_SHIFT == 0));
     }
 
     #[test]
@@ -296,10 +319,11 @@ mod light_tests {
         let before = build(&sc, 0, 0, Tier::Lights, 1.0);
         sc.clearings.push((sc.net.buildings[0].p, 45.0));
         let after = build(&sc, 0, 0, Tier::Lights, 1.0);
-        assert!(after.lamps.iter().all(|(c, _)| *c != WINDOW));
-        assert_eq!(after.lamps.iter().filter(|(c, _)| *c == BEACON).count(), 2);
-        let streets =
-            |g: &Geom| g.lamps.iter().filter(|(c, _)| *c == LAMP).copied().collect::<Vec<_>>();
+        assert!(after.lamps.iter().all(|(c, _)| *c as u8 != WINDOW));
+        assert_eq!(after.lamps.iter().filter(|(c, _)| *c as u8 == BEACON).count(), 2);
+        let streets = |g: &Geom| {
+            g.lamps.iter().filter(|(c, _)| *c as u8 == LAMP).copied().collect::<Vec<_>>()
+        };
         assert_eq!(streets(&before), streets(&after));
     }
 }

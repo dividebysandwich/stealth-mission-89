@@ -633,6 +633,7 @@ impl ModelAssets<'_> {
             if name.contains("_dots_pal_") {
                 // Single-pixel lights -> fullbright billboards.
                 let color = node_color.unwrap_or(15);
+                let city_mesh = self.dots.city_mesh(color);
                 for prim in &mesh.primitives {
                     for p in self.positions(&prim.mesh) {
                         let child = commands
@@ -641,6 +642,9 @@ impl ModelAssets<'_> {
                                 MeshMaterial3d(self.palette.line_material(color)),
                             ))
                             .id();
+                        if let Some(mesh) = city_mesh {
+                            commands.entity(child).insert(Mesh3d(mesh.clone()));
+                        }
                         if let Some(l) = lod {
                             commands.entity(child).insert((
                                 LodMesh(l),
