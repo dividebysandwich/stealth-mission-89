@@ -50,6 +50,16 @@ theater-ukraine = Ukraina (2026)
         Rytų Ukraina, Krymas ir pietų Rusija
         Fronto linija nuo Charkivo iki Chersono liepsnoja
         Atviri laukai, subombarduoti miestai prie fronto
+theater-gulf_of_finland = Suomijos įlanka (2027)
+    .facts =
+        Pietų Suomija, Estija ir Sankt Peterburgo regionas
+        Prie Suomijos ir Estijos sienų prasideda karas
+        Spygliuočių miškai, ežerai ir pilka šiaurės jūra
+theater-suwalki = Suvalkų koridorius (2027)
+    .facts =
+        Karaliaučius, šiaurės rytų Lenkija, Lietuva ir vakarų Baltarusija
+        Rusijos replės užsiveria aplink Suvalkų koridorių
+        Ežerai, miškai ir dirbami laukai
 
 ## Situacijos (kovos veiksmų taisyklės)
 
@@ -92,7 +102,7 @@ kind-air-training = Oro kovos treniruotė
         Išmokite perėmimų ir raketų
 kind-drone-defense = Dronų gynyba
     .facts =
-        Tik Ukrainoje
+        Tik Ukraina, Suomijos įlanka ir Suvalkų koridorius
         Sustabdykite Geran atakos dronų bangą, kol ji nepasiekė miesto ar atominės elektrinės
         Paskui subombarduokite jų paleidimo vietą
 

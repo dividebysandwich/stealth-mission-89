@@ -4,7 +4,7 @@
 
 ### FLIGHT MANUAL
 
-*Many aircraft. Ten theaters. One war that never stops.*
+*Many aircraft. Twelve theaters. One war that never stops.*
 
 <img src="images/units/fly_f117.png" width="480" alt="F-117A Nighthawk">
 
@@ -49,7 +49,7 @@ centers and remotely pilot recon, attack and interceptor drones, quadrotors and 
 | [9. The Dynamic Campaign](#9-the-dynamic-campaign) | The front, the mission board, the ground war, the enemy's moves, air defence and logistics |
 | [10. Drone Warfare](#10-drone-warfare) | Geran waves, drone defense, the drone command center and its drones |
 | [11. Multiplayer](#11-multiplayer) | Joining, hosting, dedicated servers |
-| [12. Areas of Conflict](#12-areas-of-conflict) | The ten theaters |
+| [12. Areas of Conflict](#12-areas-of-conflict) | The twelve theaters |
 | [13. Know Your Enemy](#13-know-your-enemy) | Aircraft, air defences, ships and armour |
 | [Appendices](#appendices) | Keys, your files, glossary |
 
@@ -180,7 +180,7 @@ mouse on an option for a short description.
 
 | Group | Options |
 |---|---|
-| **Mission** | *Theater*: the ten areas of conflict (chapter 12). *Situation*: Cold War (covert operation, few enemy aircraft), Limited War (air defences on alert) or Conventional War (all enemy forces active); the briefing states the rules of engagement. *Opponents*: Green, Regular, Veteran or Elite crews; higher levels bring more ships and patrols and more sensitive radars. *Mission*: Strike, Air to air, Strike training, Air training, or Drone defense (Ukraine only, chapter 10.2). |
+| **Mission** | *Theater*: the twelve areas of conflict (chapter 12). *Situation*: Cold War (covert operation, few enemy aircraft), Limited War (air defences on alert) or Conventional War (all enemy forces active); the briefing states the rules of engagement. *Opponents*: Green, Regular, Veteran or Elite crews; higher levels bring more ships and patrols and more sensitive radars. *Mission*: Strike, Air to air, Strike training, Air training, or Drone defense (Ukraine, Gulf of Finland and Suwałki Gap only, chapter 10.2). |
 | **Conditions** | *Weather*: Random (from the theater's climate), Clear, Scattered, Broken, Overcast or Storm; with *Random cover* off a slider sets the main cloud layer's cover. Clouds block optical seekers and eyes on both sides; radar sees through them. *Start time*: night is 18:00-06:00; *Random* rolls a morning or evening take-off. *Moon*: the real moon of the mission's date, or a fixed phase from new (enemy pilots see you at 2 km) to full (4 km). |
 | **Vehicle** | The aircraft of chapter 3. *Realistic weapons* (F-117A only): two bays, no gun, no AIM-9 or AIM-120, no carrier operations. |
 | **Simulation** | *Damage*: *Game* hits damage systems but never bring you down; *Real* hits can destroy the aircraft, start fires and damage the flight controls. *Guidance*: *Classic* DOS era missiles, or *Real* missiles that fly proportional navigation, glide after burn-out and loft against distant targets. *Air defence*: *Real* adds anti-aircraft guns and MANPADS teams (chapter 13.3). *Crash protection*: an automatic pull-up near the ground; collisions are not fatal. These switches belong to each game, not to OPTIONS. |
@@ -2568,7 +2568,7 @@ targets, routes, enemy patrols and weather are rolled anew with NEW MISSION.
 | **Strike** | A ground target to destroy, photograph or reach, with a primary and a secondary objective, and a base to land at. |
 | **Air to air** | Intercept an enemy aircraft: a transport, a bomber or a fighter patrol. |
 | **Strike training** / **Air training** | The same missions as practice: hits do you no harm, **Alt R** reloads your stores, and the points count half. |
-| **Drone defense** | Ukraine only: stop a wave of Geran attack drones before they reach a city or a nuclear power plant, then bomb their launch site (chapter 10.2). |
+| **Drone defense** | Ukraine, Gulf of Finland and Suwałki Gap only: stop a wave of Geran attack drones before they reach a city or a nuclear power plant, then bomb their launch site (chapter 10.2). |
 
 The mission summary and briefing list the objectives, the bases, the weather, the armament and the
 intelligence. Read them, plan the route, check the loadout, and fly. *Save mission* in the in-flight menu
@@ -3315,8 +3315,9 @@ quadrotor interceptors and X-12 jet interceptors out over the front.
 
 ![Closing in on a Geran-3](images/geran_chase.png)
 
-*Mission: Drone defense* in the single mission screen (Ukraine only). Russian Geran drones are on their way
-to a Ukrainian city, or one time in four to the South Ukraine nuclear power plant. They start already in
+*Mission: Drone defense* in the single mission screen (Ukraine, Gulf of Finland and Suwałki Gap only).
+Russian Geran drones are on their way to a friendly city, or one time in four to a nuclear power plant
+(South Ukraine, Loviisa or Ignalina). They start already in
 the air from the two nearest launch sites; the first arrives 9-12 minutes after you start, the others 30-75
 seconds apart. You take off from the nearest airfield with air-to-air missiles, the gun and two Paveways
 (with *Realistic weapons*: the Paveways and extra fuel).
@@ -3584,7 +3585,7 @@ stealth-mission-89 --dedicated --theater ukraine --name "Friday night ops" --por
 | `--name <text>` | Server name, shown to the players. |
 | `--port <n>` | UDP port (default 28989). |
 | `--max-players <n>` | 1 to 64 (default 64). |
-| `--theater <id>` | central_europe, cuba, desert_storm, korea, libya, middle_east, north_cape, persian_gulf, ukraine, vietnam. Default: the saved campaign's, else central_europe. |
+| `--theater <id>` | central_europe, cuba, desert_storm, gulf_of_finland, korea, libya, middle_east, north_cape, persian_gulf, suwalki, ukraine, vietnam. Default: the saved campaign's, else central_europe. |
 | `--roe <0..2>`, `--opponents <0..3>`, `--seed <n>`, `--start-hour <h>` | A new campaign's options. |
 | `--sky-ratio <x>` | The sky runs x times faster than real time (default 24: a day per hour). |
 | `--clear-sky` | A new campaign without weather (else it changes once or twice a day). |
@@ -3625,7 +3626,7 @@ as log lines; SIGTERM or Ctrl-C stops it the same way.
 
 # 12. AREAS OF CONFLICT
 
-Ten theaters, from the Cold War's hottest corners to the war in Ukraine. Each has its own map, weather,
+Twelve theaters, from the Cold War's hottest corners to the war in Ukraine and the Baltic. Each has its own map, weather,
 bases and enemy order of battle; the enemy's aircraft and air defences are listed in chapter 13. Most are
 "what if" wars: the date in each heading is the date the missions are set on, which also decides the moon
 and the stars over you at night.
@@ -3701,11 +3702,34 @@ to Su-27s, SA-2, SA-5, SA-8B, SA-10 and SA-12, missile boats with SA-N-6s, and a
 ## 12.10 Ukraine - 1 October 2026
 
 Eastern Ukraine, Crimea and southern Russia: a front line from Kharkiv to Kherson, open farmland and ruined
-towns at the front. This is the modern war, and the game's newest theater. The enemy flies MiG-31s, Su-34
+towns at the front. This is the modern war. The enemy flies MiG-31s, Su-34
 strike fighters and Su-35s, with an IL-76 radar aircraft behind them; its air defence is a layered network
 of S-400 (SA-21), Buk-M2 (SA-17), Pantsir (SA-22) and Tor-M2 (SA-15) systems under an over-the-horizon radar.
 Geran drones cross the front in waves (chapter 10). In the campaign, armour columns fight their way between
 the towns of the Donbas (chapter 9.7), and the drone command centers come into their own.
+
+## 12.11 Gulf of Finland - 15 April 2027
+
+Southern Finland, Estonia and the north of Latvia against St Petersburg, Novgorod and Pskov, in a war that
+breaks out on the Finnish and Estonian borders. The front runs from Karelia down the Finnish border to the
+coast at Vaalimaa, across the gulf to Narva, through Lake Peipus and along the Estonian and Latvian borders;
+the fighting flares on the Karelian Isthmus, at Narva and at Pechory. Boreal forest, thousands of lakes and
+a grey, often overcast sea. You fly from Finnish and Estonian bases (Helsinki, Utti, Lappeenranta, Tallinn,
+Ämari, Tartu, ...); the enemy flies the same modern air force and air defences as in Ukraine, behind an
+over-the-horizon radar at Lekhtusi, with the Baltic Fleet's boats off Kronstadt. Geran drones come from
+launch sites round Pskov, Luga and Lodeynoye Pole, at the Finnish and Estonian cities and the Loviisa
+nuclear power plant.
+
+## 12.12 Suwałki Gap - 1 June 2027
+
+Kaliningrad, north-east Poland, Lithuania and western Belarus, a few days into a Russian incursion from
+both sides. Pincers out of Kaliningrad past Gołdap and Vištytis and out of Belarus past Druskininkai,
+Lazdijai and Sejny have left a corridor of about 30 km round Suwałki and Kalvarija, the only land link
+between Poland and the Baltic states; elsewhere the front still follows the borders. Lakes, forests and
+farmland, close to true scale. You fly from Polish and Lithuanian bases (Białystok, Szymany, Kaunas,
+Vilnius, Šiauliai, ...) against the Kaliningrad bastion (Chkalovsk, Donskoye, Chernyakhovsk, Baltiysk)
+and the Belarusian bases (Lida, Grodno, Baranovichi, Machulishchy). Geran drones come from Kaliningrad and
+Belarus.
 
 
 ---
@@ -3718,7 +3742,7 @@ Ranges are in km. **Radar range** is the distance at which the radar signal reac
 **lock range** is the distance within which a missile may be launched.
 
 Theaters: LB Libya, PG Persian Gulf, NC North Cape, CE Central Europe, VN Vietnam, ME Middle
-East, DS Desert Storm, CU Cuba, KO Korea, UA Ukraine. 
+East, DS Desert Storm, CU Cuba, KO Korea, UA Ukraine, GF Gulf of Finland, SG Suwałki Gap. 
 
 ## 13.1 Aircraft
 
@@ -3727,22 +3751,22 @@ East, DS Desert Storm, CU Cuba, KO Korea, UA Ukraine.
 | <img src="images/units/ac_mig17.png" width="200"> | **MiG-17 Fresco** | Older fighter. Pulse radar, 50 km. Armament: AA-2 (IR, 14 km) in DS; guns only in CU and KO. |
 | <img src="images/units/ac_mig21.png" width="200"> | **MiG-21 Fishbed** | Light fighter. Pulse radar, 40 km. Armament: AA-2 (IR, 14 km); AA-6 (IR, 50 km) in DS. Theaters: CU, KO, DS. |
 | <img src="images/units/ac_mig23.png" width="200"> | **MiG-23 Flogger** | Fighter, the most common type. Pulse radar, 50 km. Armament: AA-2 (IR, 14 km) in CU, KO, DS, LB, ME; AA-8 (IR rear-aspect, 12 km) in CE; AA-6 (radar or IR, 50 km) in VN. |
-| <img src="images/units/ac_mig25.png" width="200"> | **MiG-25 Foxbat / MiG-31 Foxhound** | Interceptors (same model). MiG-25: pulse radar 70 km, AA-6 (semi-active radar or IR, 50 km); CE, LB, NC. MiG-31: Doppler radar 100 km, AA-9 (semi-active radar, 82 km) in CE, NC, UA; AA-6 in ME, UA. |
+| <img src="images/units/ac_mig25.png" width="200"> | **MiG-25 Foxbat / MiG-31 Foxhound** | Interceptors (same model). MiG-25: pulse radar 70 km, AA-6 (semi-active radar or IR, 50 km); CE, LB, NC. MiG-31: Doppler radar 100 km, AA-9 (semi-active radar, 82 km) in CE, NC, UA, GF, SG; AA-6 in ME, UA, GF, SG. |
 | <img src="images/units/ac_mig29.png" width="200"> | **MiG-29 Fulcrum** | Fighter. Doppler radar, 80 km. Armament: AA-10 (active radar, 64 km) in CE, NC; AA-10 (IR rear-aspect, 64 km) in CU, KO, DS, LB, ME. |
-| <img src="images/units/ac_su27.png" width="200"> | **Su-27 Flanker** | Fighter. Doppler radar, 80 km. Armament: AA-10 (IR rear-aspect, 64 km). Theaters: CE, KO, NC, UA. |
-| <img src="images/units/ac_su27.png" width="200"> | **Su-34 Fullback / Su-35 Flanker-E** | Ukraine's strike fighter and fighter (drawn with the Su-27 model). Su-34: Doppler radar 80 km, AA-8 (IR rear-aspect, 12 km). Su-35: Doppler radar 100 km, AA-10 (active radar, 64 km). Theater: UA. |
+| <img src="images/units/ac_su27.png" width="200"> | **Su-27 Flanker** | Fighter. Doppler radar, 80 km. Armament: AA-10 (IR rear-aspect, 64 km). Theaters: CE, KO, NC, UA, GF, SG. |
+| <img src="images/units/ac_su27.png" width="200"> | **Su-34 Fullback / Su-35 Flanker-E** | The modern theaters' strike fighter and fighter (drawn with the Su-27 model). Su-34: Doppler radar 80 km, AA-8 (IR rear-aspect, 12 km). Su-35: Doppler radar 100 km, AA-10 (active radar, 64 km). Theaters: UA, GF, SG. |
 | <img src="images/units/ac_yak38.png" width="200"> | **Yak-38 Forger** | Carrier-based fighter. Pulse radar, 50 km. Armament: AA-2 (IR, 14 km) in VN; AA-8 (IR rear-aspect, 12 km) in NC. |
 | <img src="images/units/ac_mirage_f1.png" width="200"> | **Mirage F-1** | Fighter (Iraq). Doppler radar, 100 km. Armament: AA-6 (semi-active radar, 50 km). Theater: DS. |
 | <img src="images/units/ac_f5.png" width="200"> | **F-5 Tiger** | Light fighter. Pulse radar, 40 km. Armament: AA-2 (IR, 14 km) in ME; AIM-7 (semi-active radar, 44 km) in PG. |
 | <img src="images/units/ac_f4e.png" width="200"> | **F-4E Phantom** | Fighter. Enemy in PG: pulse radar 70 km, AIM-9 (IR rear-aspect, 12 km). Friendly and unarmed in CE, CU, KO, NC, UA, VN. |
 | <img src="images/units/ac_f14.png" width="200"> | **F-14 Tomcat** | Fighter (Iran). Doppler radar, 80 km. Armament: AIM-9 (IR rear-aspect, 12 km). Theater: PG. |
-| <img src="images/units/ac_il76.png" width="200"> | **IL-76 Mainstay** | Airborne early warning aircraft. Doppler radar, 200 km, sees all around. Armament listed: AA-10 (active radar, 64 km). Theaters: CE, NC, UA. |
+| <img src="images/units/ac_il76.png" width="200"> | **IL-76 Mainstay** | Airborne early warning aircraft. Doppler radar, 200 km, sees all around. Armament listed: AA-10 (active radar, 64 km). Theaters: CE, NC, UA, GF, SG. |
 | <img src="images/units/ac_an72.png" width="200"> | **An-72 Coaler** | Transport. No radar, unarmed. All theaters; a typical air-to-air mission target. |
 | <img src="images/units/ac_mi24.png" width="200"> | **Mi-24 Hind** | Attack helicopter. Flies low, hovers, guns a low and slow player at close range; hunts a downed pilot (chapter 7.10). |
 | <img src="images/units/ac_uh60.png" width="200"> | **UH-60 Black Hawk** | Friendly rescue helicopter (chapter 7.10). |
 | <img src="images/units/ac_geran2.png" width="200"> | **Geran-2** (Shahed-136) | Attack drone (Ukraine). Piston engine and pusher propeller, about 185 km/h, low. No radar, unarmed: it flies straight at its target and dives into it. Shown on the TAC display as an open delta. |
 | <img src="images/units/ac_geran3.png" width="200"> | **Geran-3** (Shahed-238) | The jet version: about 600 km/h, flies higher. Otherwise like the Geran-2. |
-| <img src="images/units/ac_f18.png" width="200"> | **F/A-18 Hornet** | Friendly fighter. No threat. LB, ME, NC, PG, CE, UA. |
+| <img src="images/units/ac_f18.png" width="200"> | **F/A-18 Hornet** | Friendly fighter. No threat. LB, ME, NC, PG, CE, UA, GF. |
 | <img src="images/units/ac_f15.png" width="200"> | **F-15 Eagle** | Friendly fighter. No threat. DS. |
 | <img src="images/units/ac_a10.png" width="200"> | **A-10 Thunderbolt II** | Friendly ground attack aircraft. No threat. DS. |
 
@@ -3751,7 +3775,7 @@ East, DS Desert Storm, CU Cuba, KO Korea, UA Ukraine.
 SAM sites appear on the map as radar sites. The site model differs by theater; the SAM type
 determines radar and missile:
 
-| CE / UA | LB | PG | KO | VN | DS |
+| CE / UA / GF / SG | LB | PG | KO | VN | DS |
 |---|---|---|---|---|---|
 | <img src="images/units/sam_ce.png" width="150"> | <img src="images/units/sam_lb.png" width="150"> | <img src="images/units/sam_pg.png" width="150"> | <img src="images/units/sam_ko.png" width="150"> | <img src="images/units/sam_vn.png" width="150"> | <img src="images/units/sam_ku.png" width="150"> |
 
@@ -3760,21 +3784,21 @@ determines radar and missile:
 | **SA-2** | Pulse | 200 | Radar command | 125 | CU, KO, DS, LB, ME, VN |
 | **SA-5** | Pulse | 350 | Radar command | 150 | CE, CU, KO, DS, LB, ME, NC, VN |
 | **SA-8B** | Pulse | 125 | Semi-active radar | 65 | KO |
-| **SA-10** | Doppler | 320 | Active radar | 125 | CE, KO, NC, UA |
+| **SA-10** | Doppler | 320 | Active radar | 125 | CE, KO, NC, UA, GF, SG |
 | **SA-11** | Pulse | 200 | Semi-active radar | 100 | CE |
 | **SA-12** | Doppler | 250 | Active radar | 125 | CE, KO |
 | **SA-13** | Pulse | 125 | IR (rear-aspect) | 65 | CE |
-| **SA-21** (S-400) | Doppler | 400 | Active radar | 200 | UA |
-| **SA-17** (Buk-M2) | Doppler | 250 | Semi-active radar | 110 | UA |
-| **SA-22** (Pantsir) | Doppler | 130 | Semi-active radar | 60 | UA |
-| **SA-15** (Tor-M2) | Doppler | 125 | Semi-active radar | 50 | UA |
+| **SA-21** (S-400) | Doppler | 400 | Active radar | 200 | UA, GF, SG |
+| **SA-17** (Buk-M2) | Doppler | 250 | Semi-active radar | 110 | UA, GF, SG |
+| **SA-22** (Pantsir) | Doppler | 130 | Semi-active radar | 60 | UA, GF, SG |
+| **SA-15** (Tor-M2) | Doppler | 125 | Semi-active radar | 50 | UA, GF, SG |
 | **Hawk** | Doppler | 175 | Semi-active radar | 125 | PG |
 | **Rapier** | Pulse | 75 | Semi-active radar | 65 | PG |
 | **Tiger** | Pulse | 65 | Radar command | 30 | PG |
 
 | | Radar | Description |
 |---|---|---|
-| <img src="images/units/oth_ce.png" width="200"> | **OTH / LPAR radar** | Over-the-horizon and large phased-array early warning radars. Doppler, 500 km. No missiles; a detection raises the theater-wide alarm. CE, UA (OTH), NC (LPAR). |
+| <img src="images/units/oth_ce.png" width="200"> | **OTH / LPAR radar** | Over-the-horizon and large phased-array early warning radars. Doppler, 500 km. No missiles; a detection raises the theater-wide alarm. CE, UA, GF, SG (OTH), NC (LPAR). |
 
 ## 13.3 Guns and MANPADS
 
@@ -3799,7 +3823,7 @@ models further out than other objects. Every ship shows on the HSD, where the cu
 
 | | Ship | Description |
 |---|---|---|
-| <img src="images/units/ship_missileboat.png" width="200"> | **Missile boat / Patrol boat** | Armed with ship-based SAMs. Missile boat: SA-N-4 (Doppler 200 km, semi-active radar, 30 km), SA-N-5 (pulse 150 km, IR, 30 km) in LB, CU, KO; SA-N-6 (Doppler 320 km, active radar, 125 km) in KO; Seacat (pulse 200 km, radar command, 30 km) in PG. Patrol boat: SA-N-5, SA-N-7 (pulse 200 km, semi-active radar, 100 km) in CE, UA. |
+| <img src="images/units/ship_missileboat.png" width="200"> | **Missile boat / Patrol boat** | Armed with ship-based SAMs. Missile boat: SA-N-4 (Doppler 200 km, semi-active radar, 30 km), SA-N-5 (pulse 150 km, IR, 30 km) in LB, CU, KO; SA-N-6 (Doppler 320 km, active radar, 125 km) in KO; Seacat (pulse 200 km, radar command, 30 km) in PG. Patrol boat: SA-N-5, SA-N-7 (pulse 200 km, semi-active radar, 100 km) in CE, UA, GF, SG. |
 | <img src="images/units/ship_destroyer.png" width="200"> | **Destroyer** | Warship. LB, PG, NC, VN, ME, DS, CU, KO. |
 | <img src="images/units/ship_krivak.png" width="200"> | **Krivak** | Soviet frigate. NC. |
 | <img src="images/units/ship_aegis.png" width="200"> | **Aegis cruiser** | Cruiser. PG. |

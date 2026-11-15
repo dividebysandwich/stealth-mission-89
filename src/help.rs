@@ -21,8 +21,8 @@ Starting
     --loadout <file>           stores chosen in the menu (JSON)
     --print-mission            print the generated mission's summary
   --theater <id>               fly from the menu's defaults in this theater, skipping the menu:
-                               central_europe, cuba, desert_storm, korea, libya, middle_east,
-                               north_cape, persian_gulf, ukraine, vietnam
+                               central_europe, cuba, desert_storm, gulf_of_finland, korea, libya,
+                               middle_east, north_cape, persian_gulf, suwalki, ukraine, vietnam
   --fly                        fly from the menu's defaults, skipping the menu
     --base <name>              the airfield to start from
     --night                    a night flight

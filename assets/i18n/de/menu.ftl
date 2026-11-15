@@ -50,6 +50,16 @@ theater-ukraine = Ukraine (2026)
         Ostukraine, Krim und Südrussland
         Die Front brennt von Charkiw bis Cherson
         Offenes Ackerland, zerstörte Städte an der Front
+theater-gulf_of_finland = Finnischer Meerbusen (2027)
+    .facts =
+        Südfinnland, Estland und das Gebiet um Sankt Petersburg
+        Krieg bricht an der finnischen und estnischen Grenze aus
+        Nadelwald, Seen und ein graues Nordmeer
+theater-suwalki = Suwałki-Lücke (2027)
+    .facts =
+        Kaliningrad, Nordostpolen, Litauen und Westbelarus
+        Russische Zangen schließen sich um die Suwałki-Lücke
+        Seen, Wälder und Ackerland
 
 ## Lagen (Einsatzregeln)
 
@@ -92,7 +102,7 @@ kind-air-training = Luftkampfübung
         Abfangen und Raketen lernen
 kind-drone-defense = Drohnenabwehr
     .facts =
-        Nur Ukraine
+        Nur Ukraine, Finnischer Meerbusen und Suwałki-Lücke
         Eine Welle von Geran-Kampfdrohnen aufhalten, bevor sie eine Stadt oder ein Kernkraftwerk trifft
         Danach ihren Startplatz bombardieren
 

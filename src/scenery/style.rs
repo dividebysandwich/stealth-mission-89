@@ -163,6 +163,46 @@ impl Style {
                 barn: &[0xE5, 0xE3, 0xE8],
                 ..base
             },
+            // Gulf of Finland: boreal pine and spruce, red and yellow wooden houses with
+            // panel blocks in the towns, small fields cut out of the forest.
+            "gulf_of_finland" => Style {
+                farmland: Some(&fields::MIXED),
+                towns: 0.45,
+                town_size: 0.9,
+                town_mix: [0.8, 0.17, 0.03],
+                street_scale: 1.3,
+                soviet: true,
+                lot_fill: 0.55,
+                farms: 0.35,
+                pole_lines: 0.55,
+                forest: 0.4,
+                trees: &[(Tree::Conifer, 0.75), (Tree::Broadleaf, 0.25)],
+                walls: &[0xD6, 0xD7, 0xC4, 0xE1, 0xE1, 0xCB],
+                roofs: &[0xE9, 0xEB, 0xD9, 0xF7, 0xE8],
+                roof_kinds: [0.15, 0.7, 0.15],
+                barn: &[0xD7, 0xD8],
+                ..base
+            },
+            // Suwalki Gap: lakes and mixed woods, farmland, red tile and grey roofs, panel
+            // blocks in the towns.
+            "suwalki" => Style {
+                farmland: Some(&fields::MIXED),
+                towns: 0.55,
+                town_size: 0.95,
+                town_mix: [0.82, 0.15, 0.03],
+                street_scale: 1.3,
+                soviet: true,
+                lot_fill: 0.6,
+                farms: 0.5,
+                pole_lines: 0.55,
+                forest: 0.55,
+                trees: &[(Tree::Conifer, 0.55), (Tree::Broadleaf, 0.45)],
+                walls: &[0xC1, 0xC2, 0xE1, 0xE3, 0xD3, 0xE1],
+                roofs: &[0xD8, 0xD9, 0xE8, 0xE9, 0xCD],
+                roof_kinds: [0.12, 0.6, 0.28],
+                barn: &[0xCD, 0xE5, 0xD8],
+                ..base
+            },
             // The desert theaters: sparse flat-roofed towns in sand and whitewash, palms in
             // the towns and oases, no woods or farmland.
             "libya" | "persian_gulf" | "middle_east" | "desert_storm" => Style {

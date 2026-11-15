@@ -50,6 +50,16 @@ theater-ukraine = An Úcráin (2026)
         Oirthear na hÚcráine, an Chrimé agus deisceart na Rúise
         Tá líne an chatha trí thine ó Kharkiv go Kherson
         Talamh feirme oscailte, bailte millte ar an líne tosaigh
+theater-gulf_of_finland = Murascaill na Fionlainne (2027)
+    .facts =
+        Deisceart na Fionlainne, an Eastóin agus réigiún Shan Peadarsburg
+        Briseann cogadh amach ar theorainneacha na Fionlainne agus na hEastóine
+        Foraois bhoreach, lochanna agus farraige liath thuaisceartach
+theater-suwalki = Bearna Suwałki (2027)
+    .facts =
+        Kaliningrad, oirthuaisceart na Polainne, an Liotuáin agus iarthar na Bealarúise
+        Dúnann teanchair na Rúise ar Bhearna Suwałki
+        Lochanna, foraoisí agus talamh feirme
 
 ## Cásanna (rialacha rannpháirtíochta)
 
@@ -92,7 +102,7 @@ kind-air-training = Oiliúint aer-go-haer
         Foghlaim faoi scoitheadh agus diúracáin
 kind-drone-defense = Cosaint in aghaidh drón
     .facts =
-        An Úcráin amháin
+        An Úcráin, Murascaill na Fionlainne agus Bearna Suwałki amháin
         Stop tonn de drón ionsaithe Geran sula mbuaileann sé cathair nó stáisiún núicléach
         Ansin buamáil a láithreán lainseála
 

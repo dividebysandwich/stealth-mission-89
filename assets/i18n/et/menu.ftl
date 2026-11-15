@@ -50,6 +50,16 @@ theater-ukraine = Ukraina (2026)
         Ida-Ukraina, Krimm ja Lõuna-Venemaa
         Rindejoon Harkivist Hersonini põleb
         Avatud põllumaa, rindel varemetes linnad
+theater-gulf_of_finland = Soome laht (2027)
+    .facts =
+        Lõuna-Soome, Eesti ja Peterburi piirkond
+        Soome ja Eesti piiril puhkeb sõda
+        Okasmetsad, järved ja hall põhjameri
+theater-suwalki = Suwałki koridor (2027)
+    .facts =
+        Kaliningrad, Kirde-Poola, Leedu ja Lääne-Valgevene
+        Venemaa haardetangid sulguvad Suwałki koridori ümber
+        Järved, metsad ja põllumaa
 
 ## Olukorrad (kokkupuute reeglid)
 
@@ -92,7 +102,7 @@ kind-air-training = Õhutreening
         Õpi pealtkuulamisi ja rakette
 kind-drone-defense = Droonitõrje
     .facts =
-        Ainult Ukraina
+        Ainult Ukraina, Soome laht ja Suwałki koridor
         Peata Geran rünnakudroonide laine enne, kui see tabab linna või tuumajaama
         Seejärel pommita nende stardikohta
 

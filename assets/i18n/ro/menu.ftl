@@ -50,6 +50,16 @@ theater-ukraine = Ucraina (2026)
         Estul Ucrainei, Crimeea și sudul Rusiei
         Linia frontului arde de la Harkov la Herson
         Câmpuri deschise, orașe în ruine pe front
+theater-gulf_of_finland = Golful Finic (2027)
+    .facts =
+        Sudul Finlandei, Estonia și regiunea Sankt Petersburg
+        Războiul izbucnește la granițele Finlandei și Estoniei
+        Taiga, lacuri și o mare nordică cenușie
+theater-suwalki = Coridorul Suwałki (2027)
+    .facts =
+        Kaliningrad, nord-estul Poloniei, Lituania și vestul Belarusului
+        Clești rusești se închid asupra coridorului Suwałki
+        Lacuri, păduri și terenuri agricole
 
 ## Situații (reguli de angajare)
 
@@ -92,7 +102,7 @@ kind-air-training = Antrenament aer-aer
         Învățați interceptările și rachetele
 kind-drone-defense = Apărare antidronă
     .facts =
-        Doar în Ucraina
+        Doar Ucraina, Golful Finic și coridorul Suwałki
         Opriți un val de drone de atac Geran înainte să lovească un oraș sau o centrală nucleară
         Apoi bombardați baza lor de lansare
 

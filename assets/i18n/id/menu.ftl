@@ -50,6 +50,16 @@ theater-ukraine = Ukraina (2026)
         Ukraina timur, Krimea dan Rusia selatan
         Garis depan dari Kharkiv sampai Kherson terbakar
         Lahan pertanian terbuka, kota-kota hancur di garis depan
+theater-gulf_of_finland = Teluk Finlandia (2027)
+    .facts =
+        Finlandia selatan, Estonia, dan wilayah Sankt-Peterburg
+        Perang pecah di perbatasan Finlandia dan Estonia
+        Hutan boreal, danau, dan laut utara yang kelabu
+theater-suwalki = Celah Suwałki (2027)
+    .facts =
+        Kaliningrad, Polandia timur laut, Lituania, dan Belarus barat
+        Capit Rusia menutup Celah Suwałki
+        Danau, hutan, dan lahan pertanian
 
 ## Situasi (aturan keterlibatan)
 
@@ -92,7 +102,7 @@ kind-air-training = Latihan udara
         Pelajari intersepsi dan rudal
 kind-drone-defense = Pertahanan drone
     .facts =
-        Hanya Ukraina
+        Hanya Ukraina, Teluk Finlandia, dan Celah Suwałki
         Hentikan gelombang drone serang Geran sebelum menghantam kota atau pembangkit nuklir
         Lalu bom lokasi peluncurannya
 

@@ -54,7 +54,7 @@ impl Sky {
 }
 
 /// Odds of [`Sky::ALL`] per theater ([`crate::THEATER_NAMES`] order).
-const ODDS: [[u8; 5]; 10] = [
+const ODDS: [[u8; 5]; 12] = [
     [60, 25, 10, 4, 1],   // Libya
     [65, 20, 10, 3, 2],   // Persian Gulf
     [15, 20, 25, 30, 10], // North Cape
@@ -65,6 +65,8 @@ const ODDS: [[u8; 5]; 10] = [
     [30, 30, 20, 5, 15],  // Cuba
     [25, 25, 25, 20, 5],  // Korea
     [20, 25, 25, 22, 8],  // Ukraine
+    [12, 18, 25, 33, 12], // Gulf of Finland
+    [15, 25, 25, 25, 10], // Suwalki Gap
 ];
 
 /// Odds (percent) of [`Sky::ALL`] in a theater.

@@ -50,6 +50,16 @@ theater-ukraine = Ucraina (2026)
         Ucraina orientale, Crimea e Russia meridionale
         La linea del fronte brucia da Kharkiv a Kherson
         Campagne aperte, città in rovina sul fronte
+theater-gulf_of_finland = Golfo di Finlandia (2027)
+    .facts =
+        Finlandia meridionale, Estonia e regione di San Pietroburgo
+        La guerra scoppia ai confini finlandese ed estone
+        Foresta boreale, laghi e un grigio mare del nord
+theater-suwalki = Corridoio di Suwałki (2027)
+    .facts =
+        Kaliningrad, Polonia nord-orientale, Lituania e Bielorussia occidentale
+        Le tenaglie russe si chiudono sul corridoio di Suwałki
+        Laghi, foreste e terreni agricoli
 
 ## Situazioni (regole d'ingaggio)
 
@@ -92,7 +102,7 @@ kind-air-training = Addestramento aria-aria
         Imparare le intercettazioni e i missili
 kind-drone-defense = Difesa anti-drone
     .facts =
-        Solo Ucraina
+        Solo Ucraina, Golfo di Finlandia e corridoio di Suwałki
         Fermare un'ondata di droni d'attacco Geran prima che colpisca una città o una centrale nucleare
         Poi bombardare il loro sito di lancio
 

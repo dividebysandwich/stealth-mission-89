@@ -50,6 +50,16 @@ theater-ukraine = Ukrajina (2026)
         Východní Ukrajina, Krym a jih Ruska
         Frontová linie od Charkova po Cherson hoří
         Otevřená pole, zničená města na frontě
+theater-gulf_of_finland = Finský záliv (2027)
+    .facts =
+        Jižní Finsko, Estonsko a okolí Petrohradu
+        Na finské a estonské hranici vypuká válka
+        Tajga, jezera a šedé severní moře
+theater-suwalki = Suwalský koridor (2027)
+    .facts =
+        Kaliningrad, severovýchodní Polsko, Litva a západní Bělorusko
+        Ruská kleště se svírají kolem Suwalského koridoru
+        Jezera, lesy a pole
 
 ## Situace (pravidla nasazení)
 
@@ -92,7 +102,7 @@ kind-air-training = Trénink vzduch-vzduch
         Naučte se zachycení a střely
 kind-drone-defense = Obrana proti dronům
     .facts =
-        Pouze Ukrajina
+        Pouze Ukrajina, Finský záliv a Suwalský koridor
         Zastavit vlnu útočných dronů Geran dřív, než zasáhnou město nebo jadernou elektrárnu
         Poté bombardovat jejich odpalovací stanoviště
 

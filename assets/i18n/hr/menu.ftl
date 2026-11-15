@@ -50,6 +50,16 @@ theater-ukraine = Ukrajina (2026)
         Istočna Ukrajina, Krim i južna Rusija
         Bojišnica gori od Harkiva do Hersona
         Otvorena polja, razrušeni gradovi na fronti
+theater-gulf_of_finland = Finski zaljev (2027)
+    .facts =
+        Južna Finska, Estonija i područje Sankt Peterburga
+        Rat izbija na finskoj i estonskoj granici
+        Crnogorična šuma, jezera i sivo sjeverno more
+theater-suwalki = Koridor Suwałki (2027)
+    .facts =
+        Kalinjingrad, sjeveroistočna Poljska, Litva i zapadna Bjelorusija
+        Ruska kliješta zatvaraju se oko koridora Suwałki
+        Jezera, šume i oranice
 
 ## Situacije (pravila angažiranja)
 
@@ -92,7 +102,7 @@ kind-air-training = Zračna obuka
         Naučite presretanje i projektile
 kind-drone-defense = Obrana od dronova
     .facts =
-        Samo Ukrajina
+        Samo Ukrajina, Finski zaljev i koridor Suwałki
         Zaustavite val napadačkih dronova Geran prije nego pogode grad ili nuklearnu elektranu
         Zatim bombardirajte njihovo lansirno mjesto
 

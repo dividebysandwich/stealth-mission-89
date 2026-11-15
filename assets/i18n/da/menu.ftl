@@ -50,6 +50,16 @@ theater-ukraine = Ukraine (2026)
         Østukraine, Krim og det sydlige Rusland
         Frontlinjen brænder fra Kharkiv til Kherson
         Åbne marker, ødelagte byer ved fronten
+theater-gulf_of_finland = Den Finske Bugt (2027)
+    .facts =
+        Sydfinland, Estland og området omkring Sankt Petersborg
+        Krigen bryder ud ved den finske og estiske grænse
+        Nåleskov, søer og et gråt nordligt hav
+theater-suwalki = Suwałki-korridoren (2027)
+    .facts =
+        Kaliningrad, det nordøstlige Polen, Litauen og det vestlige Hviderusland
+        Russiske knibtangsangreb lukker sig om Suwałki-korridoren
+        Søer, skove og landbrugsland
 
 ## Situationer (engagementsregler)
 
@@ -92,7 +102,7 @@ kind-air-training = Lufttræning
         Lær opfangning og missiler
 kind-drone-defense = Droneforsvar
     .facts =
-        Kun Ukraine
+        Kun Ukraine, Den Finske Bugt og Suwałki-korridoren
         Stop en bølge af Geran-angrebsdroner, før den rammer en by eller et atomkraftværk
         Bombér derefter deres affyringsplads
 

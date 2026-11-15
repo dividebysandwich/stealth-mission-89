@@ -911,7 +911,7 @@ fn air_defences_stand_on_land() {
     use stealth_mission::{MissionKind, MissionSettings, Seed};
     let data = theater::game_data().unwrap();
     let mut ships = 0;
-    for code in ["persian_gulf", "north_cape", "cuba", "ukraine"] {
+    for code in ["persian_gulf", "north_cape", "cuba", "ukraine", "gulf_of_finland", "suwalki"] {
         let s = CampaignSetup { roe: 2, ..setup(code) };
         let index = s.theater;
         let sim_data = theater::sim_data(index, code).unwrap();

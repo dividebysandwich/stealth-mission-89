@@ -9,7 +9,7 @@ use std::fmt::Write;
 use stealth_master_proto::{MapPos, ServerEntry};
 
 /// The theaters' map pictures (`--export-maps` in the game), 0..0x8000 map units both ways.
-const MAPS: [(&str, &[u8]); 10] = [
+const MAPS: [(&str, &[u8]); 12] = [
     ("libya", include_bytes!("../maps/libya.png")),
     ("persian_gulf", include_bytes!("../maps/persian_gulf.png")),
     ("north_cape", include_bytes!("../maps/north_cape.png")),
@@ -20,6 +20,8 @@ const MAPS: [(&str, &[u8]); 10] = [
     ("cuba", include_bytes!("../maps/cuba.png")),
     ("korea", include_bytes!("../maps/korea.png")),
     ("ukraine", include_bytes!("../maps/ukraine.png")),
+    ("gulf_of_finland", include_bytes!("../maps/gulf_of_finland.png")),
+    ("suwalki", include_bytes!("../maps/suwalki.png")),
 ];
 /// Map units across the theater.
 const THEATER: f32 = 32768.0;

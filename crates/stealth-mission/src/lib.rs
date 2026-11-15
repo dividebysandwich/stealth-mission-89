@@ -16,6 +16,7 @@ use std::path::Path;
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use stealth_formats::ALL_THEATERS;
+pub use stealth_formats::{DRONE_THEATERS, drone_theater};
 
 pub use drones::DroneWave;
 pub use rng::MscRand;
@@ -24,7 +25,7 @@ pub use text::{Briefing, Orders, OrdersLine};
 pub use weather::{CloudKind, Layer, Sky, Weather};
 pub use world::{FlightUnit, MissionWorld, TheaterData, WorldObject};
 
-pub const THEATER_NAMES: [&str; 10] = [
+pub const THEATER_NAMES: [&str; 12] = [
     "Libya",
     "Persian Gulf",
     "North Cape",
@@ -35,6 +36,8 @@ pub const THEATER_NAMES: [&str; 10] = [
     "Cuba",
     "Korea",
     "Ukraine",
+    "Gulf of Finland",
+    "Suwalki Gap",
 ];
 pub const ROE_NAMES: [&str; 3] = ["Cold War", "Limited War", "Conventional War"];
 pub const OPPONENT_NAMES: [&str; 4] = ["Green", "Regular", "Veteran", "Elite"];

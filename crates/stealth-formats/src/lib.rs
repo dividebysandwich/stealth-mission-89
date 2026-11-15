@@ -16,7 +16,7 @@ pub const THEATERS: [&str; 9] = [
 ];
 
 /// All theater ids: the nine classic theaters, then the newer ones.
-pub const ALL_THEATERS: [&str; 10] = [
+pub const ALL_THEATERS: [&str; 12] = [
     "libya",
     "persian_gulf",
     "north_cape",
@@ -27,4 +27,15 @@ pub const ALL_THEATERS: [&str; 10] = [
     "cuba",
     "korea",
     "ukraine",
+    "gulf_of_finland",
+    "suwalki",
 ];
+
+/// The theaters whose enemy launches attack drones (Geran) from launch sites: the drone
+/// defense missions and the campaign's drone waves.
+pub const DRONE_THEATERS: [&str; 3] = ["ukraine", "gulf_of_finland", "suwalki"];
+
+/// Whether theater `code` has attack drones (see [`DRONE_THEATERS`]).
+pub fn drone_theater(code: &str) -> bool {
+    DRONE_THEATERS.iter().any(|t| t.eq_ignore_ascii_case(code))
+}

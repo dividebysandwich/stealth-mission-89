@@ -74,7 +74,7 @@ const NIGHT: (f32, f32) = (21.0, 3.0);
 const DAY: (f32, f32) = (6.5, 18.0);
 const NOON: (f32, f32) = (11.0, 14.0);
 
-const SUMMER_THEATERS: [&str; 2] = ["central_europe", "ukraine"];
+const SUMMER_THEATERS: [&str; 4] = ["central_europe", "ukraine", "gulf_of_finland", "suwalki"];
 const DESERT_THEATERS: [&str; 4] = ["libya", "persian_gulf", "middle_east", "desert_storm"];
 
 /// The loaded sounds and how far each has faded in (by time and place, and by view).

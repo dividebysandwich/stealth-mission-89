@@ -50,6 +50,16 @@ theater-ukraine = Ukraina (2026)
         Itä-Ukraina, Krim ja Etelä-Venäjä
         Rintamalinja Harkovasta Hersoniin palaa
         Avointa viljelysmaata, rintaman raunioituneita kaupunkeja
+theater-gulf_of_finland = Suomenlahti (2027)
+    .facts =
+        Etelä-Suomi, Viro ja Pietarin alue
+        Sota syttyy Suomen ja Viron rajoilla
+        Havumetsää, järviä ja harmaa pohjoinen meri
+theater-suwalki = Suwałkin käytävä (2027)
+    .facts =
+        Kaliningrad, Koillis-Puola, Liettua ja Länsi-Valko-Venäjä
+        Venäjän pihtiliike sulkeutuu Suwałkin käytävän ympärille
+        Järviä, metsiä ja peltoja
 
 ## Tilanteet (toimintasäännöt)
 
@@ -92,7 +102,7 @@ kind-air-training = Ilmataisteluharjoitus
         Opettele siepaukset ja ohjukset
 kind-drone-defense = Dronetorjunta
     .facts =
-        Vain Ukraina
+        Vain Ukraina, Suomenlahti ja Suwałkin käytävä
         Pysäytä Geran-hyökkäysdronejen aalto ennen kuin se osuu kaupunkiin tai ydinvoimalaan
         Pommita sen jälkeen niiden laukaisupaikka
 

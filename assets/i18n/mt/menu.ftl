@@ -50,6 +50,16 @@ theater-ukraine = Ukrajna (2026)
         L-Ukrajna tal-Lvant, il-Krimea u n-nofsinhar tar-Russja
         Il-linja tal-quddiem minn Kharkiv sa Kherson qed taħraq
         Għelieqi miftuħa, bliet imħarbta fuq il-front
+theater-gulf_of_finland = Il-Golf tal-Finlandja (2027)
+    .facts =
+        In-Nofsinhar tal-Finlandja, l-Estonja u r-reġjun ta' San Pietruburgu
+        Il-gwerra tfaqqa' fuq il-fruntieri tal-Finlandja u l-Estonja
+        Foresta boreali, lagi u baħar griż tat-tramuntana
+theater-suwalki = Il-Passaġġ ta' Suwałki (2027)
+    .facts =
+        Kaliningrad, il-grigal tal-Polonja, il-Litwanja u l-punent tal-Belarussja
+        It-tnalji Russi jingħalqu fuq il-Passaġġ ta' Suwałki
+        Lagi, foresti u art agrikola
 
 ## Sitwazzjonijiet (regoli tal-ingaġġ)
 
@@ -92,7 +102,7 @@ kind-air-training = Taħriġ ajru-ajru
         Tgħallem l-intercepts u l-missili
 kind-drone-defense = Difiża mid-drones
     .facts =
-        Ukrajna biss
+        L-Ukrajna, il-Golf tal-Finlandja u l-Passaġġ ta' Suwałki biss
         Waqqaf mewġa ta' drones tal-attakk Geran qabel ma jolqtu belt jew impjant nukleari
         Imbagħad ibbombarda s-sit tat-tnedija tagħhom
 

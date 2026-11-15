@@ -89,7 +89,7 @@ pub fn codes() -> Vec<String> {
 }
 
 /// The classic theaters first, then the remake's own (file prefix, display name).
-pub const THEATERS: [(&str, &str); 10] = [
+pub const THEATERS: [(&str, &str); 12] = [
     ("libya", "Libya (1986)"),
     ("persian_gulf", "Persian Gulf (1984)"),
     ("north_cape", "North Cape"),
@@ -100,6 +100,8 @@ pub const THEATERS: [(&str, &str); 10] = [
     ("cuba", "Cuba"),
     ("korea", "Korea"),
     ("ukraine", "Ukraine (2026)"),
+    ("gulf_of_finland", "Gulf of Finland (2027)"),
+    ("suwalki", "Suwalki Gap (2027)"),
 ];
 
 /// A theater's display name ("central_europe": "Central Europe"; the code itself if unknown).

@@ -1779,8 +1779,9 @@ fn deployed(c: &mut CampaignState) -> Option<(u32, i32, i32)> {
 
 /// Where nothing is a short helicopter flight from a player base, the enemy pushes a battery
 /// forward: on land, 15 to 35 km from a base. Cuba has none: the sea is all there is that near
-/// Key West. Nor has the Middle East: southern Lebanon and the Golan are in reach of Israel's
-/// bases already.
+/// Key West. Nor have the Middle East, the Gulf of Finland and the Suwalki Gap: southern
+/// Lebanon and the Golan are in reach of Israel's bases already, as Vyborg and Ivangorod are of
+/// Lappeenranta and Tartu, and Grodno and Sejny of Bialystok and Vilnius.
 #[test]
 fn forward_batteries_go_on_land_near_a_base() {
     for (code, index) in [
@@ -1793,10 +1794,12 @@ fn forward_batteries_go_on_land_near_a_base() {
         ("cuba", 7),
         ("korea", 8),
         ("ukraine", 9),
+        ("gulf_of_finland", 10),
+        ("suwalki", 11),
     ] {
         let mut c = campaign_on_terrain(code, index);
         let battery = deployed(&mut c);
-        if code == "cuba" || code == "middle_east" {
+        if matches!(code, "cuba" | "middle_east" | "gulf_of_finland" | "suwalki") {
             assert_eq!(battery, None, "{code}");
             continue;
         }
@@ -2408,6 +2411,8 @@ fn convoy_routes_stay_on_passable_ground() {
         "cuba",
         "korea",
         "ukraine",
+        "gulf_of_finland",
+        "suwalki",
     ];
     for (index, code) in codes.iter().enumerate() {
         let c = campaign_on_terrain(code, index);
@@ -3856,6 +3861,8 @@ fn patriots_stand_on_land() {
         "cuba",
         "korea",
         "ukraine",
+        "gulf_of_finland",
+        "suwalki",
     ];
     for (index, code) in codes.iter().enumerate() {
         let c = campaign_on_terrain(code, index);

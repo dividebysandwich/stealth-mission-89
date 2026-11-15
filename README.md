@@ -44,7 +44,7 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
 * **Head and Eye tracking** via FreeTrack
 * **Air traffic control:** takeoff clearances, overhead recoveries and GCA talkdowns in bad weather, spoken over the radio with downloadable voices
 * **Weather:** layered volumetric clouds and thunderstorms that block seekers and visual ID
-* **Theaters** including Ukraine 2026, with drone defense missions against Geran attack drones
+* **Theaters** including Ukraine 2026, the Gulf of Finland and the Suwałki Gap 2027, with drone defense missions against Geran attack drones
 * **Tacview** export and real-time telemetry plus ACMI recording
 * **Flyable Airplanes:** F-117A, F-16C (with HMCS), A-!0, Tornado IDS (with Terrain Following Radar), AV-8B Harrier II (V/STOL, vectored thrust)
 * **Flyable Helicopters:** UH-60A (Logistics and Insertions), CH-47F Chinook (tandem rotors, sling-load logistics), AH-1Z (with HMD), AH-64D Apache (two seats: a second player can crew it as gunner), RAH-66 Comanche (stealth, internal bays, a second player can crew it as gunner), OH-58D Kiowa Warrior (mast-mounted sight, HMD, optional pylons, a second player can crew it as gunner)
@@ -63,7 +63,8 @@ board, alone or with up to 64 players in coop.
 - **Resources:** each side's AI repairs, flies sorties and buys aircraft with the materiel its
   places and cities bring in every hour. Interdiction strikes on enemy cities cut income.
 - **Enemy attacks:** helicopter attacks on weak spots along the front, escorted raids on
-  airfields, AWACS patrols and, in Ukraine, Geran drone waves. The board posts intercept and
+  airfields, AWACS patrols and, in Ukraine, the Gulf of Finland and the Suwałki Gap, Geran drone
+  waves. The board posts intercept and
   defend missions for them. A bombed airfield launches no AI aircraft until it is repaired.
 - **CSAR:** eject over enemy territory and the board posts a rescue mission.
   Hold the air near the pilot for 2 minutes to get them out, or they may be captured. In the
@@ -82,6 +83,14 @@ from the Sumy and Kharkiv border areas through Kupiansk, Lyman, Kostiantynivka, 
 Huliaipole to the Dnipro and down the river to Kherson. You fly from Ukrainian bases (Myrhorod,
 Poltava, Dnipro, ...) against the occupied areas, Crimea and various Russian bases; the
 missions follow Central Europe's rules (`--theater ukraine`).
+
+## Baltic theaters
+
+**Gulf of Finland** (about 22-34.3 E, 56.6-62.8 N, `--theater gulf_of_finland`): southern Finland,
+Estonia and the north of Latvia against St Petersburg, Novgorod and Pskov, a war just breaking out on
+the Finnish and Estonian borders. **Suwałki Gap** (about 19.2-27.8 E, 51.9-56.9 N, `--theater suwalki`):
+Kaliningrad, north-east Poland, Lithuania and western Belarus, with Russian pincers from Kaliningrad and
+Belarus closing on the corridor round Suwałki.
 
 ## Running
 ```sh

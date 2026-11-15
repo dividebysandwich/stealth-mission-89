@@ -50,6 +50,16 @@ theater-ukraine = Ukrajina (2026)
         Vzhodna Ukrajina, Krim in južna Rusija
         Frontna črta od Harkova do Hersona gori
         Odprta kmetijska zemljišča, porušena mesta ob fronti
+theater-gulf_of_finland = Finski zaliv (2027)
+    .facts =
+        Južna Finska, Estonija in območje Sankt Peterburga
+        Na finski in estonski meji izbruhne vojna
+        Tajga, jezera in sivo severno morje
+theater-suwalki = Suwałški koridor (2027)
+    .facts =
+        Kaliningrad, severovzhodna Poljska, Litva in zahodna Belorusija
+        Ruske klešče se zapirajo okoli suwałškega koridorja
+        Jezera, gozdovi in obdelovalna zemlja
 
 ## Razmere (pravila spopada)
 
@@ -92,7 +102,7 @@ kind-air-training = Vadba zrak-zrak
         Spoznajte prestrezanje in izstrelke
 kind-drone-defense = Obramba pred droni
     .facts =
-        Samo Ukrajina
+        Samo Ukrajina, Finski zaliv in suwałški koridor
         Ustavite val napadalnih dronov Geran, preden zadane mesto ali jedrsko elektrarno
         Nato bombardirajte njihovo izstrelišče
 

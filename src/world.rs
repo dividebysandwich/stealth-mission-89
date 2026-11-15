@@ -184,6 +184,10 @@ pub fn geo_origin(id: &str) -> (f64, f64) {
         "persian_gulf" => (48.67, 26.48),
         // Dzhankoi.
         "ukraine" => (32.51, 44.78),
+        // Helsinki-Vantaa.
+        "gulf_of_finland" => (22.73, 57.56),
+        // Kaunas.
+        "suwalki" => (19.54, 52.15),
         // Gia Lam (Hanoi).
         "vietnam" => (101.84, 17.04),
         _ => (10.0, 45.0),

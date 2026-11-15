@@ -50,6 +50,16 @@ theater-ukraine = Ukraine (2026)
         Eastern Ukraine, Crimea and southern Russia
         Front line from Kharkiv to Kherson burns
         Open farmland, ruined towns at the front
+theater-gulf_of_finland = Gulf of Finland (2027)
+    .facts =
+        Southern Finland, Estonia and the St Petersburg region
+        War breaks out on the Finnish and Estonian borders
+        Boreal forest, lakes and a grey northern sea
+theater-suwalki = Suwałki Gap (2027)
+    .facts =
+        Kaliningrad, north-east Poland, Lithuania and western Belarus
+        Russian pincers close on the Suwałki Gap
+        Lakes, forests and farmland
 
 ## Situations (rules of engagement)
 
@@ -92,7 +102,7 @@ kind-air-training = Air training
         Learn intercepts and missiles
 kind-drone-defense = Drone defense
     .facts =
-        Ukraine only
+        Ukraine, Gulf of Finland and Suwałki Gap only
         Stop a wave of Geran attack drones before it hits a city or a nuclear plant
         Then bomb their launch site
 

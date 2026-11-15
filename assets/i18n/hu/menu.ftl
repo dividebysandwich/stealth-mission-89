@@ -50,6 +50,16 @@ theater-ukraine = Ukrajna (2026)
         Kelet-Ukrajna, a Krím és Dél-Oroszország
         A frontvonal Harkivtól Herszonig ég
         Nyílt szántóföldek, romos városok a fronton
+theater-gulf_of_finland = Finn-öböl (2027)
+    .facts =
+        Dél-Finnország, Észtország és Szentpétervár környéke
+        Kitör a háború a finn és az észt határon
+        Tajga, tavak és szürke északi tenger
+theater-suwalki = Suwałki-folyosó (2027)
+    .facts =
+        Kalinyingrád, Északkelet-Lengyelország, Litvánia és Nyugat-Fehéroroszország
+        Az orosz harapófogó bezárul a Suwałki-folyosó körül
+        Tavak, erdők és szántóföldek
 
 ## Helyzetek (bevetési szabályok)
 
@@ -92,7 +102,7 @@ kind-air-training = Légiharc-gyakorlat
         Az elfogás és a rakéták megtanulása
 kind-drone-defense = Drónvédelem
     .facts =
-        Csak Ukrajnában
+        Csak Ukrajna, Finn-öböl és Suwałki-folyosó
         Geran csapásmérő drónok hullámának megállítása, mielőtt várost vagy atomerőművet érne
         Majd a kilövőhelyük bombázása
 

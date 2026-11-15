@@ -50,6 +50,16 @@ theater-ukraine = Ukraina (2026)
         Ukrainas austrumi, Krima un Krievijas dienvidi
         Frontes līnija deg no Harkivas līdz Hersonai
         Atklāti lauki, frontē sagrautas pilsētas
+theater-gulf_of_finland = Somu līcis (2027)
+    .facts =
+        Dienvidsomija, Igaunija un Sanktpēterburgas apgabals
+        Pie Somijas un Igaunijas robežas izceļas karš
+        Skuju meži, ezeri un pelēka ziemeļu jūra
+theater-suwalki = Suvalku koridors (2027)
+    .facts =
+        Kaļiņingrada, Polijas ziemeļaustrumi, Lietuva un Baltkrievijas rietumi
+        Krievijas knaibles noslēdzas ap Suvalku koridoru
+        Ezeri, meži un aramzeme
 
 ## Situācijas (iesaistīšanās noteikumi)
 
@@ -92,7 +102,7 @@ kind-air-training = Gaisa treniņš
         Apgūt pārtveršanu un raķetes
 kind-drone-defense = Aizsardzība pret droniem
     .facts =
-        Tikai Ukrainā
+        Tikai Ukraina, Somu līcis un Suvalku koridors
         Apturēt Geran triecienu dronu vilni, pirms tas trāpa pilsētai vai atomelektrostacijai
         Pēc tam sabombardēt to palaišanas vietu
 

@@ -22,6 +22,8 @@ pub fn latitude(code: &str) -> f64 {
         "north_cape" => 66.10,
         "persian_gulf" => 26.48,
         "ukraine" => 44.78,
+        "gulf_of_finland" => 57.56,
+        "suwalki" => 52.15,
         "vietnam" => 17.04,
         _ => 45.0,
     };

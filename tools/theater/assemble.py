@@ -32,7 +32,7 @@ geo = common.load(sys.argv[1])
 UNIT_WU = {1: 1, 2: 4, 3: 16, 4: 64}
 MOUNTAIN_BASE = 110  # models.py's mountain ranges
 THEATER_IDS = ["libya", "persian_gulf", "north_cape", "central_europe", "vietnam", "middle_east", "desert_storm", "cuba",
-               "korea", "ukraine"]
+               "korea", "ukraine", "gulf_of_finland", "suwalki"]
 DIM = {1: 256, 2: 64, 3: 16}
 
 LIBRARY = json.load(open(os.path.join(HERE, "libraries", geo.LIBRARY + ".json")))

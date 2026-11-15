@@ -272,7 +272,7 @@ mod tests {
 
     #[test]
     fn changes_once_or_twice_a_day_mostly_fair() {
-        for theater in 0..10 {
+        for theater in 0..12 {
             let mut f = forecast(4242 + theater as u32, theater);
             f.at(1000.0 * DAY);
             let phases = &f.phases;

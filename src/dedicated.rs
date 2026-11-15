@@ -11,8 +11,8 @@ stealth-mission-89 --dedicated [switches]
   --name <text>          server name (shown to the players)
   --port <n>             UDP port (default 28989)
   --max-players <n>      1..64 (default 64)
-  --theater <id>         central_europe, cuba, desert_storm, korea, libya, middle_east,
-                         north_cape, persian_gulf, ukraine, vietnam (default: the saved
+  --theater <id>         central_europe, cuba, desert_storm, gulf_of_finland, korea, libya,
+                         middle_east, north_cape, persian_gulf, suwalki, ukraine, vietnam (default: the saved
                          campaign's, else central_europe; another theater than the saved one starts
                          a new campaign and keeps the old save aside)
   --roe <0..2>           cold war .. conventional war (default 1, new campaigns)

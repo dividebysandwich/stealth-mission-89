@@ -198,10 +198,10 @@ impl CampaignState {
         }
     }
 
-    /// The Ukraine theater: now and then the enemy launches a wave of attack drones at a
+    /// The drone theaters (Ukraine, the Gulf of Finland, the Suwalki Gap): now and then the enemy launches a wave of attack drones at a
     /// friendly city (else an airfield) within their reach.
     pub(crate) fn drone_waves(&mut self, ev: &mut Vec<CampaignEvent>) {
-        if !self.setup.theater_code.eq_ignore_ascii_case("ukraine") {
+        if !stealth_mission::drone_theater(&self.setup.theater_code) {
             return;
         }
         let skill = (self.setup.opponents as usize).min(3);

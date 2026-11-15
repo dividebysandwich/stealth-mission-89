@@ -438,9 +438,6 @@ const KINDS: [MissionKind; 5] = [
     MissionKind::DroneDefense,
 ];
 
-/// Theaters with drone launch sites (drone defense missions).
-const DRONE_THEATERS: [&str; 1] = ["ukraine"];
-
 /// The window size the screens that do not reflow (the debrief, the in-flight menu) are laid out
 /// for (logical pixels, the desktop window's).
 const UI_REFERENCE: egui::Vec2 = egui::vec2(1280.0, 768.0);
@@ -1278,7 +1275,7 @@ pub(crate) fn situation_options(ui: &mut egui::Ui, roe: &mut u8) {
 
 fn mission_options(ui: &mut egui::Ui, state: &mut MenuState) {
     section(ui, t!("section-mission"));
-    let drones = DRONE_THEATERS.contains(&THEATERS[state.theater].0);
+    let drones = stealth_formats::drone_theater(THEATERS[state.theater].0);
     if !drones && state.kind == MissionKind::DroneDefense {
         state.kind = MissionKind::Air;
     }

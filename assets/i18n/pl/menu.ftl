@@ -50,6 +50,16 @@ theater-ukraine = Ukraina (2026)
         Wschodnia Ukraina, Krym i południowa Rosja
         Linia frontu płonie od Charkowa po Chersoń
         Otwarte pola uprawne, zrujnowane miasta na froncie
+theater-gulf_of_finland = Zatoka Fińska (2027)
+    .facts =
+        Południowa Finlandia, Estonia i okolice Petersburga
+        Na granicy fińskiej i estońskiej wybucha wojna
+        Tajga, jeziora i szare północne morze
+theater-suwalki = Przesmyk suwalski (2027)
+    .facts =
+        Obwód królewiecki, północno-wschodnia Polska, Litwa i zachodnia Białoruś
+        Rosyjskie kleszcze zaciskają się na przesmyku suwalskim
+        Jeziora, lasy i pola uprawne
 
 ## Sytuacje (zasady użycia siły)
 
@@ -92,7 +102,7 @@ kind-air-training = Trening powietrze-powietrze
         Nauka przechwytywania i pocisków
 kind-drone-defense = Obrona przed dronami
     .facts =
-        Tylko Ukraina
+        Tylko Ukraina, Zatoka Fińska i przesmyk suwalski
         Zatrzymać falę dronów uderzeniowych Geran, zanim trafi w miasto lub elektrownię jądrową
         Następnie zbombardować ich miejsce startu
 

@@ -51,7 +51,7 @@ and `central_europe_038` is the SAM radar in Central Europe's `central_europe.gl
 | File | Contents | Units |
 |---|---|---|
 | `aircraft` | Aircraft, missiles, bombs, the external stores and their racks, the F-117A's shadow | aircraft units |
-| `central_europe`, `cuba`, `desert_storm`, `korea`, `libya`, `middle_east`, `north_cape`, `persian_gulf`, `vietnam`, `ukraine` | One per theater: terrain features, airbases, buildings, SAM sites, vehicles, ships | scenery level units |
+| `central_europe`, `cuba`, `desert_storm`, `korea`, `libya`, `middle_east`, `north_cape`, `persian_gulf`, `vietnam`, `ukraine`, `gulf_of_finland`, `suwalki` | One per theater: terrain features, airbases, buildings, SAM sites, vehicles, ships | scenery level units |
 | `special_targets` | Stand-ins for recon photo targets | scenery level units |
 | `drones` | The remake's own aircraft (Geran drones, the Mi-24 Hind), numbered from 100 | aircraft units |
 | `aaa` | The remake's low-level air defences (Shilka, S-60, MANPADS, Patriot, Gepard), from 110 | aircraft units |
@@ -816,9 +816,9 @@ A new master file has to be added to the default list in `tools/models/export.sh
 records a checksum in `assets-src/blend/<file>.stamp`. Commit the `.blend`, the `.glb` and the
 `.stamp` together.
 
-The masters for `drones`, `aaa` and the Ukraine theater are rebuilt by their scripts, not
-edited by hand (see the docstrings of `tools/models/drones.py`, `air_defence.py` and
-`tools/theater/build.sh ukraine`).
+The masters for `drones`, `aaa` and the generated theaters (Ukraine, Gulf of Finland, Suwałki Gap)
+are rebuilt by their scripts, not edited by hand (see the docstrings of `tools/models/drones.py`,
+`air_defence.py` and `tools/theater/build.sh ukraine|gulf_of_finland|suwalki`).
 
 Then look at the result in the **model viewer**:
 

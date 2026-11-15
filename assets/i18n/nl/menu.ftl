@@ -50,6 +50,16 @@ theater-ukraine = Oekraïne (2026)
         Oost-Oekraïne, de Krim en Zuid-Rusland
         Het front van Charkiv tot Cherson staat in brand
         Open akkerland, verwoeste steden aan het front
+theater-gulf_of_finland = Finse Golf (2027)
+    .facts =
+        Zuid-Finland, Estland en de regio Sint-Petersburg
+        Oorlog breekt uit aan de Finse en Estse grens
+        Naaldbos, meren en een grijze noordelijke zee
+theater-suwalki = Suwałki-corridor (2027)
+    .facts =
+        Kaliningrad, Noordoost-Polen, Litouwen en West-Wit-Rusland
+        Russische tangen sluiten zich om de Suwałki-corridor
+        Meren, bossen en akkerland
 
 ## Situaties (rules of engagement)
 
@@ -92,7 +102,7 @@ kind-air-training = Luchttraining
         Leer onderscheppen en raketten
 kind-drone-defense = Droneverdediging
     .facts =
-        Alleen Oekraïne
+        Alleen Oekraïne, Finse Golf en Suwałki-corridor
         Stop een golf Geran-aanvalsdrones voor ze een stad of een kerncentrale treffen
         Bombardeer daarna hun lanceerlocatie
 
