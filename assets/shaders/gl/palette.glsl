@@ -1217,6 +1217,10 @@ const float WATER_F0 = 0.02;
 const float WATER_MIRROR = 0.85;
 const float WATER_PATH = 1.6;
 const float WATER_SPARKLE = 7.0;
+const float WATER_GLITTER = 3.5;
+const float WATER_CALM = 0.45;
+const float WATER_ROUGH = 1.5;
+const float WATER_TINT = 0.18;
 
 vec2 water_wave(vec2 p, float t, vec2 d, float len, float slope, float foot) {
     float k = TAU / len;
@@ -1224,14 +1228,21 @@ vec2 water_wave(vec2 p, float t, vec2 d, float len, float slope, float foot) {
     return d * slope * cos(phase) * (1.0 - smoothstep(0.08 * len, 0.4 * len, foot));
 }
 
-vec3 water_normal(vec2 p, float t, float foot) {
+vec3 water_normal(vec2 p, float t, float foot, float rough) {
     vec2 s = water_wave(p, t, vec2(0.8, 0.6), 64.0, 0.045, foot);
     s += water_wave(p, t, vec2(-0.6, 0.8), 40.0, 0.05, foot);
     s += water_wave(p, t, vec2(0.96, -0.28), 20.0, 0.06, foot);
     s += water_wave(p, t, vec2(-0.28, -0.96), 12.8, 0.07, foot);
     s += water_wave(p, t, vec2(0.6, -0.8), 5.12, 0.08, foot);
     s += water_wave(p, t, vec2(-0.92, 0.39), 2.5, 0.09, foot);
+    s *= rough;
     return normalize(vec3(-s.x, 1.0, -s.y));
+}
+
+float water_patches(vec2 p, float t) {
+    float a = perlin(vec3(p.x / 640.0, t * 0.004, p.y / 640.0), int(NOISE_PERIOD / 640.0));
+    float b = perlin(vec3(p.x / 2560.0, t * 0.002 + 7.3, p.y / 2560.0), int(NOISE_PERIOD / 2560.0));
+    return clamp(0.6 * a + 0.8 * b, -1.0, 1.0);
 }
 
 vec2 water_hash(vec3 p) {
@@ -1246,18 +1257,38 @@ float water_sparkle(vec2 p, vec3 v, vec3 n, vec3 l, float foot, float t) {
     return smoothstep(0.9975, 0.9995, dot(r, l));
 }
 
-vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float dark) {
+float water_glitter(vec2 p, vec3 r, vec3 l, float across, float t, float rough) {
+    float cell = exp2(ceil(log2(max(across * 3.0, 0.01))));
+    vec2 c = floor(p / cell);
+    vec2 h = water_hash(vec3(c - 4096.0 * floor(c / 4096.0), 17.0));
+    vec2 at = (c + 0.25 + 0.5 * water_hash(vec3(c - 4096.0 * floor(c / 4096.0), 29.0))) * cell;
+    float dot_ = 1.0 - smoothstep(0.2 * cell, 0.4 * cell, distance(p, at));
+    float phase = fract(t * 1.3 + h.x * 7.0);
+    float flash = smoothstep(0.0, 0.02, phase) * (1.0 - smoothstep(0.03, 0.08, phase));
+    float toward = max(dot(r, l), 0.0);
+    float density = (0.02 + 0.08 * toward * toward) * rough;
+    float on = (h.y < density ? 1.0 : 0.0) * dot_;
+    return on * flash * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
+}
+
+vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, float dark) {
     vec3 v = normalize(dir);
     vec2 p = world.xz + g.noise.xy;
     float t = g.dots.y;
-    vec3 n = water_normal(p, t, foot);
+    float m = water_patches(p, t);
+    float rough = WATER_CALM + (WATER_ROUGH - WATER_CALM) * smoothstep(-0.6, 0.6, m);
+    vec3 n = water_normal(p, t, foot, rough);
     vec3 r = reflect(v, n);
     r.y = abs(r.y);
     float f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
-    vec3 c = mix(rgb, mirrored_sky(r), f * WATER_MIRROR);
+    float mirror = f * WATER_MIRROR * (0.8 + 0.4 * smoothstep(-0.6, 0.6, m));
+    vec3 c = mix(rgb * (1.0 + WATER_TINT * m), mirrored_sky(r), mirror);
     vec3 sparkle = water_sparkle(p, v, n, g.sun.xyz, foot, t) * g.sun.w * sun_colour(g.sun.y)
         + water_sparkle(p, v, n, g.moon.xyz, foot, t) * g.moon.w * MOON_TINT;
-    return c + (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE) * (1.0 - dark);
+    vec3 glitter = water_glitter(p, r, g.sun.xyz, across, t, rough) * g.sun.w * sun_colour(g.sun.y)
+        + water_glitter(p, r, g.moon.xyz, across, t, rough) * g.moon.w * MOON_TINT;
+    return c + (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER)
+        * (1.0 - dark);
 }
 #endif
 
@@ -1442,7 +1473,7 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         rgb = glass_reflection(rgb, face, dir, dark);
     }
     if (g.reflections.y != 0.0 && !is_line && (u_flags & FLAG_WATER) != 0u) {
-        rgb = water_reflection(rgb, v_world, dir, foot, dark);
+        rgb = water_reflection(rgb, v_world, dir, foot, min(length(gdx), length(gdy)), dark);
     }
 #endif
     float dl = length(dir);

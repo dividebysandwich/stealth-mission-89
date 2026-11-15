@@ -1586,6 +1586,11 @@ const WATER_F0: f32 = 0.02;
 const WATER_MIRROR: f32 = 0.85;
 const WATER_PATH: f32 = 1.6;
 const WATER_SPARKLE: f32 = 7.0;
+const WATER_GLITTER: f32 = 3.5;
+// Wave height in the calmest and the roughest patches (`water_patches`), and their tint.
+const WATER_CALM: f32 = 0.45;
+const WATER_ROUGH: f32 = 1.5;
+const WATER_TINT: f32 = 0.18;
 
 fn water_wave(p: vec2<f32>, t: f32, d: vec2<f32>, len: f32, slope: f32, foot: f32) -> vec2<f32> {
     let k = TAU / len;
@@ -1594,14 +1599,24 @@ fn water_wave(p: vec2<f32>, t: f32, d: vec2<f32>, len: f32, slope: f32, foot: f3
     return d * slope * cos(phase) * (1.0 - smoothstep(0.08 * len, 0.4 * len, foot));
 }
 
-fn water_normal(p: vec2<f32>, t: f32, foot: f32) -> vec3<f32> {
+fn water_normal(p: vec2<f32>, t: f32, foot: f32, rough: f32) -> vec3<f32> {
     var s = water_wave(p, t, vec2<f32>(0.8, 0.6), 64.0, 0.045, foot);
     s += water_wave(p, t, vec2<f32>(-0.6, 0.8), 40.0, 0.05, foot);
     s += water_wave(p, t, vec2<f32>(0.96, -0.28), 20.0, 0.06, foot);
     s += water_wave(p, t, vec2<f32>(-0.28, -0.96), 12.8, 0.07, foot);
     s += water_wave(p, t, vec2<f32>(0.6, -0.8), 5.12, 0.08, foot);
     s += water_wave(p, t, vec2<f32>(-0.92, 0.39), 2.5, 0.09, foot);
+    s *= rough;
     return normalize(vec3<f32>(-s.x, 1.0, -s.y));
+}
+
+// Low frequency Perlin noise over the water (about -1..1, two octaves of 640 m and 2.56 km
+// cells drifting slowly): calmer and rougher patches, so the waves don't repeat. The cells
+// divide NOISE_PERIOD, so the patches stay put when the floating origin moves.
+fn water_patches(p: vec2<f32>, t: f32) -> f32 {
+    let a = perlin(vec3<f32>(p.x / 640.0, t * 0.004, p.y / 640.0), i32(NOISE_PERIOD / 640.0));
+    let b = perlin(vec3<f32>(p.x / 2560.0, t * 0.002 + 7.3, p.y / 2560.0), i32(NOISE_PERIOD / 2560.0));
+    return clamp(0.6 * a + 0.8 * b, -1.0, 1.0);
 }
 
 fn water_hash(p: vec3<f32>) -> vec2<f32> {
@@ -1619,20 +1634,43 @@ fn water_sparkle(p: vec2<f32>, v: vec3<f32>, n: vec3<f32>, l: vec3<f32>, foot: f
     return smoothstep(0.9975, 0.9995, dot(r, l));
 }
 
-fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32, dark: f32) -> vec3<f32> {
+// Glitter of a light in direction `l` anywhere on the water, not only where its path is:
+// facets of about two pixels flash briefly, each at its own moment, more of them the more
+// they face the light and the rougher the water.
+fn water_glitter(p: vec2<f32>, r: vec3<f32>, l: vec3<f32>, across: f32, t: f32, rough: f32) -> f32 {
+    let cell = exp2(ceil(log2(max(across * 3.0, 0.01))));
+    let c = floor(p / cell);
+    let h = water_hash(vec3<f32>(c - 4096.0 * floor(c / 4096.0), 17.0));
+    // A round point at a random place in the cell.
+    let at = (c + 0.25 + 0.5 * water_hash(vec3<f32>(c - 4096.0 * floor(c / 4096.0), 29.0))) * cell;
+    let dot_ = 1.0 - smoothstep(0.2 * cell, 0.4 * cell, distance(p, at));
+    let phase = fract(t * 1.3 + h.x * 7.0);
+    let flash = smoothstep(0.0, 0.02, phase) * (1.0 - smoothstep(0.03, 0.08, phase));
+    let toward = max(dot(r, l), 0.0);
+    let density = (0.02 + 0.08 * toward * toward) * rough;
+    let on = select(0.0, 1.0, h.y < density) * dot_;
+    return on * flash * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
+}
+
+fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
     let v = normalize(dir);
     let p = world.xz + globals.noise.xy;
     let t = globals.dots.y;
-    let n = water_normal(p, t, foot);
+    let m = water_patches(p, t);
+    let rough = WATER_CALM + (WATER_ROUGH - WATER_CALM) * smoothstep(-0.6, 0.6, m);
+    let n = water_normal(p, t, foot, rough);
     var r = reflect(v, n);
     r.y = abs(r.y);
     let f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
-    var c = mix(rgb, mirrored_sky(r), f * WATER_MIRROR);
+    let mirror = f * WATER_MIRROR * (0.8 + 0.4 * smoothstep(-0.6, 0.6, m));
+    var c = mix(rgb * (1.0 + WATER_TINT * m), mirrored_sky(r), mirror);
     let sun = globals.sun;
     let moon = globals.moon;
     let sparkle = water_sparkle(p, v, n, sun.xyz, foot, t) * sun.w * sun_colour(sun.y)
         + water_sparkle(p, v, n, moon.xyz, foot, t) * moon.w * MOON_TINT;
-    c += (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE) * (1.0 - dark);
+    let glitter = water_glitter(p, r, sun.xyz, across, t, rough) * sun.w * sun_colour(sun.y)
+        + water_glitter(p, r, moon.xyz, across, t, rough) * moon.w * MOON_TINT;
+    c += (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER) * (1.0 - dark);
     return c;
 }
 
@@ -1928,7 +1966,8 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #endif
 #ifdef PALETTE_WATER
     if (!is_line && (material.flags & FLAG_WATER) != 0u) {
-        rgb = water_reflection(rgb, in.world_position, dir, deriv.foot, dark);
+        let across = min(length(deriv.ground_dx), length(deriv.ground_dy));
+        rgb = water_reflection(rgb, in.world_position, dir, deriv.foot, across, dark);
     }
 #endif
     let d = length(dir);
