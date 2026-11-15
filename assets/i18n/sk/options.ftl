@@ -198,6 +198,10 @@ effect-glass = Odrazy v skle
     .facts =
         Moderné shadery: sklo zrkadlí oblohu
         Kryty kabín, okná a sklenené veže zachytia odlesk slnka a mesiaca
+effect-water = Odrazy na vode
+    .facts =
+        Moderné shadery: more a jazerá zrkadlia oblohu vo vlnách
+        Svetlo slnka a mesiaca sa trbliece na vode
 effect-vapour = Para a prúd od rotora
     .facts =
         Pri ostrých manévroch stopy pary z koncov krídel

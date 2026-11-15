@@ -66,6 +66,7 @@ fm-effect-mist = 地面薄雾
 fm-effect-cloud-shadows = 云影
 fm-effect-ground-detail = 地面细节
 fm-effect-glass = 玻璃反射
+fm-effect-water = 水面反射
 fm-effect-vapour = 蒸汽和尘土
 fm-effect-night-sky = 夜空
 fm-effect-vga = VGA 色彩

@@ -198,6 +198,10 @@ effect-glass = Speglingar i glas
     .facts =
         Moderna shaders: glas speglar himlen
         Cockpitkupor, fönster och glastorn fångar solens och månens glimt
+effect-water = Speglingar i vatten
+    .facts =
+        Moderna shaders: havet och sjöarna speglar himlen i vågorna
+        Solens och månens ljus glittrar på vattnet
 effect-vapour = Ånga och rotorvind
     .facts =
         Vid hårda svängar kondensstrimmor från vingspetsarna

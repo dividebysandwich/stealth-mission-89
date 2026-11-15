@@ -67,6 +67,7 @@ fm-effect-mist = NIEBLA A RAS DE SUELO
 fm-effect-cloud-shadows = SOMBRAS DE NUBES
 fm-effect-ground-detail = DETALLE DEL TERRENO
 fm-effect-glass = REFLEJOS EN EL CRISTAL
+fm-effect-water = REFLEJOS EN EL AGUA
 fm-effect-vapour = VAPOR Y POLVO
 fm-effect-night-sky = CIELO NOCTURNO
 fm-effect-vga = COLORES VGA

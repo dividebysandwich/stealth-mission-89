@@ -266,6 +266,7 @@ impl Page {
                     CityLightDistance,
                     Effect(E::GroundDetail),
                     Effect(E::Glass),
+                    Effect(E::Water),
                     Effect(E::Vga),
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),
@@ -1977,7 +1978,7 @@ fn icon(item: Item) -> Option<char> {
         Item::KeyGuide => '\u{e05f}', // book-open
         Item::EndMission | Item::ConfirmEnd => icon::END_SORTIE,
         Item::LeaveAircraft => icon::KEYS,
-        Item::SwitchSeat => '\u{e1de}', // plane
+        Item::SwitchSeat => '\u{e1de}',           // plane
         Item::Open(Page::Game) => '\u{e1de}',     // plane
         Item::Open(Page::Graphics) => '\u{e11d}', // monitor
         Item::Open(Page::Effects) => '\u{e412}',  // sparkles

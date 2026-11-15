@@ -198,6 +198,10 @@ effect-glass = Reflexos no vidro
     .facts =
         Shaders modernos: o vidro reflete o céu
         Canopis, janelas e torres de vidro captam o brilho do sol e da lua
+effect-water = Reflexos na água
+    .facts =
+        Shaders modernos: o mar e os lagos refletem o céu em suas ondas
+        A luz do sol e da lua cintila na água
 effect-vapour = Vapor e fluxo do rotor
     .facts =
         Em curvas fechadas, rastros de vapor nas pontas das asas

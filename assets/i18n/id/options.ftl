@@ -198,6 +198,10 @@ effect-glass = Pantulan kaca
     .facts =
         Shader modern: kaca memantulkan langit
         Kanopi, jendela, dan menara kaca menangkap kilau matahari dan bulan
+effect-water = Pantulan air
+    .facts =
+        Shader modern: laut dan danau memantulkan langit di ombaknya
+        Cahaya matahari dan bulan berkilauan di air
 effect-vapour = Uap dan aliran rotor
     .facts =
         Saat manuver tajam, jejak uap dari ujung sayap

@@ -67,6 +67,7 @@ fm-effect-mist = ŽEMĖS RŪKAS
 fm-effect-cloud-shadows = DEBESŲ ŠEŠĖLIAI
 fm-effect-ground-detail = ŽEMĖS DETALĖS
 fm-effect-glass = ATSPINDŽIAI STIKLE
+fm-effect-water = ATSPINDŽIAI VANDENYJE
 fm-effect-vapour = GARAI IR DULKĖS
 fm-effect-night-sky = NAKTINIS DANGUS
 fm-effect-vga = VGA SPALVOS

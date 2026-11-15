@@ -198,6 +198,10 @@ effect-glass = Üvegtükröződés
     .facts =
         Modern árnyalók: az üveg tükrözi az eget
         A kabintetők, ablakok és üvegtornyok megcsillantják a nap és a hold fényét
+effect-water = Víztükröződés
+    .facts =
+        Modern árnyalók: a tenger és a tavak hullámai tükrözik az eget
+        A nap és a hold fénye csillog a vízen
 effect-vapour = Pára és rotorleáramlás
     .facts =
         Éles manővereknél párafátyol a szárnyvégeken

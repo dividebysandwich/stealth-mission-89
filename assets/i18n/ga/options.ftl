@@ -198,6 +198,10 @@ effect-glass = Frithchaitheamh gloine
     .facts =
         Scáthóirí nua-aimseartha: léiríonn an ghloine an spéir
         Ceannbhrait, fuinneoga agus túir ghloine ag breith ar loinnir na gréine agus na gealaí
+effect-water = Frithchaitheamh uisce
+    .facts =
+        Scáthóirí nua-aimseartha: léiríonn an fharraige agus na lochanna an spéir ina dtonnta
+        Glioscarnach sholas na gréine agus na gealaí ar an uisce
 effect-vapour = Gal agus sruth rótair
     .facts =
         Le hainlithe géara, rianta gaile ó bharr na sciathán

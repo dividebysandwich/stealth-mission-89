@@ -230,6 +230,10 @@ effect-glass = Glass reflections
     .facts =
         Modern shaders: glass mirrors the sky
         Canopies, windows and glass towers catch the sun's and the moon's glint
+effect-water = Water reflections
+    .facts =
+        Modern shaders: the sea and the lakes mirror the sky in their waves
+        The sun's and the moon's light sparkles on the water
 effect-vapour = Vapour and downwash
     .facts =
         Pulling hard, vapour trails from the wingtips

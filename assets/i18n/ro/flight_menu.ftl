@@ -67,6 +67,7 @@ fm-effect-mist = CEAȚĂ LA SOL
 fm-effect-cloud-shadows = UMBRELE NORILOR
 fm-effect-ground-detail = DETALIILE SOLULUI
 fm-effect-glass = REFLEXII ÎN STICLĂ
+fm-effect-water = REFLEXII ÎN APĂ
 fm-effect-vapour = ABUR ȘI PRAF
 fm-effect-night-sky = CER DE NOAPTE
 fm-effect-vga = CULORI VGA

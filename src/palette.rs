@@ -590,8 +590,13 @@ fn update_globals(
         origin.origin.z.rem_euclid(period) as f32,
         0.0,
     );
-    g.reflections =
-        Vec4::new(crate::palette_material::glass(&settings) as u32 as f32, 0.0, 0.0, 0.0);
+    let on = |b: bool| b as u32 as f32;
+    g.reflections = Vec4::new(
+        on(crate::palette_material::glass(&settings)),
+        on(crate::palette_material::water(&settings)),
+        0.0,
+        0.0,
+    );
     // The northern lights over the North Cape.
     if settings.effects.night_sky {
         g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);

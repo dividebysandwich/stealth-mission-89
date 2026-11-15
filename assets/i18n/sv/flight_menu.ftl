@@ -67,6 +67,7 @@ fm-effect-mist = MARKDIMMA
 fm-effect-cloud-shadows = MOLNSKUGGOR
 fm-effect-ground-detail = MARKDETALJER
 fm-effect-glass = SPEGLINGAR I GLAS
+fm-effect-water = SPEGLINGAR I VATTEN
 fm-effect-vapour = ÅNGA OCH DAMM
 fm-effect-night-sky = NATTHIMMEL
 fm-effect-vga = VGA-FÄRGER

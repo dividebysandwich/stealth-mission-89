@@ -67,6 +67,7 @@ fm-effect-mist = PRIZEMNA MEGLA
 fm-effect-cloud-shadows = SENCE OBLAKOV
 fm-effect-ground-detail = PODROBNOSTI TAL
 fm-effect-glass = ODSEVI V STEKLU
+fm-effect-water = ODSEVI NA VODI
 fm-effect-vapour = PARA IN PRAH
 fm-effect-night-sky = NOČNO NEBO
 fm-effect-vga = BARVE VGA

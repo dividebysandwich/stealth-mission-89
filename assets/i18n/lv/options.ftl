@@ -198,6 +198,10 @@ effect-glass = Atspīdumi stiklā
     .facts =
         Modernie ēnotāji: stikls atspoguļo debesis
         Kabīņu pārsegi, logi un stikla torņi atmirdz saulē un mēnesgaismā
+effect-water = Atspīdumi ūdenī
+    .facts =
+        Modernie ēnotāji: jūra un ezeri viļņos atspoguļo debesis
+        Saules un mēness gaisma mirdz uz ūdens
 effect-vapour = Tvaiks un rotora plūsma
     .facts =
         Asos manevros no spārnu galiem stiepjas tvaika sliedes

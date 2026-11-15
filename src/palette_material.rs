@@ -423,7 +423,7 @@ pub struct Globals {
     /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
     /// `DETAIL_PERIOD`.
     pub ground_detail: Vec4,
-    /// Reflections (`FX_GLASS`): x 1 on glass. Must stay the last field (glvr reads it from
+    /// Reflections (`FX_GLASS`, `FX_WATER`): x 1 on glass, y 1 on water. Must stay the last field (glvr reads it from
     /// the end of the bytes).
     pub reflections: Vec4,
 }
@@ -454,8 +454,11 @@ pub const FX_DETAIL: u32 = 512;
 /// The sky and the sun mirrored in glass: canopies and windows (`Effects::glass`, modern
 /// shading).
 pub const FX_GLASS: u32 = 1024;
+/// The sky mirrored in the water, waves and the sun's sparkle (`Effects::water`, modern
+/// shading).
+pub const FX_WATER: u32 = 2048;
 pub const SKY_VARIANTS: [u32; 4] = [0, FX_STARS, FX_STRATUS, FX_STARS | FX_STRATUS];
-const FX_DEFS: [(u32, &str); 11] = [
+const FX_DEFS: [(u32, &str); 12] = [
     (FX_MIST, "PALETTE_MIST"),
     (FX_CLOUD_SHADOWS, "PALETTE_CLOUD_SHADOWS"),
     (FX_BURST, "PALETTE_BURST"),
@@ -467,6 +470,7 @@ const FX_DEFS: [(u32, &str); 11] = [
     (FX_MODERN, "PALETTE_MODERN"),
     (FX_DETAIL, "PALETTE_DETAIL"),
     (FX_GLASS, "PALETTE_GLASS"),
+    (FX_WATER, "PALETTE_WATER"),
 ];
 
 /// The background's variant for the sky now (`FX_STARS`, `FX_STRATUS`).
@@ -491,6 +495,12 @@ pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
         | bit(modern, FX_MODERN)
         | bit(ground_detail(settings), FX_DETAIL)
         | bit(glass(settings), FX_GLASS)
+        | bit(water(settings), FX_WATER)
+}
+
+/// The water mirrors the sky (`Effects::water`, modern shading only).
+pub fn water(settings: &crate::settings::Settings) -> bool {
+    settings.effects.water && settings.modern_shading
 }
 
 /// Glass mirrors the sky (`Effects::glass`, modern shading only).

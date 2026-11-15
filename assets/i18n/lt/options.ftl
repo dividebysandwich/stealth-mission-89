@@ -198,6 +198,10 @@ effect-glass = Atspindžiai stikle
     .facts =
         Modernūs šešėliuokliai: stiklas atspindi dangų
         Kabinų gaubtai, langai ir stikliniai bokštai sužimba saulėje ir mėnulio šviesoje
+effect-water = Atspindžiai vandenyje
+    .facts =
+        Modernūs šešėliuokliai: jūra ir ežerai bangose atspindi dangų
+        Saulės ir mėnulio šviesa žiba vandenyje
 effect-vapour = Garai ir rotoriaus srautas
     .facts =
         Staigiai manevruojant nuo sparnų galų driekiasi garų pėdsakai

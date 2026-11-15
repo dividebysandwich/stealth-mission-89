@@ -198,6 +198,10 @@ effect-glass = Reflejos en el cristal
     .facts =
         Shaders modernos: el cristal refleja el cielo
         Cabinas, ventanas y torres de cristal captan el destello del sol y de la luna
+effect-water = Reflejos en el agua
+    .facts =
+        Shaders modernos: el mar y los lagos reflejan el cielo en sus olas
+        La luz del sol y de la luna centellea sobre el agua
 effect-vapour = Vapor y corriente descendente
     .facts =
         En virajes cerrados, estelas de vapor en las puntas de ala

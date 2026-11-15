@@ -124,7 +124,7 @@ struct Globals {
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
     ground_detail: vec4<f32>,
-    // Reflections (`PALETTE_GLASS`): x 1 on glass.
+    // Reflections (`PALETTE_GLASS`, `PALETTE_WATER`): x 1 on glass, y 1 on water.
     reflections: vec4<f32>,
 };
 
@@ -1578,6 +1578,64 @@ fn glass_reflection(rgb: vec3<f32>, face: vec3<f32>, dir: vec3<f32>, dark: f32) 
     return mix(rgb, mirrored_sky(r), f) + shine * (1.0 - dark);
 }
 
+// Water (`PALETTE_WATER`, FLAG_WATER polygons): the sky mirrored in waves, more at a glancing
+// angle, the sun's or the moon's path on them and its sparkle. The wavelengths divide
+// NOISE_PERIOD (the waves are placed by `globals.noise.xy`, the floating origin), so they keep
+// their place when the origin moves; waves under a few pixels fade out.
+const WATER_F0: f32 = 0.02;
+const WATER_MIRROR: f32 = 0.85;
+const WATER_PATH: f32 = 1.6;
+const WATER_SPARKLE: f32 = 7.0;
+
+fn water_wave(p: vec2<f32>, t: f32, d: vec2<f32>, len: f32, slope: f32, foot: f32) -> vec2<f32> {
+    let k = TAU / len;
+    // Deep water waves: speed sqrt(g / k).
+    let phase = k * (dot(d, p) - sqrt(9.81 / k) * t);
+    return d * slope * cos(phase) * (1.0 - smoothstep(0.08 * len, 0.4 * len, foot));
+}
+
+fn water_normal(p: vec2<f32>, t: f32, foot: f32) -> vec3<f32> {
+    var s = water_wave(p, t, vec2<f32>(0.8, 0.6), 64.0, 0.045, foot);
+    s += water_wave(p, t, vec2<f32>(-0.6, 0.8), 40.0, 0.05, foot);
+    s += water_wave(p, t, vec2<f32>(0.96, -0.28), 20.0, 0.06, foot);
+    s += water_wave(p, t, vec2<f32>(-0.28, -0.96), 12.8, 0.07, foot);
+    s += water_wave(p, t, vec2<f32>(0.6, -0.8), 5.12, 0.08, foot);
+    s += water_wave(p, t, vec2<f32>(-0.92, 0.39), 2.5, 0.09, foot);
+    return normalize(vec3<f32>(-s.x, 1.0, -s.y));
+}
+
+fn water_hash(p: vec3<f32>) -> vec2<f32> {
+    let h = fract(sin(vec2<f32>(dot(p, vec3<f32>(127.1, 311.7, 74.7)), dot(p, vec3<f32>(269.5, 183.3, 246.1)))) * 43758.5453);
+    return h;
+}
+
+// Sparkle of a light in direction `l`: facets of about two pixels (in power-of-two sizes),
+// each tilted at random and turned eight times a second, flash where they mirror the light.
+fn water_sparkle(p: vec2<f32>, v: vec3<f32>, n: vec3<f32>, l: vec3<f32>, foot: f32, t: f32) -> f32 {
+    let cell = exp2(ceil(log2(max(foot * 2.0, 0.01))));
+    let h = water_hash(vec3<f32>(floor(p / cell), floor(t * 8.0)));
+    let tilt = (h - 0.5) * 0.35;
+    let r = reflect(v, normalize(n + vec3<f32>(tilt.x, 0.0, tilt.y)));
+    return smoothstep(0.9975, 0.9995, dot(r, l));
+}
+
+fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32, dark: f32) -> vec3<f32> {
+    let v = normalize(dir);
+    let p = world.xz + globals.noise.xy;
+    let t = globals.dots.y;
+    let n = water_normal(p, t, foot);
+    var r = reflect(v, n);
+    r.y = abs(r.y);
+    let f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
+    var c = mix(rgb, mirrored_sky(r), f * WATER_MIRROR);
+    let sun = globals.sun;
+    let moon = globals.moon;
+    let sparkle = water_sparkle(p, v, n, sun.xyz, foot, t) * sun.w * sun_colour(sun.y)
+        + water_sparkle(p, v, n, moon.xyz, foot, t) * moon.w * MOON_TINT;
+    c += (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE) * (1.0 - dark);
+    return c;
+}
+
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
 // uniform control flow, which a branch or return on a varying ends.
 struct Deriv {
@@ -1866,6 +1924,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #ifdef PALETTE_GLASS
     if (!is_line && hi == 0xFFu && (lo == 0x90u || lo == 0x91u)) {
         rgb = glass_reflection(rgb, deriv.face, dir, dark);
+    }
+#endif
+#ifdef PALETTE_WATER
+    if (!is_line && (material.flags & FLAG_WATER) != 0u) {
+        rgb = water_reflection(rgb, in.world_position, dir, deriv.foot, dark);
     }
 #endif
     let d = length(dir);

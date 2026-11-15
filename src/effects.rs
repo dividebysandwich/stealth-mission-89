@@ -32,6 +32,9 @@ pub struct Effects {
     /// Modern shading: the sky and the sun's or moon's glint mirrored in glass (canopies,
     /// windows; palette.wgsl `glass_reflection`).
     pub glass: bool,
+    /// Modern shading: the sky mirrored in the sea and the lakes, rippled by waves, the sun's
+    /// and the moon's light sparkling on them (palette.wgsl `water_reflection`).
+    pub water: bool,
     /// Shafts of sunlight through the gaps of a broken deck (sunbeams.rs).
     pub sunbeams: bool,
     /// Wingtip vortices pulling hard, rotor downwash dust and spray (trails.rs, explosions.rs).
@@ -103,6 +106,7 @@ impl Default for Effects {
             cloud_shadows: !HEAVY_EFFECTS_OFF,
             ground_detail: !HEAVY_EFFECTS_OFF,
             glass: !HEAVY_EFFECTS_OFF,
+            water: !HEAVY_EFFECTS_OFF,
             sunbeams: true,
             vapour: !HEAVY_EFFECTS_OFF,
             night_sky: true,
@@ -130,6 +134,7 @@ pub enum Effect {
     CloudShadows,
     GroundDetail,
     Glass,
+    Water,
     Sunbeams,
     Vapour,
     NightSky,
@@ -142,7 +147,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const ALL: [Effect; 19] = [
+    pub const ALL: [Effect; 20] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -153,6 +158,7 @@ impl Effect {
         Effect::CloudShadows,
         Effect::GroundDetail,
         Effect::Glass,
+        Effect::Water,
         Effect::Sunbeams,
         Effect::Vapour,
         Effect::NightSky,
@@ -177,6 +183,7 @@ impl Effect {
             Effect::CloudShadows => "cloud-shadows",
             Effect::GroundDetail => "ground-detail",
             Effect::Glass => "glass",
+            Effect::Water => "water",
             Effect::Sunbeams => "sunbeams",
             Effect::Vapour => "vapour",
             Effect::NightSky => "night-sky",
@@ -216,6 +223,7 @@ impl Effect {
             Effect::CloudShadows => e.cloud_shadows,
             Effect::GroundDetail => e.ground_detail,
             Effect::Glass => e.glass,
+            Effect::Water => e.water,
             Effect::Sunbeams => e.sunbeams,
             Effect::Vapour => e.vapour,
             Effect::NightSky => e.night_sky,
@@ -240,6 +248,7 @@ impl Effect {
             Effect::CloudShadows => e.cloud_shadows = on,
             Effect::GroundDetail => e.ground_detail = on,
             Effect::Glass => e.glass = on,
+            Effect::Water => e.water = on,
             Effect::Sunbeams => e.sunbeams = on,
             Effect::Vapour => e.vapour = on,
             Effect::NightSky => e.night_sky = on,
@@ -330,5 +339,7 @@ mod tests {
         assert!(!Effects::parse("-ground-detail").ground_detail);
         assert_eq!(Effects::default().glass, !HEAVY_EFFECTS_OFF);
         assert!(Effects::parse("none,glass").glass);
+        assert_eq!(Effects::default().water, !HEAVY_EFFECTS_OFF);
+        assert!(!Effects::parse("-water").water);
     }
 }

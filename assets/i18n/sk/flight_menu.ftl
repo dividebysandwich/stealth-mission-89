@@ -67,6 +67,7 @@ fm-effect-mist = PRÍZEMNÁ HMLA
 fm-effect-cloud-shadows = TIENE MRAKOV
 fm-effect-ground-detail = DETAIL TERÉNU
 fm-effect-glass = ODRAZY V SKLE
+fm-effect-water = ODRAZY NA VODE
 fm-effect-vapour = PARA A PRACH
 fm-effect-night-sky = NOČNÁ OBLOHA
 fm-effect-vga = FARBY VGA

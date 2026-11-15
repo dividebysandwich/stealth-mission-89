@@ -198,6 +198,10 @@ effect-glass = Glasspiegelungen
     .facts =
         Moderne Shader: Glas spiegelt den Himmel
         Kanzeln, Fenster und Glastürme fangen das Glitzern von Sonne und Mond ein
+effect-water = Wasserspiegelungen
+    .facts =
+        Moderne Shader: Meer und Seen spiegeln den Himmel in ihren Wellen
+        Das Licht von Sonne und Mond glitzert auf dem Wasser
 effect-vapour = Kondensstreifen und Abwind
     .facts =
         Bei harten Manövern Kondensstreifen an den Flügelspitzen

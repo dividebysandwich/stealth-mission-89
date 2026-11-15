@@ -198,6 +198,10 @@ effect-glass = Odbicia w szkle
     .facts =
         Nowoczesne shadery: szkło odbija niebo
         Osłony kabin, okna i szklane wieżowce łapią blask słońca i księżyca
+effect-water = Odbicia w wodzie
+    .facts =
+        Nowoczesne shadery: morze i jeziora odbijają niebo w falach
+        Światło słońca i księżyca skrzy się na wodzie
 effect-vapour = Para i podmuch wirnika
     .facts =
         Przy ostrych manewrach smugi pary z końców skrzydeł

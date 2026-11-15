@@ -198,6 +198,10 @@ effect-glass = Odsjaji u staklu
     .facts =
         Moderni shaderi: staklo zrcali nebo
         Kabine, prozori i stakleni tornjevi hvataju odsjaj sunca i mjeseca
+effect-water = Odsjaji na vodi
+    .facts =
+        Moderni shaderi: more i jezera zrcale nebo u valovima
+        Svjetlost sunca i mjeseca svjetluca na vodi
 effect-vapour = Para i struja rotora
     .facts =
         Pri oštrim manevrima tragovi pare s vrhova krila

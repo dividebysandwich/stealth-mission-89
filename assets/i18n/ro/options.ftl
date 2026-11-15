@@ -198,6 +198,10 @@ effect-glass = Reflexii în sticlă
     .facts =
         Shadere moderne: sticla oglindește cerul
         Carlingile, ferestrele și turnurile de sticlă prind sclipirea soarelui și a lunii
+effect-water = Reflexii în apă
+    .facts =
+        Shadere moderne: marea și lacurile oglindesc cerul în valuri
+        Lumina soarelui și a lunii sclipește pe apă
 effect-vapour = Vapori și curent de rotor
     .facts =
         La manevre strânse, dâre de vapori la vârfurile aripilor

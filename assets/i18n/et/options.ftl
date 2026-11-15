@@ -198,6 +198,10 @@ effect-glass = Peegeldused klaasis
     .facts =
         Kaasaegsed varjutajad: klaas peegeldab taevast
         Kabiinikuplid, aknad ja klaastornid püüavad päikese ja kuu sära
+effect-water = Peegeldused vees
+    .facts =
+        Kaasaegsed varjutajad: meri ja järved peegeldavad lainetes taevast
+        Päikese- ja kuuvalgus sädeleb veel
 effect-vapour = Aur ja rootori allavool
     .facts =
         Järskudel manöövritel auruvööd tiivaotstest

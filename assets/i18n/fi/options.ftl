@@ -198,6 +198,10 @@ effect-glass = Lasin heijastukset
     .facts =
         Modernit varjostimet: lasi heijastaa taivasta
         Ohjaamokuvut, ikkunat ja lasitornit välkehtivät auringossa ja kuunvalossa
+effect-water = Veden heijastukset
+    .facts =
+        Modernit varjostimet: meri ja järvet heijastavat taivasta aalloissaan
+        Auringon ja kuun valo kimaltelee vedessä
 effect-vapour = Höyry ja roottorivirtaus
     .facts =
         Jyrkissä liikkeissä höyryvanat siivenkärjistä

@@ -67,6 +67,7 @@ fm-effect-mist = 地面の霧
 fm-effect-cloud-shadows = 雲の影
 fm-effect-ground-detail = 地面の細部
 fm-effect-glass = ガラスの反射
+fm-effect-water = 水面の反射
 fm-effect-vapour = 蒸気と砂塵
 fm-effect-night-sky = 夜空
 fm-effect-vga = VGAカラー

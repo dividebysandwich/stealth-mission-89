@@ -198,6 +198,10 @@ effect-glass = Weerspiegelingen in glas
     .facts =
         Moderne shaders: glas weerspiegelt de lucht
         Cockpitkappen, ramen en glazen torens vangen de glinstering van zon en maan
+effect-water = Weerspiegelingen in water
+    .facts =
+        Moderne shaders: zee en meren weerspiegelen de lucht in hun golven
+        Het licht van zon en maan schittert op het water
 effect-vapour = Damp en rotorwind
     .facts =
         Bij scherpe manoeuvres dampsporen van de vleugeltippen

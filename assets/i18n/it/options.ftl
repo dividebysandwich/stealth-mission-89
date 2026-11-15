@@ -198,6 +198,10 @@ effect-glass = Riflessi sul vetro
     .facts =
         Shader moderni: il vetro riflette il cielo
         Tettucci, finestre e torri di vetro colgono il bagliore del sole e della luna
+effect-water = Riflessi sull'acqua
+    .facts =
+        Shader moderni: il mare e i laghi riflettono il cielo nelle onde
+        La luce del sole e della luna scintilla sull'acqua
 effect-vapour = Vapore e flusso del rotore
     .facts =
         Nelle virate strette, scie di vapore dalle estremità alari

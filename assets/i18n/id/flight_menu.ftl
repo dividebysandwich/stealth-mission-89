@@ -67,6 +67,7 @@ fm-effect-mist = KABUT TANAH
 fm-effect-cloud-shadows = BAYANGAN AWAN
 fm-effect-ground-detail = DETAIL TANAH
 fm-effect-glass = PANTULAN KACA
+fm-effect-water = PANTULAN AIR
 fm-effect-vapour = UAP DAN DEBU
 fm-effect-night-sky = LANGIT MALAM
 fm-effect-vga = WARNA VGA

@@ -76,6 +76,7 @@ fm-effect-mist = GROUND MIST
 fm-effect-cloud-shadows = CLOUD SHADOWS
 fm-effect-ground-detail = GROUND DETAIL
 fm-effect-glass = GLASS REFLECTIONS
+fm-effect-water = WATER REFLECTIONS
 fm-effect-vapour = VAPOUR AND DUST
 fm-effect-night-sky = NIGHT SKY
 fm-effect-vga = VGA COLOURS

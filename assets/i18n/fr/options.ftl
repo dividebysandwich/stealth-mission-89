@@ -201,6 +201,10 @@ effect-glass = Reflets sur le verre
     .facts =
         Shaders modernes : le verre reflète le ciel
         Verrières, fenêtres et tours de verre captent l'éclat du soleil et de la lune
+effect-water = Reflets sur l'eau
+    .facts =
+        Shaders modernes : la mer et les lacs reflètent le ciel dans leurs vagues
+        La lumière du soleil et de la lune scintille sur l'eau
 effect-vapour = Vapeur et souffle du rotor
     .facts =
         En virage serré, de la vapeur se forme aux bouts d'aile

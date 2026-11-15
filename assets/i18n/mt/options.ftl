@@ -198,6 +198,10 @@ effect-glass = Riflessjonijiet fil-ħġieġ
     .facts =
         Shaders moderni: il-ħġieġ jirrifletti s-sema
         Kanopji, twieqi u torrijiet tal-ħġieġ jaqbdu d-dija tax-xemx u tal-qamar
+effect-water = Riflessjonijiet fl-ilma
+    .facts =
+        Shaders moderni: il-baħar u l-lagi jirriflettu s-sema fil-mewġ
+        Id-dawl tax-xemx u tal-qamar jilma fuq l-ilma
 effect-vapour = Fwar u fluss tar-rotor
     .facts =
         F'manuvri ħorox, linji ta' fwar mill-ponot tal-ġwienaħ

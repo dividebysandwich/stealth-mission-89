@@ -198,6 +198,10 @@ effect-glass = Odsevi v steklu
     .facts =
         Sodobni senčilniki: steklo zrcali nebo
         Pokrovi kabin, okna in stekleni stolpi ujamejo blesk sonca in lune
+effect-water = Odsevi na vodi
+    .facts =
+        Sodobni senčilniki: morje in jezera zrcalijo nebo v valovih
+        Svetloba sonca in lune se blešči na vodi
 effect-vapour = Para in tok rotorja
     .facts =
         Pri ostrih manevrih sledi pare s konic kril

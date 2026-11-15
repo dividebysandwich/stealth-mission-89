@@ -67,6 +67,7 @@ fm-effect-mist = MGŁA PRZY ZIEMI
 fm-effect-cloud-shadows = CIENIE CHMUR
 fm-effect-ground-detail = SZCZEGÓŁY PODŁOŻA
 fm-effect-glass = ODBICIA W SZKLE
+fm-effect-water = ODBICIA W WODZIE
 fm-effect-vapour = PARA I KURZ
 fm-effect-night-sky = NOCNE NIEBO
 fm-effect-vga = KOLORY VGA
