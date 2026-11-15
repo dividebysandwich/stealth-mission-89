@@ -37,6 +37,7 @@ mod dots;
 mod effects;
 mod eng_page;
 mod explosions;
+mod ffb;
 mod fires;
 mod flashes;
 mod flight;
@@ -338,6 +339,7 @@ pub fn run() {
         // The atmosphere effects (effects.rs).
         .add_plugins((
             shake::ShakePlugin,
+            ffb::FfbPlugin,
             flashes::FlashesPlugin,
             barrage::BarragePlugin,
             goggles::GogglesPlugin,

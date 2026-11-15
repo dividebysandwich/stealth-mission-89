@@ -483,6 +483,8 @@ pub struct InputConfig {
     pub device_defaults: bool,
     /// The built-in layouts' bindings the player cleared.
     pub cleared_defaults: Vec<Slot>,
+    /// Force feedback strength on an FFB base (`ffb`): 0 off .. 1 full.
+    pub ffb_strength: f32,
     /// Mapping version (`migrate`); files from before the versions read 0.
     #[serde(default)]
     pub version: u32,
@@ -512,6 +514,7 @@ impl Default for InputConfig {
             mouse: default_mouse_mappings(),
             device_defaults: true,
             cleared_defaults: Vec::new(),
+            ffb_strength: 0.8,
             version: VERSION,
         }
     }
@@ -1037,6 +1040,14 @@ impl Hotas {
             nozzle_seen: None,
             zoom_seen: None,
         }
+    }
+
+    /// A connected force feedback base (`ffb::BASES`).
+    pub fn ffb_base(&self) -> Option<&Device> {
+        let base = |d: &&Device| {
+            d.usb_id.is_some_and(|id| crate::ffb::BASES.iter().any(|b| (b.0, b.1) == id))
+        };
+        self.devices.values().find(base)
     }
 
     /// Connected devices, sorted by key.

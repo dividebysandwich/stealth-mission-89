@@ -473,6 +473,19 @@ pub fn show(
                         .on_hover_text(t!("input-gamepad.facts"));
                     ui.checkbox(&mut config.device_defaults, t!("input-device-defaults"))
                         .on_hover_text(t!("input-device-defaults.facts"));
+                    if crate::ffb::SUPPORTED && hotas.ffb_base().is_some() {
+                        let mut percent = config.ffb_strength * 100.0;
+                        ui.horizontal(|ui| {
+                            ui.label(t!("input-ffb"));
+                            let slider = egui::Slider::new(&mut percent, 0.0..=100.0)
+                                .step_by(5.0)
+                                .fixed_decimals(0)
+                                .suffix("%");
+                            if ui.add(slider).on_hover_text(t!("input-ffb.facts")).changed() {
+                                config.ffb_strength = percent / 100.0;
+                            }
+                        });
+                    }
                     match &dialog.status {
                         Some(text) => ui.colored_label(AMBER, text),
                         None => ui.label(egui::RichText::new(t!("input-help")).color(DIM)),

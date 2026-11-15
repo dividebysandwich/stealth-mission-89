@@ -113,6 +113,15 @@ ab_glyph = "0.2"
 winit = "0.30"
 
 [target.'cfg(windows)'.dependencies]
+# Force feedback on FFB joystick bases (src/ffb.rs), as gilrs reads them: Windows.Gaming.Input.
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Gaming_Input",
+    "Gaming_Input_ForceFeedback",
+    "Win32_System_WinRT",
+] }
+windows-numerics = "0.3"
 # Closes the console window of a game started from Explorer (src/win_console.rs); reads the
 # FreeTrack head tracking shared memory (src/headtrack.rs); names joysticks (src/hotas.rs).
 windows-sys = { version = "0.61", features = [
