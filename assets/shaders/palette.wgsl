@@ -1645,6 +1645,9 @@ fn water_hash(p: vec3<f32>) -> vec2<f32> {
 const SPARKLE_LIFE: f32 = 3.0;
 // Glitter: each dot's cycle (seconds); it shows for the first half of it, fading in and out.
 const GLITTER_CYCLE: f32 = 5.0;
+// Glitter fades out between these distances from the eye (metres).
+const GLITTER_NEAR: f32 = 800.0;
+const GLITTER_FAR: f32 = 4000.0;
 
 // A cell's number, kept small for the hash.
 fn water_cell(c: vec2<f32>) -> vec2<f32> {
@@ -1702,7 +1705,8 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32,
         + water_sparkle(p, v, n, moon.xyz, foot, t) * moon.w * MOON_TINT;
     let glitter = water_glitter(p, r, sun.xyz, across, t, rough) * sun.w * sun_colour(sun.y)
         + water_glitter(p, r, moon.xyz, across, t, rough) * moon.w * MOON_TINT;
-    c += (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER) * (1.0 - dark);
+    let far = 1.0 - smoothstep(GLITTER_NEAR, GLITTER_FAR, length(dir));
+    c += (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER * far) * (1.0 - dark);
     return c;
 }
 

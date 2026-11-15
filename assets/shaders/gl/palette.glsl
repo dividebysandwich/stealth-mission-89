@@ -1262,6 +1262,8 @@ vec2 water_hash(vec3 p) {
 
 const float SPARKLE_LIFE = 3.0;
 const float GLITTER_CYCLE = 5.0;
+const float GLITTER_NEAR = 800.0;
+const float GLITTER_FAR = 4000.0;
 
 vec2 water_cell(vec2 c) {
     return c - 4096.0 * floor(c / 4096.0);
@@ -1312,7 +1314,8 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, 
         + water_sparkle(p, v, n, g.moon.xyz, foot, t) * g.moon.w * MOON_TINT;
     vec3 glitter = water_glitter(p, r, g.sun.xyz, across, t, rough) * g.sun.w * sun_colour(g.sun.y)
         + water_glitter(p, r, g.moon.xyz, across, t, rough) * g.moon.w * MOON_TINT;
-    return c + (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER)
+    float far = 1.0 - smoothstep(GLITTER_NEAR, GLITTER_FAR, length(dir));
+    return c + (glint(r, 250.0) * WATER_PATH + sparkle * WATER_SPARKLE + glitter * WATER_GLITTER * far)
         * (1.0 - dark);
 }
 #endif
