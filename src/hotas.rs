@@ -748,7 +748,9 @@ impl Device {
         let axes = STANDARD_AXES
             .iter()
             .filter_map(|&(g, a)| Some((pad.axis_code(g)?.into_u32(), GamepadInput::Axis(a))));
-        let standard = buttons.chain(axes).collect();
+        let dpad = STANDARD_DPAD_AXES.iter().filter_map(|&(g, bs)| Some((pad.axis_code(g)?, bs)));
+        let dpad = dpad.flat_map(|(c, bs)| bs.map(|b| (c.into_u32(), GamepadInput::Button(b))));
+        let standard = buttons.chain(axes).chain(dpad).collect();
         let profile = usb_id.and_then(crate::hotas_profiles::find);
         if let Some(p) = profile {
             info!("joystick {}: built-in layout {}", pad.name(), p.name);
@@ -824,7 +826,7 @@ fn web_name(id: &str) -> &str {
 
 /// The inputs the standard gamepad layout uses (`crate::input::read_gamepad`), as gilrs and
 /// Bevy name them.
-const STANDARD_BUTTONS: [(gilrs::Button, GamepadButton); 8] = [
+const STANDARD_BUTTONS: [(gilrs::Button, GamepadButton); 15] = [
     (gilrs::Button::South, GamepadButton::South),
     (gilrs::Button::East, GamepadButton::East),
     (gilrs::Button::North, GamepadButton::North),
@@ -833,6 +835,19 @@ const STANDARD_BUTTONS: [(gilrs::Button, GamepadButton); 8] = [
     (gilrs::Button::RightTrigger, GamepadButton::RightTrigger),
     (gilrs::Button::LeftTrigger2, GamepadButton::LeftTrigger2),
     (gilrs::Button::RightTrigger2, GamepadButton::RightTrigger2),
+    (gilrs::Button::Select, GamepadButton::Select),
+    (gilrs::Button::LeftThumb, GamepadButton::LeftThumb),
+    (gilrs::Button::RightThumb, GamepadButton::RightThumb),
+    (gilrs::Button::DPadUp, GamepadButton::DPadUp),
+    (gilrs::Button::DPadDown, GamepadButton::DPadDown),
+    (gilrs::Button::DPadLeft, GamepadButton::DPadLeft),
+    (gilrs::Button::DPadRight, GamepadButton::DPadRight),
+];
+/// The D-pad as a hat's two axes (gilrs' fallback layout makes a joystick's point-of-view hat
+/// one): binding the hat frees both of its directions.
+const STANDARD_DPAD_AXES: [(gilrs::Axis, [GamepadButton; 2]); 2] = [
+    (gilrs::Axis::DPadX, [GamepadButton::DPadLeft, GamepadButton::DPadRight]),
+    (gilrs::Axis::DPadY, [GamepadButton::DPadUp, GamepadButton::DPadDown]),
 ];
 const STANDARD_AXES: [(gilrs::Axis, GamepadAxis); 3] = [
     (gilrs::Axis::LeftStickX, GamepadAxis::LeftStickX),

@@ -237,16 +237,21 @@ change is saved at once.
   left button's cockpit clicks are actions too, *Mouse look* and *Click cockpit control*, so you can
   move them to other buttons, keys or joystick buttons and give the mouse buttons other actions.
   *DEFAULT KEYS* restores the mouse buttons as well.
-- A standard **gamepad** works without mapping: left stick to fly, right stick for the rudder,
-  triggers for the throttle, face buttons for fire, gun, weapon select and bay doors, Start for the
-  menu. Binding one of these buttons to an action takes it over (some joysticks report a button,
+- A standard **gamepad** (Xbox, PlayStation, Switch Pro, 8BitDo and the others SDL knows) works
+  without mapping: left stick to fly, right stick for the rudder, triggers for the throttle, face
+  buttons for fire, gun, weapon select and bay doors, Back / Select for the gear, the stick clicks
+  for flare (left) and chaff (right), the D-pad for targets (up: nearest, down: drop the locks,
+  right: next, left: designate), Start for the menu. Binding one of these buttons to an action takes it over (some joysticks report a button,
   often button 9, as the gamepad's Start: bind it to free it from the menu).
 - **Known joysticks** work without mapping too (*Built-in layouts for known joysticks*, on by
   default; Linux and Windows): the Thrustmaster T.16000M, TWCS, T.Flight HOTAS X / 4, T.Flight
-  Stick X, HOTAS Warthog stick and throttle and T-Rudder; the Logitech Extreme 3D Pro; the Saitek /
+  Stick X, HOTAS Warthog stick and throttle, Viper TQS and T-Rudder; the Honeycomb Bravo throttle
+  quadrant (lever 1 the throttle, lever 2 the Harrier's nozzles; either move of the gear lever
+  toggles the gear); the MOZA AB6 base (the stick only); the VKB T-Rudder; the Logitech Extreme 3D Pro; the Saitek /
   Logitech X52, X52 Pro, X-55 and X56 sticks and throttles and Pro Flight rudder pedals; the VKB
   Gladiator NXT EVO and Gunfighter SCG / MCG; the Virpil Constellation Alpha (Prime) right grips on
-  the MongoosT-50CM3 and WarBRD-D bases (in their factory configuration); the CH Fighterstick,
+  the MongoosT-50CM3 and WarBRD-D bases, the AeroMax-R, the MongoosT-50CM3 throttle and the
+  MongoosT-50CM3 base with another grip (the stick only), all in their factory configuration; the CH Fighterstick,
   Combatstick, Pro Throttle and Pro Pedals. Their axes fly, steer and throttle; the trigger fires
   (the gun, with a weapon release button for the selected weapon), the point-of-view hat looks
   around (on the Warthog it trims), a targeting hat locks (up: nearest target, right: next target,

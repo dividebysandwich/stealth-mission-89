@@ -820,6 +820,132 @@ pub static PROFILES: &[Profile] = &[
             (act(A::PanLeft), B(29)),
         ],
     },
+    Profile {
+        name: "Virpil AeroMax-R",
+        ids: &[(0x3344, 0x44c4)],
+        // Z: the twist, Rx and Ry the mini stick, Rz the brake lever.
+        axes: &[X, Y, Z, Rx, Ry, Rz],
+        bind_axes: &[
+            (C::Roll, X, false),
+            (C::Pitch, Y, false),
+            (C::Yaw, Z, false),
+            (C::SlewX, Rx, false),
+            (C::SlewY, Ry, false),
+        ],
+        buttons: &[
+            (GUN, B(1)),
+            (act(A::SelectWeapon), B(5)),
+            (act(A::LockCursor), B(6)),
+            // Thumb hat 7 to 11, hat 1 14 to 18, hat 2 20 to 24 (push, up, right, down, left).
+            (act(A::PanUp), B(8)),
+            (act(A::PanRight), B(9)),
+            (act(A::PanDown), B(10)),
+            (act(A::PanLeft), B(11)),
+            (act(A::Ptt), B(12)),
+            (act(A::FireWeapon), B(13)),
+            (act(A::SwapSoi), B(14)),
+            (act(A::NearestTarget), B(15)),
+            (act(A::SelectTarget), B(16)),
+            (act(A::ClearTarget), B(17)),
+            (act(A::DesignateTarget), B(18)),
+            (act(A::Brakes), B(19)),
+            (act(A::Flare), B(21)),
+            (act(A::Decoy), B(22)),
+            (act(A::Chaff), B(23)),
+            (act(A::Ecm), B(24)),
+        ],
+    },
+    // Thrustmaster's TARGET header (target.tmh) and Viper TQS manual.
+    Profile {
+        name: "Thrustmaster Viper TQS",
+        ids: &[(0x044f, 0x0412)],
+        // X and Y: the radar cursor, Rx the top knob, Ry the side thumb wheel.
+        axes: &[X, Y, Z, Rx, Ry],
+        bind_axes: &[(C::Throttle, Z, false), (C::SlewX, X, false), (C::SlewY, Y, false)],
+        buttons: &[(act(A::SwapSoi), B(5)), (act(A::LockCursor), B(12))],
+    },
+    // The ids from an MSFS profile export and SimHub diagnostics; the grips' buttons are not
+    // documented, so only the stick.
+    Profile {
+        name: "MOZA AB6 FFB Base",
+        ids: &[(0x346e, 0x1002)],
+        axes: &[X, Y],
+        bind_axes: &[(C::Roll, X, false), (C::Pitch, Y, false)],
+        buttons: &[],
+    },
+    // SDL's flight stick list; the grip on the base varies, so only the stick.
+    Profile {
+        name: "Virpil MongoosT-50CM3 Stick",
+        ids: &[(0x3344, 0x4391), (0x3344, 0x8390)],
+        axes: &[X, Y],
+        bind_axes: &[(C::Roll, X, false), (C::Pitch, Y, false)],
+        buttons: &[],
+    },
+    // Buzzec/virpil (buttons), owners' DCS profiles (axes); right and left hand.
+    Profile {
+        name: "Virpil MongoosT-50CM3 Throttle",
+        ids: &[(0x3344, 0x0194), (0x3344, 0x8194)],
+        // X and Y: the mini stick, Z the slider, Rx and Ry the left and right levers, Rz the
+        // flaps lever.
+        axes: &[X, Y, Z, Rx, Ry, Rz],
+        bind_axes: &[(C::Throttle, Rx, false), (C::SlewX, X, false), (C::SlewY, Y, false)],
+        buttons: &[
+            (act(A::Ptt), B(4)),
+            // Index hat: 8 push, 9 down, 10 right, 11 up, 12 left.
+            (act(A::Ecm), B(8)),
+            (act(A::Chaff), B(9)),
+            (act(A::Decoy), B(10)),
+            (act(A::Flare), B(11)),
+            (act(A::LockCursor), B(13)),
+            (act(A::Brakes), B(21)),
+            // Upper hat: 22 push, 23 down, 24 back, 25 up, 26 forward.
+            (act(A::SwapSoi), B(22)),
+            (act(A::ClearTarget), B(23)),
+            (act(A::DesignateTarget), B(24)),
+            (act(A::NearestTarget), B(25)),
+            (act(A::SelectTarget), B(26)),
+            // Lower hat up and down.
+            (act(A::CameraZoomOut), B(28)),
+            (act(A::CameraZoomIn), B(30)),
+            // B1 to B6 on the base.
+            (act(A::Gear), B(38)),
+            (act(A::Flaps), B(39)),
+            (act(A::BayDoors), B(40)),
+            (act(A::Autopilot), B(41)),
+            (act(A::MasterCaution), B(42)),
+        ],
+    },
+    // A raw HID dump of the Mk.IV (VKB lets owners change the ids).
+    Profile {
+        name: "VKB T-Rudder",
+        ids: &[(0x231d, 0x011f)],
+        // Ry and Rz: the virtual toe brakes.
+        axes: &[Rx, Ry, Rz],
+        bind_axes: &[(C::Yaw, Rx, false)],
+        buttons: &[],
+    },
+    // github.com/RoystonS/honeycomb (bravo-controls.md); the ids from BetterBravoLights.
+    Profile {
+        name: "Honeycomb Bravo Throttle Quadrant",
+        ids: &[(0x294b, 0x1901)],
+        // Levers 1 to 6: Y, X, Rz, Ry, Rx, Z.
+        axes: &[X, Y, Z, Rx, Ry, Rz],
+        bind_axes: &[(C::Throttle, Y, false), (C::Nozzle, X, false)],
+        buttons: &[
+            (act(A::Autopilot), B(8)),
+            // The autopilot knob turned.
+            (act(A::CameraZoomIn), B(13)),
+            (act(A::CameraZoomOut), B(14)),
+            // The flaps lever pushed down (it springs back).
+            (act(A::Flaps), B(15)),
+            // The trim wheel.
+            (act(A::TrimNoseDown), B(22)),
+            (act(A::TrimNoseUp), B(23)),
+            // The gear lever holds 31 up, 32 down: either move toggles the gear.
+            (act(A::Gear), B(31)),
+            (act(A::Gear), B(32)),
+        ],
+    },
 ];
 
 /// The X-55 and X56 sticks: 1 trigger, 2 A (fire), 3 B, 4 C (the thumb stick's push on the
@@ -915,10 +1041,11 @@ mod tests {
             for &(_, hid, _) in p.bind_axes {
                 assert!(used.insert(format!("{hid:?}")), "{}: {hid:?} twice", p.name);
             }
+            // A target twice only for a lever's two positions (the gear's).
             let mut targets = HashSet::new();
             let mut inputs = HashSet::new();
             for &(t, input) in p.buttons {
-                assert!(targets.insert(t), "{}: {t:?} twice", p.name);
+                assert!(targets.insert(t) || t == act(A::Gear), "{}: {t:?} twice", p.name);
                 assert!(inputs.insert(input), "{}: {input:?} twice", p.name);
             }
             for platform in [Platform::Linux, Platform::Windows] {

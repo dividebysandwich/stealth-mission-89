@@ -763,9 +763,12 @@ pub fn stronger(current: f32, v: f32) -> f32 {
     if v.abs() > current.abs() { v } else { current }
 }
 
-/// Gamepad: left stick = stick, right stick X = rudder, triggers = throttle (a helicopter's
-/// collective, moving as far as they are pulled), A = fire, B = gun, Start = the menu (unless
-/// turned off in the input mapping). An input the mapping binds does only what it is bound to:
+/// Gamepad (every controller SDL's database maps: Xbox, PlayStation, Switch Pro, 8BitDo...):
+/// left stick = stick, right stick X = rudder, triggers = throttle (a helicopter's collective,
+/// moving as far as they are pulled), A = fire, B = gun, Y = next weapon, X = bay doors, Back /
+/// Select = gear, the stick clicks = flare (left) and chaff (right), the D-pad targets as the
+/// right VR thumbstick (up: nearest, down: drop the locks, right: next, left: designate), Start =
+/// the menu (unless turned off in the input mapping). An input the mapping binds does only what it is bound to:
 /// a joystick's button the gamepad mapping calls Start (often button 9) can be bound to anything.
 fn read_gamepad(
     gamepads: Query<(&Gamepad, Option<&Name>)>,
@@ -832,6 +835,13 @@ fn read_gamepad(
             (GamepadButton::LeftTrigger, Action::ThrottleDown),
             (GamepadButton::North, Action::SelectWeapon),
             (GamepadButton::West, Action::BayDoors),
+            (GamepadButton::Select, Action::Gear),
+            (GamepadButton::LeftThumb, Action::Flare),
+            (GamepadButton::RightThumb, Action::Chaff),
+            (GamepadButton::DPadUp, Action::NearestTarget),
+            (GamepadButton::DPadDown, Action::ClearTarget),
+            (GamepadButton::DPadRight, Action::SelectTarget),
+            (GamepadButton::DPadLeft, Action::DesignateTarget),
         ] {
             if pad.just_pressed(b) && free(GamepadInput::Button(b)) {
                 actions.write(ActionEvent(a));
