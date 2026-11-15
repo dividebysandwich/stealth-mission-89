@@ -1599,13 +1599,28 @@ fn water_wave(p: vec2<f32>, t: f32, d: vec2<f32>, len: f32, slope: f32, foot: f3
     return d * slope * cos(phase) * (1.0 - smoothstep(0.08 * len, 0.4 * len, foot));
 }
 
+// A wave's height in irregular groups: smooth noise over a few of its wavelengths, drifting.
+fn water_group(p: vec2<f32>, t: f32, len: f32, i: u32) -> f32 {
+    let q = p / (len * 5.0) + vec2<f32>(f32(i) * 31.7 + t * 0.03, f32(i) * 17.1 - t * 0.02);
+    return 0.3 + 1.4 * value_noise(q, 11u + i);
+}
+
 fn water_normal(p: vec2<f32>, t: f32, foot: f32, rough: f32) -> vec3<f32> {
-    var s = water_wave(p, t, vec2<f32>(0.8, 0.6), 64.0, 0.045, foot);
-    s += water_wave(p, t, vec2<f32>(-0.6, 0.8), 40.0, 0.05, foot);
-    s += water_wave(p, t, vec2<f32>(0.96, -0.28), 20.0, 0.06, foot);
-    s += water_wave(p, t, vec2<f32>(-0.28, -0.96), 12.8, 0.07, foot);
-    s += water_wave(p, t, vec2<f32>(0.6, -0.8), 5.12, 0.08, foot);
-    s += water_wave(p, t, vec2<f32>(-0.92, 0.39), 2.5, 0.09, foot);
+    // Against a regular lattice of highlights: the waves' positions warped by smooth noise
+    // (48 m cells, drifting), each wave's height in its own groups, a fine noise ripple on top.
+    let q = p / 48.0 + vec2<f32>(t * 0.03, -t * 0.02);
+    let w = p + (vec2<f32>(value_noise(q, 3u), value_noise(q + 17.3, 5u)) - 0.5) * 14.0;
+    var s = water_wave(w, t, vec2<f32>(0.8, 0.6), 64.0, 0.045 * water_group(p, t, 64.0, 0u), foot);
+    s += water_wave(w, t, vec2<f32>(-0.6, 0.8), 40.0, 0.05 * water_group(p, t, 40.0, 1u), foot);
+    s += water_wave(w, t, vec2<f32>(0.96, -0.28), 20.0, 0.06 * water_group(p, t, 20.0, 2u), foot);
+    s += water_wave(w, t, vec2<f32>(-0.28, -0.96), 12.8, 0.07 * water_group(p, t, 12.8, 3u), foot);
+    s += water_wave(w, t, vec2<f32>(0.6, -0.8), 5.12, 0.08 * water_group(p, t, 5.12, 4u), foot);
+    s += water_wave(w, t, vec2<f32>(-0.92, 0.39), 2.5, 0.09 * water_group(p, t, 2.5, 5u), foot);
+    // The ripple: the slope of 3 m value noise, gone under a few pixels.
+    let r = p / 3.0 + vec2<f32>(t * 0.2, t * 0.13);
+    let r0 = value_noise(r, 7u);
+    let ripple = vec2<f32>(value_noise(r + vec2<f32>(0.15, 0.0), 7u) - r0, value_noise(r + vec2<f32>(0.0, 0.15), 7u) - r0);
+    s += ripple * 0.5 * (1.0 - smoothstep(0.3, 1.5, foot));
     s *= rough;
     return normalize(vec3<f32>(-s.x, 1.0, -s.y));
 }
@@ -1625,31 +1640,48 @@ fn water_hash(p: vec3<f32>) -> vec2<f32> {
 }
 
 // Sparkle of a light in direction `l`: facets of about two pixels (in power-of-two sizes),
-// each tilted at random and turned eight times a second, flash where they mirror the light.
+// each living `SPARKLE_LIFE` seconds from its own moment, tilted at random for that life, fading
+// in and out (sin²) where it mirrors the light, at its own strength.
+const SPARKLE_LIFE: f32 = 3.0;
+// Glitter: each dot's cycle (seconds); it shows for the first half of it, fading in and out.
+const GLITTER_CYCLE: f32 = 5.0;
+
+// A cell's number, kept small for the hash.
+fn water_cell(c: vec2<f32>) -> vec2<f32> {
+    return c - 4096.0 * floor(c / 4096.0);
+}
+
 fn water_sparkle(p: vec2<f32>, v: vec3<f32>, n: vec3<f32>, l: vec3<f32>, foot: f32, t: f32) -> f32 {
     let cell = exp2(ceil(log2(max(foot * 2.0, 0.01))));
-    let h = water_hash(vec3<f32>(floor(p / cell), floor(t * 8.0)));
+    let c = water_cell(floor(p / cell));
+    let age = t / SPARKLE_LIFE + water_hash(vec3<f32>(c, 41.0)).x;
+    let h = water_hash(vec3<f32>(c, floor(age)));
     let tilt = (h - 0.5) * 0.35;
     let r = reflect(v, normalize(n + vec3<f32>(tilt.x, 0.0, tilt.y)));
-    return smoothstep(0.9975, 0.9995, dot(r, l));
+    let fade = sin(PI * fract(age));
+    let strength = 0.35 + 0.65 * water_hash(vec3<f32>(c, floor(age) + 0.5)).x;
+    return smoothstep(0.996, 0.9995, dot(r, l)) * fade * fade * strength;
 }
 
 // Glitter of a light in direction `l` anywhere on the water, not only where its path is:
-// facets of about two pixels flash briefly, each at its own moment, more of them the more
-// they face the light and the rougher the water.
+// round dots of about two pixels, each showing for half its `GLITTER_CYCLE` from its own moment
+// (fading in and out), at a new place in its cell and its own strength each time, more of
+// them the more they face the light and the rougher the water.
 fn water_glitter(p: vec2<f32>, r: vec3<f32>, l: vec3<f32>, across: f32, t: f32, rough: f32) -> f32 {
     let cell = exp2(ceil(log2(max(across * 3.0, 0.01))));
-    let c = floor(p / cell);
-    let h = water_hash(vec3<f32>(c - 4096.0 * floor(c / 4096.0), 17.0));
-    // A round point at a random place in the cell.
-    let at = (c + 0.25 + 0.5 * water_hash(vec3<f32>(c - 4096.0 * floor(c / 4096.0), 29.0))) * cell;
+    let k = floor(p / cell);
+    let c = water_cell(k);
+    let age = t / GLITTER_CYCLE + water_hash(vec3<f32>(c, 17.0)).x;
+    let life = floor(age);
+    let h = water_hash(vec3<f32>(c, life + 0.25));
+    let at = (k + 0.25 + 0.5 * water_hash(vec3<f32>(c, life + 0.75))) * cell;
     let dot_ = 1.0 - smoothstep(0.2 * cell, 0.4 * cell, distance(p, at));
-    let phase = fract(t * 1.3 + h.x * 7.0);
-    let flash = smoothstep(0.0, 0.02, phase) * (1.0 - smoothstep(0.03, 0.08, phase));
+    let shown = sin(PI * clamp(2.0 * fract(age), 0.0, 1.0));
     let toward = max(dot(r, l), 0.0);
-    let density = (0.02 + 0.08 * toward * toward) * rough;
+    let density = (0.012 + 0.05 * toward * toward) * rough;
     let on = select(0.0, 1.0, h.y < density) * dot_;
-    return on * flash * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
+    let strength = 0.3 + 0.7 * fract(h.x * 13.0);
+    return on * shown * shown * strength * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
 }
 
 fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {

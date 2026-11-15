@@ -1228,13 +1228,24 @@ vec2 water_wave(vec2 p, float t, vec2 d, float len, float slope, float foot) {
     return d * slope * cos(phase) * (1.0 - smoothstep(0.08 * len, 0.4 * len, foot));
 }
 
+float water_group(vec2 p, float t, float len, uint i) {
+    vec2 q = p / (len * 5.0) + vec2(float(i) * 31.7 + t * 0.03, float(i) * 17.1 - t * 0.02);
+    return 0.3 + 1.4 * value_noise(q, 11u + i);
+}
+
 vec3 water_normal(vec2 p, float t, float foot, float rough) {
-    vec2 s = water_wave(p, t, vec2(0.8, 0.6), 64.0, 0.045, foot);
-    s += water_wave(p, t, vec2(-0.6, 0.8), 40.0, 0.05, foot);
-    s += water_wave(p, t, vec2(0.96, -0.28), 20.0, 0.06, foot);
-    s += water_wave(p, t, vec2(-0.28, -0.96), 12.8, 0.07, foot);
-    s += water_wave(p, t, vec2(0.6, -0.8), 5.12, 0.08, foot);
-    s += water_wave(p, t, vec2(-0.92, 0.39), 2.5, 0.09, foot);
+    vec2 q = p / 48.0 + vec2(t * 0.03, -t * 0.02);
+    vec2 w = p + (vec2(value_noise(q, 3u), value_noise(q + 17.3, 5u)) - 0.5) * 14.0;
+    vec2 s = water_wave(w, t, vec2(0.8, 0.6), 64.0, 0.045 * water_group(p, t, 64.0, 0u), foot);
+    s += water_wave(w, t, vec2(-0.6, 0.8), 40.0, 0.05 * water_group(p, t, 40.0, 1u), foot);
+    s += water_wave(w, t, vec2(0.96, -0.28), 20.0, 0.06 * water_group(p, t, 20.0, 2u), foot);
+    s += water_wave(w, t, vec2(-0.28, -0.96), 12.8, 0.07 * water_group(p, t, 12.8, 3u), foot);
+    s += water_wave(w, t, vec2(0.6, -0.8), 5.12, 0.08 * water_group(p, t, 5.12, 4u), foot);
+    s += water_wave(w, t, vec2(-0.92, 0.39), 2.5, 0.09 * water_group(p, t, 2.5, 5u), foot);
+    vec2 r = p / 3.0 + vec2(t * 0.2, t * 0.13);
+    float r0 = value_noise(r, 7u);
+    vec2 ripple = vec2(value_noise(r + vec2(0.15, 0.0), 7u) - r0, value_noise(r + vec2(0.0, 0.15), 7u) - r0);
+    s += ripple * 0.5 * (1.0 - smoothstep(0.3, 1.5, foot));
     s *= rough;
     return normalize(vec3(-s.x, 1.0, -s.y));
 }
@@ -1249,26 +1260,40 @@ vec2 water_hash(vec3 p) {
     return fract(sin(vec2(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)))) * 43758.5453);
 }
 
+const float SPARKLE_LIFE = 3.0;
+const float GLITTER_CYCLE = 5.0;
+
+vec2 water_cell(vec2 c) {
+    return c - 4096.0 * floor(c / 4096.0);
+}
+
 float water_sparkle(vec2 p, vec3 v, vec3 n, vec3 l, float foot, float t) {
     float cell = exp2(ceil(log2(max(foot * 2.0, 0.01))));
-    vec2 h = water_hash(vec3(floor(p / cell), floor(t * 8.0)));
+    vec2 c = water_cell(floor(p / cell));
+    float age = t / SPARKLE_LIFE + water_hash(vec3(c, 41.0)).x;
+    vec2 h = water_hash(vec3(c, floor(age)));
     vec2 tilt = (h - 0.5) * 0.35;
     vec3 r = reflect(v, normalize(n + vec3(tilt.x, 0.0, tilt.y)));
-    return smoothstep(0.9975, 0.9995, dot(r, l));
+    float fade = sin(PI * fract(age));
+    float strength = 0.35 + 0.65 * water_hash(vec3(c, floor(age) + 0.5)).x;
+    return smoothstep(0.996, 0.9995, dot(r, l)) * fade * fade * strength;
 }
 
 float water_glitter(vec2 p, vec3 r, vec3 l, float across, float t, float rough) {
     float cell = exp2(ceil(log2(max(across * 3.0, 0.01))));
-    vec2 c = floor(p / cell);
-    vec2 h = water_hash(vec3(c - 4096.0 * floor(c / 4096.0), 17.0));
-    vec2 at = (c + 0.25 + 0.5 * water_hash(vec3(c - 4096.0 * floor(c / 4096.0), 29.0))) * cell;
+    vec2 k = floor(p / cell);
+    vec2 c = water_cell(k);
+    float age = t / GLITTER_CYCLE + water_hash(vec3(c, 17.0)).x;
+    float life = floor(age);
+    vec2 h = water_hash(vec3(c, life + 0.25));
+    vec2 at = (k + 0.25 + 0.5 * water_hash(vec3(c, life + 0.75))) * cell;
     float dot_ = 1.0 - smoothstep(0.2 * cell, 0.4 * cell, distance(p, at));
-    float phase = fract(t * 1.3 + h.x * 7.0);
-    float flash = smoothstep(0.0, 0.02, phase) * (1.0 - smoothstep(0.03, 0.08, phase));
+    float shown = sin(PI * clamp(2.0 * fract(age), 0.0, 1.0));
     float toward = max(dot(r, l), 0.0);
-    float density = (0.02 + 0.08 * toward * toward) * rough;
+    float density = (0.012 + 0.05 * toward * toward) * rough;
     float on = (h.y < density ? 1.0 : 0.0) * dot_;
-    return on * flash * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
+    float strength = 0.3 + 0.7 * fract(h.x * 13.0);
+    return on * shown * shown * strength * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.1, l.y);
 }
 
 vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, float dark) {
