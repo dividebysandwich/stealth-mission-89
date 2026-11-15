@@ -155,6 +155,9 @@ fn despawn_camera(mut commands: Commands, q: Query<Entity, With<TrackCamera>>) {
 }
 
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
+/// A console camera looking ahead streams the ground this far ahead of it in detail (m).
+const CONSOLE_AHEAD: f64 = 1200.0;
+
 pub(crate) fn update_camera(
     combat: Option<Res<Combat>>,
     mfd: Res<MfdState>,
@@ -190,8 +193,12 @@ pub(crate) fn update_camera(
         }
         info.live = false;
         aim(&mut tf, &mut pos, &mut proj, eo.dir, eo.up, eo.eye, eo.zoom, eo.wide);
-        if sites.pod != eo.target {
-            sites.pod = eo.target;
+        // The ground it looks at is streamed in in detail; looking ahead (a drone's forward
+        // camera), the ground ahead of it.
+        let flat = Vec3::new(eo.dir.x, 0.0, eo.dir.z).normalize_or_zero().as_dvec3();
+        let site = eo.target.or_else(|| (!eo.idle).then(|| eo.eye + flat * CONSOLE_AHEAD));
+        if sites.pod != site {
+            sites.pod = site;
         }
         return;
     }

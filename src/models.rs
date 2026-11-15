@@ -327,13 +327,18 @@ fn update_camera_distance(
         Or<(With<crate::recon::ReconCamera>, With<crate::campaign::UnitCamera>)>,
     >,
     track_info: Option<Res<crate::mfd::TrackCam>>,
+    console: Option<Res<crate::station::ConsoleEo>>,
     mut models: Query<(&GlobalTransform, &mut CameraDistance)>,
 ) {
     let Some((_, cam)) = cameras.iter().find(|(c, _)| c.is_active) else { return };
     let cam = cam.translation();
-    let zoomed = track.iter().find(|(c, _)| c.is_active).zip(track_info).map(|((_, t), info)| {
-        (t.translation(), crate::mfd::cam_magnification(info.zoom.saturating_sub(1)))
-    });
+    // A console's camera (a mast's, a drone's) has its own zoom step.
+    let zoom = console.map(|c| c.zoom).or(track_info.map(|i| i.zoom.saturating_sub(1)));
+    let zoomed = track
+        .iter()
+        .find(|(c, _)| c.is_active)
+        .zip(zoom)
+        .map(|((_, t), z)| (t.translation(), crate::mfd::cam_magnification(z)));
     let views: Vec<(Vec3, f32)> = zoomed
         .into_iter()
         .chain(recon.iter().filter(|(c, _)| c.is_active).map(|(_, t)| (t.translation(), 1.0)))
