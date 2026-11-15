@@ -515,7 +515,7 @@ fn build(sc: &Scenery, key: Key, step: f64, fields: u16) -> Option<ChunkMesh> {
                     && (dy - b / span).abs() <= 1
             })
         }) {
-            let g = content::build(sc, bx + dx, by + dy, Tier::Fields, 1.0);
+            let g = content::build(sc, bx + dx, by + dy, Tier::Fields, 1.0, 1.0);
             let off = Vec2::new(dx as f32 + 0.5, dy as f32 + 0.5) * size;
             for (&colour, tris) in &g.flat {
                 for t in tris.as_chunks::<3>().0 {

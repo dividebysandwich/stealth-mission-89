@@ -896,7 +896,7 @@ fn stream_blocks(
             break;
         }
         n += 1;
-        let geom = content::build(&scenery, bx, by, tier, ranges.houses);
+        let geom = content::build(&scenery, bx, by, tier, ranges.houses, ranges.trees);
         let c = centre(bx, by, tier.block_size());
         let e = spawn_block(
             &mut commands,

@@ -1,6 +1,7 @@
 //! Automatic scenery detail in VR: a governor watches the frame times against the headset's
 //! frame rate and steps a scenery budget level, which shortens the scenery's streaming ranges,
-//! thins the distant towns and shortens the models' detail level ranges. Graphics settings stay
+//! thins the distant towns and the crossed distant trees and shortens the models' detail level
+//! ranges. Graphics settings stay
 //! as chosen; the scenery gives way so they run at the headset's rate.
 //!
 //! The rate is learnt from the frames (the best two-second average, at least `MIN_HZ`):
@@ -33,6 +34,9 @@ pub struct Ranges {
     pub lod: f32,
     /// Share of the houses the town tier draws.
     pub houses: f64,
+    /// Share of its trees the crossed distant tree tier draws (`content::DISTANT_TREES` of
+    /// them at full detail).
+    pub trees: f64,
 }
 
 impl Ranges {
@@ -61,17 +65,19 @@ const FULL: Ranges = Ranges {
     lights: 7000.0,
     lod: 1.0,
     houses: 1.0,
+    trees: 1.0,
 };
 const LEAST: Ranges = Ranges {
     main: 500.0,
     town: 3000.0,
     detail: 400.0,
     far: 800.0,
-    distant: 2400.0,
+    distant: 1600.0,
     fields: 10_000.0,
     lights: 3000.0,
     lod: 0.4,
     houses: 0.3,
+    trees: 0.5,
 };
 
 pub fn ranges(level: u8) -> Ranges {
@@ -92,6 +98,7 @@ fn interpolate(level: u8, full: Ranges) -> Ranges {
         lights: mix(full.lights, LEAST.lights),
         lod: mix(full.lod as f64, LEAST.lod as f64) as f32,
         houses: mix(full.houses, LEAST.houses),
+        trees: mix(full.trees, LEAST.trees),
     }
 }
 
@@ -106,8 +113,9 @@ impl SceneryBudget {
         ranges(self.level)
     }
 
-    /// The selected town and farmland ranges are the VR governor's full-detail ceiling.
-    /// Detailed buildings, all tree tiers and model LODs retain their existing ranges.
+    /// The selected town and farmland ranges are the VR governor's full-detail ceiling. The
+    /// detailed buildings, the tree tiers (the cone trees' ranges and the crossed distant
+    /// trees' range and share) and the model LODs follow the governor's level alone.
     pub fn scenery_ranges(&self, settings: &Settings) -> Ranges {
         let range = crate::settings::SCENERY_DISTANCE_RANGE;
         let town = settings.scenery_distance.clamp(*range.start(), *range.end()) as f64;
@@ -369,6 +377,21 @@ mod tests {
         settings.scenery_distance = 18_500.0;
         let middle = SceneryBudget::default().scenery_ranges(&settings);
         assert_eq!((middle.town, middle.fields), (18_500.0, 27_000.0));
+    }
+
+    #[test]
+    fn trees_give_way_with_the_level() {
+        for level in 1..=MAX {
+            let (a, b) = (ranges(level - 1), ranges(level));
+            for tier in [Tier::Detail, Tier::Far, Tier::Distant] {
+                assert!(b.radius(tier) < a.radius(tier));
+            }
+            assert!(b.trees < a.trees);
+        }
+        assert_eq!((ranges(0).radius(Tier::Distant), ranges(0).trees), (6000.0, 1.0));
+        let least = ranges(MAX);
+        assert!((least.radius(Tier::Distant) - 1600.0).abs() < 1e-6);
+        assert!((least.trees - 0.5).abs() < 1e-9);
     }
 
     const P: f32 = 1.0 / 72.0;

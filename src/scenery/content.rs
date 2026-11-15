@@ -141,8 +141,10 @@ pub(super) fn dir3(d: DVec2) -> Vec3 {
 }
 
 /// Block (`bx`, `by`) of `tier`; `houses`: the share of the small buildings the town tier
-/// draws (the automatic scenery detail thins them).
-pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
+/// draws, `trees`: the share of its trees the distant tier draws (the automatic scenery detail
+/// thins both).
+pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64, trees_share: f64) -> Geom {
+    let crossed = DISTANT_TREES * trees_share.clamp(0.05, 1.0);
     let f = Frame::new(bx, by, tier.block_size());
     let mut g = Geom::default();
     match tier {
@@ -174,9 +176,9 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64) -> Geom {
                 return g;
             }
         }
-        Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near),
-        Tier::Far => trees(sc, &f, &mut g, TreeLod::Far),
-        Tier::Distant => trees(sc, &f, &mut g, TreeLod::Distant),
+        Tier::Detail => trees(sc, &f, &mut g, TreeLod::Near, crossed),
+        Tier::Far => trees(sc, &f, &mut g, TreeLod::Far, crossed),
+        Tier::Distant => trees(sc, &f, &mut g, TreeLod::Distant, crossed),
         Tier::Fields => {
             let min = DVec2::new(bx as f64, by as f64) * FIELD_BLOCK;
             farmland(sc, &Frame::around(min + FIELD_BLOCK * 0.5), min, min + FIELD_BLOCK, &mut g);
@@ -259,21 +261,21 @@ mod light_tests {
     #[test]
     fn city_lights_are_owned_once_and_build_no_surfaces() {
         let sc = scenery();
-        let lights = build(&sc, 0, 0, Tier::Lights, 1.0);
+        let lights = build(&sc, 0, 0, Tier::Lights, 1.0, 1.0);
         assert!(lights.solid.is_empty() && lights.flat.is_empty() && lights.lines.is_empty());
         assert!(lights.papi.is_empty() && lights.strobes.is_empty());
         let count = |colour: u8| lights.lamps.iter().filter(|(c, _)| *c == colour).count();
         assert_eq!(count(LAMP), 6);
         assert_eq!(count(BEACON), 3); // One tower beacon, two on the mast.
         assert!(count(WINDOW) >= 2);
-        assert_eq!(lights.lamps, build(&sc, 0, 0, Tier::Lights, 0.3).lamps);
+        assert_eq!(lights.lamps, build(&sc, 0, 0, Tier::Lights, 0.3, 1.0).lamps);
         for y in 0..2 {
             for x in 0..2 {
-                assert!(build(&sc, x, y, Tier::Main, 1.0).lamps.is_empty());
+                assert!(build(&sc, x, y, Tier::Main, 1.0, 1.0).lamps.is_empty());
             }
         }
-        assert!(build(&sc, 0, 0, Tier::Town, 1.0).lamps.is_empty());
-        assert!(build(&sc, 1, 0, Tier::Lights, 1.0).lamps.is_empty());
+        assert!(build(&sc, 0, 0, Tier::Town, 1.0, 1.0).lamps.is_empty());
+        assert!(build(&sc, 1, 0, Tier::Lights, 1.0, 1.0).lamps.is_empty());
     }
 
     #[test]
@@ -282,7 +284,7 @@ mod light_tests {
         let f = Frame::new(0, 0, Tier::Lights.block_size());
         let mut complete = Geom::default();
         building(&sc.net.buildings[0], &f, &mut complete);
-        let city = build(&sc, 0, 0, Tier::Lights, 1.0);
+        let city = build(&sc, 0, 0, Tier::Lights, 1.0, 1.0);
         let windows =
             |g: &Geom| g.lamps.iter().filter(|(c, _)| *c == WINDOW).copied().collect::<Vec<_>>();
         assert_eq!(windows(&city), windows(&complete));
@@ -294,9 +296,9 @@ mod light_tests {
     #[test]
     fn clearing_a_tower_removes_its_windows_and_beacon() {
         let mut sc = scenery();
-        let before = build(&sc, 0, 0, Tier::Lights, 1.0);
+        let before = build(&sc, 0, 0, Tier::Lights, 1.0, 1.0);
         sc.clearings.push((sc.net.buildings[0].p, 45.0));
-        let after = build(&sc, 0, 0, Tier::Lights, 1.0);
+        let after = build(&sc, 0, 0, Tier::Lights, 1.0, 1.0);
         assert!(after.lamps.iter().all(|(c, _)| *c != WINDOW));
         assert_eq!(after.lamps.iter().filter(|(c, _)| *c == BEACON).count(), 2);
         let streets =
@@ -1120,12 +1122,14 @@ pub(super) fn tree_near(sc: &Scenery, p: DVec2, r: f64) -> bool {
     cells.filter_map(|(gx, gy)| tree_in_cell(sc, style, gx, gy)).any(|(q, ..)| q.distance(p) < r)
 }
 
-/// The distant tier draws this tree (a fixed share of them, by position).
-fn distant_keeps(seed: u64, p: DVec2) -> bool {
-    hash(seed ^ 0xD157, p.x as i64, p.y as i64, 3) % 1000 < (DISTANT_TREES * 1000.0) as u64
+/// The distant tier draws this tree (`share` of them, by position: a smaller share keeps a
+/// subset of a larger one's).
+fn distant_keeps(seed: u64, p: DVec2, share: f64) -> bool {
+    hash(seed ^ 0xD157, p.x as i64, p.y as i64, 3) % 1000 < (share * 1000.0) as u64
 }
 
-fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, lod: TreeLod) {
+/// The trees of a block; `share`: the distant tier's share of them.
+fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, lod: TreeLod, share: f64) {
     let Some(style) = &sc.style else { return };
     let n = (f.size / TREE_GRID) as i64;
     let (gx0, gy0) = ((f.min.x / TREE_GRID) as i64, (f.min.y / TREE_GRID) as i64);
@@ -1135,7 +1139,7 @@ fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, lod: TreeLod) {
             let Some((p, grows, mut rng)) = grid_tree(sc, style, gx0 + i, gy0 + j) else {
                 continue;
             };
-            if lod == TreeLod::Distant && !distant_keeps(style.seed, p) {
+            if lod == TreeLod::Distant && !distant_keeps(style.seed, p, share) {
                 continue;
             }
             let c = f.at(p, 0.0);
@@ -1147,21 +1151,21 @@ fn trees(sc: &Scenery, f: &Frame, g: &mut Geom, lod: TreeLod) {
                     0.0,
                     c + Vec3::Y * s * 1.2,
                 ),
-                Grows::Tree(kind, h, phase) => tree_at(g, &mut rng, kind, c, h, phase, lod),
+                Grows::Tree(kind, h, phase) => tree_at(g, &mut rng, kind, c, h, phase, lod, share),
             }
         }
     }
     if let Some(land) = style.farmland {
-        belt_trees(sc, land, f, g, lod);
+        belt_trees(sc, land, f, g, lod, share);
     }
 }
 
 /// Two staggered rows of trees along the shelterbelts crossing a block.
-fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, lod: TreeLod) {
+fn belt_trees(sc: &Scenery, land: &Farmland, f: &Frame, g: &mut Geom, lod: TreeLod, share: f64) {
     let seed = sc.style.as_ref().map_or(0, |s| s.seed);
     belt_tree_list(sc, land, f.min, f.max(), |p, kind, h, phase, rng| {
-        if lod != TreeLod::Distant || distant_keeps(seed, p) {
-            tree_at(g, rng, kind, f.at(p, 0.0), h, phase, lod);
+        if lod != TreeLod::Distant || distant_keeps(seed, p, share) {
+            tree_at(g, rng, kind, f.at(p, 0.0), h, phase, lod, share);
         }
     });
 }
@@ -1244,11 +1248,22 @@ fn crown(kind: Tree, h: f32) -> f32 {
     }
 }
 
-/// One tree of height `h` at ground point `c`, turned by `phase`.
-fn tree_at(g: &mut Geom, rng: &mut Rng, kind: Tree, c: Vec3, h: f32, phase: f32, lod: TreeLod) {
+/// One tree of height `h` at ground point `c`, turned by `phase`; `share`: the distant tier's
+/// share of the trees.
+#[allow(clippy::too_many_arguments)]
+fn tree_at(
+    g: &mut Geom,
+    rng: &mut Rng,
+    kind: Tree,
+    c: Vec3,
+    h: f32,
+    phase: f32,
+    lod: TreeLod,
+    share: f64,
+) {
     let far = lod != TreeLod::Near;
-    // The distant tier's fewer trees cover as much ground.
-    let w = if lod == TreeLod::Distant { (1.0 / DISTANT_TREES).sqrt() as f32 } else { 1.0 };
+    // The distant tier's fewer trees cover as much ground (up to twice as wide).
+    let w = if lod == TreeLod::Distant { (1.0 / share).sqrt().min(2.0) as f32 } else { 1.0 };
     if lod == TreeLod::Distant {
         return cross_tree(g, rng, kind, c, h, phase, w);
     }
