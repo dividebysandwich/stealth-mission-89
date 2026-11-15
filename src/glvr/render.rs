@@ -911,7 +911,12 @@ impl Renderer {
             // SAFETY: the context is current.
             unsafe {
                 self.gl.enable(glow::BLEND);
-                self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                self.gl.blend_func_separate(
+                    glow::SRC_ALPHA,
+                    glow::ONE_MINUS_SRC_ALPHA,
+                    glow::ZERO,
+                    glow::ONE,
+                );
                 self.gl.depth_mask(false);
             }
             self.use_program(&self.lit);
@@ -925,7 +930,12 @@ impl Renderer {
             // SAFETY: the context is current.
             unsafe {
                 self.gl.enable(glow::BLEND);
-                self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                self.gl.blend_func_separate(
+                    glow::SRC_ALPHA,
+                    glow::ONE_MINUS_SRC_ALPHA,
+                    glow::ZERO,
+                    glow::ONE,
+                );
                 self.gl.depth_mask(false);
                 self.gl.disable(glow::CULL_FACE);
             }
@@ -943,7 +953,12 @@ impl Renderer {
             // SAFETY: the context is current.
             unsafe {
                 self.gl.enable(glow::BLEND);
-                self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                self.gl.blend_func_separate(
+                    glow::SRC_ALPHA,
+                    glow::ONE_MINUS_SRC_ALPHA,
+                    glow::ZERO,
+                    glow::ONE,
+                );
                 self.gl.depth_mask(false);
                 self.gl.disable(glow::DEPTH_TEST);
             }
@@ -1335,7 +1350,11 @@ impl Renderer {
             self.use_program(p);
             if coverage {
                 // SAFETY: the context is current.
-                unsafe { self.gl.enable(glow::SAMPLE_ALPHA_TO_COVERAGE) };
+                // (Alpha to one: the eye image stays opaque for the compositor.)
+                unsafe {
+                    self.gl.enable(glow::SAMPLE_ALPHA_TO_COVERAGE);
+                    self.gl.enable(glow::SAMPLE_ALPHA_TO_ONE);
+                };
             }
             for g in groups {
                 self.draw_group(p, g);
@@ -1343,7 +1362,10 @@ impl Renderer {
             }
             if coverage {
                 // SAFETY: the context is current.
-                unsafe { self.gl.disable(glow::SAMPLE_ALPHA_TO_COVERAGE) };
+                unsafe {
+                    self.gl.disable(glow::SAMPLE_ALPHA_TO_COVERAGE);
+                    self.gl.disable(glow::SAMPLE_ALPHA_TO_ONE);
+                };
             }
         }
         if volumetric {
@@ -1355,7 +1377,12 @@ impl Renderer {
             // SAFETY: the context is current.
             unsafe {
                 self.gl.enable(glow::BLEND);
-                self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                self.gl.blend_func_separate(
+                    glow::SRC_ALPHA,
+                    glow::ONE_MINUS_SRC_ALPHA,
+                    glow::ZERO,
+                    glow::ONE,
+                );
                 self.gl.depth_mask(false);
             }
             let p = &programs.cloud[lit];
@@ -1370,7 +1397,12 @@ impl Renderer {
             // SAFETY: the context is current.
             unsafe {
                 self.gl.enable(glow::BLEND);
-                self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                self.gl.blend_func_separate(
+                    glow::SRC_ALPHA,
+                    glow::ONE_MINUS_SRC_ALPHA,
+                    glow::ZERO,
+                    glow::ONE,
+                );
                 self.gl.depth_mask(false);
             }
             let p = &programs.dot;
@@ -1413,7 +1445,15 @@ impl Renderer {
                                 glow::ONE_MINUS_SRC_ALPHA,
                             );
                         } else {
-                            self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                            // The eye image's alpha stays opaque: the headset's compositor
+                            // shows black through where it drops (dark rims round the
+                            // billboard clouds' puffs).
+                            self.gl.blend_func_separate(
+                                glow::SRC_ALPHA,
+                                glow::ONE_MINUS_SRC_ALPHA,
+                                glow::ZERO,
+                                glow::ONE,
+                            );
                         }
                     }
                     current = Some(i);
