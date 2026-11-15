@@ -188,6 +188,10 @@ effect-mist = Talajköd
         Vékony a sivatagokban, viharban nincs
 effect-cloud-shadows = Felhőárnyékok
     .facts = Modern shaderek: a felhők árnyéka az alatta lévő talajon
+effect-ground-detail = Talajrészletek
+    .facts =
+        Modern árnyalók: a sík talaj közelről megmutatja a felszínét
+        Vetéssorok a földeken, csomók a fűben, szemcsézettség a betonon és az aszfalton
 effect-vapour = Pára és rotorleáramlás
     .facts =
         Éles manővereknél párafátyol a szárnyvégeken

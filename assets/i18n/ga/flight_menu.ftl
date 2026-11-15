@@ -65,6 +65,7 @@ fm-effect-nvg = EFFAIT NA SPÉACLAÍ
 fm-effect-snow = SNEACHTA
 fm-effect-mist = CEO TALÚN
 fm-effect-cloud-shadows = SCÁTHANNA SCAMALL
+fm-effect-ground-detail = MIONSONRAÍ NA TALÚN
 fm-effect-vapour = AUR AGUS DÚST
 fm-effect-night-sky = SPÉIR NA HOÍCHE
 fm-effect-vga = DATHANNA VGA

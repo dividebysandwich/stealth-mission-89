@@ -64,6 +64,7 @@ fm-effect-nvg = ЕФЕКТ ОКУЛЯРІВ
 fm-effect-snow = СНІГ
 fm-effect-mist = ПРИЗЕМНИЙ ТУМАН
 fm-effect-cloud-shadows = ТІНІ ХМАР
+fm-effect-ground-detail = ДЕТАЛІ ПОВЕРХНІ
 fm-effect-vapour = ПАРА І ПИЛ
 fm-effect-night-sky = НІЧНЕ НЕБО
 fm-effect-vga = КОЛЬОРИ VGA

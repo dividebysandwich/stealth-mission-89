@@ -83,9 +83,10 @@ struct Program {
 /// The world's programs: palette objects, the background sphere, dot lights and the effects
 /// (`Effect::ALL`'s order), for both eyes or for one view.
 struct Programs {
-    /// Without and with the lighting options (`LIT`).
-    object: [Program; 2],
-    background: [Program; 2],
+    /// Without and with the lighting options (`LIT`); objects and the background also
+    /// without and with the ground detail (`DETAIL`, the second pair).
+    object: [Program; 4],
+    background: [Program; 4],
     cloud: [Program; 2],
     dot: Program,
     effects: Vec<Program>,
@@ -104,9 +105,14 @@ impl Programs {
                 compile(gl, PALETTE_SHADER, &format!("{one}{kind}\n#define LIT"))?,
             ])
         };
+        let four = |kind: &str| -> Result<[Program; 4], String> {
+            let [a, b] = both(kind)?;
+            let [c, d] = both(&format!("{kind}\n#define DETAIL"))?;
+            Ok([a, b, c, d])
+        };
         Ok(Programs {
-            object: both("")?,
-            background: both("#define BACKGROUND")?,
+            object: four("")?,
+            background: four("#define BACKGROUND")?,
             cloud: both("#define CLOUD")?,
             dot: compile(gl, PALETTE_SHADER, &format!("{one}#define DOT"))?,
             effects,
@@ -235,6 +241,10 @@ pub struct Stats {
 /// Byte offset of `Globals.ambient.w` (the lighting flags): after the palette, the sky and
 /// ground bands, params and sun (266 vec4s).
 const AMBIENT_W: usize = 266 * 16 + 12;
+
+/// Byte offset of `Globals.ground_detail.x` (the ground detail on) from the end: the last
+/// vec4.
+const GROUND_DETAIL_FROM_END: usize = 16;
 
 /// Words (4 bytes) of an instance in the instance buffer: the model matrix and the mesh tag.
 const INSTANCE_WORDS: usize = 17;
@@ -1281,6 +1291,14 @@ impl Renderer {
             .get(AMBIENT_W..AMBIENT_W + 4)
             .is_some_and(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]) != 0.0)
             as usize;
+        // The ground detail's variants while it is on (`Globals.ground_detail.x`).
+        let detail = list
+            .globals
+            .len()
+            .checked_sub(GROUND_DETAIL_FROM_END)
+            .and_then(|at| list.globals.get(at..at + 4))
+            .is_some_and(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]) != 0.0)
+            as usize;
         // The palette meshes, instanced by mesh and material.
         let mut instances = Vec::new();
         let world =
@@ -1306,10 +1324,10 @@ impl Renderer {
         // Opaque: the world, the cloud surfaces, the stratus sheets (alpha to coverage), the
         // background sphere behind them.
         for (p, groups, coverage) in [
-            (&programs.object[lit], &world, false),
+            (&programs.object[lit + 2 * detail], &world, false),
             (&programs.cloud[lit], &clouds[0], false),
             (&programs.cloud[lit], &clouds[1], true),
-            (&programs.background[lit], &background, false),
+            (&programs.background[lit + 2 * detail], &background, false),
         ] {
             if groups.is_empty() {
                 continue;

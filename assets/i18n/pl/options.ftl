@@ -188,6 +188,10 @@ effect-mist = Mgła przy ziemi
         Rzadka na pustyniach, brak podczas burz
 effect-cloud-shadows = Cienie chmur
     .facts = Nowoczesne shadery: cienie chmur na ziemi poniżej
+effect-ground-detail = Szczegóły podłoża
+    .facts =
+        Nowoczesne shadery: płaski teren z bliska pokazuje swoją powierzchnię
+        Rzędy upraw na polach, kępy w trawie, ziarno betonu i asfaltu
 effect-vapour = Para i podmuch wirnika
     .facts =
         Przy ostrych manewrach smugi pary z końców skrzydeł

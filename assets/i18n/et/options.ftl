@@ -188,6 +188,10 @@ effect-mist = Maaudu
         Õhuke kõrbetes, tormis puudub
 effect-cloud-shadows = Pilvevarjud
     .facts = Kaasaegsed shaderid: pilvede varjud all olevale maale
+effect-ground-detail = Maapinna detailid
+    .facts =
+        Kaasaegsed varjutajad: tasane maa näitab lähedalt oma pinda
+        Viljaread põldudel, puhmad rohus, betooni ja asfaldi tekstuur
 effect-vapour = Aur ja rootori allavool
     .facts =
         Järskudel manöövritel auruvööd tiivaotstest

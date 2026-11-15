@@ -188,6 +188,10 @@ effect-mist = Ceață la sol
         Subțire în deșerturi, deloc în furtuni
 effect-cloud-shadows = Umbrele norilor
     .facts = Shadere moderne: umbrele norilor pe solul de dedesubt
+effect-ground-detail = Detaliile solului
+    .facts =
+        Shadere moderne: terenul plat își arată suprafața de aproape
+        Rânduri de culturi pe câmpuri, smocuri în iarbă, granulație pe beton și asfalt
 effect-vapour = Vapori și curent de rotor
     .facts =
         La manevre strânse, dâre de vapori la vârfurile aripilor

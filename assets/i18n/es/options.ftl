@@ -188,6 +188,10 @@ effect-mist = Niebla a ras de suelo
         Fina en los desiertos, ninguna en tormentas
 effect-cloud-shadows = Sombras de nubes
     .facts = Shaders modernos: las sombras de las nubes sobre el suelo
+effect-ground-detail = Detalle del terreno
+    .facts =
+        Shaders modernos: el suelo llano muestra su superficie de cerca
+        Surcos en los campos, matas en la hierba, grano en el hormigón y el asfalto
 effect-vapour = Vapor y corriente descendente
     .facts =
         En virajes cerrados, estelas de vapor en las puntas de ala

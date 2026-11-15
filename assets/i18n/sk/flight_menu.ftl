@@ -65,6 +65,7 @@ fm-effect-nvg = EFEKT OKULIAROV
 fm-effect-snow = SNEH
 fm-effect-mist = PRÍZEMNÁ HMLA
 fm-effect-cloud-shadows = TIENE MRAKOV
+fm-effect-ground-detail = DETAIL TERÉNU
 fm-effect-vapour = PARA A PRACH
 fm-effect-night-sky = NOČNÁ OBLOHA
 fm-effect-vga = FARBY VGA

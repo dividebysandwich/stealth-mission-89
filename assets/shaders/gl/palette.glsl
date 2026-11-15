@@ -47,6 +47,7 @@ layout(std140) uniform Globals {
     vec4 shadow_clouds[112];
     // The stars' frame (palette.wgsl).
     vec4 star_frame[3];
+    vec4 ground_detail;
 } g;
 
 uniform mat4 u_view_proj[2];
@@ -105,7 +106,8 @@ flat out uint v_fog;
 flat out float v_fog_f;
 // Bit 0: warm object or dot light (FLIR); bit 1: aircraft; bit 2: spotting dot; bit 3: the
 // hills' ground; bit 4: lit as flat ground (the hills' skirts); bit 5: hot (FLIR: a unit, a
-// fire or a dot light).
+// fire or a dot light); bits 6 and 7: a field's crop rows run along x or along z (DETAIL); bit
+// 8: the scenery's ground (WORD_GROUND).
 flat out uint v_warm;
 #ifdef CLOUD
 // Smoke volumes, in the plume's local space (unit radius, y 0..1): position (w: noise offset),
@@ -145,6 +147,7 @@ void main() {
         | ((tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u) ? 4u : 0u)
         | ((tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS ? 8u : 0u)
         | (u_word == WORD_PER_VERTEX && (a_word & WORD_FLAT_LIT) != 0u ? 16u : 0u)
+        | (u_word == WORD_PER_VERTEX ? ((a_word >> 17u) & 7u) << 6u : 0u)
         | ((tag & 128u) != 0u
             || (tag & (TAG_WARM | TAG_HOT | TAG_SMOKE | TAG_DOT_SPOT)) == (TAG_WARM | TAG_HOT) ? 32u : 0u);
 #ifdef CLOUD
@@ -1094,6 +1097,90 @@ vec3 sand_dots(vec3 rgb, vec2 xz, float foot, vec2 gdx, vec2 gdy, bool modern) {
     return mix(rgb, tone, s.x);
 }
 
+#ifdef DETAIL
+// palette.wgsl `ground_detail` (the `DETAIL` variants: `Effects::ground_detail`).
+const float DETAIL_PERIOD = 1024.0;
+const float DETAIL_FOOT = 2.0;
+const float FURROW_M = 0.8;
+const float TRAMLINE_M = 32.0;
+const float DETAIL_SHADE_MIN = 0.7;
+const float DETAIL_SHADE_MAX = 1.3;
+
+vec3 detail_noise(vec2 p, float cell, uint seed) {
+    int n = int(DETAIL_PERIOD / cell) - 1;
+    vec2 q = p / cell;
+    vec2 f = floor(q);
+    ivec2 i = ivec2(f);
+    vec2 t = q - f;
+    vec2 u = t * t * (3.0 - 2.0 * t);
+    vec2 du = 6.0 * t * (1.0 - t);
+    float a = value_hash(i.x & n, i.y & n, seed);
+    float b = value_hash((i.x + 1) & n, i.y & n, seed);
+    float c = value_hash(i.x & n, (i.y + 1) & n, seed);
+    float d = value_hash((i.x + 1) & n, (i.y + 1) & n, seed);
+    float k = a - b - c + d;
+    float v = a + (b - a) * u.x + (c - a) * u.y + k * u.x * u.y;
+    return vec3(v, vec2(du.x * (b - a + k * u.y), du.y * (c - a + k * u.x)) / cell);
+}
+
+float detail_fade(float size, float foot) {
+    return 1.0 - smoothstep(size * 0.2, size * 0.5, foot);
+}
+
+float detail_stripe(float d, float half_w, float foot) {
+    return clamp((half_w - d) / max(foot, 1e-3) + 0.5, 0.0, 1.0);
+}
+
+vec3 ground_detail(vec3 rgb, vec3 world, float foot, uint rows) {
+    if (foot >= DETAIL_FOOT || g.ground_detail.x == 0.0) {
+        return rgb;
+    }
+    vec2 p = world.xz + g.ground_detail.yz;
+    float top = max(rgb.r, max(rgb.g, rgb.b));
+    float spread = top - min(rgb.r, min(rgb.g, rgb.b));
+    float tone = 1.0;
+    vec2 slope = vec2(0.0);
+    if (rows != 0u) {
+        float across = rows == 1u ? p.y : p.x;
+        vec2 axis = rows == 1u ? vec2(0.0, 1.0) : vec2(1.0, 0.0);
+        float bend = detail_noise(p, 8.0, 7u).x;
+        float ph = (across + (bend - 0.5) * 0.3) * 6.28318531 / FURROW_M;
+        float w = detail_fade(FURROW_M, foot);
+        slope = axis * 0.07 * 6.28318531 / FURROW_M * cos(ph) * w;
+        tone = 1.0 + 0.1 * sin(ph) * w;
+        tone *= 1.0 + 0.18 * (detail_noise(p, 2.0, 11u).x - 0.5) * detail_fade(2.0, foot);
+        float t = abs(fract(across / TRAMLINE_M) - 0.5) * TRAMLINE_M;
+        tone *= 1.0 - 0.25 * detail_stripe(abs(t - 0.9), 0.25, foot) * detail_fade(4.0, foot);
+    } else if (spread < 0.12 * top) {
+        vec3 gr = detail_noise(p, 0.125, 13u);
+        float w = detail_fade(0.125, foot);
+        float stones = top < 0.15 ? 0.3 : 0.12;
+        tone = 1.0 + stones * (gr.x - 0.5) * w
+            + 0.08 * (detail_noise(p, 0.5, 23u).x - 0.5) * detail_fade(0.5, foot)
+            + 0.1 * (detail_noise(p, 2.0, 17u).x - 0.5) * detail_fade(2.0, foot)
+            + 0.06 * (detail_noise(p, 16.0, 19u).x - 0.5) * detail_fade(16.0, foot);
+        slope = gr.yz * 0.01 * w;
+    } else {
+        bool green = rgb.g >= rgb.r;
+        float small = green ? 0.5 : 0.25;
+        vec3 n1 = detail_noise(p, small, 3u);
+        vec3 n2 = detail_noise(p, small * 4.0, 5u);
+        float w1 = detail_fade(small, foot);
+        float w2 = detail_fade(small * 4.0, foot);
+        slope = n1.yz * small * 0.25 * w1 + n2.yz * small * 0.6 * w2;
+        tone = 1.0 + 0.2 * (n1.x - 0.5) * w1 + 0.16 * (n2.x - 0.5) * w2
+            + 0.12 * (detail_noise(p, 8.0, 9u).x - 0.5) * detail_fade(8.0, foot);
+    }
+    vec3 n = normalize(vec3(-slope.x, 1.0, -slope.y));
+    vec3 key = g.sun.w >= g.moon.w ? g.sun.xyz : g.moon.xyz;
+    vec2 h = key.xz;
+    if (length(h) < 1e-3) { h = vec2(-1.0, -1.0); }
+    h = normalize(h) * sqrt(1.0 - HILL_LIGHT_UP * HILL_LIGHT_UP);
+    float lit_k = dot(n, vec3(h.x, HILL_LIGHT_UP, h.y)) / HILL_LIGHT_UP;
+    return rgb * max(tone, 0.0) * clamp(lit_k, DETAIL_SHADE_MIN, DETAIL_SHADE_MAX);
+}
+#endif
+
 vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     vec3 dir = v_world - eye_pos();
     bool modern = g.params.w != 0.0;
@@ -1139,6 +1226,11 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     if (g.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
         bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), foot, gdx, gdy, modern);
     }
+#ifdef DETAIL
+    if (dir.y < 0.0 && eye.y > 0.0) {
+        bg = ground_detail(bg, eye + dir * (eye.y / -dir.y), foot, 0u);
+    }
+#endif
     bool ground_lit = false;
 #ifdef LIT
     uint flags = uint(g.ambient.w);
@@ -1235,6 +1327,13 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     if ((u_flags & FLAG_WATER) != 0u) {
         rgb = water_dots(rgb, v_world, face, foot, gdx, gdy, modern);
     }
+#ifdef DETAIL
+    if (!is_line && (v_warm & 39u) == 0u && (u_flags & FLAG_WATER) == 0u
+        && ((v_warm & 264u) != 0u || v_world.y < 1.0)
+        && abs(normalize(face).y) > 0.8) {
+        rgb = ground_detail(rgb, v_world, foot, (v_warm >> 6u) & 3u);
+    }
+#endif
     if (!is_line && (v_warm & 8u) != 0u) {
         rgb = rgb * hill_shade(face, dir);
     }

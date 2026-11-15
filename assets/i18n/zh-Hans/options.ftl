@@ -186,6 +186,10 @@ effect-mist = 地面薄雾
         沙漠中较薄，风暴中没有
 effect-cloud-shadows = 云影
     .facts = 现代着色器：云在下方地面上的阴影
+effect-ground-detail = 地面细节
+    .facts =
+        现代着色器：近处可见平地的表面
+        田里的作物行、草地上的草丛、混凝土和沥青的颗粒
 effect-vapour = 水汽与下洗气流
     .facts =
         急转弯时翼尖拖出水汽

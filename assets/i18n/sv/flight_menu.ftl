@@ -65,6 +65,7 @@ fm-effect-nvg = KIKAREFFEKT
 fm-effect-snow = SNÖ
 fm-effect-mist = MARKDIMMA
 fm-effect-cloud-shadows = MOLNSKUGGOR
+fm-effect-ground-detail = MARKDETALJER
 fm-effect-vapour = ÅNGA OCH DAMM
 fm-effect-night-sky = NATTHIMMEL
 fm-effect-vga = VGA-FÄRGER

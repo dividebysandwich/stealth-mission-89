@@ -188,6 +188,10 @@ effect-mist = Ċpar mal-art
         Irqiq fid-deżerti, xejn fit-tempesti
 effect-cloud-shadows = Dellijiet tas-sħab
     .facts = Shaders moderni: id-dellijiet tas-sħab fuq l-art taħt
+effect-ground-detail = Dettall tal-art
+    .facts =
+        Shaders moderni: l-art ċatta turi l-wiċċ tagħha mill-qrib
+        Ringieli ta' uċuħ fl-għelieqi, ċmieren fil-ħaxix, ħbub fuq il-konkrit u l-asfalt
 effect-vapour = Fwar u fluss tar-rotor
     .facts =
         F'manuvri ħorox, linji ta' fwar mill-ponot tal-ġwienaħ

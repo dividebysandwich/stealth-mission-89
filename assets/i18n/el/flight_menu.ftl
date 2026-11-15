@@ -65,6 +65,7 @@ fm-effect-nvg = ΕΠΙΔΡΑΣΗ ΓΥΑΛΙΩΝ
 fm-effect-snow = ΧΙΟΝΙ
 fm-effect-mist = ΟΜΙΧΛΗ ΕΔΑΦΟΥΣ
 fm-effect-cloud-shadows = ΣΚΙΕΣ ΝΕΦΩΝ
+fm-effect-ground-detail = ΛΕΠΤΟΜΕΡΕΙΑ ΕΔΑΦΟΥΣ
 fm-effect-vapour = ΑΤΜΟΣ ΚΑΙ ΣΚΟΝΗ
 fm-effect-night-sky = ΝΥΧΤΕΡΙΝΟΣ ΟΥΡΑΝΟΣ
 fm-effect-vga = ΧΡΩΜΑΤΑ VGA

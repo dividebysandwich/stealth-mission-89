@@ -188,6 +188,10 @@ effect-mist = Jordtåge
         Tynd i ørkenerne, ingen i storm
 effect-cloud-shadows = Skyskygger
     .facts = Moderne shaders: skyernes skygger på jorden nedenunder
+effect-ground-detail = Terrændetaljer
+    .facts =
+        Moderne shadere: den flade jord viser sin overflade tæt på
+        Afgrøderækker på markerne, totter i græsset, kornet beton og asfalt
 effect-vapour = Damp og rotorvind
     .facts =
         Ved hårde manøvrer dampstriber fra vingespidserne

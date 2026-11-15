@@ -191,6 +191,10 @@ effect-mist = Brume au sol
 effect-cloud-shadows = Ombres des nuages
     .facts =
         Shaders modernes : les ombres des nuages sur le sol en dessous
+effect-ground-detail = Détail du sol
+    .facts =
+        Shaders modernes : le sol plat montre sa surface de près
+        Rangs de culture dans les champs, touffes dans l'herbe, grain du béton et du bitume
 effect-vapour = Vapeur et souffle du rotor
     .facts =
         En virage serré, de la vapeur se forme aux bouts d'aile

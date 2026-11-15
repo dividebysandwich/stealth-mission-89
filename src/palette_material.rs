@@ -420,6 +420,9 @@ pub struct Globals {
     /// The stars: the columns of the rotation from Bevy's frame to the star catalogue's
     /// (`stars::frame`).
     pub star_frame: [Vec4; 3],
+    /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
+    /// `DETAIL_PERIOD`.
+    pub ground_detail: Vec4,
 }
 
 /// Lighting flags in `Globals.ambient.w`.
@@ -443,8 +446,10 @@ pub const FX_STARS: u32 = 64;
 pub const FX_STRATUS: u32 = 128;
 /// Modern shading (`Settings::modern_shading`).
 pub const FX_MODERN: u32 = 256;
+/// The flat ground's surface detail up close (`Effects::ground_detail`, modern shading).
+pub const FX_DETAIL: u32 = 512;
 pub const SKY_VARIANTS: [u32; 4] = [0, FX_STARS, FX_STRATUS, FX_STARS | FX_STRATUS];
-const FX_DEFS: [(u32, &str); 9] = [
+const FX_DEFS: [(u32, &str); 10] = [
     (FX_MIST, "PALETTE_MIST"),
     (FX_CLOUD_SHADOWS, "PALETTE_CLOUD_SHADOWS"),
     (FX_BURST, "PALETTE_BURST"),
@@ -454,6 +459,7 @@ const FX_DEFS: [(u32, &str); 9] = [
     (FX_STARS, "PALETTE_STARS"),
     (FX_STRATUS, "PALETTE_STRATUS"),
     (FX_MODERN, "PALETTE_MODERN"),
+    (FX_DETAIL, "PALETTE_DETAIL"),
 ];
 
 /// The background's variant for the sky now (`FX_STARS`, `FX_STRATUS`).
@@ -476,7 +482,17 @@ pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
         | bit(crate::weather::dry_theater(theater), FX_SAND)
         | bit(retro.x + retro.y > 0.0, FX_RETRO)
         | bit(modern, FX_MODERN)
+        | bit(ground_detail(settings), FX_DETAIL)
 }
+
+/// The flat ground's surface detail is drawn (`Effects::ground_detail`, modern shading only).
+pub fn ground_detail(settings: &crate::settings::Settings) -> bool {
+    settings.effects.ground_detail && settings.modern_shading
+}
+
+/// Period (metres) of the ground detail's patterns: `Globals::ground_detail` carries the
+/// floating origin modulo this, so the patterns stay put when the origin moves.
+pub const DETAIL_PERIOD: f64 = 1024.0;
 
 fn bit(on: bool, bit: u32) -> u32 {
     if on { bit } else { 0 }
@@ -525,6 +541,7 @@ impl Default for Globals {
             shadow_cells: [Vec4::ZERO; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
             shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
             star_frame: [Vec4::ZERO; 3],
+            ground_detail: Vec4::ZERO,
         }
     }
 }
@@ -563,6 +580,14 @@ pub const TAG_DOT_FAR: u32 = 1 << 31;
 /// classic look too, which otherwise draws faces in their flat colours. Not with `TAG_SMOKE`,
 /// `TAG_DOT_SPOT` or `TAG_DOT`.
 pub const TAG_HILLS: u32 = 1 << 16;
+/// Bits of a per-vertex colour word: a field's crop rows run east-west (`WORD_FURROW_X`) or
+/// north-south (`WORD_FURROW_Z`), for the ground detail (`scenery::geom::FURROW_X`).
+pub const WORD_FURROW_X: u32 = 1 << 17;
+pub const WORD_FURROW_Z: u32 = 1 << 18;
+/// Bit of a per-vertex colour word: the scenery's ground (laid on the hills too), which takes
+/// the ground detail at any height (elsewhere only the hills and what lies at the flat world's
+/// level take it, not a ship's deck).
+pub const WORD_GROUND: u32 = 1 << 19;
 /// Bit of a per-vertex colour word (`ATTRIBUTE_PALETTE_WORD`, above the word itself): the
 /// vertex is lit as flat ground whatever its face's slope (the hills' skirts, which only show in
 /// the cracks between their chunks, in their chunk's mesh).

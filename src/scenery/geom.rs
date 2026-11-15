@@ -11,8 +11,9 @@ use bevy::prelude::*;
 pub struct Geom {
     /// Raised geometry (casts shadows).
     pub solid: BTreeMap<u8, Vec<Vec3>>,
-    /// Ground-level surfaces (roads).
-    pub flat: BTreeMap<u8, Vec<Vec3>>,
+    /// Ground-level surfaces (roads, fields), by colour byte and detail bits (`FURROW_X`,
+    /// `FURROW_Z`).
+    pub flat: BTreeMap<u16, Vec<Vec3>>,
     pub lines: BTreeMap<u8, Vec<Vec3>>,
     /// Lights shown at night (street lamps, windows, beacons) with their colours, in drawing
     /// order: where two overlap, the later one is on top.
@@ -21,6 +22,21 @@ pub struct Geom {
     pub strobes: BTreeMap<usize, Vec<Vec3>>,
     /// PAPI light units (red below their angle, white above).
     pub papi: Vec<PapiLight>,
+}
+
+/// Detail bits of a flat surface's key (`Geom::flat`, over the colour byte): a field whose crop
+/// rows run along x (east) or along z (north), for the ground detail's furrows.
+pub const FURROW_X: u16 = 0x100;
+pub const FURROW_Z: u16 = 0x200;
+/// The scenery's ground (`palette_material::WORD_GROUND`), set on its flat surfaces' meshes.
+pub const GROUND: u16 = 0x400;
+
+/// The colour word bits of a flat surface's detail bits (`palette_material::WORD_FURROW_X`).
+pub fn detail_word(key: u16) -> u32 {
+    use crate::palette_material::{WORD_FURROW_X, WORD_FURROW_Z, WORD_GROUND};
+    (if key & FURROW_X != 0 { WORD_FURROW_X } else { 0 })
+        | (if key & FURROW_Z != 0 { WORD_FURROW_Z } else { 0 })
+        | (if key & GROUND != 0 { WORD_GROUND } else { 0 })
 }
 
 /// One PAPI light unit: block-local position, horizontal unit vector towards the approaching
@@ -63,7 +79,12 @@ impl Geom {
 
     /// A flat ground polygon (facing up, unshaded, no shadow).
     pub fn ground(&mut self, c: u8, pts: &[Vec3]) {
-        fan(self.flat.entry(c).or_default(), pts, Vec3::Y);
+        self.ground_detail(c as u16, pts);
+    }
+
+    /// A flat ground polygon with detail bits over its colour byte (`FURROW_X`, `FURROW_Z`).
+    pub fn ground_detail(&mut self, key: u16, pts: &[Vec3]) {
+        fan(self.flat.entry(key).or_default(), pts, Vec3::Y);
     }
 
     pub fn line(&mut self, c: u8, a: Vec3, b: Vec3) {

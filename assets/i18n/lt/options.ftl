@@ -188,6 +188,10 @@ effect-mist = Žemės rūkas
         Retas dykumose, jokio per audras
 effect-cloud-shadows = Debesų šešėliai
     .facts = Šiuolaikiniai šešėliuokliai: debesų šešėliai žemėje apačioje
+effect-ground-detail = Žemės detalės
+    .facts =
+        Modernūs šešėliuokliai: plokščia žemė iš arti rodo savo paviršių
+        Pasėlių eilės laukuose, kuokštai žolėje, betono ir asfalto grūdėtumas
 effect-vapour = Garai ir rotoriaus srautas
     .facts =
         Staigiai manevruojant nuo sparnų galų driekiasi garų pėdsakai

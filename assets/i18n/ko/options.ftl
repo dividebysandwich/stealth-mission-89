@@ -188,6 +188,10 @@ effect-mist = 지면 안개
         사막에서는 옅고 폭풍 속에서는 없습니다
 effect-cloud-shadows = 구름 그림자
     .facts = 최신 셰이더: 아래 지면에 드리운 구름 그림자
+effect-ground-detail = 지면 세부
+    .facts =
+        최신 셰이더: 평평한 지면의 표면이 가까이에서 보입니다
+        밭의 작물 줄, 풀밭의 풀포기, 콘크리트와 아스팔트의 결
 effect-vapour = 수증기와 하강풍
     .facts =
         급기동 시 날개 끝에서 수증기 흔적

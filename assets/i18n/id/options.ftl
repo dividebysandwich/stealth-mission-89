@@ -188,6 +188,10 @@ effect-mist = Kabut tanah
         Tipis di gurun, tidak ada saat badai
 effect-cloud-shadows = Bayangan awan
     .facts = Shader modern: bayangan awan di tanah di bawahnya
+effect-ground-detail = Detail tanah
+    .facts =
+        Shader modern: tanah datar menampakkan permukaannya dari dekat
+        Barisan tanaman di ladang, rumpun di rumput, butiran pada beton dan aspal
 effect-vapour = Uap dan aliran rotor
     .facts =
         Saat manuver tajam, jejak uap dari ujung sayap

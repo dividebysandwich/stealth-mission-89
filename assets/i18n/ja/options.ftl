@@ -188,6 +188,10 @@ effect-mist = 地面の霧
         砂漠では薄く、嵐では出ません
 effect-cloud-shadows = 雲の影
     .facts = 最新のシェーダー：下の地面に落ちる雲の影
+effect-ground-detail = 地面の細部
+    .facts =
+        最新のシェーダー：平らな地面の表面が近くで見える
+        畑の作物の列、草地の草むら、コンクリートと舗装の粒
 effect-vapour = ベイパーとダウンウォッシュ
     .facts =
         急旋回で翼端からベイパーが引く

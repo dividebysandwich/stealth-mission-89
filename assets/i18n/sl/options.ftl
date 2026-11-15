@@ -188,6 +188,10 @@ effect-mist = Prizemna megla
         Redka v puščavah, je ni ob nevihtah
 effect-cloud-shadows = Sence oblakov
     .facts = Sodobni shaderji: sence oblakov na tleh spodaj
+effect-ground-detail = Podrobnosti tal
+    .facts =
+        Sodobni senčilniki: ravna tla od blizu pokažejo svojo površino
+        Vrste posevkov na poljih, šopi v travi, zrnatost betona in asfalta
 effect-vapour = Para in tok rotorja
     .facts =
         Pri ostrih manevrih sledi pare s konic kril

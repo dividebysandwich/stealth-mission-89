@@ -65,6 +65,7 @@ fm-effect-nvg = EFEK KACAMATA
 fm-effect-snow = SALJU
 fm-effect-mist = KABUT TANAH
 fm-effect-cloud-shadows = BAYANGAN AWAN
+fm-effect-ground-detail = DETAIL TANAH
 fm-effect-vapour = UAP DAN DEBU
 fm-effect-night-sky = LANGIT MALAM
 fm-effect-vga = WARNA VGA

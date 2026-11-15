@@ -69,13 +69,14 @@ pub struct ChunkMesh {
 }
 
 /// The colour of the open ground: the ground gradient the flat world shows there (the
-/// background's).
-const GROUND: u16 = 0x100;
+/// background's). (Above the flat polygons' colours with their detail bits, `geom::FURROW_X`;
+/// the skin is the hills' ground, `TAG_HILLS`, without `geom::GROUND`.)
+const GROUND: u16 = 0x8000;
 /// Its colour word: OR with nothing.
 const GROUND_WORD: u32 = 0xFD00;
 /// The skirts' colour: the open ground's, lit as flat ground whatever the face (they only show
 /// in the cracks, as ground).
-const SKIRT_COLOUR: u16 = 0x101;
+const SKIRT_COLOUR: u16 = 0x8001;
 
 /// The model colours of a chunk's vertices, for their words to follow the palette's remap.
 #[derive(Component)]
@@ -87,7 +88,7 @@ fn words(palette: &Palette, colours: &[u16]) -> Vec<u32> {
         .map(|&c| match c {
             GROUND => GROUND_WORD,
             SKIRT_COLOUR => GROUND_WORD | WORD_FLAT_LIT,
-            c => palette.word(c as u8) as u32,
+            c => palette.word(c as u8) as u32 | super::geom::detail_word(c),
         })
         .collect()
 }
@@ -447,11 +448,11 @@ fn clip(poly: &[Vec2], tri: [Vec2; 3]) -> Vec<Vec2> {
 }
 
 /// A flat ground polygon chunk-local (metres east, north of its corner), the height its flat
-/// copy is drawn at (its painter's order) and its colour.
+/// copy is drawn at (its painter's order) and its colour (with its detail bits).
 struct Flat {
     p: [Vec2; 3],
     lift: f32,
-    colour: u8,
+    colour: u16,
 }
 
 /// A chunk's mesh on a grid of `step` metres, with the farmland's fields if `fields` (None
@@ -484,7 +485,7 @@ fn build(sc: &Scenery, key: Key, step: f64, fields: u16) -> Option<ChunkMesh> {
             // Its height as drawn: its object's lift and its own in the model.
             let lift =
                 ((4 - lod) as f64 * LAYER_STEP_M * 8.0 + k as f64 * LAYER_STEP_M) as f32 + o.y;
-            Flat { p: o.p.map(|v| (v.as_dvec2() - min).as_vec2()), lift, colour: o.colour }
+            Flat { p: o.p.map(|v| (v.as_dvec2() - min).as_vec2()), lift, colour: o.colour as u16 }
         })
         .collect();
     if fields != 0 {
@@ -600,7 +601,7 @@ fn build(sc: &Scenery, key: Key, step: f64, fields: u16) -> Option<ChunkMesh> {
                         p.reverse();
                     }
                     covered = a.abs() >= full;
-                    layers.push((p, flats[id as usize].colour as u16));
+                    layers.push((p, flats[id as usize].colour));
                     if covered {
                         break;
                     }

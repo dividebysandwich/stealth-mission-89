@@ -918,15 +918,20 @@ fn mesh(topology: PrimitiveTopology, pos: Vec<Vec3>) -> Mesh {
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, pos)
 }
 
-/// Model colour of each vertex of a mesh of several colours, for its colour words to follow
-/// the palette's remap (the detail level).
+/// Model colour of each vertex of a mesh of several colours (with its detail bits,
+/// `geom::FURROW_X`), for its colour words to follow the palette's remap (the detail level).
 #[derive(Component)]
-struct VertexColours(Vec<u8>);
+struct VertexColours(Vec<u16>);
+
+/// A vertex's colour word: its colour byte's, and its detail bits.
+fn vertex_word(palette: &Palette, c: u16) -> u32 {
+    palette.word(c as u8) as u32 | geom::detail_word(c)
+}
 
 /// Triangles of several colours as one mesh, drawn with `Palette::per_vertex`, in colour order.
-fn multicolour_mesh(
+fn multicolour_mesh<K: Copy + Into<u16>>(
     palette: &Palette,
-    tris: std::collections::BTreeMap<u8, Vec<Vec3>>,
+    tris: std::collections::BTreeMap<K, Vec<Vec3>>,
 ) -> Option<(Mesh, VertexColours)> {
     let n = tris.values().map(Vec::len).sum();
     if n == 0 {
@@ -934,10 +939,10 @@ fn multicolour_mesh(
     }
     let (mut pos, mut colours) = (Vec::with_capacity(n), Vec::with_capacity(n));
     for (c, t) in tris {
-        colours.resize(colours.len() + t.len(), c);
+        colours.resize(colours.len() + t.len(), c.into());
         pos.extend(t);
     }
-    let words: Vec<u32> = colours.iter().map(|&c| palette.word(c) as u32).collect();
+    let words: Vec<u32> = colours.iter().map(|&c| vertex_word(palette, c)).collect();
     let m = mesh(PrimitiveTopology::TriangleList, pos)
         .with_inserted_attribute(ATTRIBUTE_PALETTE_WORD, words);
     Some((m, VertexColours(colours)))
@@ -955,7 +960,7 @@ fn remap_vertex_words(
     }
     for (m, colours) in &blocks {
         if let Some(mut mesh) = meshes.get_mut(&m.0) {
-            let words: Vec<u32> = colours.0.iter().map(|&c| palette.word(c) as u32).collect();
+            let words: Vec<u32> = colours.0.iter().map(|&c| vertex_word(&palette, c)).collect();
             mesh.insert_attribute(ATTRIBUTE_PALETTE_WORD, words);
         }
     }
@@ -1024,7 +1029,8 @@ fn spawn_geom(
         }
         children.push(e);
     }
-    if let Some(m) = multicolour_mesh(palette, geom.flat) {
+    let flat = geom.flat.into_iter().map(|(k, t)| (k | geom::GROUND, t)).collect();
+    if let Some(m) = multicolour_mesh::<u16>(palette, flat) {
         let e = commands
             .spawn((
                 Mesh3d(meshes.add(m.0)),

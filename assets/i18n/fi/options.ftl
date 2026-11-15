@@ -188,6 +188,10 @@ effect-mist = Maasumu
         Ohutta aavikoilla, ei lainkaan myrskyissä
 effect-cloud-shadows = Pilvien varjot
     .facts = Nykyaikaiset shaderit: pilvien varjot alla olevalla maalla
+effect-ground-detail = Maaston yksityiskohdat
+    .facts =
+        Nykyaikaiset shaderit: tasainen maa näyttää pintansa läheltä
+        Viljarivit pelloilla, tupsut nurmessa, betonin ja asfaltin rakeisuus
 effect-vapour = Höyry ja roottorivirtaus
     .facts =
         Jyrkissä liikkeissä höyryvanat siivenkärjistä

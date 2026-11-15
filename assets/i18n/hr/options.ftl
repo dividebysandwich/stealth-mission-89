@@ -188,6 +188,10 @@ effect-mist = Prizemna magla
         Rijetka u pustinjama, nema je u olujama
 effect-cloud-shadows = Sjene oblaka
     .facts = Moderni shaderi: sjene oblaka na tlu ispod
+effect-ground-detail = Detalji tla
+    .facts =
+        Moderni shaderi: ravno tlo izbliza pokazuje svoju površinu
+        Redovi usjeva na poljima, busenovi u travi, zrnatost betona i asfalta
 effect-vapour = Para i struja rotora
     .facts =
         Pri oštrim manevrima tragovi pare s vrhova krila

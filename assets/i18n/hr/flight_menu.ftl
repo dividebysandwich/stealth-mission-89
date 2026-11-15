@@ -65,6 +65,7 @@ fm-effect-nvg = UČINAK NAOČALA
 fm-effect-snow = SNIJEG
 fm-effect-mist = PRIZEMNA MAGLA
 fm-effect-cloud-shadows = SJENE OBLAKA
+fm-effect-ground-detail = DETALJI TLA
 fm-effect-vapour = PARA I PRAŠINA
 fm-effect-night-sky = NOĆNO NEBO
 fm-effect-vga = VGA BOJE

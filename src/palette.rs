@@ -583,6 +583,13 @@ fn update_globals(
     (g.shadow_grid, g.shadow_far) = (sh.grid, sh.far);
     (g.shadow_cells, g.shadow_clouds) = (sh.cells, sh.clouds);
     g.retro = retro(&settings);
+    let period = crate::palette_material::DETAIL_PERIOD;
+    g.ground_detail = Vec4::new(
+        crate::palette_material::ground_detail(&settings) as u32 as f32,
+        origin.origin.x.rem_euclid(period) as f32,
+        origin.origin.z.rem_euclid(period) as f32,
+        0.0,
+    );
     // The northern lights over the North Cape.
     if settings.effects.night_sky {
         g.sky_fx = Vec4::new((theater == "north_cape") as u32 as f32, 1.0, 1.0, 0.0);

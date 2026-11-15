@@ -188,6 +188,10 @@ effect-mist = Foschia al suolo
         Rada nei deserti, assente con i temporali
 effect-cloud-shadows = Ombre delle nuvole
     .facts = Shader moderni: le ombre delle nuvole sul terreno sottostante
+effect-ground-detail = Dettaglio del terreno
+    .facts =
+        Shader moderni: il terreno piatto mostra da vicino la sua superficie
+        File di coltura nei campi, ciuffi nell'erba, grana su cemento e asfalto
 effect-vapour = Vapore e flusso del rotore
     .facts =
         Nelle virate strette, scie di vapore dalle estremità alari

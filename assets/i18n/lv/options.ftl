@@ -188,6 +188,10 @@ effect-mist = Zemes migla
         Reta tuksnešos, nav vētrās
 effect-cloud-shadows = Mākoņu ēnas
     .facts = Mūsdienīgi šaderi: mākoņu ēnas uz zemes zemāk
+effect-ground-detail = Zemes detaļas
+    .facts =
+        Mūsdienīgi ēnotāji: līdzena zeme tuvumā parāda savu virsmu
+        Sējumu rindas laukos, ceri zālē, betona un asfalta graudainums
 effect-vapour = Tvaiks un rotora plūsma
     .facts =
         Asos manevros no spārnu galiem stiepjas tvaika sliedes

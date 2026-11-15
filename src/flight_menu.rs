@@ -264,6 +264,7 @@ impl Page {
                     AutoDetail,
                     SceneryDistance,
                     CityLightDistance,
+                    Effect(E::GroundDetail),
                     Effect(E::Vga),
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),

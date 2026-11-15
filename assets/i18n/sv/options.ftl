@@ -188,6 +188,10 @@ effect-mist = Marksdimma
         Tunn i öknarna, ingen i storm
 effect-cloud-shadows = Molnskuggor
     .facts = Moderna shaders: molnens skuggor på marken nedanför
+effect-ground-detail = Markdetaljer
+    .facts =
+        Moderna shaders: den platta marken visar sin yta på nära håll
+        Grödrader på åkrarna, tuvor i gräset, struktur i betong och asfalt
 effect-vapour = Ånga och rotorvind
     .facts =
         Vid hårda svängar kondensstrimmor från vingspetsarna

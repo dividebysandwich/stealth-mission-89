@@ -65,6 +65,7 @@ fm-effect-nvg = EFEITO DOS ÓCULOS
 fm-effect-snow = NEVE
 fm-effect-mist = NÉVOA NO SOLO
 fm-effect-cloud-shadows = SOMBRAS DE NUVENS
+fm-effect-ground-detail = DETALHE DO SOLO
 fm-effect-vapour = VAPOR E POEIRA
 fm-effect-night-sky = CÉU NOTURNO
 fm-effect-vga = CORES VGA

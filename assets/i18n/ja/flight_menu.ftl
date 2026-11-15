@@ -65,6 +65,7 @@ fm-effect-nvg = ゴーグル効果
 fm-effect-snow = 雪
 fm-effect-mist = 地面の霧
 fm-effect-cloud-shadows = 雲の影
+fm-effect-ground-detail = 地面の細部
 fm-effect-vapour = 蒸気と砂塵
 fm-effect-night-sky = 夜空
 fm-effect-vga = VGAカラー

@@ -65,6 +65,7 @@ fm-effect-nvg = ЕФЕКТ НА ОЧИЛАТА
 fm-effect-snow = СНЯГ
 fm-effect-mist = ПРИЗЕМНА МЪГЛА
 fm-effect-cloud-shadows = СЕНКИ НА ОБЛАЦИТЕ
+fm-effect-ground-detail = ДЕТАЙЛИ НА ТЕРЕНА
 fm-effect-vapour = ПАРА И ПРАХ
 fm-effect-night-sky = НОЩНО НЕБЕ
 fm-effect-vga = ЦВЕТОВЕ VGA

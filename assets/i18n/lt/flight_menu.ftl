@@ -65,6 +65,7 @@ fm-effect-nvg = AKINIŲ EFEKTAS
 fm-effect-snow = SNIEGAS
 fm-effect-mist = ŽEMĖS RŪKAS
 fm-effect-cloud-shadows = DEBESŲ ŠEŠĖLIAI
+fm-effect-ground-detail = ŽEMĖS DETALĖS
 fm-effect-vapour = GARAI IR DULKĖS
 fm-effect-night-sky = NAKTINIS DANGUS
 fm-effect-vga = VGA SPALVOS

@@ -220,6 +220,10 @@ effect-mist = Ground mist
 effect-cloud-shadows = Cloud shadows
     .facts =
         Modern shaders: the clouds' shadows on the ground below
+effect-ground-detail = Ground detail
+    .facts =
+        Modern shaders: the flat ground shows its surface up close
+        Crop rows on the fields, tufts on the grass, grain on concrete and tarmac
 effect-vapour = Vapour and downwash
     .facts =
         Pulling hard, vapour trails from the wingtips

@@ -121,6 +121,9 @@ struct Globals {
     // The stars: the columns of the rotation from the world's frame to the star catalogue's
     // (stars.rs `frame`).
     star_frame: array<vec4<f32>, 3>,
+    // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
+    // modulo DETAIL_PERIOD.
+    ground_detail: vec4<f32>,
 };
 
 struct PaletteMaterial {
@@ -177,7 +180,8 @@ struct VertexOutput {
     @location(6) @interpolate(flat) puff_scale: vec3<f32>,
     // Bit 0: warm object or dot light (FLIR); bit 1: aircraft (level code 5); bit 2: spotting
     // dot; bit 3: the hills' ground; bit 4: lit as flat ground; bit 5: hot (a unit, a fire or a
-    // dot light: white in the FLIR picture).
+    // dot light: white in the FLIR picture); bits 6 and 7: a field's crop rows run along x or
+    // along z (the ground detail's furrows); bit 8: the scenery's ground (`WORD_GROUND`).
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
@@ -244,6 +248,7 @@ fn vertex(v: Vertex) -> VertexOutput {
 #ifdef VERTEX_WORD
     out.word = v.word & 0xFFFFu;
     out.warm |= select(0u, 16u, (v.word & WORD_FLAT_LIT) != 0u);
+    out.warm |= ((v.word >> 17u) & 7u) << 6u;
 #endif
     // Smoke volumes: the view ray and the sun in the plume's local space (inverse of the
     // scaled rotation m = diag(1/s^2) m^T).
@@ -1434,6 +1439,111 @@ fn sand_dots(rgb: vec3<f32>, xz: vec2<f32>, deriv: Deriv, modern: bool) -> vec3<
     return mix(rgb, tone, s.x);
 }
 
+// --- Ground detail (`Effects::ground_detail`, `PALETTE_DETAIL`) ------------------------------
+// Flat ground seen up close: crop rows and the sprayer's tramlines on the farmland's fields,
+// tufts on the grass, clods on bare earth, grain on concrete and tarmac. A height pattern lit
+// by the key light (bumps) and a brightness pattern, pinned to the world: `ground_detail.yz` is
+// the floating origin modulo DETAIL_PERIOD, which every pattern's period divides. Each part
+// fades out as it gets too small on screen, and nothing is left beyond DETAIL_FOOT metres a
+// pixel.
+const DETAIL_PERIOD: f32 = 1024.0;
+const DETAIL_FOOT: f32 = 2.0;
+// Spacing of the crop rows and of the tramlines (a pair of wheel tracks 1.8 m apart, 0.5 m
+// wide), metres.
+const FURROW_M: f32 = 0.8;
+const TRAMLINE_M: f32 = 32.0;
+// The bumps' light: the key light's azimuth at the hills' height (`hill_shade`), within these.
+const DETAIL_SHADE_MIN: f32 = 0.7;
+const DETAIL_SHADE_MAX: f32 = 1.3;
+
+// Value noise on cells of `cell` metres (a power of two dividing DETAIL_PERIOD), repeating
+// every DETAIL_PERIOD: its value 0..1 (x) and its slope per metre along x and z (yz).
+fn detail_noise(p: vec2<f32>, cell: f32, seed: u32) -> vec3<f32> {
+    let n = i32(DETAIL_PERIOD / cell) - 1;
+    let q = p / cell;
+    let f = floor(q);
+    let i = vec2<i32>(f);
+    let t = q - f;
+    let u = t * t * (3.0 - 2.0 * t);
+    let du = 6.0 * t * (1.0 - t);
+    let a = value_hash(i.x & n, i.y & n, seed);
+    let b = value_hash((i.x + 1) & n, i.y & n, seed);
+    let c = value_hash(i.x & n, (i.y + 1) & n, seed);
+    let d = value_hash((i.x + 1) & n, (i.y + 1) & n, seed);
+    let k = a - b - c + d;
+    let v = a + (b - a) * u.x + (c - a) * u.y + k * u.x * u.y;
+    return vec3<f32>(v, vec2<f32>(du.x * (b - a + k * u.y), du.y * (c - a + k * u.x)) / cell);
+}
+
+// Weight of a pattern of `size` metres at `foot` metres a pixel: whole while it spans five
+// pixels, gone at two.
+fn detail_fade(size: f32, foot: f32) -> f32 {
+    return 1.0 - smoothstep(size * 0.2, size * 0.5, foot);
+}
+
+// A stripe `half` metres either side of its middle, `d` metres away, at `foot` metres a pixel:
+// its share of the pixel.
+fn detail_stripe(d: f32, half: f32, foot: f32) -> f32 {
+    return clamp((half - d) / max(foot, 1e-3) + 0.5, 0.0, 1.0);
+}
+
+// The ground's colour `rgb` at `world` with the detail of its kind: a field's rows (`rows` 1
+// along x, 2 along z), else by the colour: grey is concrete or tarmac, green grass, the rest
+// bare earth. `foot`: metres a pixel.
+fn ground_detail(rgb: vec3<f32>, world: vec3<f32>, foot: f32, rows: u32) -> vec3<f32> {
+    if (foot >= DETAIL_FOOT || globals.ground_detail.x == 0.0) {
+        return rgb;
+    }
+    let p = world.xz + globals.ground_detail.yz;
+    let top = max(rgb.r, max(rgb.g, rgb.b));
+    let spread = top - min(rgb.r, min(rgb.g, rgb.b));
+    var tone = 1.0;
+    var slope = vec2<f32>(0.0);
+    if (rows != 0u) {
+        // Across the rows (x along z, y along x), the rows bending a little.
+        let across = select(p.x, p.y, rows == 1u);
+        let axis = select(vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0), rows == 1u);
+        let bend = detail_noise(p, 8.0, 7u).x;
+        let ph = (across + (bend - 0.5) * 0.3) * TAU / FURROW_M;
+        let w = detail_fade(FURROW_M, foot);
+        slope = axis * 0.07 * TAU / FURROW_M * cos(ph) * w;
+        tone = 1.0 + 0.1 * sin(ph) * w;
+        // The crop thicker and thinner along the rows.
+        tone *= 1.0 + 0.18 * (detail_noise(p, 2.0, 11u).x - 0.5) * detail_fade(2.0, foot);
+        let t = abs(fract(across / TRAMLINE_M) - 0.5) * TRAMLINE_M;
+        tone *= 1.0 - 0.25 * detail_stripe(abs(t - 0.9), 0.25, foot) * detail_fade(4.0, foot);
+    } else if (spread < 0.12 * top) {
+        // Concrete (light) or tarmac (dark): fine grain with lighter stones in the dark, and
+        // patches.
+        let g = detail_noise(p, 0.125, 13u);
+        let w = detail_fade(0.125, foot);
+        let stones = select(0.12, 0.3, top < 0.15);
+        tone = 1.0 + stones * (g.x - 0.5) * w
+            + 0.08 * (detail_noise(p, 0.5, 23u).x - 0.5) * detail_fade(0.5, foot)
+            + 0.1 * (detail_noise(p, 2.0, 17u).x - 0.5) * detail_fade(2.0, foot)
+            + 0.06 * (detail_noise(p, 16.0, 19u).x - 0.5) * detail_fade(16.0, foot);
+        slope = g.yz * 0.01 * w;
+    } else {
+        // Grass (tufts) or bare earth (clods): two sizes of bumps and patches.
+        let green = rgb.g >= rgb.r;
+        let small = select(0.25, 0.5, green);
+        let n1 = detail_noise(p, small, 3u);
+        let n2 = detail_noise(p, small * 4.0, 5u);
+        let w1 = detail_fade(small, foot);
+        let w2 = detail_fade(small * 4.0, foot);
+        slope = n1.yz * small * 0.25 * w1 + n2.yz * small * 0.6 * w2;
+        tone = 1.0 + 0.2 * (n1.x - 0.5) * w1 + 0.16 * (n2.x - 0.5) * w2
+            + 0.12 * (detail_noise(p, 8.0, 9u).x - 0.5) * detail_fade(8.0, foot);
+    }
+    let n = normalize(vec3<f32>(-slope.x, 1.0, -slope.y));
+    let key = select(globals.moon.xyz, globals.sun.xyz, globals.sun.w >= globals.moon.w);
+    var h = vec2<f32>(key.x, key.z);
+    if (length(h) < 1e-3) { h = vec2<f32>(-1.0, -1.0); }
+    h = normalize(h) * sqrt(1.0 - HILL_LIGHT_UP * HILL_LIGHT_UP);
+    let lit = dot(n, vec3<f32>(h.x, HILL_LIGHT_UP, h.y)) / HILL_LIGHT_UP;
+    return rgb * max(tone, 0.0) * clamp(lit, DETAIL_SHADE_MIN, DETAIL_SHADE_MAX);
+}
+
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
 // uniform control flow, which a branch or return on a varying ends.
 struct Deriv {
@@ -1458,6 +1568,15 @@ fn colour_word(in: VertexOutput) -> u32 {
 #endif
 }
 
+// The background sphere's derivatives on the ground plane (y = 0) where the view ray meets it.
+fn background_ground(world: vec3<f32>, deriv: ptr<function, Deriv>) {
+    let ray = world - view.world_position;
+    let ground = view.world_position + ray * (view.world_position.y / max(-ray.y, 1e-4));
+    (*deriv).foot = length(fwidth(ground));
+    (*deriv).ground_dx = dpdx(ground.xz);
+    (*deriv).ground_dy = dpdy(ground.xz);
+}
+
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     var deriv: Deriv;
@@ -1472,12 +1591,10 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
 #ifdef PALETTE_BACKGROUND
 #ifdef PALETTE_SAND
     // The background sphere: the ground plane (y = 0) where the view ray meets it (the
-    // desert's specks).
-    let ray = in.world_position - view.world_position;
-    let ground = view.world_position + ray * (view.world_position.y / max(-ray.y, 1e-4));
-    deriv.foot = length(fwidth(ground));
-    deriv.ground_dx = dpdx(ground.xz);
-    deriv.ground_dy = dpdy(ground.xz);
+    // desert's specks, the ground detail).
+    background_ground(in.world_position, &deriv);
+#else ifdef PALETTE_DETAIL
+    background_ground(in.world_position, &deriv);
 #endif
 #endif
     if ((u32(globals.light_info.w) & 1u) != 0u) {
@@ -1552,6 +1669,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #ifdef PALETTE_SAND
         if (globals.sky_fx.w != 0.0 && dir.y < 0.0 && eye.y > 0.0) {
             bg = sand_dots(bg, eye.xz + dir.xz * (eye.y / -dir.y), deriv, modern);
+        }
+#endif
+#ifdef PALETTE_DETAIL
+        if (dir.y < 0.0 && eye.y > 0.0) {
+            bg = ground_detail(bg, eye + dir * (eye.y / -dir.y), deriv.foot, 0u);
         }
 #endif
         // Lighting options: the ground gradient is lit like flat ground where the view ray
@@ -1674,6 +1796,15 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     if ((material.flags & FLAG_WATER) != 0u) {
         rgb = water_dots(rgb, in.world_position, deriv, modern);
     }
+#ifdef PALETTE_DETAIL
+    // Flat ground: the hills, the scenery's ground and what lies at the flat world's level (not
+    // a ship's deck); not warm objects, aircraft, dots or water.
+    if (!is_line && (in.warm & 39u) == 0u && (material.flags & FLAG_WATER) == 0u
+        && ((in.warm & 264u) != 0u || in.world_position.y < 1.0)
+        && abs(normalize(deriv.face).y) > 0.8) {
+        rgb = ground_detail(rgb, in.world_position, deriv.foot, (in.warm >> 6u) & 3u);
+    }
+#endif
     if (!is_line && (in.warm & 8u) != 0u) {
         rgb = rgb * hill_shade(deriv.face, dir);
     }

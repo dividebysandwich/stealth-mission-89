@@ -13,7 +13,7 @@ use bevy::prelude::*;
 
 use super::Scenery;
 use super::fields::{self, Farmland};
-use super::geom::{Geom, rect, ring};
+use super::geom::{self, Geom, rect, ring};
 use super::network::{
     Building, Kind, Network, PowerLine, Rng, RoadKind, Roof, TownKind, hash, noise, street_spacing,
 };
@@ -451,8 +451,8 @@ fn in_field(sc: &Scenery, land: &Farmland, seed: u64, p: DVec2) -> bool {
 fn farmland(sc: &Scenery, f: &Frame, min: DVec2, max: DVec2, g: &mut Geom) {
     let Some(style) = &sc.style else { return };
     let Some(land) = style.farmland else { return };
-    let quad = |g: &mut Geom, lo: DVec2, hi: DVec2, y: f32, c: u8| {
-        g.ground(
+    let quad = |g: &mut Geom, lo: DVec2, hi: DVec2, y: f32, c: u16| {
+        g.ground_detail(
             c,
             &[
                 f.at(lo, y),
@@ -486,11 +486,14 @@ fn farmland(sc: &Scenery, f: &Frame, min: DVec2, max: DVec2, g: &mut Geom) {
                     continue;
                 }
             }
-            quad(g, lo, hi, FIELD_Y, field.colour);
+            // The crop rows run along the field's length.
+            let size = hi - lo;
+            let rows = if size.x >= size.y { geom::FURROW_X } else { geom::FURROW_Z };
+            quad(g, lo, hi, FIELD_Y, field.colour as u16 | rows);
         }
         for (a, b) in fields::belts(land, style.seed, sx, sy) {
             if let Some((lo, hi)) = belt_rect(sc, land, a, b) {
-                quad(g, lo, hi, BELT_Y, BELT);
+                quad(g, lo, hi, BELT_Y, BELT as u16);
             }
         }
     }

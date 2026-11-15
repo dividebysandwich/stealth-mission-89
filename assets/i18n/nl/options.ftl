@@ -188,6 +188,10 @@ effect-mist = Grondmist
         Ijl in de woestijnen, geen bij storm
 effect-cloud-shadows = Wolkenschaduwen
     .facts = Moderne shaders: de schaduwen van de wolken op de grond eronder
+effect-ground-detail = Bodemdetail
+    .facts =
+        Moderne shaders: de vlakke grond toont van dichtbij zijn oppervlak
+        Gewasrijen op de akkers, pollen in het gras, korrel op beton en asfalt
 effect-vapour = Damp en rotorwind
     .facts =
         Bij scherpe manoeuvres dampsporen van de vleugeltippen

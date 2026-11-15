@@ -188,6 +188,10 @@ effect-mist = Ceo talún
         Tanaí sna fásaigh, ceann ar bith i stoirmeacha
 effect-cloud-shadows = Scáthanna scamall
     .facts = Scáthaitheoirí nua-aimseartha: scáthanna na scamall ar an talamh thíos
+effect-ground-detail = Mionsonraí na talún
+    .facts =
+        Scáthóirí nua-aimseartha: taispeánann an talamh cothrom a dhromchla in aice láimhe
+        Sraitheanna barr ar na páirceanna, tomóga san fhéar, gráinne ar choincréit agus ar tharramhacadam
 effect-vapour = Gal agus sruth rótair
     .facts =
         Le hainlithe géara, rianta gaile ó bharr na sciathán

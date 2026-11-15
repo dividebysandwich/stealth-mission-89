@@ -65,6 +65,7 @@ fm-effect-nvg = EFECTO DE GAFAS
 fm-effect-snow = NIEVE
 fm-effect-mist = NIEBLA A RAS DE SUELO
 fm-effect-cloud-shadows = SOMBRAS DE NUBES
+fm-effect-ground-detail = DETALLE DEL TERRENO
 fm-effect-vapour = VAPOR Y POLVO
 fm-effect-night-sky = CIELO NOCTURNO
 fm-effect-vga = COLORES VGA

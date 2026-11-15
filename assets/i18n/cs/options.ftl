@@ -188,6 +188,10 @@ effect-mist = Přízemní mlha
         Řídká v pouštích, žádná za bouře
 effect-cloud-shadows = Stíny mraků
     .facts = Moderní shadery: stíny mraků na zemi pod nimi
+effect-ground-detail = Detail terénu
+    .facts =
+        Moderní shadery: rovná zem zblízka ukazuje svůj povrch
+        Řádky plodin na polích, trsy v trávě, zrnitost betonu a asfaltu
 effect-vapour = Pára a proud od rotoru
     .facts =
         Při ostrých manévrech stopy páry z konců křídel

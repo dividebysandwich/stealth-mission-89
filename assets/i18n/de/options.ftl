@@ -188,6 +188,10 @@ effect-mist = Bodennebel
         Dünn in den Wüsten, keiner bei Sturm
 effect-cloud-shadows = Wolkenschatten
     .facts = Moderne Shader: die Schatten der Wolken auf dem Boden darunter
+effect-ground-detail = Bodendetails
+    .facts =
+        Moderne Shader: der flache Boden zeigt aus der Nähe seine Oberfläche
+        Saatreihen auf den Feldern, Büschel im Gras, Körnung auf Beton und Asphalt
 effect-vapour = Kondensstreifen und Abwind
     .facts =
         Bei harten Manövern Kondensstreifen an den Flügelspitzen
