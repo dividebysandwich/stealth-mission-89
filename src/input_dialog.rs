@@ -425,7 +425,8 @@ pub fn show(
         .resizable(false)
         .title_bar(false)
         .fixed_size(egui::vec2(
-            (screen.width() - 80.0).clamp(560.0, 980.0),
+            // The screen's width, but not so wide that the rows' cells drift apart.
+            (screen.width() - 80.0).clamp(560.0, 1400.0),
             (screen.height() - 120.0).max(300.0),
         ));
     crate::menu::Panel::new(t!("input-title")).note(t!("input-note")).window(window, ctx, |ui| {
@@ -598,9 +599,20 @@ pub fn show(
                                 (false, true) => "-".to_string(),
                                 (false, false) => labels.join(", "),
                             };
-                            ui.label(egui::RichText::new(text).color(
-                                if labels.is_empty() || capturing_key { DIM } else { BRIGHT },
-                            ));
+                            // Many keys are cut short (all on hover) rather than widening
+                            // the rows past the window.
+                            let full = text.clone();
+                            ui.scope(|ui| {
+                                ui.set_max_width(KEYS_WIDTH);
+                                let label = egui::Label::new(egui::RichText::new(text).color(
+                                    if labels.is_empty() || capturing_key { DIM } else { BRIGHT },
+                                ))
+                                .truncate();
+                                let label = ui.add(label);
+                                if labels.len() > 1 {
+                                    label.on_hover_text(full);
+                                }
+                            });
                             ui.horizontal(|ui| {
                                 let add = egui::Button::new(if capturing_key {
                                     t!("input-waiting")
@@ -979,6 +991,9 @@ struct Stick {
     /// None: no throttle axis (or it hasn't moved yet).
     throttle: Option<f32>,
 }
+
+/// The widest the keyboard column of the button rows gets (points).
+const KEYS_WIDTH: f32 = 260.0;
 
 const PREVIEW: egui::Vec2 = egui::vec2(300.0, 190.0);
 
