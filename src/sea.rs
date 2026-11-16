@@ -56,6 +56,12 @@ const CARRIER_MATCH: f64 = 64.0;
 pub const DECK_STICK_WU: f32 = 6.0;
 /// A carrier moves at most about this much (heave m, pitch and roll rad), the limits easing in.
 const CARRIER_CAP: (f32, f32, f32) = (2.5, 0.026, 0.052);
+/// A carrier's hull feels the waves this much more (heave, pitch, roll) than the plain average
+/// over its waterplane gives: the simulated sea has no long swell, which is what moves a 330 m
+/// hull with a 21 s roll period in moderate seas. With it a Nimitz class deck moves about as
+/// the NAVSEA/NAVAIR deck motion criteria (Pattison & Bushway) expect: within 1° pitch and 2°
+/// roll significant amplitude through sea state 4, the ramp's ±3 m reached about sea state 6.
+const CARRIER_RESPONSE: (f32, f32, f32) = (1.6, 2.5, 3.0);
 
 /// The ships' clock (seconds).
 #[derive(Resource, Default)]
@@ -98,8 +104,7 @@ pub struct Hull {
 impl Hull {
     /// Natural periods (s) of heave and pitch, and of roll, of a hull `len` metres long.
     fn periods(len: f32) -> (f32, f32) {
-        let r = len.max(5.0).sqrt();
-        ((0.6 * r).clamp(2.0, 12.0), (0.7 * r).clamp(2.5, 14.0))
+        stealth_mission::wind::hull_periods(len)
     }
 
     /// Follows the waves' pull (`target`: heave, pitch, roll) for `dt` seconds.
@@ -129,16 +134,18 @@ impl Hull {
 /// The waves' pull on a hull at (x, z) (absolute Bevy metres, the bow north): the mean height
 /// over it, its slope along the length (north end up) and across the beam (east side up).
 fn wave_pull(ocean: &Ocean, x: f64, z: f64, len: f32) -> (f32, f32, f32) {
-    let beam = (len * 0.14).max(3.0);
-    // A big hull doesn't feel the 10 m cascade's ripples.
-    let w = [1.0, 1.0, if len < 60.0 { 1.0 } else { 0.0 }];
+    let beam = (len * 0.12).max(4.0);
+    // No hull feels the 10 m cascade's ripples (waves under 2 m long).
+    let w = [1.0, 1.0, 0.0];
     let h = |dx: f32, dn: f32| ocean.height(x + dx as f64, z - dn as f64, w);
     let (l, b) = (len * 0.4, beam * 0.5);
-    let (bow, stern) = (h(0.0, l), h(0.0, -l));
-    let (east, west) = (h(b, 0.0), h(-b, 0.0));
-    let mid = (h(0.0, 0.0) + h(0.0, l * 0.5) + h(0.0, -l * 0.5)) / 3.0;
-    let heave = (2.0 * mid + bow + stern + east + west) / 6.0;
-    ((heave), ((bow - stern) / (2.0 * l)).atan(), ((east - west) / (2.0 * b)).atan())
+    // Each end across the beam, each side along the length: the hull averages the waves.
+    let bow = (h(-b, l) + h(b, l)) * 0.5;
+    let stern = (h(-b, -l) + h(b, -l)) * 0.5;
+    let east = (h(b, -l * 0.5) + h(b, 0.0) + h(b, l * 0.5)) / 3.0;
+    let west = (h(-b, -l * 0.5) + h(-b, 0.0) + h(-b, l * 0.5)) / 3.0;
+    let heave = (bow + stern + east + west) * 0.25;
+    (heave, ((bow - stern) / (2.0 * l)).atan(), ((east - west) / (2.0 * b)).atan())
 }
 
 /// `x` eased into ±`cap`.
@@ -175,7 +182,9 @@ impl Deck {
             .iter()
             .filter(|o| o.target_flags as u16 & 0x200 != 0)
             .map(|o| {
-                let mut best: Option<(f64, (usize, i32, i32, u16), f64, f64)> = None;
+                // (distance, tile key, east, north) of the nearest tile object.
+                type Near = (f64, (usize, i32, i32, u16), f64, f64);
+                let mut best: Option<Near> = None;
                 for lod in 1..=2usize {
                     let unit = LEVEL_UNIT[lod];
                     let cell = 4096.0 * unit;
@@ -286,8 +295,9 @@ fn ride_decks(
                 return ship_motion(weather.sea, CARRIER_LEN_M, d.seed, clock.0);
             }
             let (x, z) = (d.east * WU, -d.north * WU);
-            let pull = wave_pull(&ocean, x, z, CARRIER_LEN_M);
-            let m = hull.step(pull, CARRIER_LEN_M, dt);
+            let (h, p, r) = wave_pull(&ocean, x, z, CARRIER_LEN_M);
+            let (kh, kp, kr) = CARRIER_RESPONSE;
+            let m = hull.step((h * kh, p * kp, r * kr), CARRIER_LEN_M, dt);
             let (h, p, r) = CARRIER_CAP;
             ShipMotion {
                 heave: soft(m.heave, h),
@@ -408,6 +418,136 @@ mod theater_tests {
             assert!(!t.decks.is_empty(), "{id}");
             for d in &t.decks {
                 assert!(d.tile.is_some(), "{id}: deck {d:?} has no tile object");
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod survey {
+    use super::*;
+    use crate::ocean::spectrum::{SeaParams, Sim};
+    use std::sync::Arc;
+
+    #[derive(Default)]
+    struct Stat {
+        n: f64,
+        sq: [f64; 3],
+        max: [f32; 3],
+    }
+
+    impl Stat {
+        fn add(&mut self, m: &ShipMotion) {
+            let v = [m.heave, m.pitch.to_degrees(), m.roll.to_degrees()];
+            self.n += 1.0;
+            for i in 0..3 {
+                self.sq[i] += (v[i] as f64).powi(2);
+                self.max[i] = self.max[i].max(v[i].abs());
+            }
+        }
+        fn show(&self) -> String {
+            let r = |i: usize| (self.sq[i] / self.n).sqrt();
+            format!(
+                "heave {:.2}/{:.1} m  pitch {:.2}/{:.1}°  roll {:.2}/{:.1}°",
+                r(0),
+                self.max[0],
+                r(1),
+                self.max[1],
+                r(2),
+                self.max[2]
+            )
+        }
+    }
+
+    /// `cargo test --release --lib motion_survey -- --ignored --nocapture`: wave heights and
+    /// ship motions (RMS / max) by wind, head and beam seas, against published figures.
+    #[test]
+    #[ignore]
+    fn motion_survey() {
+        let hulls = [("carrier 330 m", 330.0f32), ("frigate 140 m", 140.0), ("patrol 40 m", 40.0)];
+        for (water, depth_m, fetch_m) in [("open", 200.0, 400_000.0), ("gulf", 35.0, 150_000.0)] {
+            for kt in [10.0f32, 14.0, 19.0, 24.0, 30.0, 37.0, 44.0] {
+                if water == "gulf" && kt != 19.0 && kt != 30.0 && kt != 44.0 {
+                    continue;
+                }
+                let sea = stealth_mission::wind::sea_state(kt);
+                let mut line = format!("{water} {kt} kt sea {sea:.1}:");
+                for (dir_name, dir) in
+                    [("head", std::f32::consts::FRAC_PI_2), ("beam", std::f32::consts::PI)]
+                {
+                    let u = kt * 0.514_444;
+                    let p = SeaParams {
+                        wind_ms: u,
+                        wind_dir: dir,
+                        fetch_m,
+                        depth_m,
+                        gain: crate::ocean::spectrum::calibrated_gain(u),
+                        ..Default::default()
+                    };
+                    let mut sim = Sim::new(128, p, 7);
+                    let mut stats: Vec<Stat> = hulls.iter().map(|_| Stat::default()).collect();
+                    let mut hulls_now = [Hull::default(); 3];
+                    let mut var = 0.0f64;
+                    let dt = 1.0 / 15.0;
+                    for i in 0..(200.0 / dt) as usize {
+                        let t = i as f64 * dt as f64;
+                        let f = sim.frame(t);
+                        if i == 0 {
+                            for c in &f.cascades {
+                                let n = c.disp.len() as f64;
+                                let mean: f64 = c.disp.iter().map(|d| d[1] as f64).sum::<f64>() / n;
+                                var += c
+                                    .disp
+                                    .iter()
+                                    .map(|d| (d[1] as f64 - mean).powi(2))
+                                    .sum::<f64>()
+                                    / n;
+                            }
+                        }
+                        let mut ocean = crate::ocean::Ocean::default();
+                        ocean.on = true;
+                        ocean.frame = Some(Arc::new(f));
+                        for (k, (_, len)) in hulls.iter().enumerate() {
+                            let mut pull = wave_pull(&ocean, 100.0, -200.0, *len);
+                            if k == 0 {
+                                let (kh, kp, kr) = CARRIER_RESPONSE;
+                                pull = (pull.0 * kh, pull.1 * kp, pull.2 * kr);
+                            }
+                            let mut m = hulls_now[k].step(pull, *len, dt);
+                            if k == 0 {
+                                let (h, pc, r) = CARRIER_CAP;
+                                m = ShipMotion {
+                                    heave: soft(m.heave, h),
+                                    pitch: soft(m.pitch, pc),
+                                    roll: soft(m.roll, r),
+                                    heave_rate: 0.0,
+                                };
+                            }
+                            if t > 40.0 {
+                                stats[k].add(&m);
+                            }
+                        }
+                    }
+                    if dir_name == "head" {
+                        line += &format!(
+                            " Hs {:.2} m (table {:.2})\n",
+                            4.0 * var.sqrt(),
+                            stealth_mission::wind::wave_height_m(sea)
+                        );
+                    }
+                    for (k, (name, _)) in hulls.iter().enumerate() {
+                        line += &format!("    {dir_name} {name}: {}\n", stats[k].show());
+                    }
+                }
+                // The lighter mode (sine motion by sea state).
+                for (name, len) in hulls {
+                    let mut s = Stat::default();
+                    for i in 0..3000 {
+                        s.add(&ship_motion(sea, len, 1234, i as f64 * 0.1));
+                    }
+                    line += &format!("    light-mode {name}: {}\n", s.show());
+                }
+                println!("{line}");
             }
         }
     }

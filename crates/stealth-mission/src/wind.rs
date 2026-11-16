@@ -225,42 +225,81 @@ impl Wind {
     }
 }
 
-/// (knots, sea state) of the fully developed sea (Douglas scale).
-const SEA: [(f32, f32); 9] = [
+/// Probable wave heights of the open sea by the wind (knots, metres): the WMO Beaufort scale's
+/// (as the Met Office's and the Hong Kong Observatory's tables give it), at each force's middle.
+const BEAUFORT: [(f32, f32); 13] = [
     (0.0, 0.0),
-    (3.0, 1.0),
-    (8.0, 2.0),
-    (13.0, 3.0),
-    (19.0, 4.0),
-    (25.0, 5.0),
-    (31.0, 6.0),
-    (38.0, 7.0),
-    (45.0, 8.0),
+    (2.0, 0.1),
+    (5.0, 0.2),
+    (8.5, 0.6),
+    (13.5, 1.0),
+    (19.0, 2.0),
+    (24.5, 3.0),
+    (30.5, 4.0),
+    (37.0, 5.5),
+    (44.0, 7.0),
+    (51.5, 9.0),
+    (59.5, 11.5),
+    (68.0, 14.0),
 ];
+
+/// (significant wave height in metres, sea state) at the middles of the WMO sea state code's
+/// classes (code 3700, NATO STANAG 4194): 3 slight 0.5-1.25 m, 4 moderate 1.25-2.5 m, 5 rough
+/// 2.5-4 m, 6 very rough 4-6 m, 7 high 6-9 m, 8 very high 9-14 m.
+const CODES: [(f32, f32); 9] = [
+    (0.0, 0.0),
+    (0.05, 1.0),
+    (0.3, 2.0),
+    (0.875, 3.0),
+    (1.875, 4.0),
+    (3.25, 5.0),
+    (5.0, 6.0),
+    (7.5, 7.0),
+    (11.5, 8.0),
+];
+
+/// Linear interpolation in a table of increasing (x, y), clamped at its ends.
+fn interp(t: &[(f32, f32)], x: f32) -> f32 {
+    if x <= t[0].0 {
+        return t[0].1;
+    }
+    for w in t.windows(2) {
+        let ((x0, y0), (x1, y1)) = (w[0], w[1]);
+        if x <= x1 {
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+        }
+    }
+    t[t.len() - 1].1
+}
+
+/// The table read backwards (y to x; y increasing too).
+fn interp_back(t: &[(f32, f32)], y: f32) -> f32 {
+    if y <= t[0].1 {
+        return t[0].0;
+    }
+    for w in t.windows(2) {
+        let ((x0, y0), (x1, y1)) = (w[0], w[1]);
+        if y <= y1 {
+            return x0 + (x1 - x0) * (y - y0) / (y1 - y0);
+        }
+    }
+    t[t.len() - 1].0
+}
+
+/// Probable wave height (metres) of the open sea a steady wind of `kt` raises (Beaufort).
+pub fn wind_wave_height_m(kt: f32) -> f32 {
+    interp(&BEAUFORT, kt.max(0.0))
+}
 
 /// Sea state 0..8 (continuous) a steady wind of `kt` raises.
 pub fn sea_state(kt: f32) -> f32 {
-    let kt = kt.max(0.0);
-    for w in SEA.windows(2) {
-        let ((k0, s0), (k1, s1)) = (w[0], w[1]);
-        if kt <= k1 {
-            return s0 + (s1 - s0) * (kt - k0) / (k1 - k0);
-        }
-    }
-    8.0
+    interp(&CODES, wind_wave_height_m(kt))
 }
 
 /// The steady wind (knots) that raises sea state `sea` ([`sea_state`] inverted): what a sea
 /// still building up or calming down looks like it was raised by.
 pub fn sea_wind_kt(sea: f32) -> f32 {
-    let sea = sea.clamp(0.0, 8.0);
-    for w in SEA.windows(2) {
-        let ((k0, s0), (k1, s1)) = (w[0], w[1]);
-        if sea <= s1 {
-            return k0 + (k1 - k0) * (sea - s0) / (s1 - s0);
-        }
-    }
-    SEA[SEA.len() - 1].0
+    interp_back(&BEAUFORT, wave_height_m(sea))
 }
 
 fn table(sea: f32, t: [f32; 9]) -> f32 {
@@ -271,12 +310,22 @@ fn table(sea: f32, t: [f32; 9]) -> f32 {
 
 /// Significant wave height (metres) at a sea state.
 pub fn wave_height_m(sea: f32) -> f32 {
-    table(sea, [0.0, 0.1, 0.3, 0.9, 1.9, 3.2, 5.0, 7.5, 11.0])
+    interp_back(&CODES, sea.clamp(0.0, 8.0))
 }
 
-/// Dominant wave period (seconds) at a sea state.
+/// Dominant wave period (seconds) at a sea state (the wind sea's, rising to the most probable
+/// periods of STANAG 4194's open ocean: 9 s at sea state 4, 12 s at 6, 17 s at 8).
 pub fn wave_period_s(sea: f32) -> f32 {
-    table(sea, [2.0, 2.5, 3.5, 5.0, 6.5, 8.0, 9.5, 11.0, 12.5])
+    table(sea, [2.0, 2.5, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 17.0])
+}
+
+/// A hull's natural periods (seconds) of heave and pitch, and of roll, by its length (metres):
+/// pitch by Sandia's fit for warships (SAND2008-1020: 6.5 s at 152 m, 9 s at 300 m), roll from
+/// about 5 s for a patrol boat through 10-11 s for a destroyer to the 21 s measured on a Nimitz
+/// class carrier (Pattison & Bushway, AGARD CP-509).
+pub fn hull_periods(length_m: f32) -> (f32, f32) {
+    let l = length_m.clamp(10.0, 350.0);
+    (2.44 + 0.032 * l - 0.000_036 * l * l, 3.0 + 0.055 * l)
 }
 
 /// A ship's motion on the waves at time `t` (seconds).
@@ -305,11 +354,15 @@ pub fn ship_motion(sea: f32, length_m: f32, seed: u32, t: f64) -> ShipMotion {
     // Wave length of the dominant waves (deep water): g T² / 2π.
     let wave_len = 9.81 * period * period / std::f32::consts::TAU;
     // A hull much longer than the waves averages them out.
-    let ratio = (wave_len / len).min(1.5);
-    let heave_amp = (0.5 * h * ratio.min(1.0)).min(if len > 250.0 { 2.5 } else { 8.0 });
+    let ratio = (wave_len / len).min(1.0);
+    let heave_amp = (0.5 * h * ratio).min(if len > 250.0 { 2.5 } else { 8.0 });
     let pitch_amp =
         (h / len * 1.3 * ratio).min(if len > 250.0 { 1.5f32.to_radians() } else { 0.2 });
-    let roll_amp = (h / len.sqrt() * 0.12).min(if len > 250.0 { 3f32.to_radians() } else { 0.35 });
+    // A carrier's long roll period and wide beam: half the roll (about 1° significant amplitude
+    // in sea state 4, the NAVSEA deck motion criteria's).
+    let roll_k = if len > 250.0 { 0.15 } else { 0.3 };
+    let roll_amp =
+        (h / len.sqrt() * roll_k).min(if len > 250.0 { 3f32.to_radians() } else { 0.35 });
     let s = seed as f64;
     let ph = |k: f64| (s * 0.618_034 * k).fract() * std::f64::consts::TAU;
     let w = std::f64::consts::TAU / period as f64;
@@ -323,7 +376,7 @@ pub fn ship_motion(sea: f32, length_m: f32, seed: u32, t: f64) -> ShipMotion {
                 + 1.37 * (w * f * 1.37 * t + ph(k + 1.0)).cos() * 0.3)) as f32
     };
     // Roll at the hull's own (longer) period.
-    let roll_f = (period as f64 / (4.0 + (len as f64).sqrt() * 0.6)).clamp(0.4, 1.2);
+    let roll_f = (period as f64 / hull_periods(len).1 as f64).clamp(0.3, 1.2);
     ShipMotion {
         heave: heave_amp * wave(1.0, 1.0),
         pitch: pitch_amp * wave(3.0, 1.0),
@@ -373,11 +426,14 @@ mod tests {
 
     #[test]
     fn sea_rises_with_wind() {
-        for kt in [0.0, 5.0, 17.5, 33.0, 45.0] {
+        for kt in [0.0, 5.0, 17.5, 33.0, 45.0, 55.0] {
             assert!((sea_wind_kt(sea_state(kt)) - kt).abs() < 1e-3, "{kt}");
         }
         assert_eq!(sea_state(0.0), 0.0);
-        assert!((sea_state(13.0) - 3.0).abs() < 1e-5);
+        // Force 5 (19 kt): 2 m, moderate; force 9 (44 kt): 7 m, high.
+        assert!((wave_height_m(sea_state(19.0)) - 2.0).abs() < 1e-3);
+        assert!((sea_state(19.0) - 4.1).abs() < 0.05, "{}", sea_state(19.0));
+        assert!((wave_height_m(sea_state(44.0)) - 7.0).abs() < 1e-3);
         assert_eq!(sea_state(80.0), 8.0);
         assert!(wave_height_m(5.5) > wave_height_m(5.0));
     }

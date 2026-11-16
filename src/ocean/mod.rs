@@ -88,6 +88,8 @@ pub struct Ocean {
     /// The viewpoint (absolute Bevy x, z) the levels are round.
     eye: DVec2,
     params: SeaParams,
+    /// The wind (m/s) the gain was worked out for, and the gain (`spectrum::calibrated_gain`).
+    gain: (f32, f32),
     /// The latest surface's texture bytes (`--gl-vr` uploads them from here).
     pub textures: Option<Arc<OceanTextures>>,
     worker: Option<Worker>,
@@ -255,7 +257,11 @@ fn drive(
     ocean.on = true;
     let theater_index =
         theater.as_ref().and_then(|t| crate::mission::theater_index(&t.id)).unwrap_or(3);
-    let params = sea_params(&weather, theater_index);
+    let mut params = sea_params(&weather, theater_index);
+    if ocean.gain.0 != params.wind_ms {
+        ocean.gain = (params.wind_ms, spectrum::calibrated_gain(params.wind_ms));
+    }
+    params.gain = ocean.gain.1;
     ocean.params = params;
 
     // --- the surface

@@ -15,8 +15,6 @@
 use super::fft::{C, Fft};
 
 pub const G: f32 = 9.81;
-/// The waves' heights over the spectrum's.
-pub const WAVE_GAIN: f32 = 1.35;
 /// JONSWAP peak enhancement.
 const GAMMA: f32 = 3.3;
 
@@ -42,7 +40,7 @@ pub struct SeaParams {
     pub swell: f32,
     /// Horizontal displacement factor (Tessendorf's λ).
     pub choppiness: f32,
-    /// The waves' heights over the spectrum's (a livelier sea than the measured spectra).
+    /// The waves' heights over the spectrum's (`calibrated_gain`).
     pub gain: f32,
 }
 
@@ -55,7 +53,7 @@ impl Default for SeaParams {
             depth_m: 200.0,
             swell: 0.3,
             choppiness: 0.8,
-            gain: WAVE_GAIN,
+            gain: 1.0,
         }
     }
 }
@@ -260,12 +258,13 @@ pub struct Sim {
 /// Foam fades with this time constant (s).
 const FOAM_FADE_S: f32 = 1.8;
 /// Where the Jacobian drops below `foam_threshold`, the crest breaks into foam, fully
-/// `FOAM_RANGE` below it. The threshold rises with the wind (whitecaps from about 4 m/s, a few
-/// percent of the sea at 10 m/s, much of it in a gale).
+/// `FOAM_RANGE` below it. The threshold rises with the wind, so the whitecaps (with their
+/// fading) cover about as much of the sea as Monahan's fit (W = 3.84e-6 U^3.41: 1 % at 10 m/s,
+/// 3 % at 14 m/s, 14 % at 22 m/s).
 const FOAM_RANGE: f32 = 0.08;
 
 fn foam_threshold(wind_ms: f32) -> f32 {
-    if wind_ms < 4.0 { 0.0 } else { (0.64 + 0.011 * wind_ms).min(0.9) }
+    if wind_ms < 4.0 { 0.0 } else { (0.67 + 0.011 * wind_ms).min(0.93) }
 }
 
 impl Sim {
@@ -406,8 +405,18 @@ impl Frame {
     }
 }
 
+/// The gain that makes the open sea's waves as high as the Beaufort scale's probable heights
+/// for a wind of `wind_ms` (the fetch limited JONSWAP spectrum with its fetch capped at full
+/// development is some 35 % higher in light and moderate winds). Seas of a shorter fetch or
+/// shallower water stay as much lower as their spectra are.
+pub fn calibrated_gain(wind_ms: f32) -> f32 {
+    let open = SeaParams { wind_ms, gain: 1.0, ..Default::default() };
+    let hs = significant_height(&open);
+    let want = stealth_mission::wind::wind_wave_height_m(wind_ms / 0.514_444);
+    if hs > 0.01 { want / hs } else { 1.0 }
+}
+
 /// Significant wave height (m) the spectrum gives: 4 √m0 over the cascades' bands.
-#[cfg(test)]
 pub fn significant_height(p: &SeaParams) -> f32 {
     let (wp, alpha) = peak(p);
     let (k_lo, k_hi) =
@@ -545,6 +554,62 @@ mod foam_probe {
                 out += &format!(" [jmin~{jmin:.2} foam {:.1}%]", cover * 100.0);
             }
             println!("wind {wind}:{out}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod height_probe {
+    #[test]
+    #[ignore]
+    fn spectrum_heights() {
+        for kt in [10.0f32, 14.0, 19.0, 24.0, 30.0, 37.0, 44.0] {
+            let u = kt * 0.514_444;
+            let p = super::SeaParams {
+                wind_ms: u,
+                gain: super::calibrated_gain(u),
+                ..Default::default()
+            };
+            let hs = super::significant_height(&p);
+            // Pierson-Moskowitz: Hs = 0.21 U19.5² / g, U19.5 ≈ 1.075 U10.
+            let pm = 0.21 * (1.075 * u).powi(2) / super::G;
+            let mut sims = 0.0;
+            for seed in 0..8 {
+                let mut s = super::Sim::new(128, p, seed);
+                let f = s.frame(3.0);
+                let mut var = 0.0f64;
+                for c in &f.cascades {
+                    let n = c.disp.len() as f64;
+                    let m: f64 = c.disp.iter().map(|d| d[1] as f64).sum::<f64>() / n;
+                    var += c.disp.iter().map(|d| (d[1] as f64 - m).powi(2)).sum::<f64>() / n;
+                }
+                sims += 4.0 * var.sqrt() / 8.0;
+            }
+            println!(
+                "{kt} kt: spectrum Hs {hs:.2} m, simulated (8 seeds) {sims:.2} m, PM {pm:.2} m"
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod calibration_tests {
+    /// Open sea waves as high as the Beaufort scale's probable heights; the shallow, short
+    /// fetched Gulf lower.
+    #[test]
+    fn open_sea_matches_beaufort() {
+        for kt in [10.0f32, 19.0, 30.0, 44.0] {
+            let u = kt * 0.514_444;
+            let open = super::SeaParams {
+                wind_ms: u,
+                gain: super::calibrated_gain(u),
+                ..Default::default()
+            };
+            let want = stealth_mission::wind::wind_wave_height_m(kt);
+            let hs = super::significant_height(&open);
+            assert!((hs - want).abs() < 0.01 * want + 1e-3, "{kt} kt: {hs} vs {want}");
+            let gulf = super::SeaParams { depth_m: 35.0, fetch_m: 150_000.0, ..open };
+            assert!(super::significant_height(&gulf) < hs, "{kt} kt");
         }
     }
 }
