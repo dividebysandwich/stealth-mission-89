@@ -37,6 +37,11 @@ impl Water {
         Self(Some(std::sync::Arc::new(wet)))
     }
 
+    /// The host told where the water is (a test's simulation has none).
+    pub fn known(&self) -> bool {
+        self.0.is_some()
+    }
+
     pub fn wet(&self, x: i32, y: i32) -> bool {
         self.0.as_ref().is_some_and(|f| f(x, y))
     }

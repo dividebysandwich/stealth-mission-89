@@ -1,4 +1,5 @@
 pub mod aaa;
+pub mod asw;
 pub mod ai_loadout;
 pub mod ballistics;
 pub mod campaign;
@@ -254,6 +255,10 @@ pub struct Sim {
     /// The CBU-105s' submunitions and skeets on their way down.
     #[serde(default, skip_serializing_if = "sfw::Sfw::is_empty")]
     pub(crate) sfw: sfw::Sfw,
+    /// The submarine hunt: the submarines, sonobuoys, sonars, torpedoes, the Seahawk crews'
+    /// pictures ([`asw`]).
+    #[serde(default, skip_serializing_if = "asw::Asw::is_empty")]
+    pub(crate) asw: asw::Asw,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -622,6 +627,7 @@ impl Sim {
             side_gun_wear: Vec::new(),
             column: None,
             sfw: sfw::Sfw::default(),
+            asw: asw::Asw::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,
@@ -1008,6 +1014,7 @@ impl Sim {
         }
         self.update_missiles(&present);
         self.update_sfw();
+        self.update_asw(&present);
         for &k in &present {
             self.activate(k);
             self.update_cm_timers();

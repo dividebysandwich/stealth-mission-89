@@ -633,6 +633,18 @@ impl Sim {
             self.msg(text!("sim-insufficient-altitude"));
             return;
         }
+        // The Mk 54 goes to the submarine hunt's torpedoes, over the sea, low and slow.
+        if w == crate::asw::MK54_WEAPON {
+            if let Err(t) = self.torpedo_release_check() {
+                self.sound(0x20, 1);
+                self.msg(t);
+                return;
+            }
+            self.pl.bays[bay].1 -= 1;
+            self.log_event(4, bay as i32);
+            self.drop_torpedo();
+            return;
+        }
         if spec == -2 {
             self.pl.bays[bay].1 -= 1;
             self.emit(SimEvent::FuelTransfer { lbs: 0x76C });

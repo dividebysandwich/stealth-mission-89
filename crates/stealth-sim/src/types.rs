@@ -972,6 +972,13 @@ pub enum SimEvent {
         from: [i32; 3],
         vel: [i32; 3],
     },
+    /// The submarine hunt ([`crate::asw`]): something hit the sea at `at` (decimetres east,
+    /// north): kind 0 a sonobuoy, 1 a torpedo, 2 a submarine sunk (its plume), 3 a ship
+    /// torpedoed.
+    AswSplash {
+        at: [i32; 2],
+        kind: u8,
+    },
     /// A side gun's shell came down at `at` (decimetres east, north, up); `armour`: on a
     /// vehicle or a gun.
     SideShellImpact {

@@ -777,6 +777,12 @@ impl Sim {
     /// Ground contact of a projectile.
     pub(crate) fn ground_impact(&mut self, s: usize) {
         let m = self.proj[s];
+        // A Hellfire into the sea over a submarine at periscope depth.
+        if m.spec == HELLFIRE_SPEC && s >= ENEMY_SLOTS && !self.asw.subs.is_empty() {
+            let (x, y, _) = m.map_pos();
+            let at = [x * crate::aaa::M_PER_MAP, (0x8000 as f64 - y) * crate::aaa::M_PER_MAP];
+            self.hellfire_on_sea(at);
+        }
         let (ex, ey) = (m.x, m.y);
         let mut ealt = m.alt;
         self.proj[s].ttl = 0;
