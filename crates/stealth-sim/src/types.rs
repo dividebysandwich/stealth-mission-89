@@ -121,6 +121,10 @@ pub struct FlightUnit {
     /// AI mode of the last frame (1 intercept, 2 RTB, 3 patrol; 0 inactive). Not in the classic
     /// record.
     pub mode: i32,
+    /// Its launch from a carrier's catapult (`catapult::AiLaunch`; 0 none). Not in the classic
+    /// record.
+    #[serde(default, skip_serializing_if = "is_zero_i32")]
+    pub cat: i32,
 }
 
 /// Projectile. Slots 0..7 enemy, 8..11 player.
@@ -547,6 +551,10 @@ pub struct PlayerState {
     /// A V/STOL type's nozzle angle down from aft (degrees), drawn on its model for the others.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
     pub nozzle: u8,
+    /// On a carrier's catapult: the catapult and the launch's phase (`catapult::report`; 0
+    /// none). The start state names the catapult it starts on.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub catapult: u8,
     /// Realistic avionics: the stores are used in their HUD mode only (air-to-air missiles
     /// in AIR, the other weapons in GND, the cannon in either; the camera and the tanks in
     /// every mode). Space steps through those of the mode, a mode change picks one of its own
@@ -567,6 +575,10 @@ pub struct PlayerState {
 
 fn is_zero_engine(v: &[u8; 3]) -> bool {
     *v == [0; 3]
+}
+
+fn is_zero_i32(v: &i32) -> bool {
+    *v == 0
 }
 
 fn is_zero(v: &u16) -> bool {

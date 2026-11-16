@@ -3,6 +3,8 @@
 # cuvintele avionicii (CCIP, THR, KM, MAX...) rămân în engleză.
 
 hud-no-ejection-seat = FĂRĂ SCAUN EJECTABIL
+hud-catapult-power = PUTERE MAXIMĂ PENTRU LANSARE
+hud-catapult-wait = SE AȘTEAPTĂ CATAPULTA
 hud-waypoint-reached = Waypoint { $waypoint } atins
 hud-select-camera = ALEGEȚI CAMERA
 hud-open-bay = DESCHIDEȚI SOUTA

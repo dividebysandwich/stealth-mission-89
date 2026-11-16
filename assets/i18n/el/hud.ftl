@@ -3,6 +3,8 @@
 # της αβιονικής (CCIP, THR, KM, MAX...) μένουν στα αγγλικά.
 
 hud-no-ejection-seat = ΧΩΡΙΣ ΚΑΘΙΣΜΑ ΕΚΤΙΝΑΞΗΣ
+hud-catapult-power = ΠΛΗΡΗΣ ΙΣΧΥΣ ΓΙΑ ΕΚΤΟΞΕΥΣΗ
+hud-catapult-wait = ΑΝΑΜΟΝΗ ΓΙΑ ΚΑΤΑΠΕΛΤΗ
 hud-waypoint-reached = Το waypoint { $waypoint } επιτεύχθηκε
 hud-select-camera = ΕΠΙΛΟΓΗ ΚΑΜΕΡΑΣ
 hud-open-bay = ΑΝΟΙΞΤΕ ΤΟ ΚΑΜΠΑΡΤΙΝΟ

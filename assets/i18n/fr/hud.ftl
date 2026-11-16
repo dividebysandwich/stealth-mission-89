@@ -2,6 +2,8 @@
 # sans accents ; les mots de l'avionique (CCIP, THR, KM, MAX...) restent en anglais.
 
 hud-no-ejection-seat = PAS DE SIÈGE ÉJECTABLE
+hud-catapult-power = PLEINE PUISSANCE POUR LE LANCEMENT
+hud-catapult-wait = EN ATTENTE DE CATAPULTE
 hud-waypoint-reached = Waypoint { $waypoint } atteint
 hud-select-camera = CHOISIR LA CAMÉRA
 hud-open-bay = OUVRIR LA SOUTE

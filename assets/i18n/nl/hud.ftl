@@ -2,6 +2,8 @@
 # hoofdletters zonder accenten; de woorden van de avionica (CCIP, THR, KM, MAX...) blijven Engels.
 
 hud-no-ejection-seat = GEEN SCHIETSTOEL
+hud-catapult-power = VOL VERMOGEN VOOR LANCERING
+hud-catapult-wait = WACHTEN OP KATAPULT
 hud-waypoint-reached = Waypoint { $waypoint } bereikt
 hud-select-camera = KIES CAMERA
 hud-open-bay = OPEN RUIM

@@ -1,6 +1,6 @@
 """Builds the remake's ground units in Blender: the low-level air defences (ZSU-23-4 Shilka, S-60 gun,
 MANPADS team, and the friendly Patriot launcher and radar, the Gepard, the drone command center and
-the NASAMS launcher and Sentinel radar)
+the NASAMS launcher and Sentinel radar, and a carrier's catapult officer)
 and the armour (T-90A and BMP-2 for the red side, Leopard 2A6 and M2A2 Bradley for the blue), for
 the air defence option and the campaign (crates/stealth-sim/src/aaa.rs):
 
@@ -45,6 +45,8 @@ NASAMS_LN = 121
 NASAMS_RADAR = 122
 # Sandbag wall round a defensive position (not a unit: drawn round dug-in guns and MANPADS).
 POSITION = 123
+# A carrier's catapult officer, the "shooter" (not a unit: drawn beside each catapult).
+SHOOTER = 124
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -66,6 +68,8 @@ LENS = 0xDF
 HOLE = 0x00
 
 TURRET_SLOT, GUN_SLOT, RADAR_SLOT = 21, 22, 16
+# The shooter's pose (`_s23vN`) and his signalling hand's circling (slot 24).
+POSE_SLOT, HAND_SLOT = 23, 24
 
 
 def empty(name, parent=None, loc=(0, 0, 0)):
@@ -1178,6 +1182,133 @@ def nasams_radar():
     far(lod1, "aaa_122", [(-1.0, 1.0, -1.8, 1.6, 0.4, 1.4), (-1.2, 1.2, -0.4, 0.4, 1.9, 3.6)])
 
 
+# ------------------------------------------------------------------------------------- shooter
+
+JERSEY = Ramp(199, 202)
+TROUSERS = Ramp(0xA1, 0xA4)
+CRANIAL = Ramp(0xA9, 0xAD)
+GOGGLES = 0xED
+GLOVES = Ramp(0xC3, 0xC6)
+BOOTS = Ramp(0xEC, 0xEF)
+
+
+def limb(a, b, r, paint, r1=None):
+    return frustum(a, b, r, r if r1 is None else r1, paint, n=5)
+
+
+def head(neck, top):
+    """Neck, head, the cranial helmet and goggles, from the neck's base up to the crown (the
+    face towards +y)."""
+    neck, top = mklib.v3(neck), mklib.v3(top)
+    up = (top - neck).normalized()
+    at = lambda d: neck + up * d  # noqa: E731
+    g = Geo()
+    g.add(limb(at(0.0), at(0.08), 0.06, SKIN))
+    g.add(frustum(at(0.08), at(0.27), 0.1, 0.09, SKIN, n=6))
+    g.add(frustum(at(0.19), at(0.31), 0.125, 0.09, CRANIAL, n=6))
+    # Goggles pushed up on the helmet's front, ear defenders at the sides.
+    eye = at(0.22)
+    g.add(block(eye.x - 0.07, eye.x + 0.07, eye.y + 0.08, eye.y + 0.12, eye.z - 0.02, eye.z + 0.03, GOGGLES))
+    for sx in (-1, 1):
+        e = at(0.17)
+        g.add(block(e.x + sx * 0.1 - 0.03, e.x + sx * 0.1 + 0.03, e.y - 0.04, e.y + 0.04, e.z - 0.05, e.z + 0.04, CRANIAL))
+    return g
+
+
+def hand(at, paint=GLOVES, s=0.05):
+    at = mklib.v3(at)
+    return block(at.x - s, at.x + s, at.y - s, at.y + s, at.z - s, at.z + s, paint)
+
+
+def standing_legs():
+    g = Geo()
+    for sx in (-1, 1):
+        x = sx * 0.12
+        g.add(limb((x, 0, 0.1), (x, 0, 0.97), 0.08, TROUSERS, 0.09))
+        g.add(block(x - 0.06, x + 0.06, -0.08, 0.16, 0.0, 0.11, BOOTS))
+    return g
+
+
+def standing_body():
+    """Legs, torso and head, upright, facing +y (the arms are the poses')."""
+    g = standing_legs()
+    g.add(block(-0.21, 0.21, -0.12, 0.12, 0.95, 1.48, JERSEY, taper=0.03))
+    g.add(head((0, 0, 1.48), (0, 0, 1.8)))
+    return g
+
+
+def shooter_idle():
+    g = standing_body()
+    for sx in (-1, 1):
+        g.add(limb((sx * 0.25, 0, 1.43), (sx * 0.29, 0.03, 0.88), 0.055, JERSEY))
+        g.add(hand((sx * 0.29, 0.03, 0.84)))
+    return g
+
+
+# The run-up signal: the right arm up, its forearm (from the elbow) circling the two fingers
+# held up over the head.
+ELBOW = (0.36, 0.06, 1.68)
+
+
+def shooter_runup():
+    g = standing_body()
+    g.add(limb((-0.25, 0, 1.43), (-0.29, 0.03, 0.88), 0.055, JERSEY))
+    g.add(hand((-0.29, 0.03, 0.84)))
+    g.add(limb((0.25, 0, 1.43), ELBOW, 0.055, JERSEY))
+    return g
+
+
+def runup_forearm():
+    """The forearm about the elbow, leaning out so the hand circles; two fingers up."""
+    g = Geo()
+    tip = (0.12, 0.0, 0.36)
+    g.add(limb((0, 0, 0), tip, 0.05, JERSEY, 0.045))
+    g.add(hand((0.13, 0.0, 0.4), s=0.045))
+    for dx in (-0.02, 0.025):
+        g.add(block(0.13 + dx - 0.012, 0.13 + dx + 0.012, -0.012, 0.012, 0.44, 0.55, GLOVES))
+    return g
+
+
+def shooter_lunge():
+    """The launch signal: down in a deep lunge towards the bow (+x), the right arm pointing
+    along the deck at it, the left hand behind the back."""
+    g = Geo()
+    hip_r, hip_l = (0.22, 0.0, 0.62), (0.02, 0.0, 0.62)
+    knee_r, foot_r = (0.68, 0.06, 0.52), (0.78, 0.04, 0.06)
+    knee_l, foot_l = (-0.32, -0.02, 0.32), (-0.72, -0.04, 0.06)
+    for hip, knee, foot in ((hip_r, knee_r, foot_r), (hip_l, knee_l, foot_l)):
+        g.add(limb(hip, knee, 0.09, TROUSERS, 0.085))
+        g.add(limb(knee, foot, 0.08, TROUSERS))
+    g.add(block(0.72, 0.9, -0.04, 0.2, 0.0, 0.11, BOOTS))
+    g.add(block(-0.82, -0.64, -0.12, 0.08, 0.0, 0.1, BOOTS))
+    pelvis, chest = (0.12, 0.0, 0.66), (0.5, 0.06, 1.1)
+    g.add(frustum(pelvis, chest, 0.17, 0.2, JERSEY, n=6, r0b=0.12, r1b=0.13))
+    neck = (0.55, 0.07, 1.2)
+    g.add(head(neck, (0.72, 0.1, 1.48)))
+    # Right arm out at the bow, the hand flat; left arm bent behind the back.
+    sh_r, sh_l = (0.55, -0.14, 1.12), (0.45, 0.22, 1.08)
+    g.add(limb(sh_r, (1.28, -0.1, 0.88), 0.055, JERSEY, 0.045))
+    g.add(block(1.26, 1.42, -0.15, -0.05, 0.85, 0.9, GLOVES))
+    g.add(limb(sh_l, (0.3, 0.2, 0.86), 0.055, JERSEY))
+    g.add(limb((0.3, 0.2, 0.86), (0.12, -0.1, 0.82), 0.05, JERSEY))
+    g.add(hand((0.1, -0.13, 0.82)))
+    return g
+
+
+def shooter():
+    """The shooter stands at the origin facing +y (the aircraft): idle (`_s23v0`), giving the
+    run-up signal (`_s23v1`, the hand circling on slot 24), lunging for the launch towards +x
+    (`_s23v2`) or -x (`_s23v3`)."""
+    name = "aaa_%03d" % SHOOTER
+    root, lod0, _ = levels(SHOOTER, 4000, far_level=False)
+    lod0["radius"] = int(2 * K)
+    mesh_obj(name + "_lod0_s23v0", shooter_idle(), lod0)
+    runup = mesh_obj(name + "_lod0_s23v1", shooter_runup(), lod0)
+    part(name + "_lod0_s23v1_part1", runup_forearm(), runup, ELBOW, HAND_SLOT, 0)
+    mesh_obj(name + "_lod0_s23v2", shooter_lunge(), lod0)
+    mesh_obj(name + "_lod0_s23v3", shooter_lunge().mirrored(), lod0)
+
+
 # -------------------------------------------------------------------------------------- common
 
 
@@ -1227,6 +1358,7 @@ def main():
     nasams_launcher()
     nasams_radar()
     position()
+    shooter()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

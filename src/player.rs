@@ -80,6 +80,13 @@ fn spawn_player(
     let mut aircraft_state = Aircraft::new_on_runway(constants.fuel);
     aircraft_state.altitude = (pos.y / crate::world::WU) as f32;
     aircraft_state.orientation = Aircraft::from_euler(heading, 0.0, 0.0);
+    // On a carrier's catapult, the flaps down for the launch.
+    if let Some(s) = setup.start.filter(|s| s.carrier) {
+        let (e, n, _) = bevy_to_wu(pos);
+        aircraft_state.catapult = crate::flight::catapult::carrier_at(&theater.world, e, n)
+            .and_then(|c| crate::flight::catapult::launch_from(s.catapult, c, &constants));
+        aircraft_state.flaps |= aircraft_state.catapult.is_some();
+    }
     if let Some((km, alt, kts)) = start_final() {
         // Test aid (`--start-final km[,ft[,kts]]`): on final approach to the take-off runway,
         // gear and flaps down, `km` before the runway start.

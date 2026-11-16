@@ -2,6 +2,7 @@ pub mod aaa;
 pub mod ai_loadout;
 pub mod ballistics;
 pub mod campaign;
+pub mod catapult;
 pub mod claims;
 pub mod data;
 pub mod math;
@@ -387,6 +388,7 @@ impl Sim {
                 reserved: f.reserved[1] as i32,
                 heat: f.reserved[2] as i32,
                 mode: 0,
+                cat: 0,
             })
             .collect();
         let lockheed = s.plane == stealth_mission::Plane::Lockheed;
@@ -713,9 +715,10 @@ impl Sim {
         let mut y = (0x8000 - o.y) << 5;
         let mut heading = if t == 1 { 0 } else { 0x8000 };
         let carrier = o.flags & oflags::CARRIER != 0;
+        let mut catapult = 0;
         if carrier {
-            x -= t << 7;
-            heading += 0x400;
+            // On a free catapult, held back for the launch (queued behind one when none is).
+            (x, y, heading, catapult) = self.catapult_start(b, self.pl.id);
         } else {
             y -= t * 0x708;
         }
@@ -724,6 +727,7 @@ impl Sim {
             y,
             altitude: if carrier { 0x80 } else { 0 },
             heading: heading as u16,
+            catapult,
             on_ground: true,
             fuel: 10000,
             hud_visible: true,

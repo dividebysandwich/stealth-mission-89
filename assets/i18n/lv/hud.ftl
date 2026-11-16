@@ -3,6 +3,8 @@
 # vārdi (CCIP, THR, KM, MAX...) paliek angļu valodā.
 
 hud-no-ejection-seat = NAV KATAPULTĒŠANĀS SĒDEKĻA
+hud-catapult-power = PILNA JAUDA STARTAM
+hud-catapult-wait = GAIDA KATAPULTU
 hud-waypoint-reached = Waypoint { $waypoint } sasniegts
 hud-select-camera = IZVĒLIETIES KAMERU
 hud-open-bay = ATVĒRT NODALĪJUMU

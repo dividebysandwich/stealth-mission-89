@@ -3,6 +3,8 @@
 # avionikkens egne ord (CCIP, THR, KM, MAX...) forbliver på engelsk.
 
 hud-no-ejection-seat = INTET UDSKYDNINGSSÆDE
+hud-catapult-power = FULD KRAFT TIL START
+hud-catapult-wait = VENTER PÅ KATAPULT
 hud-waypoint-reached = Waypoint { $waypoint } nået
 hud-select-camera = VÆLG KAMERA
 hud-open-bay = ÅBN BOMBERUM

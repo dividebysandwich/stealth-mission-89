@@ -3,6 +3,8 @@
 # avionikos žodžiai (CCIP, THR, KM, MAX...) lieka angliški.
 
 hud-no-ejection-seat = NĖRA KATAPULTOS
+hud-catapult-power = VISA GALIA STARTUI
+hud-catapult-wait = LAUKIAMA KATAPULTOS
 hud-waypoint-reached = Waypoint { $waypoint } pasiektas
 hud-select-camera = PASIRINKTI KAMERĄ
 hud-open-bay = ATIDARYTI SKYRIŲ

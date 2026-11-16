@@ -3,6 +3,8 @@
 # tal-avjonika nnifisha (CCIP, THR, KM, MAX...) jibqa' bl-Ingliż.
 
 hud-no-ejection-seat = L-EBDA SEDJA TAL-EJEZZJONI
+hud-catapult-power = QAWWA SĦIĦA GĦAT-TLUQ
+hud-catapult-wait = STENNA GĦALL-KATAPULTA
 hud-waypoint-reached = Waypoint { $waypoint } intlaħaq
 hud-select-camera = AGĦŻEL IL-KAMERA
 hud-open-bay = IFTAĦ IL-BAY

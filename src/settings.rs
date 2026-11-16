@@ -225,6 +225,8 @@ pub struct StartPose {
     pub north_wu: f64,
     pub heading: f32,
     pub carrier: bool,
+    /// On a carrier: the catapult it starts on (`PlayerState::catapult`; 0 none).
+    pub catapult: u8,
 }
 
 /// `--weather random|clear|scattered|broken|overcast|storm` (default random).

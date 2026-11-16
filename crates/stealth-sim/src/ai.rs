@@ -6,6 +6,8 @@ use stealth_i18n::text;
 
 /// How high over the mountains the AI's aircraft keep (altitude units, 300 m).
 const TERRAIN_CLEARANCE: i32 = 614;
+/// The AV-8B's model (it takes off short from a carrier, no catapult).
+const HARRIER_MODEL: i16 = 47;
 /// The room kept over the rolling hills ahead (altitude units, about 60 m).
 const HILLS_CLEARANCE: i32 = 123;
 /// Flying straight out of a circle round its approach point, it climbs to this much over the
@@ -50,7 +52,9 @@ impl Sim {
                 continue;
             }
             let kind = self.ac_type(self.flights[i].spec).kind;
-            if self.flights[i].flags & fflags::AIRBORNE == 0 || self.flights[i].speed == 0 {
+            // Not up, or parked (an aircraft held on a catapult stands still and goes on).
+            let parked = self.flights[i].speed == 0 && self.flights[i].cat == 0;
+            if self.flights[i].flags & fflags::AIRBORNE == 0 || parked {
                 self.flights[i].mode = 0;
                 self.scramble(i);
                 continue;
@@ -481,6 +485,9 @@ impl Sim {
         let agil = t.agility as i32;
         roll_cmd = clamp_q(roll_cmd, -agil << 12, agil << 12);
         roll_cmd = clamp_q(s16(roll_cmd - u.bank), -agil << 8, agil << 8);
+        if u.flags & fflags::TAKEOFF != 0 && self.catapult_step(i, u) {
+            return;
+        }
         if u.flags & fflags::TAKEOFF != 0 {
             if u.speed < 150 {
                 u.pitch = 0;
@@ -654,8 +661,13 @@ impl Sim {
         u.flags |= 0x403;
         u.wp = b as i32;
         u.timer = s16(cdiv((t.range as i32 * fs) << 11, t.max_speed as i32));
+        u.cat = 0;
         if leader == -1 {
             u.flags &= !fflags::ESCORT;
+        }
+        // A jet (not a helicopter, a drone nor the Harrier) takes a catapult.
+        if o.flags & oflags::CARRIER != 0 && t.kind.is_plane() && t.model != HARRIER_MODEL {
+            self.put_on_catapult(i, b);
         }
         if !self.is_traffic(i) {
             let base = self.place_name(b);

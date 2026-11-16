@@ -77,6 +77,9 @@ pub struct RemotePilot {
     pub burning: bool,
     /// Damage smoke: 0 none, 1 light, 2 heavy (badly hit), 3 on fire.
     pub smoke: u8,
+    /// On a carrier's catapult: the catapult and the launch's phase (`catapult::report`; 0
+    /// none).
+    pub catapult: u8,
     /// Ejected: the parachute (map x, map y, alt).
     pub chute: Option<(i32, i32, i32)>,
     /// His weapons in flight: slot, projectile record.
@@ -91,7 +94,8 @@ pub struct RemotePilot {
 /// A-10, RAH-66, AV-8B, OH-58D, CH-47),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
 /// the nozzle angle, the OH-58D's pylons (left in the low four bits), a jet's stores, more
-/// aircraft types (bit 0 the F-22A, bit 1 the C-5, bit 2 the AC-130, bit 3 the AH-64).
+/// aircraft types (bit 0 the F-22A, bit 1 the C-5, bit 2 the AC-130, bit 3 the AH-64), the
+/// catapult launch.
 
 #[derive(Serialize, Deserialize)]
 struct RemoteWire(
@@ -106,6 +110,7 @@ struct RemoteWire(
     #[serde(default)] u8,
     #[serde(default)] u8,
     #[serde(default)] Vec<(u8, u8)>,
+    #[serde(default)] u8,
     #[serde(default)] u8,
 );
 
@@ -145,6 +150,7 @@ impl From<RemotePilot> for RemoteWire {
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
             p.stores,
             p.raptor as u8 | (p.galaxy as u8) << 1 | (p.spectre as u8) << 2 | (p.apache as u8) << 3,
+            p.catapult,
         )
     }
 }
@@ -164,6 +170,7 @@ impl From<RemoteWire> for RemotePilot {
             pylons,
             stores,
             kinds,
+            catapult,
         ) = w;
         let [wx, wy, mx, my, alt, view_z, heading, pitch, roll, velocity, knots, climb] = v;
         let bit = |k: u8| flags & (1 << k) != 0;
@@ -215,6 +222,7 @@ impl From<RemoteWire> for RemotePilot {
             spectre: kinds & 4 != 0,
             apache: kinds & 8 != 0,
             gun_aim,
+            catapult,
             chute,
             missiles,
             cms,
@@ -404,6 +412,7 @@ impl Sim {
                     comanche: p.comanche,
                     harrier: p.harrier,
                     nozzle: if p.harrier { p.last_input.nozzle } else { 0 },
+                    catapult: p.last_input.catapult,
                     kiowa: p.kiowa,
                     pylons: if p.kiowa { self.pylon_looks(&p.bays) } else { [0; 2] },
                     stores: if p.external_stores && (!p.helicopter || p.apache) {

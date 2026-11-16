@@ -3,6 +3,8 @@
 # английски.
 
 hud-no-ejection-seat = НЯМА КАТАПУЛТНА СЕДАЛКА
+hud-catapult-power = ПЪЛНА МОЩНОСТ ЗА ИЗСТРЕЛВАНЕ
+hud-catapult-wait = ИЗЧАКВАНЕ НА КАТАПУЛТ
 hud-waypoint-reached = Waypoint { $waypoint } е достигнат
 hud-select-camera = ИЗБЕРЕТЕ КАМЕРА
 hud-open-bay = ОТВОРЕТЕ ОТСЕКА

@@ -767,23 +767,23 @@ fn state_hash(sim: &Sim) -> u64 {
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
         0xfd22ba5068be3ab9,
-        0x8463743c23f60f64,
+        0xd97df1a7851a6e13,
         0x3232a487163613fe,
-        0xd6925344fd1d4eaf,
+        0x1d84006e9c0d9be1,
         0x7da06b5060fb0d03,
         0xb2ad76dfa60eafcf,
         0xfb9a408c1b4f7f5f,
         0x1fa7b75be07b456e,
-        0x0005dbb28f280652,
-        0xc4fb76a4d71107cc,
-        0x2ba36fb8ef0ff6c2,
-        0xc31178da07834bb3,
-        0x695980a93743bd1e,
+        0xd1928ba992950250,
+        0x2a64de615c4ddb04,
+        0x04173b9a310136ca,
+        0x1eaf2a3df321f980,
+        0x3a2d5cc8dea4e0d7,
         0xb8cbb1d9e69a4b36,
         0x51d7b39fb478ffa9,
-        0x7bb12f8ef0512774,
-        0x9278976bcb38bfd2,
-        0xa55a1b95c48af17a,
+        0x3d30f7d979ef1496,
+        0xfd0c1bbb773712d7,
+        0x4363048b8249ec4c,
     ];
     let d = data();
     let mut got = Vec::new();

@@ -135,14 +135,18 @@ pub fn clean_text(s: &str) -> String {
 pub fn start_pose(m: &Mission, start_dir: &[i16]) -> StartPose {
     let t = start_dir.get(m.settings.theater).copied().unwrap_or(1) as f64;
     let (bx, by) = (m.takeoff.position.x as f64, m.takeoff.position.y as f64);
-    // ViewX = x<<5 + 2, ViewY = (0x8000 - y) << 5; land base: ViewY -= t*0x708;
-    // carrier: ViewX -= t<<7, heading + 0x400. Heading 0 (t = +1) or 0x8000.
+    // ViewX = x<<5 + 2, ViewY = (0x8000 - y) << 5; land base: ViewY -= t*0x708; a carrier: on
+    // a catapult (`stealth_sim::catapult`). Heading 0 (t = +1) or 0x8000.
     let mut east = bx * 32.0 + 2.0;
     let mut north = (32768.0 - by) * 32.0;
     let mut heading = if t > 0.0 { 0.0 } else { 0x8000 as f64 };
+    let mut catapult = 0;
     if m.takeoff.carrier {
-        east -= t * 128.0;
-        heading += 0x400 as f64;
+        // The first catapult (the simulation's start state picks a free one).
+        use stealth_sim::catapult::{Phase, pose, report};
+        let p = pose((m.takeoff.position.x, m.takeoff.position.y), t as i32, 0);
+        (east, north, heading) = (p.east, p.north, p.heading as f64);
+        catapult = report(0, Phase::Tension);
     } else {
         north -= t * 0x708 as f64;
     }
@@ -151,6 +155,7 @@ pub fn start_pose(m: &Mission, start_dir: &[i16]) -> StartPose {
         north_wu: north,
         heading: (heading / 65536.0 * std::f64::consts::TAU) as f32,
         carrier: m.takeoff.carrier,
+        catapult,
     }
 }
 

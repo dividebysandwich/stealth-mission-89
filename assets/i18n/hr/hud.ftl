@@ -3,6 +3,8 @@
 # KM, MAX...) ostaju na engleskom.
 
 hud-no-ejection-seat = NEMA IZBACIVOG SJEDALA
+hud-catapult-power = PUNA SNAGA ZA LANSIRANJE
+hud-catapult-wait = ČEKANJE NA KATAPULT
 hud-waypoint-reached = Waypoint { $waypoint } dosegnut
 hud-select-camera = ODABERITE KAMERU
 hud-open-bay = OTVORITE SPREMNIK

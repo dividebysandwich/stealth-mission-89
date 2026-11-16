@@ -3,6 +3,8 @@
 # avioniikan omat sanat (CCIP, THR, KM, MAX...) pysyvät englanniksi.
 
 hud-no-ejection-seat = EI KATAPULTTI-ISTUINTA
+hud-catapult-power = TÄYSI TEHO LAUKAISUUN
+hud-catapult-wait = ODOTTAA KATAPULTTIA
 hud-waypoint-reached = Reittipiste { $waypoint } saavutettu
 hud-select-camera = VALITSE KAMERA
 hud-open-bay = AVAA RUUMA

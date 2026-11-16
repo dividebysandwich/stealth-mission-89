@@ -700,6 +700,10 @@ fn place_player(s: &mut Session, st: &PlayerState, base: usize) {
         // Cruise power (the start state has no throttle).
         a.thrust = 85.0;
         a.set_thrust = 85.0;
+    } else if carrier {
+        // On a catapult, the flaps down for the launch.
+        a.catapult = crate::flight::catapult::launch_from(st.catapult, base, &s.constants);
+        a.flaps |= a.catapult.is_some();
     }
     pos.0 = p;
 }

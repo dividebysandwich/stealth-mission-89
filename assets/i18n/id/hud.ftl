@@ -2,6 +2,8 @@
 # tanpa aksen; istilah avionik (CCIP, THR, KM, MAX...) tetap dalam bahasa Inggris.
 
 hud-no-ejection-seat = TANPA KURSI LONTAR
+hud-catapult-power = DAYA PENUH UNTUK PELUNCURAN
+hud-catapult-wait = MENUNGGU KATAPEL
 hud-waypoint-reached = Waypoint { $waypoint } tercapai
 hud-select-camera = PILIH KAMERA
 hud-open-bay = BUKA RUANG SENJATA

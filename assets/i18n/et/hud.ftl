@@ -3,6 +3,8 @@
 # sõnad (CCIP, THR, KM, MAX...) jäävad inglise keelde.
 
 hud-no-ejection-seat = KATAPULTISTE PUUDUB
+hud-catapult-power = TÄISVÕIMSUS STARDIKS
+hud-catapult-wait = OOTAB KATAPULTI
 hud-waypoint-reached = Teekonnapunkt { $waypoint } saavutatud
 hud-select-camera = VALI KAAMERA
 hud-open-bay = AVA RELVALUUK

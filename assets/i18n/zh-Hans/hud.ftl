@@ -2,6 +2,8 @@
 # HUD 以无重音大写绘制；航电自带的词（CCIP、THR、KM、MAX...）保持英文。
 
 hud-no-ejection-seat = 无弹射座椅
+hud-catapult-power = 全推力准备弹射
+hud-catapult-wait = 等待弹射器
 hud-waypoint-reached = 已到达航路点 { $waypoint }
 hud-select-camera = 选择摄像机
 hud-open-bay = 打开弹舱

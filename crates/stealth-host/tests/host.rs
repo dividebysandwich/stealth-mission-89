@@ -945,3 +945,47 @@ fn air_defences_stand_on_land() {
     }
     assert!(ships > 0, "no ship targets");
 }
+
+/// Coop players taking off from one carrier start on different catapults, held for the launch.
+#[test]
+fn coop_players_take_different_catapults() {
+    use stealth_campaign::SiteKind;
+    use stealth_sim::catapult::{Phase, from_report};
+    let code = "persian_gulf";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    let carrier = host
+        .state
+        .player_bases()
+        .into_iter()
+        .find(|&b| host.state.site(b).is_some_and(|s| s.kind == SiteKind::Carrier))
+        .expect("a carrier");
+    let wing = host.join(&mut sim, "Wingman", |_| true).unwrap();
+    let offers: Vec<u32> =
+        host.state.board.iter().filter(|o| !o.kind.ai_flown()).map(|o| o.id).collect();
+    let mut cats = Vec::new();
+    for (p, offer) in [(PlayerId(0), offers[0]), (wing, offers[1])] {
+        let ev = host.take_mission(&mut sim, p, offer, Some(carrier), Aircraft::F16, None).unwrap();
+        let start = ev
+            .iter()
+            .find_map(|e| match e {
+                HostEvent::SortieStarted { player, start, .. } if *player == p => {
+                    Some(start.clone())
+                }
+                _ => None,
+            })
+            .expect("sortie started");
+        let (cat, phase) = from_report(start.catapult).expect("on a catapult");
+        assert_eq!(phase, Phase::Tension);
+        let pose = sim.catapult(carrier as usize, cat);
+        assert_eq!((start.x, start.y), (pose.east.round() as i32, pose.north.round() as i32));
+        assert_eq!(start.heading, pose.heading);
+        cats.push(cat);
+    }
+    assert_ne!(cats[0], cats[1], "both on catapult {}", cats[0]);
+}

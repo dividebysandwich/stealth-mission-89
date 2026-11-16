@@ -424,6 +424,37 @@ mod theater_tests {
 }
 
 #[cfg(test)]
+mod catapult_tests {
+    /// The simulation's carrier middles (`stealth_sim::catapult::PIVOTS`, where it puts the
+    /// catapults) are the ships drawn: every theater's decks' pivots.
+    #[test]
+    fn catapults_sit_on_the_ships_drawn() {
+        let mut n = 0;
+        for id in [
+            "libya",
+            "persian_gulf",
+            "desert_storm",
+            "middle_east",
+            "north_cape",
+            "vietnam",
+            "cuba",
+            "korea",
+        ] {
+            let t = crate::world::Theater::load(id);
+            for d in &t.decks {
+                let (e, n_) = stealth_sim::catapult::pivot(d.x, d.y);
+                assert!(
+                    (e - d.east).abs() < 0.5 && (n_ - d.north).abs() < 0.5,
+                    "{id}: {d:?} vs ({e}, {n_})"
+                );
+                n += 1;
+            }
+        }
+        assert_eq!(n, stealth_sim::catapult::PIVOTS.len());
+    }
+}
+
+#[cfg(test)]
 mod survey {
     use super::*;
     use crate::ocean::spectrum::{SeaParams, Sim};

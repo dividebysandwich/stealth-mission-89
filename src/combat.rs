@@ -405,6 +405,7 @@ fn start_combat(
         north_wu: st.y as f64,
         heading: bam(st.heading as f32),
         carrier: m.takeoff.carrier,
+        catapult: st.catapult,
     });
     orders.set(m.orders.lines.iter().map(|l| (l.color, clean_text(&l.text))).collect());
     // 1 clock tick = 2 s after 06:00 / 18:00.
@@ -639,6 +640,7 @@ fn player_state(
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
+        catapult: a.catapult_report(),
         engine: [0; 3],
         // Realistic avionics: each weapon in its own HUD mode, no automatic locks.
         mode_weapons: mfd.modern,

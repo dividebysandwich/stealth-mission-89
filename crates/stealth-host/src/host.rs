@@ -992,10 +992,14 @@ impl Host {
                     // the runway, the first free place.
                     let carrier =
                         sim.objects().get(base).is_some_and(|o| o.flags & oflags::CARRIER != 0);
-                    if !carrier {
+                    if carrier {
+                        // On a carrier: a free catapult.
+                        let (x, y, heading, catapult) = sim.catapult_start(base, player.0);
+                        start = PlayerState { x, y, heading: heading as u16, catapult, ..start };
+                    } else {
                         start = formation_place(sim, player.0, &start);
-                        sim.set_pilot_input(player.0, &start);
                     }
+                    sim.set_pilot_input(player.0, &start);
                     out.push(HostEvent::SortieStarted {
                         player: *player,
                         sortie: sortie.clone(),

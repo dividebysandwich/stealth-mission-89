@@ -3,6 +3,8 @@
 # авіоніки (CCIP, THR, KM, MAX...) залишаються англійською.
 
 hud-no-ejection-seat = НЕМАЄ КАТАПУЛЬТНОГО КРІСЛА
+hud-catapult-power = ПОВНА ПОТУЖНІСТЬ ДЛЯ ЗЛЬОТУ
+hud-catapult-wait = ОЧІКУВАННЯ КАТАПУЛЬТИ
 hud-waypoint-reached = Waypoint { $waypoint } досягнуто
 hud-select-camera = ОБЕРІТЬ КАМЕРУ
 hud-open-bay = ВІДКРИЙТЕ ВІДСІК

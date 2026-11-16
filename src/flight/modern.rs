@@ -704,8 +704,8 @@ const ROLL_FRICTION: f32 = 0.02;
 const WHEEL_BRAKES: f32 = 1.0;
 const ROTATE_RATE: f32 = 0.15;
 const MAX_GROUND_PITCH: f32 = 0.22;
-/// Carrier catapult and arresting wire (g).
-const CATAPULT: f32 = 2.5;
+/// A carrier's arresting wire (g).
+const WIRE: f32 = 2.5;
 
 #[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
 pub(super) struct State {
@@ -1128,14 +1128,9 @@ pub(super) fn step(
         if a.brakes {
             decel += WHEEL_BRAKES * weight_on_wheels;
         }
-        // Carrier deck: the catapult launches at full throttle, the wire stops a landing (not a
-        // V/STOL type's, which takes off short and lands vertically).
-        if a.over_deck && ae.vtol.is_none() {
-            if !a.has_flown && a.thrust >= 90.0 {
-                decel -= CATAPULT;
-            } else if a.has_flown && a.thrust <= 50.0 {
-                decel += CATAPULT;
-            }
+        // Carrier deck: the wire stops a landing (not a V/STOL type's, which lands vertically).
+        if a.over_deck && ae.vtol.is_none() && a.has_flown && a.thrust <= 50.0 {
+            decel += WIRE;
         }
         let drive = thrust * thrust_dir.dot(flat) - per_cl * cd;
         along += (drive * G - decel * G * along.signum()) * dt;
@@ -1143,11 +1138,16 @@ pub(super) fn step(
             along = along.max(0.0) * 0.5;
         }
         along = along.max(0.0);
+        // On a carrier's catapult: held back, then thrown down the track (`catapult`).
+        let launch = if ae.vtol.is_none() { a.catapult_speed(dt) } else { None };
+        if let Some(v) = launch {
+            along = v / 16.0;
+        }
         // Rotation above 0.8 of the 1 g stall speed, nose down again when released.
         let vs = a.stall_speed / 16.0 / load.sqrt();
         let mut new_pitch = pitch;
         let pull = controls.pitch.clamp(-1.0, 1.0);
-        if along + headwind > 0.8 * vs && pull > 0.05 {
+        if along + headwind > 0.8 * vs && pull > 0.05 && launch.is_none() {
             new_pitch += pull * ae.rotate_rate * dt;
         } else {
             new_pitch -= ae.rotate_rate * 0.7 * dt;
@@ -1156,7 +1156,13 @@ pub(super) fn step(
         let (sp, sr) = deck_slope(a);
         let new_pitch = new_pitch.clamp(ground_pitch(ae) + sp, MAX_GROUND_PITCH + sp);
         // Nosewheel steering by the rudder, else the stick; less authority with speed.
-        let steer = if rudder != 0.0 { rudder } else { roll_stick };
+        let steer = if launch.is_some() {
+            0.0
+        } else if rudder != 0.0 {
+            rudder
+        } else {
+            roll_stick
+        };
         let yaw_rate = steer * (0.6 * (1.0 - along / 250.0)).clamp(0.06, 0.6);
         a.orientation = Aircraft::from_euler(heading + yaw_rate * dt, new_pitch, sr);
         // Lift off once the lift and the nozzles' thrust exceed the weight.

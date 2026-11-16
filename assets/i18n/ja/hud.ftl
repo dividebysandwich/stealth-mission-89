@@ -3,6 +3,8 @@
 # アビオニクス固有の語（CCIP、THR、KM、MAXなど）は英語のままです。
 
 hud-no-ejection-seat = 射出座席なし
+hud-catapult-power = 発艦のため最大推力
+hud-catapult-wait = カタパルト待機中
 hud-waypoint-reached = ウェイポイント { $waypoint } 到達
 hud-select-camera = カメラ選択
 hud-open-bay = ベイを開く

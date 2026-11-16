@@ -360,6 +360,16 @@ bay doors are shut.
 3. **Gear up** (6) as soon as you are climbing. Leave the throttle at full until you are clear of the
    ground, then come back to about 80 % (**-**).
 
+**From a carrier.** A carrier mission starts you on one of the ship's four catapults: two on the bow,
+two in the waist along the angled deck. Every jet takes one; the Harrier and the helicopters take off
+as they would anywhere. The catapult holds you with the flaps down while the shooter, the yellow shirt
+beside your nose, circles two fingers over his head: more power. Bring the throttle to full (**Shift =**;
+the afterburner counts too). At 100 % he drops into a lunge and points down the deck at the bow, and a
+second later the catapult throws you down the track to just past your stall speed. Ease the stick back
+as it lets go. Throttle back before the shot and he goes back to circling. When all four catapults are
+busy you wait behind one (WAITING FOR CATAPULT) and are taxied up once it is free. AI aircraft and the
+other pilots take the same catapults.
+
 **Finding the way.** The HUD's heading tape shows a caret over the heading to the current steerpoint, and
 a diamond sits on the steerpoint itself. The bottom right of the HUD shows its number, distance and
 time to go. The easy way: press **7** for the **autopilot**, which flies the route for you. Use the
@@ -793,7 +803,8 @@ about 90 % thrust. Climb clear of obstacles, then ease the nozzles aft notch by 
 builds and the wings take over.
 
 **Short take-off.** Nozzles aft, full power; after a short run, a few notches down rotates you into
-the air with less fuel burnt than a vertical take-off. A carrier needs no catapult.
+the air with less fuel burnt than a vertical take-off. A carrier's catapults are not for it: it takes
+off short from the deck.
 
 **Vertical landing.** Slow down with the nozzles at the braking stop if you are fast, arrive over the
 spot below 50 kt, nozzles at the hover stop, and settle with the throttle. Under 50 kt any flat spot

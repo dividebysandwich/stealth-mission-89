@@ -17,6 +17,7 @@ use crate::input::{Action, ActionEvent, FlightControls};
 use crate::settings::{Settings, SetupSet};
 use crate::world::{Theater, WU, WorldPos, bevy_to_wu, wu_to_bevy};
 
+pub mod catapult;
 pub mod heli;
 pub mod modern;
 pub mod terrain_follow;
@@ -414,6 +415,9 @@ pub struct Aircraft {
     /// The ground under the aircraft is a carrier's deck.
     #[serde(default)]
     pub over_deck: bool,
+    /// On a carrier's catapult, held for the launch or thrown off by it (`catapult`).
+    #[serde(default)]
+    pub catapult: Option<catapult::CatLaunch>,
     /// wu per second along the flight path.
     pub climb_rate: f32,
     /// 1/16 g
@@ -532,6 +536,7 @@ impl Aircraft {
             ground_altitude: 0.0,
             ground_slope: (0.0, 0.0),
             over_deck: false,
+            catapult: None,
             climb_rate: 0.0,
             gees: 16.0,
             stall_speed: 0.0,
@@ -1074,6 +1079,11 @@ fn step_one(
             }
         }
         a.velocity = a.velocity.max(0.0);
+        // On a carrier's catapult: held, then thrown off.
+        let launch = if air { None } else { a.catapult_speed(dt) };
+        if let Some(v) = launch {
+            a.velocity = v;
+        }
 
         // --- rotation
         let mut yaw = (roll.sin() * a.gees * 16.0 * 128.0) / ((a.velocity / 256.0).floor() + 32.0)
@@ -1085,8 +1095,11 @@ fn step_one(
             // Nosewheel steering: by the stick (classic), or by the rudder.
             yaw = if rudder != 0.0 { rudder * 8064.0 } else { roll_input * 64.0 };
             roll_input = 0.0;
-            if a.knots() < cs {
+            if a.knots() < cs || launch.is_some() {
                 pitch_input = 0.0;
+            }
+            if launch.is_some() {
+                yaw = 0.0;
             }
         }
         let d_roll = bam(roll_input * 128.0 * dt);
@@ -1116,6 +1129,10 @@ fn step_one(
         let (head2, pitch2, roll2) = a.euler();
         let prev_alt = a.altitude;
         a.climb_rate = a.velocity / 16.0 * (pitch2 - bam(a.trim)).sin();
+        // The catapult holds it on the deck.
+        if launch.is_some() {
+            a.climb_rate = 0.0;
+        }
         let horiz = pitch2.cos() * a.velocity / 16.0;
         // The air mass carries the aircraft along (the classic speed is through the air).
         let wind = if a.on_ground { Vec3::ZERO } else { a.wind };

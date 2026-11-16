@@ -3,6 +3,8 @@
 # saját szavai (CCIP, THR, KM, MAX...) angolul maradnak.
 
 hud-no-ejection-seat = NINCS KATAPULTÜLÉS
+hud-catapult-power = TELJES TOLÓERŐ AZ INDÍTÁSHOZ
+hud-catapult-wait = VÁRAKOZÁS A KATAPULTRA
 hud-waypoint-reached = Útpont { $waypoint } elérve
 hud-select-camera = VÁLASSZ KAMERÁT
 hud-open-bay = NYISD KI A REKESZT

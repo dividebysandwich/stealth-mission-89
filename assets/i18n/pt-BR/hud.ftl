@@ -3,6 +3,8 @@
 # própria aviônica (CCIP, THR, KM, MAX...) ficam em inglês.
 
 hud-no-ejection-seat = SEM ASSENTO EJETÁVEL
+hud-catapult-power = POTÊNCIA MÁXIMA PARA O LANÇAMENTO
+hud-catapult-wait = AGUARDANDO CATAPULTA
 hud-waypoint-reached = Waypoint { $waypoint } alcançado
 hud-select-camera = SELECIONAR CÂMERA
 hud-open-bay = ABRIR COMPARTIMENTO

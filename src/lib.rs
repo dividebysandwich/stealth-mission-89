@@ -24,6 +24,7 @@ mod campaign;
 mod canvas;
 mod career;
 mod cargo_page;
+mod catapult_crew;
 mod chat;
 mod cockpit;
 mod cockpit3d;
@@ -360,6 +361,7 @@ pub fn run() {
             weather::WeatherPlugin,
             wind::WindPlugin,
             sea::SeaPlugin,
+            catapult_crew::CatapultCrewPlugin,
             ocean::OceanPlugin,
             station::StationPlugin,
             gunner::GunnerPlugin,

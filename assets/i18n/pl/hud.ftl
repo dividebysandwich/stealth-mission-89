@@ -3,6 +3,8 @@
 # (CCIP, THR, KM, MAX...) pozostają po angielsku.
 
 hud-no-ejection-seat = BRAK FOTELA WYRZUCANEGO
+hud-catapult-power = PEŁNA MOC DO STARTU
+hud-catapult-wait = OCZEKIWANIE NA KATAPULTĘ
 hud-waypoint-reached = Osiągnięto waypoint { $waypoint }
 hud-select-camera = WYBIERZ KAMERĘ
 hud-open-bay = OTWÓRZ KOMORĘ

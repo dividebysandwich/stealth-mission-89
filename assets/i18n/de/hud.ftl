@@ -3,6 +3,8 @@
 # Wörter der Avionik (CCIP, THR, KM, MAX...) bleiben englisch.
 
 hud-no-ejection-seat = KEIN SCHLEUDERSITZ
+hud-catapult-power = VOLLGAS ZUM START
+hud-catapult-wait = WARTEN AUF KATAPULT
 hud-waypoint-reached = Wegpunkt { $waypoint } erreicht
 hud-select-camera = KAMERA WÄHLEN
 hud-open-bay = SCHACHT ÖFFNEN

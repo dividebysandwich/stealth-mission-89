@@ -3,6 +3,8 @@
 # (CCIP, THR, KM, MAX...)는 영어로 유지한다.
 
 hud-no-ejection-seat = 사출좌석 없음
+hud-catapult-power = 발함을 위해 최대 출력
+hud-catapult-wait = 캐터펄트 대기 중
 hud-waypoint-reached = 웨이포인트 { $waypoint } 도달
 hud-select-camera = 카메라 선택
 hud-open-bay = 무장창 열기

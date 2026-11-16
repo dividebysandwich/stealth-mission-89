@@ -3,6 +3,8 @@
 # féin (CCIP, THR, KM, MAX...) i mBéarla.
 
 hud-no-ejection-seat = GAN SUÍOCHÁN EJECT
+hud-catapult-power = LÁNCHUMHACHT DON LAINSEÁIL
+hud-catapult-wait = AG FANACHT AR AN GCATAPULT
 hud-waypoint-reached = Waypoint { $waypoint } bainte amach
 hud-select-camera = ROGHNAIGH AN CHAMERA
 hud-open-bay = OSCAIL AN BHAIE

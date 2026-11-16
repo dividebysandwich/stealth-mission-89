@@ -2,6 +2,8 @@
 # диакритики; слова авионики (CCIP, THR, KM, MAX...) остаются на английском.
 
 hud-no-ejection-seat = НЕТ КАТАПУЛЬТНОГО КРЕСЛА
+hud-catapult-power = ПОЛНАЯ ТЯГА ДЛЯ ВЗЛЁТА
+hud-catapult-wait = ОЖИДАНИЕ КАТАПУЛЬТЫ
 hud-waypoint-reached = ППМ { $waypoint } пройден
 hud-select-camera = ВЫБЕРИТЕ КАМЕРУ
 hud-open-bay = ОТКРОЙТЕ ОТСЕК

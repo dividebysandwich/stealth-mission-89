@@ -1406,6 +1406,7 @@ impl Sim {
             u.speed = t;
             u.alt = DRONE_ALT;
             u.flags &= !fflags::TAKEOFF;
+            u.cat = 0;
         }
         let t = self.objects.get(target).map_or((0, 0), |o| (o.x, o.y));
         let base = self.objects.get(from).map_or(t, |o| (o.x, o.y));

@@ -3,6 +3,8 @@
 # avionics' own words (CCIP, THR, KM, MAX...) stay in English.
 
 hud-no-ejection-seat = NO EJECTION SEAT
+hud-catapult-power = FULL POWER FOR LAUNCH
+hud-catapult-wait = WAITING FOR CATAPULT
 hud-waypoint-reached = Waypoint { $waypoint } reached
 hud-auto-hover = AUTO HOVER
 hud-hover-too-fast = TOO FAST TO HOVER (OVER { $knots } KT)

@@ -1320,3 +1320,78 @@ fn the_cargo_runs_hunters_follow_the_player_flying_it() {
     let side = ((gx - mx).abs() - 0x80).abs();
     assert!(side <= 4 && (gy - my).abs() <= 4, "goal {:?} vs {:?}", (gx, gy), (mx, my));
 }
+
+/// AI jets taking off from a carrier take its four catapults, a fifth queued behind one: each
+/// held there with no speed through the run-up and the shooter's signal, then shot off along
+/// the track at take-off speed, never two on one catapult.
+#[test]
+fn ai_jets_launch_from_the_catapults() {
+    use stealth_sim::catapult::{AiLaunch, Phase};
+    let d = data();
+    let s = MissionSettings {
+        theater: 1,
+        roe: 2,
+        opponents: 1,
+        kind: MissionKind::Strike,
+        ..Default::default()
+    };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(78)).unwrap();
+    m.world = d.gdata.theaters[1].world.clone();
+    m.weather = Default::default();
+    let mut sim =
+        Sim::with_options(&d.sim, &m, SimOptions { campaign: true, ..Default::default() });
+    quiet(&mut sim);
+    let b = (0..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & oflags::CARRIER != 0)
+        .expect("a carrier");
+    let to = sim.objects()[find(&sim, 0x001, None)];
+    let units: Vec<usize> = (0..5)
+        .map(|k| sim.spawn_ai_mission(b, F16, AiTask::Patrol(to.x, to.y), 300 + k, true))
+        .collect();
+    let launch = |sim: &Sim, i: usize| AiLaunch::decode(sim.flights()[i].cat);
+    let cats: Vec<usize> = units[..4].iter().map(|&i| launch(&sim, i).unwrap().cat).collect();
+    assert_eq!(cats, [0, 1, 2, 3]);
+    assert!(units[..4].iter().all(|&i| launch(&sim, i).unwrap().phase == Phase::Tension));
+    assert_eq!(launch(&sim, units[4]).unwrap().phase, Phase::Wait);
+    let mut phases: Vec<Vec<Phase>> = vec![Vec::new(); 5];
+    let mut left = [false; 5];
+    for _ in 0..15 * 90 {
+        sim.step(&idle(), 15);
+        let mut on = Vec::new();
+        for (k, &i) in units.iter().enumerate() {
+            let u = sim.flights()[i];
+            match launch(&sim, i) {
+                Some(l) => {
+                    if phases[k].last() != Some(&l.phase) {
+                        phases[k].push(l.phase);
+                    }
+                    if matches!(l.phase, Phase::Tension | Phase::Shoot) {
+                        assert_eq!(u.speed, 0, "unit {k} moves on the catapult");
+                        let c = sim.catapult(b, l.cat);
+                        let n = 0x8000 as f64 * 32.0 - u.wy as f64;
+                        assert!(
+                            (u.wx as f64 - c.east).abs() < 2.0 && (n - c.north).abs() < 2.0,
+                            "unit {k} off its catapult"
+                        );
+                        on.push(l.cat);
+                    }
+                }
+                None if !left[k] && !phases[k].is_empty() => {
+                    left[k] = true;
+                    assert!(u.speed >= 150, "unit {k} off the catapult at {}", u.speed);
+                }
+                None => {}
+            }
+        }
+        on.sort();
+        assert!(on.windows(2).all(|w| w[0] != w[1]), "two on a catapult: {on:?}");
+    }
+    for (k, p) in phases.iter().enumerate() {
+        let t = p.iter().position(|p| *p == Phase::Tension).expect("on a catapult");
+        assert_eq!(&p[t..], &[Phase::Tension, Phase::Shoot, Phase::Stroke], "unit {k}: {p:?}");
+        assert!(left[k], "unit {k} never launched");
+        let u = sim.flights()[units[k]];
+        assert!(u.alt > 300, "unit {k} not climbing: {u:?}");
+    }
+    assert_eq!(phases[4][0], Phase::Wait);
+}

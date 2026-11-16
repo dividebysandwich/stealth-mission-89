@@ -77,6 +77,7 @@ PAINTS = {
 # are left out at night.
 MARK_DAY = {224: 224, 226: 226, 230: 230, 199: 199, 219: 215, 239: 239}
 MARK_NIGHT = {224: 7, 230: 7, 199: 19, 219: 13}
+BLACK_ROLE, HULL_ROLE = 239, 226
 WAKE = 57
 RED = 146  # masthead lights, always lit
 LIGHT = 148  # deck and island lights
@@ -150,6 +151,33 @@ def landing_lines(marks):
     return lines
 
 
+# The waist catapults' tracks (m: the shuttle's start, the track's forward end), along the
+# angled deck: the source paints only the bow's two. Keep in step with stealth_sim::catapult's
+# `TRACKS` (catapults 3 and 4). Painted as the bow's are: a black slot between hull-grey strips.
+WAIST_CATAPULTS = (((-9.3, -33.4), (-22.3, 50.6)), ((-17.6, -44.9), (-30.6, 39.1)))
+# (offset to starboard, half width, paint role) of a track's strips (m).
+TRACK_STRIPS = ((0.0, 0.13, BLACK_ROLE), (-0.29, 0.16, HULL_ROLE), (0.29, 0.16, HULL_ROLE))
+
+
+def catapult_tracks(frame, paints, lift):
+    """The waist catapults' painted tracks, as the deck's marks (`paints`: the day's or the
+    night's colours of the roles; a role without one is not painted)."""
+    g = Geo()
+    for a, b in WAIST_CATAPULTS:
+        a, b = Vector(a), Vector(b)
+        d = (b - a).normalized()
+        n = Vector((d.y, -d.x))
+        for off, w, role in TRACK_STRIPS:
+            paint = paints.get(role)
+            if paint is None:
+                continue
+            pts = [a + n * (off - w), a + n * (off + w), b + n * (off + w), b + n * (off - w)]
+            pts = [frame(Vector((p.x, p.y, DECK_M))) + Vector((0, 0, lift)) for p in pts]
+            below = sum(pts, Vector()) / 4 - Vector((0, 0, 1))
+            g.face(pts, paint, below)
+    return g
+
+
 def deck_lights(frame, marks):
     pts = []
     for p, q in landing_lines(marks):
@@ -219,8 +247,8 @@ def build(blend):
     frame = Frame(max(ys) - min(ys))
     ship = faces(body, frame, PAINTS)
     ship.add(hangar(frame))
-    day = faces(marks, frame, MARK_DAY, lift=0.06)
-    night = faces(marks, frame, MARK_NIGHT, lift=0.06)
+    day = faces(marks, frame, MARK_DAY, lift=0.06).add(catapult_tracks(frame, MARK_DAY, 0.1))
+    night = faces(marks, frame, MARK_NIGHT, lift=0.06).add(catapult_tracks(frame, MARK_NIGHT, 0.1))
     lights = {LIGHT: deck_lights(frame, marks)}
     for name, ob in src.items():
         if name.startswith("nimitz_lights_"):

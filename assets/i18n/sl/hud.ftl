@@ -3,6 +3,8 @@
 # avionike (CCIP, THR, KM, MAX...) ostanejo v angleščini.
 
 hud-no-ejection-seat = BREZ IZSTRELNEGA SEDEŽA
+hud-catapult-power = POLNA MOČ ZA IZSTRELITEV
+hud-catapult-wait = ČAKANJE NA KATAPULT
 hud-waypoint-reached = Waypoint { $waypoint } dosežen
 hud-select-camera = IZBERITE KAMERO
 hud-open-bay = ODPRITE BOMBNIK
