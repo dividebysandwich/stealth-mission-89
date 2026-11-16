@@ -118,7 +118,7 @@ pub struct Prefs {
     pub language: Option<stealth_i18n::Language>,
     pub effects: crate::effects::Effects,
     /// 0: saved before the Steam Frame's default effects (`Effects::HEAVY_EFFECTS_OFF`), 1:
-    /// after, 2: after its default billboard clouds.
+    /// after, 2: after its default billboard clouds, 3: after its reflections were turned on.
     #[serde(default)]
     pub effects_version: u32,
     pub gif_scale: u8,
@@ -128,7 +128,7 @@ pub struct Prefs {
 }
 
 const VR_SCALE_VERSION: u32 = 2;
-const EFFECTS_VERSION: u32 = 2;
+const EFFECTS_VERSION: u32 = 3;
 
 impl Default for Prefs {
     fn default() -> Self {
@@ -244,6 +244,15 @@ impl Prefs {
             && self.cloud_quality == crate::weather::CloudQuality::Auto
         {
             self.cloud_quality = crate::weather::CloudQuality::Billboard;
+        }
+        // The reflections, on by default on the Steam Frame since version 3 (saved off as its
+        // earlier default).
+        if self.effects_version < 3
+            && crate::effects::HEAVY_EFFECTS_OFF
+            && !crate::effects::REFLECTIONS_OFF
+        {
+            self.effects.glass = true;
+            self.effects.water = true;
         }
         self.effects_version = EFFECTS_VERSION;
     }

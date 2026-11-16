@@ -84,14 +84,18 @@ impl Effects {
 /// The sizes of a pixelize block the player can choose (screen pixels).
 pub const PIXEL_BLOCKS: std::ops::RangeInclusive<u32> = 2..=5;
 
-/// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows, vapour, the ground's
-/// detail and the reflections start off.
+/// The Steam Frame's build (Linux on ARM): ground mist, cloud shadows, vapour and the ground's
+/// detail start off (the reflections only on Android: `REFLECTIONS_OFF`).
 /// Compiled into the world shader mist and cloud shadows cost its GPU (Adreno 750) about 1.4
 /// and 2.4 ms a frame in VR, even with no mist or clouds about; a helicopter's downwash dust
 /// near the ground about 1.7 ms; enough to drop the frame rate from 72 to 36 fps. Also the
 /// Android app's: phone GPUs are weaker still.
 pub const HEAVY_EFFECTS_OFF: bool =
     cfg!(any(all(target_arch = "aarch64", target_os = "linux"), target_os = "android"));
+
+/// The Android app's: glass and water reflections start off (the Steam Frame runs them at its
+/// frame rate; phone GPUs are weaker).
+pub const REFLECTIONS_OFF: bool = cfg!(target_os = "android");
 
 impl Default for Effects {
     fn default() -> Self {
@@ -105,8 +109,8 @@ impl Default for Effects {
             mist: !HEAVY_EFFECTS_OFF,
             cloud_shadows: !HEAVY_EFFECTS_OFF,
             ground_detail: !HEAVY_EFFECTS_OFF,
-            glass: !HEAVY_EFFECTS_OFF,
-            water: !HEAVY_EFFECTS_OFF,
+            glass: !REFLECTIONS_OFF,
+            water: !REFLECTIONS_OFF,
             sunbeams: true,
             vapour: !HEAVY_EFFECTS_OFF,
             night_sky: true,
@@ -337,9 +341,9 @@ mod tests {
         assert!(!Effects::default().sharp(ViewPart::Hud));
         assert_eq!(Effects::default().ground_detail, !HEAVY_EFFECTS_OFF);
         assert!(!Effects::parse("-ground-detail").ground_detail);
-        assert_eq!(Effects::default().glass, !HEAVY_EFFECTS_OFF);
+        assert_eq!(Effects::default().glass, !REFLECTIONS_OFF);
         assert!(Effects::parse("none,glass").glass);
-        assert_eq!(Effects::default().water, !HEAVY_EFFECTS_OFF);
+        assert_eq!(Effects::default().water, !REFLECTIONS_OFF);
         assert!(!Effects::parse("-water").water);
     }
 }
