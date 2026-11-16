@@ -487,6 +487,7 @@ fn draw_main(
     mut ui: ResMut<AswUi>,
     time: Res<Time<Real>>,
     mut since: Local<f32>,
+    mut dumped: Local<f32>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTextureRef)>,
 ) {
     let (Some(combat), Some(m)) = (combat, manning.as_deref().filter(|m| m.asw())) else { return };
@@ -519,12 +520,24 @@ fn draw_main(
         }
     }
     // The page keys' row along the bottom.
+    let page_name = match ui.page {
+        Page::Sonar => "asw_sonar",
+        Page::Wpn => "asw_wpn",
+        Page::Map => "asw_map",
+    };
     let cv = &mut tex.canvas;
     let names = [(Page::Sonar, "SONAR"), (Page::Wpn, "WPN"), (Page::Map, "MAP")];
     for (k, (p, name)) in names.into_iter().enumerate() {
         let x = 160.0 + k as f32 * 160.0;
         let col = if ui.page == p { scope::YELLOW } else { scope::GREY };
         stroke_text_at(cv, x, 472.0, name, 9.0, 1.2, col, Align::Centre);
+    }
+    if std::env::var_os("SM89_ASW_PNG").is_some() {
+        *dumped += 0.1;
+        if *dumped >= 1.0 {
+            *dumped = 0.0;
+            dump_png(&tex.canvas, tex.backdrop.as_deref(), page_name);
+        }
     }
 }
 
@@ -693,23 +706,34 @@ fn dip_pilot(
     }
 }
 
-/// Test aid `--asw-sub-near <km>`: the first submarine moved that far north-east of the
-/// aircraft once the flight is under way (2 s).
+/// Test aid `--asw-sub-near <km>[,ahead[,<s>]]`: the first submarine moved that far north-east
+/// of the aircraft (or on its heading) once the flight is under way (2 s, or `s`).
 fn sub_near(combat: Option<ResMut<Combat>>, time: Res<Time>, mut done: Local<bool>) {
     let Some(mut combat) = combat else { return };
-    if *done || time.elapsed_secs() < 2.0 {
+    if *done {
         return;
     }
-    let Some(km) = std::env::args().skip_while(|a| a != "--asw-sub-near").nth(1).and_then(|s| s.parse::<f64>().ok())
-    else {
+    let arg = std::env::args().skip_while(|a| a != "--asw-sub-near").nth(1);
+    let Some((km, ahead, at)) = arg.as_deref().and_then(|a| {
+        let mut f = a.split(',');
+        let km = f.next()?.parse::<f64>().ok()?;
+        let ahead = f.next() == Some("ahead");
+        let at = f.next().and_then(|t| t.parse::<f32>().ok()).unwrap_or(2.0);
+        Some((km, ahead, at))
+    }) else {
         *done = true;
         return;
     };
+    if time.elapsed_secs() < at {
+        return;
+    }
     *done = true;
     let me = combat.sim.active_pilot();
-    if let Some((p, _)) = owner_at(&combat.sim, me) {
-        let d = km * 1000.0 / std::f64::consts::SQRT_2;
-        combat.sim.place_sub(0, [p[0] + d, p[1] + d]);
+    if let Some((p, heading)) = owner_at(&combat.sim, me) {
+        // North-east of the aircraft, or (`,ahead`) on its heading.
+        let b = if ahead { heading } else { std::f64::consts::FRAC_PI_4 };
+        let d = km * 1000.0;
+        combat.sim.place_sub(0, [p[0] + b.sin() * d, p[1] + b.cos() * d]);
     }
 }
 
@@ -836,6 +860,7 @@ fn script(
                 }
             }
             "smark" => mark_signal(&mut ui, sim, &crew, owner),
+            "range" => ui.range_km = val.parse().unwrap_or(8.0),
             "markid" => ui.mark_id = val.bytes().next().map_or(0, |c| c.to_ascii_uppercase().saturating_sub(b'A')) % marks::IDS as u8,
             "sensor" => {
                 let n: usize = val.parse().unwrap_or(1);
@@ -865,5 +890,35 @@ fn script(
             }
             _ => warn!("--asw-script: unknown step {c}"),
         }
+    }
+}
+
+/// Test aid `SM89_ASW_PNG=<dir>`: a console canvas (and the picture under it) written as a PNG,
+/// in the console's colours (the manual's screenshots, sharp as the screen is drawn).
+pub fn dump_png(c: &crate::canvas::Canvas, under: Option<&crate::canvas::Picture>, name: &str) {
+    let Ok(dir) = std::env::var("SM89_ASW_PNG") else { return };
+    let rgb = |i: u8| -> [u8; 3] {
+        match i {
+            scope::DARK => [60, 66, 60],
+            scope::GREY => [150, 155, 150],
+            scope::GREEN => [60, 230, 80],
+            scope::CYAN => [70, 220, 235],
+            scope::RED => [235, 50, 45],
+            scope::WHITE => [240, 240, 240],
+            scope::YELLOW => [240, 225, 60],
+            146 | 147 => [235, 30, 30],
+            _ => [0, 0, 0],
+        }
+    };
+    let (w, h) = (c.pw(), c.ph());
+    let mut px = Vec::with_capacity(w * h * 3);
+    for (k, &i) in c.px.iter().enumerate() {
+        match (i, under) {
+            (0, Some(p)) if p.w == w => px.extend_from_slice(&p.rgba[k * 4..k * 4 + 3]),
+            _ => px.extend_from_slice(&rgb(i)),
+        }
+    }
+    if let Some(img) = image::RgbImage::from_raw(w as u32, h as u32, px) {
+        let _ = img.save(format!("{dir}/{name}.png"));
     }
 }

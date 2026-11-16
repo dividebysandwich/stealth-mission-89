@@ -51,6 +51,7 @@ centers and remotely pilot recon, attack and interceptor drones, quadrotors and 
 | [11. Multiplayer](#11-multiplayer) | Joining, hosting, dedicated servers |
 | [12. Areas of Conflict](#12-areas-of-conflict) | The twelve theaters |
 | [13. Know Your Enemy](#13-know-your-enemy) | Aircraft, air defences, ships and armour |
+| [14. Anti-Submarine Warfare](#14-anti-submarine-warfare) | The MH-60R's hunt: MAD, sonobuoys, the dipping sonar, the operator's console, torpedoes |
 | [Appendices](#appendices) | Keys, your files, glossary |
 
 
@@ -447,6 +448,7 @@ from, and what it does in the game.
 | <img src="images/units/fly_c5.png" width="160"> | [**C-5M GALAXY**](#312-c-5m-galaxy) | Four-engined strategic airlifter: airdrops pallets from its ramp, flies munitions between the airbases. |
 | <img src="images/units/fly_ac130.png" width="160"> | [**AC-130 SPECTRE**](#313-ac-130-spectre) | Side-firing gunship: 40 mm and 105 mm guns aimed with the pod from a left-hand orbit. |
 | | [**AH-64D APACHE**](#314-ah-64d-apache) | Two-seat attack helicopter: a second player can fly as its gunner, laying the chin gun and Hellfires with the TADS. |
+| | [**MH-60R SEAHAWK**](#315-mh-60r-seahawk) | Anti-submarine helicopter from the carriers: sonobuoys, a dipping sonar, MAD and torpedoes; a second player can sit at its sensor operator's console. |
 
 ## 3.1 F-117A NIGHTHAWK
 
@@ -1535,6 +1537,40 @@ him. The sortie's kills count for the crew.
 
 **Best for.** Close air support against armour, guns and MANPADS (it is the AI's first choice for
 CAS near the front), escorting insertions, and flying with a friend.
+
+## 3.15 MH-60R SEAHAWK
+
+The US Navy wanted a helicopter for its frigates and destroyers that could carry a submarine
+hunt far beyond a ship's own sonar, and took the Army's Black Hawk as its base. The **SH-60B
+Seahawk** of 1984 added a search radar, a launcher for sonobuoys in the cabin's side, a MAD towed
+body on a pylon and torpedoes, all tied by datalink to its ship; the **SH-60F** that followed
+flew from the carriers with a dipping sonar lowered from the hover. The **MH-60R**, in service
+from 2006, brought both together: the dipping sonar, the sonobuoys, a new radar and a glass
+cockpit, with a sensor operator in the cabin behind the pilots working the sonar at his console.
+
+| **MH-60R SEAHAWK** | |
+|---|---|
+| *Role* | Anti-submarine and anti-surface helicopter, three crew |
+| *Manufacturer* | Sikorsky, USA |
+| *First flight* | 22 July 2001 (MH-60R) |
+| *Rotor diameter / length / height* | 16.36 m / 19.76 m / 5.10 m |
+| *Engines* | 2 × General Electric T700-GE-401C, 1,410 kW (1,890 shp) each |
+| *Maximum take-off weight* | 10,433 kg (23,000 lb) |
+| *Maximum speed* | about 145 kt level |
+| *Armament* | Mk 54 torpedoes, Hellfire missiles, sonobuoys |
+
+**IN THE GAME.** The Black Hawk's airframe in navy grey, heavier with its sensors: it tops out near
+145 kt and carries 4,000 lb of fuel. It flies from the carriers. On its pylons it carries a four-rail
+Hellfire launcher (left outer station) and two **Mk 54 torpedoes** (inner stations); the right outer
+pylon holds the **MAD**'s towed body. In the cabin are **8 sonobuoys** (4 DIFAR, 2 DICASS, 2 BT)
+and the **dipping sonar**. The pilot's cockpit has four MFDs; its **MAD** page is the pilot's own
+sensor. The sonar work is done at the **sensor operator's console** in the cabin: by you (the AI
+then flies) or by a second player. Chapter 14 tells all of it.
+
+![The MH-60R's cockpit: the HSD and the MAD page on the pilot's MFDs](images/cockpit_mh60r.png)
+
+**Best for.** Hunting submarines from the carrier group (single missions in the theaters with a
+carrier, the campaign's ASW offers), and flying with a friend at the console.
 
 
 ---
@@ -3869,6 +3905,282 @@ columns drive between the places (chapter 9.7). Your targeting pod tracks them a
 Your side's places are defended too: two Gepards and two Stinger teams at each airfield, a Stinger team
 in each city, Patriot batteries at the airfields well behind the front, and whatever Gepard, Patriot and
 drone sites the players build. They engage enemy aircraft and drones by themselves.
+
+
+---
+
+# 14. ANTI-SUBMARINE WARFARE
+
+A submarine is the one enemy no radar sees. It runs deep and slow under the waves, listening, and
+the first a carrier group may know of it is the noise of its torpedoes in the water. Against it the
+navy sends helicopters: an MH-60R Seahawk can lay a field of listening buoys in minutes, hover to
+lower its own sonar, sweep low over the sea with its magnetic anomaly detector, and drop a torpedo
+that finds the submarine by itself. This chapter tells how to fly the hunt (chapter 3.15 tells of
+the aircraft).
+
+## 14.1 The hunt
+
+Somewhere ahead a submarine is under way. You are told where it was last reported: the **datum**,
+a few kilometres from where it really is. From there it is yours to find, track and sink before it
+does what it came to do. Submarines are never seen: only heard, felt by the MAD, or, for a few
+minutes now and then, glimpsed as the feather of spray a periscope cuts when one comes up to
+periscope depth to snorkel.
+
+**Single missions.** In the eight theaters with a friendly carrier, an MH-60R's mission is a hunt
+from the carrier and back (`--asw-scenario blockade|convoy|carrier` picks one, else the seed does):
+
+- **Blockade.** A submarine slips out of an enemy port to break our blockade. The line it must not
+  cross lies between the port and the carrier group; the map shows it as a red dashed line.
+- **Convoy.** It closes on one of the carrier's escorts to torpedo it.
+- **Carrier.** It goes for the carrier itself.
+
+With more opponents there are two. The hunt is won when every submarine is sunk; it is lost when a
+submarine fires on its target (from some 8 km) or crosses the line. Then land back on the carrier.
+
+**The campaign.** Theaters with a friendly carrier have an **ASW** offer on the mission board, which
+only the MH-60R flies (and the MH-60R flies nothing else). Taking it, a submarine is reported closing
+on the carrier's group some 22 to 28 km out; its datum is your first waypoint. Sinking it achieves
+the objective. Leave it alone and it may torpedo one of the carrier's escorts.
+
+## 14.2 The crew
+
+The pilot flies; the **sensor operator** in the cabin runs the sonar and the weapons. You can be
+either:
+
+- **Alone.** The in-flight menu's **GUNNER'S SEAT** entry takes you back to the console (`--seat
+  gunner[@seconds]`), and the AI flies: on along the route, or holding a hover. When you lower the
+  dipping sonar from the console, the AI first slows down and comes to a hover 40 ft over the sea,
+  then the sonar goes down; it holds the hover while the sonar is in the water. **LEAVE** takes you
+  back to the pilot's seat.
+- **With a friend.** In a campaign, a second player joins your Seahawk from the FLIGHTS tab (*JOIN
+  AS GUNNER*) and sits at the console while you fly. He hears and sees what the sensors report; the
+  route he lays becomes your waypoints; his torpedo release drops your torpedoes. If you leave or
+  lose your connection, he carries on with the AI flying.
+
+The pilot has the MAD (14.3) and can drop the torpedoes with his own release (the SMS page shows
+them; the operator's program goes with them) and lower the dipping sonar from the MAD page.
+
+## 14.3 The MAD
+
+A submarine's steel hull bends the earth's magnetic field. The **magnetic anomaly detector** in its
+towed body ("the bird") feels that, but only close: within some 700 m slant range, and so strongly
+only right over the submarine that it is the tool for the last minutes of a hunt, to pin down a
+contact the sonar has found, or to confirm one before a torpedo goes.
+
+![The MAD page: a pass over a submarine, the trace far over the threshold, a mark made](images/mfd_mad.png)
+
+The MAD is the pilot's: the **MAD** page is on his right MFD (or any MFD's format row).
+
+- **MAD** (top left) lowers or raises the bird. Lower it at up to 120 kt. It feels a submarine only
+  while you are at most **300 ft** over the sea; the height turns yellow above that, the speed red
+  over 120 kt.
+- The **trace** shows the last 30 seconds, newest on the right, against the red dashed **mark
+  threshold**. The sea gives a little noise; a submarine a rising, then falling bulge as you pass
+  over it, the higher the closer. **GN-** and **GN+** change the scale (±20 to ±2.5 nT).
+- A pass over the threshold drops an **automatic mark**: a fix where the bird was, a red cross on
+  the operator's map, which the tracker takes as a fix (**MARKS** counts them). **MARK** drops one by
+  hand, where you are now.
+- **DIP** lowers or raises the dipping sonar (from a low, slow hover: 14.4).
+
+Fly MAD runs low and straight, 60 to 100 kt, across the area the sonar points to: a cloverleaf of
+crossing runs over the estimated position finds it.
+
+## 14.4 The sonar
+
+The console's main display has three pages, chosen with the keys along its bottom bezel:
+**SONAR**, **WPN** and **MAP**. The keyset beside it drops the buoys and works the sensors; the small
+screen above shows who flies, the aircraft's height and speed, the dipping sonar's and the MAD's
+state, the buoys left, the torpedoes and their arming, and the layer.
+
+![The sensor operator's console in the cabin](images/asw_console.png)
+
+### The sensors
+
+| Sensor | What it does |
+|---|---|
+| **SSQ-53 DIFAR** buoy | Listens, and tells the **direction** of what it hears. Four carried. |
+| **SSQ-62 DICASS** buoy | Listens all round (no direction), or **pings**: an echo gives range, bearing and closing speed. 24 pings, one every 10 s. Two carried. |
+| **SSQ-36 BT** buoy | Measures the water's temperature down from the surface: it reports where the **layer** is some 25 s after it splashes, then sinks. Two carried. |
+| **AQS-13F dipping sonar** | Lowered on its cable from the hover, to as deep as 440 ft (134 m): listens (with direction) or pings (as the DICASS, farther). |
+
+- **Dropping a buoy.** The **DIFAR**, **DICASS** and **BT** keys drop one at once, where the
+  aircraft is: it falls on its chute (a few seconds) and splashes. On the MAP page, the **D**, **C**
+  and **B** buttons drop one at a point instead: touch the map, and it goes when the aircraft passes
+  over the point (a yellow square until then). At most **four buoys** are live at a time: scuttle one
+  (its **SCUTTLE** button on the SONAR page) to drop another. A buoy lives 30 minutes.
+- **Hydrophone depth.** The SONAR page's **HYD** button sets how deep the next buoys hang their
+  hydrophones: **SHAL** (27 m) or **DEEP** (120 m).
+- **The dipping sonar.** **DIP** lowers it (at most 70 ft over the sea, at most 5 kt) or raises it;
+  **DEPTH-** and **DEPTH+** move it 10 m up or down. With the sonar in the water, flying faster than
+  15 kt or climbing 150 ft above it **parts the cable**: the sonar is lost for the sortie.
+- **Pinging.** **PING** (or the sensor's own button on the SONAR page) switches the selected DICASS
+  or the dipping sonar between listening and pinging. A ping finds what passive listening misses and
+  gives the range, but every submarine within 25 km hears it: it turns away, sprints and goes deep
+  under the layer for a while.
+
+**The layer.** The sea's warm surface water lies over colder water below; sound bends away from the
+boundary, the **layer**, some 30 to 120 m down. A sensor and a submarine on either side of it hear
+each other much less (15 dB less, twice that for a ping's echo). Submarines like to run under it.
+Drop a BT first: once it reports, the layer's depth is on the SONAR page and the status screen
+("LAYER ?" until then). Then hang the hydrophones on the submarine's side of it: usually DEEP, and
+the dipping sonar under it.
+
+**What a sensor hears.** A submarine is louder the faster it runs, much louder when it cavitates
+(fast and shallow) or snorkels at periscope depth. Ships are heard from far: the carrier and its
+escorts too, so the waterfalls of buoys near the group are full of them. A torpedo in the water is
+loud. A sensor also hears the pings of the other active sonars near it (25 km).
+
+### The waterfalls
+
+![The SONAR page: three DIFARs, each with the submarine marked A; a torpedo's trace curving across the first; the DICASS's pings](images/asw_sonar.png)
+
+The SONAR page shows a **waterfall** for each sensor in the water, one under the other: the buoys
+and, while it is down, the dipping sonar. Across each runs the **true bearing** from the sensor,
+000 to 360; down it runs time, the newest report at the top, four a second (some 100 s in all). Each
+row is how strongly the sensor hears each direction:
+
+- the sea's noise is a fine speckle;
+- a **contact** is a bright trace at its bearing, narrower the surer the bearing (the stronger it is
+  heard); a ship's or a torpedo's cavitating screws make a broader one. As the contact moves past the
+  sensor its trace **slants across** the waterfall: a slow drift for a submarine, a fast curve for a
+  torpedo;
+- another sonar's **ping** is a short sharp dash at its bearing; the sensor's own ping a bright row;
+- a sensor that cannot tell direction (a DICASS listening) raises its whole row when it hears
+  something.
+
+Each waterfall's header has the sensor (B2 DIFAR, DIP AQS-13F), its range from you, its hydrophone
+depth and mode, and the strongest contact: its signal over the noise (SNR) and bearing, and after a
+ping its range and Doppler (closing speed, kt). A BT buoy shows its temperature profile instead.
+Touch a header to select the sensor (PING acts on it).
+
+### Listening
+
+The headset hears **one sensor in one direction**. Touch or drag on a waterfall: the yellow
+**listening cursor** goes there, and you hear that sensor at that bearing, the bearing and the
+signal of what is under it shown at the cursor's top. Drag along the waterfall to sweep round; drag
+down onto another waterfall to listen to that sensor instead. **AUDIO** turns the headset off and on.
+
+- Pointed **where nothing is**, you hear only the faint hiss of the sea.
+- A **submarine** is a low rush of water past its hull, beating slowly with its screw, its
+  machinery's hum faint under it.
+- A **ship** is the churning beat of its screws, heavy and slow for the carrier, quicker for the
+  smaller ships.
+- A **torpedo** is a fast, high, cavitating whine: unmistakable.
+- Another sonar's **ping** sounds when the cursor points at it.
+
+Listening tells a submarine from the ships around it: on a waterfall full of traces, sweep the
+cursor across them and listen for the one that is not a ship.
+
+### Marks and triangulation
+
+A DIFAR gives a bearing, not a range: two of them, or more, cross on the contact. **Mark** a trace
+and the map draws its bearing line:
+
+1. Choose the mark's letter with the **MARK ID** button in the SONAR page's title bar (A to H, a
+   letter for each contact you follow).
+2. Put the cursor on the trace and press **MARK**: a cyan triangle and the letter at the top of the
+   waterfall, a dotted line down it.
+3. Mark the **same contact with the same letter** on the other sensors that hear it.
+
+A mark **follows its trace** as it moves across the waterfall. When the trace fades into the noise
+the mark stays where it was and turns grey (lost) until the trace comes back near it. **MARK** on a
+marked trace deletes the mark (so does selecting it on the map and **DEL**).
+
+On the MAP page each mark is a dashed **bearing line** from its sensor, its letter boxed on it. A
+letter on two or more sensors also shows where its lines cross: a **yellow ring** at the estimated
+position, as wide as its likely error, labelled with the letter, the number of sensors and the
+error (*A 3X 0.3KM*). The more sensors hold it, and the wider the angles between their lines, the
+smaller the ring. Lines nearly parallel (sensors in a row with the contact) cross badly: lay your
+buoys round where it may be.
+
+### The automatic tracker
+
+Besides your marks, the console's tracker works by itself: it crosses the DIFARs' and the dipping
+sonar's bearings on contacts it classifies as submarines, takes the DICASS's and the dipping sonar's
+echoes and the MAD's marks as fixes (the faint dots on the map), and fits **tracks** to them: a
+yellow diamond labelled S1, S2... with its course and speed (*S1 040/6*), a line ahead where it will
+be in two minutes, and a ring as wide as its error. A track with no new fix for a few minutes is
+dropped.
+
+## 14.5 The map
+
+![The MAP page at 4 km: three DIFARs' bearing lines marked A crossing on the estimate ring; the tracker's S1 beside it; the route](images/asw_map.png)
+
+The MAP page is the tactical picture, north up, round the aircraft (the green arrow):
+
+- the **buoys** (D, C, B in a ring; grey while falling), their sensors' latest bearings as dashed
+  lines, a pinging DICASS ringed;
+- the **dipping sonar** (DIP) while it is down;
+- the **ships** (friendly blue, enemy red) and the **datum** (a yellow cross in a ring), a
+  blockade's **line** (red);
+- the **marks**, their **estimates**, the tracker's **fixes** and **tracks** (14.4);
+- the **torpedoes**: white running, red homing;
+- the **route** (white, numbered) and the mission's own waypoints after it (grey, M1, M2...).
+
+**Buttons.** **RNG-** and **RNG+** (or the keyset's ZOOM keys) zoom from 1 to 64 km; drag the sea to
+pan, **CTR** to centre on the aircraft again. **D**, **C**, **B** drop a buoy at the next point you
+touch.
+
+**The route.** Touch the sea to add a waypoint after the selected one (or at the end); drag a
+waypoint to move it; touch one to select it, **DEL** removes it, **CLR** the whole route. The route
+is shared: it becomes the pilot's first waypoints, before the mission's own, on his HSD, map and WAY
+pages, and the AI flies it when nobody is in the pilot's seat. A route waypoint is passed within
+1 km of it. Lay the route over the drop points to sow a buoy field in one pass.
+
+## 14.6 Torpedoes
+
+The **Mk 54** is a lightweight homing torpedo. Dropped on a parachute, it enters the water, runs out
+on its programmed heading, and after its **enable delay** starts its **search pattern**, listening
+and pinging ahead of it. When it finds a submarine in its seeker's cone (35° either side, 1.5 km,
+half that across the layer) it homes at 45 kt. It runs 8 minutes in all. A hit (within 15 m) sinks
+the submarine: a column of water rises from the sea.
+
+![The WPN page: the snake pattern sketched, one torpedo searching](images/asw_wpn.png)
+
+The **WPN** page sets it up:
+
+- **STATIONS**: the stores on each station; touch a torpedo's station to drop that one next.
+- **MK 54 PROGRAM**:
+  - **HDG**: the heading it runs out on (- and + in 15° steps; **AUTO**: the aircraft's heading at
+    release).
+  - **DELAY**: seconds it runs straight before it searches (0 to 60), to carry it from the drop
+    point to where the submarine is.
+  - **PATTERN**: **STRAIGHT** on, a **CIRCLE** some 700 m across, a **SNAKE** weaving either side of
+    its heading, or a **HELIX** circling up and down between ceiling and floor.
+  - **CEILING** and **FLOOR**: the depths it searches between.
+- The **sketch** shows its first three minutes from the aircraft; the **TORPEDOES** list the ones in
+  the water: running out, searching or homing, depth and time.
+- **ARM**, then **RELEASE** (the keyset's big red key, which flashes while the release is armed).
+  Each release needs arming again.
+
+**Release limits.** Over the sea, at most **300 ft** and **100 kt**: lower and slower is better. Not
+from the deck.
+
+**Placing the drop.** A torpedo dropped right over a submarine may find it at once; one dropped
+farther off needs its heading and delay to bring it to where the submarine will be, then a pattern
+that covers the error of your fix: a circle or a helix round a good fix, a snake across a bearing.
+Set the depths to bracket where it runs: under the layer if it has gone deep. A submarine that hears
+a torpedo near it sprints away and may break its lock; a second torpedo after a miss often catches it.
+
+**Hellfire.** A submarine at **periscope depth** leaves a small feather of spray on the sea. A
+Hellfire striking within 25 m of it sinks it: lase the feather with the targeting pod and fire.
+
+![A Mk 54's hit: the water thrown up over the sunk submarine](images/asw_plume.png)
+
+## 14.7 Tactics
+
+- **Start from the datum.** Fly there fast, then lay a field round it: a DIFAR on each side of where
+  it may be, a few kilometres apart, a BT first to find the layer.
+- **Listen before you ping.** Passive DIFARs give the submarine no warning. Find it, mark it on two
+  or three buoys, and let the crossing pin it.
+- **Then close in.** Ping with a DICASS or the dipping sonar for a range, or run the MAD over the
+  estimate to be sure.
+- **Shoot from a good fix.** Drop the torpedo over the estimate or ahead of the track's line, with a
+  pattern that covers the error ring.
+- **Mind the ships.** Near the carrier group the waterfalls are crowded: listen to each trace, mark
+  the one that sounds like a submarine.
+- **Mind the clock.** A submarine on its way to its target does not wait: the closer it gets, the less
+  time is left.
 
 
 ---

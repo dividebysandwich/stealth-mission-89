@@ -78,6 +78,13 @@ pub fn sample(
     trace.dip = crew.dip.state;
     trace.dip_depth = crew.dip.depth;
     trace.marks = crew.fixes.iter().filter(|f| f.how == 2).count();
+    // Test aid `SM89_ASW_PNG`: the page as an MFD draws it.
+    if std::env::var_os("SM89_ASW_PNG").is_some() && trace.samples.len().is_multiple_of(10) {
+        let (w, h) = crate::mfd::HIRES;
+        let mut c = Canvas::scaled(w, h, 2);
+        draw(&mut c, &trace, mfd.av.mad_gain);
+        super::dump_png(&c, None, "mfd_mad");
+    }
 }
 
 /// The MAD page's buttons to the simulation.

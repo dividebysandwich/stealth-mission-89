@@ -197,7 +197,7 @@ fn sensor_at(sim: &stealth_sim::Sim, crew: &AswCrew, owner: u8, sensor: u16) -> 
 }
 
 /// Where a mark's letter sits on its line (canvas units): this far out from its sensor (m).
-const LABEL_OUT: f64 = 2500.0;
+const LABEL_OUT: f64 = 1200.0;
 
 fn mark_label(ui: &AswUi, c: [f64; 2], at: [f64; 2], bearing: f32) -> Vec2 {
     let t = (bearing as f64).to_radians();
@@ -339,6 +339,17 @@ pub fn draw(
         cv.rect(s.x as i32 - 4, s.y as i32 - 4, 8, 8, YELLOW);
         stroke_text_at(cv, s.x + 7.0, s.y + 7.0, &kind.name()[..1], 5.0, 1.0, YELLOW, Align::Left);
     }
+    // The tracker's fixes: crossed bearings and echoes faint dots, MAD marks red crosses (under
+    // the rest).
+    for f in &crew.fixes {
+        let s = at(f.at);
+        if f.how == 2 {
+            cv.stroke(s - Vec2::splat(5.0), s + Vec2::splat(5.0), 0.8, RED);
+            cv.stroke(s + Vec2::new(-5.0, 5.0), s + Vec2::new(5.0, -5.0), 0.8, RED);
+        } else {
+            cv.fill_rect(s.x as i32, s.y as i32, 1, 1, DARK);
+        }
+    }
     // The operator's marks: a bearing line from each marked sensor, its letter on it.
     for (i, m) in ui.marks.iter().enumerate() {
         let Some(from) = sensor_at(sim, crew, owner, m.sensor) else { continue };
@@ -371,15 +382,9 @@ pub fn draw(
         cv.stroke(s - Vec2::new(3.0, 0.0), s + Vec2::new(3.0, 0.0), 1.2, YELLOW);
         cv.stroke(s - Vec2::new(0.0, 3.0), s + Vec2::new(0.0, 3.0), 1.2, YELLOW);
         let t = format!("{} {}x {:.1}KM", marks::letter(id), lines.len(), err / 1000.0);
-        stroke_text_at(cv, s.x + 8.0, s.y - 8.0, &t, 6.0, 1.0, YELLOW, Align::Left);
-    }
-    // The fixes: crossed bearings and echoes small crosses, MAD marks red.
-    for f in &crew.fixes {
-        let s = at(f.at);
-        let col = if f.how == 2 { RED } else { GREY };
-        let r = if f.how == 2 { 5.0 } else { 2.0 };
-        cv.stroke(s - Vec2::splat(r), s + Vec2::splat(r), 0.8, col);
-        cv.stroke(s + Vec2::new(-r, r), s + Vec2::new(r, -r), 0.8, col);
+        // Below its ring (a track's label is above).
+        let below = (err as f32 / k).max(4.0) + 9.0;
+        stroke_text_at(cv, s.x, s.y + below, &t, 6.0, 1.0, YELLOW, Align::Centre);
     }
     // The tracks: a diamond, its course for two minutes, its error ring.
     for t in &crew.tracks {
