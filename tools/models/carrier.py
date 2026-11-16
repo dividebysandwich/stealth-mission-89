@@ -70,6 +70,7 @@ PAINTS = {
     219: Ramp(218, 222),  # red antifouling
     224: Ramp(224, 227),  # white
     199: Ramp(199, 201),  # yellow
+    150: 150,  # window glass: the classic window colour (dark by day, amber at night)
 }
 # The deck's painted lines by day, and lit at night (the palette's ramps go dark at night; these
 # fixed colours do not). The hull-grey paint (the stern's round-down, the bow catapults) and black
@@ -123,19 +124,37 @@ def hangar(frame):
     return mklib.block(-x, x, y0, y1, z0, z1, HANGAR_PAINT).transformed(frame)
 
 
-def landing(frame):
-    """The angled deck's centre line and its edge lines (stern to forward end), model units:
-    from nimitz.blend's painted lines (the yellow centre line, the dashed foul lines)."""
-    a, b = Vector((4.5, -148.0, DECK_M)), Vector((-27.0, 55.0, DECK_M))
-    side = Vector((b.y - a.y, -(b.x - a.x), 0)).normalized() * 11.0
-    return [(frame(a + o), frame(b + o)) for o in (Vector(), side, -side)]
+# The angled deck's painted lines the landing lights follow: a rough centre line (m, stern end
+# and forward end) and the lines' offsets from it (m to starboard: the port foul line, the
+# centre line, the starboard foul line). `landing_lines` fits each to the paint.
+LANDING_AXIS = (Vector((4.5, -148.0)), Vector((-27.0, 55.0)))
+LANDING_OFFSETS = (-8.5, 1.0, 11.5)
+LIGHTS_PER_LINE = 16
 
 
-def deck_lights(frame):
+def landing_lines(marks):
+    """The landing area's painted lines (stern end, forward end; m, at the deck), fitted to the
+    deck's paint: each line's mean offset from the rough axis, over the length it is painted."""
+    a, b = LANDING_AXIS
+    along = (b - a).normalized()
+    side = Vector((along.y, -along.x))  # to starboard
+    pts = [(marks.matrix_world @ v.co).xy for v in marks.data.vertices]
+    lines = []
+    for off in LANDING_OFFSETS:
+        near = [((p - a).dot(along), (p - a).dot(side)) for p in pts]
+        near = [(t, o) for t, o in near if abs(o - off) < 2.0 and t > -10.0]
+        o = sum(o for _, o in near) / len(near)
+        t0, t1 = min(t for t, _ in near), max(t for t, _ in near)
+        ends = [a + along * t + side * o for t in (t0 + 2.0, t1 - 2.0)]
+        lines.append(tuple(Vector((e.x, e.y, DECK_M)) for e in ends))
+    return lines
+
+
+def deck_lights(frame, marks):
     pts = []
-    for p, q in landing(frame):
-        for k in range(16):
-            pts.append(p.lerp(q, k / 15) + Vector((0, 0, 0.1)))
+    for p, q in landing_lines(marks):
+        for k in range(LIGHTS_PER_LINE):
+            pts.append(frame(p.lerp(q, k / (LIGHTS_PER_LINE - 1))) + Vector((0, 0, 0.1)))
     return pts
 
 
@@ -202,7 +221,7 @@ def build(blend):
     ship.add(hangar(frame))
     day = faces(marks, frame, MARK_DAY, lift=0.06)
     night = faces(marks, frame, MARK_NIGHT, lift=0.06)
-    lights = {LIGHT: deck_lights(frame)}
+    lights = {LIGHT: deck_lights(frame, marks)}
     for name, ob in src.items():
         if name.startswith("nimitz_lights_"):
             lights.setdefault(int(name[-3:]), []).extend(frame(v.co) for v in ob.data.vertices)

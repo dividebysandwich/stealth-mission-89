@@ -13,8 +13,15 @@ clutter (rails, stanchions, small gear: loose parts under `CLUTTER_M`) goes, the
 `KEEL_M` under the waterline goes. Flat areas are merged; the hull, deck, island and masts
 keep the rest of their shape, and every smaller fitting is collapsed on its own to a budget
 proportional to its size squared (about its area on screen), the factor solved so they come to
-`SMALL_TRIS` together: simplified, none of them lost. The hull is cut at the waterline after that, red below and grey above. The flight deck's
-painted lines are kept whole in `nimitz_marks` (their roles: the day colours).
+`SMALL_TRIS` together: simplified, none of them lost. The hull is cut at the waterline after
+that, red below and grey above. The flight deck's painted lines are kept whole in
+`nimitz_marks` (their roles: the day colours). Two things the source draws in ways the game
+cannot: the island's window panes are decals (`WINDOW_DECAL_U`) painted barely darker than the
+wall, so they become their own faces in the classic window colour (`WINDOW`, the airfield
+towers' glass: dark by day, amber at night); and the deck-edge walkways are gratings of tiny
+bars facing down, so each becomes a solid floor traced from the bars' footprint (`walkways`),
+and the plates the others stand on face down only, so they get an upward twin (`two_sided`).
+Lights left floating by the clutter cut (`LIGHT_REACH_M` from the ship) go.
 
 Output frame: metres, bow along +y, starboard +x, the hull's centreline at x = 0, the ship's
 middle at y = 0, the waterline (the top of the red antifouling) at z = 0.
@@ -37,6 +44,16 @@ OUT = os.path.join(ROOT, "assets-src", "blend", "nimitz.blend")
 # Paint roles by colour byte: hull/island haze grey, mid grey, flight deck, black, red
 # antifouling, white and yellow paint.
 HULL, MID, DECK, BLACK, RED, WHITE, YELLOW = 226, 230, 236, 239, 219, 224, 199
+WINDOW = 150  # the classic window colour (tools/models/control_tower.py)
+WINDOW_DECAL_U = 0.54  # the decal sheet's window panes lie right of this (its left: the hull number)
+WINDOW_LIFT_M = 0.03  # panes stand this far off the wall
+# The walkway gratings: the source's "metallic" faces this high (m over the waterline), facing
+# down; their footprint is traced on a grid of GRID_M cells.
+GRATING_Z = (16.3, 16.9)
+# The other walkways' floors are plates facing down only, this high: they get an upward twin.
+WALKWAY_Z = (15.5, 16.9)
+GRID_M = 0.5
+LIGHT_REACH_M = 1.5
 # Loose parts smaller than this (largest extent, m) are dropped; up on the island and its masts
 # (`HIGH_M` over the flight deck) smaller ones count: the yards and antennas.
 CLUTTER_M, CLUTTER_HIGH_M, HIGH_M = 2.0, 1.0, 6.0
@@ -246,6 +263,82 @@ def waterline(ob):
     bm.free()
 
 
+def walkways(grating):
+    """Solid floors under the walkway gratings' footprint: (x0, x1, y0, y1, z) strips, merged
+    from the grid cells the bars cover (one-cell gaps between bars closed)."""
+    cells = set()
+    z = {}
+    for f in grating:
+        xs = [v.co.x for v in f.verts]
+        ys = [v.co.y for v in f.verts]
+        for i in range(math.floor(min(xs) / GRID_M), math.floor(max(xs) / GRID_M) + 1):
+            for j in range(math.floor(min(ys) / GRID_M), math.floor(max(ys) / GRID_M) + 1):
+                cells.add((i, j))
+                z[(i, j)] = max(z.get((i, j), -1e9), max(v.co.z for v in f.verts))
+    # Close one-cell gaps between bars, across and along.
+    for i, j in list(cells):
+        for di, dj in ((2, 0), (0, 2)):
+            if (i + di, j + dj) in cells:
+                cells.add((i + di // 2, j + dj // 2))
+    top = max(z.values()) if z else 0.0
+    # Runs along y per column, then columns with the same run merged across.
+    runs = collections.defaultdict(list)
+    for i in sorted({c[0] for c in cells}):
+        js = sorted(j for ii, j in cells if ii == i)
+        start = prev = js[0]
+        for j in js[1:] + [None]:
+            if j is not None and j == prev + 1:
+                prev = j
+                continue
+            runs[(start, prev)].append(i)
+            if j is not None:
+                start = prev = j
+    strips = []
+    for (j0, j1), cols in runs.items():
+        cols.sort()
+        a = b = cols[0]
+        for i in cols[1:] + [None]:
+            if i is not None and i == b + 1:
+                b = i
+                continue
+            strips.append((a * GRID_M, (b + 1) * GRID_M, j0 * GRID_M, (j1 + 1) * GRID_M, top))
+            if i is not None:
+                a = b = i
+    return strips
+
+
+def two_sided(ob):
+    """Upward twins of the faces at walkway height that face down only."""
+    me = ob.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    down = [f for f in bm.faces if f.normal.z < -0.9 and WALKWAY_Z[0] < f.calc_center_median().z < WALKWAY_Z[1]]
+    for f in down:
+        # Own vertices (bmesh takes a face over the same ones for a duplicate), a millimetre up.
+        vs = [bm.verts.new(v.co + Vector((0, 0, 0.001))) for v in reversed(f.verts)]
+        g = bm.faces.new(vs)
+        g.material_index = f.material_index
+    bm.to_mesh(me)
+    bm.free()
+    return len(down)
+
+
+def floors_object(strips):
+    """The walkway floors, faces up and down (mid grey)."""
+    me = bpy.data.meshes.new("nimitz_floors")
+    verts, polys = [], []
+    for x0, x1, y0, y1, z in strips:
+        k = len(verts)
+        verts += [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
+        polys += [(k, k + 1, k + 2, k + 3), (k + 3, k + 2, k + 1, k)]
+    me.from_pydata(verts, [], polys)
+    me.materials.append(bpy.data.materials.get("pal_%03d" % MID) or bpy.data.materials.new("pal_%03d" % MID))
+    me.update()
+    ob = bpy.data.objects.new("nimitz_floors", me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob
+
+
 def main():
     src = sys.argv[sys.argv.index("--") + 1]
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -292,7 +385,18 @@ def main():
     # Deck markings: the painted lines (flat on the deck).
     marks = [f for f in bm.faces if mat_of[f] == "paint bump"]
     deck_z = max(v.co.z for f in marks for v in f.verts)
-    rest = [f for f in bm.faces if mat_of[f] not in LIGHTS and mat_of[f] != "paint bump"]
+    # Window panes: the decals on the island's walls.
+    windows = []
+    for p, f in zip(me.polygons, bm.faces):
+        if mat_of[f] == "decal texture" and min(uv[i].uv[0] for i in p.loop_indices) > WINDOW_DECAL_U:
+            windows.append(f)
+            roles[f] = WINDOW
+    # Walkway gratings.
+    grating = [f for f in bm.faces if mat_of[f] == "metallic" and f.normal.z < -0.9
+               and GRATING_Z[0] < f.calc_center_median().z < GRATING_Z[1]]
+    floors = walkways(grating)
+    skip = set(windows)
+    rest = [f for f in bm.faces if mat_of[f] not in LIGHTS and mat_of[f] != "paint bump" and f not in skip]
     # Clutter: small loose parts, and the hull deep under water.
     body = []
     dropped = 0
@@ -310,9 +414,21 @@ def main():
         bpy.data.objects.remove(o)
     body_ob = mesh_object("nimitz", bm, body, roles)
     marks_ob = mesh_object("nimitz_marks", bm, marks, roles)
+    for f in windows:
+        for v in f.verts:
+            v.co += f.normal * WINDOW_LIFT_M
+    windows_ob = mesh_object("nimitz_windows", bm, windows, roles)
     bm.free()
     decimate(body_ob, deck_z)
     body_ob = bpy.data.objects["nimitz"]
+    floors_ob = floors_object(floors)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in (body_ob, windows_ob, floors_ob):
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = body_ob
+    bpy.ops.object.join()
+    twins = two_sided(body_ob)
+    print(f"windows {len(windows)} panes, walkway floors {len(floors)} strips, {twins} plates made two-sided")
     waterline(body_ob)
     tris2 = tris(body_ob)
     # Painted lines: face up (most of the source's face down, and the game culls back faces);
@@ -330,12 +446,18 @@ def main():
     mtris = tris(marks_ob)
     print(f"body {tris2} triangles; marks {mtris} triangles")
 
+    # Lights whose fittings went with the clutter would float: keep those on the ship.
+    from mathutils.bvhtree import BVHTree
+    tree = BVHTree.FromObject(body_ob, bpy.context.evaluated_depsgraph_get())
+    for c in list(lights):
+        near = [p for p in lights[c] if tree.find_nearest(p, LIGHT_REACH_M)[0] is not None]
+        print(f"lights {c}: {len(near)} of {len(lights[c])} on the ship")
+        lights[c] = near
     for c, pts in sorted(lights.items()):
         lm = bpy.data.meshes.new("nimitz_lights_%03d" % c)
         lm.from_pydata([tuple(p) for p in pts], [], [])
         lo = bpy.data.objects.new(lm.name, lm)
         bpy.context.scene.collection.objects.link(lo)
-        print(f"lights {c}: {len(pts)}")
     for o in bpy.data.objects:
         o["source"] = "USS Nimitz class aircraft carrier by Larcenie Grant, CC BY 4.0, https://skfb.ly/pvWrZ"
     for img in list(bpy.data.images):
