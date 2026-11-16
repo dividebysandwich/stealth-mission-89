@@ -54,26 +54,29 @@ pub struct ExplosionsPlugin;
 
 impl Plugin for ExplosionsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(MaterialPlugin::<ParticleMaterial>::default())
-            .init_resource::<Explosions>()
-            .init_resource::<Particles>()
-            .init_resource::<VehicleDust>()
-            .add_systems(OnExit(AppState::Flight), cleanup)
-            .add_systems(
-                Update,
-                (
-                    spawn_blasts.run_if(resource_exists::<Combat>),
-                    damage_trail.run_if(resource_exists::<Combat>),
-                    tyre_smoke.run_if(resource_exists::<Combat>),
-                    downwash,
-                    vehicle_dust,
-                    simulate,
-                )
-                    .chain()
-                    .after(CombatSystems)
-                    .after(crate::sim_render::SimRenderSystems)
-                    .run_if(in_state(AppState::Flight)),
-            );
+        app.add_plugins((
+            MaterialPlugin::<ParticleMaterial>::default(),
+            crate::scorch::ScorchPlugin,
+        ))
+        .init_resource::<Explosions>()
+        .init_resource::<Particles>()
+        .init_resource::<VehicleDust>()
+        .add_systems(OnExit(AppState::Flight), cleanup)
+        .add_systems(
+            Update,
+            (
+                spawn_blasts.run_if(resource_exists::<Combat>),
+                damage_trail.run_if(resource_exists::<Combat>),
+                tyre_smoke.run_if(resource_exists::<Combat>),
+                downwash,
+                vehicle_dust,
+                simulate,
+            )
+                .chain()
+                .after(CombatSystems)
+                .after(crate::sim_render::SimRenderSystems)
+                .run_if(in_state(AppState::Flight)),
+        );
     }
 }
 
@@ -484,6 +487,7 @@ fn spawn_blasts(
     palette: Res<crate::palette::Palette>,
     scenery: Option<Res<crate::scenery::Scenery>>,
     theater: Option<Res<crate::world::Theater>>,
+    mut scorch: ResMut<crate::scorch::Scorch>,
 ) {
     let p = &mut *p;
     if p.rng == 0 {
@@ -516,6 +520,19 @@ fn spawn_blasts(
         breakup(&mut commands, p, &mut materials, &palette.globals, b);
     }
     for (pos, blast, ground) in blasts {
+        // What it leaves on the ground (water takes none).
+        let mark = match blast {
+            Blast::Kill => Some(crate::scorch::Mark::Burn),
+            Blast::Bomb => Some(crate::scorch::Mark::Crater),
+            Blast::Crash => Some(crate::scorch::Mark::Crash),
+            Blast::Strike(Calibre::Mm105) => Some(crate::scorch::Mark::Shell),
+            _ => None,
+        };
+        if let Some(mark) = mark
+            && ground
+        {
+            scorch.add(pos, mark);
+        }
         if let Blast::Strike(calibre) = blast {
             let surface = scenery.as_ref().map_or(crate::scenery::Surface::Land, |s| {
                 s.surface(bevy::math::DVec2::new(pos.x, -pos.z))

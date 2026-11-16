@@ -100,6 +100,7 @@ mod rotor_blur;
 mod rwr;
 mod savegame;
 mod scenery;
+mod scorch;
 mod script;
 mod sea;
 mod settings;
