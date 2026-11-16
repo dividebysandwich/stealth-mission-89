@@ -85,6 +85,18 @@ pub enum Format {
     Rcs,
     /// The cargo jet's hold and ramp, and the airdrop (`crate::cargo_page`).
     Cgo,
+    /// The MH-60R's magnetic anomaly detector: its trace (`crate::asw::mad`).
+    Mad,
+}
+
+/// The MAD page's bezel buttons (`MfdCmd::Asw`): the towed body out or in, a mark, the
+/// dipping sonar down or up, the trace's gain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AswOsb {
+    Mad,
+    Mark,
+    Dip,
+    Gain(i8),
 }
 
 /// The formats on the bottom bezel buttons, left to right.
@@ -115,7 +127,7 @@ pub const CARGO_FOURTH_FORMATS: [Format; 5] =
 
 /// Every format, in the order the format menu lists them down its sides (the radar's only with
 /// the radar, the cargo page only on the cargo jet): an aircraft has ten at most.
-pub const ALL_FORMATS: [Format; 11] = [
+pub const ALL_FORMATS: [Format; 12] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -127,6 +139,7 @@ pub const ALL_FORMATS: [Format; 11] = [
     Format::Eng,
     Format::Rcs,
     Format::Cgo,
+    Format::Mad,
 ];
 
 /// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
@@ -158,6 +171,7 @@ impl Format {
             Format::Eng => "ENG",
             Format::Rcs => "RCS",
             Format::Cgo => "CGO",
+            Format::Mad => "MAD",
         }
     }
 
@@ -181,7 +195,8 @@ impl Format {
             | Format::Fcr
             | Format::Eng
             | Format::Rcs
-            | Format::Cgo => Action::Maps,
+            | Format::Cgo
+            | Format::Mad => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -265,6 +280,10 @@ pub struct AvionicsState {
     pub cargo: bool,
     /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
     pub aircraft: crate::aircraft::AircraftKind,
+    /// The MAD page: the trace's gain step, the towed body out, the dipping sonar down (`asw`).
+    pub mad_gain: u8,
+    pub mad_out: bool,
+    pub dip_down: bool,
     pub gm_range: usize,
     /// The radar in standby: not transmitting (either format).
     pub radar_standby: bool,
@@ -604,6 +623,9 @@ impl Default for AvionicsState {
             radar: false,
             rcs: false,
             cargo: false,
+            mad_gain: 1,
+            mad_out: false,
+            dip_down: false,
             aircraft: Default::default(),
             gm_range: 2,
             radar_standby: false,
@@ -713,7 +735,10 @@ impl AvionicsState {
 
     /// The aircraft has format `f`.
     pub fn has(&self, f: Format) -> bool {
-        (!f.radar() || self.radar) && (f != Format::Rcs || self.rcs) && (f != Format::Cgo || self.cargo)
+        (!f.radar() || self.radar)
+            && (f != Format::Rcs || self.rcs)
+            && (f != Format::Cgo || self.cargo)
+            && (f != Format::Mad || self.aircraft.seahawk())
     }
 
     /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
@@ -783,6 +808,15 @@ impl AvionicsState {
 
     /// The AC-130's displays at the start: the targeting pod (its guns' sight) on the left
     /// centre MFD, the SOI, the HSD on the right.
+    /// The MH-60R: the MAD page instead of the HARM display on the right MFD, up there.
+    pub fn seahawk_start(&mut self) {
+        self.rows[index(MfdSide::Right)] =
+            Some([Format::Hsd, Format::Mad, Format::Tgp, Format::Map, Format::Sms]);
+        self.formats[1] = Format::Mad;
+        self.menu = [None; 4];
+        self.fix_soi();
+    }
+
     pub fn gunship_start(&mut self) {
         self.formats[0] = Format::Tgp;
         self.formats[1] = Format::Hsd;
@@ -1051,6 +1085,11 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         MfdCmd::Ripple(d) => {
             av.ripple = (av.ripple as i32 + d as i32).clamp(1, RIPPLE_MAX as i32) as u8;
         }
+        MfdCmd::Asw(AswOsb::Gain(d)) => {
+            av.mad_gain = (av.mad_gain as i32 + d as i32).clamp(0, 3) as u8;
+        }
+        // The rest are the crew's sensor commands (`asw::mad::osb`).
+        MfdCmd::Asw(_) => {}
         MfdCmd::Burst(d) => {
             av.burst = (av.burst as i32 + d as i32).clamp(0, BURST_FT.len() as i32 - 1) as usize;
         }
@@ -1183,6 +1222,11 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr, 4) => soi,
         // The cargo page: the ramp up or down (the bay doors' key).
         (Format::Cgo, 0) => ("RAMP", OsbFn::Action(crate::input::Action::BayDoors), false),
+        (Format::Mad, 0) => ("MAD", Cmd(MfdCmd::Asw(AswOsb::Mad)), av.mad_out),
+        (Format::Mad, 1) => ("MARK", Cmd(MfdCmd::Asw(AswOsb::Mark)), false),
+        (Format::Mad, 2) => ("DIP", Cmd(MfdCmd::Asw(AswOsb::Dip)), av.dip_down),
+        (Format::Mad, 3) => ("GN-", Cmd(MfdCmd::Asw(AswOsb::Gain(-1))), false),
+        (Format::Mad, 4) => ("GN+", Cmd(MfdCmd::Asw(AswOsb::Gain(1))), false),
         (Format::Rcs, 1) => ("RNG-", Cmd(MfdCmd::RcsRange(-1)), false),
         (Format::Rcs, 2) => (RCS_RANGE_LABELS[av.rcs_range], Readout, false),
         (Format::Rcs, 3) => ("RNG+", Cmd(MfdCmd::RcsRange(1)), false),
@@ -1275,6 +1319,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Fcr => draw_fcr(p, c, ac, soi),
         Format::Hsi => draw_hsi_page(p, c, fonts),
         Format::Rcs => draw_rcs_page(p, c),
+        Format::Mad => crate::asw::mad::draw(c, &p.mad, p.state.av.mad_gain),
         Format::Cgo => crate::cargo_page::draw(c, p.cues.drop.as_ref(), crate::hud::blink(&p.time)),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {

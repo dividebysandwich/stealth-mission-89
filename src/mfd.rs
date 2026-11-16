@@ -290,6 +290,8 @@ pub enum MfdCmd {
     TgpSlave,
     /// Targeting pod cursor zero: point track on the current steerpoint.
     TgpCz,
+    /// The MAD page's buttons (the MH-60R).
+    Asw(crate::avionics::AswOsb),
     /// WAY page: nudges the selected waypoint one step over the map (screen x right, y up), as
     /// the keypad does (`edit_waypoints`).
     WaypointNudge(i8, i8),
@@ -448,7 +450,7 @@ pub fn cam_zoom(state: &mut MfdState, cmd: MfdCmd, auto: u8) {
 /// The key action that does the same as a display command (script `press=` lookups).
 pub fn cmd_action(cmd: MfdCmd) -> Action {
     match cmd {
-        MfdCmd::LeftPage(_) => Action::Maps,
+        MfdCmd::LeftPage(_) | MfdCmd::Asw(_) => Action::Maps,
         MfdCmd::RightPage(RightMfd::Camera) | MfdCmd::Cam(CamDir::Ahead) => Action::CamAhead,
         MfdCmd::Cam(CamDir::Right) => Action::CamRight,
         MfdCmd::Cam(CamDir::Rear) => Action::CamRear,
@@ -796,6 +798,9 @@ fn reset_mfd(
     }
     if settings.aircraft.spectre() {
         av.gunship_start();
+    }
+    if settings.aircraft.seahawk() {
+        av.seahawk_start();
     }
     *state = MfdState {
         hires: settings.hires_displays(),
@@ -1576,6 +1581,8 @@ pub struct MfdParams<'w, 's> {
     pub threats: Res<'w, crate::mpd::ThreatHistory>,
     /// The wind (the HSI page's readout).
     pub weather: Option<Res<'w, crate::weather::WeatherState>>,
+    /// The MAD's trace (the MH-60R's MAD page).
+    pub mad: Res<'w, crate::asw::mad::MadTrace>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.

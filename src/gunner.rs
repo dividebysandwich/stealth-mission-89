@@ -395,9 +395,16 @@ fn orbit(
     combat: Option<Res<Combat>>,
     mut state: ResMut<GunnerState>,
     time: Res<Time>,
+    asw: Option<Res<crate::asw::AswUi>>,
 ) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
     let own = manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner());
+    // The MH-60R's operator wants the dipping sonar: a low hover (`asw::dip_pilot`).
+    if k.heli.is_some() && own && asw.as_deref().is_some_and(|u| u.low_hover) {
+        crate::flight::crew_low_hover(&mut a, &k, crate::asw::DIP_HOVER_WU);
+        state.height = None;
+        return;
+    }
     // A helicopter flies on with its autopilot or hovers, at its height over the ground.
     if k.heli.is_some() {
         if own && crate::flight::crew_autopilot(&mut a, &k) {

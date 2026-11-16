@@ -733,6 +733,21 @@ pub fn crew_autopilot(a: &mut Aircraft, k: &FlightConstants) -> bool {
     a.autopilot()
 }
 
+/// The AI brings a helicopter to a low hover where it is (the MH-60R about to dip its sonar):
+/// it slows down on the autopilot, hovers once slow enough, and holds `height` (world units)
+/// over the ground or the sea. True once it hovers there.
+pub fn crew_low_hover(a: &mut Aircraft, k: &FlightConstants, height: f32) -> bool {
+    let Some(r) = &k.heli else { return false };
+    if a.on_ground || a.ended.is_some() || a.damage.autopilot_failed {
+        return false;
+    }
+    if !a.auto_hover() && !heli::engage_hover(a) {
+        heli::slow_down(a, r);
+    }
+    a.autopilot_alt = view_z(a.ground_altitude + height).max(1.0);
+    a.auto_hover() && (a.altitude - a.ground_altitude - height).abs() < 8.0 && a.knots() < 4.0
+}
+
 fn handle_actions(
     mut actions: MessageReader<ActionEvent>,
     mut q: Query<&mut Aircraft, With<Player>>,

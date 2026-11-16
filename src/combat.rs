@@ -142,6 +142,8 @@ pub struct Combat {
     pub sfw_fx: Vec<SimEvent>,
     /// The AC-130s' guns firing and their shells landing this frame (drawn by `side_guns`).
     pub side_gun_fx: Vec<SimEvent>,
+    /// The submarine hunt's splashes this frame (`asw::effects`).
+    pub asw_fx: Vec<SimEvent>,
     /// Signal flares the downed pilot fired in the steps of this frame (map x, map y).
     pub signal_flares: Vec<(i32, i32)>,
     /// Missiles SAM sites launched in the steps of this frame (Bevy world, where they left).
@@ -457,6 +459,7 @@ fn start_combat(
         ground_shots: Vec::new(),
         sfw_fx: Vec::new(),
         side_gun_fx: Vec::new(),
+        asw_fx: Vec::new(),
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
@@ -807,6 +810,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.ground_shots.clear();
     combat.sfw_fx.clear();
     combat.side_gun_fx.clear();
+    combat.asw_fx.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
     for t in std::mem::take(&mut combat.prior_tiles) {
@@ -2656,6 +2660,7 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
         SimEvent::SideGunFired { .. } | SimEvent::SideShellImpact { .. } => {
             combat.side_gun_fx.push(e);
         }
+        SimEvent::AswSplash { .. } => combat.asw_fx.push(e),
         SimEvent::SignalFlare { x, y } => combat.signal_flares.push((x, y)),
         SimEvent::MissileLaunched { slot, launcher: stealth_sim::Launcher::Site(_), .. } => {
             // Launched from the ground, so its viewZ is its altitude in feet.

@@ -15,6 +15,8 @@
 //! `arm`, `release`, `page=sonar|wpn|map`, `audio`.
 
 pub mod audio;
+pub mod effects;
+pub mod mad;
 pub mod map;
 pub mod sonar;
 pub mod wpn;
@@ -38,6 +40,9 @@ const CANVAS: Vec2 = Vec2::new(640.0, 480.0);
 const RELEASE_DIM: u8 = 222;
 const RELEASE_BRIGHT: u8 = 147;
 
+/// The hover the AI brings the aircraft to for a dip (world units over the sea, 40 ft).
+pub const DIP_HOVER_WU: f32 = 25.0;
+
 /// Metres per world unit.
 pub const M_PER_WU: f64 = stealth_sim::aaa::M_PER_MAP / 32.0;
 
@@ -45,16 +50,22 @@ pub struct AswPlugin;
 
 impl Plugin for AswPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AswUi>().add_plugins(audio::AswAudioPlugin).add_systems(
+        app.init_resource::<AswUi>()
+            .init_resource::<mad::MadTrace>()
+            .add_plugins(audio::AswAudioPlugin)
+            .add_systems(
             Update,
             (
-                (script, input, send)
+                (script, input, mad::osb, send)
                     .chain()
                     .after(crate::input::InputSystemsSet)
                     .after(crate::script::ScriptSet)
                     .before(crate::flight::FlightSystems),
                 route_sync.after(crate::combat::CombatSystems),
                 sub_near.after(crate::combat::CombatSystems),
+                dip_pilot.after(send).before(crate::flight::FlightSystems),
+                mad::sample.after(crate::combat::CombatSystems),
+                effects::splashes.after(crate::combat::CombatSystems),
                 (sonar::record, draw_main, draw_info, panel).chain().after(crate::combat::CombatSystems),
             )
                 .run_if(in_state(AppState::Flight)),
@@ -116,6 +127,12 @@ pub struct AswUi {
     /// A line shown on the status screen for a while.
     pub notice: Option<(String, f32)>,
     pub outbox: Vec<AswCmd>,
+    /// At his own console: DIP pressed, the AI bringing the aircraft to the hover first; the AI
+    /// to hold a low hover (that, or the sonar in the water).
+    pub dip_pending: bool,
+    pub low_hover: bool,
+    /// At the console now (its choices are forgotten when he leaves it).
+    pub at_console: bool,
     /// Test aid: seconds at the console, the script's next step.
     pub t: f32,
     pub step: usize,
@@ -139,6 +156,9 @@ impl Default for AswUi {
             audio: None,
             notice: None,
             outbox: Vec::new(),
+            dip_pending: false,
+            low_hover: false,
+            at_console: false,
             t: 0.0,
             step: 0,
         }
@@ -206,11 +226,13 @@ fn input(
     let (Some(combat), Some(m)) = (combat, manning.as_deref().filter(|m| m.asw())) else {
         keys.clear();
         drags.clear();
-        if ui.t != 0.0 {
+        // Up from the console: its choices forgotten.
+        if ui.at_console {
             *ui = AswUi::default();
         }
         return;
     };
+    ui.at_console = true;
     let owner = m.unit as u8;
     let sim = &combat.sim;
     let crew = sim.asw().crew(owner).cloned().unwrap_or_default();
@@ -252,8 +274,15 @@ pub fn key(ui: &mut AswUi, k: ConsoleKey, crew: &AswCrew, sim: &stealth_sim::Sim
         }
         ConsoleKey::Ping => ping(ui, crew, sim, owner),
         ConsoleKey::Dip => {
-            let down = matches!(crew.dip.state, DipState::Lowering | DipState::Down);
-            ui.outbox.push(AswCmd::Dip(!down));
+            let down = matches!(crew.dip.state, DipState::Lowering | DipState::Down) || ui.dip_pending;
+            // At his own console the AI comes to the hover first (`dip_pilot`).
+            if !down && sim.active_pilot() == owner && crew.dip.state != DipState::Broken {
+                ui.dip_pending = true;
+                ui.note("COMING TO THE HOVER");
+            } else {
+                ui.dip_pending = false;
+                ui.outbox.push(AswCmd::Dip(!down));
+            }
             if !down {
                 ui.sensor = Some(0);
             }
@@ -567,6 +596,36 @@ fn panel(
     }
 }
 
+/// At his own console: the AI holds a low hover while the operator dips (or is about to), and
+/// lowers the sonar once there.
+fn dip_pilot(
+    manning: Option<Res<Manning>>,
+    combat: Option<Res<Combat>>,
+    k: Res<crate::flight::FlightConstants>,
+    mut ui: ResMut<AswUi>,
+    player: Query<&crate::flight::Aircraft, With<crate::flight::Player>>,
+) {
+    let own = manning.as_deref().is_some_and(|m| m.asw() && !m.remote_gunner());
+    let (Some(combat), true) = (combat, own) else {
+        ui.low_hover = false;
+        ui.dip_pending = false;
+        return;
+    };
+    let me = combat.sim.active_pilot();
+    let crew = combat.sim.asw().crew(me).cloned().unwrap_or_default();
+    let wet = !matches!(crew.dip.state, DipState::Up | DipState::Broken);
+    ui.low_hover = ui.dip_pending || wet;
+    if !ui.dip_pending {
+        return;
+    }
+    let Ok(a) = player.single() else { return };
+    let low = (a.altitude - a.ground_altitude - DIP_HOVER_WU).abs() < 8.0;
+    if a.auto_hover() && low && a.knots() < 4.0 && k.heli.is_some() {
+        ui.dip_pending = false;
+        ui.outbox.push(AswCmd::Dip(true));
+    }
+}
+
 /// Test aid `--asw-sub-near <km>`: the first submarine moved that far north-east of the
 /// aircraft once the flight is under way (2 s).
 fn sub_near(combat: Option<ResMut<Combat>>, time: Res<Time>, mut done: Local<bool>) {
@@ -591,10 +650,17 @@ fn sub_near(combat: Option<ResMut<Combat>>, time: Res<Time>, mut done: Local<boo
 fn script(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
+    settings: Res<crate::settings::Settings>,
+    time: Res<Time>,
     mut ui: ResMut<AswUi>,
     mut started: Local<bool>,
 ) {
-    let (Some(combat), Some(m)) = (combat, manning.as_deref().filter(|m| m.asw())) else { return };
+    let Some(combat) = combat else { return };
+    // At the console, or (for the outside views) the pilot of a Seahawk.
+    let Some((owner, console)) = crew_owner(manning.as_deref(), &combat, &settings) else { return };
+    if !console {
+        ui.t += time.delta_secs();
+    }
     let arg = |name: &str| std::env::args().skip_while(|a| a != name).nth(1);
     if !*started {
         *started = true;
@@ -620,7 +686,6 @@ fn script(
             }
         }
     }
-    let owner = m.unit as u8;
     let sim = &combat.sim;
     let crew = sim.asw().crew(owner).cloned().unwrap_or_default();
     let here = owner_at(sim, owner).map(|p| p.0).unwrap_or_default();
@@ -655,6 +720,7 @@ fn script(
                     ui.sensor = Some(b.id);
                 }
             }
+            "dip" if on && sim.active_pilot() == owner => ui.dip_pending = true,
             "dip" => ui.outbox.push(AswCmd::Dip(on)),
             "depth" => ui.outbox.push(AswCmd::DipDepth(val.parse().unwrap_or(60))),
             "dipping" => ui.outbox.push(AswCmd::DipMode { active: on }),

@@ -177,6 +177,9 @@ pub enum Blast {
     /// A small burst in the air: a flash and a few puffs `size` m across of the given darkness
     /// (0 black .. 1 light grey): a dispenser's skin cut away, a skeet destroying itself.
     Pop { size: f32, shade: f32 },
+    /// Water thrown up from under the sea `height` m high (a sonobuoy's or torpedo's splash, a
+    /// torpedo's warhead under a submarine or a ship): white puffs up a column, spray round it.
+    SeaPlume { height: f32 },
     /// A gunship shell's tracer glowing on its way: one short bright puff of radius `size` (m)
     /// lasting `life` seconds, left behind each frame.
     Tracer { size: f32, life: f32 },
@@ -1035,6 +1038,10 @@ fn spawn_blast(
         }
         Blast::Tracer { size, life } => {
             p.puff(pos, Vec3::ZERO, life, (size, size * 0.6), PuffLook::GunFlash, 0.0, 0.0, 1.0);
+            return;
+        }
+        Blast::SeaPlume { height } => {
+            sea_plume(p, pos, height);
             return;
         }
         Blast::Pop { size, shade } => {
@@ -1924,5 +1931,27 @@ fn simulate(
     if let Ok((mut pos, _, mut v)) = q.get_mut(batch) {
         pos.0 = anchor;
         v.set_if_neq(if drawn { Visibility::Inherited } else { Visibility::Hidden });
+    }
+}
+
+/// A column of water `height` m high and its spray (`Blast::SeaPlume`).
+fn sea_plume(p: &mut Particles, pos: DVec3, height: f32) {
+    let n = (height * 0.8).clamp(4.0, 60.0) as usize;
+    let width = (height * 0.12).clamp(0.6, 8.0);
+    for k in 0..n {
+        // Up the column at speeds spread so it stands tall, the fastest thrown highest.
+        let up = height * (0.6 + 1.2 * k as f32 / n as f32) * p.range(0.85, 1.15);
+        let v = Vec3::Y * up + p.dir(0.0).with_y(0.0) * p.range(0.1, 0.6) * width;
+        let life = p.range(3.0, 5.0) * (height / 20.0).clamp(0.6, 1.6);
+        let s = p.range(0.6, 1.2) * width;
+        p.puff(pos + DVec3::Y * 0.3, v, life, (s, s * 3.0), PuffLook::Smoke(1.0), 0.9, -1.0, 0.9);
+    }
+    // The spray thrown out round its foot, low.
+    for _ in 0..n / 2 {
+        let d = p.dir(0.0).with_y(0.0).normalize_or(Vec3::X);
+        let v = d * p.range(0.2, 0.5) * height * 0.4 + Vec3::Y * p.range(0.5, 2.0);
+        let life = p.range(2.0, 3.5);
+        let s = p.range(0.8, 1.6) * width;
+        p.puff(pos + DVec3::Y * 0.3, v, life, (s, s * 2.0), PuffLook::Smoke(0.95), 0.6, 0.0, 0.7);
     }
 }

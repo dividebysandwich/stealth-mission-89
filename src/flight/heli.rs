@@ -348,6 +348,18 @@ pub(super) fn engage_autopilot(a: &mut Aircraft, r: &Rotor) {
     a.heli.ap = Some(Autopilot { speed: knots * KNOT, ..default() });
 }
 
+/// The autopilot (engaged if it is not) slowing down to a stop, toward an auto-hover.
+pub(super) fn slow_down(a: &mut Aircraft, r: &Rotor) {
+    if a.heli.ap.is_none() {
+        engage_autopilot(a, r);
+    }
+    if let Some(ap) = a.heli.ap.as_mut()
+        && ap.hover.is_none()
+    {
+        ap.speed = 0.0;
+    }
+}
+
 /// The fastest auto-hover engages at (knots over the ground).
 pub const HOVER_KNOTS: f32 = 30.0;
 /// Auto-hover: ground speed back towards the spot per foot off it (1/s), and at most (ft/s).

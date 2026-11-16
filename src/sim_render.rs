@@ -1648,6 +1648,14 @@ fn world_model_state(
         let tads = cues.as_ref().and_then(|c| c.tads_azimuth).unwrap_or(0.0);
         (stores, gun, crate::aircraft::apache_gun_values(tads, 0.0).0)
     });
+    // The MH-60R's MAD body towed, its dipping sonar down (the crew's: his in another's).
+    let seahawk_sensors = settings.aircraft.seahawk().then(|| {
+        combat.as_ref().map_or((0, 0), |c| {
+            let me = c.sim.active_pilot();
+            let owner = c.sim.crew_view(me).map_or(me, |v| v.owner);
+            seahawk_sensor_values(&c.sim, owner)
+        })
+    });
     // The MH-60R's stores (in another's: his, as his crew is told).
     let seahawk = settings.aircraft.seahawk().then(|| {
         let crew = combat.as_ref().and_then(|c| {
@@ -1738,6 +1746,9 @@ fn world_model_state(
         if let Some(stores) = seahawk {
             v.retain(|&(k, _)| !crate::aircraft::SEAHAWK_STORE_SLOTS.contains(&k));
             v.extend(crate::aircraft::SEAHAWK_STORE_SLOTS.into_iter().zip(stores));
+        }
+        if let Some((mad, dip)) = seahawk_sensors {
+            v.extend([(crate::aircraft::SEAHAWK_MAD_SLOT, mad), (crate::aircraft::SEAHAWK_DIP_SLOT, dip)]);
         }
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
@@ -2134,7 +2145,12 @@ pub(crate) fn sync_remote_pilots(
                         .iter()
                         .map(|&(w, n)| (if w == 255 { -1 } else { w as i32 }, n as i32));
                     let stores = crate::aircraft::seahawk_store_values(stations);
-                    for (k, x) in crate::aircraft::SEAHAWK_STORE_SLOTS.into_iter().zip(stores) {
+                    let (mad, dip) = seahawk_sensor_values(sim, p.id);
+                    for (k, x) in crate::aircraft::SEAHAWK_STORE_SLOTS
+                        .into_iter()
+                        .zip(stores)
+                        .chain([(crate::aircraft::SEAHAWK_MAD_SLOT, mad), (crate::aircraft::SEAHAWK_DIP_SLOT, dip)])
+                    {
                         if s.0[k] != x {
                             s.0[k] = x;
                         }
@@ -2214,4 +2230,9 @@ pub(crate) fn sync_remote_pilots(
             tf.rotation = rot;
         }
     }
+}
+
+/// The MH-60R crew `owner`'s MAD body (1 towed) and dipping sonar (1 down) for its model.
+fn seahawk_sensor_values(sim: &stealth_sim::Sim, owner: u8) -> (i16, i16) {
+    sim.asw().crew(owner).map_or((0, 0), |c| (c.mad_down as i16, c.dip.wet() as i16))
 }
