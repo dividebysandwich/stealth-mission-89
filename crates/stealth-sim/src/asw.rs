@@ -34,8 +34,8 @@ pub const HUNT_MISSION: i32 = 12;
 pub const MK54_WEAPON: i32 = 24;
 /// Sonobuoys in the water a crew monitors at most.
 pub const MAX_BUOYS: usize = 4;
-/// The sonobuoys a Seahawk carries (DIFAR, DICASS, BT): its 25-tube launcher.
-pub const BUOY_LOAD: [u8; 3] = [14, 8, 3];
+/// The sonobuoys a Seahawk carries (DIFAR, DICASS, BT).
+pub const BUOY_LOAD: [u8; 3] = [4, 2, 2];
 
 const M_PER_WU: f64 = M_PER_MAP / 32.0;
 const KT: f64 = 0.514_444;
@@ -852,6 +852,15 @@ impl Sim {
         let c = self.asw.crew_mut(player);
         c.route = vec![((datum[0] / M_PER_WU) as i32, (datum[1] / M_PER_WU) as i32)];
         c.route_rev = c.route_rev.wrapping_add(1);
+    }
+
+    /// Test aid: a buoy of `player`'s put in the water at `at` (m east, north) at once.
+    pub fn test_buoy_at(&mut self, player: u8, kind: BuoyKind, deep: bool, at: [f64; 2]) -> Result<(), Text> {
+        let mut h = self.heli(player as usize);
+        h.at = at;
+        h.height = 0.0;
+        h.vel = [0.0, 0.0];
+        self.drop_buoy(&h, kind, deep)
     }
 
     /// Moves submarine `i` (test aid).

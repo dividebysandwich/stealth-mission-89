@@ -17,7 +17,7 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use stealth_sim::asw::{AswCmd, AswCrew, BuoyKind, Sample};
 
-use super::{AswUi, owner_at};
+use super::{AswUi, marks, owner_at};
 use crate::canvas::{Canvas, Picture};
 use crate::font::{Align, stroke_text_at};
 use crate::station::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
@@ -122,12 +122,15 @@ pub fn record(
     let Some((owner, _)) = super::crew_owner(manning.as_deref(), &combat, &settings) else { return };
     let asw = combat.sim.asw();
     let crew = asw.crew(owner).cloned().unwrap_or_default();
+    let ui = &mut *ui;
+    let now = ui.t;
     let mut live = Vec::new();
     for b in asw.buoys_of(owner).filter(|b| b.fall <= 0.0) {
         live.push(b.id);
         let w = ui.falls.entry(b.id).or_insert_with(|| Waterfall { rng: 0x9E37_79B9 ^ b.id as u32, ..Default::default() });
         if w.seq != b.sample.seq {
             w.push(&b.sample);
+            marks::follow(&mut ui.marks, b.id, &b.sample, now);
         }
     }
     if crew.dip.wet() {
@@ -135,9 +138,16 @@ pub fn record(
         let w = ui.falls.entry(0).or_insert_with(|| Waterfall { rng: 0x1234_5679, ..Default::default() });
         if w.seq != crew.dip.sample.seq {
             w.push(&crew.dip.sample);
+            marks::follow(&mut ui.marks, 0, &crew.dip.sample, now);
         }
     }
     ui.falls.retain(|id, _| live.contains(id));
+    // A sensor gone: its marks with it.
+    let n = ui.marks.len();
+    ui.marks.retain(|m| live.contains(&m.sensor));
+    if ui.marks.len() != n {
+        ui.sel_mark = None;
+    }
     if ui.sensor.is_some_and(|s| !live.contains(&s)) {
         ui.sensor = live.first().copied();
     }
@@ -168,8 +178,9 @@ fn row_buttons(top: f32, h: f32, kind: Option<BuoyKind>) -> Vec<(RowButton, [f32
     v
 }
 
-/// The title bar's hydrophone depth button.
+/// The title bar's hydrophone depth button, the mark letter's.
 const DEPTH_BUTTON: [f32; 4] = [500.0, 3.0, 134.0, 19.0];
+const MARK_BUTTON: [f32; 4] = [400.0, 3.0, 92.0, 19.0];
 
 fn inside(r: [f32; 4], p: Vec2) -> bool {
     p.x >= r[0] && p.x <= r[0] + r[2] && p.y >= r[1] && p.y <= r[1] + r[3]
@@ -199,6 +210,10 @@ pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: 
     }
     if inside(DEPTH_BUTTON, p) {
         ui.deep = !ui.deep;
+        return;
+    }
+    if inside(MARK_BUTTON, p) {
+        ui.mark_id = (ui.mark_id + 1) % marks::IDS as u8;
         return;
     }
     for (k, &(id, kind)) in list.iter().enumerate() {
@@ -255,6 +270,10 @@ pub fn draw(
     cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, GREY);
     let hyd = if ui.deep { "HYD DEEP 120M" } else { "HYD SHAL 27M" };
     stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, hyd, 7.0, 1.1, WHITE, Align::Centre);
+    let r = MARK_BUTTON;
+    cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, CYAN);
+    let t = format!("MARK ID {}", marks::letter(ui.mark_id));
+    stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, &t, 7.0, 1.1, CYAN, Align::Centre);
     let list = sensors(asw, crew, owner);
     if list.is_empty() {
         stroke_text_at(cv, 320.0, 220.0, "NO SENSORS IN THE WATER", 10.0, 1.4, GREY, Align::Centre);
@@ -313,6 +332,16 @@ pub fn draw(
             let tx = if x > x1 - 60.0 { x - 4.0 } else { x + 4.0 };
             let al = if x > x1 - 60.0 { Align::Right } else { Align::Left };
             stroke_text_at(cv, tx, y0 + 7.0, &t, 6.0, 1.0, YELLOW, al);
+        }
+        // Its marks: a tick at the top of the waterfall at each, its letter (grey: lost).
+        if kind != Some(BuoyKind::Bt) {
+            for m in ui.marks.iter().filter(|m| m.sensor == id) {
+                let x = x0 + (x1 - x0) * m.bearing / 360.0;
+                let col = if m.lost(ui.t) { GREY } else { CYAN };
+                cv.triangle([Vec2::new(x - 4.0, y0), Vec2::new(x + 4.0, y0), Vec2::new(x, y0 + 6.0)], col);
+                cv.dashed(Vec2::new(x, y0 + 6.0), Vec2::new(x, y1), 3.0, 5.0, 0.8, col);
+                stroke_text_at(cv, x + 5.0, y0 + 14.0, &m.letter().to_string(), 7.0, 1.2, col, Align::Left);
+            }
         }
         // The bearing scale under it (true).
         if kind != Some(BuoyKind::Bt) {

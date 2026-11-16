@@ -192,7 +192,9 @@ fn no_more_than_four_buoys_at_once() {
     assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None }).is_err());
     let id = sim.asw().buoys[0].id;
     sim.asw_command(0, AswCmd::Scuttle { id }).unwrap();
-    assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None }).is_ok());
+    // A fifth DIFAR is not aboard (four carried); a BT goes.
+    assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None }).is_err());
+    assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Bt, deep: false, at: None }).is_ok());
 }
 
 #[test]

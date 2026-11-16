@@ -284,7 +284,7 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     b.primary_objective = primary_objective;
     b.secondary_summary = secondary_summary;
     b.secondary_objective = secondary_objective;
-    b.armament = vec!["2 Mk 54 torpedoes".into(), "4 AGM-114 Hellfire".into(), "25 sonobuoys".into()];
+    b.armament = vec!["2 Mk 54 torpedoes".into(), "4 AGM-114 Hellfire".into(), "8 sonobuoys (4 DIFAR, 2 DICASS, 2 BT)".into()];
     let l = &data.briefings.labels;
     let mut lines = vec![
         b.header.clone(),

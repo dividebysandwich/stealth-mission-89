@@ -5,12 +5,16 @@
 //!
 //! Touch the sea to add a waypoint after the selected one (or D, C or B first: drop that buoy
 //! there as the aircraft passes), touch a waypoint to select it, drag it to move it, drag the sea to pan. DEL removes
-//! the selected waypoint, CLR the whole route, CTR puts the aircraft back in the middle.
+//! the selected waypoint (or the mark whose letter was touched), CLR the whole route, CTR puts
+//! the aircraft back in the middle.
+//!
+//! The operator's marks (`marks`): a bearing line from each marked sensor with its letter;
+//! a letter on two or more sensors also its estimated position, a ring as wide as its error.
 
 use bevy::prelude::*;
 use stealth_sim::asw::{AswCmd, AswCrew, BuoyKind, TorpPhase};
 
-use super::{AswUi, Drag, M_PER_WU, owner_at};
+use super::{AswUi, Drag, M_PER_WU, marks, owner_at};
 use crate::canvas::Canvas;
 use crate::cockpit3d::DragPhase;
 use crate::font::{Align, stroke_text_at};
@@ -105,7 +109,9 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &s
                 match b {
                     Btn::Centre => ui.centre = None,
                     Btn::Delete => {
-                        if let Some(i) = ui.sel_wp.filter(|&i| i < ui.route.len()) {
+                        if let Some(i) = ui.sel_mark.take().filter(|&i| i < ui.marks.len()) {
+                            ui.marks.remove(i);
+                        } else if let Some(i) = ui.sel_wp.filter(|&i| i < ui.route.len()) {
                             ui.route.remove(i);
                             ui.sel_wp = i.checked_sub(1).or((!ui.route.is_empty()).then_some(0));
                             send_route(ui);
@@ -128,6 +134,13 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &s
             if p.y < TOP || p.y > BOTTOM {
                 return;
             }
+            // A mark's letter on its line: that mark selected (DEL deletes it).
+            if let Some(i) = mark_at(ui, sim, _crew, owner, c, p) {
+                ui.sel_mark = Some(i);
+                ui.sel_wp = None;
+                return;
+            }
+            ui.sel_mark = None;
             ui.drag = Some(match waypoint_at(ui, c, p) {
                 Some(i) => {
                     ui.sel_wp = Some(i);
@@ -173,6 +186,36 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &s
             }
         }
     }
+}
+
+/// Where a mark's sensor is (m east, north).
+fn sensor_at(sim: &stealth_sim::Sim, crew: &AswCrew, owner: u8, sensor: u16) -> Option<[f64; 2]> {
+    match sensor {
+        0 => crew.dip.wet().then_some(crew.dip.at),
+        id => sim.asw().buoys_of(owner).find(|b| b.id == id).map(|b| b.at),
+    }
+}
+
+/// Where a mark's letter sits on its line (canvas units): this far out from its sensor (m).
+const LABEL_OUT: f64 = 2500.0;
+
+fn mark_label(ui: &AswUi, c: [f64; 2], at: [f64; 2], bearing: f32) -> Vec2 {
+    let t = (bearing as f64).to_radians();
+    to_screen(ui, c, [at[0] + t.sin() * LABEL_OUT, at[1] + t.cos() * LABEL_OUT])
+}
+
+/// The mark whose letter is under `s`.
+fn mark_at(ui: &AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner: u8, c: [f64; 2], s: Vec2) -> Option<usize> {
+    ui.marks
+        .iter()
+        .enumerate()
+        .filter_map(|(i, m)| {
+            let at = sensor_at(sim, crew, owner, m.sensor)?;
+            Some((i, mark_label(ui, c, at, m.bearing).distance(s)))
+        })
+        .filter(|&(_, d)| d < PICK)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(i, _)| i)
 }
 
 /// A short line `len` units from `a` at `bearing` (rad true).
@@ -295,6 +338,40 @@ pub fn draw(
         let s = at(*p);
         cv.rect(s.x as i32 - 4, s.y as i32 - 4, 8, 8, YELLOW);
         stroke_text_at(cv, s.x + 7.0, s.y + 7.0, &kind.name()[..1], 5.0, 1.0, YELLOW, Align::Left);
+    }
+    // The operator's marks: a bearing line from each marked sensor, its letter on it.
+    for (i, m) in ui.marks.iter().enumerate() {
+        let Some(from) = sensor_at(sim, crew, owner, m.sensor) else { continue };
+        let col = if ui.sel_mark == Some(i) {
+            YELLOW
+        } else if m.lost(ui.t) {
+            GREY
+        } else {
+            CYAN
+        };
+        let s = at(from);
+        let t = m.bearing.to_radians();
+        cv.dashed(s, ray(s, t, 30_000.0 / k), 7.0, 3.0, 1.0, col);
+        let l = mark_label(ui, c, from, m.bearing);
+        cv.fill_rect(l.x as i32 - 6, l.y as i32 - 6, 12, 12, BLACK);
+        cv.rect(l.x as i32 - 6, l.y as i32 - 6, 12, 12, col);
+        stroke_text_at(cv, l.x, l.y + 0.5, &m.letter().to_string(), 7.0, 1.2, col, Align::Centre);
+    }
+    // Each letter on two or more sensors: where its lines cross, the ring its error.
+    for id in 0..marks::IDS as u8 {
+        let lines: Vec<([f64; 2], f32)> = ui
+            .marks
+            .iter()
+            .filter(|m| m.id == id && !m.lost(ui.t))
+            .filter_map(|m| sensor_at(sim, crew, owner, m.sensor).map(|p| (p, m.bearing)))
+            .collect();
+        let Some((p, err)) = marks::estimate(&lines) else { continue };
+        let s = at(p);
+        cv.ring(s, (err as f32 / k).max(4.0), 1.4, YELLOW);
+        cv.stroke(s - Vec2::new(3.0, 0.0), s + Vec2::new(3.0, 0.0), 1.2, YELLOW);
+        cv.stroke(s - Vec2::new(0.0, 3.0), s + Vec2::new(0.0, 3.0), 1.2, YELLOW);
+        let t = format!("{} {}x {:.1}KM", marks::letter(id), lines.len(), err / 1000.0);
+        stroke_text_at(cv, s.x + 8.0, s.y - 8.0, &t, 6.0, 1.0, YELLOW, Align::Left);
     }
     // The fixes: crossed bearings and echoes small crosses, MAD marks red.
     for f in &crew.fixes {

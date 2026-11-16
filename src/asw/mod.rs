@@ -12,13 +12,14 @@
 //! seat is taken): `buoy=difar|dicass|bt[@east,north]` (km from the aircraft), `deep=0|1`,
 //! `active=<n>` (the n-th buoy, from 1, pings), `dip=0|1`, `depth=<m>`, `dipping=0|1` (its
 //! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `torp=<hdg|auto>/<delay>/<pattern>`,
-//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `cursor=<bearing>` (the selected sensor's
+//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `smark` (MARK on the SONAR page), `tbuoy=<kind>@e,n` (a buoy put there at once), `markid=<A..H>`, `cursor=<bearing>` (the selected sensor's
 //! listening cursor, in the headset).
 
 pub mod audio;
 pub mod effects;
 pub mod mad;
 pub mod map;
+pub mod marks;
 pub mod sonar;
 pub mod wpn;
 
@@ -125,8 +126,12 @@ pub struct AswUi {
     pub falls: HashMap<u16, sonar::Waterfall>,
     /// The sensor in the headset.
     pub audio: Option<u16>,
-    /// Each sensor's listening cursor on its waterfall (Hz): the band heard.
+    /// The listening cursor on a waterfall (the sensor, the bearing heard).
     pub cursor: HashMap<u16, f32>,
+    /// The marks on the waterfalls, the letter the next one takes, the one selected on the map.
+    pub marks: Vec<marks::Mark>,
+    pub mark_id: u8,
+    pub sel_mark: Option<usize>,
     /// A line shown on the status screen for a while.
     pub notice: Option<(String, f32)>,
     pub outbox: Vec<AswCmd>,
@@ -136,6 +141,8 @@ pub struct AswUi {
     pub low_hover: bool,
     /// At the console now (its choices are forgotten when he leaves it).
     pub at_console: bool,
+    /// Test aid (`tbuoy`): buoys to put in the water at once.
+    pub test_buoys: Vec<(BuoyKind, [f64; 2])>,
     /// Test aid: seconds at the console, the script's next step.
     pub t: f32,
     pub step: usize,
@@ -158,11 +165,15 @@ impl Default for AswUi {
             falls: HashMap::new(),
             audio: None,
             cursor: HashMap::new(),
+            marks: Vec::new(),
+            mark_id: 0,
+            sel_mark: None,
             notice: None,
             outbox: Vec::new(),
             dip_pending: false,
             low_hover: false,
             at_console: false,
+            test_buoys: Vec::new(),
             t: 0.0,
             step: 0,
         }
@@ -297,6 +308,9 @@ pub fn key(ui: &mut AswUi, k: ConsoleKey, crew: &AswCrew, sim: &stealth_sim::Sim
         }
         ConsoleKey::Audio => ui.audio = if ui.audio.is_some() { None } else { ui.sensor },
         ConsoleKey::Mad => ui.outbox.push(AswCmd::Mad(!crew.mad_down)),
+        // On the SONAR page: mark the trace under the cursor (or unmark it); elsewhere a fix
+        // where the aircraft is.
+        ConsoleKey::Mark if ui.page == Page::Sonar => mark_signal(ui, sim, crew, owner),
         ConsoleKey::Mark => ui.outbox.push(AswCmd::Mark),
         ConsoleKey::RangeIn => ui.range_km = (ui.range_km / 2.0).max(1.0),
         ConsoleKey::RangeOut => ui.range_km = (ui.range_km * 2.0).min(64.0),
@@ -304,6 +318,40 @@ pub fn key(ui: &mut AswUi, k: ConsoleKey, crew: &AswCrew, sim: &stealth_sim::Sim
         ConsoleKey::Release => release(ui, sim, owner),
         _ => {}
     }
+}
+
+/// MARK on the SONAR page: the trace under the cursor marked with the letter chosen (replacing
+/// that letter's mark on this sensor); a mark there already is deleted.
+pub fn mark_signal(ui: &mut AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner: u8) {
+    let Some((&sensor, &brg)) = ui.cursor.iter().next() else {
+        ui.note("PUT THE CURSOR ON A TRACE");
+        return;
+    };
+    if let Some(i) = ui
+        .marks
+        .iter()
+        .position(|m| m.sensor == sensor && sonar::bearing_off(m.bearing, brg).abs() <= marks::FOLLOW)
+    {
+        let m = ui.marks.remove(i);
+        ui.sel_mark = None;
+        ui.note(format!("MARK {} DELETED", m.letter()));
+        return;
+    }
+    let sample = match sensor {
+        0 => crew.dip.sample.clone(),
+        id => match sim.asw().buoys_of(owner).find(|b| b.id == id) {
+            Some(b) => b.sample.clone(),
+            None => return,
+        },
+    };
+    let Some(l) = marks::trace_near(&sample, brg) else {
+        ui.note("NO SIGNAL AT THE CURSOR");
+        return;
+    };
+    let (id, t) = (ui.mark_id, ui.t);
+    ui.marks.retain(|m| !(m.sensor == sensor && m.id == id));
+    ui.marks.push(marks::Mark { id, sensor, bearing: l.bearing.unwrap_or_default() as f32, snr: l.snr, seen: t });
+    ui.note(format!("MARK {} ON {}", marks::letter(id), if sensor == 0 { "DIP".to_string() } else { format!("B{sensor}") }));
 }
 
 /// PING: the selected DICASS or the dipping sonar between pinging and listening.
@@ -351,7 +399,7 @@ fn send(
     mut campaign: Option<ResMut<crate::campaign::ActiveCampaign>>,
     mut msgs: ResMut<crate::hud::HudMessages>,
 ) {
-    if ui.outbox.is_empty() {
+    if ui.outbox.is_empty() && ui.test_buoys.is_empty() {
         return;
     }
     let Some(mut combat) = combat else {
@@ -359,6 +407,10 @@ fn send(
         return;
     };
     let me = combat.sim.active_pilot();
+    for (kind, at) in std::mem::take(&mut ui.test_buoys) {
+        let deep = ui.deep;
+        let _ = combat.sim.test_buoy_at(me, kind, deep, at);
+    }
     for cmd in std::mem::take(&mut ui.outbox) {
         match campaign.as_deref_mut() {
             Some(c) => c.actions.push(crate::campaign::Action::Asw(cmd)),
@@ -727,6 +779,18 @@ fn script(
                 let deep = ui.deep;
                 ui.outbox.push(AswCmd::DropBuoy { kind, deep, at });
             }
+            // Test aid: a buoy put straight in the water at a point (a single mission's).
+            "tbuoy" => {
+                let (kind, at) = val.split_once('@').unwrap_or((val, ""));
+                let kind = match kind {
+                    "dicass" => BuoyKind::Dicass,
+                    "bt" => BuoyKind::Bt,
+                    _ => BuoyKind::Difar,
+                };
+                if let Some(p) = km(at) {
+                    ui.test_buoys.push((kind, p));
+                }
+            }
             "deep" => ui.deep = on,
             "active" => {
                 let n: usize = val.parse().unwrap_or(1);
@@ -771,6 +835,8 @@ fn script(
                     _ => Page::Sonar,
                 }
             }
+            "smark" => mark_signal(&mut ui, sim, &crew, owner),
+            "markid" => ui.mark_id = val.bytes().next().map_or(0, |c| c.to_ascii_uppercase().saturating_sub(b'A')) % marks::IDS as u8,
             "sensor" => {
                 let n: usize = val.parse().unwrap_or(1);
                 ui.sensor = sim.asw().buoys_of(owner).nth(n.saturating_sub(1)).map(|b| b.id);
@@ -778,8 +844,18 @@ fn script(
             "cursor" => {
                 ui.sensor = ui.sensor.or_else(|| sim.asw().buoys_of(owner).next().map(|b| b.id));
                 if let Some(id) = ui.sensor {
+                    // `cursor=sub`: on the submarine's trace (a test's peek at the truth).
+                    let sub = || {
+                        let sample = match id {
+                            0 => crew.dip.sample.clone(),
+                            id => sim.asw().buoys_of(owner).find(|b| b.id == id)?.sample.clone(),
+                        };
+                        let l = sample.lines.into_iter().find(|l| !l.ship && !l.ping && !l.torpedo)?;
+                        l.bearing.map(|b| b as f32)
+                    };
+                    let brg = if val == "sub" { sub().unwrap_or(0.0) } else { val.parse().unwrap_or(0.0) };
                     ui.cursor.clear();
-                    ui.cursor.insert(id, val.parse().unwrap_or(50.0));
+                    ui.cursor.insert(id, brg);
                     ui.audio = Some(id);
                 }
             }
