@@ -236,6 +236,11 @@ aircraft-ah64 =
         Divvietīgs uzbrukuma helikopters
         Torņa lielgabals, Hellfire, Stinger
         Otrs spēlētājs var lidot kā šāvējs
+aircraft-mh60r =
+    .facts =
+        Pretzemūdeņu helikopters, no aviācijas bāzeskuģiem
+        Sonoboijas, iegremdējams sonārs, MAD, Mk 54
+        Otrs spēlētājs var būt sensoru operators
 
 ## Sadaļas un grupas
 

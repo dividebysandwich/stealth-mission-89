@@ -165,9 +165,16 @@ loadout-empties = Opróżnia stację { $stations } po załadowaniu
 loadout-empties-two = Opróżnia stacje { $first } i { $second } po załadowaniu
 hardpoint-oh58-left-pylon = Lewy pylon uzbrojenia
 hardpoint-oh58-right-pylon = Prawy pylon uzbrojenia
+hardpoint-mh60r-left-outer = Lewy zewnętrzny węzeł (wyrzutnia Hellfire)
+hardpoint-mh60r-left-inner = Lewy wewnętrzny węzeł
+hardpoint-mh60r-right-inner = Prawy wewnętrzny węzeł
 weapon-role-22 = Gondola karabinu maszynowego: strzela jak działko, wzdłuż dziobu
 employment-22 = Zasięg: do 1,5 km, 500 nabojów w gondoli
 weapon-role-23 = Broń z zapalnikiem sensorowym: czterdzieści skeetów strzela w dół w pojazdy
 employment-23 =
     Naprowadzana na punkt oznaczony zasobnikiem celowniczym przy zrzucie
     Zrzut: powyżej wysokości otwarcia ustawionej na stronie SMS (500-3000 ft)
+weapon-role-24 = Lekka torpeda: opada na spadochronie, szuka pod wodą i naprowadza się na okręt podwodny
+employment-24 =
+    Programowana na stronie WPN operatora sensorów: kurs, opóźnienie aktywacji, wzór poszukiwania
+    Zrzut: nad wodą, poniżej 300 ft i 100 kt

@@ -236,6 +236,11 @@ aircraft-ah64 =
         Héileacaptar ionsaithe, dhá shuíochán
         Gunna túrláin, Hellfire, Stinger
         Is féidir le dara imreoir eitilt mar ghunnadóir
+aircraft-mh60r =
+    .facts =
+        Héileacaptar frithfhomhuirí, ó na hiompróirí
+        Baoithe sonair, sonar tumtha, MAD, Mk 54
+        Is féidir le dara himreoir a bheith ina oibreoir braiteoirí
 
 ## Rannáin agus grúpaí
 

@@ -236,6 +236,11 @@ aircraft-ah64 =
         Angrebshelikopter, tosædet
         Tårnkanon, Hellfire, Stinger
         En anden spiller kan flyve som skytte
+aircraft-mh60r =
+    .facts =
+        Antiubådshelikopter, fra hangarskibene
+        Sonarbøjer, dyppesonar, MAD, Mk 54
+        En anden spiller kan være sensoroperatør
 
 ## Sektioner og grupper
 

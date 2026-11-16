@@ -236,6 +236,11 @@ aircraft-ah64 =
         Jurišni helikopter, dvosjed
         Top u kupoli, Hellfire, Stinger
         Drugi igrač može letjeti kao strijelac
+aircraft-mh60r =
+    .facts =
+        Protupodmornički helikopter, s nosača zrakoplova
+        Sonarne plutače, uronjivi sonar, MAD, Mk 54
+        Drugi igrač može biti operater senzora
 
 ## Odjeljci i skupine
 

@@ -138,6 +138,13 @@ impl Rules {
                 apache: true,
                 ..Airframe::default()
             },
+            // Torpedoes and Hellfires on its pylons; sonobuoys, sonar and MAD (`asw`).
+            Aircraft::MH60R => Airframe {
+                external_stores: true,
+                helicopter: true,
+                seahawk: true,
+                ..Airframe::default()
+            },
             // Missiles in its bays: the doors open as it fires.
             Aircraft::RAH66 => {
                 Airframe { helicopter: true, gunship: true, comanche: true, ..Airframe::default() }

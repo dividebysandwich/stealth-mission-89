@@ -236,6 +236,11 @@ aircraft-ah64 =
         Dvivietis atakos sraigtasparnis
         Bokšteliu valdoma patranka, Hellfire, Stinger
         Antras žaidėjas gali skristi kaip šaulys
+aircraft-mh60r =
+    .facts =
+        Priešpovandeninis sraigtasparnis, iš lėktuvnešių
+        Sonariniai plūdurai, nuleidžiamas sonaras, MAD, Mk 54
+        Antras žaidėjas gali būti jutiklių operatorius
 
 ## Skyriai ir grupės
 

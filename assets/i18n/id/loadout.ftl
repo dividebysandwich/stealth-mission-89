@@ -165,9 +165,16 @@ loadout-empties = Mengosongkan stasiun { $stations } saat dimuat
 loadout-empties-two = Mengosongkan stasiun { $first } dan { $second } saat dimuat
 hardpoint-oh58-left-pylon = Pilon senjata kiri
 hardpoint-oh58-right-pylon = Pilon senjata kanan
+hardpoint-mh60r-left-outer = Stasiun luar kiri (peluncur Hellfire)
+hardpoint-mh60r-left-inner = Stasiun dalam kiri
+hardpoint-mh60r-right-inner = Stasiun dalam kanan
 weapon-role-22 = Pod senapan mesin: ditembakkan seperti meriam, searah hidung
 employment-22 = Jangkauan: hingga 1,5 km, 500 peluru per pod
 weapon-role-23 = Senjata pemicu sensor: empat puluh skeet menembak ke bawah ke kendaraan
 employment-23 =
     Dipandu ke titik yang ditandai pod penargetan saat dilepas
     Pelepasan: di atas ketinggian ledak di halaman SMS (500-3.000 ft)
+weapon-role-24 = Torpedo ringan: turun dengan parasut, mencari di bawah air dan mengarah ke kapal selam
+employment-24 =
+    Diprogram di halaman WPN operator sensor: arah, jeda aktivasi, pola pencarian
+    Pelepasan: di atas air, di bawah 300 ft dan 100 kt

@@ -165,9 +165,16 @@ loadout-empties = Leert Station { $stations } beim Beladen
 loadout-empties-two = Leert die Stationen { $first } und { $second } beim Beladen
 hardpoint-oh58-left-pylon = Linker Waffenträger
 hardpoint-oh58-right-pylon = Rechter Waffenträger
+hardpoint-mh60r-left-outer = Linke Außenstation (Hellfire-Werfer)
+hardpoint-mh60r-left-inner = Linke Innenstation
+hardpoint-mh60r-right-inner = Rechte Innenstation
 weapon-role-22 = MG-Behälter: wird wie die Bordkanone geschossen, entlang der Nase
 employment-22 = Reichweite: bis 1,5 km, 500 Schuss pro Behälter
 weapon-role-23 = Sensorgezündete Waffe: vierzig Skeets feuern auf die Fahrzeuge unter ihrem Muster
 employment-23 =
     Gelenkt zu dem beim Auslösen mit dem Zielbehälter markierten Punkt
     Auslösen: über der auf der SMS-Seite eingestellten Öffnungshöhe (500-3.000 ft)
+weapon-role-24 = Leichttorpedo: sinkt am Fallschirm, sucht unter Wasser und steuert ein U-Boot an
+employment-24 =
+    Programmiert auf der WPN-Seite des Sensoroperators: Kurs, Aktivierungsverzögerung, Suchmuster
+    Auslösen: über Wasser, unter 300 ft und 100 kt

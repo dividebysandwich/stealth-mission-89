@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 24] = [
+pub const WEAPONS: [(&str, &str); 25] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -40,6 +40,7 @@ pub const WEAPONS: [(&str, &str); 24] = [
     ("FIM-92 Stinger", "weapon-role-21"),
     ("M3P .50 cal gun pod", "weapon-role-22"),
     ("CBU-105 SFW", "weapon-role-23"),
+    ("Mk 54 lightweight torpedo", "weapon-role-24"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -52,7 +53,7 @@ pub const WEAPONS: [(&str, &str); 24] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 24] = [
+const EMPLOYMENT: [&str; 25] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -77,6 +78,7 @@ const EMPLOYMENT: [&str; 24] = [
     "employment-21",
     "employment-22",
     "employment-23",
+    "employment-24",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -93,16 +95,18 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 24] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2];
+const BAY_QTY: [u8; 25] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 24] =
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1];
+const PYLON_QTY: [u8; 25] =
+    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
 pub const GUN_POD: u8 = 22;
 pub const CBU105: u8 = 23;
+/// The Mk 54 torpedo's weapon type (the MH-60R's).
+pub const MK54: u8 = 24;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -1425,6 +1429,46 @@ const OH58_LOADS: [u8; 3] = [HELLFIRE, STINGER, GUN_POD];
 static OH58_LAYOUT: Layout =
     Layout { outline: OH58_OUTLINE, half_span: 1.40, length: 10.32, hardpoints: &OH58_STATIONS };
 /// The UH-60A carries troops, no stores.
+/// The MH-60R's weapons pylons behind the cabin door: the four-rail Hellfire launcher outboard
+/// on the left, a torpedo under each inner station (the right outer one carries the MAD's
+/// towed body, not a store).
+static MH60R_STATIONS: [Hardpoint; 3] = [
+    Hardpoint {
+        name: "hardpoint-mh60r-left-outer",
+        label: "LO",
+        pos: (-2.08, 5.87),
+        bay: false,
+        fantasy: false,
+        mirror: None,
+        loads: &[HELLFIRE],
+        qty: &[(HELLFIRE, 4)],
+        excludes: &[],
+    },
+    Hardpoint {
+        name: "hardpoint-mh60r-left-inner",
+        label: "LI",
+        pos: (-1.55, 5.87),
+        bay: false,
+        fantasy: false,
+        mirror: Some(2),
+        loads: &[MK54],
+        qty: &[(MK54, 1)],
+        excludes: &[],
+    },
+    Hardpoint {
+        name: "hardpoint-mh60r-right-inner",
+        label: "RI",
+        pos: (1.55, 5.87),
+        bay: false,
+        fantasy: false,
+        mirror: Some(1),
+        loads: &[MK54],
+        qty: &[(MK54, 1)],
+        excludes: &[],
+    },
+];
+static MH60R_LAYOUT: Layout =
+    Layout { outline: UH60_OUTLINE, half_span: 2.30, length: 15.1, hardpoints: &MH60R_STATIONS };
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
 /// The CH-47 slings cargo, no stores.
@@ -1461,6 +1505,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::AV8B => &AV8B_LAYOUT,
         AircraftKind::F22 => &F22_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
+        AircraftKind::MH60R => &MH60R_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
         AircraftKind::AH64 => &AH64_LAYOUT,
         AircraftKind::RAH66 => &RAH66_LAYOUT,
@@ -1526,7 +1571,10 @@ impl PlannedLoadout {
             }
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
-            AircraftKind::AH1Z | AircraftKind::AH64 | AircraftKind::RAH66 => {
+            AircraftKind::AH1Z
+            | AircraftKind::AH64
+            | AircraftKind::RAH66
+            | AircraftKind::MH60R => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
                 }

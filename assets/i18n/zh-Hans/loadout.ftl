@@ -165,9 +165,16 @@ loadout-empties = 装载时清空站位 { $stations }
 loadout-empties-two = 装载时清空站位 { $first } 和 { $second }
 hardpoint-oh58-left-pylon = 左侧武器挂架
 hardpoint-oh58-right-pylon = 右侧武器挂架
+hardpoint-mh60r-left-outer = 左外侧挂点（地狱火发射架）
+hardpoint-mh60r-left-inner = 左内侧挂点
+hardpoint-mh60r-right-inner = 右内侧挂点
 weapon-role-22 = 机枪吊舱：像机炮一样沿机头方向射击
 employment-22 = 射程：最远 1.5 km，每个吊舱 500 发
 weapon-role-23 = 传感器引信武器：四十枚“飞碟”向下方车辆射击
 employment-23 =
     制导至投放时用瞄准吊舱标定的点
     投放：高于 SMS 页面设定的开舱高度 (500-3,000 ft)
+weapon-role-24 = 轻型鱼雷：伞降入水，在水下搜索并自导攻击潜艇
+employment-24 =
+    在传感器操作员的 WPN 页面设定：航向、启动延时、搜索模式
+    投放：水面上空，300 ft 和 100 kt 以下

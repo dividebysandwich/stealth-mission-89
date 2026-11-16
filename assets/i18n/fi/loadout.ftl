@@ -165,9 +165,16 @@ loadout-empties = Tyhjentää aseman { $stations } lastattaessa
 loadout-empties-two = Tyhjentää asemat { $first } ja { $second } lastattaessa
 hardpoint-oh58-left-pylon = Vasen asepylon
 hardpoint-oh58-right-pylon = Oikea asepylon
+hardpoint-mh60r-left-outer = Vasen ulompi ripustin (Hellfire-laukaisin)
+hardpoint-mh60r-left-inner = Vasen sisempi ripustin
+hardpoint-mh60r-right-inner = Oikea sisempi ripustin
 weapon-role-22 = Konekiväärikotelo: ammutaan kuin tykki, nenän suuntaan
 employment-22 = Kantama: enintään 1,5 km, 500 panosta koteloa kohden
 weapon-role-23 = Anturilaukaistu ase: neljäkymmentä skeetiä ampuu alla olevia ajoneuvoja
 employment-23 =
     Ohjautuu pisteeseen, joka merkittiin maalinosoituspodilla irrotettaessa
     Irrotus: SMS-sivun avautumiskorkeuden yläpuolella (500-3 000 ft)
+weapon-role-24 = Kevyt torpedo: putoaa laskuvarjolla, etsii veden alla ja hakeutuu sukellusveneeseen
+employment-24 =
+    Ohjelmoidaan sensorioperaattorin WPN-sivulla: suunta, aktivointiviive, etsintäkuvio
+    Irrotus: veden yllä, alle 300 ft ja 100 kt

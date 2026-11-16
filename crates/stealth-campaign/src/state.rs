@@ -50,6 +50,9 @@ pub enum Aircraft {
     AC130,
     /// The AH-64 Apache: an attack helicopter with a gunner's seat (multi-crew).
     AH64,
+    /// The MH-60R Seahawk: the anti-submarine helicopter, from the carriers, with a sensor
+    /// operator's console (multi-crew).
+    MH60R,
 }
 
 impl Aircraft {
@@ -69,6 +72,7 @@ impl Aircraft {
             Aircraft::C5 => "C-5",
             Aircraft::AC130 => "AC-130",
             Aircraft::AH64 => "AH-64D",
+            Aircraft::MH60R => "MH-60R",
         }
     }
 
@@ -81,6 +85,7 @@ impl Aircraft {
                 | Aircraft::OH58
                 | Aircraft::CH47
                 | Aircraft::AH64
+                | Aircraft::MH60R
         )
     }
 

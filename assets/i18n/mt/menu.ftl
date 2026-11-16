@@ -236,6 +236,11 @@ aircraft-ah64 =
         Ħelikopter tal-attakk b'żewġ siġġijiet
         Kanun fuq turret, Hellfires, Stingers
         Plejer ieħor jista' jtir bħala gunner
+aircraft-mh60r =
+    .facts =
+        Ħelikopter kontra s-sottomarini, mill-ġarrieri tal-ajruplani
+        Sonobuoys, sonar mgħaddas, MAD, Mk 54
+        It-tieni plejer jista' jkun l-operatur tas-sensuri
 
 ## Sezzjonijiet u gruppi
 

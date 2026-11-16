@@ -236,6 +236,11 @@ aircraft-ah64 =
         Bitevní vrtulník, dvoumístný
         Kanón ve věži, Hellfire, Stinger
         Druhý hráč může letět jako střelec
+aircraft-mh60r =
+    .facts =
+        Protiponorkový vrtulník, z letadlových lodí
+        Sonarové bóje, ponorný sonar, MAD, Mk 54
+        Druhý hráč může být operátorem senzorů
 
 ## Sekce a skupiny
 

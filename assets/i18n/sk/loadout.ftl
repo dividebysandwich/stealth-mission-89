@@ -165,9 +165,16 @@ loadout-empties = Vyprázdni stanicu { $stations } po naložení
 loadout-empties-two = Vyprázdni stanice { $first } a { $second } po naložení
 hardpoint-oh58-left-pylon = Ľavý závesník zbraní
 hardpoint-oh58-right-pylon = Pravý závesník zbraní
+hardpoint-mh60r-left-outer = Ľavý vonkajší závesník (odpaľovacie zariadenie Hellfire)
+hardpoint-mh60r-left-inner = Ľavý vnútorný závesník
+hardpoint-mh60r-right-inner = Pravý vnútorný závesník
 weapon-role-22 = Kontajner s guľometom: strieľa ako kanón, pozdĺž prídi
 employment-22 = Dosah: do 1,5 km, 500 nábojov v kontajneri
 weapon-role-23 = Zbraň so senzorovým zapaľovačom: štyridsať skeetov strieľa nadol na vozidlá
 employment-23 =
     Navádzaná na bod označený zameriavacím kontajnerom pri odhode
     Odhod: nad výškou otvorenia nastavenou na stránke SMS (500-3 000 ft)
+weapon-role-24 = Ľahké torpédo: padá na padáku, hľadá pod vodou a navádza sa na ponorku
+employment-24 =
+    Programuje sa na stránke WPN operátora senzorov: kurz, oneskorenie aktivácie, vzor hľadania
+    Zhodenie: nad vodou, pod 300 ft a 100 kt

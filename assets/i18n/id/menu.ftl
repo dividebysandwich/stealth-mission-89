@@ -236,6 +236,11 @@ aircraft-ah64 =
         Helikopter serang dua kursi
         Kanon turret, Hellfire, Stinger
         Pemain kedua bisa terbang sebagai penembak
+aircraft-mh60r =
+    .facts =
+        Helikopter antikapal selam, dari kapal induk
+        Sonobuoy, sonar celup, MAD, Mk 54
+        Pemain kedua dapat menjadi operator sensor
 
 ## Bagian dan kelompok
 

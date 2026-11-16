@@ -236,6 +236,11 @@ aircraft-ah64 =
         Tweezits gevechtshelikopter
         Kanon in een koepel, Hellfires, Stingers
         Een tweede speler kan meevliegen als schutter
+aircraft-mh60r =
+    .facts =
+        Onderzeebootbestrijdingshelikopter, vanaf de vliegdekschepen
+        Sonarboeien, dompelsonar, MAD, Mk 54
+        Een tweede speler kan sensoroperator zijn
 
 ## Secties en groepen
 

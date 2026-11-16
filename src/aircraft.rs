@@ -25,6 +25,7 @@ pub enum AircraftKind {
     C5,
     AC130,
     AH64,
+    MH60R,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -103,6 +104,9 @@ pub struct AircraftSpec {
     /// A second cockpit for the gunner (multi-crew): the AH-64's front seat, the OH-58D's left
     /// one.
     pub gunner_seat: Option<CrewSeat>,
+    /// Anti-submarine warfare (the MH-60R): sonobuoys, dipping sonar, MAD and torpedoes
+    /// (`crate::asw`); not a troop helicopter.
+    pub asw: bool,
     flight: fn() -> FlightConstants,
 }
 
@@ -146,6 +150,27 @@ pub fn apache_store_values(stations: impl Iterator<Item = (i32, i32)>) -> [i16; 
         if w >= 0 {
             *s = 1 + n.clamp(0, 4) as i16;
         }
+    }
+    v
+}
+
+/// The MH-60R's store slots (tools/models/seahawk.py): the left outer station's Hellfires left
+/// on the launcher, the left and right inner stations' torpedoes (1 hung).
+pub const SEAHAWK_STORE_SLOTS: [usize; 3] = [26, 21, 22];
+/// The MH-60R's MAD towed body (0 stowed, 1 towed) and dipping sonar (1 in the water).
+pub const SEAHAWK_MAD_SLOT: usize = 30;
+pub const SEAHAWK_DIP_SLOT: usize = 31;
+
+/// The MH-60R's store slot values of its stations (weapon type, rounds; -1 none), in loadout
+/// order.
+pub fn seahawk_store_values(stations: impl Iterator<Item = (i32, i32)>) -> [i16; 3] {
+    let mut v = [0; 3];
+    for (k, (s, (w, n))) in v.iter_mut().zip(stations).enumerate() {
+        *s = match k {
+            0 if w == crate::loadout::HELLFIRE as i32 => n.clamp(0, 4) as i16,
+            1 | 2 if w >= 0 && n > 0 => 1,
+            _ => 0,
+        };
     }
     v
 }
@@ -206,7 +231,7 @@ impl AircraftSpec {
 
     /// A troop helicopter: its missions are insertions.
     pub fn transport(&self) -> bool {
-        self.helicopter && !self.turret && self.sight.is_none()
+        self.helicopter && !self.turret && self.sight.is_none() && !self.asw
     }
 
     /// The targeting pod is a turret on the airframe (an attack helicopter's sight, a
@@ -344,6 +369,7 @@ static F117: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::default,
 };
@@ -382,6 +408,7 @@ static F16: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: true,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::f16,
 };
@@ -429,8 +456,45 @@ static UH60: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::uh60,
+};
+
+/// The MH-60R Seahawk (tools/models/seahawk.py): the UH-60's airframe and stations, so its
+/// points are `uh60_point`s.
+static MH60R: AircraftSpec = AircraftSpec {
+    model: "aircraft_078",
+    model_lift: UH60_LIFT,
+    eye: uh60_point(0.52, 2.62, 1.90),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::ZERO, Vec3::ZERO),
+        two_sided: true,
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: crate::hud::modern::SCALE,
+    vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
+    bomb_bay: false,
+    helicopter: true,
+    turret: false,
+    hmd: Hmd::None,
+    muzzle: None,
+    sight: None,
+    exhaust: EXHAUST,
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    nozzle_rect: None,
+    swing_wing: false,
+    vtol: false,
+    ground_radar: false,
+    asw: true,
+    gunner_seat: None,
+    flight: FlightConstants::mh60r,
 };
 
 /// A point of the AH-1Z model (tools/models/ah1z.py, as `uh60_point`) in the aircraft frame.
@@ -475,6 +539,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::ah1z,
 };
@@ -522,6 +587,7 @@ static RAH66: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: true,
+    asw: false,
     // The copilot/gunner's (rear) seat: behind the pilot's seat back at his canopy bow (y 1.84),
     // ahead of the canopy's end (y 0.82), the head under the flat roof (z 2.58).
     gunner_seat: Some(CrewSeat {
@@ -575,6 +641,7 @@ static OH58: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     // The copilot/gunner's (left) seat, the pilot's mirrored.
     gunner_seat: Some(CrewSeat {
         style: PanelStyle::Oh58Cpg,
@@ -628,6 +695,7 @@ static AH64: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     // The gunner's (front, lower) seat: 0.87 m behind the windshield's base (y 3.67, z 2.41),
     // the head under the roof (z 2.95), the sills (z 2.25).
     gunner_seat: Some(CrewSeat {
@@ -682,6 +750,7 @@ static CH47: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::ch47,
 };
@@ -733,6 +802,7 @@ static TORNADO: AircraftSpec = AircraftSpec {
     swing_wing: true,
     vtol: false,
     ground_radar: true,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::tornado,
 };
@@ -781,6 +851,7 @@ static A10: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::a10,
 };
@@ -832,6 +903,7 @@ static AV8B: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: true,
     ground_radar: true,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::av8b,
 };
@@ -881,6 +953,7 @@ static F22: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: true,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::f22,
 };
@@ -941,6 +1014,7 @@ static C5: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::c5,
 };
@@ -1001,6 +1075,7 @@ static AC130: AircraftSpec = AircraftSpec {
     swing_wing: false,
     vtol: false,
     ground_radar: false,
+    asw: false,
     gunner_seat: None,
     flight: FlightConstants::c130,
 };
@@ -1041,6 +1116,11 @@ impl AircraftKind {
         self == AircraftKind::OH58
     }
 
+    /// The MH-60R: the anti-submarine helicopter with the sensor operator's cabin console.
+    pub fn seahawk(self) -> bool {
+        self == AircraftKind::MH60R
+    }
+
     /// The RAH-66: an armed scout helicopter with a gunner's rear cockpit.
     pub fn comanche(self) -> bool {
         self == AircraftKind::RAH66
@@ -1056,7 +1136,7 @@ impl AircraftKind {
         matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
     }
 
-    pub const ALL: [AircraftKind; 14] = [
+    pub const ALL: [AircraftKind; 15] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::F22,
@@ -1064,6 +1144,7 @@ impl AircraftKind {
         AircraftKind::A10,
         AircraftKind::AV8B,
         AircraftKind::UH60,
+        AircraftKind::MH60R,
         AircraftKind::AH1Z,
         AircraftKind::AH64,
         AircraftKind::RAH66,
@@ -1075,7 +1156,9 @@ impl AircraftKind {
 
     /// What another pilot flies.
     pub fn of_remote(p: &stealth_sim::net::RemotePilot) -> Self {
-        if p.comanche {
+        if p.seahawk {
+            AircraftKind::MH60R
+        } else if p.comanche {
             AircraftKind::RAH66
         } else if p.kiowa {
             AircraftKind::OH58
@@ -1122,6 +1205,7 @@ impl AircraftKind {
             AircraftKind::C5 => &C5,
             AircraftKind::AC130 => &AC130,
             AircraftKind::AH64 => &AH64,
+            AircraftKind::MH60R => &MH60R,
         }
     }
 
@@ -1142,6 +1226,7 @@ impl AircraftKind {
             AircraftKind::C5 => "c5",
             AircraftKind::AC130 => "ac130",
             AircraftKind::AH64 => "ah64",
+            AircraftKind::MH60R => "mh60r",
         }
     }
 
@@ -1155,6 +1240,8 @@ impl AircraftKind {
                 || (matches!(s.as_str(), "ah1" | "viper") && *k == AircraftKind::AH1Z)
                 || (matches!(s.as_str(), "apache" | "ah64d" | "ah64a") && *k == AircraftKind::AH64)
                 || (matches!(s.as_str(), "comanche" | "rah66a") && *k == AircraftKind::RAH66)
+                || (matches!(s.as_str(), "seahawk" | "mh60" | "sh60" | "sh60b")
+                    && *k == AircraftKind::MH60R)
                 || (matches!(s.as_str(), "tornadoids" | "ids") && *k == AircraftKind::Tornado)
                 || (matches!(s.as_str(), "a10c" | "warthog" | "thunderbolt")
                     && *k == AircraftKind::A10)
@@ -1187,6 +1274,7 @@ impl AircraftKind {
             AircraftKind::C5 => "C-5 Galaxy",
             AircraftKind::AC130 => "AC-130 Spectre",
             AircraftKind::AH64 => "AH-64D Apache",
+            AircraftKind::MH60R => "MH-60R Seahawk",
         }
     }
 }

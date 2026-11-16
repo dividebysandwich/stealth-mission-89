@@ -165,9 +165,16 @@ loadout-empties = Svuota la stazione { $stations } quando è caricato
 loadout-empties-two = Svuota le stazioni { $first } e { $second } quando è caricato
 hardpoint-oh58-left-pylon = Pilone armi sinistro
 hardpoint-oh58-right-pylon = Pilone armi destro
+hardpoint-mh60r-left-outer = Stazione esterna sinistra (lanciatore Hellfire)
+hardpoint-mh60r-left-inner = Stazione interna sinistra
+hardpoint-mh60r-right-inner = Stazione interna destra
 weapon-role-22 = Contenitore mitragliatrice: spara come il cannone, lungo il muso
 employment-22 = Gittata: fino a 1,5 km, 500 colpi per contenitore
 weapon-role-23 = Arma a spoletta sensoriale: quaranta skeet sparano verso il basso sui veicoli
 employment-23 =
     Guidata al punto marcato con il pod di puntamento al rilascio
     Rilascio: sopra la quota di apertura impostata nella pagina SMS (500-3.000 ft)
+weapon-role-24 = Siluro leggero: scende col paracadute, cerca sott'acqua e si dirige su un sommergibile
+employment-24 =
+    Programmato sulla pagina WPN dell'operatore sensori: rotta, ritardo di attivazione, schema di ricerca
+    Sgancio: sull'acqua, sotto 300 ft e 100 kt

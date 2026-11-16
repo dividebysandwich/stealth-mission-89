@@ -165,9 +165,16 @@ loadout-empties = Tømmer station { $stations } ved lastning
 loadout-empties-two = Tømmer stationerne { $first } og { $second } ved lastning
 hardpoint-oh58-left-pylon = Venstre våbenpylon
 hardpoint-oh58-right-pylon = Højre våbenpylon
+hardpoint-mh60r-left-outer = Venstre yderstation (Hellfire-affyringsrampe)
+hardpoint-mh60r-left-inner = Venstre inderstation
+hardpoint-mh60r-right-inner = Højre inderstation
 weapon-role-22 = Maskingeværbeholder: affyres som kanonen, langs næsen
 employment-22 = Rækkevidde: op til 1,5 km, 500 skud pr. beholder
 weapon-role-23 = Sensorudløst våben: fyrre skeets skyder ned mod køretøjerne under mønsteret
 employment-23 =
     Styres mod punktet, der var markeret med sigtepoden ved udløsningen
     Udløsning: over åbningshøjden sat på SMS-siden (500-3.000 ft)
+weapon-role-24 = Let torpedo: falder i faldskærm, søger under vandet og målsøger en ubåd
+employment-24 =
+    Programmeres på sensoroperatørens WPN-side: kurs, aktiveringsforsinkelse, søgemønster
+    Udløsning: over vand, under 300 ft og 100 kt

@@ -236,6 +236,11 @@ aircraft-ah64 =
         Kampfhubschrauber, zweisitzig
         Turmkanone, Hellfire, Stinger
         Ein zweiter Spieler kann als Schütze mitfliegen
+aircraft-mh60r =
+    .facts =
+        U-Jagd-Hubschrauber, von den Flugzeugträgern
+        Sonarbojen, Tauchsonar, MAD, Mk 54
+        Ein zweiter Spieler kann Sensoroperator sein
 
 ## Abschnitte und Gruppen
 

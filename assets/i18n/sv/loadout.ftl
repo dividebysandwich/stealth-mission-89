@@ -165,9 +165,16 @@ loadout-empties = Tömmer station { $stations } vid lastning
 loadout-empties-two = Tömmer stationerna { $first } och { $second } vid lastning
 hardpoint-oh58-left-pylon = Vänster vapenpylon
 hardpoint-oh58-right-pylon = Höger vapenpylon
+hardpoint-mh60r-left-outer = Vänster yttre balk (Hellfire-lavett)
+hardpoint-mh60r-left-inner = Vänster inre balk
+hardpoint-mh60r-right-inner = Höger inre balk
 weapon-role-22 = Kulsprutebehållare: avfyras som kanonen, längs nosen
 employment-22 = Räckvidd: upp till 1,5 km, 500 skott per behållare
 weapon-role-23 = Sensortänt vapen: fyrtio skeets skjuter ner mot fordonen under mönstret
 employment-23 =
     Styrs mot punkten som märktes med siktkapseln vid fällningen
     Fällning: över öppningshöjden inställd på SMS-sidan (500-3 000 ft)
+weapon-role-24 = Lätt torped: faller i fallskärm, söker under vattnet och målsöker en ubåt
+employment-24 =
+    Programmeras på sensoroperatörens WPN-sida: kurs, aktiveringsfördröjning, sökmönster
+    Fällning: över vatten, under 300 ft och 100 kt

@@ -222,6 +222,9 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
         AircraftKind::UH60 => {
             thin_bars(c, (8.0, top, w - 8.0, bottom - 12.0), e, &uh60_groups(e));
         }
+        AircraftKind::MH60R => {
+            thin_bars(c, (8.0, top, w - 8.0, bottom - 12.0), e, &mh60r_groups(e));
+        }
         AircraftKind::CH47 => {
             thin_bars(c, (8.0, top, w - 8.0, bottom - 12.0), e, &ch47_groups(e, true));
         }
@@ -320,6 +323,16 @@ fn uh60_groups(e: &Eng) -> Vec<Group> {
             mark: None,
         },
     ]
+}
+
+/// The MH-60R's flight display engine window: torque first, then TGT, the power turbine and
+/// rotor speeds, and NG (the oil on its own page).
+fn mh60r_groups(e: &Eng) -> Vec<Group> {
+    let mut g = uh60_groups(e);
+    g.retain(|g| !g.name.starts_with("OIL"));
+    g.swap(0, 1);
+    g.swap(1, 2);
+    g
 }
 
 /// The AH-64D's engine page: the rotor and power turbine speeds (NP), torque, TGT and the gas

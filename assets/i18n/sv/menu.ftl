@@ -236,6 +236,11 @@ aircraft-ah64 =
         Tvåsitsig attackhelikopter
         Kanon i torn, Hellfire, Stinger
         En andra spelare kan flyga som skytt
+aircraft-mh60r =
+    .facts =
+        Ubåtsjakthelikopter, från hangarfartygen
+        Sonarbojar, doppsonar, MAD, Mk 54
+        En andra spelare kan vara sensoroperatör
 
 ## Sektioner och grupper
 

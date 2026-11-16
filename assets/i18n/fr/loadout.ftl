@@ -165,9 +165,16 @@ loadout-empties = Vide la station { $stations } une fois chargé
 loadout-empties-two = Vide les stations { $first } et { $second } une fois chargé
 hardpoint-oh58-left-pylon = Pylône d'armement gauche
 hardpoint-oh58-right-pylon = Pylône d'armement droit
+hardpoint-mh60r-left-outer = Point d'emport extérieur gauche (lanceur Hellfire)
+hardpoint-mh60r-left-inner = Point d'emport intérieur gauche
+hardpoint-mh60r-right-inner = Point d'emport intérieur droit
 weapon-role-22 = Nacelle de mitrailleuse : tire comme le canon, dans l'axe du nez
 employment-22 = Portée : jusqu'à 1,5 km, 500 cartouches par nacelle
 weapon-role-23 = Arme à fusée sensorielle : quarante skeets tirent vers le bas sur les véhicules
 employment-23 =
     Guidée vers le point marqué avec le pod de désignation au largage
     Largage : au-dessus de l'altitude d'ouverture réglée sur la page SMS (500-3 000 ft)
+weapon-role-24 = Torpille légère : descend sous parachute, cherche sous l'eau et se guide sur un sous-marin
+employment-24 =
+    Programmée sur la page WPN de l'opérateur capteurs : cap, délai d'activation, schéma de recherche
+    Largage : au-dessus de l'eau, sous 300 ft et 100 kt

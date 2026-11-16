@@ -165,9 +165,16 @@ loadout-empties = Maakt station { $stations } leeg bij het laden
 loadout-empties-two = Maakt stations { $first } en { $second } leeg bij het laden
 hardpoint-oh58-left-pylon = Linker wapenpylon
 hardpoint-oh58-right-pylon = Rechter wapenpylon
+hardpoint-mh60r-left-outer = Linker buitenstation (Hellfire-lanceerder)
+hardpoint-mh60r-left-inner = Linker binnenstation
+hardpoint-mh60r-right-inner = Rechter binnenstation
 weapon-role-22 = Machinegeweerpod: wordt als het kanon afgevuurd, langs de neus
 employment-22 = Bereik: tot 1,5 km, 500 patronen per pod
 weapon-role-23 = Wapen met sensorontsteking: veertig skeets vuren omlaag op de voertuigen eronder
 employment-23 =
     Geleid naar het punt dat bij het lossen met de richtpod is gemarkeerd
     Lossen: boven de openingshoogte op de SMS-pagina (500-3.000 ft)
+weapon-role-24 = Lichte torpedo: daalt aan een parachute, zoekt onder water en stuurt naar een onderzeeboot
+employment-24 =
+    Geprogrammeerd op de WPN-pagina van de sensoroperator: koers, activeringsvertraging, zoekpatroon
+    Lossen: boven water, onder 300 ft en 100 kt

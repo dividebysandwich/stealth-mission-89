@@ -236,6 +236,11 @@ aircraft-ah64 =
         Taisteluhelikopteri, kaksipaikkainen
         Tornitykki, Hellfire- ja Stinger-ohjuksia
         Toinen pelaaja voi lentää ampujana
+aircraft-mh60r =
+    .facts =
+        Sukellusveneentorjuntahelikopteri, lentotukialuksilta
+        Kaikuluotainpoijut, upotettava kaikuluotain, MAD, Mk 54
+        Toinen pelaaja voi toimia sensorioperaattorina
 
 ## Osiot ja ryhmät
 

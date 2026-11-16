@@ -678,6 +678,10 @@ pub struct Airframe {
     /// differs from the AH-1Z's; it has a gunner's seat ([`crate::crew`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub apache: bool,
+    /// The MH-60R Seahawk (a helicopter): anti-submarine warfare ([`crate::asw`]), a sensor
+    /// operator's console ([`crate::crew`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub seahawk: bool,
 }
 
 /// Landing option.
@@ -749,6 +753,9 @@ pub struct SimOptions {
     /// The aircraft is the AH-64 Apache: seen as one by the other pilots, a gunner's seat.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub apache: bool,
+    /// The aircraft is the MH-60R Seahawk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub seahawk: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -802,6 +809,7 @@ impl Default for SimOptions {
             galaxy: false,
             spectre: false,
             apache: false,
+            seahawk: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

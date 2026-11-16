@@ -236,6 +236,11 @@ aircraft-ah64 =
         Dvosedežni bojni helikopter
         Topovska kupola, Hellfire, Stinger
         Drugi igralec lahko leti kot strelec
+aircraft-mh60r =
+    .facts =
+        Protipodmorniški helikopter, z letalonosilk
+        Sonarne boje, potopni sonar, MAD, Mk 54
+        Drugi igralec je lahko operater senzorjev
 
 ## Razdelki in skupine
 

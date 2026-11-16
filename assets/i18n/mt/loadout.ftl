@@ -165,9 +165,16 @@ loadout-empties = Jiżvojta l-istazzjon { $stations } meta jitgħabba
 loadout-empties-two = Jiżvojta l-istazzjonijiet { $first } u { $second } meta jitgħabba
 hardpoint-oh58-left-pylon = Pylon tal-armi tax-xellug
 hardpoint-oh58-right-pylon = Pylon tal-armi tal-lemin
+hardpoint-mh60r-left-outer = Stazzjon ta' barra tax-xellug (lanċjatur Hellfire)
+hardpoint-mh60r-left-inner = Stazzjon ta' ġewwa tax-xellug
+hardpoint-mh60r-right-inner = Stazzjon ta' ġewwa tal-lemin
 weapon-role-22 = Kontenitur tal-magna gun: jispara bħall-kannun, tul il-mnieħer
 employment-22 = Firxa: sa 1.5 km, 500 rawnd għal kull kontenitur
 weapon-role-23 = Arma b'sensur tal-isplużjoni: erbgħin skeet jisparaw 'l isfel fuq il-vetturi
 employment-23 =
     Iggwidata lejn il-punt immarkat bil-pod tal-immirar meta tinħeles
     Ħelsien: 'il fuq mill-altitudni tal-ftuħ fuq il-paġna SMS (500-3,000 ft)
+weapon-role-24 = Torpidow ħafif: jinżel bil-paraxut, ifittex taħt l-ilma u jimmira lejn sottomarin
+employment-24 =
+    Ipprogrammat fil-paġna WPN tal-operatur tas-sensuri: direzzjoni, dewmien tal-attivazzjoni, mudell tat-tfittxija
+    Rilaxx: fuq l-ilma, taħt 300 ft u 100 kt

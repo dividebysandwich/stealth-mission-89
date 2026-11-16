@@ -324,6 +324,7 @@ fn start_combat(
     let galaxy = settings.aircraft == crate::aircraft::AircraftKind::C5;
     let spectre = settings.aircraft.spectre();
     let apache = settings.aircraft.apache();
+    let seahawk = settings.aircraft.seahawk();
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -340,6 +341,7 @@ fn start_combat(
             galaxy,
             spectre,
             apache,
+            seahawk,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -358,6 +360,7 @@ fn start_combat(
             galaxy,
             spectre,
             apache,
+            seahawk,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -1162,6 +1165,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "OH-58D"
     } else if p.chinook {
         "CH-47F"
+    } else if p.seahawk {
+        "MH-60R"
     } else if p.apache {
         "AH-64D"
     } else if p.gunship {

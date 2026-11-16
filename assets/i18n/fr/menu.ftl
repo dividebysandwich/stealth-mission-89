@@ -236,6 +236,11 @@ aircraft-ah64 =
         Hélicoptère d'attaque biplace
         Canon en tourelle, Hellfire, Stinger
         Un second joueur peut voler comme tireur
+aircraft-mh60r =
+    .facts =
+        Hélicoptère de lutte anti-sous-marine, depuis les porte-avions
+        Bouées acoustiques, sonar trempé, MAD, Mk 54
+        Un second joueur peut être l'opérateur capteurs
 
 ## Sections et groupes
 

@@ -165,9 +165,16 @@ loadout-empties = Kiüríti a(z) { $stations }. állomást töltéskor
 loadout-empties-two = Kiüríti a(z) { $first }. és { $second }. állomást töltéskor
 hardpoint-oh58-left-pylon = Bal fegyvertartó
 hardpoint-oh58-right-pylon = Jobb fegyvertartó
+hardpoint-mh60r-left-outer = Bal külső felfüggesztési pont (Hellfire-indító)
+hardpoint-mh60r-left-inner = Bal belső felfüggesztési pont
+hardpoint-mh60r-right-inner = Jobb belső felfüggesztési pont
 weapon-role-22 = Géppuskatároló: úgy tüzel, mint az ágyú, az orr irányában
 employment-22 = Hatótáv: legfeljebb 1,5 km, 500 lőszer tárolónként
 weapon-role-23 = Szenzoros gyújtású fegyver: negyven skeet lő le az alatta lévő járművekre
 employment-23 =
     A kioldáskor a célzókonténerrel megjelölt pontra vezérelt
     Kioldás: az SMS-oldalon beállított nyitási magasság felett (500-3000 ft)
+weapon-role-24 = Könnyű torpedó: ejtőernyővel ereszkedik, a víz alatt keres, és tengeralattjáróra rávezérel
+employment-24 =
+    A szenzorkezelő WPN oldalán programozható: irány, élesítési késleltetés, keresési minta
+    Oldás: víz felett, 300 ft és 100 kt alatt

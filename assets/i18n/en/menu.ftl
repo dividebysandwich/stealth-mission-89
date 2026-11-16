@@ -236,6 +236,11 @@ aircraft-ah64 =
         Attack helicopter, two seats
         Turret gun, Hellfires, Stingers
         A second player can fly as gunner
+aircraft-mh60r =
+    .facts =
+        Anti-submarine helicopter, from the carriers
+        Sonobuoys, dipping sonar, MAD, Mk 54
+        A second player can be the sensor operator
 
 ## Sections and groups
 

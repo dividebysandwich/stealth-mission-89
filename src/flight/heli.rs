@@ -225,6 +225,20 @@ impl Rotor {
         ..Rotor::UH60
     };
 
+    /// MH-60R: the UH-60's rotor on a heavier airframe (sonar, sonobuoys, the radar and stores):
+    /// more collective to hover, a little slower on the cyclic, more drag from the pylons and
+    /// sponsons (the level speed tops out near 145 kt); the T700-401C turbines burn more.
+    pub const MH60R: Rotor = Rotor {
+        thrust_flat: 0.36,
+        thrust_slope: 1.06,
+        pitch_accel: 2.0,
+        roll_accel: 4.6,
+        stall_knots: (135.0, 185.0),
+        drag: Vec3::new(4.4e-4, 0.0, 6.6e-5),
+        fuel_burn: 0.40,
+        ..Rotor::UH60
+    };
+
     /// Collective that hovers out of ground effect, in still air.
     pub fn hover_collective(&self) -> f32 {
         (1.0 - self.thrust_flat) / self.thrust_slope

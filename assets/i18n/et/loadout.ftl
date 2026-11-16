@@ -165,9 +165,16 @@ loadout-empties = Tühjendab jaama { $stations } laadimisel
 loadout-empties-two = Tühjendab jaamad { $first } ja { $second } laadimisel
 hardpoint-oh58-left-pylon = Vasak relvakandur
 hardpoint-oh58-right-pylon = Parem relvakandur
+hardpoint-mh60r-left-outer = Vasak välimine riputuspunkt (Hellfire'i kanderakett)
+hardpoint-mh60r-left-inner = Vasak sisemine riputuspunkt
+hardpoint-mh60r-right-inner = Parem sisemine riputuspunkt
 weapon-role-22 = Kuulipildujakonteiner: tulistab nagu kahur, nina suunas
 employment-22 = Ulatus: kuni 1,5 km, 500 padrunit konteineris
 weapon-role-23 = Sensorsüütega relv: nelikümmend skeet’i tulistavad all olevaid sõidukeid
 employment-23 =
     Juhitakse vabastamisel sihtimiskonteineriga märgitud punkti
     Vabastamine: üle SMS-lehel seatud avanemiskõrguse (500-3000 ft)
+weapon-role-24 = Kerge torpeedo: laskub langevarjuga, otsib vee all ja sihib allveelaeva
+employment-24 =
+    Programmeeritakse sensorioperaatori WPN-lehel: kurss, aktiveerimise viivitus, otsingumuster
+    Vabastamine: vee kohal, alla 300 ft ja 100 kt

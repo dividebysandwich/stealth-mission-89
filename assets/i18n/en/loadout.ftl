@@ -141,6 +141,9 @@ hardpoint-tornado-right-wing-pylon = Right wing pylon
 hardpoint-tornado-right-wing-rail = Right wing, Sidewinder rail
 hardpoint-oh58-left-pylon = Left weapons pylon
 hardpoint-oh58-right-pylon = Right weapons pylon
+hardpoint-mh60r-left-outer = Left outer station (Hellfire launcher)
+hardpoint-mh60r-left-inner = Left inner station
+hardpoint-mh60r-right-inner = Right inner station
 hardpoint-a10-1-left-outer-wing = Station 1, left outer wing
 hardpoint-a10-2-left-wing = Station 2, left wing
 hardpoint-a10-3-left-wing = Station 3, left wing
@@ -171,3 +174,7 @@ weapon-role-23 = Sensor fuzed weapon: forty skeets fire down at the vehicles und
 employment-23 =
     Guided to the point marked with the targeting pod at release
     Release: above the burst altitude set on the SMS page (500-3,000 ft)
+weapon-role-24 = Lightweight torpedo: drops on a chute, searches under water and homes on a submarine
+employment-24 =
+    Programmed on the sensor operator's WPN page: heading, enable delay, search pattern
+    Release: over water, below 300 ft and 100 kt

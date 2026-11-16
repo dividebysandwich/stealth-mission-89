@@ -236,6 +236,11 @@ aircraft-ah64 =
         Elicottero d'attacco biposto
         Cannone in torretta, Hellfire, Stinger
         Un secondo giocatore può volare come mitragliere
+aircraft-mh60r =
+    .facts =
+        Elicottero antisommergibile, dalle portaerei
+        Sonoboe, sonar a immersione, MAD, Mk 54
+        Un secondo giocatore può essere l'operatore sensori
 
 ## Sezioni e gruppi
 

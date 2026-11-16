@@ -165,9 +165,16 @@ loadout-empties = Golește stația { $stations } la încărcare
 loadout-empties-two = Golește stațiile { $first } și { $second } la încărcare
 hardpoint-oh58-left-pylon = Pilon de armament stâng
 hardpoint-oh58-right-pylon = Pilon de armament drept
+hardpoint-mh60r-left-outer = Stația exterioară stângă (lansator Hellfire)
+hardpoint-mh60r-left-inner = Stația interioară stângă
+hardpoint-mh60r-right-inner = Stația interioară dreaptă
 weapon-role-22 = Container cu mitralieră: trage ca tunul, de-a lungul nasului
 employment-22 = Rază: până la 1,5 km, 500 de cartușe pe container
 weapon-role-23 = Armă cu focos senzorial: patruzeci de skeet trag în jos asupra vehiculelor
 employment-23 =
     Ghidată spre punctul marcat cu containerul de ochire la lansare
     Lansare: deasupra altitudinii de deschidere setate pe pagina SMS (500-3.000 ft)
+weapon-role-24 = Torpilă ușoară: coboară cu parașuta, caută sub apă și se ghidează spre un submarin
+employment-24 =
+    Programată pe pagina WPN a operatorului de senzori: direcție, întârziere de activare, model de căutare
+    Lansare: deasupra apei, sub 300 ft și 100 kt

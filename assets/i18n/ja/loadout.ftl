@@ -165,9 +165,16 @@ loadout-empties = 搭載時にステーション { $stations } を空にしま�
 loadout-empties-two = 搭載時にステーション { $first } と { $second } を空にします
 hardpoint-oh58-left-pylon = 左兵装パイロン
 hardpoint-oh58-right-pylon = 右兵装パイロン
+hardpoint-mh60r-left-outer = 左外側ステーション（ヘルファイア発射機）
+hardpoint-mh60r-left-inner = 左内側ステーション
+hardpoint-mh60r-right-inner = 右内側ステーション
 weapon-role-22 = 機関銃ポッド：機関砲と同様に機首方向へ発射します
 employment-22 = 射程：最大 1.5 km、ポッドあたり 500 発
 weapon-role-23 = センサー信管兵器：40 個のスキートが下方の車両を撃ちます
 employment-23 =
     投下時に照準ポッドで指示した地点へ誘導
     投下：SMS ページで設定した散布高度以上 (500-3,000 ft)
+weapon-role-24 = 短魚雷：パラシュートで降下し、水中を捜索して潜水艦にホーミング
+employment-24 =
+    センサー員のWPNページで設定：針路、起動遅延、捜索パターン
+    投下：水上、300 ft・100 kt以下

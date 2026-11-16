@@ -236,6 +236,11 @@ aircraft-ah64 =
         Helicóptero de ataque biposto
         Canhão em torreta, Hellfire, Stinger
         Um segundo jogador pode voar como artilheiro
+aircraft-mh60r =
+    .facts =
+        Helicóptero antissubmarino, a partir dos porta-aviões
+        Sonoboias, sonar de imersão, MAD, Mk 54
+        Um segundo jogador pode ser o operador de sensores
 
 ## Seções e grupos
 

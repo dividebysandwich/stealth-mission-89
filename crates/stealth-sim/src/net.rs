@@ -71,6 +71,8 @@ pub struct RemotePilot {
     pub spectre: bool,
     /// The AH-64 Apache (with `gunship`).
     pub apache: bool,
+    /// The MH-60R Seahawk (with `helicopter`).
+    pub seahawk: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -149,7 +151,9 @@ impl From<RemotePilot> for RemoteWire {
             p.nozzle,
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
             p.stores,
-            p.raptor as u8 | (p.galaxy as u8) << 1 | (p.spectre as u8) << 2 | (p.apache as u8) << 3,
+            p.raptor as u8 | (p.galaxy as u8) << 1 | (p.spectre as u8) << 2
+                | (p.apache as u8) << 3
+                | (p.seahawk as u8) << 4,
             p.catapult,
         )
     }
@@ -221,6 +225,7 @@ impl From<RemoteWire> for RemotePilot {
             galaxy: kinds & 2 != 0,
             spectre: kinds & 4 != 0,
             apache: kinds & 8 != 0,
+            seahawk: kinds & 16 != 0,
             gun_aim,
             catapult,
             chute,
@@ -415,7 +420,7 @@ impl Sim {
                     catapult: p.last_input.catapult,
                     kiowa: p.kiowa,
                     pylons: if p.kiowa { self.pylon_looks(&p.bays) } else { [0; 2] },
-                    stores: if p.external_stores && (!p.helicopter || p.apache) {
+                    stores: if p.external_stores && (!p.helicopter || p.apache || p.seahawk) {
                         p.bays
                             .iter()
                             .map(|&(w, n)| (u8::try_from(w).unwrap_or(255), n.clamp(0, 255) as u8))
@@ -428,6 +433,7 @@ impl Sim {
                     galaxy: p.galaxy,
                     spectre: p.spectre,
                     apache: p.apache,
+                    seahawk: p.seahawk,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

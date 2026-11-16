@@ -236,6 +236,11 @@ aircraft-ah64 =
         Dwumiejscowy śmigłowiec szturmowy
         Działko w wieżyczce, Hellfire, Stinger
         Drugi gracz może lecieć jako strzelec
+aircraft-mh60r =
+    .facts =
+        Śmigłowiec do zwalczania okrętów podwodnych, z lotniskowców
+        Pławy sonarowe, sonar opuszczany, MAD, Mk 54
+        Drugi gracz może być operatorem sensorów
 
 ## Sekcje i grupy
 

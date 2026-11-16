@@ -1648,6 +1648,21 @@ fn world_model_state(
         let tads = cues.as_ref().and_then(|c| c.tads_azimuth).unwrap_or(0.0);
         (stores, gun, crate::aircraft::apache_gun_values(tads, 0.0).0)
     });
+    // The MH-60R's stores (in another's: his, as his crew is told).
+    let seahawk = settings.aircraft.seahawk().then(|| {
+        let crew = combat.as_ref().and_then(|c| {
+            let me = c.sim.active_pilot();
+            c.sim.crew_view(me).filter(|v| v.owner != me)
+        });
+        match crew {
+            Some(v) => crate::aircraft::seahawk_store_values(
+                v.stores.iter().map(|&(w, n)| (w as i32, n as i32)),
+            ),
+            None => crate::aircraft::seahawk_store_values(
+                combat.as_ref().map_or(&[][..], |c| c.sim.bays().0).iter().copied(),
+            ),
+        }
+    });
     let Ok(a) = player.single() else { return };
     // Gear position counts 0 (up) .. 3 (down), one step per ~0.2 s (key 6).
     let target = if a.gear_down { 3.0 } else { 0.0 };
@@ -1719,6 +1734,10 @@ fn world_model_state(
             v.extend(crate::aircraft::APACHE_STORE_SLOTS.into_iter().zip(stores));
             let (az, el) = crate::aircraft::APACHE_GUN_SLOTS;
             v.extend([(az, gun_az), (el, gun_el), (crate::aircraft::APACHE_TADS_SLOT, tads)]);
+        }
+        if let Some(stores) = seahawk {
+            v.retain(|&(k, _)| !crate::aircraft::SEAHAWK_STORE_SLOTS.contains(&k));
+            v.extend(crate::aircraft::SEAHAWK_STORE_SLOTS.into_iter().zip(stores));
         }
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
@@ -2103,6 +2122,19 @@ pub(crate) fn sync_remote_pilots(
                         .zip(stores)
                         .chain([(sa, gun_az), (se, gun_el)])
                     {
+                        if s.0[k] != x {
+                            s.0[k] = x;
+                        }
+                    }
+                }
+                // An MH-60R's stores.
+                if p.seahawk {
+                    let stations = p
+                        .stores
+                        .iter()
+                        .map(|&(w, n)| (if w == 255 { -1 } else { w as i32 }, n as i32));
+                    let stores = crate::aircraft::seahawk_store_values(stations);
+                    for (k, x) in crate::aircraft::SEAHAWK_STORE_SLOTS.into_iter().zip(stores) {
                         if s.0[k] != x {
                             s.0[k] = x;
                         }

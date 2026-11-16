@@ -165,9 +165,16 @@ loadout-empties = Folmhaíonn sé stáisiún { $stations } nuair a luchtaítear 
 loadout-empties-two = Folmhaíonn sé stáisiúin { $first } agus { $second } nuair a luchtaítear iad
 hardpoint-oh58-left-pylon = Piolón arm ar chlé
 hardpoint-oh58-right-pylon = Piolón arm ar dheis
+hardpoint-mh60r-left-outer = Stáisiún seachtrach ar chlé (lainseálaí Hellfire)
+hardpoint-mh60r-left-inner = Stáisiún inmheánach ar chlé
+hardpoint-mh60r-right-inner = Stáisiún inmheánach ar dheis
 weapon-role-22 = Coimeádán gunna meaisín: lámhachtar é mar an gunna, feadh an tsrón
 employment-22 = Raon: suas le 1.5 km, 500 babhta in aghaidh an choimeádáin
 weapon-role-23 = Arm le brathadóir braiteora: lámhachann daichead skeet anuas ar na feithiclí
 employment-23 =
     Treoraithe go dtí an pointe a marcáladh leis an bpod spriocdhírithe ag scaoileadh
     Scaoileadh: os cionn na hairde pléasctha ar an leathanach SMS (500-3,000 ft)
+weapon-role-24 = Toirpéad éadrom: titeann sé ar pharaisiút, cuardaíonn sé faoi uisce agus aimsíonn sé fomhuireán
+employment-24 =
+    Cláraithe ar leathanach WPN an oibreora braiteoirí: ceannteideal, moill ghníomhachtaithe, patrún cuardaigh
+    Scaoileadh: os cionn uisce, faoi 300 ft agus 100 kt

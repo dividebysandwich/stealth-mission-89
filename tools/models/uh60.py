@@ -280,6 +280,7 @@ def build():
     heli.build_levels(root, levels, K, MAST, TAIL_HUB, (0.0, -TAIL_CANT, 0.0), NAV, {RED: BEACONS})
 
 
-mklib.load_palette(os.path.join(ROOT, "assets", "palettes", "tod_central_europe.ron"))
-build()
-bpy.ops.wm.save_mainfile()
+if __name__ == "__main__":
+    mklib.load_palette(os.path.join(ROOT, "assets", "palettes", "tod_central_europe.ron"))
+    build()
+    bpy.ops.wm.save_mainfile()

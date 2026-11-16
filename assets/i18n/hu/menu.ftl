@@ -236,6 +236,11 @@ aircraft-ah64 =
         Kétüléses támadóhelikopter
         Forgótornyos gépágyú, Hellfire-ok, Stingerek
         Egy második játékos fegyverkezelőként repülhet
+aircraft-mh60r =
+    .facts =
+        Tengeralattjáró-elhárító helikopter, a repülőgép-hordozókról
+        Hidroakusztikus bóják, merülőszonár, MAD, Mk 54
+        Egy második játékos lehet a szenzorkezelő
 
 ## Szakaszok és csoportok
 

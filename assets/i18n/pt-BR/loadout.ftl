@@ -165,9 +165,16 @@ loadout-empties = Esvazia a estação { $stations } ao carregar
 loadout-empties-two = Esvazia as estações { $first } e { $second } ao carregar
 hardpoint-oh58-left-pylon = Pilone de armas esquerdo
 hardpoint-oh58-right-pylon = Pilone de armas direito
+hardpoint-mh60r-left-outer = Estação externa esquerda (lançador Hellfire)
+hardpoint-mh60r-left-inner = Estação interna esquerda
+hardpoint-mh60r-right-inner = Estação interna direita
 weapon-role-22 = Casulo de metralhadora: dispara como o canhão, ao longo do nariz
 employment-22 = Alcance: até 1,5 km, 500 tiros por casulo
 weapon-role-23 = Arma de espoleta sensora: quarenta skeets disparam para baixo contra os veículos
 employment-23 =
     Guiada ao ponto marcado com o pod de designação no lançamento
     Lançamento: acima da altitude de abertura definida na página SMS (500-3.000 ft)
+weapon-role-24 = Torpedo leve: desce de paraquedas, busca debaixo d'água e se guia até um submarino
+employment-24 =
+    Programado na página WPN do operador de sensores: rumo, atraso de ativação, padrão de busca
+    Lançamento: sobre a água, abaixo de 300 ft e 100 kt

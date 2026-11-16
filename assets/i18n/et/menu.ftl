@@ -236,6 +236,11 @@ aircraft-ah64 =
         Ründekopter, kahekohaline
         Tornikahur, Hellfire'id, Stingerid
         Teine mängija saab lennata laskurina
+aircraft-mh60r =
+    .facts =
+        Allveelaevavastane kopter, lennukikandjatelt
+        Sonopoid, süvasonar, MAD, Mk 54
+        Teine mängija võib olla sensorioperaator
 
 ## Jaotised ja rühmad
 

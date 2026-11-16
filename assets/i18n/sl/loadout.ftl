@@ -165,9 +165,16 @@ loadout-empties = Izprazni postajo { $stations } ob nalaganju
 loadout-empties-two = Izprazni postaji { $first } in { $second } ob nalaganju
 hardpoint-oh58-left-pylon = Levi nosilec orožja
 hardpoint-oh58-right-pylon = Desni nosilec orožja
+hardpoint-mh60r-left-outer = Levi zunanji nosilec (izstrelišče Hellfire)
+hardpoint-mh60r-left-inner = Levi notranji nosilec
+hardpoint-mh60r-right-inner = Desni notranji nosilec
 weapon-role-22 = Strojnični kontejner: strelja kot top, vzdolž nosu
 employment-22 = Doseg: do 1,5 km, 500 nabojev na kontejner
 weapon-role-23 = Orožje s senzorskim vžigalnikom: štirideset skeetov strelja navzdol na vozila
 employment-23 =
     Vodeno do točke, označene s ciljnim vsebnikom ob odvrženju
     Odvrženje: nad višino odprtja, nastavljeno na strani SMS (500-3.000 ft)
+weapon-role-24 = Lahki torpedo: spušča se s padalom, išče pod vodo in se usmeri na podmornico
+employment-24 =
+    Programira se na strani WPN operaterja senzorjev: smer, zakasnitev aktivacije, vzorec iskanja
+    Odvrženje: nad vodo, pod 300 ft in 100 kt

@@ -165,9 +165,16 @@ loadout-empties = Ištuština stotį { $stations } pakraunant
 loadout-empties-two = Ištuština stotis { $first } ir { $second } pakraunant
 hardpoint-oh58-left-pylon = Kairysis ginkluotės pilonas
 hardpoint-oh58-right-pylon = Dešinysis ginkluotės pilonas
+hardpoint-mh60r-left-outer = Kairysis išorinis pakabinimo taškas (Hellfire paleidimo įrenginys)
+hardpoint-mh60r-left-inner = Kairysis vidinis pakabinimo taškas
+hardpoint-mh60r-right-inner = Dešinysis vidinis pakabinimo taškas
 weapon-role-22 = Kulkosvaidžio konteineris: šaudo kaip patranka, išilgai nosies
 employment-22 = Nuotolis: iki 1,5 km, 500 šovinių konteineryje
 weapon-role-23 = Jutikliniu sprogdikliu valdomas ginklas: keturiasdešimt skeet šauna į apačioje esančias mašinas
 employment-23 =
     Nukreipiamas į tašką, pažymėtą taikymo konteineriu numetimo metu
     Numetimas: virš SMS puslapyje nustatyto atsidarymo aukščio (500-3 000 ft)
+weapon-role-24 = Lengvoji torpeda: leidžiasi parašiutu, ieško po vandeniu ir nusitaiko į povandeninį laivą
+employment-24 =
+    Programuojama jutiklių operatoriaus WPN puslapyje: kursas, aktyvinimo delsa, paieškos schema
+    Numetimas: virš vandens, žemiau 300 ft ir 100 kt

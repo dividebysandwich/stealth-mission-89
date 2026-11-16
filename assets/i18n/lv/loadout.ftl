@@ -165,9 +165,16 @@ loadout-empties = Iztukšo staciju { $stations } iekraujot
 loadout-empties-two = Iztukšo stacijas { $first } un { $second } iekraujot
 hardpoint-oh58-left-pylon = Kreisais bruņojuma pilons
 hardpoint-oh58-right-pylon = Labais bruņojuma pilons
+hardpoint-mh60r-left-outer = Kreisais ārējais piekares punkts (Hellfire palaišanas iekārta)
+hardpoint-mh60r-left-inner = Kreisais iekšējais piekares punkts
+hardpoint-mh60r-right-inner = Labais iekšējais piekares punkts
 weapon-role-22 = Ložmetēja konteiners: šauj kā lielgabals, gar degunu
 employment-22 = Darbības rādiuss: līdz 1,5 km, 500 patronas konteinerā
 weapon-role-23 = Ierocis ar sensora degli: četrdesmit skeet šauj lejup uz transportlīdzekļiem
 employment-23 =
     Vadāms uz punktu, kas atzīmēts ar mērķēšanas konteineru nomešanas brīdī
     Nomešana: virs SMS lapā iestatītā atvēršanās augstuma (500-3000 ft)
+weapon-role-24 = Vieglā torpēda: nolaižas ar izpletni, meklē zem ūdens un tēmē uz zemūdeni
+employment-24 =
+    Programmē sensoru operatora WPN lapā: kurss, aktivizēšanas aizture, meklēšanas shēma
+    Nomešana: virs ūdens, zem 300 ft un 100 kt

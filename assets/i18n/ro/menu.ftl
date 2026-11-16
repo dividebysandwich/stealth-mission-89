@@ -236,6 +236,11 @@ aircraft-ah64 =
         Elicopter de atac biloc
         Tun în turelă, Hellfire, Stinger
         Un al doilea jucător poate zbura ca trăgător
+aircraft-mh60r =
+    .facts =
+        Elicopter antisubmarin, de pe portavioane
+        Balize sonar, sonar coborât, MAD, Mk 54
+        Un al doilea jucător poate fi operatorul de senzori
 
 ## Secțiuni și grupuri
 
