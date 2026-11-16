@@ -82,6 +82,10 @@ pub(crate) struct MenuLook {
     climb: f32,
     /// Seconds since a walking key was last held.
     idle: f32,
+    /// The joysticks' axes have been seen at rest since the bindings last changed: until then
+    /// they don't walk or turn, so that an axis resting off centre (a worn stick, a throttle
+    /// bound as pitch) doesn't walk on for ever and keep the main menu away.
+    sticks_rested: bool,
 }
 
 impl MenuLook {
@@ -100,6 +104,7 @@ impl Default for MenuLook {
             lift: 0.0,
             climb: 0.0,
             idle: MENU_RETURN,
+            sticks_rested: false,
         }
     }
 }
@@ -171,6 +176,8 @@ const TURN_VR: f32 = 1.0;
 const LOOK: f32 = 1.5;
 /// How long the player stands still (seconds) before the main menu comes back.
 const MENU_RETURN: f32 = 0.5;
+/// The joysticks' dead zone on foot (their own, set for flying, may be none).
+const STICK_DEAD: f32 = 0.15;
 /// The classic night palette's seed (`TimeOfDay::seed`): a few steps from dusk towards night,
 /// the purple horizon under a dark blue sky.
 const TOD_SEED: u8 = 3;
@@ -554,6 +561,8 @@ struct Steps {
     jump: bool,
     /// A walking key is held or a stick is pushed (the main menu steps aside).
     moving: bool,
+    /// The joysticks' axes alone (walk x and y, turn, look), past `STICK_DEAD`.
+    stick: Vec4,
 }
 
 /// The gamepads' and the joysticks' inputs: the stick (a gamepad's left one) walks, the rudder, the
@@ -589,12 +598,14 @@ fn read_devices(
     for m in hotas.axes(config) {
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
         let v = m.output(raw);
+        let v = if v.abs() > STICK_DEAD { v } else { 0.0 };
+        let stick = &mut s.stick;
         match m.control {
-            AxisControl::Roll => s.go.x = more(s.go.x, v),
+            AxisControl::Roll => stick.x = more(stick.x, v),
             // Pushing the stick forward is a negative pitch.
-            AxisControl::Pitch => s.go.y = more(s.go.y, -v),
-            AxisControl::Yaw | AxisControl::SlewX => s.turn = more(s.turn, v),
-            AxisControl::SlewY => s.look = more(s.look, v),
+            AxisControl::Pitch => stick.y = more(stick.y, -v),
+            AxisControl::Yaw | AxisControl::SlewX => stick.z = more(stick.z, v),
+            AxisControl::SlewY => stick.w = more(stick.w, v),
             _ => {}
         }
     }
@@ -607,8 +618,26 @@ fn read_devices(
             _ => {}
         }
     }
-    s.moving = s.go != Vec2::ZERO;
     s
+}
+
+/// Adds the joysticks' axes to the steps once they have been seen at rest (`sticks_rested`),
+/// none while the bindings dialog is open (binding an axis moves it); then whether the player
+/// is walking.
+fn add_sticks(s: &mut Steps, rested: &mut bool, binding: bool) {
+    if binding {
+        *rested = false;
+        *s = Steps::default();
+        return;
+    }
+    *rested |= s.stick == Vec4::ZERO;
+    if *rested {
+        let more = crate::input::stronger;
+        s.go = Vec2::new(more(s.go.x, s.stick.x), more(s.go.y, s.stick.y));
+        s.turn = more(s.turn, s.stick.z);
+        s.look = more(s.look, s.stick.w);
+    }
+    s.moving = s.go != Vec2::ZERO;
 }
 
 /// Walking, as a pilot on foot over the apron: W A S D (the keys at those places, Z Q S D on an
@@ -620,7 +649,7 @@ fn read_devices(
 fn walk(
     keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    egui: Res<EguiWantsInput>,
+    (egui, dialog): (Res<EguiWantsInput>, Res<crate::input_dialog::InputDialog>),
     devices: (Query<&Gamepad>, Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
     theater: Option<Res<crate::world::Theater>>,
     heads: Res<crate::camera::HeadPoses>,
@@ -636,7 +665,9 @@ fn walk(
     let dt = time.delta_secs().min(0.1);
     let (gamepads, config, hotas) = devices;
     // A text field or a shortcut (Ctrl, Alt) is using the keys.
-    let free = !egui.wants_any_keyboard_input()
+    // The bindings dialog takes keys, buttons and axes to bind.
+    let free = !dialog.open
+        && !egui.wants_any_keyboard_input()
         && !keys.any_pressed([
             KeyCode::ControlLeft,
             KeyCode::ControlRight,
@@ -644,6 +675,11 @@ fn walk(
             KeyCode::AltRight,
         ]);
     let mut s = read_devices(&gamepads, &config, &hotas);
+    // Esc brings the menu back from a stick that won't rest.
+    if keys.just_pressed(KeyCode::Escape) {
+        look.sticks_rested = false;
+    }
+    add_sticks(&mut s, &mut look.sticks_rested, dialog.open);
     if free {
         let mut dir = Vec2::ZERO;
         for (key, d) in [
@@ -794,4 +830,36 @@ fn despawn_scene(
     commands.remove_resource::<MenuScene>();
     commands.remove_resource::<MenuLook>();
     commands.remove_resource::<Palette>();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pushed(stick: Vec4) -> Steps {
+        Steps { stick, ..default() }
+    }
+
+    #[test]
+    fn a_stick_resting_off_centre_never_walks() {
+        let mut rested = false;
+        for _ in 0..100 {
+            let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
+            add_sticks(&mut s, &mut rested, false);
+            assert!(!s.moving);
+        }
+        // Once centred, it walks.
+        let mut s = pushed(Vec4::ZERO);
+        add_sticks(&mut s, &mut rested, false);
+        let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
+        add_sticks(&mut s, &mut rested, false);
+        assert!(s.moving);
+        // Binding in the dialog stops it, and it must rest again after.
+        let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
+        add_sticks(&mut s, &mut rested, true);
+        assert!(!s.moving && !rested);
+        let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
+        add_sticks(&mut s, &mut rested, false);
+        assert!(!s.moving);
+    }
 }
