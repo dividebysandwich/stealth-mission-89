@@ -549,6 +549,8 @@ pub fn build(a: &Airfield) -> Geom {
         }
     }
 
+    rubber(&mut g, &f, &ax, l);
+
     // Runway edge lights, thresholds and ends.
     let mut u = -l;
     while u <= l + 0.1 {
@@ -597,6 +599,62 @@ pub fn build(a: &Airfield) -> Geom {
     }
     g
 }
+
+/// Rubber deposits: the dark streaks the tyres leave where they spin up on touchdown, in the
+/// touchdown zone of each landing direction: thinner and fewer further from the threshold,
+/// along the main gear tracks of the types landing there. Above the asphalt, under the
+/// markings and a destroyed runway's craters.
+fn rubber(g: &mut Geom, f: &Frame, ax: &Axes, l: f64) {
+    let mut rng =
+        Rng::new(super::network::hash(0x7B1E, ax.c.x.round() as i64, ax.c.y.round() as i64, 0));
+    for end in [-1.0, 1.0] {
+        // The worn bands first (faint, broad), then the streaks over them.
+        for (count, colour) in RUBBER_KINDS {
+            let mut n = 0;
+            while n < count {
+                // From the threshold (metres): most around the aiming point.
+                let d = rng.range(RUBBER_FROM, RUBBER_TO);
+                let far = (d - RUBBER_FROM) / (RUBBER_TO - RUBBER_FROM);
+                if rng.f() > 1.0 - far * 0.85 {
+                    continue;
+                }
+                n += 1;
+                let wear = colour == RUBBER_WEAR;
+                // Across: the main gear tracks either side of the centreline, scattered.
+                let side = if rng.chance(0.5) { 1.0 } else { -1.0 };
+                let v = side * rng.range(RUBBER_TRACK.0, RUBBER_TRACK.1);
+                let len = rng.range(15.0, 70.0) * (1.0 - far * 0.5) * if wear { 2.0 } else { 1.0 };
+                let half = if wear { rng.range(1.0, 3.0) } else { rng.range(0.1, 0.3) };
+                let skew = rng.range(-0.01, 0.01);
+                // Along the landing direction (towards the runway's middle).
+                let u0 = end * (l - d);
+                let u1 = u0 - end * len;
+                let (v0, v1) = (v, v + skew * len);
+                g.ground(
+                    colour,
+                    &[
+                        ax.at(u0, v0 - half),
+                        ax.at(u1, v1 - half),
+                        ax.at(u1, v1 + half),
+                        ax.at(u0, v0 + half),
+                    ]
+                    .map(|p| f.at(p, if wear { RUBBER_Y } else { RUBBER_Y + 0.02 })),
+                );
+            }
+        }
+    }
+}
+
+/// Rubber deposits: per landing direction the worn patches and the streaks (count, colour: the
+/// asphalt's darker neighbour, dark blue-greys as dark in every theater), their spread from the
+/// threshold and off the centreline (metres; the markings are drawn for a runway this wide) and
+/// height (metres: over the asphalt, under the markings).
+const RUBBER_WEAR: u8 = 0xEF;
+const RUBBER_KINDS: [(usize, u8); 3] = [(110, RUBBER_WEAR), (40, 0x4E), (16, 0x4F)];
+const RUBBER_FROM: f64 = 140.0;
+const RUBBER_TO: f64 = 700.0;
+const RUBBER_TRACK: (f64, f64) = (2.0, 20.0);
+const RUBBER_Y: f32 = 0.6;
 
 /// A helipad at `c` (metres east, north) facing `d`: square pad, white H and touchdown circle,
 /// green perimeter lights (an airfield's, or a new air defence site's in the field).

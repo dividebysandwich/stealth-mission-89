@@ -64,6 +64,7 @@ impl Plugin for ExplosionsPlugin {
                 (
                     spawn_blasts.run_if(resource_exists::<Combat>),
                     damage_trail.run_if(resource_exists::<Combat>),
+                    tyre_smoke.run_if(resource_exists::<Combat>),
                     downwash,
                     vehicle_dust,
                     simulate,
@@ -655,6 +656,76 @@ fn vehicle_dust(
             let life = p.range(1.8, 3.0);
             let size = (p.range(0.7, 1.1), p.range(2.2, 3.2) + speed * 0.03);
             p.puff(pos, vel, life, size, PuffLook::Dust, 0.8, 0.15, 0.25);
+        }
+    }
+}
+
+/// The touchdown's tyre smoke: the least ground speed for any (knots), half the main gear's
+/// track and how far it stands aft of the aircraft's origin (metres).
+const TYRE_SMOKE_KNOTS: f32 = 50.0;
+const MAIN_GEAR: (f32, f32) = (2.0, 1.0);
+
+/// A wheeled touchdown (`Effects::vapour`; not a helicopter's, not a slow one) puffs smoke off
+/// the main wheels as they spin up: a few light grey puffs left behind on the runway, more and
+/// bigger the faster the aircraft. The own aircraft's and the other pilots'.
+fn tyre_smoke(
+    combat: Res<Combat>,
+    mut p: ResMut<Particles>,
+    player: Query<(&crate::flight::Aircraft, &WorldPos), With<crate::flight::Player>>,
+    k: Option<Res<crate::flight::FlightConstants>>,
+    settings: Res<crate::settings::Settings>,
+    // On the ground last frame: the own aircraft (None), the other pilots by id.
+    mut was: Local<std::collections::HashMap<Option<u8>, bool>>,
+) {
+    // The main wheels (Bevy world), the aircraft's forward unit and ground speed (knots).
+    let mut touched: Vec<(DVec3, Quat, f32)> = Vec::new();
+    if let Ok((a, pos)) = player.single()
+        && a.ended.is_none()
+    {
+        let before = was.insert(None, a.on_ground).unwrap_or(true);
+        let heli = k.as_deref().is_some_and(|k| k.heli.is_some());
+        if a.on_ground && !before && a.has_flown && !heli {
+            // The model stands on its position (`AircraftSpec::model_lift` above it).
+            touched.push((pos.0, a.orientation, a.velocity / 27.0));
+        }
+    }
+    let me = combat.sim.active_pilot();
+    let pilots = combat.sim.remote_pilots();
+    was.retain(|id, _| id.is_none_or(|id| pilots.iter().any(|o| o.id == id)));
+    for o in pilots.iter().filter(|o| o.id != me) {
+        let before = was.insert(Some(o.id), o.on_ground).unwrap_or(true);
+        if o.on_ground && !before && !o.helicopter && o.chute.is_none() {
+            let (pos, rot) = crate::sim_render::remote_pose(&combat, o);
+            touched.push((pos, rot, o.view.knots as f32));
+        }
+    }
+    if !settings.effects.vapour {
+        return;
+    }
+    for (at, rot, knots) in touched {
+        if knots < TYRE_SMOKE_KNOTS {
+            continue;
+        }
+        let k = ((knots - TYRE_SMOKE_KNOTS) / 100.0).clamp(0.2, 1.0);
+        let forward = rot * Vec3::NEG_Z;
+        let speed = knots * 0.514;
+        for side in [-1.0, 1.0] {
+            let wheel = at
+                + (rot * Vec3::new(side * MAIN_GEAR.0, 0.0, MAIN_GEAR.1)).as_dvec3()
+                // Clear of the runway's surface (its markings stand up to 0.9 m).
+                + DVec3::Y * 1.2;
+            for _ in 0..3 + (k * 4.0) as usize {
+                // Thrown up and back off the tyre, then left behind as the aircraft rolls on
+                // (a little of its speed carried along).
+                let vel = forward * speed * p.range(0.1, 0.3)
+                    + p.dir(0.0) * 1.5
+                    + Vec3::Y * p.range(0.5, 1.5);
+                let o = wheel + (forward * p.range(-3.0, 0.0)).as_dvec3();
+                let life = p.range(2.0, 3.5);
+                let size = (p.range(0.3, 0.6), p.range(2.0, 3.5) * (0.6 + k));
+                let look = PuffLook::Trail(p.range(0.8, 0.95));
+                p.puff(o, vel, life, size, look, 1.5, 0.3, 0.55);
+            }
         }
     }
 }
