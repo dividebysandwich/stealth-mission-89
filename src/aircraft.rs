@@ -473,7 +473,7 @@ static MH60R: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
+    cockpits: &[(PanelStyle::Mh60r, "cockpit_mh60r")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,

@@ -8,7 +8,8 @@
 //! `build_cockpit_rah66.py`, the AV-8B's by `build_cockpit_av8b.py`, the OH-58D's by
 //! `build_cockpit_oh58.py`, the CH-47F's by `build_cockpit_ch47.py`, the F-22A's by
 //! `build_cockpit_f22.py`, the AH-64D's by `build_cockpit_ah64.py` (the pilot's, `cockpit_ah64.glb`) and
-//! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`)).
+//! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`), the MH-60R's by
+//! `build_cockpit_mh60r.py`).
 //!
 //! Every visible part comes from the model. The game binds behaviour to it by material name
 //! and by object custom properties (glTF extras):
@@ -863,6 +864,7 @@ mod tests {
             (PanelStyle::Ah64Cpg, "cockpit_ah64_cpg", "build_cockpit_ah64_cpg"),
             (PanelStyle::Oh58Cpg, "cockpit_oh58_cpg", "build_cockpit_oh58"),
             (PanelStyle::Rah66Cpg, "cockpit_rah66_cpg", "build_cockpit_rah66"),
+            (PanelStyle::Mh60r, "cockpit_mh60r", "build_cockpit_mh60r"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -900,6 +902,7 @@ mod tests {
             ("cockpit_ah64_cpg", PanelStyle::Ah64Cpg),
             ("cockpit_oh58_cpg", PanelStyle::Oh58Cpg),
             ("cockpit_rah66_cpg", PanelStyle::Rah66Cpg),
+            ("cockpit_mh60r", PanelStyle::Mh60r),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -944,7 +947,7 @@ mod tests {
                 PanelStyle::Ch47 => {
                     vec!["ded", "trackcam_left", "label_NEAR", "screen_rmpd", "screen_rwr"]
                 }
-                PanelStyle::Oh58 | PanelStyle::Oh58Cpg => vec![
+                PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r => vec![
                     "screen_third",
                     "screen_fourth",
                     "ded",

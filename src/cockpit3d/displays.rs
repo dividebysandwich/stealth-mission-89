@@ -36,11 +36,11 @@ const TEXT_SCALE: i32 = 3;
 /// Instrument atlas width (texels), and its height but in [`atlas_rows`]' cockpits.
 const ATLAS: usize = 512;
 
-/// The instrument atlas's height (texels): twice the width in the OH-58D's cockpits, whose
-/// four MFDs' bezel buttons don't fit the square one.
+/// The instrument atlas's height (texels): twice the width in the OH-58D's and the MH-60R's
+/// cockpits, whose four MFDs' bezel buttons don't fit the square one.
 fn atlas_rows(style: PanelStyle) -> usize {
     match style {
-        PanelStyle::Oh58 | PanelStyle::Oh58Cpg => 2 * ATLAS,
+        PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r => 2 * ATLAS,
         _ => ATLAS,
     }
 }
@@ -305,7 +305,8 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::Ah64
         | PanelStyle::Ah64Cpg
         | PanelStyle::Oh58Cpg
-        | PanelStyle::Rah66Cpg => MM_TEXELS,
+        | PanelStyle::Rah66Cpg
+        | PanelStyle::Mh60r => MM_TEXELS,
     }
 }
 
@@ -794,6 +795,7 @@ mod tests {
             PanelStyle::Ah64Cpg,
             PanelStyle::Oh58Cpg,
             PanelStyle::Rah66Cpg,
+            PanelStyle::Mh60r,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

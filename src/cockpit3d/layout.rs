@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py` and `build_cockpit_ah64_cpg.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py` and `build_cockpit_mh60r.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -63,6 +63,11 @@ pub enum PanelStyle {
     /// The RAH-66's copilot/gunner's (rear) cockpit: the pilot's panel with two enlarged MFDs
     /// (no TEDAC), the multipurpose displays outboard of them.
     Rah66Cpg,
+    /// The MH-60R's pilot's (right) seat: side by side, four MFDs across the panel, a pair in
+    /// front of each seat (the pilot's the left and right MFDs, the copilot's the third and
+    /// fourth), the caution/advisory panel and standby instruments between them; the two
+    /// flight management keyboards and the AFCS panel on the centre console.
+    Mh60r,
 }
 
 /// A rectangle in panel pixels.
@@ -315,6 +320,7 @@ impl PanelStyle {
                 | PanelStyle::Ch47
                 | PanelStyle::Ah64
                 | PanelStyle::Ah64Cpg
+                | PanelStyle::Mh60r
         )
     }
 
@@ -322,7 +328,11 @@ impl PanelStyle {
     /// (`MfdSide::Fourth`).
     pub fn mfd_count(self) -> usize {
         match self {
-            PanelStyle::F22 | PanelStyle::C5 | PanelStyle::Oh58 | PanelStyle::Oh58Cpg => 4,
+            PanelStyle::F22
+            | PanelStyle::C5
+            | PanelStyle::Oh58
+            | PanelStyle::Oh58Cpg
+            | PanelStyle::Mh60r => 4,
             PanelStyle::Modern | PanelStyle::Tornado | PanelStyle::Ah64Cpg => 3,
             _ => 2,
         }
@@ -350,6 +360,7 @@ impl PanelLayout {
             PanelStyle::C130 => Self::c130(),
             PanelStyle::Ah64 => Self::ah64(),
             PanelStyle::Ah64Cpg => Self::ah64_cpg(),
+            PanelStyle::Mh60r => Self::mh60r(),
         }
     }
 
@@ -2528,6 +2539,111 @@ impl PanelLayout {
         p
     }
 
+    /// The MH-60R's panel: the UH-60A's (millimetres, x right and y down, life size;
+    /// `tools/models/build_cockpit_mh60r.py`) rearranged after the MH-60R's glass cockpit, its
+    /// origin in front of the pilot (in the right seat; the cabin's centre line is at x -520):
+    /// - Four large MFDs across the panel, a pair in front of each seat: the pilot's left
+    ///   (inboard) and right (outboard) ones, the copilot's (the fourth inboard, the third
+    ///   outboard) mirrored about the centre line.
+    /// - The centre column between the pairs: the caution/advisory panel on top (the warning
+    ///   lights in two rows under the glareshield), under it the standby instruments (the
+    ///   attitude indicator between the airspeed indicator and the altimeter, the AOA and
+    ///   vertical velocity tapes outboard of them), the engine gauges either side of the clock,
+    ///   fuel quantity, the fuel and thrust readouts and the EMV gauge at its foot.
+    /// - BRAKE under the gap between the pilot's MFDs.
+    /// - The centre console between the seats (x >= 1500, centred on x 2000, y growing aft down
+    ///   it): the two flight management keyboards side by side, the pilot's (right) the up-front
+    ///   display's caps round the data entry display over its keyboard (the copilot's dark, only
+    ///   modelled); the AFCS panel (AUTO, HOVER) under them; the caution lights and the
+    ///   countermeasures side by side behind it (the target buttons, modelled, behind them).
+    ///
+    /// Fixed wheels and no flaps or weapons bay: no gear lights, FLAPS or BAY.
+    pub fn mh60r() -> Self {
+        let u = Self::uh60_panel();
+        let items = u
+            .items
+            .iter()
+            .filter(|p| {
+                !matches!(p.elem, Elem::GearLights | Elem::Lamp(LampId::Flaps | LampId::Bay, _))
+            })
+            .map(|p| {
+                let r = p.rect;
+                let at = |x: f32, y: f32| rect(x, y, r.w, r.h);
+                let by = |dx: f32, dy: f32| rect(r.x + dx, r.y + dy, r.w, r.h);
+                let (cx, cy) = (r.x + r.w / 2.0, r.y + r.h / 2.0);
+                use LampId::*;
+                let rect = match p.elem {
+                    // The caution/advisory panel: the warning lights in two rows.
+                    Elem::Lamp(Mw, _) => at(-587.0, -128.0),
+                    Elem::Lamp(Stall, _) => at(-545.0, -128.0),
+                    Elem::Lamp(Fire, _) => at(-519.0, -128.0),
+                    Elem::Lamp(Eng, _) => at(-493.0, -128.0),
+                    Elem::Lamp(Trak, _) => at(-587.0, -112.0),
+                    Elem::Lamp(Ir, _) => at(-565.0, -112.0),
+                    Elem::Lamp(Rad, _) => at(-543.0, -112.0),
+                    Elem::Lamp(Fc, _) => at(-519.0, -112.0),
+                    Elem::Lamp(Jam, _) => at(-495.0, -112.0),
+                    Elem::Lamp(Av, _) => at(-473.0, -112.0),
+                    // The standby instruments.
+                    Elem::Dial(Dial::Aoa) => at(-650.0, -92.0),
+                    Elem::Dial(Dial::Airspeed) => at(-604.0, -92.0),
+                    Elem::Dial(Dial::Altimeter) => at(-478.0, -92.0),
+                    Elem::Dial(Dial::Vvi) => at(-428.0, -92.0),
+                    // The engine gauges either side of the clock.
+                    Elem::Dial(Dial::Rpm) => at(-647.0, -16.0),
+                    Elem::Dial(Dial::Ftit) => at(-597.0, -16.0),
+                    Elem::Dial(Dial::Clock) => at(-541.0, -16.0),
+                    Elem::Dial(Dial::Oil) => at(-487.0, -16.0),
+                    Elem::Dial(Dial::Nozzle) => at(-437.0, -16.0),
+                    Elem::Lamp(Brake, _) => at(-49.0, 125.0),
+                    Elem::Lamp(Auto, _) => at(1940.0, 12.0),
+                    Elem::Lamp(Hover, _) => at(1982.0, 12.0),
+                    // The up-front display's caps round the pilot's data entry display.
+                    _ if cx >= 1900.0 && cy < -100.0 => by(80.0, -5.0),
+                    _ if cx >= 1900.0 && cy < -50.0 => by(80.0, -1.0),
+                    // The caution lights left, the countermeasures right, behind the AFCS panel.
+                    _ if cx >= 1100.0 && cy < 70.0 => by(-95.0, 45.0),
+                    _ if cx >= 1100.0 => by(85.0, -3.0),
+                    // Fuel, the engine readouts and the EMV gauge at the centre column's foot.
+                    _ => by(-664.0, -66.0),
+                };
+                Placed { rect, ..*p }
+            });
+        // The pilot's keyboard under the caps (its letters and digits; the caps above work).
+        let keys = [
+            "1", "2", "3", "A", "B", "C", "4", "5", "6", "D", "E", "F", "7", "8", "9", "CLR", "0",
+            "ENT",
+        ];
+        let keyboard = keys.into_iter().enumerate().map(|(k, label)| Placed {
+            elem: Elem::Label(label, 5, 14),
+            rect: rect(2011.0 + 24.0 * (k % 6) as f32, -54.0 + 16.0 * (k / 6) as f32, 20.0, 13.0),
+            cap: None,
+            round: false,
+        });
+        let afcs = Placed {
+            elem: Elem::Label("AFCS", 47, 33),
+            rect: rect(1898.0, 12.5, 34.0, 13.0),
+            cap: None,
+            round: false,
+        };
+        let items = items.chain(keyboard).chain([afcs]).collect();
+        let (w, h) = (210.0, 210.0 * crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32);
+        let unit = |side, x: f32| MfdUnit { side, screen: rect(x, -75.0, w, h), osbs: true };
+        Self {
+            style: PanelStyle::Mh60r,
+            items,
+            adi: rect(-554.0, -92.0, 68.0, 68.0),
+            mfds: vec![
+                unit(MfdSide::Left, -290.0),
+                unit(MfdSide::Right, 20.0),
+                unit(MfdSide::Third, -1270.0),
+                unit(MfdSide::Fourth, -960.0),
+            ],
+            ded: u.ded.map(|r| rect(r.x + 80.0, -124.0, r.w, r.h)),
+            ..u
+        }
+    }
+
     /// The F-16C's panel (millimetres, x right and y down, unfolded), after the Block 50's:
     /// - The centre column (|x| <= 85): the up-front controls on a pedestal under the HUD
     ///   (y < -46): the round override buttons on top (COM1 = volume, MENU = menu, A-A, A-G),
@@ -2786,7 +2902,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 17] {
+    fn all() -> [PanelLayout; 18] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -2805,6 +2921,7 @@ mod tests {
             PanelLayout::ah64(),
             PanelLayout::ah64_cpg(),
             PanelLayout::rah66_cpg(),
+            PanelLayout::mh60r(),
         ]
     }
 
@@ -2896,6 +3013,7 @@ mod tests {
             PanelLayout::ah64(),
             PanelLayout::ah64_cpg(),
             PanelLayout::rah66_cpg(),
+            PanelLayout::mh60r(),
         ] {
             bezel_buttons_of(&l);
         }

@@ -1,0 +1,1986 @@
+{
+  "faces": [
+    {
+      "control": "HudMode(0)",
+      "key": "Button(Nav, None)",
+      "kind": "cap",
+      "rect": [
+        2011.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "HudMode(1)",
+      "key": "Button(Air, None)",
+      "kind": "cap",
+      "rect": [
+        2031.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "HudMode(2)",
+      "key": "Button(Gnd, None)",
+      "kind": "cap",
+      "rect": [
+        2051.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(DesignateTarget)",
+      "key": "Button(Lock, None)",
+      "kind": "cap",
+      "rect": [
+        2071.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(HudDeclutter)",
+      "key": "Item(Label(\"DCLT\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2091.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Nvg)",
+      "key": "Item(Label(\"NVG\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2111.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Ils)",
+      "key": "Item(Label(\"ILS\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2131.0,
+        -140.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Menu)",
+      "key": "Item(Label(\"MENU\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2011.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Volume)",
+      "key": "Item(Label(\"VOL\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2031.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "TimeToggle",
+      "key": "Item(Label(\"TIME\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2051.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(SelectWaypoint)",
+      "key": "Item(Label(\"STPT\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2071.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(MissionOrders)",
+      "key": "Item(Label(\"ORD\", 5, 14))",
+      "kind": "cap",
+      "rect": [
+        2091.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"COM\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2111.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"IFF\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2131.0,
+        -70.0,
+        18.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(MasterCaution)",
+      "key": "Item(Lamp(Mw, Some(\"MASTER\\nCAUTION\")))",
+      "kind": "cap",
+      "rect": [
+        -587.0,
+        -128.0,
+        40.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Stall, None))",
+      "kind": null,
+      "rect": [
+        -545.0,
+        -128.0,
+        24.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Trak, Some(\"TRACK\")))",
+      "kind": null,
+      "rect": [
+        -587.0,
+        -112.0,
+        20.0,
+        11.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Ir, None))",
+      "kind": null,
+      "rect": [
+        -565.0,
+        -112.0,
+        20.0,
+        11.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Rad, Some(\"LAUNCH\")))",
+      "kind": null,
+      "rect": [
+        -543.0,
+        -112.0,
+        22.0,
+        11.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Fire, Some(\"ENG\\nFIRE\")))",
+      "kind": null,
+      "rect": [
+        -519.0,
+        -128.0,
+        24.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Eng, Some(\"ENGINE\")))",
+      "kind": null,
+      "rect": [
+        -493.0,
+        -128.0,
+        40.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Fc, Some(\"FLCS\")))",
+      "kind": null,
+      "rect": [
+        -519.0,
+        -112.0,
+        22.0,
+        11.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Jam, None))",
+      "kind": null,
+      "rect": [
+        -495.0,
+        -112.0,
+        20.0,
+        11.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Av, None))",
+      "kind": null,
+      "rect": [
+        -473.0,
+        -112.0,
+        20.0,
+        11.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Airspeed))",
+      "kind": null,
+      "rect": [
+        -604.0,
+        -92.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Altimeter))",
+      "kind": null,
+      "rect": [
+        -478.0,
+        -92.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Aoa))",
+      "kind": null,
+      "rect": [
+        -650.0,
+        -92.0,
+        18.0,
+        52.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Vvi))",
+      "kind": null,
+      "rect": [
+        -428.0,
+        -92.0,
+        18.0,
+        52.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Clock))",
+      "kind": null,
+      "rect": [
+        -541.0,
+        -16.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Rpm))",
+      "kind": null,
+      "rect": [
+        -647.0,
+        -16.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Ftit))",
+      "kind": null,
+      "rect": [
+        -597.0,
+        -16.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Oil))",
+      "kind": null,
+      "rect": [
+        -487.0,
+        -16.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Nozzle))",
+      "kind": null,
+      "rect": [
+        -437.0,
+        -16.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Fuel))",
+      "kind": null,
+      "rect": [
+        -594.0,
+        40.0,
+        42.0,
+        42.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Fuel))",
+      "kind": null,
+      "rect": [
+        -546.0,
+        44.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"FUEL\", 47, 79))",
+      "kind": null,
+      "rect": [
+        -514.0,
+        44.0,
+        34.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(LowFuel, Some(\"LOW\\nFUEL\")))",
+      "kind": null,
+      "rect": [
+        -478.0,
+        44.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Thrust))",
+      "kind": null,
+      "rect": [
+        -546.0,
+        62.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"THRUST\", 47, 79))",
+      "kind": null,
+      "rect": [
+        -514.0,
+        62.0,
+        34.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"EGR\\nEAR\", 47, 33))",
+      "kind": null,
+      "rect": [
+        -594.0,
+        92.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "LedBars",
+      "kind": null,
+      "rect": [
+        -572.0,
+        92.0,
+        84.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"EMV\", 47, 33))",
+      "kind": null,
+      "rect": [
+        -486.0,
+        92.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(EmvWarn, None))",
+      "kind": null,
+      "rect": [
+        -464.0,
+        92.0,
+        18.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Brakes)",
+      "key": "Button(Brake, None)",
+      "kind": "cap",
+      "rect": [
+        -49.0,
+        125.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Autopilot)",
+      "key": "Button(Auto, None)",
+      "kind": "cap",
+      "rect": [
+        1940.0,
+        12.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Fuel, None))",
+      "kind": null,
+      "rect": [
+        1855.0,
+        77.0,
+        32.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Bd, None))",
+      "kind": null,
+      "rect": [
+        1890.0,
+        77.0,
+        32.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Blank, None))",
+      "kind": null,
+      "rect": [
+        1925.0,
+        77.0,
+        32.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ELEC\\nSYS\", 16, 43))",
+      "kind": null,
+      "rect": [
+        1855.0,
+        94.0,
+        32.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"HYD\\nPRESS\", 16, 43))",
+      "kind": null,
+      "rect": [
+        1890.0,
+        94.0,
+        32.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OXY\\nLOW\", 16, 43))",
+      "kind": null,
+      "rect": [
+        1925.0,
+        94.0,
+        32.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Chaff)",
+      "key": "Item(Label(\"CHAFF\", 47, 38))",
+      "kind": "cap",
+      "rect": [
+        2053.0,
+        77.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Chaff))",
+      "kind": null,
+      "rect": [
+        2086.0,
+        77.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(ChaffAct, None))",
+      "kind": null,
+      "rect": [
+        2109.0,
+        77.0,
+        16.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Flare)",
+      "key": "Item(Label(\"FLARE\", 47, 38))",
+      "kind": "cap",
+      "rect": [
+        2053.0,
+        94.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Flares))",
+      "kind": null,
+      "rect": [
+        2086.0,
+        94.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(FlareAct, None))",
+      "kind": null,
+      "rect": [
+        2109.0,
+        94.0,
+        16.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Decoy)",
+      "key": "Item(Label(\"DECOY\", 47, 38))",
+      "kind": "cap",
+      "rect": [
+        2053.0,
+        111.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Decoys))",
+      "kind": null,
+      "rect": [
+        2086.0,
+        111.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(DecoyAct, None))",
+      "kind": null,
+      "rect": [
+        2109.0,
+        111.0,
+        16.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Ecm)",
+      "key": "Button(Ecm, None)",
+      "kind": "cap",
+      "rect": [
+        2053.0,
+        131.0,
+        34.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(IrJammer)",
+      "key": "Button(Irj, None)",
+      "kind": "cap",
+      "rect": [
+        2091.0,
+        131.0,
+        34.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Hover)",
+      "key": "Button(Hover, None)",
+      "kind": "cap",
+      "rect": [
+        1982.0,
+        12.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"1\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2011.0,
+        -54.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"2\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2035.0,
+        -54.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"3\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2059.0,
+        -54.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"A\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2083.0,
+        -54.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"B\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2107.0,
+        -54.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"C\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2131.0,
+        -54.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"4\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2011.0,
+        -38.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"5\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2035.0,
+        -38.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"6\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2059.0,
+        -38.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"D\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2083.0,
+        -38.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"E\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2107.0,
+        -38.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"F\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2131.0,
+        -38.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"7\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2011.0,
+        -22.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"8\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2035.0,
+        -22.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"9\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2059.0,
+        -22.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"CLR\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2083.0,
+        -22.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"0\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2107.0,
+        -22.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ENT\", 5, 14))",
+      "kind": null,
+      "rect": [
+        2131.0,
+        -22.0,
+        20.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"AFCS\", 47, 33))",
+      "kind": null,
+      "rect": [
+        1898.0,
+        12.5,
+        34.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 0)",
+      "key": "Osb(Left, 0)",
+      "kind": "osb",
+      "rect": [
+        -275.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 1)",
+      "key": "Osb(Left, 1)",
+      "kind": "osb",
+      "rect": [
+        -233.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 2)",
+      "key": "Osb(Left, 2)",
+      "kind": "osb",
+      "rect": [
+        -191.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 3)",
+      "key": "Osb(Left, 3)",
+      "kind": "osb",
+      "rect": [
+        -149.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 4)",
+      "key": "Osb(Left, 4)",
+      "kind": "osb",
+      "rect": [
+        -107.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 5)",
+      "key": "Osb(Left, 5)",
+      "kind": "osb",
+      "rect": [
+        -275.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 6)",
+      "key": "Osb(Left, 6)",
+      "kind": "osb",
+      "rect": [
+        -233.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 7)",
+      "key": "Osb(Left, 7)",
+      "kind": "osb",
+      "rect": [
+        -191.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 8)",
+      "key": "Osb(Left, 8)",
+      "kind": "osb",
+      "rect": [
+        -149.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 9)",
+      "key": "Osb(Left, 9)",
+      "kind": "osb",
+      "rect": [
+        -107.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 10)",
+      "key": "Osb(Left, 10)",
+      "kind": "osb",
+      "rect": [
+        -304.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 11)",
+      "key": "Osb(Left, 11)",
+      "kind": "osb",
+      "rect": [
+        -304.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 12)",
+      "key": "Osb(Left, 12)",
+      "kind": "osb",
+      "rect": [
+        -304.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 13)",
+      "key": "Osb(Left, 13)",
+      "kind": "osb",
+      "rect": [
+        -304.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 14)",
+      "key": "Osb(Left, 14)",
+      "kind": "osb",
+      "rect": [
+        -304.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 15)",
+      "key": "Osb(Left, 15)",
+      "kind": "osb",
+      "rect": [
+        -76.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 16)",
+      "key": "Osb(Left, 16)",
+      "kind": "osb",
+      "rect": [
+        -76.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 17)",
+      "key": "Osb(Left, 17)",
+      "kind": "osb",
+      "rect": [
+        -76.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 18)",
+      "key": "Osb(Left, 18)",
+      "kind": "osb",
+      "rect": [
+        -76.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Left, 19)",
+      "key": "Osb(Left, 19)",
+      "kind": "osb",
+      "rect": [
+        -76.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 0)",
+      "key": "Osb(Right, 0)",
+      "kind": "osb",
+      "rect": [
+        35.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 1)",
+      "key": "Osb(Right, 1)",
+      "kind": "osb",
+      "rect": [
+        77.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 2)",
+      "key": "Osb(Right, 2)",
+      "kind": "osb",
+      "rect": [
+        119.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 3)",
+      "key": "Osb(Right, 3)",
+      "kind": "osb",
+      "rect": [
+        161.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 4)",
+      "key": "Osb(Right, 4)",
+      "kind": "osb",
+      "rect": [
+        203.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 5)",
+      "key": "Osb(Right, 5)",
+      "kind": "osb",
+      "rect": [
+        35.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 6)",
+      "key": "Osb(Right, 6)",
+      "kind": "osb",
+      "rect": [
+        77.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 7)",
+      "key": "Osb(Right, 7)",
+      "kind": "osb",
+      "rect": [
+        119.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 8)",
+      "key": "Osb(Right, 8)",
+      "kind": "osb",
+      "rect": [
+        161.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 9)",
+      "key": "Osb(Right, 9)",
+      "kind": "osb",
+      "rect": [
+        203.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 10)",
+      "key": "Osb(Right, 10)",
+      "kind": "osb",
+      "rect": [
+        6.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 11)",
+      "key": "Osb(Right, 11)",
+      "kind": "osb",
+      "rect": [
+        6.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 12)",
+      "key": "Osb(Right, 12)",
+      "kind": "osb",
+      "rect": [
+        6.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 13)",
+      "key": "Osb(Right, 13)",
+      "kind": "osb",
+      "rect": [
+        6.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 14)",
+      "key": "Osb(Right, 14)",
+      "kind": "osb",
+      "rect": [
+        6.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 15)",
+      "key": "Osb(Right, 15)",
+      "kind": "osb",
+      "rect": [
+        234.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 16)",
+      "key": "Osb(Right, 16)",
+      "kind": "osb",
+      "rect": [
+        234.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 17)",
+      "key": "Osb(Right, 17)",
+      "kind": "osb",
+      "rect": [
+        234.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 18)",
+      "key": "Osb(Right, 18)",
+      "kind": "osb",
+      "rect": [
+        234.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Right, 19)",
+      "key": "Osb(Right, 19)",
+      "kind": "osb",
+      "rect": [
+        234.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 0)",
+      "key": "Osb(Third, 0)",
+      "kind": "osb",
+      "rect": [
+        -1255.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 1)",
+      "key": "Osb(Third, 1)",
+      "kind": "osb",
+      "rect": [
+        -1213.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 2)",
+      "key": "Osb(Third, 2)",
+      "kind": "osb",
+      "rect": [
+        -1171.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 3)",
+      "key": "Osb(Third, 3)",
+      "kind": "osb",
+      "rect": [
+        -1129.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 4)",
+      "key": "Osb(Third, 4)",
+      "kind": "osb",
+      "rect": [
+        -1087.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 5)",
+      "key": "Osb(Third, 5)",
+      "kind": "osb",
+      "rect": [
+        -1255.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 6)",
+      "key": "Osb(Third, 6)",
+      "kind": "osb",
+      "rect": [
+        -1213.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 7)",
+      "key": "Osb(Third, 7)",
+      "kind": "osb",
+      "rect": [
+        -1171.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 8)",
+      "key": "Osb(Third, 8)",
+      "kind": "osb",
+      "rect": [
+        -1129.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 9)",
+      "key": "Osb(Third, 9)",
+      "kind": "osb",
+      "rect": [
+        -1087.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 10)",
+      "key": "Osb(Third, 10)",
+      "kind": "osb",
+      "rect": [
+        -1284.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 11)",
+      "key": "Osb(Third, 11)",
+      "kind": "osb",
+      "rect": [
+        -1284.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 12)",
+      "key": "Osb(Third, 12)",
+      "kind": "osb",
+      "rect": [
+        -1284.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 13)",
+      "key": "Osb(Third, 13)",
+      "kind": "osb",
+      "rect": [
+        -1284.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 14)",
+      "key": "Osb(Third, 14)",
+      "kind": "osb",
+      "rect": [
+        -1284.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 15)",
+      "key": "Osb(Third, 15)",
+      "kind": "osb",
+      "rect": [
+        -1056.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 16)",
+      "key": "Osb(Third, 16)",
+      "kind": "osb",
+      "rect": [
+        -1056.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 17)",
+      "key": "Osb(Third, 17)",
+      "kind": "osb",
+      "rect": [
+        -1056.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 18)",
+      "key": "Osb(Third, 18)",
+      "kind": "osb",
+      "rect": [
+        -1056.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Third, 19)",
+      "key": "Osb(Third, 19)",
+      "kind": "osb",
+      "rect": [
+        -1056.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 0)",
+      "key": "Osb(Fourth, 0)",
+      "kind": "osb",
+      "rect": [
+        -945.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 1)",
+      "key": "Osb(Fourth, 1)",
+      "kind": "osb",
+      "rect": [
+        -903.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 2)",
+      "key": "Osb(Fourth, 2)",
+      "kind": "osb",
+      "rect": [
+        -861.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 3)",
+      "key": "Osb(Fourth, 3)",
+      "kind": "osb",
+      "rect": [
+        -819.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 4)",
+      "key": "Osb(Fourth, 4)",
+      "kind": "osb",
+      "rect": [
+        -777.0,
+        -86.5,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 5)",
+      "key": "Osb(Fourth, 5)",
+      "kind": "osb",
+      "rect": [
+        -945.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 6)",
+      "key": "Osb(Fourth, 6)",
+      "kind": "osb",
+      "rect": [
+        -903.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 7)",
+      "key": "Osb(Fourth, 7)",
+      "kind": "osb",
+      "rect": [
+        -861.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 8)",
+      "key": "Osb(Fourth, 8)",
+      "kind": "osb",
+      "rect": [
+        -819.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 9)",
+      "key": "Osb(Fourth, 9)",
+      "kind": "osb",
+      "rect": [
+        -777.0,
+        90.13636779785156,
+        12.0,
+        10.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 10)",
+      "key": "Osb(Fourth, 10)",
+      "kind": "osb",
+      "rect": [
+        -974.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 11)",
+      "key": "Osb(Fourth, 11)",
+      "kind": "osb",
+      "rect": [
+        -974.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 12)",
+      "key": "Osb(Fourth, 12)",
+      "kind": "osb",
+      "rect": [
+        -974.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 13)",
+      "key": "Osb(Fourth, 13)",
+      "kind": "osb",
+      "rect": [
+        -974.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 14)",
+      "key": "Osb(Fourth, 14)",
+      "kind": "osb",
+      "rect": [
+        -974.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 15)",
+      "key": "Osb(Fourth, 15)",
+      "kind": "osb",
+      "rect": [
+        -746.0,
+        -64.63636779785156,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 16)",
+      "key": "Osb(Fourth, 16)",
+      "kind": "osb",
+      "rect": [
+        -746.0,
+        -31.909088134765625,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 17)",
+      "key": "Osb(Fourth, 17)",
+      "kind": "osb",
+      "rect": [
+        -746.0,
+        0.8181838989257812,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 18)",
+      "key": "Osb(Fourth, 18)",
+      "kind": "osb",
+      "rect": [
+        -746.0,
+        33.54545593261719,
+        10.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Osb(Fourth, 19)",
+      "key": "Osb(Fourth, 19)",
+      "kind": "osb",
+      "rect": [
+        -746.0,
+        66.27273559570312,
+        10.0,
+        12.0
+      ],
+      "round": false
+    }
+  ],
+  "screens": {
+    "adi": [
+      -554.0,
+      -92.0,
+      68.0,
+      68.0
+    ],
+    "ded": [
+      2020.0,
+      -124.0,
+      120.0,
+      49.864864349365234
+    ],
+    "fourth": [
+      -960.0,
+      -75.0,
+      210.0,
+      163.63636779785156
+    ],
+    "left": [
+      -290.0,
+      -75.0,
+      210.0,
+      163.63636779785156
+    ],
+    "right": [
+      20.0,
+      -75.0,
+      210.0,
+      163.63636779785156
+    ],
+    "third": [
+      -1270.0,
+      -75.0,
+      210.0,
+      163.63636779785156
+    ]
+  }
+}
