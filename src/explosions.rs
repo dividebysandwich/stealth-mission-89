@@ -68,6 +68,7 @@ impl Plugin for ExplosionsPlugin {
                 spawn_blasts.run_if(resource_exists::<Combat>),
                 damage_trail.run_if(resource_exists::<Combat>),
                 tyre_smoke.run_if(resource_exists::<Combat>),
+                catapult_steam.run_if(resource_exists::<Combat>),
                 downwash,
                 vehicle_dust,
                 simulate,
@@ -742,6 +743,70 @@ fn tyre_smoke(
                 let size = (p.range(0.3, 0.6), p.range(2.0, 3.5) * (0.6 + k));
                 let look = PuffLook::Trail(p.range(0.8, 0.95));
                 p.puff(o, vel, life, size, look, 1.5, 0.3, 0.55);
+            }
+        }
+    }
+}
+
+/// Steam puffs a second off each catapult's track while an aircraft is held on it for the launch.
+const STEAM_RATE: f32 = 14.0;
+/// Carriers farther than this from the aircraft (m) do not steam.
+const STEAM_RANGE: f64 = 8000.0;
+
+/// While an aircraft waits on a carrier's catapult (the engines running up, the shooter's
+/// signal), small white puffs of steam leak from the track's groove along its length and drift
+/// up (`Effects::vapour`).
+fn catapult_steam(
+    combat: Res<Combat>,
+    mut p: ResMut<Particles>,
+    time: Res<Time>,
+    player: Query<(&crate::flight::Aircraft, &WorldPos), With<crate::flight::Player>>,
+    theater: Option<Res<crate::world::Theater>>,
+    decks: Res<crate::sea::Decks>,
+    settings: Res<crate::settings::Settings>,
+) {
+    use stealth_sim::catapult::{CATAPULTS, Phase};
+    let dt = time.delta_secs();
+    if !settings.effects.vapour || dt <= 0.0 {
+        return;
+    }
+    let Ok((own, at)) = player.single() else { return };
+    let sim = &combat.sim;
+    let deck_list = theater.as_deref().map_or(&[][..], |t| &t.decks[..]);
+    let deck = crate::sea::DECK_WU as f64;
+    for b in 0..sim.objects().len() {
+        if sim.objects()[b].flags & stealth_sim::oflags::CARRIER == 0 {
+            continue;
+        }
+        let o = sim.objects()[b];
+        if map_point(o.x as f64, o.y as f64, 0.0).with_y(0.0).distance(at.0.with_y(0.0))
+            > STEAM_RANGE
+        {
+            continue;
+        }
+        for cat in 0..CATAPULTS {
+            let phase = crate::catapult_crew::launch_phase(sim, Some(own), b, cat);
+            if !matches!(phase, Some(Phase::Tension | Phase::Shoot)) {
+                continue;
+            }
+            let track = sim.catapult(b, cat);
+            // Whole puffs this frame, the fraction by chance.
+            let due = STEAM_RATE * dt;
+            let n = due.floor() as usize + (p.rand() < due.fract()) as usize;
+            for _ in 0..n {
+                // Along the groove, from the shuttle under the aircraft to the track's end,
+                // most of it near the aircraft.
+                let r = p.rand();
+                let (e, north) = track.along(12.0 + (track.length - 12.0) * (r * r) as f64);
+                let mut pos = crate::world::wu_to_bevy(e, north, deck);
+                if let Some((lift, _)) = crate::sea::on_deck(deck_list, &decks.motion, pos) {
+                    pos.y += lift;
+                }
+                pos.y += 0.5;
+                let vel = Vec3::Y * p.range(0.8, 1.8) + p.dir(0.8) * 0.6;
+                let life = p.range(1.5, 3.0);
+                let size = (p.range(0.5, 0.9), p.range(2.0, 3.2));
+                p.puff(pos, vel, life, size, PuffLook::Trail(0.97), 1.5, 0.3, 0.6);
             }
         }
     }

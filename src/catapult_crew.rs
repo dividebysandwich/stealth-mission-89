@@ -158,7 +158,7 @@ fn despawn(mut commands: Commands, mut crew: ResMut<Crew>) {
 
 /// The phase of the launch on catapult `cat` of carrier `b`: the player's, another pilot's or
 /// an AI aircraft's (the furthest along when there are more).
-fn launch_phase(
+pub(crate) fn launch_phase(
     sim: &stealth_sim::Sim,
     own: Option<&Aircraft>,
     b: usize,

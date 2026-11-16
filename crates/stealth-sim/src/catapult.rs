@@ -17,7 +17,9 @@ pub const CATAPULTS: usize = 4;
 /// World units per metre of nimitz.blend.
 pub const WU_PER_M: f64 = 480.0 / 304.0 * 4.0;
 
-/// The tracks (m, nimitz.blend): the shuttle's start, and the track's forward end.
+/// The tracks (m, nimitz.blend): the shuttle's start, and the track's forward end. In the order
+/// they are taken: the bow's two first, which leave the landing deck free; the waist's two, in
+/// the landing area, only once both are busy (a third aircraft taking off).
 pub const TRACKS: [((f64, f64), (f64, f64)); CATAPULTS] = [
     ((16.7, 28.2), (5.8, 148.0)),
     ((-5.1, 27.7), (-5.1, 148.0)),

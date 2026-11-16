@@ -151,19 +151,25 @@ def landing_lines(marks):
     return lines
 
 
-# The waist catapults' tracks (m: the shuttle's start, the track's forward end), along the
-# angled deck: the source paints only the bow's two. Keep in step with stealth_sim::catapult's
-# `TRACKS` (catapults 3 and 4). Painted as the bow's are: a black slot between hull-grey strips.
-WAIST_CATAPULTS = (((-9.3, -33.4), (-22.3, 50.6)), ((-17.6, -44.9), (-30.6, 39.1)))
+# The catapults' tracks (m: the shuttle's start, the track's forward end): the bow's two as the
+# source paints them, the waist's two along the angled deck (the source paints only the bow's).
+# Keep in step with stealth_sim::catapult's `TRACKS`. Each is a dark groove between steel strips,
+# drawn over the source's thin paint so it shows from the cockpit.
+CATAPULTS = (
+    ((16.7, 28.2), (5.8, 148.0)),
+    ((-5.1, 27.7), (-5.1, 148.0)),
+    ((-9.3, -33.4), (-22.3, 50.6)),
+    ((-17.6, -44.9), (-30.6, 39.1)),
+)
 # (offset to starboard, half width, paint role) of a track's strips (m).
-TRACK_STRIPS = ((0.0, 0.13, BLACK_ROLE), (-0.29, 0.16, HULL_ROLE), (0.29, 0.16, HULL_ROLE))
+TRACK_STRIPS = ((0.0, 0.2, BLACK_ROLE), (-0.36, 0.16, HULL_ROLE), (0.36, 0.16, HULL_ROLE))
 
 
 def catapult_tracks(frame, paints, lift):
-    """The waist catapults' painted tracks, as the deck's marks (`paints`: the day's or the
+    """The catapults' tracks, as the deck's marks (`paints`: the day's or the
     night's colours of the roles; a role without one is not painted)."""
     g = Geo()
-    for a, b in WAIST_CATAPULTS:
+    for a, b in CATAPULTS:
         a, b = Vector(a), Vector(b)
         d = (b - a).normalized()
         n = Vector((d.y, -d.x))

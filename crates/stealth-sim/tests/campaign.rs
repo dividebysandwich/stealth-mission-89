@@ -1349,8 +1349,18 @@ fn ai_jets_launch_from_the_catapults() {
         .map(|k| sim.spawn_ai_mission(b, F16, AiTask::Patrol(to.x, to.y), 300 + k, true))
         .collect();
     let launch = |sim: &Sim, i: usize| AiLaunch::decode(sim.flights()[i].cat);
+    // The bow's catapults first (the landing deck stays free), the waist's for a third and a
+    // fourth.
     let cats: Vec<usize> = units[..4].iter().map(|&i| launch(&sim, i).unwrap().cat).collect();
     assert_eq!(cats, [0, 1, 2, 3]);
+    let o = sim.objects()[b];
+    let (_, pn) = stealth_sim::catapult::pivot(o.x, o.y);
+    let ahead = |c: usize| {
+        (sim.catapult(b, c).north - pn)
+            * if sim.catapult(b, c).heading_rad().cos() > 0.0 { 1.0 } else { -1.0 }
+    };
+    assert!(ahead(0) > 0.0 && ahead(1) > 0.0, "the first two on the bow");
+    assert!(ahead(2) < ahead(0) && ahead(3) < ahead(1), "the waist's behind them");
     assert!(units[..4].iter().all(|&i| launch(&sim, i).unwrap().phase == Phase::Tension));
     assert_eq!(launch(&sim, units[4]).unwrap().phase, Phase::Wait);
     let mut phases: Vec<Vec<Phase>> = vec![Vec::new(); 5];
