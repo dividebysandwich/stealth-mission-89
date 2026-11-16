@@ -293,8 +293,8 @@ pub struct ShipMotion {
 }
 
 /// How a ship `length_m` long, with its own `seed`, rides a sea state `sea` at time `t`.
-/// The response falls with length: a carrier at sea state 7 moves about ±1.5 m, ±1° pitch,
-/// ±2° roll; a frigate several degrees; small boats a lot.
+/// The response falls with length: a carrier at sea state 7 moves about ±2.5 m, ±1.5° pitch,
+/// ±3° roll; a frigate several degrees; small boats a lot.
 pub fn ship_motion(sea: f32, length_m: f32, seed: u32, t: f64) -> ShipMotion {
     let h = wave_height_m(sea);
     if h <= 0.0 {
@@ -306,9 +306,10 @@ pub fn ship_motion(sea: f32, length_m: f32, seed: u32, t: f64) -> ShipMotion {
     let wave_len = 9.81 * period * period / std::f32::consts::TAU;
     // A hull much longer than the waves averages them out.
     let ratio = (wave_len / len).min(1.5);
-    let heave_amp = (0.5 * h * ratio.min(1.0)).min(if len > 250.0 { 1.5 } else { 8.0 });
-    let pitch_amp = (h / len * 0.9 * ratio).min(if len > 250.0 { 1f32.to_radians() } else { 0.2 });
-    let roll_amp = (h / len.sqrt() * 0.12).min(if len > 250.0 { 2f32.to_radians() } else { 0.35 });
+    let heave_amp = (0.5 * h * ratio.min(1.0)).min(if len > 250.0 { 2.5 } else { 8.0 });
+    let pitch_amp =
+        (h / len * 1.3 * ratio).min(if len > 250.0 { 1.5f32.to_radians() } else { 0.2 });
+    let roll_amp = (h / len.sqrt() * 0.12).min(if len > 250.0 { 3f32.to_radians() } else { 0.35 });
     let s = seed as f64;
     let ph = |k: f64| (s * 0.618_034 * k).fract() * std::f64::consts::TAU;
     let w = std::f64::consts::TAU / period as f64;
@@ -390,9 +391,9 @@ mod tests {
             max.pitch = max.pitch.max(m.pitch.abs());
             max.roll = max.roll.max(m.roll.abs());
         }
-        assert!(max.heave <= 1.5 && max.heave > 0.3, "{max:?}");
-        assert!(max.pitch <= 1f32.to_radians() + 1e-6, "{max:?}");
-        assert!(max.roll <= 2f32.to_radians() + 1e-6 && max.roll > 0.2f32.to_radians(), "{max:?}");
+        assert!(max.heave <= 2.5 && max.heave > 0.3, "{max:?}");
+        assert!(max.pitch <= 1.5f32.to_radians() + 1e-6, "{max:?}");
+        assert!(max.roll <= 3f32.to_radians() + 1e-6 && max.roll > 0.2f32.to_radians(), "{max:?}");
         let small = ship_motion(7.0, 30.0, 1, 1.3);
         assert!(small.roll.abs() > 0.0);
         assert_eq!(ship_motion(0.0, 330.0, 1, 3.0), ShipMotion::default());

@@ -15,6 +15,8 @@
 use super::fft::{C, Fft};
 
 pub const G: f32 = 9.81;
+/// The waves' heights over the spectrum's.
+pub const WAVE_GAIN: f32 = 1.35;
 /// JONSWAP peak enhancement.
 const GAMMA: f32 = 3.3;
 
@@ -40,6 +42,8 @@ pub struct SeaParams {
     pub swell: f32,
     /// Horizontal displacement factor (Tessendorf's λ).
     pub choppiness: f32,
+    /// The waves' heights over the spectrum's (a livelier sea than the measured spectra).
+    pub gain: f32,
 }
 
 impl Default for SeaParams {
@@ -51,6 +55,7 @@ impl Default for SeaParams {
             depth_m: 200.0,
             swell: 0.3,
             choppiness: 0.8,
+            gain: WAVE_GAIN,
         }
     }
 }
@@ -200,7 +205,7 @@ impl Cascade {
                     * spread(w, wp, kz.atan2(kx), p)
                     * domega_dk(k, p.depth_m)
                     / k;
-                let a = (s.max(0.0) * dk * dk).sqrt() * 0.5;
+                let a = (s.max(0.0) * dk * dk).sqrt() * 0.5 * p.gain;
                 let (g1, g2) = noise[(y * n + x) % noise.len()];
                 h0[i] = C::new(g1 * a, g2 * a);
             }
@@ -260,7 +265,7 @@ const FOAM_FADE_S: f32 = 1.8;
 const FOAM_RANGE: f32 = 0.08;
 
 fn foam_threshold(wind_ms: f32) -> f32 {
-    if wind_ms < 4.0 { 0.0 } else { (0.655 + 0.011 * wind_ms).min(0.9) }
+    if wind_ms < 4.0 { 0.0 } else { (0.64 + 0.011 * wind_ms).min(0.9) }
 }
 
 impl Sim {
@@ -415,7 +420,7 @@ pub fn significant_height(p: &SeaParams) -> f32 {
         let w = w0 + (i as f32 + 0.5) * dw;
         m0 += jonswap(w, wp, alpha) * tma(w, p.depth_m) * dw;
     }
-    4.0 * m0.sqrt()
+    4.0 * m0.sqrt() * p.gain
 }
 
 #[cfg(test)]

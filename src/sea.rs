@@ -55,7 +55,7 @@ const CARRIER_MATCH: f64 = 64.0;
 /// An aircraft resting on a sinking deck stays on it while it is this close above it (wu).
 pub const DECK_STICK_WU: f32 = 6.0;
 /// A carrier moves at most about this much (heave m, pitch and roll rad), the limits easing in.
-const CARRIER_CAP: (f32, f32, f32) = (1.5, 0.0175, 0.035);
+const CARRIER_CAP: (f32, f32, f32) = (2.5, 0.026, 0.052);
 
 /// The ships' clock (seconds).
 #[derive(Resource, Default)]
@@ -365,7 +365,7 @@ mod tests {
             assert!(((hn - h0) - 100.0 * pitch.sin()).abs() < 1e-3);
             assert!(((he - h0) - 100.0 * roll.sin()).abs() < 1e-3);
             // A carrier's deck stays within a few feet of its height.
-            assert!((h0 - DECK_WU).abs() < 1.6 / WU as f32);
+            assert!((h0 - DECK_WU).abs() < 2.6 / WU as f32);
         }
         assert_eq!(d.surface(&ShipMotion::default(), 50.0, 50.0).0, DECK_WU);
     }
