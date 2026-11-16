@@ -152,7 +152,8 @@ pub fn seed_at(east: f64, north: f64) -> u32 {
     (stealth_mission::wind::mix(k) >> 32) as u32
 }
 
-/// A carrier's deck: the world object (map units) and the ship's pivot (wu east, north).
+/// A carrier's deck: the world object (map units), the ship's pivot (wu east, north) and the
+/// tile object drawn for it (LOD, cell column, row, index), if there is one.
 #[derive(Debug, Clone, Copy)]
 pub struct Deck {
     pub x: i32,
@@ -160,31 +161,55 @@ pub struct Deck {
     pub east: f64,
     pub north: f64,
     pub seed: u32,
+    pub tile: Option<(usize, i32, i32, u16)>,
 }
 
 impl Deck {
-    /// The carriers' decks of a theater: each carrier world object with the tile ship drawn
-    /// for it (its pivot), else the object itself.
+    /// The carriers' decks of a theater: each carrier world object with the tile object drawn
+    /// for it (its pivot: the nearest of the finer levels' objects, whatever its model's class
+    /// — the theaters' carriers are not all of the ship classes), else the object itself.
     pub fn find(t: &crate::world::Theater) -> Vec<Deck> {
-        let ships = t.ships();
+        use stealth_formats::terrain::{GRID_DIM, LEVEL_UNIT};
         t.world
             .objects
             .iter()
             .filter(|o| o.target_flags as u16 & 0x200 != 0)
             .map(|o| {
-                let near = ships
-                    .iter()
-                    .map(|s| {
-                        let (x, y) = s.map_xy();
-                        (s, ((x - o.x as i32) as f64).hypot((y - o.y as i32) as f64))
-                    })
-                    .filter(|&(_, d)| d <= CARRIER_MATCH)
-                    .min_by(|a, b| a.1.total_cmp(&b.1));
-                let (east, north) = match near {
-                    Some((s, _)) => (s.east, s.north),
-                    None => (o.x as f64 * 32.0, (0x8000 as f64 - o.y as f64) * 32.0),
+                let mut best: Option<(f64, (usize, i32, i32, u16), f64, f64)> = None;
+                for lod in 1..=2usize {
+                    let unit = LEVEL_UNIT[lod];
+                    let cell = 4096.0 * unit;
+                    let centre = |c: i32| (c as f64 * 4096.0 + 2048.0) * unit;
+                    // The cells round the object (it may sit near a cell's edge).
+                    let (oe, on) = (o.x as f64 * 32.0, (0x8000 as f64 - o.y as f64) * 32.0);
+                    let (cx, cy) = ((oe / cell).floor() as i32, (on / cell).floor() as i32);
+                    for row in cy - 1..=cy + 1 {
+                        for col in cx - 1..=cx + 1 {
+                            if col < 0 || row < 0 || col >= GRID_DIM[lod] || row >= GRID_DIM[lod] {
+                                continue;
+                            }
+                            let tile = t.grid.tile(lod, col, row) as usize;
+                            let Some(objs) = t.tiles.tiles.get(lod).and_then(|l| l.get(tile))
+                            else {
+                                continue;
+                            };
+                            for (k, obj) in objs.iter().enumerate() {
+                                let east = centre(col) + obj.x as f64 * unit;
+                                let north = centre(row) + obj.y as f64 * unit;
+                                let d = (east / 32.0 - o.x as f64)
+                                    .hypot(0x8000 as f64 - north / 32.0 - o.y as f64);
+                                if d <= CARRIER_MATCH && best.is_none_or(|b| d < b.0) {
+                                    best = Some((d, (lod, col, row, k as u16), east, north));
+                                }
+                            }
+                        }
+                    }
+                }
+                let (east, north, tile) = match best {
+                    Some((_, key, e, n)) => (e, n, Some(key)),
+                    None => (o.x as f64 * 32.0, (0x8000 as f64 - o.y as f64) * 32.0, None),
                 };
-                Deck { x: o.x as i32, y: o.y as i32, east, north, seed: seed_at(east, north) }
+                Deck { x: o.x as i32, y: o.y as i32, east, north, seed: seed_at(east, north), tile }
             })
             .collect()
     }
@@ -330,7 +355,7 @@ mod tests {
 
     #[test]
     fn deck_rises_where_it_tilts_up() {
-        let d = Deck { x: 0, y: 0, east: 0.0, north: 0.0, seed: 3 };
+        let d = Deck { x: 0, y: 0, east: 0.0, north: 0.0, seed: 3, tile: None };
         for i in 0..50 {
             let t = i as f64 * 0.7;
             let m = ship_motion(7.0, CARRIER_LEN_M, d.seed, t);
@@ -370,5 +395,20 @@ mod tests {
         }
         assert!((b.heave - 1.0).abs() < 0.01 && (b.roll - 0.1).abs() < 0.01, "{b:?}");
         assert!(soft(10.0, 1.5) < 1.5 && (soft(0.1, 1.5) - 0.1).abs() < 1e-3);
+    }
+}
+
+#[cfg(test)]
+mod theater_tests {
+    /// Every theater's carriers are drawn by a tile object, found whatever its model's class.
+    #[test]
+    fn carriers_have_their_tile_objects() {
+        for id in ["persian_gulf", "cuba"] {
+            let t = crate::world::Theater::load(id);
+            assert!(!t.decks.is_empty(), "{id}");
+            for d in &t.decks {
+                assert!(d.tile.is_some(), "{id}: deck {d:?} has no tile object");
+            }
+        }
     }
 }

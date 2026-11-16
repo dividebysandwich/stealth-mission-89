@@ -579,7 +579,10 @@ fn stream_tiles(
         let centre = |c: i32| (c as f64 * 4096.0 + 2048.0) * unit;
         let mut entities = Vec::new();
         for (k, o) in objects.iter().enumerate() {
-            let ship = theater.is_ship_shape(o.shape);
+            // A carrier's model rides the sea with its deck, whatever its class.
+            let carrier =
+                theater.decks.iter().position(|d| d.tile == Some((lod, col, row, k as u16)));
+            let ship = theater.is_ship_shape(o.shape) || carrier.is_some();
             if ships_only && !ship {
                 continue;
             }
@@ -641,16 +644,12 @@ fn stream_tiles(
                 // It rides the sea: a carrier as its deck moves for the flight model, any
                 // other ship by its length.
                 let (east, north, _) = bevy_to_wu(pos);
-                let (mx, my) = (east / 32.0, 32768.0 - north / 32.0);
-                let deck = theater
-                    .decks
-                    .iter()
-                    .enumerate()
-                    .find(|(_, d)| (d.x as f64 - mx).hypot(d.y as f64 - my) <= 64.0);
-                let motion = match deck {
-                    Some((i, d)) => {
-                        crate::sea::Ship::new(crate::sea::CARRIER_LEN_M, d.seed, Some(i))
-                    }
+                let motion = match carrier {
+                    Some(i) => crate::sea::Ship::new(
+                        crate::sea::CARRIER_LEN_M,
+                        theater.decks[i].seed,
+                        Some(i),
+                    ),
                     None => {
                         let unit_m =
                             (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
