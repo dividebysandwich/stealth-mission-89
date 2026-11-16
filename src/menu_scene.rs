@@ -1,7 +1,9 @@
 //! The scene behind the main menu: an F-117A on the apron at Tabor on one side of the screen,
 //! the control tower behind it on the other, the menu between them, on a clear full-moon night in
 //! the classic palette with the moon over the field, casting shadows, an RAH-66 hovering on the
-//! menu's right and a few aircraft circling in the distance. In VR the player stands on the apron, life size, with the menu's panel between
+//! menu's right and two aircraft circling in the distance; now and then a C-5 takes off from the
+//! runway, an airliner-high one draws its contrails past the moon or a helicopter crosses in
+//! the distance (`passes`). In VR the player stands on the apron, life size, with the menu's panel between
 //! the tower and the aircraft.
 
 use bevy::input::mouse::AccumulatedMouseMotion;
@@ -31,6 +33,8 @@ impl Plugin for MenuScenePlugin {
                     hover_heli,
                     spawn_traffic,
                     fly_traffic,
+                    schedule_passes,
+                    fly_passes,
                     aircraft_lights,
                     mouse_look,
                     walk,
@@ -154,12 +158,9 @@ const VR_MOON: [f32; 2] = [174.0, 28.0];
 /// Aircraft circling in the distance beyond the field: model number (aircraft file), circle
 /// centre (metres east and north of the tower's foot), radius and altitude (metres), speed (m/s,
 /// positive anticlockwise) and where on the circle it starts (turns from east).
-const TRAFFIC: [(i32, [f32; 6]); 4] = [
+const TRAFFIC: [(i32, [f32; 6]); 2] = [
     (23, [500.0, -650.0, 500.0, 130.0, 90.0, 0.0]),
-    // Its wingman.
-    (23, [500.0, -650.0, 500.0, 130.0, 90.0, -0.05]),
     (24, [1080.0, -1450.0, 900.0, 250.0, -85.0, 0.4]),
-    (23, [1500.0, -1000.0, 1100.0, 350.0, -130.0, 0.7]),
 ];
 /// VR: the player's eye height over the apron (metres); also the standing eye height on the
 /// desktop, where the player walks the apron.
@@ -232,6 +233,7 @@ fn spawn_scene(
     let (cam, moon) = (CAMERA, if settings.vr { VR_MOON } else { MOON });
     commands.insert_resource(MenuScene);
     commands.insert_resource(MenuLook::default());
+    commands.insert_resource(Passes::new());
     crate::world::insert_theater(&mut commands, THEATER, None, &mut streamed, &mut overrides);
     // A night in the classic palette, held still.
     *tod = TimeOfDay::default();
@@ -478,13 +480,17 @@ fn aircraft_lights(
     time: Res<Time>,
     palette: Option<Res<Palette>>,
     aircraft: Query<&Children, Or<(With<SceneAircraft>, With<SceneHeli>)>>,
-    mut states: Query<&mut ModelState, Without<Traffic>>,
-    mut traffic: Query<(&Traffic, &mut ModelState)>,
+    mut states: Query<&mut ModelState, (Without<Traffic>, Without<Passer>)>,
+    mut traffic: Query<
+        (Entity, Option<&Traffic>, &mut ModelState),
+        Or<(With<Traffic>, With<Passer>)>,
+    >,
 ) {
     let lights = palette.is_some_and(|p| p.lights_on()) as i16;
     let t = time.elapsed_secs();
-    for (traffic, mut s) in &mut traffic {
-        let phase = (traffic.0 as f32 * 0.618).fract();
+    for (e, traffic, mut s) in &mut traffic {
+        let n = traffic.map_or(e.index_u32() as usize, |t| t.0);
+        let phase = (n as f32 * 0.618).fract();
         for (slot, v) in crate::sim_render::anticollision(t, phase, true)
             .into_iter()
             .chain([(10, lights), (11, lights)])
@@ -829,6 +835,7 @@ fn despawn_scene(
     }
     commands.remove_resource::<MenuScene>();
     commands.remove_resource::<MenuLook>();
+    commands.remove_resource::<Passes>();
     commands.remove_resource::<Palette>();
 }
 
@@ -861,5 +868,310 @@ mod tests {
         let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
         add_sticks(&mut s, &mut rested, false);
         assert!(!s.moving);
+    }
+}
+
+// --- Passes: the occasional aircraft crossing the scene -----------------------------------------
+
+/// The kinds of pass, each on its own schedule: a C-5 taking off from the runway, a C-5 at
+/// cruise height drawing contrails past the moon, a helicopter crossing in the distance.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum PassKind {
+    Takeoff,
+    Contrail,
+    Heli,
+}
+
+const PASS_KINDS: [PassKind; 3] = [PassKind::Takeoff, PassKind::Contrail, PassKind::Heli];
+
+impl PassKind {
+    /// Seconds before the first pass, and between passes (from one's end to the next start).
+    fn wait(self, first: bool) -> std::ops::Range<f32> {
+        match (self, first) {
+            (PassKind::Takeoff, true) => 15.0..35.0,
+            (PassKind::Takeoff, false) => 120.0..240.0,
+            (PassKind::Contrail, true) => 30.0..60.0,
+            (PassKind::Contrail, false) => 90.0..200.0,
+            (PassKind::Heli, true) => 6.0..20.0,
+            (PassKind::Heli, false) => 50.0..130.0,
+        }
+    }
+}
+
+/// Seconds until each kind's next pass (`PASS_KINDS` order); a kind waits while its pass is
+/// on. `SM89_MENU_PASSES=<takeoff>,<contrail>,<heli>` sets the first waits (screenshots); a
+/// negative one starts that pass at once, that many seconds into it.
+#[derive(Resource)]
+struct Passes([f32; 3]);
+
+impl Passes {
+    fn new() -> Self {
+        let mut wait = PASS_KINDS.map(|k| rand::random_range(k.wait(true)));
+        if let Ok(v) = std::env::var("SM89_MENU_PASSES") {
+            for (w, x) in wait.iter_mut().zip(v.split(',')) {
+                if let Ok(x) = x.trim().parse() {
+                    *w = x;
+                }
+            }
+        }
+        Self(wait)
+    }
+}
+
+/// An aircraft on a pass: its kind, seconds since it began, and how it flies: the take-off's
+/// state (metres east, up, north of the tower's foot, speed m/s, heading and pitch radians), or
+/// a straight line's start, direction and speed (east, north; m/s) at a height.
+#[derive(Component)]
+struct Passer {
+    kind: PassKind,
+    t: f32,
+    pos: Vec3,
+    speed: f32,
+    heading: f32,
+    pitch: f32,
+    dir: Vec2,
+    /// A straight pass ends after this many seconds.
+    length: f32,
+}
+
+/// The take-off: the runway (metres east of the tower) and where the roll starts (north),
+/// southbound; the acceleration on the roll and in the climb (m/s^2), the rotation speed, the
+/// climb angle (radians), the climb speed, when the gear comes up and the turn starts (seconds
+/// after lift-off), the turn's bank and the heading it turns to (radians, clockwise from north).
+const RUNWAY_EAST: f32 = 265.0;
+const ROLL_START: f32 = 1100.0;
+const ROLL_ACCEL: f32 = 2.2;
+const CLIMB_ACCEL: f32 = 0.6;
+const ROTATE: f32 = 70.0;
+const CLIMB: f32 = 0.12;
+const CLIMB_SPEED: f32 = 95.0;
+const GEAR_UP: f32 = 5.0;
+const TURN_AT: f32 = 25.0;
+const TURN_BANK: f32 = 0.3;
+const TURN_TO: f32 = 2.2;
+/// A pass ends this far from the tower (metres).
+const PASS_GONE: f32 = 25_000.0;
+/// The high pass: its height (metres), how far above the moon it crosses (degrees), the half
+/// sweep each side of the moon (degrees) and its speed (m/s).
+const HIGH_ALT: f32 = 8500.0;
+const HIGH_OVER_MOON: f32 = 1.5;
+const HIGH_SWEEP: f32 = 28.0;
+const HIGH_SPEED: f32 = 230.0;
+/// The helicopter's pass: its distance from the viewer (metres), its bearing off the view's
+/// heading (degrees), its height over the ground (metres), its half sweep (degrees) and speed
+/// (m/s).
+const HELI_RANGE: std::ops::Range<f32> = 1200.0..2200.0;
+const HELI_BEARING: std::ops::Range<f32> = -15.0..25.0;
+const HELI_AGL: std::ops::Range<f32> = 60.0..150.0;
+const HELI_SWEEP: f32 = 55.0;
+const HELI_SPEED: f32 = 50.0;
+
+/// Starts each kind's pass when its wait is over (once the models are loaded).
+#[allow(clippy::too_many_arguments)]
+fn schedule_passes(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+    settings: Res<Settings>,
+    mut passes: ResMut<Passes>,
+    on: Query<&Passer>,
+    theater: Option<Res<crate::world::Theater>>,
+) {
+    use crate::aircraft::AircraftKind;
+    let dt = time.delta_secs();
+    let file = library.load(&server, "aircraft");
+    let (viewer, moon) = if settings.vr {
+        (Vec2::from(VR_STAND), VR_MOON)
+    } else {
+        (Vec2::new(CAMERA[0], CAMERA[2]), MOON)
+    };
+    for (i, kind) in PASS_KINDS.into_iter().enumerate() {
+        if on.iter().any(|p| p.kind == kind) {
+            continue;
+        }
+        passes.0[i] -= dt;
+        if passes.0[i] > 0.0 {
+            continue;
+        }
+        let craft = match kind {
+            PassKind::Takeoff | PassKind::Contrail => AircraftKind::C5,
+            PassKind::Heli => [AircraftKind::UH60, AircraftKind::CH47, AircraftKind::AH64]
+                [rand::random_range(0..3)],
+        };
+        let spec = craft.spec();
+        let Some(e) = assets.spawn(&mut commands, &file, spec.model, LEVEL_AIRCRAFT, true) else {
+            return;
+        };
+        let ahead = -passes.0[i];
+        passes.0[i] = rand::random_range(kind.wait(false));
+        let side = if rand::random::<bool>() { 1.0 } else { -1.0 };
+        let mut p = Passer {
+            kind,
+            t: 0.0,
+            pos: Vec3::new(RUNWAY_EAST, 0.0, ROLL_START),
+            speed: 0.0,
+            heading: std::f32::consts::PI,
+            pitch: 0.0,
+            dir: Vec2::ZERO,
+            length: 0.0,
+        };
+        // Nav lights on (12); the gear down (5, 6 as the own model's) or up (13).
+        let mut state = ModelState::default();
+        state.0[12] = 1;
+        match kind {
+            PassKind::Takeoff => {
+                (state.0[5], state.0[6]) = (1, 2);
+                state.0[crate::aircraft::FLAP_SLOT] =
+                    crate::aircraft::flap_slot_value(crate::aircraft::C5_FLAP_ANGLE);
+            }
+            PassKind::Contrail => {
+                // Across the line to the moon, a little above it.
+                let (az, el) = (moon[0].to_radians(), (moon[1] + HIGH_OVER_MOON).to_radians());
+                let range = HIGH_ALT / el.tan();
+                let towards = Vec2::new(az.sin(), az.cos());
+                let half = range * HIGH_SWEEP.to_radians().tan();
+                p.dir = Vec2::new(towards.y, -towards.x) * side;
+                p.pos = (viewer + towards * range - p.dir * half).extend(HIGH_ALT).xzy();
+                (p.speed, p.length) = (HIGH_SPEED, 2.0 * half / HIGH_SPEED);
+                state.0[13] = 1;
+                commands
+                    .entity(e)
+                    .insert(crate::trails::Contrails(crate::aircraft::contrail_emitters(craft)));
+            }
+            PassKind::Heli => {
+                let range = rand::random_range(HELI_RANGE);
+                let az = (CAMERA[3] + rand::random_range(HELI_BEARING)).to_radians();
+                let towards = Vec2::new(az.sin(), az.cos());
+                let half = range * HELI_SWEEP.to_radians().tan();
+                p.dir = Vec2::new(towards.y, -towards.x) * side;
+                let start = viewer + towards * range - p.dir * half;
+                p.pos = start.extend(rand::random_range(HELI_AGL)).xzy();
+                (p.speed, p.length) = (HELI_SPEED, 2.0 * half / HELI_SPEED);
+                // Nose down to fly on.
+                p.pitch = -0.08;
+                state.0[13] = 1;
+            }
+        }
+        if kind != PassKind::Takeoff {
+            p.heading = p.dir.x.atan2(p.dir.y);
+        }
+        let mut bank = 0.0;
+        while p.t < ahead {
+            bank = step(&mut p, &mut state, 0.05);
+        }
+        let scale = crate::player::AIRCRAFT_MODEL_SCALE as f32;
+        // Where it starts (the contrails begin there).
+        let (at, rotation) = place(&p, bank, spec.model_lift, theater.as_deref());
+        commands.entity(e).insert((
+            SceneEntity,
+            WorldPos(at),
+            Transform::from_scale(Vec3::splat(scale)).with_rotation(rotation),
+            state,
+            crate::models::LodRange(if kind == PassKind::Contrail { 2000.0 } else { 200.0 }),
+            ModelLift(spec.model_lift),
+            p,
+        ));
+    }
+}
+
+/// The height of a pass's model's origin over its wheels (`AircraftSpec::model_lift`).
+#[derive(Component)]
+struct ModelLift(f32);
+
+/// Flies the passes: the take-off rolls, rotates, climbs out with the gear and flaps coming up
+/// and turns away; the others fly their straight lines (the helicopter over the ground). Each
+/// is gone at its end.
+fn fly_passes(
+    mut commands: Commands,
+    time: Res<Time>,
+    theater: Option<Res<crate::world::Theater>>,
+    mut q: Query<(Entity, &mut Passer, &ModelLift, &mut WorldPos, &mut Transform, &mut ModelState)>,
+) {
+    let dt = time.delta_secs().min(0.1);
+    for (e, mut p, lift, mut pos, mut tf, mut state) in &mut q {
+        let bank = step(&mut p, &mut state, dt);
+        (pos.0, tf.rotation) = place(&p, bank, lift.0, theater.as_deref());
+        let done = match p.kind {
+            PassKind::Takeoff => p.pos.xz().length() > PASS_GONE,
+            _ => p.t > p.length,
+        };
+        if done {
+            commands.entity(e).despawn();
+        }
+    }
+}
+
+/// A pass's model's place (Bevy metres; `lift` its origin over its wheels; the helicopter
+/// over the ground) and attitude.
+fn place(
+    p: &Passer,
+    bank: f32,
+    lift: f32,
+    theater: Option<&crate::world::Theater>,
+) -> (DVec3, Quat) {
+    let mut world = at_tower(p.pos.x, p.pos.y + lift, p.pos.z);
+    if p.kind == PassKind::Heli
+        && let Some(t) = theater
+    {
+        world.y += t.hills.ground_m(world.x, -world.z) as f64;
+    }
+    let rotation = Quat::from_rotation_y(-p.heading)
+        * Quat::from_rotation_x(p.pitch)
+        * Quat::from_rotation_z(bank);
+    (world, rotation)
+}
+
+/// One step of a pass: its bank.
+fn step(p: &mut Passer, state: &mut ModelState, dt: f32) -> f32 {
+    p.t += dt;
+    let mut bank = 0.0;
+    match p.kind {
+        PassKind::Takeoff => take_off(p, &mut bank, state, dt),
+        PassKind::Contrail | PassKind::Heli => {
+            let at = p.dir * p.speed * dt;
+            p.pos += Vec3::new(at.x, 0.0, at.y);
+        }
+    }
+    bank
+}
+
+/// One step of the take-off: the roll down the runway, the rotation and lift-off, the climb
+/// with the gear coming up and the flaps after it, then a climbing turn; `bank` is set in the
+/// turn.
+fn take_off(p: &mut Passer, bank: &mut f32, state: &mut ModelState, dt: f32) {
+    let airborne = p.pos.y > 0.0 || p.speed >= ROTATE + 4.0;
+    let accel = if airborne { CLIMB_ACCEL } else { ROLL_ACCEL };
+    p.speed = (p.speed + accel * dt).min(CLIMB_SPEED);
+    // The nose comes up from the rotation speed, the climb follows it.
+    let pitch_to = if p.speed >= ROTATE { CLIMB + 0.03 } else { 0.0 };
+    p.pitch += (pitch_to - p.pitch).clamp(-0.03 * dt, 0.03 * dt);
+    let climb = if airborne { (p.pitch - 0.03).max(0.0) } else { 0.0 };
+    let horizontal = p.speed * climb.cos();
+    p.pos += Vec3::new(
+        p.heading.sin() * horizontal * dt,
+        p.speed * climb.sin() * dt,
+        p.heading.cos() * horizontal * dt,
+    );
+    if !airborne {
+        return;
+    }
+    // Seconds since the wheels left: from the climb's height.
+    let up_for = p.pos.y / (p.speed * CLIMB.sin()).max(1.0);
+    if up_for > GEAR_UP && state.0[5] != 0 {
+        (state.0[5], state.0[6], state.0[13]) = (0, -1, 1);
+    }
+    if up_for > 2.0 * GEAR_UP && state.0[crate::aircraft::FLAP_SLOT] != 0 {
+        state.0[crate::aircraft::FLAP_SLOT] = crate::aircraft::flap_slot_value(0.0);
+    }
+    // A climbing left turn (from south towards the south-east) once well clear.
+    if up_for > TURN_AT {
+        let left = p.heading - TURN_TO;
+        if left > 0.0 {
+            *bank = TURN_BANK;
+            let rate = 9.81 * TURN_BANK.tan() / p.speed;
+            p.heading -= (rate * dt).min(left);
+        }
     }
 }

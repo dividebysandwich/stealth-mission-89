@@ -55,12 +55,19 @@ impl Plugin for TrailsPlugin {
         app.add_plugins(MaterialPlugin::<TrailMaterial>::default())
             .init_resource::<Trails>()
             .add_systems(OnExit(AppState::Flight), cleanup)
+            .add_systems(OnExit(AppState::Menu), cleanup)
             .add_systems(
                 Update,
                 update_trails
                     .run_if(resource_exists::<Combat>)
                     .after(CombatSystems)
                     .run_if(in_state(AppState::Flight)),
+            )
+            .add_systems(
+                Update,
+                scene_contrails
+                    .run_if(resource_exists::<crate::palette::Palette>)
+                    .run_if(in_state(AppState::Menu)),
             );
     }
 }
@@ -240,6 +247,69 @@ enum Source {
     RemoteMissile((u8, u8), i32),
     /// Another pilot's damaged aircraft (heavy smoke).
     RemoteSmoke(u8, bool),
+    /// An aircraft of the menu's scene (`Contrails`) and its engine.
+    Scene(Entity, usize),
+}
+
+/// On an aircraft of the menu's scene: it trails contrails from these points (its frame,
+/// metres; its `Transform`'s rotation turns them, not its scale).
+#[derive(Component)]
+pub struct Contrails(pub Vec<Vec3>);
+
+/// The menu scene's contrails: wider than in flight, as they are only ever seen from far below,
+/// and lasting longer.
+const SCENE_CONTRAIL: Style = Style {
+    colour: 15,
+    opacity: 0.55,
+    width: (3.0, 45.0),
+    grow: 60.0,
+    fade_after: 40.0,
+    fade: 80.0,
+    spacing: 150.0,
+    head_alpha: 0.0,
+    fade_in: 0.0,
+};
+
+/// The contrails of the menu scene's aircraft that have `Contrails`.
+#[allow(clippy::too_many_arguments)]
+fn scene_contrails(
+    mut commands: Commands,
+    mut trails: ResMut<Trails>,
+    time: Res<Time>,
+    palette: Res<crate::palette::Palette>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<TrailMaterial>>,
+    mut visibility: Query<&mut Visibility>,
+    aircraft: Query<(Entity, &WorldPos, &Transform, &Contrails)>,
+) {
+    let emitters = aircraft
+        .iter()
+        .flat_map(|(e, pos, tf, c)| {
+            c.0.iter().enumerate().map(move |(k, &o)| {
+                (Source::Scene(e, k), &SCENE_CONTRAIL, pos.0 + (tf.rotation * o).as_dvec3())
+            })
+        })
+        .collect();
+    let mut ctx = Ribbons {
+        commands: &mut commands,
+        meshes: &mut meshes,
+        materials: &mut materials,
+        globals: &palette.globals,
+        sim_objects: false,
+    };
+    for (e, drawn) in drive(&mut trails, emitters, time.elapsed_secs(), &mut ctx) {
+        show(&mut visibility, e, drawn);
+    }
+}
+
+/// What `drive` builds the ribbons with.
+struct Ribbons<'a, 'w, 's> {
+    commands: &'a mut Commands<'w, 's>,
+    meshes: &'a mut Assets<Mesh>,
+    materials: &'a mut Assets<TrailMaterial>,
+    globals: &'a Handle<ShaderBuffer>,
+    /// The ribbons are flight's (`sim_render::SimObject`).
+    sim_objects: bool,
 }
 
 struct Trail {
@@ -451,6 +521,33 @@ fn update_trails(
         }
     }
 
+    let mut ctx = Ribbons {
+        commands: &mut commands,
+        meshes: &mut meshes,
+        materials: &mut materials,
+        globals: &palette.globals,
+        sim_objects: true,
+    };
+    for (e, drawn) in drive(trails, emitters, now, &mut ctx) {
+        show(&mut visibility, e, drawn);
+    }
+}
+
+/// Shows a ribbon once it has a segment (empty meshes upset some GPU drivers).
+fn show(visibility: &mut Query<&mut Visibility>, e: Entity, drawn: bool) {
+    if let Ok(mut v) = visibility.get_mut(e) {
+        v.set_if_neq(if drawn { Visibility::Inherited } else { Visibility::Hidden });
+    }
+}
+
+/// Grows the trails of this frame's emitters, detaches those whose emitter is gone and
+/// rebuilds the ribbons: each ribbon and whether it is drawn.
+fn drive(
+    trails: &mut Trails,
+    emitters: Vec<(Source, &'static Style, DVec3)>,
+    now: f32,
+    ctx: &mut Ribbons,
+) -> Vec<(Entity, bool)> {
     // Detach the trails whose emitter is gone.
     let live: Vec<Source> = emitters.iter().map(|e| e.0).collect();
     let gone: Vec<Source> = trails.active.keys().filter(|k| !live.contains(k)).copied().collect();
@@ -468,29 +565,31 @@ fn update_trails(
             let material = match trails.materials.iter().find(|(k, _)| *k == key) {
                 Some((_, m)) => m.clone(),
                 None => {
-                    let m = materials.add(TrailMaterial {
+                    let m = ctx.materials.add(TrailMaterial {
                         params: Vec4::new(style.colour as f32, style.opacity, 0.0, 0.0),
-                        globals: palette.globals.clone(),
+                        globals: ctx.globals.clone(),
                     });
                     trails.materials.push((key, m.clone()));
                     m
                 }
             };
-            let mesh = meshes
+            let mesh = ctx
+                .meshes
                 .add(Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default()));
-            let entity = commands
-                .spawn((
-                    crate::sim_render::SimObject,
-                    Mesh3d(mesh.clone()),
-                    MeshMaterial3d(material),
-                    WorldPos(p),
-                    Transform::default(),
-                    // Shown once the ribbon has a segment (empty meshes upset some GPU drivers).
-                    Visibility::Hidden,
-                    NoFrustumCulling,
-                    bevy::light::NotShadowCaster,
-                ))
-                .id();
+            let mut entity = ctx.commands.spawn((
+                Mesh3d(mesh.clone()),
+                MeshMaterial3d(material),
+                WorldPos(p),
+                Transform::default(),
+                // Shown once the ribbon has a segment (empty meshes upset some GPU drivers).
+                Visibility::Hidden,
+                NoFrustumCulling,
+                bevy::light::NotShadowCaster,
+            ));
+            if ctx.sim_objects {
+                entity.insert(crate::sim_render::SimObject);
+            }
+            let entity = entity.id();
             trails.active.insert(
                 src,
                 Trail { entity, mesh, style, anchor: p, points: vec![(p, now)], head: None },
@@ -506,16 +605,16 @@ fn update_trails(
     trails.detached.retain(|t| {
         let keep = t.alive(now);
         if !keep {
-            commands.entity(t.entity).try_despawn();
+            ctx.commands.entity(t.entity).try_despawn();
         }
         keep
     });
+    let mut shown = Vec::new();
     for t in trails.active.values_mut().chain(trails.detached.iter_mut()) {
         t.prune(now);
         let drawn = t.drawable()
-            && meshes.get_mut(&t.mesh).map(|mut mesh| t.rebuild(&mut mesh, now)).is_some();
-        if let Ok(mut v) = visibility.get_mut(t.entity) {
-            v.set_if_neq(if drawn { Visibility::Inherited } else { Visibility::Hidden });
-        }
+            && ctx.meshes.get_mut(&t.mesh).map(|mut mesh| t.rebuild(&mut mesh, now)).is_some();
+        shown.push((t.entity, drawn));
     }
+    shown
 }
