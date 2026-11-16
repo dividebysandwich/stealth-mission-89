@@ -581,7 +581,7 @@ pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
         | bit(e.cloud_shadows && modern, FX_CLOUD_SHADOWS)
         | bit(e.flashes, FX_BURST)
         | bit(e.night_sky, FX_SKY)
-        | bit(crate::weather::dry_theater(theater), FX_SAND)
+        | bit(crate::weather::dry_theater(theater) && !ground_detail(settings), FX_SAND)
         | bit(retro.x + retro.y > 0.0, FX_RETRO)
         | bit(modern, FX_MODERN)
         | bit(ground_detail(settings), FX_DETAIL)
