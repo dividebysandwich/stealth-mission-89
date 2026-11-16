@@ -29,6 +29,7 @@ These are not covered by either licence above:
 | `assets/fonts/NotoSans*-Subset.otf` | Noto Sans CJK, Adobe | SIL Open Font License 1.1, see `assets/fonts/README.md` |
 | `assets-src/cmudict/cmudict.dict` (compiled into the program) | CMU Pronouncing Dictionary | BSD-2-Clause, see `assets/LICENSE-cmudict.txt` |
 | `assets/sky/stars.bin` | Yale Bright Star Catalogue | Public scientific data |
+| The aircraft carrier: `assets-src/blend/nimitz.blend` and the carrier models in the theater files (`libya_063/087`, `persian_gulf_073/087`, `desert_storm_073/087`, `middle_east_073/087`, `north_cape_061/072`, `vietnam_075/090`, `cuba_075`, `korea_075`) | ["USS Nimitz class aircraft carrier"](https://skfb.ly/pvWrZ) by Larcenie Grant; reduced, recoloured to the game's palette and rescaled (`tools/models/nimitz.py`, `tools/models/carrier.py`) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
 The Piper voices offered by the spoken air traffic control are not part of the game. They are
 downloaded on request, and the voice dialog shows each voice's licence and credit.
