@@ -286,3 +286,61 @@ fn gunship_missions_find_a_column_clear_of_the_sams() {
     assert!(n >= 40, "only {n} gunship missions");
     assert!(quiet * 100 >= n * 30 && front * 100 >= n * 30, "{quiet} quiet of {n}");
 }
+
+/// The Seahawk's hunts: in every theater with a friendly carrier, each scenario (or the
+/// carrier attack when the theater has no port or ship for it); from and back to the carrier,
+/// the submarines starting on open water some way off what they go for.
+#[test]
+fn asw_hunts_start_from_the_carrier_with_submarines_at_sea() {
+    use stealth_mission::asw::{self, Scenario, SubIntent};
+    let data = data();
+    let mut seen = std::collections::BTreeMap::<String, usize>::new();
+    let mut theaters = 0;
+    for theater in 0..stealth_formats::ALL_THEATERS.len() {
+        let Some(th) = data.theaters.get(theater).filter(|t| !t.world.objects.is_empty()) else { continue };
+        let carrier = th.world.objects.iter().any(|o| {
+            o.flags & world::flags::CARRIER != 0 && o.flags & world::flags::FRIENDLY != 0
+        });
+        for (k, scenario) in [Scenario::Blockade, Scenario::Convoy, Scenario::Carrier].into_iter().enumerate() {
+            let s = MissionSettings { theater, kind: MissionKind::Strike, helicopter: true, opponents: (k % 2) as u8 * 3, ..Default::default() };
+            let Ok(mut m) = generate(&data, &s, Seed::Srand(k as u16 * 911 + 5)) else { continue };
+            asw::for_asw(&mut m, &data, Some(scenario));
+            let name = m.theater_name.clone();
+            if !carrier {
+                assert_ne!(m.primary.mission_type, asw::HUNT, "{name}: no carrier, no hunt");
+                continue;
+            }
+            assert_eq!(m.primary.mission_type, asw::HUNT, "{name} {scenario:?}");
+            let h = m.hunt.as_ref().expect("a hunt");
+            *seen.entry(format!("{:?}", h.scenario)).or_default() += 1;
+            assert!(m.takeoff.carrier && m.landing.carrier, "{name}");
+            assert_eq!(m.primary.base_index, m.takeoff.object_index, "{name}");
+            assert!((30..=120).contains(&h.layer), "{name}");
+            assert!(!h.subs.is_empty() && h.subs.len() <= 2);
+            let cp = (m.takeoff.position.x, m.takeoff.position.y);
+            for sub in &h.subs {
+                assert!(th.is_water(sub.at.0, sub.at.1), "{name} {:?}: sub on land", h.scenario);
+                let d = |a: (i32, i32), b: (i32, i32)| (((a.0 - b.0) as f64).powi(2) + ((a.1 - b.1) as f64).powi(2)).sqrt() / 64.0;
+                match sub.intent {
+                    SubIntent::Attack { object } | SubIntent::Approach { object } | SubIntent::Escort { carrier: object } => {
+                        let o = th.world.objects[object as usize];
+                        let km = d(sub.at, (o.x as i32, o.y as i32));
+                        assert!((20.0..=30.0).contains(&km), "{name}: {km:.0} km from its target");
+                    }
+                    SubIntent::Blockade { goal, .. } => {
+                        assert!(d(goal, cp) < d(sub.at, cp), "{name}: the goal lies toward the carrier");
+                    }
+                }
+            }
+            let again = m.clone();
+            asw::for_asw(&mut m, &data, Some(scenario));
+            assert_eq!(m, again);
+        }
+        theaters += carrier as usize;
+    }
+    println!("hunts: {seen:?} in {theaters} carrier theaters");
+    assert!(theaters >= 8, "{theaters} carrier theaters");
+    assert!(seen.get("Carrier").copied().unwrap_or(0) >= 8);
+    assert!(seen.get("Blockade").copied().unwrap_or(0) >= 3, "{seen:?}");
+    assert!(seen.get("Convoy").copied().unwrap_or(0) >= 3, "{seen:?}");
+}

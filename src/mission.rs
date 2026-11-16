@@ -114,7 +114,8 @@ pub fn settings_for(s: &mut MissionSettings, aircraft: crate::aircraft::Aircraft
 }
 
 /// A generated mission as an aircraft flies it: a troop helicopter's targets as insertions, the
-/// cargo jet's as an airdrop and a delivery, the gunship's as an enemy column to destroy.
+/// cargo jet's as an airdrop and a delivery, the gunship's as an enemy column to destroy, the
+/// Seahawk's as a submarine hunt from a carrier.
 pub fn for_aircraft(m: &mut Mission, data: &GameData, aircraft: crate::aircraft::AircraftKind) {
     if aircraft.spec().transport() {
         stealth_mission::insertion::for_helicopter(m);
@@ -122,6 +123,13 @@ pub fn for_aircraft(m: &mut Mission, data: &GameData, aircraft: crate::aircraft:
         stealth_mission::airlift::for_transport(m, data);
     } else if aircraft.spectre() {
         stealth_mission::gunship::for_gunship(m, data);
+    } else if aircraft.seahawk() {
+        // `--asw-scenario blockade|convoy|carrier` picks the hunt (else the seed does).
+        let choice = std::env::args()
+            .skip_while(|a| a != "--asw-scenario")
+            .nth(1)
+            .and_then(|s| stealth_mission::asw::Scenario::parse(&s));
+        stealth_mission::asw::for_asw(m, data, choice);
     }
 }
 

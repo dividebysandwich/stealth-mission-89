@@ -379,6 +379,9 @@ pub enum Intent {
     Approach { ship: usize },
     /// The same against the carrier.
     Attack { ship: usize },
+    /// The same against one of this carrier's escorts: the nearest ship of its group, picked
+    /// as the hunt starts.
+    Escort { carrier: usize },
 }
 
 /// What a submarine is doing now.
@@ -652,6 +655,42 @@ fn cross(a: [f64; 2], ba: f64, c: [f64; 2], bc: f64) -> Option<([f64; 2], f64, f
     (t > 0.0 && u > 0.0).then(|| ([a[0] + da[0] * t, a[1] + da[1] * t], t, u))
 }
 
+/// A map point (map units, x east, y south) in metres east, north.
+pub fn map_metres(p: (i32, i32)) -> [f64; 2] {
+    [p.0 as f64 * M_PER_MAP, (0x8000 - p.1) as f64 * M_PER_MAP]
+}
+
+impl AswSetup {
+    /// A mission's hunt (`stealth_mission::asw`), if it has one.
+    pub fn of(m: &stealth_mission::Mission) -> Option<Self> {
+        use stealth_mission::asw::SubIntent as I;
+        let h = m.hunt.as_ref()?;
+        let subs = h
+            .subs
+            .iter()
+            .map(|s| SubSetup {
+                at: map_metres(s.at),
+                heading: (s.heading as f64).to_radians(),
+                intent: match s.intent {
+                    I::Blockade { a, b, goal } => {
+                        Intent::Blockade { a: map_metres(a), b: map_metres(b), goal: map_metres(goal) }
+                    }
+                    I::Approach { object } => Intent::Approach { ship: object.max(0) as usize },
+                    I::Attack { object } => Intent::Attack { ship: object.max(0) as usize },
+                    I::Escort { carrier } => Intent::Escort { carrier: carrier.max(0) as usize },
+                },
+                nuclear: s.nuclear,
+            })
+            .collect();
+        let seed = (m.rng.holdrand_entry as u32) ^ (m.rng.holdrand_exit as u32).rotate_left(16);
+        Some(AswSetup {
+            ocean: Ocean { layer: h.layer as f32, sea_state: h.sea_state, bottom: 600.0 },
+            subs,
+            seed,
+        })
+    }
+}
+
 impl Sub {
     fn from_setup(id: u16, s: &SubSetup) -> Self {
         Sub {
@@ -703,11 +742,34 @@ impl Sim {
         self.asw.rng = Some(Rng::new(s.seed | 1));
         for sub in &s.subs {
             let id = self.asw.id();
-            self.asw.subs.push(Sub::from_setup(id, sub));
+            let mut sub = *sub;
+            if let Intent::Escort { carrier } = sub.intent {
+                sub.intent = match self.escort_of(carrier, sub.at) {
+                    Some(ship) => Intent::Approach { ship },
+                    None => Intent::Attack { ship: carrier },
+                };
+            }
+            self.asw.subs.push(Sub::from_setup(id, &sub));
         }
         for i in 0..self.asw.subs.len() {
             self.asw.subs[i].pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
         }
+    }
+
+    /// The carrier's escort nearest `from` (m east, north): a ship of its group, the theater's
+    /// ships near it (`ESCORT_REACH` map units).
+    fn escort_of(&self, carrier: usize, from: [f64; 2]) -> Option<usize> {
+        const ESCORT_REACH: i32 = 768;
+        let c = *self.objects.get(carrier)?;
+        (0..self.objects.len())
+            .filter(|&i| i != carrier && self.is_ship(i as i32))
+            .filter(|&i| {
+                let o = &self.objects[i];
+                (o.x - c.x).abs() < ESCORT_REACH && (o.y - c.y).abs() < ESCORT_REACH && o.flags & oflags::CARRIER == 0
+            })
+            .min_by(|&a, &b| {
+                dist(object_metres(&self.objects[a]), from).total_cmp(&dist(object_metres(&self.objects[b]), from))
+            })
     }
 
     /// The Seahawk crew `player` belongs to: his own aircraft's, or the one he is the
@@ -1028,7 +1090,7 @@ impl Sim {
             }
             let goal = match self.asw.subs[i].intent {
                 Intent::Blockade { goal, .. } => goal,
-                Intent::Approach { ship } | Intent::Attack { ship } => {
+                Intent::Approach { ship } | Intent::Attack { ship } | Intent::Escort { carrier: ship } => {
                     self.objects.get(ship).map_or(self.asw.subs[i].at, object_metres)
                 }
             };
@@ -1106,7 +1168,7 @@ impl Sim {
                         self.lose_hunt(AswResult::Escaped, None);
                     }
                 }
-                Intent::Approach { ship } | Intent::Attack { ship } => {
+                Intent::Approach { ship } | Intent::Attack { ship } | Intent::Escort { carrier: ship } => {
                     if s.posture != Posture::Attack && dist(s.at, goal) < ATTACK_RANGE {
                         let sub = &mut self.asw.subs[i];
                         sub.posture = Posture::Attack;
@@ -1587,8 +1649,10 @@ impl Sim {
             let back = self.pl.id as usize;
             for &k in present {
                 self.activate(k);
-                if self.pl.targets[0].mission_type == HUNT_MISSION {
-                    self.mark_target_reached(0);
+                for t in 0..2 {
+                    if self.pl.targets[t].mission_type == HUNT_MISSION {
+                        self.mark_target_reached(t);
+                    }
                 }
             }
             self.activate(back);

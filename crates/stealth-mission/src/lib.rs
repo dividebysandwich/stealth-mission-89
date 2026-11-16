@@ -1,4 +1,5 @@
 pub mod airlift;
+pub mod asw;
 pub mod gunship;
 pub mod drones;
 mod generator;
@@ -418,6 +419,9 @@ pub struct Mission {
     /// A gunship mission's enemy column ([`gunship::for_gunship`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub column: Option<gunship::Column>,
+    /// An anti-submarine mission's submarines ([`asw::for_asw`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hunt: Option<asw::Hunt>,
 }
 
 fn is_zero(n: &u8) -> bool {
@@ -604,6 +608,7 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
         quiet: false,
         escorts: 0,
         column: None,
+        hunt: None,
     };
     if s.kind == MissionKind::DroneDefense {
         drones::defend(&mut m, data, th)?;

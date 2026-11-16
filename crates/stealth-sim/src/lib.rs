@@ -698,6 +698,9 @@ impl Sim {
         }
         if !sim.opts.campaign {
             sim.column = gunship::MissionColumn::of(m);
+            if let Some(s) = asw::AswSetup::of(m) {
+                sim.start_asw(&s);
+            }
         }
         let st = sim.start_state();
         sim.ingest(&st);
