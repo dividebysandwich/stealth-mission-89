@@ -391,3 +391,24 @@ fn a_campaign_hunt_spawns_off_the_carrier_and_its_sinking_is_the_hunters_objecti
     assert!(!sub(&sim).alive);
     assert!(ev.iter().any(|e| matches!(e, SimEvent::ObjectiveDone { primary: true })));
 }
+
+#[test]
+fn a_buoy_hears_another_sonars_ping() {
+    let mut sim = seahawk();
+    hunt(&mut sim, [HOME[0] + 30_000.0, HOME[1]], 0.0, 60.0, None);
+    drop_at(&mut sim, HOME[0], HOME[1], BuoyKind::Difar, true);
+    drop_at(&mut sim, HOME[0] + 2000.0, HOME[1], BuoyKind::Dicass, true);
+    run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 5.0);
+    let difar = sim.asw().buoys[0].id;
+    let dicass = sim.asw().buoys[1].id;
+    sim.asw_command(0, AswCmd::BuoyMode { id: dicass, active: true }).unwrap();
+    let (mut heard, mut own) = (false, false);
+    for _ in 0..12 {
+        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 1.0);
+        let b = |id| sim.asw().buoys.iter().find(|b| b.id == id).unwrap().sample.clone();
+        heard |= b(difar).heard;
+        own |= b(dicass).heard;
+    }
+    assert!(heard, "the DIFAR heard the DICASS ping");
+    assert!(!own, "the DICASS doesn't count its own");
+}

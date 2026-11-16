@@ -180,6 +180,8 @@ pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: 
         let (x0, x1) = (LEFT + HEADER, RIGHT - 2.0);
         if kind != Some(BuoyKind::Bt) && p.y >= top && p.y < top + h - 12.0 && p.x >= x0 && p.x <= x1 {
             let hz = (p.x - x0) / (x1 - x0) * BINS as f32 * HZ_PER_BIN;
+            // One cursor: the headset hears this sensor alone.
+            ui.cursor.clear();
             ui.cursor.insert(id, hz.round());
             ui.sensor = Some(id);
             ui.audio = Some(id);

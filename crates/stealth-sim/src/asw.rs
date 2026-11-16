@@ -97,6 +97,8 @@ const SHIP_HEARD: f64 = 40_000.0;
 const DIP_RANGE: f64 = 18_000.0;
 /// A submarine hears a ping within this range (m) and evades.
 const COUNTER_DETECT: f64 = 25_000.0;
+/// A sensor hears another's ping within this range (m).
+const PING_HEARD: f64 = 25_000.0;
 
 /// The tracker: bearing lines kept (s), crossing angle needed (rad), fixes fitted (s), a track
 /// dropped without a fix (s).
@@ -239,6 +241,9 @@ pub struct Sample {
     pub lines: Vec<Line>,
     /// It pinged in this second.
     pub ping: bool,
+    /// It heard another sonar's ping in this second (a DICASS or a dipping sonar near it).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub heard: bool,
 }
 
 /// A sonobuoy.
@@ -1597,6 +1602,8 @@ impl Sim {
             d
         };
         let mut sensors: Vec<(u8, u16, [f64; 2], f64, Option<f64>, bool, &mut Sample)> = Vec::new();
+        // The pings this second: who (owner, sensor) and where.
+        let mut pinged: Vec<(u8, u16, [f64; 2])> = Vec::new();
         let dt = 1.0f32;
         for b in self.asw.buoys.iter_mut().filter(|b| b.fall <= 0.0 && b.kind != BuoyKind::Bt) {
             let ping = b.kind == BuoyKind::Dicass && b.active && b.pings > 0 && {
@@ -1607,6 +1614,7 @@ impl Sim {
                 b.ping_in = PING_EVERY;
                 b.pings -= 1;
                 alerts.push(b.at);
+                pinged.push((b.owner, b.id, b.at));
             }
             let di = if b.kind == BuoyKind::Difar { Some(DIFAR_DI) } else { None };
             sensors.push((b.owner, b.id, b.at, b.depth as f64, di, ping, &mut b.sample));
@@ -1623,6 +1631,7 @@ impl Sim {
             if ping {
                 d.ping_in = PING_EVERY;
                 alerts.push(d.at);
+                pinged.push((c.owner, 0, d.at));
             }
             sensors.push((c.owner, 0, d.at, d.depth as f64, Some(DIFAR_DI), ping, &mut d.sample));
         }
@@ -1682,7 +1691,10 @@ impl Sim {
             }
             lines.sort_by(|a, b| b.snr.cmp(&a.snr));
             lines.truncate(4);
-            *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping };
+            let heard = pinged
+                .iter()
+                .any(|&(o, id, p)| (o, id) != (owner, sensor) && dist(p, at) < PING_HEARD);
+            *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping, heard };
         }
         for (o, b) in bearings {
             self.asw.crew_mut(o).bearings.push(b);

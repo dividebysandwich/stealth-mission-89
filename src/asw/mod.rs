@@ -12,7 +12,7 @@
 //! seat is taken): `buoy=difar|dicass|bt[@east,north]` (km from the aircraft), `deep=0|1`,
 //! `active=<n>` (the n-th buoy, from 1, pings), `dip=0|1`, `depth=<m>`, `dipping=0|1` (its
 //! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `torp=<hdg|auto>/<delay>/<pattern>`,
-//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `cursor=<hz>` (the selected sensor's
+//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `cursor=<hz>` (the selected sensor's
 //! listening cursor, in the headset).
 
 pub mod audio;
@@ -772,9 +772,14 @@ fn script(
                     _ => Page::Sonar,
                 }
             }
+            "sensor" => {
+                let n: usize = val.parse().unwrap_or(1);
+                ui.sensor = sim.asw().buoys_of(owner).nth(n.saturating_sub(1)).map(|b| b.id);
+            }
             "cursor" => {
                 ui.sensor = ui.sensor.or_else(|| sim.asw().buoys_of(owner).next().map(|b| b.id));
                 if let Some(id) = ui.sensor {
+                    ui.cursor.clear();
                     ui.cursor.insert(id, val.parse().unwrap_or(50.0));
                     ui.audio = Some(id);
                 }
