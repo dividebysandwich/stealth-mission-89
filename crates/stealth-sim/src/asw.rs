@@ -97,8 +97,16 @@ const SHIP_HEARD: f64 = 40_000.0;
 const DIP_RANGE: f64 = 18_000.0;
 /// A submarine hears a ping within this range (m) and evades.
 const COUNTER_DETECT: f64 = 25_000.0;
+/// Sensor reports a second (each a waterfall's row).
+pub const SENSE_HZ: f64 = 4.0;
+/// A torpedo running in the water: its noise (dB), its screw's line (Hz) on the waterfalls.
+const TORPEDO_LEVEL: f64 = 158.0;
+const TORPEDO_LINE_HZ: u16 = 150;
 /// A sensor hears another's ping within this range (m).
 const PING_HEARD: f64 = 25_000.0;
+/// Where another sonar's ping shows on a waterfall (Hz): the pings are kHz, above its scale, so
+/// each kind of sonar has its line there (a DICASS's, a dipping sonar's).
+pub const PING_LINE_HZ: [u16; 2] = [220, 200];
 
 /// The tracker: bearing lines kept (s), crossing angle needed (rad), fixes fitted (s), a track
 /// dropped without a fix (s).
@@ -229,6 +237,12 @@ pub struct Line {
     /// the waterfall; the tracker takes only the submarines'.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub ship: bool,
+    /// Another sonar's ping (`freqs[0]` its line on the waterfall: `PING_LINE_HZ`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ping: bool,
+    /// A torpedo running: its fast screws cavitating.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub torpedo: bool,
 }
 
 /// A sensor's report of the last second: a waterfall's row.
@@ -1155,8 +1169,13 @@ impl Sim {
         self.move_dips(dt, &helis);
         self.move_torpedoes(dt);
         self.update_mad(&helis);
+        // The sensors report `SENSE_HZ` times a second; the bearings go to the tracker once a
+        // second.
+        let tick = (before * SENSE_HZ).floor() != (self.asw.clock * SENSE_HZ).floor();
+        if tick {
+            self.sense((1.0 / SENSE_HZ) as f32, second);
+        }
         if second {
-            self.sense();
             for h in &helis {
                 self.tracker(h.id as usize);
             }
@@ -1568,11 +1587,19 @@ impl Sim {
 
     /// Once a second: every sensor's report, the bearings for the tracker; pings alert the
     /// submarines that hear them.
-    fn sense(&mut self) {
+    fn sense(&mut self, dt: f32, full: bool) {
         let ocean = self.asw.ocean;
         let noise = ocean.noise();
         let clock = self.asw.clock;
         let subs: Vec<Sub> = self.asw.subs.iter().filter(|s| s.alive && !s.done).cloned().collect();
+        // The torpedoes in the water: where, how deep, which.
+        let torps: Vec<([f64; 2], f64, u16)> = self
+            .asw
+            .torpedoes
+            .iter()
+            .filter(|t| t.phase != TorpPhase::Air)
+            .map(|t| ([t.p[0], t.p[1]], -t.p[2], t.id))
+            .collect();
         // The ships under way within reach of a sensor: (where, noise, tones).
         let ships: Vec<([f64; 2], f64, [u16; 2])> = (0..self.objects.len())
             .filter(|&i| {
@@ -1604,7 +1631,6 @@ impl Sim {
         let mut sensors: Vec<(u8, u16, [f64; 2], f64, Option<f64>, bool, &mut Sample)> = Vec::new();
         // The pings this second: who (owner, sensor) and where.
         let mut pinged: Vec<(u8, u16, [f64; 2])> = Vec::new();
-        let dt = 1.0f32;
         for b in self.asw.buoys.iter_mut().filter(|b| b.fall <= 0.0 && b.kind != BuoyKind::Bt) {
             let ping = b.kind == BuoyKind::Dicass && b.active && b.pings > 0 && {
                 b.ping_in -= dt;
@@ -1649,7 +1675,9 @@ impl Sim {
                     let err = (2.0 + 25.0 / (1.0 + passive)) * DEG;
                     let b = true_b + n1 * err;
                     line.bearing = Some(deg(b));
-                    bearings.push((owner, Bearing { from: at, bearing: b, err, t: clock, sensor }));
+                    if full {
+                        bearings.push((owner, Bearing { from: at, bearing: b, err, t: clock, sensor }));
+                    }
                 }
                 if ping {
                     let reach = if sensor == 0 { DIP_RANGE } else { DICASS_RANGE };
@@ -1672,6 +1700,23 @@ impl Sim {
                     lines.push(line);
                 }
             }
+            // The torpedoes running: their fast screws, cavitating.
+            for &(t_at, t_depth, id) in &torps {
+                let r = dist(at, t_at).max(20.0);
+                let passive = TORPEDO_LEVEL - ocean.loss(r, depth, t_depth) - noise + di.unwrap_or(0.0) - PASSIVE_DT;
+                if passive <= 0.0 {
+                    continue;
+                }
+                let err = (2.0 + 25.0 / (1.0 + passive)) * DEG;
+                let b = bearing(at, t_at) + draw() * err;
+                lines.push(Line {
+                    snr: passive.clamp(-60.0, 60.0) as i8,
+                    bearing: di.map(|_| deg(b)),
+                    freqs: [TORPEDO_LINE_HZ + (id % 6) * 4, 0],
+                    torpedo: true,
+                    ..Default::default()
+                });
+            }
             // The ships: heard (never pinged: the sonars' pings are set for submarines).
             for &(ship_at, level, freqs) in &ships {
                 let r = dist(at, ship_at).max(50.0);
@@ -1691,9 +1736,27 @@ impl Sim {
             }
             lines.sort_by(|a, b| b.snr.cmp(&a.snr));
             lines.truncate(4);
-            let heard = pinged
-                .iter()
-                .any(|&(o, id, p)| (o, id) != (owner, sensor) && dist(p, at) < PING_HEARD);
+            // Other sonars' pings: a line each (with its bearing on a directional sensor).
+            let mut heard = false;
+            for &(o, id, p) in &pinged {
+                let r = dist(p, at);
+                if (o, id) == (owner, sensor) || r >= PING_HEARD {
+                    continue;
+                }
+                heard = true;
+                let snr = PING_SL - ocean.loss(r, depth, 60.0) - noise;
+                lines.push(Line {
+                    snr: snr.clamp(0.0, 60.0) as i8,
+                    bearing: di.map(|_| deg(bearing(at, p))),
+                    freqs: [PING_LINE_HZ[(id == 0) as usize], 0],
+                    ping: true,
+                    ..Default::default()
+                });
+            }
+            // The pings always shown, the four loudest contacts besides.
+            lines.sort_by_key(|l| (!l.ping, -(l.snr as i16)));
+            let pings = lines.iter().filter(|l| l.ping).count();
+            lines.truncate(pings + 4);
             *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping, heard };
         }
         for (o, b) in bearings {

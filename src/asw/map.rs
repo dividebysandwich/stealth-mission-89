@@ -3,8 +3,8 @@
 //! the dipping sonar, the tracker's fixes and tracks (with their course and error), the MAD
 //! marks, the torpedoes, the drops waiting for the aircraft, and the route.
 //!
-//! Touch the sea to add a waypoint after the selected one (or a buoy key first: drop that buoy
-//! there), touch a waypoint to select it, drag it to move it, drag the sea to pan. DEL removes
+//! Touch the sea to add a waypoint after the selected one (or D, C or B first: drop that buoy
+//! there as the aircraft passes), touch a waypoint to select it, drag it to move it, drag the sea to pan. DEL removes
 //! the selected waypoint, CLR the whole route, CTR puts the aircraft back in the middle.
 
 use bevy::prelude::*;
@@ -31,19 +31,24 @@ enum Btn {
     Clear,
     RangeIn,
     RangeOut,
+    /// A buoy of this kind (1 DIFAR, 2 DICASS, 3 BT) to drop at the next point touched.
+    Drop(u8),
 }
 
-fn buttons() -> [(Btn, [f32; 4], &'static str); 5] {
+fn buttons() -> [(Btn, [f32; 8], &'static str); 8] {
     [
-        (Btn::Centre, [300.0, 3.0, 50.0, 19.0], "CTR"),
-        (Btn::Delete, [356.0, 3.0, 50.0, 19.0], "DEL"),
-        (Btn::Clear, [412.0, 3.0, 50.0, 19.0], "CLR"),
-        (Btn::RangeIn, [520.0, 3.0, 50.0, 19.0], "RNG-"),
-        (Btn::RangeOut, [576.0, 3.0, 56.0, 19.0], "RNG+"),
+        (Btn::Drop(1), [176.0, 3.0, 36.0, 19.0, 0.0, 0.0, 0.0, 0.0], "D"),
+        (Btn::Drop(2), [216.0, 3.0, 36.0, 19.0, 0.0, 0.0, 0.0, 0.0], "C"),
+        (Btn::Drop(3), [256.0, 3.0, 36.0, 19.0, 0.0, 0.0, 0.0, 0.0], "B"),
+        (Btn::Centre, [300.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "CTR"),
+        (Btn::Delete, [356.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "DEL"),
+        (Btn::Clear, [412.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "CLR"),
+        (Btn::RangeIn, [520.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "RNG-"),
+        (Btn::RangeOut, [576.0, 3.0, 56.0, 19.0, 0.0, 0.0, 0.0, 0.0], "RNG+"),
     ]
 }
 
-fn inside(r: [f32; 4], p: Vec2) -> bool {
+fn inside(r: [f32; 8], p: Vec2) -> bool {
     p.x >= r[0] && p.x <= r[0] + r[2] && p.y >= r[1] && p.y <= r[1] + r[3]
 }
 
@@ -113,6 +118,10 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &s
                     }
                     Btn::RangeIn => ui.range_km = (ui.range_km / 2.0).max(1.0),
                     Btn::RangeOut => ui.range_km = (ui.range_km * 2.0).min(64.0),
+                    Btn::Drop(n) => {
+                        let kind = BuoyKind::from_key(n);
+                        ui.drop = if ui.drop == kind { None } else { kind };
+                    }
                 }
                 return;
             }
@@ -186,13 +195,19 @@ pub fn draw(
     let at = |p: [f64; 2]| to_screen(ui, c, p);
     stroke_text_at(cv, 8.0, 13.0, "TACTICAL", 10.0, 1.5, YELLOW, Align::Left);
     let rng = format!("{:.0} KM", ui.range_km);
-    stroke_text_at(cv, 130.0, 13.0, &rng, 8.0, 1.2, GREEN, Align::Left);
+    stroke_text_at(cv, 120.0, 13.0, &rng, 8.0, 1.2, GREEN, Align::Left);
     if let Some(kind) = ui.drop {
-        stroke_text_at(cv, 190.0, 13.0, &format!("DROP {}", kind.name()), 8.0, 1.2, YELLOW, Align::Left);
+        let t = format!("TOUCH THE MAP TO DROP A {}", kind.name());
+        stroke_text_at(cv, 320.0, BOTTOM - 10.0, &t, 8.0, 1.2, YELLOW, Align::Centre);
     }
     for (b, r, label) in buttons() {
-        let lit = b == Btn::Centre && ui.centre.is_none();
-        cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, if lit { GREEN } else { GREY });
+        let lit = match b {
+            Btn::Centre => ui.centre.is_none(),
+            Btn::Drop(n) => ui.drop.is_some_and(|k| k.index() as u8 + 1 == n),
+            _ => false,
+        };
+        let col = if matches!(b, Btn::Drop(_)) && lit { YELLOW } else if lit { GREEN } else { GREY };
+        cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, col);
         stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, label, 7.0, 1.1, WHITE, Align::Centre);
     }
     cv.set_clip(0, TOP as i32, 640, BOTTOM as i32);

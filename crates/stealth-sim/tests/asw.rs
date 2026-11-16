@@ -123,7 +123,7 @@ fn difar_bearings_cross_into_a_track_on_the_submarine() {
     assert!(best < 300.0, "nearest track {best:.0} m off; tracks {:?}", c.tracks);
     // Every buoy hears it, with a bearing and its tonal lines.
     for b in sim.asw().buoys.iter() {
-        let l = b.sample.lines.iter().find(|l| !l.ship).expect("heard");
+        let l = b.sample.lines.iter().find(|l| !l.ship && !l.ping).expect("heard");
         assert!(l.bearing.is_some() && l.freqs[0] > 0, "{:?}", b.sample);
     }
 }
@@ -138,7 +138,7 @@ fn the_layer_hides_a_deep_submarine_from_a_shallow_hydrophone() {
     assert!(sub(&sim).depth > 50.0);
     let snr = |deep: bool| {
         let depth = BUOY_DEPTHS[deep as usize];
-        sim.asw().buoys.iter().find(|b| b.depth == depth).and_then(|b| b.sample.lines.iter().find(|l| !l.ship)).map(|l| l.snr)
+        sim.asw().buoys.iter().find(|b| b.depth == depth).and_then(|b| b.sample.lines.iter().find(|l| !l.ship && !l.ping)).map(|l| l.snr)
     };
     assert!(snr(true).is_some(), "the deep one hears it");
     assert!(snr(false).is_none(), "the shallow one doesn't: {:?}", snr(false));
@@ -167,8 +167,8 @@ fn a_dicass_ping_ranges_the_submarine_and_makes_it_run() {
     let id = sim.asw().buoys[0].id;
     sim.asw_command(0, AswCmd::BuoyMode { id, active: true }).unwrap();
     let mut ranged = None;
-    for _ in 0..15 {
-        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 1.0);
+    for _ in 0..60 {
+        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.25);
         if let Some(r) = sim.asw().buoys[0].sample.lines.iter().find_map(|l| l.range) {
             ranged = Some(r);
         }
@@ -222,8 +222,8 @@ fn the_dipping_sonar_goes_down_from_the_hover_and_its_cable_parts_if_it_flies_of
     assert_eq!(crew(&sim).dip.state, DipState::Down);
     sim.asw_command(0, AswCmd::DipMode { active: true }).unwrap();
     let mut echo = false;
-    for _ in 0..12 {
-        run(&mut sim, &at(HOME[0], HOME[1], 15.0, 0.0), 1.0);
+    for _ in 0..48 {
+        run(&mut sim, &at(HOME[0], HOME[1], 15.0, 0.0), 0.25);
         echo |= crew(&sim).dip.sample.lines.iter().any(|l| l.range.is_some());
     }
     assert!(echo, "{:?}", crew(&sim).dip.sample);
@@ -277,6 +277,26 @@ fn a_programmed_torpedo_finds_and_sinks_the_submarine() {
     assert_eq!(sim.asw().result, AswResult::Won);
     assert!(ev.iter().any(|e| matches!(e, SimEvent::AswSplash { kind: 1, .. })), "the entry splash");
     assert!(ev.iter().any(|e| matches!(e, SimEvent::AswSplash { kind: 2, .. })), "the plume");
+}
+
+#[test]
+fn the_buoys_hear_a_torpedo_running_where_it_is() {
+    let mut sim = seahawk();
+    hunt(&mut sim, [HOME[0] + 30_000.0, HOME[1]], 0.0, 30.0, None);
+    drop_at(&mut sim, HOME[0] - 3000.0, HOME[1], BuoyKind::Difar, true);
+    sim.set_loadout(&[(20, 4), (MK54_WEAPON, 1), (MK54_WEAPON, 1)]);
+    let ps = at(HOME[0], HOME[1], 25.0, 0.0);
+    run(&mut sim, &ps, 0.5);
+    sim.asw_command(0, AswCmd::Arm(true)).unwrap();
+    sim.asw_command(0, AswCmd::Release { station: 1 }).unwrap();
+    run(&mut sim, &ps, 20.0);
+    let t = sim.asw().torpedoes[0].p;
+    let b = &sim.asw().buoys[0];
+    let l = b.sample.lines.iter().find(|l| l.torpedo).expect("the torpedo heard");
+    let truth = ((t[0] - b.at[0]).atan2(t[1] - b.at[1]).to_degrees().rem_euclid(360.0)) as i32;
+    let got = l.bearing.expect("its bearing") as i32;
+    let off = ((got - truth + 540) % 360 - 180).abs();
+    assert!(off < 15, "bearing {got}, truly {truth}");
 }
 
 #[test]
@@ -403,12 +423,12 @@ fn a_buoy_hears_another_sonars_ping() {
     let dicass = sim.asw().buoys[1].id;
     sim.asw_command(0, AswCmd::BuoyMode { id: dicass, active: true }).unwrap();
     let (mut heard, mut own) = (false, false);
-    for _ in 0..12 {
-        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 1.0);
+    for _ in 0..48 {
+        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.25);
         let b = |id| sim.asw().buoys.iter().find(|b| b.id == id).unwrap().sample.clone();
-        heard |= b(difar).heard;
+        heard |= b(difar).heard && b(difar).lines.iter().any(|l| l.ping && l.freqs[0] == PING_LINE_HZ[0] && l.bearing.is_some());
         own |= b(dicass).heard;
     }
-    assert!(heard, "the DIFAR heard the DICASS ping");
+    assert!(heard, "the DIFAR heard the DICASS ping, a line with its bearing");
     assert!(!own, "the DICASS doesn't count its own");
 }

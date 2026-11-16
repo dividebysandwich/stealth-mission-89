@@ -4,14 +4,18 @@
 //!
 //! Off any line the cursor hears only the sea: a faint brown noise. On a contact's line (within
 //! `CURSOR_BAND` of one of its tones) that contact comes up:
-//! - a submarine: the hum of its machinery's tone and harmonic (raised four octaves into
-//!   hearing, as the operator's audio processor does) and a slow beat of its screw;
-//! - a surface ship: its screws, the recorded `ship-big1_loop` (the carrier) or
+//! - a submarine: the water's rush past its hull beating slowly with its screw, its machinery's
+//!   hum (its 50 or 60 Hz line) faint under it;
+//! - a surface ship: its screws alone, the recorded `ship-big1_loop` (the carrier) or
 //!   `ship-med1_loop` (the others; made to loop by tools/gen_ship_loops.py), played faster or
-//!   slower with its blade rate, under its machinery's hum.
+//!   slower with its blade rate.
 //!
-//! Another sonar's ping heard by the sensor (`Sample::heard`) plays `sonarbuoy.flac`; the
-//! sensor's own ping a 3.5 kHz tone with its echo after the range's two-way travel time.
+//! A torpedo running: its fast screw, cavitating (the smaller ship's recording run fast, with
+//! a buzz and crackle).
+//!
+//! Another sonar's ping shows as a line on the waterfall (`asw::PING_LINE_HZ`): with the
+//! cursor on it, `sonarbuoy.flac` plays as it is heard. The sensor's own ping sounds as a
+//! 3.5 kHz tone with its echo after the range's two-way travel time.
 
 use std::num::NonZero;
 use std::sync::Arc;
@@ -26,8 +30,12 @@ use crate::settings::AppState;
 
 /// The synthesiser's rate: the recordings' (48 kHz).
 const RATE: u32 = 48_000;
-/// The tonals are heard this many times higher (four octaves).
-const TRANSPOSE: f32 = 16.0;
+/// A torpedo's screws: the smaller ship's recording this many times faster, beating at this
+/// rate (Hz).
+const TORPEDO_SPEED: f64 = 2.4;
+const TORPEDO_BEAT: f32 = 31.0;
+/// A submarine's machinery hum, against its flow noise (subtle).
+const HUM: f32 = 0.06;
 const PING_HZ: f32 = 3500.0;
 const PING_SECS: f32 = 0.35;
 /// Sound in sea water (m/s).
@@ -67,7 +75,7 @@ struct Clips {
     ping: Vec<f32>,
 }
 
-/// One contact as the audio thread plays it (f32 bits): its tone (Hz, as heard), loudness,
+/// One contact as the audio thread plays it (f32 bits): its machinery's tone (Hz), loudness,
 /// blade rate (Hz), and 1.0 for a ship.
 #[derive(Default)]
 struct Voice {
@@ -184,20 +192,34 @@ fn follow(
     let p = &link.params;
     let s = &w.last;
     set(&p.sea, SEA * (1.0 + (s.noise as f32 - 45.0).max(0.0) * 0.05));
+    let off_line = |l: &stealth_sim::asw::Line, hz: f32| {
+        l.freqs.iter().filter(|&&f| f > 0).map(|&f| (f as f32 - hz).abs()).fold(f32::MAX, f32::min)
+    };
     let mut k = 0;
-    for l in &s.lines {
+    for l in s.lines.iter().filter(|l| !l.ping) {
         let Some(hz) = cursor else { break };
         // Only the contacts whose line the cursor is on.
-        let off = l.freqs.iter().map(|&f| (f as f32 - hz).abs()).fold(f32::MAX, f32::min);
+        let off = off_line(l, hz);
         if off > CURSOR_BAND * CURSOR_EDGE || k >= SOURCES {
             continue;
         }
         let g = ((l.snr as f32 + 6.0) / 30.0).clamp(0.0, 0.7) * (-(off / CURSOR_BAND).powi(2)).exp();
         let v = &p.voices[k];
-        set(&v.tone, l.freqs[0] as f32 * TRANSPOSE);
+        set(&v.tone, l.freqs[0] as f32);
         set(&v.gain, g);
         set(&v.blade, l.freqs[1] as f32);
-        set(&v.ship, if !l.ship { 0.0 } else if l.freqs[1] < BIG_BLADE { 2.0 } else { 1.0 });
+        set(
+            &v.ship,
+            if l.torpedo {
+                3.0
+            } else if !l.ship {
+                0.0
+            } else if l.freqs[1] < BIG_BLADE {
+                2.0
+            } else {
+                1.0
+            },
+        );
         k += 1;
     }
     for v in &p.voices[k..] {
@@ -210,7 +232,11 @@ fn follow(
             set(&p.echo_gain, echo.map_or(0.0, |(_, snr)| ((snr as f32) / 40.0).clamp(0.05, 0.5)));
             p.pings.fetch_add(1, Ordering::Relaxed);
         }
-        if s.heard {
+        // Another sonar's ping: heard with the cursor on its line.
+        let on_ping = cursor.is_some_and(|hz| {
+            s.lines.iter().any(|l| l.ping && off_line(l, hz) <= CURSOR_BAND * CURSOR_EDGE)
+        });
+        if on_ping {
             p.heard.fetch_add(1, Ordering::Relaxed);
         }
     }
@@ -301,20 +327,27 @@ impl Synth {
         let st = &mut self.voices[k];
         st.phase[0] = (st.phase[0] + tone * dt).fract();
         st.phase[1] = (st.phase[1] + 2.0 * tone * dt).fract();
-        let hum = (st.phase[0] * tau).sin() * 0.5 + (st.phase[1] * tau).sin() * 0.2;
-        if ship > 0.5 {
-            // The screws as recorded (the big ship's or a smaller one's), at its blade rate, the
-            // machinery's hum under them.
+        if ship > 2.5 {
+            // A torpedo: a small screw turning fast, cavitating hard: the smaller ship's
+            // recording run fast, crackling.
+            let screws = Self::looped(&clips.ship_med, &mut st.pos, TORPEDO_SPEED);
+            st.beat = (st.beat + TORPEDO_BEAT * dt).fract();
+            let buzz = 0.6 + 0.4 * (st.beat * tau).sin();
+            let crackle = if w.abs() > 0.97 { w * 0.6 } else { 0.0 };
+            g * (screws * 4.0 * buzz + crackle)
+        } else if ship > 0.5 {
+            // The screws as recorded (the big ship's or a smaller one's), at its blade rate.
             let clip = if ship > 1.5 { &clips.ship_big } else { &clips.ship_med };
             let speed = (blade / RECORDED_BLADE).clamp(0.6, 1.6) as f64;
-            let screws = Self::looped(clip, &mut st.pos, speed);
-            g * (screws * 4.0 + hum * 0.25)
+            g * Self::looped(clip, &mut st.pos, speed) * 4.0
         } else {
-            // The machinery's hum, a slow soft beat of the screw.
+            // A submarine: the rush of the water past its hull beating slowly with its screw,
+            // its machinery's hum (50 or 60 Hz, as it is) faint under it.
             st.beat = (st.beat + blade / 6.0 * dt).fract();
-            let beat = 0.75 + 0.25 * (st.beat * tau).sin();
+            let beat = 0.7 + 0.3 * (st.beat * tau).sin();
             st.lp += (w - st.lp) * 0.02;
-            g * beat * (hum + st.lp * 0.6)
+            let hum = (st.phase[0] * tau).sin() * 0.8 + (st.phase[1] * tau).sin() * 0.2;
+            g * (beat * st.lp * 5.5 + hum * HUM)
         }
     }
 }
@@ -423,8 +456,9 @@ mod tests {
         };
         let sea = play(0.0, 0.0, 0.0);
         assert!(sea > 0.001 && sea < 0.05, "the sea alone faint: {sea}");
-        assert!(play(800.0, 0.0, 0.5) > 4.0 * sea, "a submarine's hum");
-        assert!(play(960.0, 2.0, 0.5) > 4.0 * sea, "a ship's screws");
+        assert!(play(50.0, 0.0, 0.5) > 4.0 * sea, "a submarine");
+        assert!(play(60.0, 2.0, 0.5) > 4.0 * sea, "a ship's screws");
+        assert!(play(150.0, 3.0, 0.5) > 4.0 * sea, "a torpedo's screw");
         // Another sonar's ping.
         let p = Arc::new(Params::default());
         let mut s = Synth::new(p.clone(), clips.clone());

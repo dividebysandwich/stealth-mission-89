@@ -1,6 +1,6 @@
 //! The SONAR page: a waterfall for each sensor in the water, one under the other (the live
 //! buoys, at most four, and the dipping sonar while it is down). A waterfall's rows are the
-//! sensor's reports, newest at the top, one a second: across it the frequency (0 to 256 Hz),
+//! sensor's reports, newest at the top, four a second (`asw::SENSE_HZ`): across it the frequency (0 to 256 Hz),
 //! the sea's noise as speckle, a submarine's tonal lines bright where it is heard (its
 //! machinery's tone and harmonic, its blade rate), a ping a bright row. Each row's header has the
 //! sensor's kind, number, depth, mode, the strongest contact's signal, bearing, range and
@@ -22,7 +22,7 @@ use crate::station::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
 /// Frequency bins across a waterfall and their width (Hz); rows kept.
 pub const BINS: usize = 128;
 pub const HZ_PER_BIN: f32 = 2.0;
-const ROWS: usize = 200;
+const ROWS: usize = 440;
 /// The page's layout (canvas units): the title bar, the rows' area, the header's width.
 const TOP: f32 = 26.0;
 const BOTTOM: f32 = 452.0;
@@ -57,6 +57,14 @@ impl Waterfall {
             *v = (base + n % 45 + if n % 23 == 0 { 40 } else { 0 }).min(255) as u8;
         }
         for l in &s.lines {
+            // A torpedo's fast screws cavitate: a haze over the upper band.
+            if l.torpedo {
+                let haze = (l.snr as f32 * 3.0).clamp(0.0, 90.0) as u8;
+                for v in row.iter_mut().skip(BINS / 3) {
+                    let n = (self.noise() % 25) as u8;
+                    *v = v.saturating_add(haze.saturating_sub(n));
+                }
+            }
             // A ship's screws cavitate: a broad smear over the low band as well.
             if l.ship {
                 let haze = (l.snr as f32 * 2.5).clamp(0.0, 70.0) as u8;
@@ -67,7 +75,11 @@ impl Waterfall {
             }
             let bright = (110.0 + l.snr as f32 * 12.0).clamp(60.0, 255.0) as u8;
             for (k, &f) in l.freqs.iter().enumerate() {
-                for harmonic in 1..=(if k == 0 { 2 } else { 1 }) {
+                // A ping's line alone (no harmonics, no blade rate).
+                if f == 0 || (l.ping && k > 0) {
+                    continue;
+                }
+                for harmonic in 1..=(if k == 0 && !l.ping { 2 } else { 1 }) {
                     let b = (f as f32 * harmonic as f32 / HZ_PER_BIN).round() as usize;
                     let v = if harmonic == 1 { bright } else { bright.saturating_sub(40) };
                     if b < BINS {
@@ -275,9 +287,10 @@ pub fn draw(
             cv.fill_rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, BLACK);
             profile(cv, crew.layer, x0, y0, x1, y1);
         } else if let Some(w) = falls {
-            let rows = (((y1 - y0) * s) as usize).min(w.rows.len() * s as usize);
+            // A row a texel: four reports a second.
+            let rows = (((y1 - y0) * s) as usize).min(w.rows.len());
             for py in 0..rows {
-                let row = &w.rows[py / s as usize];
+                let row = &w.rows[py];
                 let y = (y0 * s) as usize + py;
                 for pxx in 0..((x1 - x0) * s) as usize {
                     let b = pxx * BINS / ((x1 - x0) * s) as usize;
@@ -312,7 +325,8 @@ pub fn draw(
             for hz in (0..=256).step_by(50) {
                 let x = x0 + (x1 - x0) * hz as f32 / (BINS as f32 * HZ_PER_BIN);
                 cv.line(x as i32, y1 as i32, x as i32, y1 as i32 + 3, GREY);
-                stroke_text_at(cv, x, y1 + 8.0, &hz.to_string(), 5.0, 1.0, GREY, Align::Centre);
+                let label = if hz == 250 { "250 HZ".to_string() } else { hz.to_string() };
+                stroke_text_at(cv, x, y1 + 8.0, &label, 5.0, 1.0, GREY, Align::Centre);
             }
         }
         // The header.

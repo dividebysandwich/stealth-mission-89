@@ -268,13 +268,12 @@ pub fn key(ui: &mut AswUi, k: ConsoleKey, crew: &AswCrew, sim: &stealth_sim::Sim
             ui.page = Page::of(n);
             ui.drop = None;
         }
+        // The keyset drops at once, where the aircraft is (a point on the map: the MAP page's
+        // own drop buttons, then a touch on the map).
         ConsoleKey::Buoy(n) => {
             let Some(kind) = BuoyKind::from_key(n) else { return };
-            if ui.page == Page::Map {
-                ui.drop = if ui.drop == Some(kind) { None } else { Some(kind) };
-            } else {
-                ui.outbox.push(AswCmd::DropBuoy { kind, deep: ui.deep, at: None });
-            }
+            ui.drop = None;
+            ui.outbox.push(AswCmd::DropBuoy { kind, deep: ui.deep, at: None });
         }
         ConsoleKey::Ping => ping(ui, crew, sim, owner),
         ConsoleKey::Dip => {
