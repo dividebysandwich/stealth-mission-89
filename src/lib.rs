@@ -53,6 +53,7 @@ mod goggles;
 mod ground_fire;
 mod ground_radar;
 mod gunner;
+mod asw;
 mod headtrack;
 mod help;
 mod hmd;
@@ -365,6 +366,7 @@ pub fn run() {
             ocean::OceanPlugin,
             station::StationPlugin,
             gunner::GunnerPlugin,
+            asw::AswPlugin,
         ))
         .add_plugins((
             fires::FiresPlugin,

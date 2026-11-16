@@ -778,6 +778,13 @@ impl Sim {
             })
     }
 
+    /// Moves submarine `i` (test aid).
+    pub fn place_sub(&mut self, i: usize, at: [f64; 2]) {
+        if let Some(s) = self.asw.subs.get_mut(i) {
+            s.at = at;
+        }
+    }
+
     /// The Seahawk crew `player` belongs to: his own aircraft's, or the one he is the
     /// operator of.
     pub fn asw_owner(&self, player: u8) -> Option<u8> {

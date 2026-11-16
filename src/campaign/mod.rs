@@ -236,6 +236,8 @@ pub enum Action {
     /// A seat in an aircraft (sitting at another's gunner's console, leaving it, moving
     /// seats, the console itself).
     Crew(CrewCmd),
+    /// A Seahawk crew's sensor command (`asw`).
+    Asw(stealth_sim::asw::AswCmd),
 }
 
 /// The last sortie's debrief.
@@ -1252,6 +1254,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             }
             Action::LeaveAircraft => host.leave_aircraft(sim, me),
             Action::Crew(cmd) => host.crew(sim, me, cmd),
+            Action::Asw(cmd) => sim.asw_command(me.0, cmd).map(|()| Vec::new()),
         };
         match result {
             Ok(ev) => {
@@ -1339,6 +1342,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
                 continue;
             }
             Action::Crew(cmd) => ToServer::Crew(cmd),
+            Action::Asw(cmd) => ToServer::Asw(cmd),
         };
         client.send(&msg);
     }
