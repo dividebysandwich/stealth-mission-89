@@ -202,7 +202,13 @@ pub struct Waypoints {
     /// F8: the WAY page is in edit mode (shown in red) and the keypad moves the selected
     /// waypoint over the map. F7 leaves it.
     pub editing: bool,
+    /// The first points are this many tactical ones (the MH-60R operator's route, `asw`):
+    /// reached within `TACTICAL_REACH`, wherever the leg into them starts.
+    pub tactical: usize,
 }
+
+/// Map units within which a tactical waypoint is reached (1 km).
+const TACTICAL_REACH: f64 = 64.0;
 
 impl Waypoints {
     /// The landing base's index among the waypoints.
@@ -220,6 +226,7 @@ impl Waypoints {
             mission_current: 0,
             anchors,
             editing: false,
+            tactical: 0,
         }
     }
 
@@ -569,6 +576,9 @@ fn waypoint_bearing(pos: &WorldPos, wp: Waypoint) -> u16 {
 /// the route's previous point, the last one for the first) and at least 0x40, so a short route,
 /// such as a logistics sortie's around its base, is not passed all at once.
 fn reach_radius(wps: &Waypoints, i: usize) -> f64 {
+    if i < wps.tactical {
+        return TACTICAL_REACH;
+    }
     let n = wps.points.len();
     let (a, b) = (wps.points[(i + n - 1) % n], wps.points[i]);
     ((b.east - a.east).hypot(b.north - a.north) / 32.0 / 2.0).clamp(64.0, 512.0)

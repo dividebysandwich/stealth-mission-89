@@ -92,6 +92,8 @@ const ACTIVE_DI: f64 = 10.0;
 const LAYER_LOSS: f64 = 15.0;
 /// Active ranges (m): the DICASS's and the dipping sonar's.
 const DICASS_RANGE: f64 = 12_000.0;
+/// Ships farther than this (m) from every sensor are not worked out (their noise is lost there).
+const SHIP_HEARD: f64 = 40_000.0;
 const DIP_RANGE: f64 = 18_000.0;
 /// A submarine hears a ping within this range (m) and evades.
 const COUNTER_DETECT: f64 = 25_000.0;
@@ -221,6 +223,10 @@ pub struct Line {
     pub range: Option<u16>,
     pub doppler: i8,
     pub freqs: [u16; 2],
+    /// A surface ship's noise (else a submarine's): the operator tells them apart by ear and on
+    /// the waterfall; the tracker takes only the submarines'.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ship: bool,
 }
 
 /// A sensor's report of the last second: a waterfall's row.
@@ -467,6 +473,9 @@ pub struct AswCrew {
     /// The route (world units east, north) and its revision (counts up with each change).
     pub route: Vec<(i32, i32)>,
     pub route_rev: u16,
+    /// The mission's own waypoints after it, as the pilot's aircraft has them (for the operator).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mission: Vec<(i32, i32)>,
     pub program: TorpProgram,
     /// The release is armed (the operator's ARM; the pilot's own pickle needs none).
     pub armed: bool,
@@ -614,6 +623,8 @@ pub enum AswCmd {
     Release { station: u8 },
     /// The route, whole (world units east, north), at this revision.
     Route { rev: u16, points: Vec<(i32, i32)> },
+    /// The pilot's client: the mission's waypoints after the route (world units east, north).
+    Mission { points: Vec<(i32, i32)> },
 }
 
 /// A Seahawk as the sensors need it: position (m east, north), height above the sea (m), speed
@@ -969,6 +980,10 @@ impl Sim {
                 }
                 self.activate(back);
                 if ok { Ok(()) } else { Err(text!("asw-no-torpedo")) }
+            }
+            AswCmd::Mission { points } => {
+                self.asw.crew_mut(owner).mission = points.into_iter().take(32).collect();
+                Ok(())
             }
             AswCmd::Route { rev, points } => {
                 let c = self.asw.crew_mut(owner);
@@ -1553,6 +1568,21 @@ impl Sim {
         let noise = ocean.noise();
         let clock = self.asw.clock;
         let subs: Vec<Sub> = self.asw.subs.iter().filter(|s| s.alive && !s.done).cloned().collect();
+        // The ships under way within reach of a sensor: (where, noise, tones).
+        let ships: Vec<([f64; 2], f64, [u16; 2])> = (0..self.objects.len())
+            .filter(|&i| {
+                let o = &self.objects[i];
+                o.flags & oflags::DESTROYED == 0 && (o.flags & oflags::CARRIER != 0 || self.is_ship(i as i32))
+            })
+            .map(|i| {
+                let o = &self.objects[i];
+                let carrier = o.flags & oflags::CARRIER != 0;
+                let level = if carrier { 168.0 } else { 156.0 + (i % 5) as f64 };
+                let tones = if carrier { [60, 11] } else { [47 + (i % 9) as u16 * 3, 14 + (i % 6) as u16 * 2] };
+                (object_metres(o), level, tones)
+            })
+            .filter(|(at, ..)| self.asw.buoys.iter().any(|b| dist(*at, b.at) < SHIP_HEARD) || self.asw.crews.iter().any(|c| c.dip.wet() && dist(*at, c.dip.at) < SHIP_HEARD))
+            .collect();
         let mut alerts: Vec<[f64; 2]> = Vec::new();
         let mut bearings: Vec<(u8, Bearing)> = Vec::new();
         let mut fixes: Vec<(u8, Fix)> = Vec::new();
@@ -1633,8 +1663,25 @@ impl Sim {
                     lines.push(line);
                 }
             }
+            // The ships: heard (never pinged: the sonars' pings are set for submarines).
+            for &(ship_at, level, freqs) in &ships {
+                let r = dist(at, ship_at).max(50.0);
+                let passive = level - ocean.loss(r, depth, 5.0) - noise + di.unwrap_or(0.0) - PASSIVE_DT;
+                if passive <= 0.0 {
+                    continue;
+                }
+                let err = (2.0 + 25.0 / (1.0 + passive)) * DEG;
+                let b = bearing(at, ship_at) + draw() * err;
+                lines.push(Line {
+                    snr: passive.clamp(-60.0, 60.0) as i8,
+                    bearing: di.map(|_| deg(b)),
+                    freqs,
+                    ship: true,
+                    ..Default::default()
+                });
+            }
             lines.sort_by(|a, b| b.snr.cmp(&a.snr));
-            lines.truncate(3);
+            lines.truncate(4);
             *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping };
         }
         for (o, b) in bearings {

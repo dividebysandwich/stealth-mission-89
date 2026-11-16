@@ -123,7 +123,7 @@ fn difar_bearings_cross_into_a_track_on_the_submarine() {
     assert!(best < 300.0, "nearest track {best:.0} m off; tracks {:?}", c.tracks);
     // Every buoy hears it, with a bearing and its tonal lines.
     for b in sim.asw().buoys.iter() {
-        let l = b.sample.lines.first().expect("heard");
+        let l = b.sample.lines.iter().find(|l| !l.ship).expect("heard");
         assert!(l.bearing.is_some() && l.freqs[0] > 0, "{:?}", b.sample);
     }
 }
@@ -138,7 +138,7 @@ fn the_layer_hides_a_deep_submarine_from_a_shallow_hydrophone() {
     assert!(sub(&sim).depth > 50.0);
     let snr = |deep: bool| {
         let depth = BUOY_DEPTHS[deep as usize];
-        sim.asw().buoys.iter().find(|b| b.depth == depth).and_then(|b| b.sample.lines.first()).map(|l| l.snr)
+        sim.asw().buoys.iter().find(|b| b.depth == depth).and_then(|b| b.sample.lines.iter().find(|l| !l.ship)).map(|l| l.snr)
     };
     assert!(snr(true).is_some(), "the deep one hears it");
     assert!(snr(false).is_none(), "the shallow one doesn't: {:?}", snr(false));
@@ -331,6 +331,20 @@ fn a_submarine_through_the_blockade_fails_the_hunt() {
     }
     assert_eq!(sim.asw().result, AswResult::Escaped);
     assert!(sub(&sim).at[1] > a[1]);
+}
+
+#[test]
+fn the_buoys_hear_the_ships_too_but_the_tracker_leaves_them_out() {
+    let mut sim = seahawk();
+    let ship = (3..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
+    let at_ship = object_metres(&sim.objects()[ship]);
+    hunt(&mut sim, [at_ship[0] + 30_000.0, at_ship[1]], 0.0, 30.0, None);
+    drop_at(&mut sim, at_ship[0] + 3000.0, at_ship[1], BuoyKind::Difar, false);
+    drop_at(&mut sim, at_ship[0], at_ship[1] + 3000.0, BuoyKind::Difar, false);
+    run(&mut sim, &at(at_ship[0], at_ship[1] - 5000.0, 60.0, 0.0), 30.0);
+    let b = &sim.asw().buoys[0];
+    assert!(b.sample.lines.iter().any(|l| l.ship && l.bearing.is_some()), "{:?}", b.sample);
+    assert!(crew(&sim).tracks.is_empty(), "{:?}", crew(&sim).tracks);
 }
 
 #[test]

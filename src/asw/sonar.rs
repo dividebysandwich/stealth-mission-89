@@ -57,6 +57,14 @@ impl Waterfall {
             *v = (base + n % 45 + if n % 23 == 0 { 40 } else { 0 }).min(255) as u8;
         }
         for l in &s.lines {
+            // A ship's screws cavitate: a broad smear over the low band as well.
+            if l.ship {
+                let haze = (l.snr as f32 * 2.5).clamp(0.0, 70.0) as u8;
+                for v in row.iter_mut().take(BINS * 2 / 3) {
+                    let n = (self.noise() % 20) as u8;
+                    *v = v.saturating_add(haze.saturating_sub(n));
+                }
+            }
             let bright = (110.0 + l.snr as f32 * 12.0).clamp(60.0, 255.0) as u8;
             for (k, &f) in l.freqs.iter().enumerate() {
                 for harmonic in 1..=(if k == 0 { 2 } else { 1 }) {
@@ -162,12 +170,29 @@ fn inside(r: [f32; 4], p: Vec2) -> bool {
 }
 
 /// A touch on the page.
-pub fn click(ui: &mut AswUi, p: Vec2, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
+pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
+    use crate::cockpit3d::DragPhase;
+    // On a waterfall (pressed or dragged): its listening cursor there, the sensor in the
+    // headset.
+    let list = sensors(sim.asw(), crew, owner);
+    for (k, &(id, kind)) in list.iter().enumerate() {
+        let (top, h) = row_band(k, list.len());
+        let (x0, x1) = (LEFT + HEADER, RIGHT - 2.0);
+        if kind != Some(BuoyKind::Bt) && p.y >= top && p.y < top + h - 12.0 && p.x >= x0 && p.x <= x1 {
+            let hz = (p.x - x0) / (x1 - x0) * BINS as f32 * HZ_PER_BIN;
+            ui.cursor.insert(id, hz.round());
+            ui.sensor = Some(id);
+            ui.audio = Some(id);
+            return;
+        }
+    }
+    if phase != DragPhase::Start {
+        return;
+    }
     if inside(DEPTH_BUTTON, p) {
         ui.deep = !ui.deep;
         return;
     }
-    let list = sensors(sim.asw(), crew, owner);
     for (k, &(id, kind)) in list.iter().enumerate() {
         let (top, h) = row_band(k, list.len());
         if p.y < top || p.y >= top + h {
@@ -264,6 +289,21 @@ pub fn draw(
                     }
                 }
             }
+        }
+        // The listening cursor, and what is near it.
+        if let Some(&hz) = ui.cursor.get(&id).filter(|_| kind != Some(BuoyKind::Bt)) {
+            let x = x0 + (x1 - x0) * hz / (BINS as f32 * HZ_PER_BIN);
+            cv.stroke(Vec2::new(x, y0), Vec2::new(x, y1), 1.2, YELLOW);
+            let near = falls.and_then(|w| {
+                w.last.lines.iter().find(|l| l.freqs.iter().any(|&f| (f as f32 - hz).abs() <= 4.0))
+            });
+            let t = match near {
+                Some(l) => format!("{hz:.0} HZ {:+}", l.snr),
+                None => format!("{hz:.0} HZ"),
+            };
+            let tx = if x > x1 - 60.0 { x - 4.0 } else { x + 4.0 };
+            let al = if x > x1 - 60.0 { Align::Right } else { Align::Left };
+            stroke_text_at(cv, tx, y0 + 7.0, &t, 6.0, 1.0, YELLOW, al);
         }
         // The frequency scale under it.
         if kind != Some(BuoyKind::Bt) {

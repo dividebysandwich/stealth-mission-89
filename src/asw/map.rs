@@ -312,6 +312,18 @@ pub fn draw(
         cv.ring(s, 3.0, 1.4, col);
         cv.stroke(s, ray(s, t.heading as f32, 9.0), 1.2, col);
     }
+    // The mission's own waypoints (flown after the route), grey.
+    let mission: Vec<Vec2> = crew.mission.iter().map(|&w| at(wp_metres(w))).collect();
+    for w in mission.windows(2) {
+        cv.dashed(w[0], w[1], 6.0, 4.0, 0.8, GREY);
+    }
+    if let (Some(last), Some(first)) = (ui.route.last(), mission.first()) {
+        cv.dashed(at(wp_metres(*last)), *first, 6.0, 4.0, 0.8, GREY);
+    }
+    for (i, s) in mission.iter().enumerate() {
+        cv.rect(s.x as i32 - 3, s.y as i32 - 3, 6, 6, GREY);
+        stroke_text_at(cv, s.x + 7.0, s.y + 8.0, &format!("M{}", i + 1), 5.0, 1.0, GREY, Align::Left);
+    }
     // The route.
     let pts: Vec<Vec2> = ui.route.iter().map(|&w| at(wp_metres(w))).collect();
     if let Some((p, _)) = here

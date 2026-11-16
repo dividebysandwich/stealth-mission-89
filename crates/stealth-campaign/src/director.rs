@@ -1945,8 +1945,10 @@ impl CampaignState {
                 | MissionKind::Awacs
                 | MissionKind::Resupply => 0,
                 MissionKind::Escort | MissionKind::Logistics | MissionKind::Airlift => 1,
+                // The carrier group's only hunt, for the only aircraft that flies it.
+                MissionKind::Asw => 1,
                 MissionKind::Interdiction => 2,
-                MissionKind::Cap | MissionKind::AntiShip | MissionKind::Asw => 3,
+                MissionKind::Cap | MissionKind::AntiShip => 3,
                 _ => 4 + front_index(&front, &o.objective),
             };
             let mut keep: Vec<usize> = (0..offers.len()).collect();

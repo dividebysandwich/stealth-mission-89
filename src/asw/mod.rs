@@ -12,7 +12,8 @@
 //! seat is taken): `buoy=difar|dicass|bt[@east,north]` (km from the aircraft), `deep=0|1`,
 //! `active=<n>` (the n-th buoy, from 1, pings), `dip=0|1`, `depth=<m>`, `dipping=0|1` (its
 //! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `torp=<hdg|auto>/<delay>/<pattern>`,
-//! `arm`, `release`, `page=sonar|wpn|map`, `audio`.
+//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `cursor=<hz>` (the selected sensor's
+//! listening cursor, in the headset).
 
 pub mod audio;
 pub mod effects;
@@ -124,6 +125,8 @@ pub struct AswUi {
     pub falls: HashMap<u16, sonar::Waterfall>,
     /// The sensor in the headset.
     pub audio: Option<u16>,
+    /// Each sensor's listening cursor on its waterfall (Hz): the band heard.
+    pub cursor: HashMap<u16, f32>,
     /// A line shown on the status screen for a while.
     pub notice: Option<(String, f32)>,
     pub outbox: Vec<AswCmd>,
@@ -154,6 +157,7 @@ impl Default for AswUi {
             station: 1,
             falls: HashMap::new(),
             audio: None,
+            cursor: HashMap::new(),
             notice: None,
             outbox: Vec::new(),
             dip_pending: false,
@@ -331,11 +335,7 @@ fn release(ui: &mut AswUi, sim: &stealth_sim::Sim, owner: u8) {
 /// A touch on the main display (canvas units).
 fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
     match ui.page {
-        Page::Sonar => {
-            if phase == DragPhase::Start {
-                sonar::click(ui, p, crew, sim, owner);
-            }
-        }
+        Page::Sonar => sonar::click(ui, p, phase, crew, sim, owner),
         Page::Wpn => {
             if phase == DragPhase::Start {
                 wpn::click(ui, p, crew, sim, owner);
@@ -378,16 +378,31 @@ fn send(
 fn route_sync(
     combat: Option<Res<Combat>>,
     settings: Res<crate::settings::Settings>,
+    manning: Option<Res<Manning>>,
     mut wps: Option<ResMut<crate::hud::Waypoints>>,
+    mut ui: ResMut<AswUi>,
     mut seen: Local<Option<(u16, Vec<crate::hud::Waypoint>, Vec<usize>)>>,
 ) {
     let (Some(combat), Some(wps)) = (combat, wps.as_deref_mut()) else { return };
-    if !settings.aircraft.seahawk() {
+    // A remote operator's own waypoints are his parked aircraft's: not the crew's.
+    if !settings.aircraft.seahawk() || manning.as_deref().is_some_and(|m| m.remote_gunner()) {
         return;
     }
     let me = combat.sim.active_pilot();
-    let Some(crew) = combat.sim.asw().crew(me) else { return };
+    let Some(crew) = combat.sim.asw().crew(me) else {
+        // The crew begins with the first command; the mission's route goes with it.
+        if !wps.points.is_empty() && ui.outbox.is_empty() {
+            let points = wps.points.iter().map(|w| (w.east as i32, w.north as i32)).collect();
+            ui.outbox.push(AswCmd::Mission { points });
+        }
+        return;
+    };
     let (rev, base, anchors) = seen.get_or_insert_with(|| (0, wps.points.clone(), wps.anchors.clone()));
+    // The operator sees the mission's waypoints too.
+    let mission: Vec<(i32, i32)> = base.iter().map(|w| (w.east as i32, w.north as i32)).collect();
+    if crew.mission != mission && !ui.outbox.iter().any(|c| matches!(c, AswCmd::Mission { .. })) {
+        ui.outbox.push(AswCmd::Mission { points: mission });
+    }
     if crew.route_rev == *rev {
         return;
     }
@@ -409,6 +424,7 @@ fn route_sync(
     *wps = crate::hud::Waypoints::planned(points, anchors);
     wps.current = current;
     wps.editing = editing;
+    wps.tactical = n;
 }
 
 /// The main display.
@@ -754,6 +770,13 @@ fn script(
                     "wpn" => Page::Wpn,
                     "map" => Page::Map,
                     _ => Page::Sonar,
+                }
+            }
+            "cursor" => {
+                ui.sensor = ui.sensor.or_else(|| sim.asw().buoys_of(owner).next().map(|b| b.id));
+                if let Some(id) = ui.sensor {
+                    ui.cursor.insert(id, val.parse().unwrap_or(50.0));
+                    ui.audio = Some(id);
                 }
             }
             "audio" => {
