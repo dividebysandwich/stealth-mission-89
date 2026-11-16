@@ -2235,8 +2235,8 @@ fn hsd_picture(p: &MfdParams, c: &mut Canvas, view: HsdView) {
                 }
             }
             ContactKind::Ship => {
-                // A hull with its superstructure.
-                let colour = if k.friendly { GREEN } else { RED };
+                // A hull with its superstructure, friendly ones blue.
+                let colour = if k.friendly { BLUE } else { RED };
                 c.polyline(
                     &[
                         q + Vec2::new(-7.0, -1.0),

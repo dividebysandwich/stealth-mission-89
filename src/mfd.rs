@@ -1866,7 +1866,7 @@ impl MfdParams<'_, '_> {
                 }
                 ContactKind::GroundRadar => tac_icon(c, TacIcon::Radar, x, y, k > 1),
                 ContactKind::Ship => {
-                    let colour = if ct.friendly { 10 } else { 41 };
+                    let colour = if ct.friendly { 9 } else { 41 };
                     c.hline(x - 2 * k, x + 2 * k, y, colour);
                     c.hline(x - k, x + k, y - 1, colour);
                 }

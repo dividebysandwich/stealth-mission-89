@@ -1350,9 +1350,9 @@ impl ZoneDisplay {
     }
 }
 
-/// How near a friendly ship (map units) a theater ship counts as its escort (the theaters
-/// place a carrier's escorts some 200 units out, other ships over 900).
-const ESCORT_REACH: i32 = 512;
+/// How near a friendly ship or carrier (map units) a theater ship counts as its escort (the
+/// theaters place a carrier's escorts some 200-600 units out, other ships over 900).
+const ESCORT_REACH: i32 = 768;
 
 /// What a launch zone was found for: the HUD mode, the locks and the selected store.
 type ZoneKey = (Option<HudMode>, Option<usize>, Option<usize>, Option<u8>, Option<usize>, bool);
@@ -1726,7 +1726,8 @@ fn publish(
         // Friendly where the world has a friendly or neutral object (a carrier), or near a
         // friendly or neutral ship (a carrier's escorts).
         let friendly = objects.iter().enumerate().any(|(i, o)| {
-            let reach = if sim.object_is_ship(i) { ESCORT_REACH } else { 2 };
+            let ship = sim.object_is_ship(i) || o.flags & oflags::CARRIER != 0;
+            let reach = if ship { ESCORT_REACH } else { 2 };
             (o.x - x).abs() < reach
                 && (o.y - y).abs() < reach
                 && o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) != 0
