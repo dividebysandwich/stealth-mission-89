@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = SKYSKYGGER
 fm-effect-ground-detail = TERRÆNDETALJER
 fm-effect-glass = SPEJLINGER I GLAS
 fm-effect-water = SPEJLINGER I VAND
+fm-effect-ocean-waves = HAVBØLGER
 fm-effect-vapour = DAMP OG STØV
 fm-effect-night-sky = NATTEHIMMEL
 fm-effect-vga = VGA-FARVER

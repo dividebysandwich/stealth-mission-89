@@ -642,18 +642,20 @@ fn stream_tiles(
                 // other ship by its length.
                 let (east, north, _) = bevy_to_wu(pos);
                 let (mx, my) = (east / 32.0, 32768.0 - north / 32.0);
-                let deck =
-                    theater.decks.iter().find(|d| (d.x as f64 - mx).hypot(d.y as f64 - my) <= 64.0);
+                let deck = theater
+                    .decks
+                    .iter()
+                    .enumerate()
+                    .find(|(_, d)| (d.x as f64 - mx).hypot(d.y as f64 - my) <= 64.0);
                 let motion = match deck {
-                    Some(d) => crate::sea::Ship { len: crate::sea::CARRIER_LEN_M, seed: d.seed },
+                    Some((i, d)) => {
+                        crate::sea::Ship::new(crate::sea::CARRIER_LEN_M, d.seed, Some(i))
+                    }
                     None => {
                         let unit_m =
                             (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
                         let len = assets.raised_size(gltf, &name).map_or(60.0, |s| s * unit_m);
-                        crate::sea::Ship {
-                            len: len.max(10.0),
-                            seed: crate::sea::seed_at(east, north),
-                        }
+                        crate::sea::Ship::new(len.max(10.0), crate::sea::seed_at(east, north), None)
                     }
                 };
                 commands.entity(e).insert(motion);

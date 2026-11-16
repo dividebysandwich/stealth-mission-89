@@ -268,6 +268,7 @@ impl Page {
                     Effect(E::GroundDetail),
                     Effect(E::Glass),
                     Effect(E::Water),
+                    Effect(E::Ocean),
                     Effect(E::Vga),
                     Effect(E::Scanlines),
                     Effect(E::Pixelize),

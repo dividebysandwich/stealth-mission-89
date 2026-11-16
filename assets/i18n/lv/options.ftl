@@ -202,6 +202,11 @@ effect-water = Atspīdumi ūdenī
     .facts =
         Modernie ēnotāji: jūra un ezeri viļņos atspoguļo debesis
         Saules un mēness gaisma mirdz uz ūdens
+effect-ocean-waves = Simulēts okeāns
+    .facts =
+        Ar ūdens atspulgiem: atklātas jūras viļņi simulēti no vēja spektra
+        Īsts jūras viļņojums ap lidmašīnu, kuģi un aviobāzes kuģi uz tā šūpojas
+        Izslēgts: vieglāka viļņaina jūra Steam Frame un tālruņiem
 effect-vapour = Tvaiks un rotora plūsma
     .facts =
         Asos manevros no spārnu galiem stiepjas tvaika sliedes

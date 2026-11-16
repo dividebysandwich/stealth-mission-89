@@ -35,6 +35,9 @@ pub struct Effects {
     /// Modern shading: the sky mirrored in the sea and the lakes, rippled by waves, the sun's
     /// and the moon's light sparkling on them (palette.wgsl `water_reflection`).
     pub water: bool,
+    /// Modern shading: the open sea's waves simulated (an FFT ocean of the wind's spectrum,
+    /// `ocean`), rising in a mesh round the viewpoint; off: the reflections' rippled flat sea.
+    pub ocean: bool,
     /// Shafts of sunlight through the gaps of a broken deck (sunbeams.rs).
     pub sunbeams: bool,
     /// Wingtip vortices pulling hard, rotor downwash dust and spray (trails.rs, explosions.rs).
@@ -111,6 +114,7 @@ impl Default for Effects {
             ground_detail: !HEAVY_EFFECTS_OFF,
             glass: !REFLECTIONS_OFF,
             water: !REFLECTIONS_OFF,
+            ocean: !HEAVY_EFFECTS_OFF,
             sunbeams: true,
             vapour: !HEAVY_EFFECTS_OFF,
             night_sky: true,
@@ -139,6 +143,7 @@ pub enum Effect {
     GroundDetail,
     Glass,
     Water,
+    Ocean,
     Sunbeams,
     Vapour,
     NightSky,
@@ -151,7 +156,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const ALL: [Effect; 20] = [
+    pub const ALL: [Effect; 21] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -163,6 +168,7 @@ impl Effect {
         Effect::GroundDetail,
         Effect::Glass,
         Effect::Water,
+        Effect::Ocean,
         Effect::Sunbeams,
         Effect::Vapour,
         Effect::NightSky,
@@ -188,6 +194,7 @@ impl Effect {
             Effect::GroundDetail => "ground-detail",
             Effect::Glass => "glass",
             Effect::Water => "water",
+            Effect::Ocean => "ocean-waves",
             Effect::Sunbeams => "sunbeams",
             Effect::Vapour => "vapour",
             Effect::NightSky => "night-sky",
@@ -228,6 +235,7 @@ impl Effect {
             Effect::GroundDetail => e.ground_detail,
             Effect::Glass => e.glass,
             Effect::Water => e.water,
+            Effect::Ocean => e.ocean,
             Effect::Sunbeams => e.sunbeams,
             Effect::Vapour => e.vapour,
             Effect::NightSky => e.night_sky,
@@ -253,6 +261,7 @@ impl Effect {
             Effect::GroundDetail => e.ground_detail = on,
             Effect::Glass => e.glass = on,
             Effect::Water => e.water = on,
+            Effect::Ocean => e.ocean = on,
             Effect::Sunbeams => e.sunbeams = on,
             Effect::Vapour => e.vapour = on,
             Effect::NightSky => e.night_sky = on,

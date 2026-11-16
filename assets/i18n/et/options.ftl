@@ -202,6 +202,11 @@ effect-water = Peegeldused vees
     .facts =
         Kaasaegsed varjutajad: meri ja järved peegeldavad lainetes taevast
         Päikese- ja kuuvalgus sädeleb veel
+effect-ocean-waves = Simuleeritud ookean
+    .facts =
+        Veepeegeldustega: avamere lained simuleeritud tuule spektrist
+        Tõeline ummiklaine lennuki ümber, laevad ja lennukikandjad õõtsuvad sellel
+        Väljas: kergem virvendav meri Steam Frame'i ja telefonide jaoks
 effect-vapour = Aur ja rootori allavool
     .facts =
         Järskudel manöövritel auruvööd tiivaotstest

@@ -202,6 +202,11 @@ effect-water = Weerspiegelingen in water
     .facts =
         Moderne shaders: zee en meren weerspiegelen de lucht in hun golven
         Het licht van zon en maan schittert op het water
+effect-ocean-waves = Gesimuleerde oceaan
+    .facts =
+        Met waterreflecties: de golven van de open zee gesimuleerd uit het windspectrum
+        Echte deining rond het vliegtuig, schepen en vliegdekschepen deinen mee
+        Uit: de lichtere gerimpelde zee, voor de Steam Frame en telefoons
 effect-vapour = Damp en rotorwind
     .facts =
         Bij scherpe manoeuvres dampsporen van de vleugeltippen

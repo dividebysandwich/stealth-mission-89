@@ -124,6 +124,12 @@ struct Globals {
     // The sea: sea state 0..8 (x), downwind direction in the world's x / z plane (yz),
     // whitecaps 0..1 (w).
     sea: vec4<f32>,
+    // The simulated ocean (ocean.rs `Ocean::globals`): on (x), the waves' rise in the mesh
+    // (y), the mesh drawn (z); the open water mask's corner (xy, from the floating origin),
+    // span (z), present (w); the mesh levels' centres (two a vec4).
+    ocean: vec4<f32>,
+    ocean_mask: vec4<f32>,
+    ocean_levels: array<vec4<f32>, 4>,
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
     ground_detail: vec4<f32>,
@@ -198,6 +204,10 @@ struct VertexOutput {
     // A dot's quad corner (xy, -1..1) and its size over the lamp's (z: above 1 a goggles halo).
     @location(10) dot_uv: vec3<f32>,
 #endif
+#ifdef OCEAN_GRID
+    // The waves' mesh: the undisplaced point (xy), the level (z), the waves' rise (w).
+    @location(11) ocean: vec4<f32>,
+#endif
 };
 
 // Dot lights: size relative to one 320x200 screen pixel and lower bound in pixels.
@@ -238,7 +248,13 @@ fn level_unit(code: u32) -> f32 {
 fn vertex(v: Vertex) -> VertexOutput {
     var out: VertexOutput;
     let world_from_local = mesh_functions::get_world_from_local(v.instance_index);
+#ifdef OCEAN_GRID
+    let placed = ocean_vertex(v.position);
+    let world = placed[0];
+    out.ocean = placed[1];
+#else
     let world = mesh_functions::mesh_position_local_to_world(world_from_local, vec4<f32>(v.position, 1.0));
+#endif
     out.world_position = world.xyz;
     out.clip_position = position_world_to_clip(world.xyz);
     let tag = mesh_functions::get_tag(v.instance_index);
@@ -767,6 +783,110 @@ const PI: f32 = 3.14159265;
 const TAU: f32 = 6.28318531;
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(2) var star_grid: texture_2d<f32>;
+// The ocean (ocean.rs): the cascades' displacement and foam (Dx, Dy, Dz, foam) and
+// derivatives (dDy/dx, dDy/dz, dDx/dx, dDz/dz), one layer each; the open water round the
+// viewpoint (r: water, g: how high the waves rise).
+@group(#{MATERIAL_BIND_GROUP}) @binding(3) var ocean_disp: texture_2d_array<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(4) var ocean_deriv: texture_2d_array<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(5) var ocean_sampler: sampler;
+@group(#{MATERIAL_BIND_GROUP}) @binding(6) var ocean_mask: texture_2d<f32>;
+@group(#{MATERIAL_BIND_GROUP}) @binding(7) var ocean_mask_sampler: sampler;
+
+// The cascades' patches (metres; ocean/spectrum.rs `CASCADE_LENGTHS`) and the waves' mesh
+// (ocean/grid.rs): the finest level's cell, cells from a level's centre to its edge, levels.
+const OCEAN_LENGTHS: vec3<f32> = vec3<f32>(640.0, 80.0, 10.0);
+const OCEAN_CELL0: f32 = 0.5;
+const OCEAN_HALF: f32 = 32.0;
+const OCEAN_LEVELS: u32 = 8u;
+
+fn ocean_level_centre(l: u32) -> vec2<f32> {
+    let v = globals.ocean_levels[l >> 1u];
+    return select(v.zw, v.xy, (l & 1u) == 0u);
+}
+
+// The open water mask at a point (from the floating origin): water (x), the waves' rise (y).
+fn ocean_mask_at(p: vec2<f32>) -> vec2<f32> {
+    if (globals.ocean_mask.w == 0.0) {
+        return vec2<f32>(0.0);
+    }
+    let uv = (p - globals.ocean_mask.xy) / globals.ocean_mask.z;
+    if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+        return vec2<f32>(0.0);
+    }
+    return textureSampleLevel(ocean_mask, ocean_mask_sampler, uv, 0.0).rg;
+}
+
+// A cascade's mip level for a footprint of `foot` metres.
+fn ocean_lod(foot: f32, len: f32) -> f32 {
+    let n = f32(textureDimensions(ocean_deriv).x);
+    return log2(max(foot * n / len, 1.0));
+}
+
+// The waves' normal and foam at a point of the flat sea (from the floating origin), seen with
+// a footprint of `foot` metres: the cascades' slopes (the horizontal displacement's
+// stretching taken out), let down near the shore.
+fn ocean_surface(p: vec2<f32>, foot: f32) -> vec4<f32> {
+    let w = p + globals.noise.xy;
+    var d = vec4<f32>(0.0);
+    var foam = 0.0;
+    for (var c = 0u; c < 3u; c = c + 1u) {
+        let len = OCEAN_LENGTHS[c];
+        let lod = ocean_lod(foot, len);
+        d += textureSampleLevel(ocean_deriv, ocean_sampler, w / len, c, lod);
+        if (c < 2u) {
+            foam += textureSampleLevel(ocean_disp, ocean_sampler, w / len, c, lod).w;
+        }
+    }
+    var rise = 1.0;
+    if (globals.ocean_mask.w != 0.0) {
+        let uv = (p - globals.ocean_mask.xy) / globals.ocean_mask.z;
+        if (all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0))) {
+            rise = textureSampleLevel(ocean_mask, ocean_mask_sampler, uv, 0.0).g;
+        }
+    }
+    let slope = vec2<f32>(d.x / max(1.0 + d.z, 0.2), d.y / max(1.0 + d.w, 0.2)) * rise;
+    return vec4<f32>(normalize(vec3<f32>(-slope.x, 1.0, -slope.y)), clamp(foam * rise, 0.0, 1.0));
+}
+
+#ifdef OCEAN_GRID
+// The waves' mesh (ocean/grid.rs): a vertex (cell x, level, cell z) round its level's centre,
+// morphed onto the coarser level's grid near the level's edge, displaced by the waves. The
+// undisplaced point (xy), the level (z) and the waves' rise (w) for the fragment.
+fn ocean_vertex(cell: vec3<f32>) -> array<vec4<f32>, 2> {
+    let l = u32(cell.y + 0.5);
+    let s = OCEAN_CELL0 * exp2(f32(l));
+    let c = ocean_level_centre(l);
+    let edge = max(abs(cell.x), abs(cell.z)) / OCEAN_HALF;
+    var p = c + cell.xz * s;
+    // Sampled as finely as the cell, the coarser level's mip at the edge (where the vertices
+    // are the coarser level's): both levels see the same heights there.
+    var foot = s;
+    if (l + 1u < OCEAN_LEVELS) {
+        let k = clamp((edge - 0.75) / 0.2, 0.0, 1.0);
+        let g = cell.xz * 0.5;
+        p -= (g - floor(g)) * 2.0 * s * k;
+        foot = s * (1.0 + k);
+    }
+    var rise = ocean_mask_at(p).y * globals.ocean.y;
+    if (l + 1u == OCEAN_LEVELS) {
+        // The outermost level settles to the flat sea round it.
+        rise *= 1.0 - smoothstep(0.8, 1.0, edge);
+    }
+    let w = p + globals.noise.xy;
+    let n = f32(textureDimensions(ocean_disp).x);
+    var d = vec3<f32>(0.0);
+    for (var i = 0u; i < 3u; i = i + 1u) {
+        let len = OCEAN_LENGTHS[i];
+        let lod = log2(max(foot * n / len, 1.0));
+        d += textureSampleLevel(ocean_disp, ocean_sampler, w / len, i, lod).xyz;
+    }
+    d *= rise;
+    return array<vec4<f32>, 2>(
+        vec4<f32>(p.x + d.x, d.y, p.y + d.z, 1.0),
+        vec4<f32>(p, f32(l), rise),
+    );
+}
+#endif
 
 // Cells in a row of the star grid (stars.rs `row_cells`).
 fn star_row_cells(row: f32) -> f32 {
@@ -1671,9 +1791,25 @@ fn whitecaps(rgb: vec3<f32>, p: vec2<f32>, t: f32, foot: f32) -> vec3<f32> {
     let mean = 0.18 * caps * caps;
     let k = smoothstep(0.3, 1.5, foot);
     let foam = mix(near, mean, k);
+    return mix(rgb, foam_white(), foam);
+}
+
+// How white the simulated sea is: its foam (the cascades' coarse texels) broken up by fine
+// noise drifting with the wind into streaks and bubbles; a mean tint where the noise is too
+// fine to see.
+fn ocean_foam(foam: f32, p: vec2<f32>, t: f32, foot: f32) -> f32 {
+    let wd = globals.sea.yz;
+    let q = vec2<f32>(dot(p, wd) - t * 0.6, dot(p, vec2<f32>(-wd.y, wd.x)));
+    let n = value_noise(q / vec2<f32>(2.5, 0.9), 37u) * 0.65 + value_noise(q / 0.45, 41u) * 0.35;
+    let fine = smoothstep(0.0, 0.18, foam - (1.0 - n) * 0.75);
+    let mean = smoothstep(0.05, 0.9, foam) * 0.55;
+    return mix(fine, mean, smoothstep(0.15, 0.6, foot));
+}
+
+// Foam's colour: white as bright as the sky above.
+fn foam_white() -> vec3<f32> {
     let sky = mirrored_sky(vec3<f32>(0.0, 1.0, 0.0));
-    let white = vec3<f32>(min(dot(sky, vec3<f32>(0.3, 0.59, 0.11)) * 2.4, 0.92));
-    return mix(rgb, white, foam);
+    return vec3<f32>(min(dot(sky, vec3<f32>(0.3, 0.59, 0.11)) * 2.4, 0.92));
 }
 
 // Low frequency Perlin noise over the water (about -1..1, two octaves of 640 m and 2.56 km
@@ -1756,7 +1892,9 @@ fn water_light(world: vec3<f32>) -> vec2<f32> {
     return select(vec2<f32>(key, 1.0), vec2<f32>(1.0, key), (flags & LIGHT_MOON_KEY) != 0u);
 }
 
-fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
+// `wave`: the point of the sea (from the floating origin) whose waves light this pixel (the
+// waves' mesh: before its displacement).
+fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
     let v = normalize(dir);
     let p = world.xz + globals.noise.xy;
     let t = globals.dots.y;
@@ -1764,7 +1902,20 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32,
     // Fewer calm patches the rougher the sea.
     let calm = mix(WATER_CALM, WATER_ROUGH * 0.8, smoothstep(2.0, 6.0, globals.sea.x));
     let rough = calm + (WATER_ROUGH - calm) * smoothstep(-0.6, 0.6, m);
-    let n = water_normal(p, t, foot, rough);
+    // The simulated sea's slopes and foam, else the rippled flat sea's.
+    var n: vec3<f32>;
+    var foam = -1.0;
+#ifdef PALETTE_OCEAN
+    if (globals.ocean.x > 0.5) {
+        let o = ocean_surface(wave, foot);
+        n = o.xyz;
+        foam = o.w;
+    } else {
+        n = water_normal(p, t, foot, rough);
+    }
+#else
+    n = water_normal(p, t, foot, rough);
+#endif
     var r = reflect(v, n);
     r.y = abs(r.y);
     let f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
@@ -1783,6 +1934,9 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32,
         + water_glitter(p, r, moon.xyz, across, t, rough) * WATER_GLITTER * far;
     c += (sun_hl * sun.w * sun_colour(sun.y) * lights.x + moon_hl * moon.w * MOON_TINT * lights.y)
         * (1.0 - dark);
+    if (foam >= 0.0) {
+        return mix(c, foam_white(), ocean_foam(foam, wave + globals.noise.xy, t, foot));
+    }
     return whitecaps(c, p, t, foot);
 }
 
@@ -1830,6 +1984,29 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     deriv.foot = length(fwidth(in.world_position));
     deriv.ground_dx = dpdx(in.world_position.xz);
     deriv.ground_dy = dpdy(in.world_position.xz);
+#ifdef OCEAN_GRID
+    // The waves' mesh: only over the open water, and not where the finer level inside it is.
+    if (ocean_mask_at(in.ocean.xy).x < 0.5) {
+        discard;
+    }
+    let level = u32(in.ocean.z + 0.5);
+    if (level > 0u) {
+        let half = OCEAN_HALF * OCEAN_CELL0 * exp2(f32(level - 1u)) - 0.01;
+        if (all(abs(in.ocean.xy - ocean_level_centre(level - 1u)) < vec2<f32>(half))) {
+            discard;
+        }
+    }
+#else ifdef PALETTE_OCEAN
+    // The flat sea under the waves' mesh.
+    if ((material.flags & FLAG_WATER) != 0u && globals.ocean.z > 0.5) {
+        let last = OCEAN_LEVELS - 1u;
+        let half = OCEAN_HALF * OCEAN_CELL0 * exp2(f32(last)) - 0.01;
+        let p = in.world_position.xz;
+        if (all(abs(p - ocean_level_centre(last)) < vec2<f32>(half)) && ocean_mask_at(p).x >= 0.5) {
+            discard;
+        }
+    }
+#endif
 #ifdef PALETTE_BACKGROUND
 #ifdef PALETTE_SAND
     // The background sphere: the ground plane (y = 0) where the view ray meets it (the
@@ -2085,7 +2262,12 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #ifdef PALETTE_WATER
     if (!is_line && (material.flags & FLAG_WATER) != 0u) {
         let across = min(length(deriv.ground_dx), length(deriv.ground_dy));
-        rgb = water_reflection(rgb, in.world_position, dir, deriv.foot, across, dark);
+#ifdef OCEAN_GRID
+        let wave = in.ocean.xy;
+#else
+        let wave = in.world_position.xz;
+#endif
+        rgb = water_reflection(rgb, in.world_position, wave, dir, deriv.foot, across, dark);
     }
 #endif
     let d = length(dir);

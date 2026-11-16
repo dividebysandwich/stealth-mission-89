@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = DELLIJIET TAS-SĦAB
 fm-effect-ground-detail = DETTALL TAL-ART
 fm-effect-glass = RIFLESSJONIJIET FIL-ĦĠIEĠ
 fm-effect-water = RIFLESSJONIJIET FL-ILMA
+fm-effect-ocean-waves = MEWĠ TAL-OĊEAN
 fm-effect-vapour = SETGĦA U TRAB
 fm-effect-night-sky = SEMA TAL-LEJL
 fm-effect-vga = KULURI VGA

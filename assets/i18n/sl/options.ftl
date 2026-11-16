@@ -202,6 +202,11 @@ effect-water = Odsevi na vodi
     .facts =
         Sodobni senčilniki: morje in jezera zrcalijo nebo v valovih
         Svetloba sonca in lune se blešči na vodi
+effect-ocean-waves = Simuliran ocean
+    .facts =
+        Z odsevi na vodi: valovi odprtega morja, simulirani iz spektra vetra
+        Pravo valovanje okoli letala, ladje in letalonosilke se zibljejo na njem
+        Izklopljeno: lažje vzvalovano morje za Steam Frame in telefone
 effect-vapour = Para in tok rotorja
     .facts =
         Pri ostrih manevrih sledi pare s konic kril

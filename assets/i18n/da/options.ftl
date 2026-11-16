@@ -202,6 +202,11 @@ effect-water = Spejlinger i vand
     .facts =
         Moderne shadere: havet og søerne spejler himlen i deres bølger
         Solens og månens lys glitrer på vandet
+effect-ocean-waves = Simuleret ocean
+    .facts =
+        Med vandspejlinger: det åbne havs bølger simuleret ud fra vindens spektrum
+        Ægte dønninger omkring flyet, skibe og hangarskibe rider på dem
+        Fra: det lettere krusede hav, til Steam Frame og telefoner
 effect-vapour = Damp og rotorvind
     .facts =
         Ved hårde manøvrer dampstriber fra vingespidserne

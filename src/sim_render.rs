@@ -1076,13 +1076,9 @@ pub(crate) fn sync_objects(
     mut explosions: ResMut<crate::explosions::Explosions>,
     mut landing_lights: crate::landing_lights::Lights,
     landing: Res<crate::landing_lights::LandingAssets>,
-    sea: (
-        Option<Res<crate::world::Theater>>,
-        Res<crate::weather::WeatherState>,
-        Res<crate::sea::SeaClock>,
-    ),
+    sea: (Option<Res<crate::world::Theater>>, Res<crate::sea::Decks>),
 ) {
-    let (theater, weather, sea_clock) = sea;
+    let (theater, deck_motion) = sea;
     let decks = theater.as_deref().map_or(&[][..], |t| &t.decks[..]);
     let vis = &mut *vis;
     let sim = &combat.sim;
@@ -1199,7 +1195,7 @@ pub(crate) fn sync_objects(
                     * (12.0 * crate::world::WU - (depth + crate::aircraft::GEAR_GROUND) as f64);
             }
             // On a carrier's deck it rides the sea with it.
-            let rot = match crate::sea::on_deck(decks, weather.sea, sea_clock.0, pos.0) {
+            let rot = match crate::sea::on_deck(decks, &deck_motion.motion, pos.0) {
                 Some((lift, tilt)) => {
                     pos.0.y += lift;
                     tilt * rot

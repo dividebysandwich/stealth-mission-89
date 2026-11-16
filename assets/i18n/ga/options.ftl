@@ -202,6 +202,11 @@ effect-water = Frithchaitheamh uisce
     .facts =
         Scáthóirí nua-aimseartha: léiríonn an fharraige agus na lochanna an spéir ina dtonnta
         Glioscarnach sholas na gréine agus na gealaí ar an uisce
+effect-ocean-waves = Aigéan insamhalta
+    .facts =
+        Le frithchaitheamh uisce: tonnta na farraige móire insamhalta ó speictream na gaoithe
+        Fíor-mhaidhmeanna timpeall an aerárthaigh, marcaíonn longa agus iompróirí orthu
+        As: an fharraige chatach níos éadroime, don Steam Frame agus fóin
 effect-vapour = Gal agus sruth rótair
     .facts =
         Le hainlithe géara, rianta gaile ó bharr na sciathán

@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = ТЕНИ ОБЛАКОВ
 fm-effect-ground-detail = ДЕТАЛИ ПОВЕРХНОСТИ
 fm-effect-glass = ОТРАЖЕНИЯ В СТЕКЛЕ
 fm-effect-water = ОТРАЖЕНИЯ В ВОДЕ
+fm-effect-ocean-waves = ОКЕАНСКИЕ ВОЛНЫ
 fm-effect-vapour = ПАР И ПЫЛЬ
 fm-effect-night-sky = НОЧНОЕ НЕБО
 fm-effect-vga = ЦВЕТА VGA

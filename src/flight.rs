@@ -479,9 +479,9 @@ pub struct Aircraft {
     /// Velocity over the ground (wu/s, Bevy frame).
     #[serde(skip)]
     pub ground_vel: Vec3,
-    /// The sea state (0..8) the carriers' decks move in (`sea::Deck`).
+    /// The carriers' decks' motion this frame (`sea::Decks`, by `Theater::decks`).
     #[serde(skip)]
-    pub sea: f32,
+    pub decks: Vec<stealth_mission::wind::ShipMotion>,
     /// Modern model state (unused by the classic one).
     modern: modern::State,
     /// Helicopter model state.
@@ -564,7 +564,7 @@ impl Aircraft {
             fpm: 0.0,
             wind: Vec3::ZERO,
             ground_vel: Vec3::ZERO,
-            sea: 0.0,
+            decks: Vec::new(),
             modern: modern::State::default(),
             heli: heli::State::turning(),
         }
@@ -1265,7 +1265,7 @@ fn ground_contact(
     let deck = (ground > 0.0)
         .then(|| theater.and_then(|t| crate::sea::deck_at(&t.decks, east, north)))
         .flatten()
-        .map(|d| d.surface(a.sea, a.time as f64, east, north));
+        .map(|(i, d)| d.surface(&a.decks.get(i).copied().unwrap_or_default(), east, north));
     let (ground, deck_rate) = deck.map_or((ground, 0.0), |(h, rate, _)| (h, rate));
     // The rolling hills (flat at the airfields and the sea).
     let hills = theater.map(|t| &t.hills).filter(|h| !h.is_flat());

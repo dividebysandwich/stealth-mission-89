@@ -202,6 +202,11 @@ effect-water = Reflejos en el agua
     .facts =
         Shaders modernos: el mar y los lagos reflejan el cielo en sus olas
         La luz del sol y de la luna centellea sobre el agua
+effect-ocean-waves = Océano simulado
+    .facts =
+        Con reflejos del agua: las olas del mar abierto simuladas según el espectro del viento
+        Mar de fondo real alrededor del avión, barcos y portaaviones lo siguen
+        Desactivado: el mar rizado más ligero, para Steam Frame y móviles
 effect-vapour = Vapor y corriente descendente
     .facts =
         En virajes cerrados, estelas de vapor en las puntas de ala

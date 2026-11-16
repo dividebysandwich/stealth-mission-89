@@ -49,6 +49,10 @@ layout(std140) uniform Globals {
     vec4 star_frame[3];
     // The sea (palette.wgsl).
     vec4 sea;
+    // The simulated ocean (palette.wgsl `ocean`, `ocean_mask`, `ocean_levels`).
+    vec4 ocean;
+    vec4 ocean_mask;
+    vec4 ocean_levels[4];
     vec4 ground_detail;
     // Reflections (the `REFLECT` variants): x 1 on glass, y 1 on water.
     vec4 reflections;
@@ -64,6 +68,31 @@ uniform uint u_flags;
 uniform vec2 u_viewport;
 uniform float u_proj_y[2];
 uniform uint u_dot_colour;
+// The ocean (palette.wgsl `ocean_disp`, `ocean_deriv`, `ocean_mask`).
+uniform sampler2DArray u_ocean_disp;
+uniform sampler2DArray u_ocean_deriv;
+uniform sampler2D u_ocean_mask;
+const uint FLAG_OCEAN = 512u;
+const vec3 OCEAN_LENGTHS = vec3(640.0, 80.0, 10.0);
+const float OCEAN_CELL0 = 0.5;
+const float OCEAN_HALF = 32.0;
+const uint OCEAN_LEVELS = 8u;
+
+vec2 ocean_level_centre(uint l) {
+    vec4 v = g.ocean_levels[l >> 1u];
+    return (l & 1u) == 0u ? v.xy : v.zw;
+}
+
+vec2 ocean_mask_at(vec2 p) {
+    if (g.ocean_mask.w == 0.0) {
+        return vec2(0.0);
+    }
+    vec2 uv = (p - g.ocean_mask.xy) / g.ocean_mask.z;
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) {
+        return vec2(0.0);
+    }
+    return textureLod(u_ocean_mask, uv, 0.0).rg;
+}
 
 const uint MAX_LOCAL_LIGHTS = 32u;
 const uint LIGHT_SHADOWS = 1u;
@@ -106,6 +135,39 @@ layout(location = 8) in uint a_tag;
 layout(location = 9) in uint a_word;
 flat out uint v_word;
 out vec3 v_world;
+// The waves' mesh (palette.wgsl `VertexOutput::ocean`).
+out vec4 v_ocean;
+
+// palette.wgsl `ocean_vertex`.
+vec4 ocean_vertex(vec3 cell) {
+    uint l = uint(cell.y + 0.5);
+    float s = OCEAN_CELL0 * exp2(float(l));
+    vec2 c = ocean_level_centre(l);
+    float edge = max(abs(cell.x), abs(cell.z)) / OCEAN_HALF;
+    vec2 p = c + cell.xz * s;
+    float foot = s;
+    if (l + 1u < OCEAN_LEVELS) {
+        float k = clamp((edge - 0.75) / 0.2, 0.0, 1.0);
+        vec2 gr = cell.xz * 0.5;
+        p -= (gr - floor(gr)) * 2.0 * s * k;
+        foot = s * (1.0 + k);
+    }
+    float rise = ocean_mask_at(p).y * g.ocean.y;
+    if (l + 1u == OCEAN_LEVELS) {
+        rise *= 1.0 - smoothstep(0.8, 1.0, edge);
+    }
+    vec2 w = p + g.noise.xy;
+    float n = float(textureSize(u_ocean_disp, 0).x);
+    vec3 d = vec3(0.0);
+    for (uint i = 0u; i < 3u; i++) {
+        float len = OCEAN_LENGTHS[i];
+        float lod = log2(max(foot * n / len, 1.0));
+        d += textureLod(u_ocean_disp, vec3(w / len, float(i)), lod).xyz;
+    }
+    d *= rise;
+    v_ocean = vec4(p, float(l), rise);
+    return vec4(p.x + d.x, d.y, p.y + d.z, 1.0);
+}
 flat out uint v_fog;
 flat out float v_fog_f;
 // Bit 0: warm object or dot light (FLIR); bit 1: aircraft; bit 2: spotting dot; bit 3: the
@@ -143,6 +205,10 @@ float level_unit(uint code) {
 void main() {
     vec3 eye = u_eye[VIEW];
     vec4 world = a_model * vec4(a_position, 1.0);
+    v_ocean = vec4(0.0);
+    if ((u_flags & FLAG_OCEAN) != 0u) {
+        world = ocean_vertex(a_position);
+    }
     v_world = world.xyz;
     gl_Position = u_view_proj[VIEW] * world;
     v_word = u_word == WORD_PER_VERTEX ? a_word & 0xFFFFu : u_word;
@@ -246,6 +312,7 @@ in vec3 v_dot_uv;
 #endif
 flat in uint v_word;
 in vec3 v_world;
+in vec4 v_ocean;
 flat in uint v_fog;
 flat in float v_fog_f;
 flat in uint v_warm;
@@ -1271,6 +1338,8 @@ vec3 water_normal(vec2 p, float t, float foot, float rough) {
 }
 
 // palette.wgsl `whitecaps`.
+vec3 foam_white();
+
 vec3 whitecaps(vec3 rgb, vec2 p, float t, float foot) {
     float caps = g.sea.w;
     if (caps <= 0.0) {
@@ -1286,9 +1355,50 @@ vec3 whitecaps(vec3 rgb, vec2 p, float t, float foot) {
     float near_ = smoothstep(thr, thr + 0.06, n);
     float mean = 0.18 * caps * caps;
     float foam = mix(near_, mean, smoothstep(0.3, 1.5, foot));
+    return mix(rgb, foam_white(), foam);
+}
+
+// palette.wgsl `foam_white`, `ocean_foam`, `ocean_lod`, `ocean_surface`.
+vec3 foam_white() {
     vec3 sky = mirrored_sky(vec3(0.0, 1.0, 0.0));
-    vec3 white = vec3(min(dot(sky, vec3(0.3, 0.59, 0.11)) * 2.4, 0.92));
-    return mix(rgb, white, foam);
+    return vec3(min(dot(sky, vec3(0.3, 0.59, 0.11)) * 2.4, 0.92));
+}
+
+float ocean_foam(float foam, vec2 p, float t, float foot) {
+    vec2 wd = g.sea.yz;
+    vec2 q = vec2(dot(p, wd) - t * 0.6, dot(p, vec2(-wd.y, wd.x)));
+    float n = value_noise(q / vec2(2.5, 0.9), 37u) * 0.65 + value_noise(q / 0.45, 41u) * 0.35;
+    float fine = smoothstep(0.0, 0.18, foam - (1.0 - n) * 0.75);
+    float mean = smoothstep(0.05, 0.9, foam) * 0.55;
+    return mix(fine, mean, smoothstep(0.15, 0.6, foot));
+}
+
+float ocean_lod(float foot, float len) {
+    float n = float(textureSize(u_ocean_deriv, 0).x);
+    return log2(max(foot * n / len, 1.0));
+}
+
+vec4 ocean_surface(vec2 p, float foot) {
+    vec2 w = p + g.noise.xy;
+    vec4 d = vec4(0.0);
+    float foam = 0.0;
+    for (uint c = 0u; c < 3u; c++) {
+        float len = OCEAN_LENGTHS[c];
+        float lod = ocean_lod(foot, len);
+        d += textureLod(u_ocean_deriv, vec3(w / len, float(c)), lod);
+        if (c < 2u) {
+            foam += textureLod(u_ocean_disp, vec3(w / len, float(c)), lod).w;
+        }
+    }
+    float rise = 1.0;
+    if (g.ocean_mask.w != 0.0) {
+        vec2 uv = (p - g.ocean_mask.xy) / g.ocean_mask.z;
+        if (all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)))) {
+            rise = textureLod(u_ocean_mask, uv, 0.0).g;
+        }
+    }
+    vec2 slope = vec2(d.x / max(1.0 + d.z, 0.2), d.y / max(1.0 + d.w, 0.2)) * rise;
+    return vec4(normalize(vec3(-slope.x, 1.0, -slope.y)), clamp(foam * rise, 0.0, 1.0));
 }
 
 float water_patches(vec2 p, float t) {
@@ -1344,14 +1454,22 @@ vec2 water_light(vec3 world) {
     return vec2(clamp(1.0 - 4.0 * (1.0 - cloud_shadow(world)), 0.0, 1.0), 1.0);
 }
 
-vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, float dark) {
+vec3 water_reflection(vec3 rgb, vec3 world, vec2 wave, vec3 dir, float foot, float across, float dark) {
     vec3 v = normalize(dir);
     vec2 p = world.xz + g.noise.xy;
     float t = g.dots.y;
     float m = water_patches(p, t);
     float calm = mix(WATER_CALM, WATER_ROUGH * 0.8, smoothstep(2.0, 6.0, g.sea.x));
     float rough = calm + (WATER_ROUGH - calm) * smoothstep(-0.6, 0.6, m);
-    vec3 n = water_normal(p, t, foot, rough);
+    vec3 n;
+    float foam = -1.0;
+    if (g.ocean.x > 0.5) {
+        vec4 o = ocean_surface(wave, foot);
+        n = o.xyz;
+        foam = o.w;
+    } else {
+        n = water_normal(p, t, foot, rough);
+    }
     vec3 r = reflect(v, n);
     r.y = abs(r.y);
     float f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
@@ -1365,8 +1483,12 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, 
     float moon_hl = pow(max(dot(r, g.moon.xyz), 0.0), 250.0) * WATER_PATH
         + water_sparkle(p, v, n, g.moon.xyz, foot, t) * WATER_SPARKLE
         + water_glitter(p, r, g.moon.xyz, across, t, rough) * WATER_GLITTER * far;
-    return whitecaps(c + (sun_hl * g.sun.w * sun_colour(g.sun.y) * lights.x
-        + moon_hl * g.moon.w * MOON_TINT * lights.y) * (1.0 - dark), p, t, foot);
+    c += (sun_hl * g.sun.w * sun_colour(g.sun.y) * lights.x
+        + moon_hl * g.moon.w * MOON_TINT * lights.y) * (1.0 - dark);
+    if (foam >= 0.0) {
+        return mix(c, foam_white(), ocean_foam(foam, wave + g.noise.xy, t, foot));
+    }
+    return whitecaps(c, p, t, foot);
 }
 #endif
 
@@ -1552,7 +1674,8 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         rgb = glass_reflection(rgb, face, dir, dark);
     }
     if (g.reflections.y != 0.0 && !is_line && (u_flags & FLAG_WATER) != 0u) {
-        rgb = water_reflection(rgb, v_world, dir, foot, min(length(gdx), length(gdy)), dark);
+        vec2 wave = (u_flags & FLAG_OCEAN) != 0u ? v_ocean.xy : v_world.xz;
+        rgb = water_reflection(rgb, v_world, wave, dir, foot, min(length(gdx), length(gdy)), dark);
     }
 #endif
     float dl = length(dir);
@@ -1577,6 +1700,27 @@ void main() {
     float foot = length(fwidth(v_world));
     vec2 gdx = dFdx(v_world.xz);
     vec2 gdy = dFdy(v_world.xz);
+    // The waves' mesh only over the open water and not where the finer level is; the flat sea
+    // not under the mesh (palette.wgsl `fragment`).
+    if ((u_flags & FLAG_OCEAN) != 0u) {
+        if (ocean_mask_at(v_ocean.xy).x < 0.5) {
+            discard;
+        }
+        uint level = uint(v_ocean.z + 0.5);
+        if (level > 0u) {
+            float half_ = OCEAN_HALF * OCEAN_CELL0 * exp2(float(level - 1u)) - 0.01;
+            if (all(lessThan(abs(v_ocean.xy - ocean_level_centre(level - 1u)), vec2(half_)))) {
+                discard;
+            }
+        }
+    } else if ((u_flags & FLAG_WATER) != 0u && g.ocean.z > 0.5) {
+        uint last = OCEAN_LEVELS - 1u;
+        float half_ = OCEAN_HALF * OCEAN_CELL0 * exp2(float(last)) - 0.01;
+        vec2 p = v_world.xz;
+        if (all(lessThan(abs(p - ocean_level_centre(last)), vec2(half_))) && ocean_mask_at(p).x >= 0.5) {
+            discard;
+        }
+    }
 #ifdef BACKGROUND
     // The background sphere: the ground plane (y = 0) where the view ray meets it (the
     // desert's specks).

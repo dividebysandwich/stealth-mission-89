@@ -250,6 +250,19 @@ pub fn sea_state(kt: f32) -> f32 {
     8.0
 }
 
+/// The steady wind (knots) that raises sea state `sea` ([`sea_state`] inverted): what a sea
+/// still building up or calming down looks like it was raised by.
+pub fn sea_wind_kt(sea: f32) -> f32 {
+    let sea = sea.clamp(0.0, 8.0);
+    for w in SEA.windows(2) {
+        let ((k0, s0), (k1, s1)) = (w[0], w[1]);
+        if sea <= s1 {
+            return k0 + (k1 - k0) * (sea - s0) / (s1 - s0);
+        }
+    }
+    SEA[SEA.len() - 1].0
+}
+
 fn table(sea: f32, t: [f32; 9]) -> f32 {
     let s = sea.clamp(0.0, 8.0);
     let i = (s.floor() as usize).min(7);
@@ -359,6 +372,9 @@ mod tests {
 
     #[test]
     fn sea_rises_with_wind() {
+        for kt in [0.0, 5.0, 17.5, 33.0, 45.0] {
+            assert!((sea_wind_kt(sea_state(kt)) - kt).abs() < 1e-3, "{kt}");
+        }
         assert_eq!(sea_state(0.0), 0.0);
         assert!((sea_state(13.0) - 3.0).abs() < 1e-5);
         assert_eq!(sea_state(80.0), 8.0);

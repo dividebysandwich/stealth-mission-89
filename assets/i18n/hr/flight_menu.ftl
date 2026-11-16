@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = SJENE OBLAKA
 fm-effect-ground-detail = DETALJI TLA
 fm-effect-glass = ODSJAJI U STAKLU
 fm-effect-water = ODSJAJI NA VODI
+fm-effect-ocean-waves = OCEANSKI VALOVI
 fm-effect-vapour = PARA I PRAŠINA
 fm-effect-night-sky = NOĆNO NEBO
 fm-effect-vga = VGA BOJE

@@ -200,6 +200,11 @@ effect-water = 水面反射
     .facts =
         现代着色器：海洋和湖泊的波浪映出天空
         日光和月光在水面上闪烁
+effect-ocean-waves = 海洋模拟
+    .facts =
+        配合水面反射：根据风谱模拟开阔海面的波浪
+        飞机周围出现真实涌浪，舰船和航母随之起伏
+        关闭：较轻量的涟漪海面，适合 Steam Frame 和手机
 effect-vapour = 水汽与下洗气流
     .facts =
         急转弯时翼尖拖出水汽

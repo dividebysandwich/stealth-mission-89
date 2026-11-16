@@ -81,6 +81,7 @@ mod net;
 mod net_interp;
 #[cfg(any(target_os = "linux", windows))]
 mod no_gpu;
+mod ocean;
 mod options;
 mod palette;
 mod palette_material;
@@ -358,6 +359,7 @@ pub fn run() {
             weather::WeatherPlugin,
             wind::WindPlugin,
             sea::SeaPlugin,
+            ocean::OceanPlugin,
             station::StationPlugin,
             gunner::GunnerPlugin,
         ))

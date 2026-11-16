@@ -154,7 +154,6 @@ fn update_air(
     let kt = Vec3::new(horiz.x + jolt.x, vertical, -(horiz.y + jolt.z));
     state.air = kt * KNOT_MS;
     a.wind = kt * KNOT_WU;
-    a.sea = state.sea;
 }
 
 #[cfg(test)]

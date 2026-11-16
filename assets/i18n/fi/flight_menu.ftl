@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = PILVIEN VARJOT
 fm-effect-ground-detail = MAASTON YKSITYISKOHDAT
 fm-effect-glass = LASIN HEIJASTUKSET
 fm-effect-water = VEDEN HEIJASTUKSET
+fm-effect-ocean-waves = MEREN AALLOT
 fm-effect-vapour = HÖYRY JA PÖLY
 fm-effect-night-sky = YÖTAIVAS
 fm-effect-vga = VGA-VÄRIT

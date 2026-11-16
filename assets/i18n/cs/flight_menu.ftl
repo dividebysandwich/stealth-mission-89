@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = STÍNY MRAKŮ
 fm-effect-ground-detail = DETAIL TERÉNU
 fm-effect-glass = ODRAZY VE SKLE
 fm-effect-water = ODRAZY NA VODĚ
+fm-effect-ocean-waves = OCEÁNSKÉ VLNY
 fm-effect-vapour = PÁRA A PRACH
 fm-effect-night-sky = NOČNÍ OBLOHA
 fm-effect-vga = BARVY VGA

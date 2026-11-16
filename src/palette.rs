@@ -510,7 +510,7 @@ fn update_globals(
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
     (shadow_lights, world_cameras): (ShadowLights, WorldCameras),
-    bursts: Res<crate::flashes::Bursts>,
+    (bursts, ocean): (Res<crate::flashes::Bursts>, Res<crate::ocean::Ocean>),
     theater: Option<Res<crate::world::Theater>>,
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
@@ -591,6 +591,7 @@ fn update_globals(
         0.0,
     );
     g.sea = weather.sea_globals();
+    (g.ocean, g.ocean_mask, g.ocean_levels) = ocean.globals(origin.origin);
     let on = |b: bool| b as u32 as f32;
     g.reflections = Vec4::new(
         on(crate::palette_material::glass(&settings)),

@@ -202,6 +202,11 @@ effect-water = Víztükröződés
     .facts =
         Modern árnyalók: a tenger és a tavak hullámai tükrözik az eget
         A nap és a hold fénye csillog a vízen
+effect-ocean-waves = Szimulált óceán
+    .facts =
+        Vízi tükröződéssel: a nyílt tenger hullámai a szél spektrumából szimulálva
+        Valódi hullámzás a gép körül, a hajók és repülőgép-hordozók ringanak rajta
+        Ki: a könnyebb fodrozódó tenger, Steam Frame-re és telefonokra
 effect-vapour = Pára és rotorleáramlás
     .facts =
         Éles manővereknél párafátyol a szárnyvégeken

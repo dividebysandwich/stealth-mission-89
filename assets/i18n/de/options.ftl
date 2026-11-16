@@ -202,6 +202,11 @@ effect-water = Wasserspiegelungen
     .facts =
         Moderne Shader: Meer und Seen spiegeln den Himmel in ihren Wellen
         Das Licht von Sonne und Mond glitzert auf dem Wasser
+effect-ocean-waves = Simulierter Ozean
+    .facts =
+        Mit Wasserspiegelungen: die Wellen der offenen See aus dem Windspektrum simuliert
+        Echte Dünung um das Flugzeug, Schiffe und Träger reiten darauf
+        Aus: die leichtere gekräuselte See, für Steam Frame und Handys
 effect-vapour = Kondensstreifen und Abwind
     .facts =
         Bei harten Manövern Kondensstreifen an den Flügelspitzen

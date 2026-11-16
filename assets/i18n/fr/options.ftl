@@ -205,6 +205,11 @@ effect-water = Reflets sur l'eau
     .facts =
         Shaders modernes : la mer et les lacs reflètent le ciel dans leurs vagues
         La lumière du soleil et de la lune scintille sur l'eau
+effect-ocean-waves = Océan simulé
+    .facts =
+        Avec les reflets de l'eau : les vagues du large simulées d'après le spectre du vent
+        Une vraie houle autour de l'avion, navires et porte-avions la suivent
+        Désactivé : la mer ridée plus légère, pour le Steam Frame et les téléphones
 effect-vapour = Vapeur et souffle du rotor
     .facts =
         En virage serré, de la vapeur se forme aux bouts d'aile

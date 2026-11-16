@@ -234,6 +234,11 @@ effect-water = Water reflections
     .facts =
         Modern shaders: the sea and the lakes mirror the sky in their waves
         The sun's and the moon's light sparkles on the water
+effect-ocean-waves = Simulated ocean
+    .facts =
+        With water reflections: the open sea's waves simulated from the wind's spectrum
+        Real swells rise round the aircraft, ships and carriers ride them
+        Off: the lighter rippled sea, for the Steam Frame and phones
 effect-vapour = Vapour and downwash
     .facts =
         Pulling hard, vapour trails from the wingtips

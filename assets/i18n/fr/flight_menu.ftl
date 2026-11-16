@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = OMBRES DES NUAGES
 fm-effect-ground-detail = DÉTAIL DU SOL
 fm-effect-glass = REFLETS SUR LE VERRE
 fm-effect-water = REFLETS SUR L'EAU
+fm-effect-ocean-waves = VAGUES OCÉANIQUES
 fm-effect-vapour = VAPEUR ET POUSSIERE
 fm-effect-night-sky = CIEL NOCTURNE
 fm-effect-vga = COULEURS VGA

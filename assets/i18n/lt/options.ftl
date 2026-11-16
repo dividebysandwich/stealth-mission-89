@@ -202,6 +202,11 @@ effect-water = Atspindžiai vandenyje
     .facts =
         Modernūs šešėliuokliai: jūra ir ežerai bangose atspindi dangų
         Saulės ir mėnulio šviesa žiba vandenyje
+effect-ocean-waves = Imituojamas vandenynas
+    .facts =
+        Su vandens atspindžiais: atviros jūros bangos imituojamos pagal vėjo spektrą
+        Tikras bangavimas aplink orlaivį, laivai ir lėktuvnešiai supasi ant jo
+        Išjungta: lengvesnė raibuliuojanti jūra, skirta Steam Frame ir telefonams
 effect-vapour = Garai ir rotoriaus srautas
     .facts =
         Staigiai manevruojant nuo sparnų galų driekiasi garų pėdsakai

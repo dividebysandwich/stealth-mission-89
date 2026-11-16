@@ -202,6 +202,11 @@ effect-water = Odbicia w wodzie
     .facts =
         Nowoczesne shadery: morze i jeziora odbijają niebo w falach
         Światło słońca i księżyca skrzy się na wodzie
+effect-ocean-waves = Symulowany ocean
+    .facts =
+        Z odbiciami w wodzie: fale otwartego morza symulowane z widma wiatru
+        Prawdziwa martwa fala wokół samolotu, okręty i lotniskowce się na niej kołyszą
+        Wyłączone: lżejsze zmarszczone morze dla Steam Frame i telefonów
 effect-vapour = Para i podmuch wirnika
     .facts =
         Przy ostrych manewrach smugi pary z końców skrzydeł

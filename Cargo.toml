@@ -65,6 +65,8 @@ png = "0.18"
 gilrs = "0.11"
 # SystemTime that works in the browser build too (std's panics there).
 web-time = "1"
+# The ocean's textures in half floats (src/ocean).
+half = "2"
 bevy_mod_openxr = { version = "0.6", optional = true }
 bevy_mod_xr = { version = "0.6", optional = true }
 openxr = { version = "0.21", optional = true }

@@ -202,6 +202,11 @@ effect-water = Odrazy na vode
     .facts =
         Moderné shadery: more a jazerá zrkadlia oblohu vo vlnách
         Svetlo slnka a mesiaca sa trbliece na vode
+effect-ocean-waves = Simulovaný oceán
+    .facts =
+        S odrazmi na vode: vlny otvoreného mora simulované zo spektra vetra
+        Skutočné vlnobitie okolo lietadla, lode a lietadlové lode sa na ňom hojdajú
+        Vypnuté: ľahšie zvlnené more pre Steam Frame a telefóny
 effect-vapour = Para a prúd od rotora
     .facts =
         Pri ostrých manévroch stopy pary z koncov krídel

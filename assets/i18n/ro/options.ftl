@@ -202,6 +202,11 @@ effect-water = Reflexii în apă
     .facts =
         Shadere moderne: marea și lacurile oglindesc cerul în valuri
         Lumina soarelui și a lunii sclipește pe apă
+effect-ocean-waves = Ocean simulat
+    .facts =
+        Cu reflexii pe apă: valurile largului simulate din spectrul vântului
+        Hulă adevărată în jurul avionului, navele și portavioanele se leagănă pe ea
+        Oprit: marea încrețită mai ușoară, pentru Steam Frame și telefoane
 effect-vapour = Vapori și curent de rotor
     .facts =
         La manevre strânse, dâre de vapori la vârfurile aripilor

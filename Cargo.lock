@@ -6754,6 +6754,7 @@ dependencies = [
  "gif",
  "gilrs",
  "glow 0.18.0",
+ "half",
  "image",
  "js-sys",
  "khronos-egl",

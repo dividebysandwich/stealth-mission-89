@@ -202,6 +202,11 @@ effect-water = Veden heijastukset
     .facts =
         Modernit varjostimet: meri ja järvet heijastavat taivasta aalloissaan
         Auringon ja kuun valo kimaltelee vedessä
+effect-ocean-waves = Simuloitu meri
+    .facts =
+        Vesiheijastusten kanssa: avomeren aallot simuloituna tuulen spektristä
+        Todellinen maininki koneen ympärillä, alukset ja tukialukset keinuvat siinä
+        Pois: kevyempi väreilevä meri Steam Framelle ja puhelimille
 effect-vapour = Höyry ja roottorivirtaus
     .facts =
         Jyrkissä liikkeissä höyryvanat siivenkärjistä

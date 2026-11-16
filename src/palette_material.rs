@@ -40,6 +40,9 @@ pub const FLAG_NIGHT_DIM: u32 = 64;
 /// Polygon in a water colour (sea and lakes): a faint grid of dots low over it shows the
 /// height (the shader's `water_dots`).
 pub const FLAG_WATER: u32 = 256;
+/// The waves' mesh round the viewpoint (`ocean::grid`): placed and displaced by the vertex
+/// shader (`OCEAN_GRID`).
+pub const FLAG_OCEAN: u32 = 512;
 /// Mesh tag bit of warm objects (aircraft, vehicles, buildings, fires): lighter than the cold
 /// ground in the FLIR picture.
 pub const TAG_WARM: u32 = 1 << 11;
@@ -153,6 +156,51 @@ macro_rules! globals_bind_group {
                             grid.texture_view.clone(),
                         ),
                     ));
+                    // The ocean's textures (`ocean`): 3 and 4 the cascades, 5 their sampler
+                    // (repeating), 6 the open water mask, 7 its sampler.
+                    let get = |h: &bevy::prelude::Handle<bevy::prelude::Image>| {
+                        images.get(h).ok_or(AsBindGroupError::RetryNextUpdate)
+                    };
+                    let disp = get(&$crate::ocean::OCEAN_DISP)?;
+                    let deriv = get(&$crate::ocean::OCEAN_DERIV)?;
+                    let mask = get(&$crate::ocean::OCEAN_MASK)?;
+                    bindings.extend([
+                        (
+                            3,
+                            OwnedBindingResource::TextureView(
+                                TextureViewDimension::D2Array,
+                                disp.texture_view.clone(),
+                            ),
+                        ),
+                        (
+                            4,
+                            OwnedBindingResource::TextureView(
+                                TextureViewDimension::D2Array,
+                                deriv.texture_view.clone(),
+                            ),
+                        ),
+                        (
+                            5,
+                            OwnedBindingResource::Sampler(
+                                SamplerBindingType::Filtering,
+                                disp.sampler.clone(),
+                            ),
+                        ),
+                        (
+                            6,
+                            OwnedBindingResource::TextureView(
+                                TextureViewDimension::D2,
+                                mask.texture_view.clone(),
+                            ),
+                        ),
+                        (
+                            7,
+                            OwnedBindingResource::Sampler(
+                                SamplerBindingType::Filtering,
+                                mask.sampler.clone(),
+                            ),
+                        ),
+                    ]);
                 }
                 Ok(UnpreparedBindGroup { bindings: BindingResources(bindings) })
             }
@@ -197,6 +245,29 @@ macro_rules! globals_bind_group {
                         },
                         count: None,
                     });
+                    let texture = |binding, view_dimension| BindGroupLayoutEntry {
+                        binding,
+                        visibility: ShaderStages::VERTEX_FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension,
+                            multisampled: false,
+                        },
+                        count: None,
+                    };
+                    let sampler = |binding| BindGroupLayoutEntry {
+                        binding,
+                        visibility: ShaderStages::VERTEX_FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    };
+                    entries.extend([
+                        texture(3, TextureViewDimension::D2Array),
+                        texture(4, TextureViewDimension::D2Array),
+                        sampler(5),
+                        texture(6, TextureViewDimension::D2),
+                        sampler(7),
+                    ]);
                 }
                 entries
             }
@@ -220,11 +291,14 @@ pub struct PaletteKey {
 const KIND_OBJECT: u8 = 0;
 const KIND_BACKGROUND: u8 = 1;
 const KIND_CLOUD: u8 = 2;
+const KIND_OCEAN: u8 = 3;
 
 impl From<&PaletteMaterial> for PaletteKey {
     fn from(m: &PaletteMaterial) -> Self {
         let f = m.params.flags;
-        let kind = if f & FLAG_CLOUD != 0 {
+        let kind = if f & FLAG_OCEAN != 0 {
+            KIND_OCEAN
+        } else if f & FLAG_CLOUD != 0 {
             KIND_CLOUD
         } else if f & FLAG_BACKGROUND != 0 {
             KIND_BACKGROUND
@@ -282,6 +356,7 @@ impl Material for PaletteMaterial {
             match key.bind_group_data.kind {
                 KIND_BACKGROUND => fragment.shader_defs.push("PALETTE_BACKGROUND".into()),
                 KIND_CLOUD => fragment.shader_defs.push("PALETTE_CLOUD".into()),
+                KIND_OCEAN => fragment.shader_defs.push("OCEAN_GRID".into()),
                 _ => {}
             }
             // Each option compiled in only when it is on (the local light loop's registers slow
@@ -308,6 +383,9 @@ impl Material for PaletteMaterial {
         // Only positions are used (models have no normals or UVs). Batched dot lights (scenery
         // lamps) also carry each vertex's quad corner as UV.
         let mut attributes = vec![Mesh::ATTRIBUTE_POSITION.at_shader_location(0)];
+        if key.bind_group_data.kind == KIND_OCEAN {
+            descriptor.vertex.shader_defs.push("OCEAN_GRID".into());
+        }
         if layout.0.contains(Mesh::ATTRIBUTE_UV_0) {
             attributes.push(Mesh::ATTRIBUTE_UV_0.at_shader_location(1));
             descriptor.vertex.shader_defs.push("DOT_BATCH".into());
@@ -423,6 +501,12 @@ pub struct Globals {
     /// The sea (`weather::WeatherState::sea`): sea state 0..8 (x), downwind direction in the
     /// Bevy x / z plane (y, z), whitecaps 0..1 (w).
     pub sea: Vec4,
+    /// The simulated ocean (`ocean::Ocean::globals`): on (x), the waves' rise in the mesh
+    /// (y), the mesh drawn (z); the open water mask's corner (x, z from the floating origin),
+    /// span (z) and whether there is one (w); each mesh level's centre, two a vec4.
+    pub ocean: Vec4,
+    pub ocean_mask: Vec4,
+    pub ocean_levels: [Vec4; 4],
     /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
     /// `DETAIL_PERIOD`.
     pub ground_detail: Vec4,
@@ -460,8 +544,11 @@ pub const FX_GLASS: u32 = 1024;
 /// The sky mirrored in the water, waves and the sun's sparkle (`Effects::water`, modern
 /// shading).
 pub const FX_WATER: u32 = 2048;
+/// The simulated open sea (`Effects::ocean`, with the water's reflections): its slopes and
+/// foam on the water, the flat sea dropped under the waves' mesh.
+pub const FX_OCEAN: u32 = 4096;
 pub const SKY_VARIANTS: [u32; 4] = [0, FX_STARS, FX_STRATUS, FX_STARS | FX_STRATUS];
-const FX_DEFS: [(u32, &str); 12] = [
+const FX_DEFS: [(u32, &str); 13] = [
     (FX_MIST, "PALETTE_MIST"),
     (FX_CLOUD_SHADOWS, "PALETTE_CLOUD_SHADOWS"),
     (FX_BURST, "PALETTE_BURST"),
@@ -474,6 +561,7 @@ const FX_DEFS: [(u32, &str); 12] = [
     (FX_DETAIL, "PALETTE_DETAIL"),
     (FX_GLASS, "PALETTE_GLASS"),
     (FX_WATER, "PALETTE_WATER"),
+    (FX_OCEAN, "PALETTE_OCEAN"),
 ];
 
 /// The background's variant for the sky now (`FX_STARS`, `FX_STRATUS`).
@@ -499,11 +587,17 @@ pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
         | bit(ground_detail(settings), FX_DETAIL)
         | bit(glass(settings), FX_GLASS)
         | bit(water(settings), FX_WATER)
+        | bit(ocean(settings), FX_OCEAN)
 }
 
 /// The water mirrors the sky (`Effects::water`, modern shading only).
 pub fn water(settings: &crate::settings::Settings) -> bool {
     settings.effects.water && settings.modern_shading
+}
+
+/// The open sea's waves are simulated (`Effects::ocean`, with the water's reflections).
+pub fn ocean(settings: &crate::settings::Settings) -> bool {
+    settings.effects.ocean && water(settings)
 }
 
 /// Glass mirrors the sky (`Effects::glass`, modern shading only).
@@ -568,6 +662,9 @@ impl Default for Globals {
             shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
             star_frame: [Vec4::ZERO; 3],
             sea: Vec4::new(2.0, 0.8, 0.6, 0.0),
+            ocean: Vec4::ZERO,
+            ocean_mask: Vec4::ZERO,
+            ocean_levels: [Vec4::ZERO; 4],
             ground_detail: Vec4::ZERO,
             reflections: Vec4::ZERO,
         }

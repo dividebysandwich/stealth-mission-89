@@ -202,6 +202,11 @@ effect-water = Odsjaji na vodi
     .facts =
         Moderni shaderi: more i jezera zrcale nebo u valovima
         Svjetlost sunca i mjeseca svjetluca na vodi
+effect-ocean-waves = Simulirani ocean
+    .facts =
+        S odrazima na vodi: valovi otvorenog mora simulirani iz spektra vjetra
+        Pravo valovanje oko zrakoplova, brodovi i nosači se ljuljaju na njemu
+        Isključeno: lakše namreškano more za Steam Frame i telefone
 effect-vapour = Para i struja rotora
     .facts =
         Pri oštrim manevrima tragovi pare s vrhova krila

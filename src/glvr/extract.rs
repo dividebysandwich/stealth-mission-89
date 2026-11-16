@@ -29,6 +29,7 @@ use bevy::render::render_resource::TextureFormat;
 use bevy::render::storage::ShaderBuffer;
 use openxr as xr;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
 /// The eyes' fields of view are widened this much for culling: the draw list is drawn a frame
@@ -191,6 +192,9 @@ pub struct DrawList {
     pub readbacks: Vec<(Entity, AssetId<Image>)>,
     /// The volumetric clouds, if there are any.
     pub volumetric: Option<Clouds>,
+    /// The simulated ocean's latest textures and open water mask (`ocean::Ocean`), uploaded
+    /// when they change.
+    pub ocean: Option<(Arc<crate::ocean::OceanTextures>, Option<Arc<crate::ocean::mask::Mask>>)>,
     /// Haptic pulses asked for (`Hand::haptic`), per hand.
     pub haptics: [f32; 2],
 }
@@ -447,6 +451,11 @@ impl Extractor {
             frusta: &frusta,
         };
         let mut list = DrawList { rig, globals, ..default() };
+        if let Some(o) = world.get_resource::<crate::ocean::Ocean>()
+            && let Some(t) = &o.textures
+        {
+            list.ocean = Some((t.clone(), o.mask.clone()));
+        }
         if let Some(mut hands) = world.get_resource_mut::<crate::cockpit3d::Hands>() {
             for (i, hand) in hands.hands.iter_mut().enumerate() {
                 list.haptics[i] = std::mem::take(&mut hand.haptic);

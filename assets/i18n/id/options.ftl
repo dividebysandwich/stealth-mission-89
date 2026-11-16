@@ -202,6 +202,11 @@ effect-water = Pantulan air
     .facts =
         Shader modern: laut dan danau memantulkan langit di ombaknya
         Cahaya matahari dan bulan berkilauan di air
+effect-ocean-waves = Samudra simulasi
+    .facts =
+        Dengan pantulan air: ombak laut lepas disimulasikan dari spektrum angin
+        Alun nyata di sekitar pesawat, kapal dan kapal induk mengapung di atasnya
+        Mati: laut beriak yang lebih ringan, untuk Steam Frame dan ponsel
 effect-vapour = Uap dan aliran rotor
     .facts =
         Saat manuver tajam, jejak uap dari ujung sayap

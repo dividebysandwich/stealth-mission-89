@@ -68,6 +68,7 @@ fm-effect-cloud-shadows = FELHŐÁRNYÉKOK
 fm-effect-ground-detail = TALAJRÉSZLETEK
 fm-effect-glass = ÜVEGTÜKRÖZŐDÉS
 fm-effect-water = VÍZTÜKRÖZŐDÉS
+fm-effect-ocean-waves = ÓCEÁNI HULLÁMOK
 fm-effect-vapour = GŐZ ÉS POR
 fm-effect-night-sky = ÉJSZAKAI ÉGBOLT
 fm-effect-vga = VGA-SZÍNEK

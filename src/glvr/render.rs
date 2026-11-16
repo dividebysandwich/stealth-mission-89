@@ -35,6 +35,9 @@ const MAX_ANISOTROPY: u32 = 0x84FE;
 /// The texture unit holding the star catalogue's cells (`u_stars`) throughout: the others
 /// use units 0 and 1.
 const STAR_UNIT: u32 = 2;
+/// The texture units of the ocean's displacement, derivatives and open water mask
+/// (`u_ocean_disp`, `u_ocean_deriv`, `u_ocean_mask`) throughout.
+const OCEAN_UNITS: [u32; 3] = [3, 4, 5];
 
 type MultiviewFn = unsafe extern "system" fn(u32, u32, u32, i32, i32, i32);
 type MultisampleMultiviewFn = unsafe extern "system" fn(u32, u32, u32, i32, i32, i32, i32);
@@ -362,6 +365,9 @@ pub struct Renderer {
     /// texture is in `textures`).
     targets: HashMap<AssetId<Image>, (glow::Renderbuffer, glow::Framebuffer, (u32, u32))>,
     globals: glow::Buffer,
+    /// The ocean's textures (on `OCEAN_UNITS`) and what was last uploaded into them.
+    ocean: [glow::Texture; 3],
+    ocean_uploaded: (usize, usize),
     /// The palette meshes' instances of this frame: model matrix and mesh tag each.
     instances: glow::Buffer,
     meshes: HashMap<AssetId<Mesh>, GpuMesh>,
@@ -421,6 +427,11 @@ fn compile(gl: &glow::Context, shader: &str, defines: &str) -> Result<Program, S
         gl.uniform_1_i32(at("u_base_tex").as_ref(), 0);
         gl.uniform_1_i32(at("u_emissive_tex").as_ref(), 1);
         gl.uniform_1_i32(at("u_stars").as_ref(), STAR_UNIT as i32);
+        for (name, unit) in
+            ["u_ocean_disp", "u_ocean_deriv", "u_ocean_mask"].iter().zip(OCEAN_UNITS)
+        {
+            gl.uniform_1_i32(at(name).as_ref(), unit as i32);
+        }
         Ok(Program {
             program,
             view_proj: at("u_view_proj"),
@@ -546,6 +557,7 @@ impl Renderer {
         // SAFETY: the context is current.
         let (globals, instances) = unsafe { (gl.create_buffer()?, gl.create_buffer()?) };
         Self::star_grid(&gl)?;
+        let ocean = Self::ocean_textures(&gl)?;
         let samples = if multisample.is_some() { samples } else { 0 };
         // SAFETY: the context is current.
         let timers = unsafe {
@@ -568,6 +580,8 @@ impl Renderer {
             cloud_scale: 1.0,
             targets: HashMap::new(),
             globals,
+            ocean,
+            ocean_uploaded: (0, 0),
             instances,
             meshes: HashMap::new(),
             textures: HashMap::new(),
@@ -700,6 +714,111 @@ impl Renderer {
             };
             gl.bind_vertex_array(None);
             Some(GpuMesh { vao, buffers, count, indexed, mode, colours: mesh.colours.is_some() })
+        }
+    }
+
+    /// The ocean's textures (`ocean`): the cascades' arrays with their mip levels, and the
+    /// open water mask, on `OCEAN_UNITS` for good (filled by `upload_ocean`).
+    fn ocean_textures(gl: &glow::Context) -> Result<[glow::Texture; 3], String> {
+        use crate::ocean::{mask, spectrum::CASCADE_LENGTHS, worker};
+        // SAFETY: the context is current.
+        unsafe {
+            let mut out = Vec::new();
+            for (i, unit) in OCEAN_UNITS.into_iter().enumerate() {
+                let t = gl.create_texture()?;
+                gl.active_texture(glow::TEXTURE0 + unit);
+                let (target, wrap, min) = if i < 2 {
+                    gl.bind_texture(glow::TEXTURE_2D_ARRAY, Some(t));
+                    gl.tex_storage_3d(
+                        glow::TEXTURE_2D_ARRAY,
+                        worker::MIPS as i32,
+                        glow::RGBA16F,
+                        worker::N as i32,
+                        worker::N as i32,
+                        CASCADE_LENGTHS.len() as i32,
+                    );
+                    (glow::TEXTURE_2D_ARRAY, glow::REPEAT, glow::LINEAR_MIPMAP_LINEAR)
+                } else {
+                    gl.bind_texture(glow::TEXTURE_2D, Some(t));
+                    let s = mask::SIZE as i32;
+                    gl.tex_storage_2d(glow::TEXTURE_2D, 1, glow::RGBA8, s, s);
+                    (glow::TEXTURE_2D, glow::CLAMP_TO_EDGE, glow::LINEAR)
+                };
+                for (param, value) in [
+                    (glow::TEXTURE_MIN_FILTER, min),
+                    (glow::TEXTURE_MAG_FILTER, glow::LINEAR),
+                    (glow::TEXTURE_WRAP_S, wrap),
+                    (glow::TEXTURE_WRAP_T, wrap),
+                ] {
+                    gl.tex_parameter_i32(target, param, value as i32);
+                }
+                out.push(t);
+            }
+            gl.active_texture(glow::TEXTURE0);
+            Ok([out[0], out[1], out[2]])
+        }
+    }
+
+    /// The ocean's new surface and mask into its textures (each once).
+    fn upload_ocean(&mut self, list: &DrawList) {
+        use crate::ocean::{mask, spectrum::CASCADE_LENGTHS};
+        let Some((textures, mask_now)) = &list.ocean else { return };
+        let gl = &self.gl;
+        let layers = CASCADE_LENGTHS.len() as i32;
+        let tex_id = std::sync::Arc::as_ptr(textures) as usize;
+        let mask_id = mask_now.as_ref().map_or(0, |m| std::sync::Arc::as_ptr(m) as usize);
+        // SAFETY: the context is current; the textures are this renderer's, the bytes sized
+        // by `worker::pack` (every level's layers in turn, RGBA16F).
+        unsafe {
+            if tex_id != self.ocean_uploaded.0 {
+                for (unit, bytes) in OCEAN_UNITS.iter().zip([&textures.disp, &textures.deriv]) {
+                    gl.active_texture(glow::TEXTURE0 + unit);
+                    let mut at = 0;
+                    let mut level = 0;
+                    let mut s = crate::ocean::worker::N as i32;
+                    while s >= 1 {
+                        let len = (s * s * 8 * layers) as usize;
+                        let Some(data) = bytes.get(at..at + len) else { break };
+                        gl.tex_sub_image_3d(
+                            glow::TEXTURE_2D_ARRAY,
+                            level,
+                            0,
+                            0,
+                            0,
+                            s,
+                            s,
+                            layers,
+                            glow::RGBA,
+                            glow::HALF_FLOAT,
+                            glow::PixelUnpackData::Slice(Some(data)),
+                        );
+                        at += len;
+                        level += 1;
+                        s /= 2;
+                    }
+                }
+                self.ocean_uploaded.0 = tex_id;
+            }
+            if let Some(m) = mask_now
+                && mask_id != self.ocean_uploaded.1
+            {
+                gl.active_texture(glow::TEXTURE0 + OCEAN_UNITS[2]);
+                let s = mask::SIZE as i32;
+                gl.pixel_store_i32(glow::UNPACK_ALIGNMENT, 1);
+                gl.tex_sub_image_2d(
+                    glow::TEXTURE_2D,
+                    0,
+                    0,
+                    0,
+                    s,
+                    s,
+                    glow::RGBA,
+                    glow::UNSIGNED_BYTE,
+                    glow::PixelUnpackData::Slice(Some(&m.rgba)),
+                );
+                self.ocean_uploaded.1 = mask_id;
+            }
+            gl.active_texture(glow::TEXTURE0);
         }
     }
 
@@ -887,6 +1006,7 @@ impl Renderer {
         srgb: bool,
     ) -> Result<(), String> {
         let fb = self.framebuffer(texture, size)?;
+        self.upload_ocean(list);
         let timer = self.timers.get(self.frame % TIMERS).copied();
         let mut gpu_ms = None;
         // SAFETY: the context is current; the queries and buffers are this renderer's.

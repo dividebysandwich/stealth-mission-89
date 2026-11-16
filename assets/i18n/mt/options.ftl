@@ -202,6 +202,11 @@ effect-water = Riflessjonijiet fl-ilma
     .facts =
         Shaders moderni: il-baħar u l-lagi jirriflettu s-sema fil-mewġ
         Id-dawl tax-xemx u tal-qamar jilma fuq l-ilma
+effect-ocean-waves = Oċean simulat
+    .facts =
+        Bir-riflessi fl-ilma: il-mewġ tal-baħar miftuħ simulat mill-ispettru tar-riħ
+        Mewġ veru madwar l-ajruplan, bastimenti u trasportaturi jitbandlu fuqu
+        Mitfi: il-baħar imqanfed eħfef, għal Steam Frame u telefowns
 effect-vapour = Fwar u fluss tar-rotor
     .facts =
         F'manuvri ħorox, linji ta' fwar mill-ponot tal-ġwienaħ
