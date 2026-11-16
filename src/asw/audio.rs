@@ -2,8 +2,9 @@
 //! waterfall the listening cursor was last put on), made live on the audio thread from its
 //! reports.
 //!
-//! Off any line the cursor hears only the sea: a faint brown noise. On a contact's line (within
-//! `CURSOR_BAND` of one of its tones) that contact comes up:
+//! The cursor is a bearing: pointed where nothing is, it hears only the sea, a faint brown
+//! noise. Pointed at a contact's trace (within `CURSOR_BAND` of its bearing) that contact comes
+//! up (an omnidirectional sensor hears every contact, whatever the cursor):
 //! - a submarine: the water's rush past its hull beating slowly with its screw, its machinery's
 //!   hum (its 50 or 60 Hz line) faint under it;
 //! - a surface ship: its screws alone, the recorded `ship-big1_loop` (the carrier) or
@@ -13,8 +14,8 @@
 //! A torpedo running: its fast screw, cavitating (the smaller ship's recording run fast, with
 //! a buzz and crackle).
 //!
-//! Another sonar's ping shows as a line on the waterfall (`asw::PING_LINE_HZ`): with the
-//! cursor on it, `sonarbuoy.flac` plays as it is heard. The sensor's own ping sounds as a
+//! Another sonar's ping shows as a dash at its bearing on the waterfall: with the cursor
+//! pointed at it, `sonarbuoy.flac` plays as it is heard. The sensor's own ping sounds as a
 //! 3.5 kHz tone with its echo after the range's two-way travel time.
 
 use std::num::NonZero;
@@ -42,9 +43,9 @@ const PING_SECS: f32 = 0.35;
 const SOUND_SPEED: f32 = 1500.0;
 /// Contacts heard at once (those whose line the cursor is on).
 const SOURCES: usize = 4;
-/// The cursor's band: a tone this far off it (Hz) is down to 1/e; past `CURSOR_EDGE` bands
-/// nothing of it is heard.
-const CURSOR_BAND: f32 = 4.0;
+/// The cursor's beam: a contact this far off its bearing (degrees) is down to 1/e; past
+/// `CURSOR_EDGE` beams nothing of it is heard.
+const CURSOR_BAND: f32 = 8.0;
 const CURSOR_EDGE: f32 = 2.5;
 /// The sea's brown noise: how loud, a little more with the sea state.
 const SEA: f32 = 0.05;
@@ -192,14 +193,15 @@ fn follow(
     let p = &link.params;
     let s = &w.last;
     set(&p.sea, SEA * (1.0 + (s.noise as f32 - 45.0).max(0.0) * 0.05));
-    let off_line = |l: &stealth_sim::asw::Line, hz: f32| {
-        l.freqs.iter().filter(|&&f| f > 0).map(|&f| (f as f32 - hz).abs()).fold(f32::MAX, f32::min)
+    // How far off the cursor's bearing a contact is (an omnidirectional sensor's: none).
+    let off_line = |l: &stealth_sim::asw::Line, brg: f32| {
+        l.bearing.map_or(0.0, |b| super::sonar::bearing_off(b as f32, brg).abs())
     };
     let mut k = 0;
     for l in s.lines.iter().filter(|l| !l.ping) {
-        let Some(hz) = cursor else { break };
+        let Some(brg) = cursor else { break };
         // Only the contacts whose line the cursor is on.
-        let off = off_line(l, hz);
+        let off = off_line(l, brg);
         if off > CURSOR_BAND * CURSOR_EDGE || k >= SOURCES {
             continue;
         }
@@ -233,8 +235,8 @@ fn follow(
             p.pings.fetch_add(1, Ordering::Relaxed);
         }
         // Another sonar's ping: heard with the cursor on its line.
-        let on_ping = cursor.is_some_and(|hz| {
-            s.lines.iter().any(|l| l.ping && off_line(l, hz) <= CURSOR_BAND * CURSOR_EDGE)
+        let on_ping = cursor.is_some_and(|brg| {
+            s.lines.iter().any(|l| l.ping && off_line(l, brg) <= CURSOR_BAND * CURSOR_EDGE)
         });
         if on_ping {
             p.heard.fetch_add(1, Ordering::Relaxed);

@@ -1,8 +1,11 @@
 //! The SONAR page: a waterfall for each sensor in the water, one under the other (the live
 //! buoys, at most four, and the dipping sonar while it is down). A waterfall's rows are the
-//! sensor's reports, newest at the top, four a second (`asw::SENSE_HZ`): across it the frequency (0 to 256 Hz),
-//! the sea's noise as speckle, a submarine's tonal lines bright where it is heard (its
-//! machinery's tone and harmonic, its blade rate), a ping a bright row. Each row's header has the
+//! sensor's reports, newest at the top, four a second (`asw::SENSE_HZ`): across it the true
+//! bearing (000 to 360), the signal heard from each direction: the sea's noise as speckle, each
+//! contact a trace at its bearing (wider the less sure its bearing, cavitating screws wider
+//! still), moving across as its bearing from the sensor changes; another sonar's ping a sharp
+//! dash at its bearing, the sensor's own ping a bright row. An omnidirectional sensor (a DICASS
+//! listening) raises its whole row: it cannot tell the direction. Each row's header has the
 //! sensor's kind, number, depth, mode, the strongest contact's signal, bearing, range and
 //! Doppler; touch a header to select the sensor (PING and AUDIO then act on it), its buttons
 //! switch a DICASS between listening and pinging and scuttle a buoy. A BT buoy's header shows
@@ -19,9 +22,9 @@ use crate::canvas::{Canvas, Picture};
 use crate::font::{Align, stroke_text_at};
 use crate::station::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
 
-/// Frequency bins across a waterfall and their width (Hz); rows kept.
-pub const BINS: usize = 128;
-pub const HZ_PER_BIN: f32 = 2.0;
+/// Bearing bins across a waterfall (2 degrees each, 0 to 360 true); rows kept.
+pub const BINS: usize = 180;
+pub const DEG_PER_BIN: f32 = 2.0;
 const ROWS: usize = 440;
 /// The page's layout (canvas units): the title bar, the rows' area, the header's width.
 const TOP: f32 = 26.0;
@@ -40,6 +43,11 @@ pub struct Waterfall {
     pub rng: u32,
 }
 
+/// The angle between two bearings (degrees, 0..180).
+pub fn bearing_off(a: f32, b: f32) -> f32 {
+    ((a - b).rem_euclid(360.0) + 180.0).rem_euclid(360.0) - 180.0
+}
+
 impl Waterfall {
     fn noise(&mut self) -> u32 {
         self.rng ^= self.rng << 13;
@@ -48,58 +56,44 @@ impl Waterfall {
         self.rng
     }
 
-    /// A row from a report.
+    /// A row from a report: signal strength over bearing.
     fn push(&mut self, s: &Sample) {
-        let mut row = [0u8; BINS];
-        let base = 25 + s.noise.saturating_sub(40) as u32 * 3;
+        let mut row = [0f32; BINS];
+        let base = 25.0 + s.noise.saturating_sub(40) as f32 * 3.0;
         for v in row.iter_mut() {
             let n = self.noise();
-            *v = (base + n % 45 + if n % 23 == 0 { 40 } else { 0 }).min(255) as u8;
+            *v = base + (n % 45) as f32 + if n % 23 == 0 { 40.0 } else { 0.0 };
         }
         for l in &s.lines {
-            // A torpedo's fast screws cavitate: a haze over the upper band.
-            if l.torpedo {
-                let haze = (l.snr as f32 * 3.0).clamp(0.0, 90.0) as u8;
-                for v in row.iter_mut().skip(BINS / 3) {
-                    let n = (self.noise() % 25) as u8;
-                    *v = v.saturating_add(haze.saturating_sub(n));
+            let snr = l.snr.max(0) as f32;
+            let strength = if l.ping { 200.0 } else { (40.0 + snr * 3.0).clamp(20.0, 200.0) };
+            match l.bearing {
+                // A trace at its bearing, as wide as the bearing is uncertain (cavitating
+                // screws spread wider), smooth at its edges.
+                Some(b) => {
+                    let mut sigma = if l.ping { 2.0 } else { 3.0 + 30.0 / (1.0 + snr) };
+                    if l.ship || l.torpedo {
+                        sigma *= 1.6;
+                    }
+                    for (k, v) in row.iter_mut().enumerate() {
+                        let d = bearing_off(k as f32 * DEG_PER_BIN + DEG_PER_BIN / 2.0, b as f32);
+                        *v += strength * (-(d * d) / (2.0 * sigma * sigma)).exp();
+                    }
                 }
-            }
-            // A ship's screws cavitate: a broad smear over the low band as well.
-            if l.ship {
-                let haze = (l.snr as f32 * 2.5).clamp(0.0, 70.0) as u8;
-                for v in row.iter_mut().take(BINS * 2 / 3) {
-                    let n = (self.noise() % 20) as u8;
-                    *v = v.saturating_add(haze.saturating_sub(n));
-                }
-            }
-            let bright = (110.0 + l.snr as f32 * 12.0).clamp(60.0, 255.0) as u8;
-            for (k, &f) in l.freqs.iter().enumerate() {
-                // A ping's line alone (no harmonics, no blade rate).
-                if f == 0 || (l.ping && k > 0) {
-                    continue;
-                }
-                for harmonic in 1..=(if k == 0 && !l.ping { 2 } else { 1 }) {
-                    let b = (f as f32 * harmonic as f32 / HZ_PER_BIN).round() as usize;
-                    let v = if harmonic == 1 { bright } else { bright.saturating_sub(40) };
-                    if b < BINS {
-                        row[b] = row[b].max(v);
-                        if b + 1 < BINS {
-                            row[b + 1] = row[b + 1].max(v / 2);
-                        }
-                        if b > 0 {
-                            row[b - 1] = row[b - 1].max(v / 2);
-                        }
+                // An omnidirectional sensor: the energy over every bearing.
+                None => {
+                    for v in row.iter_mut() {
+                        *v += strength * 0.25;
                     }
                 }
             }
         }
         if s.ping {
             for v in row.iter_mut() {
-                *v = v.saturating_add(120);
+                *v += 120.0;
             }
         }
-        self.rows.push_front(row);
+        self.rows.push_front(row.map(|v| v.min(255.0) as u8));
         self.rows.truncate(ROWS);
         self.last = s.clone();
         self.seq = s.seq;
@@ -191,10 +185,10 @@ pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: 
         let (top, h) = row_band(k, list.len());
         let (x0, x1) = (LEFT + HEADER, RIGHT - 2.0);
         if kind != Some(BuoyKind::Bt) && p.y >= top && p.y < top + h - 12.0 && p.x >= x0 && p.x <= x1 {
-            let hz = (p.x - x0) / (x1 - x0) * BINS as f32 * HZ_PER_BIN;
-            // One cursor: the headset hears this sensor alone.
+            let brg = (p.x - x0) / (x1 - x0) * 360.0;
+            // One cursor: the headset hears this sensor alone, in that direction.
             ui.cursor.clear();
-            ui.cursor.insert(id, hz.round());
+            ui.cursor.insert(id, brg.round().rem_euclid(360.0));
             ui.sensor = Some(id);
             ui.audio = Some(id);
             return;
@@ -306,27 +300,31 @@ pub fn draw(
             }
         }
         // The listening cursor, and what is near it.
-        if let Some(&hz) = ui.cursor.get(&id).filter(|_| kind != Some(BuoyKind::Bt)) {
-            let x = x0 + (x1 - x0) * hz / (BINS as f32 * HZ_PER_BIN);
+        if let Some(&brg) = ui.cursor.get(&id).filter(|_| kind != Some(BuoyKind::Bt)) {
+            let x = x0 + (x1 - x0) * brg / 360.0;
             cv.stroke(Vec2::new(x, y0), Vec2::new(x, y1), 1.2, YELLOW);
             let near = falls.and_then(|w| {
-                w.last.lines.iter().find(|l| l.freqs.iter().any(|&f| (f as f32 - hz).abs() <= 4.0))
+                w.last.lines.iter().find(|l| l.bearing.is_some_and(|b| bearing_off(b as f32, brg).abs() <= 8.0))
             });
             let t = match near {
-                Some(l) => format!("{hz:.0} HZ {:+}", l.snr),
-                None => format!("{hz:.0} HZ"),
+                Some(l) => format!("{brg:03.0} {:+}", l.snr),
+                None => format!("{brg:03.0}"),
             };
             let tx = if x > x1 - 60.0 { x - 4.0 } else { x + 4.0 };
             let al = if x > x1 - 60.0 { Align::Right } else { Align::Left };
             stroke_text_at(cv, tx, y0 + 7.0, &t, 6.0, 1.0, YELLOW, al);
         }
-        // The frequency scale under it.
+        // The bearing scale under it (true).
         if kind != Some(BuoyKind::Bt) {
-            for hz in (0..=256).step_by(50) {
-                let x = x0 + (x1 - x0) * hz as f32 / (BINS as f32 * HZ_PER_BIN);
+            for (deg, label) in [(0, "000"), (90, "090"), (180, "180"), (270, "270"), (360, "360")] {
+                let x = x0 + (x1 - x0) * deg as f32 / 360.0;
                 cv.line(x as i32, y1 as i32, x as i32, y1 as i32 + 3, GREY);
-                let label = if hz == 250 { "250 HZ".to_string() } else { hz.to_string() };
-                stroke_text_at(cv, x, y1 + 8.0, &label, 5.0, 1.0, GREY, Align::Centre);
+                let align = match deg {
+                    0 => Align::Left,
+                    360 => Align::Right,
+                    _ => Align::Centre,
+                };
+                stroke_text_at(cv, x, y1 + 8.0, label, 5.0, 1.0, GREY, align);
             }
         }
         // The header.

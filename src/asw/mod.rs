@@ -12,7 +12,7 @@
 //! seat is taken): `buoy=difar|dicass|bt[@east,north]` (km from the aircraft), `deep=0|1`,
 //! `active=<n>` (the n-th buoy, from 1, pings), `dip=0|1`, `depth=<m>`, `dipping=0|1` (its
 //! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `torp=<hdg|auto>/<delay>/<pattern>`,
-//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `cursor=<hz>` (the selected sensor's
+//! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `cursor=<bearing>` (the selected sensor's
 //! listening cursor, in the headset).
 
 pub mod audio;
