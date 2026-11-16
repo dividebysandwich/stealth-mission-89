@@ -10,7 +10,7 @@
 # behind the seat, stowage, a dim cabin lamp), the forward facing crew seat, the console bolted to
 # the cockpit's rear bulkhead: a frame with grey avionics boxes, the big tactical display
 # (`screen_asw`) with its page soft keys under it, the tall keyset right of it (sonobuoys, sonar,
-# MAD / nav, weapons, RELEASE in a striped guard), the status screen (`screen_info`) over the
+# MAD / nav, weapons, a big red RELEASE), the status screen (`screen_info`) over the
 # keyset, a keyboard shelf, and right of the seat the hand controller (`stick`) that slews the
 # map cursor.
 #
@@ -27,7 +27,7 @@ from mathutils import Euler, Matrix, Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import console_lib as lib  # noqa: E402
-from console_lib import Surface, box, column, screen  # noqa: E402
+from console_lib import Surface, box, button, column, screen  # noqa: E402
 
 out = sys.argv[sys.argv.index("--") + 1]
 
@@ -455,7 +455,7 @@ box("black", "black", leave.at(0.0, 0.0, 0.0), (0.09, 0.004, 0.07), leave.rot)
 column(leave, 0.0, [("Console(Leave)", "LEAVE", 0.0)])
 
 # --- the keyset: a tall black panel on a grey case, two columns of keys by group, rockers and
-# knobs down its edges, RELEASE in a yellow and black striped guard
+# knobs down its edges, RELEASE a big red key
 keyset = Surface(KEY_AT, Euler((math.radians(KEY_LEAN), 0.0, math.radians(KEY_TURN))))
 kw, kh = KEY_SIZE
 box("panel_grey", "panel_grey", keyset.at(0.0, 0.0, -0.16), (kw + 0.02, 0.30, kh + 0.04), keyset.rot)
@@ -479,29 +479,12 @@ column(keyset, R, [
     ("Console(Depth, 2)", "DEPTH+", 0.030),
     ("Console(Mark)", "MARK", -0.095),
     ("Console(RangeIn)", "ZOOM+", -0.140),
-    ("Console(Release)", "RELEASE", -0.225),
 ])
+# RELEASE: a big red key (its light flashes while the release is armed).
+button(keyset, "Console(Release)", "RELEASE", R + 0.012, -0.225, size=(0.040, 0.022), body="red")
 # Group rules between the key groups.
 merged("white", "white", [B(keyset.at(0.0, v, 0.001), (kw - 0.03, 0.002, 0.002), keyset.rot)
                           for v in (0.138, -0.035, -0.160)])
-# The guard round RELEASE: a raised ring of alternating yellow and black blocks.
-yel, blk = [], []
-hw, hh, g, t = 0.024 + 0.010, 0.011 + 0.010, 0.008, 0.012
-ring = []
-n = 6
-for i in range(n):
-    u = -hw - g + (i + 0.5) * (2 * (hw + g)) / n
-    ring.append(((u, hh + g / 2), ((2 * (hw + g)) / n, g)))
-    ring.append(((u, -hh - g / 2), ((2 * (hw + g)) / n, g)))
-for i in range(2):
-    v = -hh + (i + 0.5) * hh
-    ring.append(((-hw - g / 2, v), (g, hh)))
-    ring.append(((hw + g / 2, v), (g, hh)))
-for k, ((u, v), (su, sv)) in enumerate(ring):
-    part = B(keyset.at(R + u, -0.225 + v, 0.005), (su, 0.010, sv), keyset.rot)
-    (yel if (k // 2 + k) % 2 == 0 else blk).append(part)
-merged("yellow", "yellow", yel)
-merged("black", "black", blk)
 # Rocker switches down the left edge, knobs down the right, between the keys' rows.
 rock_base, rock, knob, idx = [], [], [], []
 for k, v in enumerate((0.205, 0.160, 0.075, 0.030, -0.015, -0.095, -0.140)):

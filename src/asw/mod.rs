@@ -34,6 +34,10 @@ use crate::settings::AppState;
 /// The main display's canvas (`cockpit3d::displays::ASW_CANVAS`).
 const CANVAS: Vec2 = Vec2::new(640.0, 480.0);
 
+/// The RELEASE key's light: palette dark red (safe, and the armed flash's off phase), bright red.
+const RELEASE_DIM: u8 = 222;
+const RELEASE_BRIGHT: u8 = 147;
+
 /// Metres per world unit.
 pub const M_PER_WU: f64 = stealth_sim::aaa::M_PER_MAP / 32.0;
 
@@ -527,6 +531,7 @@ fn panel(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
     ui: Res<AswUi>,
+    time: Res<Time<Real>>,
     mut out: ResMut<ConsolePanel>,
 ) {
     let (Some(combat), Some(m)) = (combat, manning.as_deref().filter(|m| m.asw())) else { return };
@@ -548,9 +553,13 @@ fn panel(
     if ui.audio.is_some() {
         lit.push((ConsoleKey::Audio, GREEN));
     }
+    // RELEASE: a red key, dim while safe, flashing bright while armed.
     if crew.armed {
         lit.push((ConsoleKey::Arm, RED));
-        lit.push((ConsoleKey::Release, RED));
+        let on = (time.elapsed_secs() * 2.0).fract() < 0.5;
+        lit.push((ConsoleKey::Release, if on { RELEASE_BRIGHT } else { RELEASE_DIM }));
+    } else {
+        lit.push((ConsoleKey::Release, RELEASE_DIM));
     }
     let want = ConsolePanel { hidden: Vec::new(), lit };
     if *out != want {
