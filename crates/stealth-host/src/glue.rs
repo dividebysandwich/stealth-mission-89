@@ -264,6 +264,8 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
         MissionKind::Cas => [5, 7, 5, 0],
         MissionKind::Strike | MissionKind::Interdiction => [6, 8, 6, 0],
         MissionKind::AntiShip => [4, 3, 5, 0],
+        // The Seahawk's own: Hellfires and two torpedoes (`loadout::PlannedLoadout::of`).
+        MissionKind::Asw => [20, 24, 24, -1],
         MissionKind::Cap
         | MissionKind::Escort
         | MissionKind::Insertion
@@ -287,6 +289,7 @@ pub fn sim_objective(sortie: &Sortie) -> Option<(i32, usize)> {
         Objective::Strike { airfield, .. } => Some((2, airfield as usize)),
         Objective::Interdict { object, .. } => Some((2, object as usize)),
         Objective::AntiShip { ship } => Some((2, ship as usize)),
+        Objective::Asw { carrier } => Some((stealth_sim::asw::HUNT_MISSION, carrier as usize)),
         Objective::Sead { ref sites, .. } => sites.first().map(|&o| (2, o as usize)),
         _ => None,
     }
@@ -527,6 +530,7 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
         Objective::Strike { airfield, .. } => t!("brief-strike", place = site(airfield)),
         Objective::Interdict { object, .. } => t!("brief-interdict", place = site(object)),
         Objective::AntiShip { .. } => t!("brief-anti-ship").into(),
+        Objective::Asw { carrier } => t!("brief-asw", carrier = site(carrier)),
         Objective::Resupply { request } => match state.supply_request(request) {
             Some(r) => t!("brief-resupply", unit = r.title().tr(), task = describe(o.kind)),
             None => describe(o.kind).into(),

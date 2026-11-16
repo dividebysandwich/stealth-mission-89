@@ -866,6 +866,9 @@ fn mfd_keys(
     }
     if state.av.aircraft != settings.aircraft {
         state.av.aircraft = settings.aircraft;
+        if settings.aircraft.seahawk() {
+            state.av.seahawk_start();
+        }
     }
     let mfds = settings.cockpit().0.mfd_count();
     if state.av.mfds != mfds {

@@ -342,3 +342,38 @@ fn the_others_never_see_the_submarines() {
     assert!(c.subs.is_empty());
     assert_eq!(c.buoys.len(), 1);
 }
+
+#[test]
+fn a_campaign_hunt_spawns_off_the_carrier_and_its_sinking_is_the_hunters_objective() {
+    let mut sim = seahawk();
+    let carrier = (0..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
+    let c = object_metres(&sim.objects()[carrier]);
+    sim.set_pilot_target(0, Some((HUNT_MISSION, carrier)));
+    sim.start_hunt_for(0, carrier, 99);
+    let s = sub(&sim).clone();
+    let d = (s.at[0] - c[0]).hypot(s.at[1] - c[1]);
+    assert!((21_000.0..=29_000.0).contains(&d), "{d:.0} m off the carrier");
+    assert_eq!(s.hunter, Some(0));
+    // Another sortie's hunt replaces it.
+    sim.start_hunt_for(0, carrier, 7);
+    assert_eq!(sim.asw().subs.len(), 1);
+    // A torpedo onto it, from close by.
+    let near = [sub(&sim).at[0] - 450.0, sub(&sim).at[1] - 450.0];
+    sim.set_loadout(&[(20, 4), (MK54_WEAPON, 1), (MK54_WEAPON, 1)]);
+    let ps = at(near[0], near[1], 25.0, 0.0);
+    run(&mut sim, &ps, 0.5);
+    let heading = (sub(&sim).at[0] - near[0]).atan2(sub(&sim).at[1] - near[1]).to_degrees().rem_euclid(360.0) as u16;
+    let program = TorpProgram { heading: Some(heading), delay: 5, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+    sim.asw_command(0, AswCmd::Program(program)).unwrap();
+    sim.asw_command(0, AswCmd::Arm(true)).unwrap();
+    sim.asw_command(0, AswCmd::Release { station: 1 }).unwrap();
+    let mut ev = Vec::new();
+    for _ in 0..300 {
+        ev.extend(run(&mut sim, &ps, 1.0));
+        if !sub(&sim).alive {
+            break;
+        }
+    }
+    assert!(!sub(&sim).alive);
+    assert!(ev.iter().any(|e| matches!(e, SimEvent::ObjectiveDone { primary: true })));
+}

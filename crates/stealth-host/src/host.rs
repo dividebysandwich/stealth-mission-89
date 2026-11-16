@@ -732,10 +732,12 @@ impl Host {
                     reports.push(Report::SupplyDelivered { tag })
                 }
                 SimEvent::ObjectiveDone { primary: true } => {
-                    if let Some(Objective::Recon { object, .. }) =
-                        self.state.sortie(player).map(|s| &s.offer.objective)
-                    {
-                        reports.push(Report::PhotoTaken { player, object: *object });
+                    match self.state.sortie(player).map(|s| &s.offer.objective) {
+                        Some(Objective::Recon { object, .. }) => {
+                            reports.push(Report::PhotoTaken { player, object: *object });
+                        }
+                        Some(Objective::Asw { .. }) => reports.push(Report::SubSunk { player }),
+                        _ => {}
                     }
                 }
                 SimEvent::AaaDestroyed { unit, by } => {
@@ -983,6 +985,10 @@ impl Host {
                     let airframe = self.rules.sortie_airframe(sortie);
                     let mut start =
                         sim.respawn_pilot(player.0, base, glue::sim_objective(sortie), airframe);
+                    // Hunting a submarine: his own, closing on the carrier's group.
+                    if let Objective::Asw { carrier } = sortie.offer.objective {
+                        sim.start_hunt_for(player.0, carrier as usize, sortie.offer.id);
+                    }
                     // Flying a cargo run: hunted and escorted as its AI aircraft would be.
                     if let Objective::Airlift { run } = sortie.offer.objective {
                         let tag = self.state.cargo_runs.iter().find(|r| r.id == run).map(|r| r.tag);

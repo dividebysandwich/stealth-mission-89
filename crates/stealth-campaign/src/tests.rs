@@ -3872,3 +3872,30 @@ fn patriots_stand_on_land() {
         }
     }
 }
+
+/// Only the MH-60R hunts submarines, and it flies nothing else; its sortie is achieved when the
+/// submarine it hunts is reported sunk.
+#[test]
+fn only_the_seahawk_hunts_submarines() {
+    use crate::{Aircraft, MissionKind, Objective, Progress};
+    assert!(MissionKind::Asw.flyable_by(Aircraft::MH60R));
+    assert_eq!(MissionKind::Asw.pick(Aircraft::F16), Aircraft::MH60R);
+    for k in [Aircraft::F16, Aircraft::UH60, Aircraft::AH64, Aircraft::F117] {
+        assert!(!MissionKind::Asw.flyable_by(k), "{k:?}");
+    }
+    for m in [MissionKind::Cas, MissionKind::Insertion, MissionKind::AntiShip, MissionKind::Recon] {
+        assert!(!m.flyable_by(Aircraft::MH60R), "{m:?}");
+    }
+    assert!(Aircraft::MH60R.gunner_seat() && Aircraft::MH60R.helicopter());
+    let mut state = campaign("persian_gulf", 1);
+    state.tick(1.0, &WorldView::default(), &[]);
+    let o = Objective::Asw { carrier: 3 };
+    assert!(!state.objective_met(&o, &Progress::default()));
+    assert!(state.objective_met(&o, &Progress { sub_sunk: true, ..Default::default() }));
+    // A theater with a friendly carrier has the hunt on its board.
+    assert!(
+        state.board.iter().any(|o| o.kind == MissionKind::Asw),
+        "{:?}",
+        state.board.iter().map(|o| o.kind).collect::<Vec<_>>()
+    );
+}

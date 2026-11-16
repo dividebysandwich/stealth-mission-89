@@ -596,7 +596,8 @@ impl CampaignState {
             | Objective::Defend { .. }
             | Objective::Intercept { .. }
             | Objective::Escort { .. }
-            | Objective::Awacs { .. } => AiTarget::Patrol { x: o.x, y: o.y },
+            | Objective::Awacs { .. }
+            | Objective::Asw { .. } => AiTarget::Patrol { x: o.x, y: o.y },
             Objective::Cargo { tag } => {
                 self.cargo_run(*tag)?;
                 AiTarget::Hunt { tag: *tag, x: o.x, y: o.y }

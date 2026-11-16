@@ -1874,6 +1874,16 @@ impl CampaignState {
                 0,
             );
         }
+        // A submarine reported closing on a friendly carrier group: the Seahawks' hunt.
+        let carriers: Vec<(ObjectId, i32, i32)> = self
+            .sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Carrier && s.side == side && s.alive())
+            .map(|s| (s.object, s.x, s.y))
+            .collect();
+        for &(carrier, x, y) in carriers.iter().take(1) {
+            add(self, MissionKind::Asw, text!("cb-asw"), Objective::Asw { carrier }, x, y, 0);
+        }
         // CAP: where enemy fighters are near friendly places or insertions, else over the
         // friendly place nearest the front.
         let mut guarded: Vec<(i32, i32, Text)> = self
@@ -1936,7 +1946,7 @@ impl CampaignState {
                 | MissionKind::Resupply => 0,
                 MissionKind::Escort | MissionKind::Logistics | MissionKind::Airlift => 1,
                 MissionKind::Interdiction => 2,
-                MissionKind::Cap | MissionKind::AntiShip => 3,
+                MissionKind::Cap | MissionKind::AntiShip | MissionKind::Asw => 3,
                 _ => 4 + front_index(&front, &o.objective),
             };
             let mut keep: Vec<usize> = (0..offers.len()).collect();
@@ -2008,5 +2018,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Support { convoy, .. } => (17, convoy as i64),
         Objective::Cargo { tag } => (18, tag as i64),
         Objective::Airlift { run } => (19, run as i64),
+        Objective::Asw { carrier } => (20, carrier as i64),
     }
 }

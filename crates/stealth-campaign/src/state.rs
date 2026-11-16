@@ -261,6 +261,8 @@ pub enum MissionKind {
     /// Fly a cargo run of munitions from the production base to a base out of them, in the
     /// cargo jet (instead of the AI's).
     Airlift,
+    /// Hunt the enemy submarine reported closing on a friendly carrier group (the MH-60R).
+    Asw,
 }
 
 impl MissionKind {
@@ -282,6 +284,7 @@ impl MissionKind {
             MissionKind::Resupply => "RESUPPLY",
             MissionKind::Logistics => "LOGISTICS",
             MissionKind::Airlift => "AIRLIFT",
+            MissionKind::Asw => "ASW",
         }
     }
 
@@ -299,6 +302,10 @@ impl MissionKind {
         }
         if aircraft.spectre() {
             return self == MissionKind::Cas;
+        }
+        // The Seahawk hunts submarines, and nothing else does.
+        if aircraft == Aircraft::MH60R || self == MissionKind::Asw {
+            return aircraft == Aircraft::MH60R && self == MissionKind::Asw;
         }
         match self {
             MissionKind::Insertion => aircraft.transport(),
@@ -327,6 +334,7 @@ impl MissionKind {
             MissionKind::Insertion | MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
             MissionKind::Airlift => &[C5],
+            MissionKind::Asw => &[MH60R],
         }
     }
 
@@ -345,6 +353,10 @@ impl MissionKind {
             text!("ce-ac130-only")
         } else if self == MissionKind::Airlift {
             text!("ce-airlift-c5")
+        } else if aircraft == Aircraft::MH60R {
+            text!("ce-mh60r-only")
+        } else if self == MissionKind::Asw {
+            text!("ce-asw-mh60r")
         } else if aircraft == Aircraft::CH47 {
             text!("ce-ch47-only")
         } else if aircraft.transport() {
@@ -373,7 +385,8 @@ impl MissionKind {
             | MissionKind::Intercept
             | MissionKind::Defend
             | MissionKind::Csar
-            | MissionKind::Insertion => 150,
+            | MissionKind::Insertion
+            | MissionKind::Asw => 150,
             MissionKind::Interdiction => 200,
             MissionKind::Awacs => 250,
         }
@@ -405,6 +418,10 @@ pub enum Objective {
     },
     AntiShip {
         ship: ObjectId,
+    },
+    /// Sink the submarine closing on this friendly carrier's group.
+    Asw {
+        carrier: ObjectId,
     },
     /// Hold the air over a point.
     Cap {
@@ -588,6 +605,9 @@ pub struct Progress {
     /// Seconds on station (CAP).
     pub on_station: f64,
     pub photo: bool,
+    /// The submarine he hunted is sunk (ASW).
+    #[serde(default)]
+    pub sub_sunk: bool,
     /// Objective achieved (stays achieved).
     pub achieved: bool,
     /// Friendly aircraft lost in the CAP area, and enemy aircraft the pilot shot down there.

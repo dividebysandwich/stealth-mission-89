@@ -139,6 +139,10 @@ pub enum Report {
         x: i32,
         y: i32,
     },
+    /// The submarine a player hunted was sunk (ASW).
+    SubSunk {
+        player: PlayerId,
+    },
     /// A player photographed a world object (recon).
     PhotoTaken {
         player: PlayerId,

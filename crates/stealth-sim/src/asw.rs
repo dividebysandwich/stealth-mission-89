@@ -421,6 +421,9 @@ pub struct Sub {
     pub alive: bool,
     /// Through the blockade, or its torpedoes run home.
     pub done: bool,
+    /// A campaign's: the player whose sortie hunts it (its sinking his objective).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hunter: Option<u8>,
 }
 
 /// A fix on a submarine (m east, north): its error (m), when (s), how (0 crossed bearings, 1
@@ -714,6 +717,7 @@ impl Sub {
             machinery: if s.nuclear { 60 } else { 50 },
             alive: true,
             done: false,
+            hunter: None,
         }
     }
 
@@ -776,6 +780,48 @@ impl Sim {
             .min_by(|&a, &b| {
                 dist(object_metres(&self.objects[a]), from).total_cmp(&dist(object_metres(&self.objects[b]), from))
             })
+    }
+
+    /// A campaign sortie's hunt: a submarine for player `player` some 22-28 km off the carrier
+    /// `carrier`, closing on one of its escorts (else the carrier).
+    pub fn start_hunt_for(&mut self, player: u8, carrier: usize, seed: u32) {
+        let Some(c) = self.objects.get(carrier).map(object_metres) else { return };
+        if self.asw.rng.is_none() {
+            self.asw.rng = Some(Rng::new(seed | 1));
+            let layer = 30 + self.asw.rand(90);
+            self.asw.ocean = Ocean { layer: layer as f32, sea_state: 1 + self.asw.rand(4) as u8, bottom: 600.0 };
+        }
+        // Gone: the one hunted before it.
+        self.asw.subs.retain(|s| s.hunter != Some(player));
+        let at = (0..64).find_map(|_| {
+            let a = self.asw.rand(3600) as f64 / 10.0 * DEG;
+            let d = 22_000.0 + self.asw.rand(6000) as f64;
+            let p = [c[0] + a.sin() * d, c[1] + a.cos() * d];
+            let open = (0..8).all(|k| {
+                let b = k as f64 * 45.0 * DEG;
+                self.sea_at([p[0] + b.sin() * 1500.0, p[1] + b.cos() * 1500.0])
+            });
+            (self.sea_at(p) && open).then_some(p)
+        });
+        let Some(at) = at else { return };
+        let setup = SubSetup { at, heading: bearing(at, c), intent: Intent::Escort { carrier }, nuclear: self.asw.rand(2) == 0 };
+        let id = self.asw.id();
+        let mut sub = setup;
+        sub.intent = match self.escort_of(carrier, at) {
+            Some(ship) => Intent::Approach { ship },
+            None => Intent::Attack { ship: carrier },
+        };
+        let mut s = Sub::from_setup(id, &sub);
+        s.hunter = Some(player);
+        s.pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
+        self.asw.subs.push(s);
+        // Where it was reported (a few kilometres off): the crew's first waypoint.
+        let off = self.asw.rand(3000) as f64;
+        let a = self.asw.rand(3600) as f64 / 10.0 * DEG;
+        let datum = [at[0] + a.sin() * off, at[1] + a.cos() * off];
+        let c = self.asw.crew_mut(player);
+        c.route = vec![((datum[0] / M_PER_WU) as i32, (datum[1] / M_PER_WU) as i32)];
+        c.route_rev = c.route_rev.wrapping_add(1);
     }
 
     /// Moves submarine `i` (test aid).
@@ -1038,7 +1084,16 @@ impl Sim {
     fn sink(&mut self, i: usize) {
         let s = &mut self.asw.subs[i];
         s.alive = false;
-        let at = s.at;
+        let (at, hunter) = (s.at, s.hunter);
+        // A campaign's: the hunter's objective.
+        if let Some(p) = hunter.filter(|&p| self.pilot_exists(p as usize)) {
+            let back = self.pl.id as usize;
+            self.activate(p as usize);
+            if self.pl.targets[0].mission_type == HUNT_MISSION {
+                self.mark_target_reached(0);
+            }
+            self.activate(back);
+        }
         self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 2 });
         self.tell_crews(text!("asw-sub-sunk"));
     }
@@ -1097,6 +1152,18 @@ impl Sim {
     }
 
     fn move_subs(&mut self, dt: f64) {
+        // A campaign's submarine whose hunter has gone home withdraws.
+        let gone: Vec<bool> = self
+            .asw
+            .subs
+            .iter()
+            .map(|s| s.hunter.is_some_and(|p| !self.pilot_exists(p as usize) || self.pilot_absent(p)))
+            .collect();
+        let mut k = 0;
+        self.asw.subs.retain(|_| {
+            k += 1;
+            !gone[k - 1]
+        });
         for i in 0..self.asw.subs.len() {
             if !self.asw.subs[i].alive || self.asw.subs[i].done {
                 continue;
@@ -1657,6 +1724,10 @@ impl Sim {
     /// The hunt's objective: every submarine sunk (mission type 12).
     fn judge_hunt(&mut self, present: &[usize]) {
         if self.asw.subs.is_empty() || self.asw.result != AswResult::Hunting {
+            return;
+        }
+        // A campaign's hunts are each sortie's own (`sink`).
+        if self.asw.subs.iter().any(|s| s.hunter.is_some()) {
             return;
         }
         if self.asw.subs.iter().all(|s| !s.alive) {
