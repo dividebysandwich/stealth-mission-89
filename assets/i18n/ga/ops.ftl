@@ -246,3 +246,4 @@ ops-seat-free = saor
 ops-flight-airborne = San aer
 ops-flight-on-ground = Ar an talamh
 ops-flight-starting = Ag tosú
+ops-wind-rising = An ghaoth ag neartú go dtí timpeall { $kt } kt.

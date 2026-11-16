@@ -15,3 +15,6 @@ wx-sky-scattered = mazi mākoņi
 wx-sky-broken = daļēji mākoņains
 wx-sky-overcast = apmācies
 wx-sky-storm = pērkona negaiss
+wx-wind-calm = Vējš: bezvējš.
+wx-wind = Vējš: { $dir }°, { $kt } kt.
+wx-wind-gusts = Vējš: { $dir }°, { $kt } kt, brāzmās { $gust } kt.

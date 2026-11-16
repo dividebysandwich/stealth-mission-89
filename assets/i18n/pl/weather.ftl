@@ -15,3 +15,6 @@ wx-sky-scattered = zachmurzenie rozproszone
 wx-sky-broken = zachmurzenie poprzerywane
 wx-sky-overcast = zachmurzenie całkowite
 wx-sky-storm = burze
+wx-wind-calm = Wiatr: cisza.
+wx-wind = Wiatr: { $dir }°, { $kt } kt.
+wx-wind-gusts = Wiatr: { $dir }°, { $kt } kt, w porywach { $gust } kt.

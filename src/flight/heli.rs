@@ -512,12 +512,15 @@ pub(super) fn step(
         pitch += rand::random_range(-j..j);
     }
 
-    // --- air data
+    // --- air data: the rotor and the body meet the moving air (`vel` is over the ground; the
+    // hover autopilot holds that against the wind).
     let mut vel = a.heli.vel;
     let mut rates = a.heli.rates;
+    let wind = if a.on_ground { Vec3::new(a.wind.x, 0.0, a.wind.z) } else { a.wind };
+    let v_air = vel - wind;
     let inv = a.orientation.inverse();
-    let vb = inv * vel;
-    let horizontal = Vec3::new(vel.x, 0.0, vel.z).length() / KNOT;
+    let vb = inv * v_air;
+    let horizontal = Vec3::new(v_air.x, 0.0, v_air.z).length() / KNOT;
     let etl = smoothstep(r.etl_knots.0, r.etl_knots.1, horizontal);
     let height = (a.altitude - a.ground_altitude).max(0.0);
     let ge = 1.0 - (height / r.ge_height).clamp(0.0, 1.0);
@@ -547,7 +550,7 @@ pub(super) fn step(
     let torque = st.torque;
 
     // --- forces (accelerations, ft/s^2)
-    let stall = smoothstep(r.stall_knots.0, r.stall_knots.1, vel.length() / KNOT);
+    let stall = smoothstep(r.stall_knots.0, r.stall_knots.1, v_air.length() / KNOT);
     let thrust = (r.thrust_flat + r.thrust_slope * c).max(0.0)
         * nr2
         * (1.0 + r.etl_gain * etl)
@@ -642,7 +645,9 @@ pub(super) fn step(
     }
     a.heli.vel = vel;
     a.heli.rates = rates;
-    let speed = vel.length();
+    a.ground_vel = vel;
+    // Through the air; on the wheels over the ground (the airspeed reads nothing useful there).
+    let speed = if a.on_ground { vel.length() } else { (vel - wind).length() };
     a.velocity = speed * 16.0;
     a.thrust = torque * 100.0;
     a.stall_speed = 0.0;
@@ -1299,6 +1304,26 @@ mod tests {
             let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
             assert!(!engage_hover(&mut a) && !a.autopilot(), "{name}: engaged at 40 kt");
         }
+    }
+
+    /// In a 20 kt wind auto-hover holds the spot all the same, the rotor meeting the wind.
+    #[test]
+    fn auto_hover_holds_the_spot_in_a_wind() {
+        let k = FlightConstants::uh60();
+        let r = k.heli.unwrap();
+        let mut a0 = hovering(300.0);
+        a0.set_thrust = r.hover_collective() * 100.0;
+        a0.gear_down = false;
+        let (mut a, _) = fly_as(k.clone(), a0, 0.01, 1, |_, _| {});
+        a.wind = Vec3::new(20.0 * KNOT, 0.0, 0.0);
+        assert!(engage_hover(&mut a));
+        let (a, p) = fly_as(k, a, 90.0, 1, |_, _| {});
+        let away = p.xz().length() * crate::world::WU as f32;
+        println!("20 kt wind: {away:.0} m off the spot, {:.1} kt through the air", a.knots());
+        assert!(a.auto_hover() && a.ended.is_none());
+        assert!(away < 40.0, "{away:.0} m off the spot");
+        assert!((a.knots() - 20.0).abs() < 4.0, "airspeed {}", a.knots());
+        assert!(a.ground_knots() < 2.0, "ground speed {}", a.ground_knots());
     }
 
     /// Engaged low it holds that altitude, not climbing to a floor.

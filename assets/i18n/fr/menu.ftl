@@ -438,3 +438,29 @@ aircraft-ac130 =
         Avion-canonnière à tir latéral
         Canons de 40 mm et 105 mm pointés par la nacelle
         Orbitez à gauche pour pointer les canons
+
+menu-wind = Vent
+wind-random = Aléatoire
+    .facts =
+        Selon la météo : les orages soufflent le plus fort
+        Change à chaque nouvelle mission
+wind-calm = Calme
+    .facts =
+        0-3 kt
+        Air calme, mer d'huile
+wind-light = Faible
+    .facts =
+        5-10 kt
+        Petites vagues
+wind-moderate = Modéré
+    .facts =
+        12-18 kt, rafales jusqu'à 25 kt
+        Moutons, les navires roulent un peu
+wind-strong = Fort
+    .facts =
+        20-30 kt, rafales jusqu'à 45 kt
+        Turbulences à basse altitude, mer agitée
+wind-gale = Tempête
+    .facts =
+        32-45 kt, rafales jusqu'à 65 kt
+        Fortes turbulences, mer forte, ponts de porte-avions mobiles

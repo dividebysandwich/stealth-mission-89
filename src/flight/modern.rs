@@ -754,6 +754,12 @@ pub(crate) fn atmosphere(h: f32) -> (f32, f32) {
     }
 }
 
+/// The pitch and roll (rad) of a carrier's deck under the aircraft along its heading (none on
+/// land, where the modern model rolls level).
+fn deck_slope(a: &Aircraft) -> (f32, f32) {
+    if a.over_deck { a.ground_slope } else { (0.0, 0.0) }
+}
+
 /// Pitch at rest on the gear (rad): level, or a V/STOL type's nose up on its short main gear.
 fn ground_pitch(ae: &Aero) -> f32 {
     ae.vtol.map_or(0.0, |v| v.ground_pitch)
@@ -889,18 +895,20 @@ pub(super) fn step(
 
     engine(a, controls, k, dt);
 
-    // --- air data
+    // --- air data: the aircraft flies through the moving air (`vel` is over the ground).
     let mut vel = a.modern.vel;
     let mut rates = a.modern.rates;
-    let speed = vel.length();
-    let vhat = if speed > 1.0 { vel / speed } else { a.orientation * Vec3::NEG_Z };
+    let wind = if air { a.wind } else { Vec3::new(a.wind.x, 0.0, a.wind.z) };
+    let v_air = vel - wind;
+    let speed = v_air.length();
+    let vhat = if speed > 1.0 { v_air / speed } else { a.orientation * Vec3::NEG_Z };
     let (sigma, sound) = atmosphere(a.altitude);
     let qbar = 0.5 * RHO0 * sigma * speed * speed;
     let mass = (ae.dry_weight + a.fuel) / ae.ref_weight;
     let fwd = a.orientation * Vec3::NEG_Z;
     let up = a.orientation * Vec3::Y;
     let right = a.orientation * Vec3::X;
-    let vb = a.orientation.inverse() * vel;
+    let vb = a.orientation.inverse() * v_air;
     let (alpha, beta) =
         if speed > 1.0 { ((-vb.y).atan2(-vb.z), vb.x.atan2(-vb.z)) } else { (pitch, 0.0) };
     let gamma = vhat.y.clamp(-1.0, 1.0).asin();
@@ -953,7 +961,7 @@ pub(super) fn step(
         * G;
     accel.y -= G;
     if let Some(v) = &ae.vtol {
-        accel -= vel * v.momentum_drag * (a.thrust / 100.0).clamp(0.0, 1.0) * jet;
+        accel -= v_air * v.momentum_drag * (a.thrust / 100.0).clamp(0.0, 1.0) * jet;
     }
 
     // Stall speed at the current load (velocity units) for the warnings.
@@ -1112,6 +1120,8 @@ pub(super) fn step(
         // --- ground roll along the nose, lift unloading the wheels
         let flat = Vec3::new(heading.sin(), 0.0, -heading.cos());
         let mut along = vel.dot(flat);
+        // The headwind along the nose: the air the wings meet on the roll.
+        let headwind = -wind.dot(flat);
         // Lift and the nozzles' thrust unload the wheels.
         let weight_on_wheels = (1.0 - n_lift * pitch.cos() - thrust * thrust_dir.y).max(0.0);
         let mut decel = ROLL_FRICTION * weight_on_wheels;
@@ -1137,16 +1147,18 @@ pub(super) fn step(
         let vs = a.stall_speed / 16.0 / load.sqrt();
         let mut new_pitch = pitch;
         let pull = controls.pitch.clamp(-1.0, 1.0);
-        if along > 0.8 * vs && pull > 0.05 {
+        if along + headwind > 0.8 * vs && pull > 0.05 {
             new_pitch += pull * ae.rotate_rate * dt;
         } else {
             new_pitch -= ae.rotate_rate * 0.7 * dt;
         }
-        let new_pitch = new_pitch.clamp(ground_pitch(ae), MAX_GROUND_PITCH);
+        // A carrier's deck tilts with the sea, the aircraft with it.
+        let (sp, sr) = deck_slope(a);
+        let new_pitch = new_pitch.clamp(ground_pitch(ae) + sp, MAX_GROUND_PITCH + sp);
         // Nosewheel steering by the rudder, else the stick; less authority with speed.
         let steer = if rudder != 0.0 { rudder } else { roll_stick };
         let yaw_rate = steer * (0.6 * (1.0 - along / 250.0)).clamp(0.06, 0.6);
-        a.orientation = Aircraft::from_euler(heading + yaw_rate * dt, new_pitch, 0.0);
+        a.orientation = Aircraft::from_euler(heading + yaw_rate * dt, new_pitch, sr);
         // Lift off once the lift and the nozzles' thrust exceed the weight.
         let climb = ((n_lift * new_pitch.cos() + thrust * thrust_dir.y - 1.0) * G).max(0.0) * dt;
         vel = flat * along + Vec3::Y * climb;
@@ -1170,21 +1182,31 @@ pub(super) fn step(
     ground_contact(a, k, false, roll_now, prev_alt, east, north, theater, dt);
     if a.on_ground {
         vel.y = 0.0;
-        if prev_alt > a.ground_altitude {
-            // Touchdown: wings level, the nose stays up until the speed drops.
+        if air && prev_alt > a.ground_altitude {
+            // Touchdown: wings level (with a moving deck), the nose stays up until the speed
+            // drops.
             let (h, p, _) = a.euler();
+            let (sp, sr) = deck_slope(a);
             a.orientation =
-                Aircraft::from_euler(h, p.clamp(ground_pitch(ae), MAX_GROUND_PITCH), 0.0);
+                Aircraft::from_euler(h, p.clamp(ground_pitch(ae) + sp, MAX_GROUND_PITCH + sp), sr);
             let flat = Vec3::new(h.sin(), 0.0, -h.cos());
             vel = flat * vel.dot(flat).max(0.0);
         }
     }
     a.modern.vel = vel;
     a.modern.rates = rates;
-    let speed = vel.length();
+    a.ground_vel = vel;
+    // Speed through the air (on the ground, along the nose: the wheels hold it sideways).
+    let v_air = if a.on_ground {
+        let flat = (a.orientation * Vec3::NEG_Z).with_y(0.0).normalize_or_zero();
+        flat * (vel - wind).dot(flat).max(0.0)
+    } else {
+        vel - wind
+    };
+    let speed = v_air.length();
     a.velocity = speed * 16.0;
     // Angle of attack as the flight path marker offset, the classic trim and lift.
-    let vb = a.orientation.inverse() * vel;
+    let vb = a.orientation.inverse() * v_air;
     let alpha = if speed > 1.0 && !a.on_ground { (-vb.y).atan2(-vb.z) } else { 0.0 };
     a.fpm = to_bam(alpha);
     a.trim = a.fpm * roll_now.cos();

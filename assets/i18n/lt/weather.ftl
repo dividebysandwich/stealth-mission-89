@@ -15,3 +15,6 @@ wx-sky-scattered = pasklidę debesys
 wx-sky-broken = debesuota su pragiedruliais
 wx-sky-overcast = apsiniaukę
 wx-sky-storm = perkūnija
+wx-wind-calm = Vėjas: štilis.
+wx-wind = Vėjas: { $dir }°, { $kt } kt.
+wx-wind-gusts = Vėjas: { $dir }°, { $kt } kt, gūsiai { $gust } kt.

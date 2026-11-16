@@ -438,3 +438,29 @@ aircraft-ac130 =
         Avion de foc cu tragere laterală
         Tunuri de 40 mm și 105 mm ochite cu containerul
         Orbitați spre stânga ca tunurile să bată ținta
+
+menu-wind = Vânt
+wind-random = Aleator
+    .facts =
+        După vreme: furtunile bat cel mai tare
+        Se schimbă la fiecare misiune nouă
+wind-calm = Calm
+    .facts =
+        0-3 kt
+        Aer liniștit, mare ca oglinda
+wind-light = Slab
+    .facts =
+        5-10 kt
+        Valuri mici
+wind-moderate = Moderat
+    .facts =
+        12-18 kt, rafale până la 25 kt
+        Creste albe, navele se clatină puțin
+wind-strong = Puternic
+    .facts =
+        20-30 kt, rafale până la 45 kt
+        Turbulență la joasă altitudine, mare agitată
+wind-gale = Furtună
+    .facts =
+        32-45 kt, rafale până la 65 kt
+        Turbulență severă, mare montată, punți de portavion în mișcare

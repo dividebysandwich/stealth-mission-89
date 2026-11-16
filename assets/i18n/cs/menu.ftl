@@ -438,3 +438,29 @@ aircraft-ac130 =
         Bočně střílející palebný letoun
         Kanóny 40 mm a 105 mm mířené kontejnerem
         Kroužete vlevo, aby kanóny dosáhly
+
+menu-wind = Vítr
+wind-random = Náhodný
+    .facts =
+        Podle počasí: bouřky foukají nejsilněji
+        Mění se s každou novou misí
+wind-calm = Bezvětří
+    .facts =
+        0-3 kt
+        Klidný vzduch, hladké moře
+wind-light = Slabý
+    .facts =
+        5-10 kt
+        Malé vlny
+wind-moderate = Mírný
+    .facts =
+        12-18 kt, v nárazech až 25 kt
+        Bílé hřebeny vln, lodě se mírně kolébají
+wind-strong = Silný
+    .facts =
+        20-30 kt, v nárazech až 45 kt
+        Turbulence nízko nad zemí, rozbouřené moře
+wind-gale = Vichřice
+    .facts =
+        32-45 kt, v nárazech až 65 kt
+        Silná turbulence, vysoké vlny, pohyblivé paluby letadlových lodí

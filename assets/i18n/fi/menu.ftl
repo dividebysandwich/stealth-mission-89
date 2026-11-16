@@ -438,3 +438,29 @@ aircraft-ac130 =
         Sivulle ampuva tykkikone
         40 mm:n ja 105 mm:n tykit suunnataan säiliöllä
         Kierrä vasemmalle saadaksesi tykit maaliin
+
+menu-wind = Tuuli
+wind-random = Satunnainen
+    .facts =
+        Sään mukaan: ukkoset puhaltavat kovimmin
+        Vaihtuu joka tehtävässä
+wind-calm = Tyyni
+    .facts =
+        0-3 kt
+        Tyyni ilma, peilityyni meri
+wind-light = Heikko
+    .facts =
+        5-10 kt
+        Pieniä aaltoja
+wind-moderate = Kohtalainen
+    .facts =
+        12-18 kt, puuskissa 25 kt
+        Vaahtopäitä, alukset keinuvat hieman
+wind-strong = Navakka
+    .facts =
+        20-30 kt, puuskissa 45 kt
+        Turbulenssia matalalla, kova merenkäynti
+wind-gale = Myrsky
+    .facts =
+        32-45 kt, puuskissa 65 kt
+        Kova turbulenssi, korkea merenkäynti, liikkuvat lentotukialusten kannet

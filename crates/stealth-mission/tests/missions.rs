@@ -78,6 +78,7 @@ fn random_missions_do_not_panic() {
                 pilot: "Capt. Test".into(),
                 weather: if i % 3 == 0 { None } else { Some(stealth_mission::Sky::Clear) },
                 cloud_cover: None,
+                wind: None,
                 start_hour: None,
                 moon: None,
                 helicopter: i % 4 == 1,

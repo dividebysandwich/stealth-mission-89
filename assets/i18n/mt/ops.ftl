@@ -246,3 +246,4 @@ ops-seat-free = liberu
 ops-flight-airborne = Fl-ajru
 ops-flight-on-ground = Fl-art
 ops-flight-starting = Qed jixgħel
+ops-wind-rising = Ir-riħ qed jiżdied għal madwar { $kt } kt.

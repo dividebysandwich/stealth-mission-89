@@ -438,3 +438,29 @@ aircraft-ac130 =
         Bočno strelsko ognjeno letalo
         Topova 40 mm in 105 mm, merjena s kontejnerjem
         Krožite levo, da topovi dosežejo cilj
+
+menu-wind = Veter
+wind-random = Naključno
+    .facts =
+        Glede na vreme: nevihte pihajo najmočneje
+        Spremeni se z vsako novo misijo
+wind-calm = Brezvetrje
+    .facts =
+        0-3 kt
+        Mirn zrak, gladko morje
+wind-light = Šibek
+    .facts =
+        5-10 kt
+        Majhni valovi
+wind-moderate = Zmeren
+    .facts =
+        12-18 kt, sunki do 25 kt
+        Bele penaste krone, ladje se rahlo zibljejo
+wind-strong = Močan
+    .facts =
+        20-30 kt, sunki do 45 kt
+        Turbulenca nizko, razburkano morje
+wind-gale = Vihar
+    .facts =
+        32-45 kt, sunki do 65 kt
+        Močna turbulenca, visoki valovi, premikajoče se palube letalonosilk

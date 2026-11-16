@@ -438,3 +438,29 @@ aircraft-ac130 =
         Side-firing gunship
         40 mm and 105 mm guns aimed with the pod
         Orbit left to bring the guns to bear
+
+menu-wind = Wind
+wind-random = Random
+    .facts =
+        Fits the weather: storms blow hardest
+        Changes with each new mission
+wind-calm = Calm
+    .facts =
+        0-3 kt
+        Smooth air, glassy sea
+wind-light = Light
+    .facts =
+        5-10 kt
+        Small waves
+wind-moderate = Moderate
+    .facts =
+        12-18 kt, gusts to 25 kt
+        Whitecaps, ships roll a little
+wind-strong = Strong
+    .facts =
+        20-30 kt, gusts to 45 kt
+        Turbulence low down, rough sea
+wind-gale = Gale
+    .facts =
+        32-45 kt, gusts to 65 kt
+        Severe turbulence, high sea, moving carrier decks

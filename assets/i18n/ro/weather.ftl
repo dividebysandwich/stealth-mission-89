@@ -15,3 +15,6 @@ wx-sky-scattered = nori împrăștiați
 wx-sky-broken = cer fragmentat
 wx-sky-overcast = cer acoperit
 wx-sky-storm = furtuni
+wx-wind-calm = Vânt: calm.
+wx-wind = Vânt: { $dir }° cu { $kt } kt.
+wx-wind-gusts = Vânt: { $dir }° cu { $kt } kt, rafale { $gust } kt.

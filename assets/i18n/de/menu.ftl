@@ -438,3 +438,29 @@ aircraft-ac130 =
         Seitlich feuerndes Kanonenflugzeug
         40-mm- und 105-mm-Geschütze, gerichtet mit dem Zielbehälter
         Im Linkskreis fliegen, damit die Geschütze tragen
+
+menu-wind = Wind
+wind-random = Zufällig
+    .facts =
+        Passend zum Wetter: Gewitter bringen den stärksten Wind
+        Ändert sich mit jeder neuen Mission
+wind-calm = Windstill
+    .facts =
+        0-3 kt
+        Ruhige Luft, spiegelglatte See
+wind-light = Schwach
+    .facts =
+        5-10 kt
+        Kleine Wellen
+wind-moderate = Mäßig
+    .facts =
+        12-18 kt, Böen bis 25 kt
+        Schaumkronen, Schiffe rollen leicht
+wind-strong = Stark
+    .facts =
+        20-30 kt, Böen bis 45 kt
+        Turbulenz in Bodennähe, raue See
+wind-gale = Sturm
+    .facts =
+        32-45 kt, Böen bis 65 kt
+        Schwere Turbulenz, hohe See, bewegte Trägerdecks

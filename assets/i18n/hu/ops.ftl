@@ -246,3 +246,4 @@ ops-seat-free = szabad
 ops-flight-airborne = A levegőben
 ops-flight-on-ground = A földön
 ops-flight-starting = Indítás
+ops-wind-rising = A szél erősödik, kb. { $kt } kt-ig.

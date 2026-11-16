@@ -15,3 +15,6 @@ wx-sky-scattered = αραιή συννεφιά
 wx-sky-broken = πυκνή συννεφιά
 wx-sky-overcast = κλειστός ουρανός
 wx-sky-storm = καταιγίδες
+wx-wind-calm = Άνεμος: νηνεμία.
+wx-wind = Άνεμος: { $dir }°, { $kt } kt.
+wx-wind-gusts = Άνεμος: { $dir }°, { $kt } kt, ριπές { $gust } kt.

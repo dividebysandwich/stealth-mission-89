@@ -438,3 +438,29 @@ aircraft-ac130 =
         Sidefyrende gunship
         40 mm- og 105 mm-kanoner rettet med poden
         Kreds til venstre for at få kanonerne på målet
+
+menu-wind = Vind
+wind-random = Tilfældig
+    .facts =
+        Passer til vejret: tordenvejr blæser hårdest
+        Skifter med hver ny mission
+wind-calm = Stille
+    .facts =
+        0-3 kt
+        Rolig luft, blikstille hav
+wind-light = Svag
+    .facts =
+        5-10 kt
+        Små bølger
+wind-moderate = Jævn
+    .facts =
+        12-18 kt, vindstød til 25 kt
+        Skumtoppe, skibe ruller lidt
+wind-strong = Kraftig
+    .facts =
+        20-30 kt, vindstød til 45 kt
+        Turbulens lavt nede, uroligt hav
+wind-gale = Storm
+    .facts =
+        32-45 kt, vindstød til 65 kt
+        Kraftig turbulens, høj sø, hangarskibsdæk i bevægelse

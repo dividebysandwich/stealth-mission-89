@@ -15,3 +15,6 @@ wx-sky-scattered = scaipthe
 wx-sky-broken = briste
 wx-sky-overcast = clúdaithe
 wx-sky-storm = stoirmeacha toirní
+wx-wind-calm = Gaoth: ciúin.
+wx-wind = Gaoth: { $dir }° ag { $kt } kt.
+wx-wind-gusts = Gaoth: { $dir }° ag { $kt } kt, séideáin { $gust } kt.

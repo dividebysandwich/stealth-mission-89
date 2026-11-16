@@ -246,3 +246,4 @@ ops-seat-free = 空席
 ops-flight-airborne = 飛行中
 ops-flight-on-ground = 地上
 ops-flight-starting = 始動中
+ops-wind-rising = 風は約 { $kt } kt まで強まる見込み。

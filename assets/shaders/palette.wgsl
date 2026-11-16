@@ -121,6 +121,9 @@ struct Globals {
     // The stars: the columns of the rotation from the world's frame to the star catalogue's
     // (stars.rs `frame`).
     star_frame: array<vec4<f32>, 3>,
+    // The sea: sea state 0..8 (x), downwind direction in the world's x / z plane (yz),
+    // whitecaps 0..1 (w).
+    sea: vec4<f32>,
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
     ground_detail: vec4<f32>,
@@ -1605,24 +1608,72 @@ fn water_group(p: vec2<f32>, t: f32, len: f32, i: u32) -> f32 {
     return 0.3 + 1.4 * value_noise(q, 11u + i);
 }
 
+// The sea state (globals.sea.x, 0..8): the waves' slope relative to a moderate sea (state 3)...
+fn sea_slope() -> f32 {
+    let s = globals.sea.x;
+    return select(1.0 + (s - 3.0) * 0.28, 0.35 + 0.65 * s / 3.0, s < 3.0);
+}
+
+// ... the long waves' length relative to it ...
+fn sea_length() -> f32 {
+    return 1.0 + max(globals.sea.x - 3.0, 0.0) * 0.35;
+}
+
+// ... and a wave direction turned with the wind (the first wave, (0.8, 0.6), runs downwind),
+// the more of them running downwind the rougher the sea.
+fn sea_dir(d: vec2<f32>) -> vec2<f32> {
+    let wd = globals.sea.yz;
+    let rot = vec2<f32>(wd.x * 0.8 + wd.y * 0.6, wd.y * 0.8 - wd.x * 0.6);
+    let r = vec2<f32>(d.x * rot.x - d.y * rot.y, d.x * rot.y + d.y * rot.x);
+    return normalize(mix(r, wd, 0.6 * smoothstep(1.0, 5.0, globals.sea.x)) + vec2<f32>(1e-4, 0.0));
+}
+
 fn water_normal(p: vec2<f32>, t: f32, foot: f32, rough: f32) -> vec3<f32> {
     // Against a regular lattice of highlights: the waves' positions warped by smooth noise
     // (48 m cells, drifting), each wave's height in its own groups, a fine noise ripple on top.
+    // The wind turns them and the sea state makes them steeper, the long ones longer.
     let q = p / 48.0 + vec2<f32>(t * 0.03, -t * 0.02);
     let w = p + (vec2<f32>(value_noise(q, 3u), value_noise(q + 17.3, 5u)) - 0.5) * 14.0;
-    var s = water_wave(w, t, vec2<f32>(0.8, 0.6), 64.0, 0.045 * water_group(p, t, 64.0, 0u), foot);
-    s += water_wave(w, t, vec2<f32>(-0.6, 0.8), 40.0, 0.05 * water_group(p, t, 40.0, 1u), foot);
-    s += water_wave(w, t, vec2<f32>(0.96, -0.28), 20.0, 0.06 * water_group(p, t, 20.0, 2u), foot);
-    s += water_wave(w, t, vec2<f32>(-0.28, -0.96), 12.8, 0.07 * water_group(p, t, 12.8, 3u), foot);
-    s += water_wave(w, t, vec2<f32>(0.6, -0.8), 5.12, 0.08 * water_group(p, t, 5.12, 4u), foot);
-    s += water_wave(w, t, vec2<f32>(-0.92, 0.39), 2.5, 0.09 * water_group(p, t, 2.5, 5u), foot);
+    let l = sea_length();
+    var s = water_wave(w, t, sea_dir(vec2<f32>(0.8, 0.6)), 64.0 * l, 0.045 * water_group(p, t, 64.0 * l, 0u), foot);
+    s += water_wave(w, t, sea_dir(vec2<f32>(-0.6, 0.8)), 40.0 * l, 0.05 * water_group(p, t, 40.0 * l, 1u), foot);
+    s += water_wave(w, t, sea_dir(vec2<f32>(0.96, -0.28)), 20.0 * sqrt(l), 0.06 * water_group(p, t, 20.0, 2u), foot);
+    s += water_wave(w, t, sea_dir(vec2<f32>(-0.28, -0.96)), 12.8, 0.07 * water_group(p, t, 12.8, 3u), foot);
+    s += water_wave(w, t, sea_dir(vec2<f32>(0.6, -0.8)), 5.12, 0.08 * water_group(p, t, 5.12, 4u), foot);
+    s += water_wave(w, t, sea_dir(vec2<f32>(-0.92, 0.39)), 2.5, 0.09 * water_group(p, t, 2.5, 5u), foot);
     // The ripple: the slope of 3 m value noise, gone under a few pixels.
     let r = p / 3.0 + vec2<f32>(t * 0.2, t * 0.13);
     let r0 = value_noise(r, 7u);
     let ripple = vec2<f32>(value_noise(r + vec2<f32>(0.15, 0.0), 7u) - r0, value_noise(r + vec2<f32>(0.0, 0.15), 7u) - r0);
     s += ripple * 0.5 * (1.0 - smoothstep(0.3, 1.5, foot));
-    s *= rough;
+    s *= rough * sea_slope();
     return normalize(vec3<f32>(-s.x, 1.0, -s.y));
+}
+
+// Whitecaps (globals.sea.w 0..1, from about sea state 3): foam on the crests, lines across the
+// wind driven downwind, flaring up and dying away; in the distance the average foam's tint.
+fn whitecaps(rgb: vec3<f32>, p: vec2<f32>, t: f32, foot: f32) -> vec3<f32> {
+    let caps = globals.sea.w;
+    if (caps <= 0.0) {
+        return rgb;
+    }
+    let wd = globals.sea.yz;
+    // Along the wind and across it (metres), drifting downwind.
+    let speed = 2.0 + 3.0 * globals.sea.x;
+    let q = vec2<f32>(dot(p, wd) - t * speed, dot(p, vec2<f32>(-wd.y, wd.x)));
+    let n = value_noise(q / vec2<f32>(3.0, 9.0), 23u) * 0.6
+        + value_noise(q / vec2<f32>(1.2, 3.5) + vec2<f32>(t * 0.4, 0.0), 29u) * 0.4;
+    // Each patch of crests flares up and dies away.
+    let life = value_noise(q / 40.0 + vec2<f32>(t * 0.05, 0.0), 31u);
+    let thr = 1.0 - 0.32 * caps * (0.4 + 0.6 * life);
+    let near = smoothstep(thr, thr + 0.06, n);
+    // Past a few metres a pixel the foam is a mean tint (how much of the sea is white).
+    let mean = 0.18 * caps * caps;
+    let k = smoothstep(0.3, 1.5, foot);
+    let foam = mix(near, mean, k);
+    let sky = mirrored_sky(vec3<f32>(0.0, 1.0, 0.0));
+    let white = vec3<f32>(min(dot(sky, vec3<f32>(0.3, 0.59, 0.11)) * 2.4, 0.92));
+    return mix(rgb, white, foam);
 }
 
 // Low frequency Perlin noise over the water (about -1..1, two octaves of 640 m and 2.56 km
@@ -1710,7 +1761,9 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32,
     let p = world.xz + globals.noise.xy;
     let t = globals.dots.y;
     let m = water_patches(p, t);
-    let rough = WATER_CALM + (WATER_ROUGH - WATER_CALM) * smoothstep(-0.6, 0.6, m);
+    // Fewer calm patches the rougher the sea.
+    let calm = mix(WATER_CALM, WATER_ROUGH * 0.8, smoothstep(2.0, 6.0, globals.sea.x));
+    let rough = calm + (WATER_ROUGH - calm) * smoothstep(-0.6, 0.6, m);
     let n = water_normal(p, t, foot, rough);
     var r = reflect(v, n);
     r.y = abs(r.y);
@@ -1730,7 +1783,7 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, dir: vec3<f32>, foot: f32,
         + water_glitter(p, r, moon.xyz, across, t, rough) * WATER_GLITTER * far;
     c += (sun_hl * sun.w * sun_colour(sun.y) * lights.x + moon_hl * moon.w * MOON_TINT * lights.y)
         * (1.0 - dark);
-    return c;
+    return whitecaps(c, p, t, foot);
 }
 
 // Screen-space derivatives, taken at the start of `fragment`: WebGPU only allows them in
@@ -1986,6 +2039,9 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #ifndef PALETTE_WATER
     if ((material.flags & FLAG_WATER) != 0u) {
         rgb = water_dots(rgb, in.world_position, deriv, modern);
+        if (modern && abs(normalize(deriv.face).y) > 0.95) {
+            rgb = whitecaps(rgb, in.world_position.xz + globals.noise.xy, globals.dots.y, deriv.foot);
+        }
     }
 #endif
 #ifdef PALETTE_DETAIL

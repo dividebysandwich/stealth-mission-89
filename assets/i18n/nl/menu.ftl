@@ -439,3 +439,29 @@ aircraft-ac130 =
         Zijwaarts vurende gunship
         40mm- en 105mm-kanonnen gericht met de pod
         Vlieg linksom om de kanonnen te laten richten
+
+menu-wind = Wind
+wind-random = Willekeurig
+    .facts =
+        Past bij het weer: onweer waait het hardst
+        Verandert bij elke nieuwe missie
+wind-calm = Windstil
+    .facts =
+        0-3 kt
+        Rustige lucht, spiegelgladde zee
+wind-light = Zwak
+    .facts =
+        5-10 kt
+        Kleine golven
+wind-moderate = Matig
+    .facts =
+        12-18 kt, vlagen tot 25 kt
+        Schuimkoppen, schepen rollen wat
+wind-strong = Krachtig
+    .facts =
+        20-30 kt, vlagen tot 45 kt
+        Turbulentie laag bij de grond, ruwe zee
+wind-gale = Storm
+    .facts =
+        32-45 kt, vlagen tot 65 kt
+        Zware turbulentie, hoge zee, bewegende vliegdekken

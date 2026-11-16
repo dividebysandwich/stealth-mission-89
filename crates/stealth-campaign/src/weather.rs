@@ -10,6 +10,7 @@
 //! threshold, so at every moment one [`Weather`] holds for the lines of sight.
 
 use stealth_mission::weather::{Layer, Sky, Weather, odds};
+use stealth_mission::wind::{self, Wind, WindLevel};
 
 use crate::CampaignSetup;
 
@@ -29,6 +30,8 @@ struct Phase {
     weather: Weather,
     /// Cumulus, stratus, cumulonimbus layer kept from the previous phase.
     kept: [bool; 3],
+    /// The phase's mean wind.
+    wind: Wind,
 }
 
 /// The weather at a moment.
@@ -46,6 +49,12 @@ pub struct Now {
     pub vis_km: f32,
     /// The next phase's preset and the campaign clock when it begins to build up.
     pub next: (Sky, f64),
+    /// The wind now (veering and backing slowly within a phase).
+    pub wind: Wind,
+    /// The next phase's mean wind.
+    pub next_wind: Wind,
+    /// Sea state 0..8: follows the wind of the last few hours of the sky.
+    pub sea: f32,
 }
 
 /// Opacity 0..1 of a cumulus or cumulonimbus of rank `rank` at layer coverage `cover`.
@@ -91,10 +100,24 @@ fn layer(w: &Weather, i: usize) -> Layer {
     [w.cumulus, w.stratus, w.cumulonimbus][i]
 }
 
+/// Hours of the sky over which the sea follows the wind, and the samples taken.
+const SEA_HOURS: f64 = 3.0;
+const SEA_SAMPLES: usize = 12;
+
+/// The wind of a campaign without dynamic weather: light or moderate from about the
+/// theater's prevailing direction, all campaign long.
+pub fn steady_wind(setup: &CampaignSetup) -> Wind {
+    let seed = mix((setup.seed as u64) << 8 ^ setup.theater as u64 ^ 0x5749_4E44_5354_4400);
+    let level = if seed.is_multiple_of(3) { WindLevel::Moderate } else { WindLevel::Light };
+    let from = wind::prevailing(setup.theater) + (wind::unit(seed, 7) - 0.5) * 90.0;
+    Wind::of_level(level, from, seed)
+}
+
 /// The campaign's weather over time.
 #[derive(Debug, Clone)]
 pub struct Forecast {
     seed: u64,
+    theater: usize,
     odds: [u8; 5],
     /// Campaign seconds per hour of the sky.
     hour: f64,
@@ -108,6 +131,7 @@ impl Forecast {
     pub fn new(setup: &CampaignSetup) -> Option<Self> {
         setup.dynamic_weather.then(|| Self {
             seed: mix((setup.seed as u64) << 8 ^ setup.theater as u64 ^ 0x5745_4154_4845_5200),
+            theater: setup.theater,
             odds: campaign_odds(odds(setup.theater)),
             hour: 3600.0 / setup.sky_ratio.max(0.01) as f64,
             phases: Vec::new(),
@@ -163,7 +187,14 @@ impl Forecast {
         }
         let change = prev
             .map_or(0.0, |p| (CHANGE_SECS + (h(6) % 241) as f64).min(0.4 * len).min(0.4 * p.len));
-        Phase { start, len, change, weather, kept }
+        // The wind turns up to 60° either way from the last phase's, drawn back towards the
+        // theater's prevailing direction; its strength fits the sky (storms blow hardest).
+        let prevailing = wind::prevailing(self.theater);
+        let last = prev.map_or(prevailing, |p| p.wind.from_deg);
+        let back = ((prevailing - last + 540.0).rem_euclid(360.0)) - 180.0;
+        let from = last + 0.3 * back + (wind::unit(h(40), 0) - 0.5) * 120.0;
+        let wind = Wind::of_level(Wind::pick_level(sky, h(41)), from, h(42));
+        Phase { start, len, change, weather, kept, wind }
     }
 
     /// Index of the phase at `clock`, rolling phases up to the one after it.
@@ -188,11 +219,45 @@ impl Forecast {
         t
     }
 
+    /// The wind at campaign second `clock`: the phases' winds blended over the change, with
+    /// a slow veer and swell of a few hours of the sky.
+    pub fn wind_at(&mut self, clock: f64) -> Wind {
+        let k = self.phase(clock);
+        let cur = &self.phases[k];
+        let a = if k > 0 { self.phases[k - 1].wind } else { cur.wind };
+        let t =
+            if cur.change > 0.0 { ((clock - cur.start) / cur.change).clamp(0.0, 1.0) } else { 1.0 };
+        let p = (t * t * (3.0 - 2.0 * t)) as f32;
+        let mut w = Wind::lerp(&a, &cur.wind, p);
+        let hours = clock / self.hour;
+        let ph = (self.seed % 1000) as f64 * 0.01;
+        w.from_deg = (w.from_deg + 15.0 * (hours * 0.7 + ph).sin() as f32).rem_euclid(360.0);
+        let swell = 1.0 + 0.15 * (hours * 1.1 + 2.0 * ph).sin() as f32;
+        w.kt *= swell;
+        w.gust_kt *= swell;
+        // One gust and turbulence pattern all campaign, so a change of phase doesn't jump.
+        w.seed = (self.seed >> 32) as u32;
+        w
+    }
+
+    /// The sea state at `clock`: the mean of what the wind of the last [`SEA_HOURS`] would
+    /// raise, so it builds and calms down gradually.
+    pub fn sea_at(&mut self, clock: f64) -> f32 {
+        let step = SEA_HOURS * self.hour / SEA_SAMPLES as f64;
+        (0..SEA_SAMPLES)
+            .map(|i| wind::sea_state(self.wind_at((clock - i as f64 * step).max(0.0)).kt))
+            .sum::<f32>()
+            / SEA_SAMPLES as f32
+    }
+
     /// The weather at campaign second `clock`.
     pub fn at(&mut self, clock: f64) -> Now {
+        let wind = self.wind_at(clock);
+        let sea = self.sea_at(clock);
         let k = self.phase(clock);
         let cur = self.phases[k].clone();
         let next = &self.phases[k + 1];
+        let next_wind = next.wind;
         let next = (next.weather.sky, next.start);
         let a = if k > 0 { self.phases[k - 1].weather } else { cur.weather };
         let b = cur.weather;
@@ -231,7 +296,7 @@ impl Forecast {
         let storm = if storms > 0 { (cover[2] / storms as f32).min(1.0) } else { 0.0 };
         let vis_km = a.vis_km as f32 + (b.vis_km - a.vis_km) as f32 * p;
         w.vis_km = vis_km.round() as i32;
-        Now { weather: w, cover, stratus_threshold, storm, vis_km, next }
+        Now { weather: w, cover, stratus_threshold, storm, vis_km, next, wind, next_wind, sea }
     }
 }
 
@@ -330,6 +395,32 @@ mod tests {
         assert!(seen_cover(100.0) >= 100);
         assert!(seen_cover(0.0) <= 0);
         assert_eq!(cloud_fade(100.0, 99), 1.0);
+    }
+
+    #[test]
+    fn wind_and_sea_change_gradually_and_storms_blow_hardest() {
+        let mut f = forecast(31, 3);
+        let step = DAY / 24.0 / 60.0; // a minute of the sky
+        let (mut w0, mut s0) = (f.wind_at(0.0), f.sea_at(0.0));
+        let (mut storm, mut storm_n, mut fair, mut fair_n) = (0.0, 0, 0.0, 0);
+        let (mut max_sea, mut min_sea) = (0.0f32, 9.0f32);
+        for i in 1..(20 * 24 * 60) {
+            let clock = i as f64 * step;
+            let (w, s) = (f.wind_at(clock), f.sea_at(clock));
+            let d = ((w.from_deg - w0.from_deg + 540.0).rem_euclid(360.0) - 180.0).abs();
+            assert!(d < 5.0 && (w.kt - w0.kt).abs() < 3.0, "{clock}: {w0:?} -> {w:?}");
+            assert!((s - s0).abs() < 0.2, "{clock}: sea {s0} -> {s}");
+            let sky = f.at(clock).weather.sky;
+            if sky == Sky::Storm {
+                (storm, storm_n) = (storm + w.kt, storm_n + 1);
+            } else {
+                (fair, fair_n) = (fair + w.kt, fair_n + 1);
+            }
+            (max_sea, min_sea) = (max_sea.max(s), min_sea.min(s));
+            (w0, s0) = (w, s);
+        }
+        assert!(storm_n > 0 && storm / storm_n as f32 > fair / fair_n as f32);
+        assert!(max_sea - min_sea > 1.0, "sea {min_sea}..{max_sea}");
     }
 
     #[test]

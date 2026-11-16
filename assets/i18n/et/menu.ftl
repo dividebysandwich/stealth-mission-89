@@ -438,3 +438,29 @@ aircraft-ac130 =
         Küljelt tulistav suurtükilennuk
         40 mm ja 105 mm kahurid, suunatud konteineriga
         Tiirle vasakule, et kahurid ulatuksid
+
+menu-wind = Tuul
+wind-random = Juhuslik
+    .facts =
+        Vastab ilmale: äikesetormid puhuvad kõige tugevamalt
+        Muutub iga uue missiooniga
+wind-calm = Tuulevaikus
+    .facts =
+        0-3 kt
+        Rahulik õhk, peegelsile meri
+wind-light = Nõrk
+    .facts =
+        5-10 kt
+        Väikesed lained
+wind-moderate = Mõõdukas
+    .facts =
+        12-18 kt, puhangud kuni 25 kt
+        Valged vahupead, laevad õõtsuvad veidi
+wind-strong = Tugev
+    .facts =
+        20-30 kt, puhangud kuni 45 kt
+        Turbulents madalal, tormine meri
+wind-gale = Torm
+    .facts =
+        32-45 kt, puhangud kuni 65 kt
+        Tugev turbulents, kõrge laine, liikuvad lennukikandja tekid

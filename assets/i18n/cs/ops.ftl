@@ -246,3 +246,4 @@ ops-seat-free = volné
 ops-flight-airborne = Ve vzduchu
 ops-flight-on-ground = Na zemi
 ops-flight-starting = Spouštění
+ops-wind-rising = Vítr zesiluje na zhruba { $kt } kt.

@@ -15,3 +15,6 @@ wx-sky-scattered = nubi sparse
 wx-sky-broken = cielo frammentato
 wx-sky-overcast = coperto
 wx-sky-storm = temporali
+wx-wind-calm = Vento: calmo.
+wx-wind = Vento: { $dir }° a { $kt } kt.
+wx-wind-gusts = Vento: { $dir }° a { $kt } kt, raffiche { $gust } kt.

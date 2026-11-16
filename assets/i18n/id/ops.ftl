@@ -246,3 +246,4 @@ ops-seat-free = kosong
 ops-flight-airborne = Di udara
 ops-flight-on-ground = Di darat
 ops-flight-starting = Menyalakan mesin
+ops-wind-rising = Angin menguat hingga sekitar { $kt } kt.

@@ -294,6 +294,9 @@ pub struct Theater {
     /// The rolling hills (`assets/theaters/<id>.hills`, read beside the theater).
     #[serde(skip)]
     pub hills: stealth_sim::hills::Hills,
+    /// The carriers' decks (`sea::Deck::find`).
+    #[serde(skip)]
+    pub decks: Vec<crate::sea::Deck>,
 }
 
 /// A town of a remake theater: centre (metres east, north), radius (metres), size class
@@ -312,6 +315,7 @@ impl Theater {
     pub fn load(id: &str) -> Theater {
         let mut t: Theater = crate::asset_path::load_ron(&format!("theaters/{id}.ron"));
         t.hills = stealth_host::theater::hills(id);
+        t.decks = crate::sea::Deck::find(&t);
         t
     }
 
@@ -473,7 +477,7 @@ fn recenter_origin(
     }
 }
 
-fn apply_world_positions(
+pub(crate) fn apply_world_positions(
     origin: Res<FloatingOrigin>,
     mut q: Query<(Ref<WorldPos>, &mut Transform)>,
 ) {
@@ -634,6 +638,25 @@ fn stream_tiles(
             ));
             if ship {
                 commands.entity(e).insert(crate::models::LodBias(SHIP_LOD_BIAS));
+                // It rides the sea: a carrier as its deck moves for the flight model, any
+                // other ship by its length.
+                let (east, north, _) = bevy_to_wu(pos);
+                let (mx, my) = (east / 32.0, 32768.0 - north / 32.0);
+                let deck =
+                    theater.decks.iter().find(|d| (d.x as f64 - mx).hypot(d.y as f64 - my) <= 64.0);
+                let motion = match deck {
+                    Some(d) => crate::sea::Ship { len: crate::sea::CARRIER_LEN_M, seed: d.seed },
+                    None => {
+                        let unit_m =
+                            (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
+                        let len = assets.raised_size(gltf, &name).map_or(60.0, |s| s * unit_m);
+                        crate::sea::Ship {
+                            len: len.max(10.0),
+                            seed: crate::sea::seed_at(east, north),
+                        }
+                    }
+                };
+                commands.entity(e).insert(motion);
             }
             entities.push(e);
         }

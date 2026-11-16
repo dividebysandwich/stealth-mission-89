@@ -384,7 +384,13 @@ fn weather_text(c: &ActiveCampaign, now: &Now) -> (String, String) {
         Sky::Storm => t!("ops-thunderstorms").to_lowercase(),
         s => crate::i18n::sky_name(s).to_lowercase(),
     };
-    let line = t!("ops-wx-line", weather = now.weather.describe(), next = next, at = at);
+    let mut line = t!("ops-wx-line", weather = now.weather.describe(), next = next, at = at);
+    line = format!("{line} {}", now.wind.describe());
+    // A blow on the way.
+    if now.next_wind.kt > now.wind.kt + 8.0 {
+        let kt = (now.next_wind.kt / 5.0).round() as i32 * 5;
+        line = format!("{line} {}", t!("ops-wind-rising", kt = kt));
+    }
     (short, line)
 }
 

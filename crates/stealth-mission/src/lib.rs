@@ -9,6 +9,7 @@ pub mod tables;
 mod text;
 pub mod units;
 pub mod weather;
+pub mod wind;
 pub mod world;
 
 use std::path::Path;
@@ -23,6 +24,7 @@ pub use rng::MscRand;
 pub use tables::{MissionTables, Objective, PlaneInfo, Roe, Role, Template, WeaponInfo};
 pub use text::{Briefing, Orders, OrdersLine};
 pub use weather::{CloudKind, Layer, Sky, Weather};
+pub use wind::{Wind, WindLevel};
 pub use world::{FlightUnit, MissionWorld, TheaterData, WorldObject};
 
 pub const THEATER_NAMES: [&str; 12] = [
@@ -115,6 +117,9 @@ pub struct MissionSettings {
     /// Coverage (percent) of the weather's main cloud layer; `None` rolls it.
     #[serde(default)]
     pub cloud_cover: Option<u8>,
+    /// Wind strength; `None` picks one fitting the sky.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wind: Option<WindLevel>,
     /// Hour (0-23) the mission starts at; `None`: 06:00-08:00 by day or 18:00-20:00 by night,
     /// rolled from the seed.
     #[serde(default)]
@@ -147,6 +152,7 @@ impl Default for MissionSettings {
             pilot: "Pilot".into(),
             weather: clear_sky(),
             cloud_cover: None,
+            wind: None,
             start_hour: None,
             moon: None,
             helicopter: false,
@@ -386,6 +392,9 @@ pub struct Mission {
     /// Rolled from its own RNG stream.
     #[serde(default)]
     pub weather: Weather,
+    /// Picked from the weather's seed (not drawn from any RNG stream).
+    #[serde(default)]
+    pub wind: Wind,
     pub time: MissionTime,
     pub fuel_lbs: i16,
     pub loadout: Loadout,
@@ -539,6 +548,8 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
     let weather = Weather::roll(input.holdrand, s.theater, s.weather, s.cloud_cover);
     let mut briefing = ctx.briefing(s.sorties, &s.pilot);
     briefing.weather_line = weather.describe();
+    let wind = Wind::roll(s.wind, &weather, s.theater);
+    briefing.wind_line = wind.describe();
     let mut m = Mission {
         settings: s.clone(),
         theater_code: ALL_THEATERS[s.theater].into(),
@@ -572,6 +583,7 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
         escort: g.escort as i16,
         night: g.night,
         weather,
+        wind,
         fuel_lbs: g.fuel as i16,
         loadout: Loadout {
             bays: (0..4)

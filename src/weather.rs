@@ -117,6 +117,17 @@ pub struct WeatherState {
     gloom: f32,
     /// Under (or in) a storm cell: rain, turbulence, close lightning.
     pub under_storm: bool,
+    /// The mean wind (the mission's, or the campaign's now).
+    pub wind: stealth_mission::Wind,
+    /// Sea state 0..8 (`stealth_mission::wind::sea_state`, following the wind in a campaign).
+    pub sea: f32,
+    /// The air's velocity at the player (m/s, Bevy frame): the wind at its height with gusts,
+    /// storm outflow and turbulence (`crate::wind::update_air`).
+    pub air: Vec3,
+    /// Turbulence felt by the player, 0 (smooth) .. 1 (severe) and more.
+    pub turb: f32,
+    /// Storm cells' outflow at the player (m/s, east and north components).
+    pub outflow: Vec2,
     /// 0 clear air .. 1 inside a cloud (eased).
     pub whiteout: f32,
     /// Lightning flash brightness.
@@ -148,6 +159,19 @@ pub struct WeatherState {
 }
 
 impl WeatherState {
+    /// `Globals::sea`: the sea state, the downwind direction (Bevy x, z) and the whitecaps.
+    pub fn sea_globals(&self) -> Vec4 {
+        let (e, n) = self.wind.velocity();
+        // Calm: the waves keep a direction all the same.
+        let d = Vec2::new(e, -n).try_normalize().unwrap_or(Vec2::new(0.8, 0.6));
+        Vec4::new(self.sea, d.x, d.y, smoothstep(2.0, 5.5, self.sea))
+    }
+
+    /// How built up the storm cells are, 0..1.
+    pub(crate) fn storm_built(&self) -> f32 {
+        self.storm
+    }
+
     /// It rains around the eye: under storm cells, and under the storm preset's stratus.
     pub fn raining(&self) -> bool {
         self.under_storm || (self.weather.has_storms() && self.storm > 0.5 && self.shade > 0.5)
@@ -408,7 +432,21 @@ fn setup_weather(
     settings: Res<crate::settings::Settings>,
     mut state: ResMut<WeatherState>,
 ) {
-    let weather = mission.map(|m| m.0.weather).unwrap_or_default();
+    let weather = mission.as_ref().map(|m| m.0.weather).unwrap_or_default();
+    let mut forecast = campaign.as_ref().and_then(|c| Forecast::new(&c.state().setup));
+    // A campaign under a clear sky has a steady wind; the changing weather's comes with it.
+    let mission_wind = mission.as_ref().map(|m| m.0.wind).unwrap_or_default();
+    let (wind, sea) = match (&campaign, forecast.as_mut()) {
+        (Some(c), Some(f)) => {
+            let now = f.at(c.state().clock);
+            (now.wind, now.sea)
+        }
+        (Some(c), None) => {
+            let w = stealth_campaign::weather::steady_wind(&c.state().setup);
+            (w, stealth_mission::wind::sea_state(w.kt))
+        }
+        _ => (mission_wind, stealth_mission::wind::sea_state(mission_wind.kt)),
+    };
     // Stratus sheets are cut out by their coverage field: alpha to coverage with MSAA, a
     // dithered screen door otherwise.
     let coverage = if settings.msaa { FLAG_CLOUD_COVERAGE } else { 0 };
@@ -425,7 +463,9 @@ fn setup_weather(
     let l = weather.stratus;
     *state = WeatherState {
         weather,
-        forecast: campaign.and_then(|c| Forecast::new(&c.state().setup)),
+        forecast,
+        wind,
+        sea,
         cover: [weather.cumulus, l, weather.cumulonimbus].map(|l| l.cover as f32),
         stratus_threshold: weather.stratus_threshold as f32 / 65535.0,
         storm: weather.has_storms() as u32 as f32,
@@ -435,6 +475,10 @@ fn setup_weather(
         next_flash: if test_strike.is_some() { 2.0 } else { 3.0 },
         ..default()
     };
+    info!(
+        "wind: {:.0} kt from {:.0}, gusts {:.0}, sea state {:.1}",
+        wind.kt, wind.from_deg, wind.gust_kt, state.sea
+    );
     if !l.present() && state.forecast.is_none() {
         info!("weather: {}", weather.describe());
         return;
@@ -497,6 +541,8 @@ fn update_weather(
     let now = f.at(c.state().clock);
     state.set(now);
     state.now = Some(now);
+    state.wind = now.wind;
+    state.sea = now.sea;
     if now.weather.sky != before {
         info!("weather: {}", now.weather.describe());
     }
@@ -1406,9 +1452,12 @@ fn rain(
             .collect();
         state.drops = drops;
     }
-    // Wind relative to the eye: rain falls at 9 m/s, snow drifts down.
+    // Wind relative to the eye: rain falls at 9 m/s, snow drifts down, both blown along by the
+    // wind at the eye's height (and a storm's outflow).
     let fall = if snow { SNOW_FALL } else { 9.0 };
-    let wind = Vec3::new(0.0, -fall, 0.0) - eye_vel;
+    let agl = state.eye_ft - state.mist_ground.unwrap_or(0.0) / WU as f32;
+    let air = state.mean_air(agl) + Vec3::new(state.outflow.x, 0.0, -state.outflow.y);
+    let wind = Vec3::new(0.0, -fall, 0.0) + air - eye_vel;
     let (streak, width) = if snow {
         (wind * 0.004 + wind.normalize_or_zero() * 0.05, 0.02)
     } else {
@@ -1482,18 +1531,17 @@ fn rain(
     }
 }
 
-/// Storm turbulence: smooth buffeting of the player's attitude inside storm cells (and,
-/// weaker, under them).
+/// Turbulence's buffeting of the player's attitude (on top of the gusts the flight models fly
+/// through, `crate::wind`): strongest inside storm cells.
 fn turbulence(
     time: Res<Time>,
     state: Res<WeatherState>,
     mut q: Query<&mut crate::flight::Aircraft, With<crate::flight::Player>>,
 ) {
-    if !state.under_storm {
+    if state.turb < 0.02 {
         return;
     }
-    // Inside the cell's cloud, or (weaker) under it.
-    let strength = if state.whiteout > 0.5 { 1.0 } else { 0.35 };
+    let strength = state.turb.min(1.2);
     let t = time.elapsed_secs();
     let dt = time.delta_secs();
     let s = (state.weather.seed % 97) as f32;

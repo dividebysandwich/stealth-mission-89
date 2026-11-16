@@ -48,6 +48,7 @@ pub struct Prefs {
     pub ai_missions: bool,
     pub weather: Option<Sky>,
     pub cloud_cover: Option<u8>,
+    pub wind: Option<stealth_mission::WindLevel>,
     pub start_hour: Option<u8>,
     pub moon: Option<u8>,
     pub no_crashes: bool,
@@ -144,6 +145,7 @@ impl Default for Prefs {
             ai_missions: menu.ai_missions,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
+            wind: menu.wind,
             start_hour: menu.start_hour,
             moon: menu.moon,
             no_crashes: false,
@@ -269,6 +271,7 @@ impl Prefs {
             ai_missions: menu.ai_missions,
             weather: menu.weather,
             cloud_cover: menu.cloud_cover,
+            wind: menu.wind,
             start_hour: menu.start_hour,
             moon: menu.moon,
             no_crashes: s.no_crashes,
@@ -351,6 +354,7 @@ impl Prefs {
         menu.ai_missions = self.ai_missions;
         menu.weather = self.weather;
         menu.cloud_cover = self.cloud_cover.map(|c| c.min(100));
+        menu.wind = self.wind;
         menu.start_hour = self.start_hour.map(|h| h.min(23));
         menu.moon = self.moon.map(|m| m % 8);
         menu.player_name = self.player_name.clone();

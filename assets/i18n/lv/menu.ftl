@@ -438,3 +438,29 @@ aircraft-ac130 =
         Uz sāniem šaujoša uguns atbalsta lidmašīna
         40 mm un 105 mm lielgabali, tēmēti ar konteineru
         Riņķojiet pa kreisi, lai lielgabali tēmētu
+
+menu-wind = Vējš
+wind-random = Nejaušs
+    .facts =
+        Atbilst laikapstākļiem: negaiss pūš visstiprāk
+        Mainās ar katru jaunu misiju
+wind-calm = Bezvējš
+    .facts =
+        0-3 kt
+        Mierīgs gaiss, spoguļgluda jūra
+wind-light = Vājš
+    .facts =
+        5-10 kt
+        Nelieli viļņi
+wind-moderate = Mērens
+    .facts =
+        12-18 kt, brāzmās līdz 25 kt
+        Baltas putu cekules, kuģi nedaudz šūpojas
+wind-strong = Stiprs
+    .facts =
+        20-30 kt, brāzmās līdz 45 kt
+        Turbulence zemā augstumā, viļņota jūra
+wind-gale = Vētra
+    .facts =
+        32-45 kt, brāzmās līdz 65 kt
+        Spēcīga turbulence, augsti viļņi, kustīgi aviobāzes kuģu klāji

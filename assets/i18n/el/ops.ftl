@@ -246,3 +246,4 @@ ops-seat-free = ελεύθερη
 ops-flight-airborne = Στον αέρα
 ops-flight-on-ground = Στο έδαφος
 ops-flight-starting = Εκκίνηση
+ops-wind-rising = Ο άνεμος ενισχύεται έως περίπου { $kt } kt.

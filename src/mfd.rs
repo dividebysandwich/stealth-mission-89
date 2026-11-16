@@ -1574,6 +1574,8 @@ pub struct MfdParams<'w, 's> {
     /// The cargo jet's hold, ramp and airdrop (the CGO page).
     pub cues: Res<'w, crate::hud::HudCues>,
     pub threats: Res<'w, crate::mpd::ThreatHistory>,
+    /// The wind (the HSI page's readout).
+    pub weather: Option<Res<'w, crate::weather::WeatherState>>,
 }
 
 /// MFD text helper: x = 4*col, y = 6*row in the display.

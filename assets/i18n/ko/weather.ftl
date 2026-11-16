@@ -15,3 +15,6 @@ wx-sky-scattered = 구름 조금
 wx-sky-broken = 구름 많음
 wx-sky-overcast = 흐림
 wx-sky-storm = 뇌우
+wx-wind-calm = 바람: 무풍.
+wx-wind = 바람: { $dir }° { $kt } kt.
+wx-wind-gusts = 바람: { $dir }° { $kt } kt, 돌풍 { $gust } kt.

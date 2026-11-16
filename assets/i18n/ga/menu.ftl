@@ -438,3 +438,29 @@ aircraft-ac130 =
         Gunnaí-eitleán a lámhann ar an taobh
         Gunnaí 40 mm agus 105 mm dírithe leis an bpod
         Eitil fithis ar chlé chun na gunnaí a dhíriú
+
+menu-wind = Gaoth
+wind-random = Randamach
+    .facts =
+        De réir na haimsire: is iad na stoirmeacha is láidre
+        Athraíonn sé le gach misean nua
+wind-calm = Ciúin
+    .facts =
+        0-3 kt
+        Aer socair, farraige ina léinseach
+wind-light = Éadrom
+    .facts =
+        5-10 kt
+        Tonnta beaga
+wind-moderate = Measartha
+    .facts =
+        12-18 kt, séideáin suas le 25 kt
+        Caiple bána, luascann na longa beagán
+wind-strong = Láidir
+    .facts =
+        20-30 kt, séideáin suas le 45 kt
+        Suaiteacht íseal, farraige garbh
+wind-gale = Gála
+    .facts =
+        32-45 kt, séideáin suas le 65 kt
+        Suaiteacht dhian, farraige ard, deiceanna iompróirí ag bogadh

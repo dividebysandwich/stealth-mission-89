@@ -438,3 +438,29 @@ aircraft-ac130 =
         側方射撃ガンシップ
         ポッドで照準する40mm砲と105mm砲
         左旋回で周回して砲を向ける
+
+menu-wind = 風
+wind-random = ランダム
+    .facts =
+        天候に応じて: 嵐が最も強く吹きます
+        新しいミッションごとに変わります
+wind-calm = 静穏
+    .facts =
+        0-3 kt
+        穏やかな大気、鏡のような海
+wind-light = 弱い
+    .facts =
+        5-10 kt
+        小さな波
+wind-moderate = 中程度
+    .facts =
+        12-18 kt, 突風最大 25 kt
+        白波、艦船がわずかに揺れる
+wind-strong = 強い
+    .facts =
+        20-30 kt, 突風最大 45 kt
+        低空で乱気流、荒れた海
+wind-gale = 暴風
+    .facts =
+        32-45 kt, 突風最大 65 kt
+        激しい乱気流、高い波、空母の甲板が揺れる

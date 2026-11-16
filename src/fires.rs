@@ -111,7 +111,7 @@ struct Site {
     /// Seconds burning (the plume grows meanwhile).
     age: f32,
     seed: u32,
-    /// Downwind direction (radians about +Y from +X).
+    /// Offset of its downwind direction from the wind's (radians).
     yaw: f32,
     smoke: Option<Entity>,
     fire: Option<(Entity, Vec<Flame>)>,
@@ -133,8 +133,10 @@ struct Fires {
     war_done: bool,
     /// The front line's fires have been placed.
     front_done: bool,
-    /// Wind direction for the plumes (radians), from the mission's weather seed.
+    /// Downwind direction for the plumes (radians about +Y from +X), from the weather's wind.
     wind: f32,
+    /// How far flames drift with the wind (0 calm .. 1 strong).
+    drift: f32,
     rng: u32,
     /// Entities of changed sites, despawned by `stream`.
     dead: Vec<Entity>,
@@ -173,7 +175,7 @@ impl Fires {
             return;
         }
         let seed = (self.random() * 65535.0) as u32;
-        let yaw = self.wind + (self.random() - 0.5) * 0.35;
+        let yaw = (self.random() - 0.5) * 0.35;
         let scale = 0.8 + 0.4 * self.random();
         self.sites.push(Site { pos, size, scale, age, seed, yaw, smoke: None, fire: None });
     }
@@ -241,6 +243,7 @@ fn setup(
         // Only a conventional war burns from the start.
         war_done: mission.as_ref().is_none_or(|m| m.0.settings.roe != 2),
         wind: ((seed >> 7) & 0xFFFF) as f32 / 65535.0 * std::f32::consts::TAU,
+        drift: 1.0,
         rng,
         smoke_material: materials.add(PaletteMaterial {
             params: PaletteParams {
@@ -476,7 +479,7 @@ fn stream(
                             MeshMaterial3d(fires.smoke_material.clone()),
                             MeshTag(tag),
                             WorldPos(s.pos),
-                            plume_transform(s),
+                            plume_transform(s, fires.wind),
                             bevy::light::NotShadowCaster,
                         ))
                         .id(),
@@ -537,17 +540,45 @@ fn stream(
 }
 
 /// Plume scale for its age: rises to full height, widening a little.
-fn plume_transform(s: &Site) -> Transform {
+fn plume_transform(s: &Site, wind: f32) -> Transform {
     let (w, h) = s.size.plume();
     let g = (s.age / GROW_SECS).clamp(0.0, 1.0);
     let g = g * (2.0 - g);
     let (w, h) = (w * s.scale * (0.35 + 0.65 * g), h * s.scale * g.max(0.02));
-    Transform::from_rotation(Quat::from_rotation_y(s.yaw)).with_scale(Vec3::new(w, h, w))
+    Transform::from_rotation(Quat::from_rotation_y(wind + s.yaw)).with_scale(Vec3::new(w, h, w))
 }
 
-fn grow_smoke(time: Res<Time>, mut fires: ResMut<Fires>, mut q: Query<&mut Transform>) {
+fn grow_smoke(
+    time: Res<Time>,
+    weather: Res<crate::weather::WeatherState>,
+    mut fires: ResMut<Fires>,
+    mut q: Query<&mut Transform>,
+) {
     let dt = time.delta_secs();
+    // The plumes lean and the flames drift downwind (the campaign's wind veers and backs).
+    let w = weather.wind;
+    let (e, n) = w.velocity();
+    let turned = if w.kt > 0.5 {
+        let wind = n.atan2(e);
+        let d = (wind - fires.wind + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU)
+            - std::f32::consts::PI;
+        let turned = d.abs() > 0.02;
+        if turned {
+            fires.wind = wind;
+        }
+        turned
+    } else {
+        false
+    };
+    fires.drift = (0.2 + w.kt / 20.0).min(1.0);
+    let wind = fires.wind;
     for s in &mut fires.sites {
+        if turned
+            && let Some(e) = s.smoke
+            && let Ok(mut tf) = q.get_mut(e)
+        {
+            tf.rotation = plume_transform(s, wind).rotation;
+        }
         if s.age >= GROW_SECS {
             continue;
         }
@@ -555,7 +586,7 @@ fn grow_smoke(time: Res<Time>, mut fires: ResMut<Fires>, mut q: Query<&mut Trans
         if let Some(e) = s.smoke
             && let Ok(mut tf) = q.get_mut(e)
         {
-            let want = plume_transform(s);
+            let want = plume_transform(s, wind);
             tf.rotation = want.rotation;
             tf.scale = want.scale;
         }
@@ -581,7 +612,7 @@ fn animate_fires(
         for f in flames {
             let k = ((t / f.life + f.phase) % 1.0).abs();
             let rise = k * height * (0.7 + 0.3 * f.phase);
-            let drift = wind * k * k * height * 0.4;
+            let drift = wind * k * k * height * 0.4 * fires.drift;
             let wobble = (t * 7.0 + f.phase * 20.0).sin() * 0.3 * size;
             if let Ok(mut tf) = tfs.get_mut(f.entity) {
                 tf.translation = Vec3::new(

@@ -15,3 +15,6 @@ wx-sky-scattered = verspreide bewolking
 wx-sky-broken = gebroken bewolking
 wx-sky-overcast = bewolkt
 wx-sky-storm = onweer
+wx-wind-calm = Wind: windstil.
+wx-wind = Wind: { $dir }° met { $kt } kt.
+wx-wind-gusts = Wind: { $dir }° met { $kt } kt, vlagen { $gust } kt.

@@ -15,3 +15,6 @@ wx-sky-scattered = hajanaista pilvisyyttä
 wx-sky-broken = pilvistä
 wx-sky-overcast = pilvinen
 wx-sky-storm = ukkosta
+wx-wind-calm = Tuuli: tyyntä.
+wx-wind = Tuuli: { $dir }° { $kt } kt.
+wx-wind-gusts = Tuuli: { $dir }° { $kt } kt, puuskissa { $gust } kt.

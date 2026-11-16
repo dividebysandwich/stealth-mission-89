@@ -214,6 +214,8 @@ pub struct MissionSetup {
     pub weather: Option<stealth_mission::Sky>,
     /// Coverage of the weather's main cloud layer (None: rolled).
     pub cloud_cover: Option<u8>,
+    /// Wind strength (None: one fitting the sky).
+    pub wind: Option<stealth_mission::WindLevel>,
 }
 
 /// Aircraft start position and heading (world units, radians clockwise from north).
@@ -228,6 +230,11 @@ pub struct StartPose {
 /// `--weather random|clear|scattered|broken|overcast|storm` (default random).
 pub fn weather_arg(args: &[String]) -> Option<stealth_mission::Sky> {
     get(args, "--weather").and_then(|s| stealth_mission::Sky::parse(&s))
+}
+
+/// `--wind random|calm|light|moderate|strong|gale` (default random: fitting the sky).
+pub fn wind_arg(args: &[String]) -> Option<stealth_mission::WindLevel> {
+    get(args, "--wind").and_then(|s| stealth_mission::WindLevel::parse(&s))
 }
 
 /// `--cloud-cover <percent>`: coverage of the main cloud layer.
@@ -458,6 +465,7 @@ impl MissionSetup {
             freecam: a.iter().any(|x| x == "--freecam"),
             weather: weather_arg(&a),
             cloud_cover: cover_arg(&a),
+            wind: wind_arg(&a),
         }
     }
 }

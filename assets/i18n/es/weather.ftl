@@ -15,3 +15,6 @@ wx-sky-scattered = nubes dispersas
 wx-sky-broken = nubes fragmentadas
 wx-sky-overcast = cubierto
 wx-sky-storm = tormentas
+wx-wind-calm = Viento: en calma.
+wx-wind = Viento: { $dir }° a { $kt } kt.
+wx-wind-gusts = Viento: { $dir }° a { $kt } kt, rachas de { $gust } kt.

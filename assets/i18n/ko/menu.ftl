@@ -438,3 +438,29 @@ aircraft-ac130 =
         측면 사격 건십
         포드로 조준하는 40mm 및 105mm 포
         좌선회 궤도로 포를 겨눔
+
+menu-wind = 바람
+wind-random = 무작위
+    .facts =
+        날씨에 따라: 폭풍우가 가장 세게 붑니다
+        새 임무마다 바뀝니다
+wind-calm = 무풍
+    .facts =
+        0-3 kt
+        잔잔한 공기, 거울 같은 바다
+wind-light = 약함
+    .facts =
+        5-10 kt
+        작은 파도
+wind-moderate = 보통
+    .facts =
+        12-18 kt, 돌풍 최대 25 kt
+        흰 파도, 함선이 약간 흔들림
+wind-strong = 강함
+    .facts =
+        20-30 kt, 돌풍 최대 45 kt
+        저고도 난기류, 거친 바다
+wind-gale = 폭풍
+    .facts =
+        32-45 kt, 돌풍 최대 65 kt
+        심한 난기류, 높은 파도, 흔들리는 항공모함 갑판

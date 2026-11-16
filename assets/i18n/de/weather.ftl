@@ -15,3 +15,6 @@ wx-sky-scattered = aufgelockert
 wx-sky-broken = durchbrochen
 wx-sky-overcast = bedeckt
 wx-sky-storm = Gewitter
+wx-wind-calm = Wind: still.
+wx-wind = Wind: { $dir }° mit { $kt } kt.
+wx-wind-gusts = Wind: { $dir }° mit { $kt } kt, Böen { $gust } kt.

@@ -320,6 +320,7 @@ pub fn next_sortie(
             menu.cloud_cover,
         );
         settings.moon = menu.moon;
+        settings.wind = menu.wind;
         crate::mission::settings_for(&mut settings, aircraft);
         settings.pilot = pilot.title();
         settings.sorties = pilot.sorties as u16;
@@ -418,7 +419,12 @@ pub fn career_ui(
             });
             flow.card(ui, Span::Fixed(220.0), |ui| {
                 group(ui, t!("group-conditions"), |ui| {
-                    crate::menu::weather_options(ui, &mut state.weather, &mut state.cloud_cover);
+                    crate::menu::weather_options(
+                        ui,
+                        &mut state.weather,
+                        &mut state.cloud_cover,
+                        &mut state.wind,
+                    );
                     crate::menu::moon_options(ui, &mut state.moon);
                 });
                 crate::menu::simulation_options(ui, settings, None, |_| {});

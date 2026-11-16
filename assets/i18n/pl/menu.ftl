@@ -438,3 +438,29 @@ aircraft-ac130 =
         Samolot ogniowy strzelający w bok
         Działa 40 mm i 105 mm celowane zasobnikiem
         Krąż w lewo, by działa sięgnęły celu
+
+menu-wind = Wiatr
+wind-random = Losowy
+    .facts =
+        Zgodny z pogodą: burze wieją najmocniej
+        Zmienia się z każdą nową misją
+wind-calm = Cisza
+    .facts =
+        0-3 kt
+        Spokojne powietrze, gładkie morze
+wind-light = Słaby
+    .facts =
+        5-10 kt
+        Małe fale
+wind-moderate = Umiarkowany
+    .facts =
+        12-18 kt, w porywach do 25 kt
+        Białe grzywy, okręty lekko się kołyszą
+wind-strong = Silny
+    .facts =
+        20-30 kt, w porywach do 45 kt
+        Turbulencje nisko nad ziemią, wzburzone morze
+wind-gale = Sztorm
+    .facts =
+        32-45 kt, w porywach do 65 kt
+        Silne turbulencje, wysoka fala, ruchome pokłady lotniskowców

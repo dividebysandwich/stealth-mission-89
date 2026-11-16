@@ -15,3 +15,6 @@ wx-sky-scattered = raštrkana naoblaka
 wx-sky-broken = pretežno oblačno
 wx-sky-overcast = potpuno oblačno
 wx-sky-storm = grmljavinske oluje
+wx-wind-calm = Vjetar: tišina.
+wx-wind = Vjetar: { $dir }°, { $kt } kt.
+wx-wind-gusts = Vjetar: { $dir }°, { $kt } kt, na mahove { $gust } kt.

@@ -15,3 +15,6 @@ wx-sky-scattered = рассеянная облачность
 wx-sky-broken = значительная облачность
 wx-sky-overcast = сплошная облачность
 wx-sky-storm = грозы
+wx-wind-calm = Ветер: штиль.
+wx-wind = Ветер: { $dir }°, { $kt } kt.
+wx-wind-gusts = Ветер: { $dir }°, { $kt } kt, порывы { $gust } kt.

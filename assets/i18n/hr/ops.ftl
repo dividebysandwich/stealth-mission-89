@@ -246,3 +246,4 @@ ops-seat-free = slobodno
 ops-flight-airborne = U zraku
 ops-flight-on-ground = Na tlu
 ops-flight-starting = Pokretanje
+ops-wind-rising = Vjetar jača do otprilike { $kt } kt.

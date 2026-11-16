@@ -61,6 +61,7 @@ Aircraft and rules
   --weather <sky>              random, clear, scattered, broken, overcast, storm
                                (default: rolled from the seed)
   --cloud-cover <percent>      coverage of the main cloud layer (default: rolled)
+  --wind <strength>            random, calm, light, moderate, strong, gale (default: random)
 
 Cockpit and graphics
   --classic-cockpit            DOS era instrument panel (F-117A only)

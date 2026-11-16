@@ -138,6 +138,9 @@ pub struct Briefing {
     /// Not part of the classic briefing (and not in `lines`).
     #[serde(default)]
     pub weather_line: String,
+    /// The wind; not part of the classic briefing either.
+    #[serde(default)]
+    pub wind_line: String,
     /// All non-empty lines in display order.
     pub lines: Vec<String>,
 }
@@ -358,6 +361,7 @@ impl TextCtx<'_> {
                 .collect(),
             fuel_line: self.text("bt-fuel", &tx.fuel, 7, &[("fuel", &fuel)]),
             weather_line: String::new(),
+            wind_line: String::new(),
             lines: Vec::new(),
         };
         let l = &tx.labels;

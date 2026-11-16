@@ -246,3 +246,4 @@ ops-seat-free = свободно
 ops-flight-airborne = Във въздуха
 ops-flight-on-ground = На земята
 ops-flight-starting = Запуск
+ops-wind-rising = Вятърът се усилва до около { $kt } kt.

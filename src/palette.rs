@@ -590,6 +590,7 @@ fn update_globals(
         origin.origin.z.rem_euclid(period) as f32,
         0.0,
     );
+    g.sea = weather.sea_globals();
     let on = |b: bool| b as u32 as f32;
     g.reflections = Vec4::new(
         on(crate::palette_material::glass(&settings)),

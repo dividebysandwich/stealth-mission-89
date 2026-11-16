@@ -15,3 +15,6 @@ wx-sky-scattered = hajusad pilved
 wx-sky-broken = katkendlik pilvisus
 wx-sky-overcast = täielikult pilves
 wx-sky-storm = äikesetormid
+wx-wind-calm = Tuul: tuulevaikus.
+wx-wind = Tuul: { $dir }° { $kt } kt.
+wx-wind-gusts = Tuul: { $dir }° { $kt } kt, puhanguti { $gust } kt.

@@ -420,6 +420,9 @@ pub struct Globals {
     /// The stars: the columns of the rotation from Bevy's frame to the star catalogue's
     /// (`stars::frame`).
     pub star_frame: [Vec4; 3],
+    /// The sea (`weather::WeatherState::sea`): sea state 0..8 (x), downwind direction in the
+    /// Bevy x / z plane (y, z), whitecaps 0..1 (w).
+    pub sea: Vec4,
     /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
     /// `DETAIL_PERIOD`.
     pub ground_detail: Vec4,
@@ -564,6 +567,7 @@ impl Default for Globals {
             shadow_cells: [Vec4::ZERO; crate::weather::SHADOW_GRID * crate::weather::SHADOW_GRID],
             shadow_clouds: [Vec4::ZERO; crate::weather::SHADOW_CLOUDS],
             star_frame: [Vec4::ZERO; 3],
+            sea: Vec4::new(2.0, 0.8, 0.6, 0.0),
             ground_detail: Vec4::ZERO,
             reflections: Vec4::ZERO,
         }

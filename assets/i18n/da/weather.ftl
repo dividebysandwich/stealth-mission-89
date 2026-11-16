@@ -15,3 +15,6 @@ wx-sky-scattered = spredte skyer
 wx-sky-broken = opbrudt skydække
 wx-sky-overcast = overskyet
 wx-sky-storm = tordenvejr
+wx-wind-calm = Vind: stille.
+wx-wind = Vind: { $dir }° med { $kt } kt.
+wx-wind-gusts = Vind: { $dir }° med { $kt } kt, vindstød { $gust } kt.

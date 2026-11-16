@@ -15,3 +15,6 @@ wx-sky-scattered = sħab mwaqqa'
 wx-sky-broken = sħab maqsum
 wx-sky-overcast = mgħajjem
 wx-sky-storm = maltempati
+wx-wind-calm = Riħ: kalma.
+wx-wind = Riħ: { $dir }° b'{ $kt } kt.
+wx-wind-gusts = Riħ: { $dir }° b'{ $kt } kt, buffi ta' { $gust } kt.

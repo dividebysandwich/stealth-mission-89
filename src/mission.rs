@@ -170,6 +170,7 @@ pub fn setup_from_mission(m: &Mission, start_dir: &[i16]) -> MissionSetup {
         freecam: false,
         weather: Some(m.weather.sky),
         cloud_cover: m.settings.cloud_cover,
+        wind: m.settings.wind,
     }
 }
 
@@ -197,6 +198,7 @@ pub fn from_args(app: &mut App) {
     let cloud_cover = crate::settings::cover_arg(&args);
     let data = MissionData::load().expect("mission data");
     let mut settings = settings(theater, roe, kind, opponents, lockheed, weather, cloud_cover);
+    settings.wind = crate::settings::wind_arg(&args);
     // `--start-hour <0-23>`: takeoff time.
     settings.start_hour = get("--start-hour").and_then(|s| s.parse::<u8>().ok()).map(|h| h.min(23));
     // `--moon <0-7>`: the moon's phase in eighths (0 new, 4 full).
@@ -334,6 +336,7 @@ pub fn ensure_mission(
             setup.weather,
             setup.cloud_cover,
         );
+        s.wind = setup.wind;
         settings_for(&mut s, settings.aircraft);
         match generate(&data, &s, seed) {
             Ok(m) => {

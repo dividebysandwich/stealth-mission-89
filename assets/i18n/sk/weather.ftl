@@ -15,3 +15,6 @@ wx-sky-scattered = malá oblačnosť
 wx-sky-broken = prevažne zamračené
 wx-sky-overcast = zamračené
 wx-sky-storm = búrky
+wx-wind-calm = Vietor: bezvetrie.
+wx-wind = Vietor: { $dir }°, { $kt } kt.
+wx-wind-gusts = Vietor: { $dir }°, { $kt } kt, v nárazoch { $gust } kt.

@@ -15,3 +15,6 @@ wx-sky-scattered = scattered
 wx-sky-broken = broken
 wx-sky-overcast = overcast
 wx-sky-storm = thunderstorms
+wx-wind-calm = Wind: calm.
+wx-wind = Wind: { $dir }° at { $kt } kt.
+wx-wind-gusts = Wind: { $dir }° at { $kt } kt, gusting { $gust } kt.

@@ -1702,7 +1702,8 @@ pub fn draw_hsi_page(p: &MfdParams, c: &mut Canvas, fonts: &Fonts) {
     // Readouts: a caption over each value, left and right of the rose.
     let km = steer.map(|w| ((w - own).length() * WU / 1000.0) as f32);
     let t = p.clock.start_seconds + p.clock.elapsed.unwrap_or(a.time);
-    let ms = a.knots() * 0.5144;
+    // The ground speed: the ETA goes by it.
+    let ms = a.ground_knots() * 0.5144;
     let deg = |b: Option<f32>| {
         b.map_or("---".to_string(), |b| {
             format!("{:03}", (b.to_degrees().rem_euclid(360.0).round() as i32) % 360)
@@ -1724,9 +1725,28 @@ pub fn draw_hsi_page(p: &MfdParams, c: &mut Canvas, fonts: &Fonts) {
             }),
         ),
     ];
-    let right = [("BRG", deg(bearing)), ("CRS", deg(course)), ("GS", format!("{:.0}", a.knots()))];
-    for (row, ((lc, lv), (rc, rv))) in left.iter().zip(&right).enumerate() {
-        let y = BAND + 8 + row as i32 * 46;
+    let right =
+        [("BRG", deg(bearing)), ("CRS", deg(course)), ("GS", format!("{:.0}", a.ground_knots()))];
+    // Below: the wind (mean, at the aircraft's height) and the true airspeed.
+    let wind = p.weather.as_ref().map_or("---".to_string(), |w| {
+        let air =
+            w.mean_air(a.altitude - a.ground_altitude) + Vec3::new(w.outflow.x, 0.0, -w.outflow.y);
+        let kt = air.xz().length() / crate::wind::KNOT_MS;
+        if kt < 2.0 {
+            "CALM".to_string()
+        } else {
+            // From: opposite to where the air goes (east x, north -z).
+            let from = (-air.x).atan2(air.z).to_degrees().rem_euclid(360.0).round() as i32 % 360;
+            format!("{from:03}/{kt:.0}")
+        }
+    });
+    let bottom = [(("WND", wind), ("TAS", format!("{:.0}", a.knots())))];
+    // Four rows down each side, spread over the page's height.
+    let (top, last) = (BAND + 8, c.h as i32 - BAND - 8 - 24);
+    let step = ((last - top) / 3).min(46);
+    let rows = left.iter().zip(&right).chain(bottom.iter().map(|(l, r)| (l, r)));
+    for (row, ((lc, lv), (rc, rv))) in rows.enumerate() {
+        let y = top + row as i32 * step;
         for (x, caption, value, align_right) in [(4, lc, lv, false), (c.w as i32 - 4, rc, rv, true)]
         {
             for (dy, text, colour) in [(0, caption.to_string(), GREY), (12, value.clone(), GREEN)] {

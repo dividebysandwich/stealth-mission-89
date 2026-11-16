@@ -246,3 +246,4 @@ ops-seat-free = vapaa
 ops-flight-airborne = Ilmassa
 ops-flight-on-ground = Maassa
 ops-flight-starting = Käynnistää
+ops-wind-rising = Tuuli voimistuu noin { $kt } solmuun.

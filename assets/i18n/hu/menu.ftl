@@ -438,3 +438,29 @@ aircraft-ac130 =
         Oldalra tüzelő tűztámogató repülőgép
         40 mm-es és 105 mm-es ágyúk a konténerrel célozva
         Körözzön balra, hogy az ágyúk célba érjenek
+
+menu-wind = Szél
+wind-random = Véletlen
+    .facts =
+        Az időjáráshoz illik: a zivatarok fújnak a legerősebben
+        Minden új küldetéssel változik
+wind-calm = Szélcsend
+    .facts =
+        0-3 kt
+        Nyugodt levegő, tükörsima tenger
+wind-light = Gyenge
+    .facts =
+        5-10 kt
+        Kis hullámok
+wind-moderate = Mérsékelt
+    .facts =
+        12-18 kt, széllökések 25 kt
+        Tajtékos hullámok, a hajók kissé dülöngélnek
+wind-strong = Erős
+    .facts =
+        20-30 kt, széllökések 45 kt
+        Turbulencia alacsonyan, háborgó tenger
+wind-gale = Viharos
+    .facts =
+        32-45 kt, széllökések 65 kt
+        Erős turbulencia, magas hullámok, mozgó repülőgép-hordozó fedélzetek

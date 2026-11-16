@@ -15,3 +15,6 @@ wx-sky-scattered = мінлива хмарність
 wx-sky-broken = значна хмарність
 wx-sky-overcast = суцільна хмарність
 wx-sky-storm = грози
+wx-wind-calm = Вітер: штиль.
+wx-wind = Вітер: { $dir }°, { $kt } kt.
+wx-wind-gusts = Вітер: { $dir }°, { $kt } kt, пориви { $gust } kt.

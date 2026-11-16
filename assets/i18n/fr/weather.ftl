@@ -15,3 +15,6 @@ wx-sky-scattered = nuages épars
 wx-sky-broken = ciel fragmenté
 wx-sky-overcast = couvert
 wx-sky-storm = orages
+wx-wind-calm = Vent : calme.
+wx-wind = Vent : { $dir }° pour { $kt } kt.
+wx-wind-gusts = Vent : { $dir }° pour { $kt } kt, rafales { $gust } kt.

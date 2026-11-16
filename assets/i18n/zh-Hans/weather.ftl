@@ -14,3 +14,6 @@ wx-sky-scattered = 疏云
 wx-sky-broken = 多云
 wx-sky-overcast = 阴
 wx-sky-storm = 雷暴
+wx-wind-calm = 风: 静风。
+wx-wind = 风: { $dir }° { $kt } kt。
+wx-wind-gusts = 风: { $dir }° { $kt } kt, 阵风 { $gust } kt。

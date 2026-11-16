@@ -438,3 +438,29 @@ aircraft-ac130 =
         Canhoneira de tiro lateral
         Canhões de 40 mm e 105 mm apontados pelo pod
         Orbite pela esquerda para apontar os canhões
+
+menu-wind = Vento
+wind-random = Aleatório
+    .facts =
+        Conforme o tempo: tempestades sopram mais forte
+        Muda a cada nova missão
+wind-calm = Calmo
+    .facts =
+        0-3 kt
+        Ar calmo, mar espelhado
+wind-light = Fraco
+    .facts =
+        5-10 kt
+        Ondas pequenas
+wind-moderate = Moderado
+    .facts =
+        12-18 kt, rajadas de até 25 kt
+        Carneirinhos, os navios balançam um pouco
+wind-strong = Forte
+    .facts =
+        20-30 kt, rajadas de até 45 kt
+        Turbulência em baixa altitude, mar agitado
+wind-gale = Ventania
+    .facts =
+        32-45 kt, rajadas de até 65 kt
+        Turbulência severa, mar grosso, conveses de porta-aviões em movimento

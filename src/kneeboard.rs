@@ -724,6 +724,9 @@ fn draw(
             if !b.weather_line.is_empty() {
                 w.para(&b.weather_line, WHITE);
             }
+            if !b.wind_line.is_empty() {
+                w.para(&b.wind_line, WHITE);
+            }
             let phase = sky.phase_at(now / 3600.0);
             w.para(
                 &ts!(

@@ -437,3 +437,29 @@ aircraft-ac130 =
         侧射炮艇机
         以吊舱瞄准的 40 毫米和 105 毫米火炮
         向左盘旋使火炮指向目标
+
+menu-wind = 风
+wind-random = 随机
+    .facts =
+        随天气而定: 雷暴时风最强
+        每次新任务都会改变
+wind-calm = 静风
+    .facts =
+        0-3 kt
+        空气平稳, 海面如镜
+wind-light = 微风
+    .facts =
+        5-10 kt
+        小浪
+wind-moderate = 和风
+    .facts =
+        12-18 kt, 阵风可达 25 kt
+        白浪, 舰船轻微摇晃
+wind-strong = 强风
+    .facts =
+        20-30 kt, 阵风可达 45 kt
+        低空湍流, 海面汹涌
+wind-gale = 大风
+    .facts =
+        32-45 kt, 阵风可达 65 kt
+        强烈湍流, 巨浪, 航母甲板晃动

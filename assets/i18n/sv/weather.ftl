@@ -14,3 +14,6 @@ wx-sky-scattered = spridda moln
 wx-sky-broken = mulet med uppehåll
 wx-sky-overcast = mulet
 wx-sky-storm = åskväder
+wx-wind-calm = Vind: stiltje.
+wx-wind = Vind: { $dir }° med { $kt } kt.
+wx-wind-gusts = Vind: { $dir }° med { $kt } kt, byar { $gust } kt.

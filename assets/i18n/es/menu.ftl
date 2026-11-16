@@ -438,3 +438,29 @@ aircraft-ac130 =
         Cañonero de tiro lateral
         Cañones de 40 mm y 105 mm apuntados con el pod
         Orbite a la izquierda para que los cañones apunten
+
+menu-wind = Viento
+wind-random = Aleatorio
+    .facts =
+        Según el tiempo: las tormentas soplan más fuerte
+        Cambia con cada misión nueva
+wind-calm = En calma
+    .facts =
+        0-3 kt
+        Aire tranquilo, mar como un espejo
+wind-light = Flojo
+    .facts =
+        5-10 kt
+        Olas pequeñas
+wind-moderate = Moderado
+    .facts =
+        12-18 kt, rachas de hasta 25 kt
+        Borreguillos, los barcos se balancean un poco
+wind-strong = Fuerte
+    .facts =
+        20-30 kt, rachas de hasta 45 kt
+        Turbulencia a baja altura, mar agitada
+wind-gale = Temporal
+    .facts =
+        32-45 kt, rachas de hasta 65 kt
+        Turbulencia severa, mar gruesa, cubiertas de portaaviones en movimiento

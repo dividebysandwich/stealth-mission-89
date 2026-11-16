@@ -84,6 +84,9 @@ pub struct SimTables {
 
 /// Highest load factor a bank alone asks for (sixteenths of a g).
 const MAX_BANK_GEE: f32 = 9.0 * 16.0;
+/// One knot in the flight models' world units per second (velocity units are knots * 27, and
+/// a speed of `velocity / 16` wu/s).
+pub const KNOT_WU: f32 = 27.0 / 16.0;
 
 impl SimTables {
     pub fn load() -> Self {
@@ -468,6 +471,17 @@ pub struct Aircraft {
     #[serde(default)]
     detent_push: f32,
     stopped_timer: f32,
+    /// The air's velocity where the aircraft is (wu/s, Bevy frame: x east, y up, -z north):
+    /// the wind with its gusts and turbulence (`wind::update_air`). The flight models fly
+    /// through it; `velocity` is the speed through the air.
+    #[serde(skip)]
+    pub wind: Vec3,
+    /// Velocity over the ground (wu/s, Bevy frame).
+    #[serde(skip)]
+    pub ground_vel: Vec3,
+    /// The sea state (0..8) the carriers' decks move in (`sea::Deck`).
+    #[serde(skip)]
+    pub sea: f32,
     /// Modern model state (unused by the classic one).
     modern: modern::State,
     /// Helicopter model state.
@@ -548,9 +562,17 @@ impl Aircraft {
             detent_push: 0.0,
             stopped_timer: 0.0,
             fpm: 0.0,
+            wind: Vec3::ZERO,
+            ground_vel: Vec3::ZERO,
+            sea: 0.0,
             modern: modern::State::default(),
             heli: heli::State::turning(),
         }
+    }
+
+    /// Speed over the ground (knots).
+    pub fn ground_knots(&self) -> f32 {
+        Vec2::new(self.ground_vel.x, self.ground_vel.z).length() / KNOT_WU
     }
 
     /// Rotor speed (1 = 100%; helicopters).
@@ -1094,11 +1116,14 @@ fn step_one(
         let (head2, pitch2, roll2) = a.euler();
         let prev_alt = a.altitude;
         a.climb_rate = a.velocity / 16.0 * (pitch2 - bam(a.trim)).sin();
-        a.altitude += a.climb_rate * dt;
         let horiz = pitch2.cos() * a.velocity / 16.0;
+        // The air mass carries the aircraft along (the classic speed is through the air).
+        let wind = if a.on_ground { Vec3::ZERO } else { a.wind };
+        a.ground_vel = Vec3::new(horiz * head2.sin(), a.climb_rate, -horiz * head2.cos()) + wind;
+        a.altitude += (a.climb_rate + wind.y) * dt;
         let (mut east, mut north, _) = bevy_to_wu(pos.0);
-        east += (horiz * head2.sin() * dt) as f64;
-        north += (horiz * head2.cos() * dt) as f64;
+        east += (a.ground_vel.x * dt) as f64;
+        north += (-a.ground_vel.z * dt) as f64;
 
         ground_contact(a, k, false, roll2, prev_alt, east, north, theater, dt);
 
@@ -1236,6 +1261,12 @@ fn ground_contact(
         .map(|t| landing_corridor(t, east, north, k.landing, heli || vertical))
         .unwrap_or((false, 0.0));
     a.in_landing_corridor = corridor;
+    // A carrier's deck rides the sea: its height and tilt here now, and how fast it rises.
+    let deck = (ground > 0.0)
+        .then(|| theater.and_then(|t| crate::sea::deck_at(&t.decks, east, north)))
+        .flatten()
+        .map(|d| d.surface(a.sea, a.time as f64, east, north));
+    let (ground, deck_rate) = deck.map_or((ground, 0.0), |(h, rate, _)| (h, rate));
     // The rolling hills (flat at the airfields and the sea).
     let hills = theater.map(|t| &t.hills).filter(|h| !h.is_flat());
     let (e_m, n_m) = (east * WU, north * WU);
@@ -1252,16 +1283,32 @@ fn ground_contact(
         let fwd = Vec2::new(f.x, -f.z).normalize_or(Vec2::Y);
         (rise(fwd.x as f64, fwd.y as f64).atan(), -rise(fwd.y as f64, -fwd.x as f64).atan())
     });
+    if let Some((_, _, tilt)) = deck {
+        let (heading, _, _) = a.euler();
+        a.ground_slope = crate::sea::slope_for_heading(tilt, heading);
+        // Resting on the deck as it sinks away: it stays on it.
+        if a.on_ground
+            && a.climb_rate <= deck_rate.max(0.0)
+            && a.altitude - a.ground_altitude < crate::sea::DECK_STICK_WU
+        {
+            a.altitude = a.ground_altitude;
+        }
+    }
     a.altitude = a.altitude.clamp(a.ground_altitude, 60000.0);
     let on_ground_now = a.altitude <= a.ground_altitude;
-    if on_ground_now && prev_alt > a.ground_altitude && !heli {
+    if on_ground_now && prev_alt > a.ground_altitude && !heli && !a.on_ground {
+        // The sink onto a moving deck is judged against the deck.
+        let climb = a.climb_rate;
+        a.climb_rate -= deck_rate;
         touchdown(a, roll, k.landing as f32, vertical);
+        a.climb_rate = climb;
     }
     if on_ground_now {
         a.climb_rate = 0.0;
-        if !a.in_landing_corridor && a.knots() > 50.0 && (k.landing != 0 || a.damage.fragile) {
+        if !a.in_landing_corridor && a.ground_knots() > 50.0 && (k.landing != 0 || a.damage.fragile)
+        {
             a.ended = Some(FlightEnd::Crash);
-            info!("crash: ground contact outside a runway at {:.0} kt", a.knots());
+            info!("crash: ground contact outside a runway at {:.0} kt", a.ground_knots());
         }
     } else {
         a.has_flown = true;
@@ -1269,7 +1316,7 @@ fn ground_contact(
     a.on_ground = on_ground_now;
 
     // Stopped on a friendly runway after flying: "Safe Landing" ends the mission.
-    if a.on_ground && a.in_landing_corridor && a.has_flown && a.knots() <= 1.0 {
+    if a.on_ground && a.in_landing_corridor && a.has_flown && a.ground_knots() <= 1.0 {
         a.stopped_timer += dt;
         if a.stopped_timer > 2.0 && a.ended.is_none() {
             a.ended = Some(FlightEnd::Landed);
@@ -1295,7 +1342,9 @@ fn touchdown(a: &mut Aircraft, roll: f32, l: f32, anywhere: bool) {
 }
 
 /// (in corridor, ground altitude): runway box around friendly bases (flags 0x500, not 0x800):
-/// |dx| <= 5, |dy| <= 64 map units (+4/+8 on easy); carriers 8 x 30 at deck height 128. A
+/// |dx| <= 5, |dy| <= 64 map units (+4/+8 on easy); carriers 8 x 30 at deck height 128 (the
+/// deck's motion on the sea, a few feet, is `sea::Deck`'s; the simulation's objectives judge
+/// the flat deck, well within their tolerances). A
 /// helicopter's is the whole airfield, |dx| <= 16 (the sim's `objectives`, keep in step).
 fn landing_corridor(t: &Theater, east: f64, north: f64, landing: u8, heli: bool) -> (bool, f32) {
     let (mx, my) = (east / 32.0, 32768.0 - north / 32.0);
@@ -1389,6 +1438,53 @@ mod tests {
         a.autopilot_alt = a.view_z();
         a.waypoint_bearing = 0.0;
         a
+    }
+
+    /// A headwind shortens the take-off run (the wings meet the air sooner).
+    #[test]
+    fn headwind_shortens_the_takeoff() {
+        let k = FlightConstants { landing: 0, ..FlightConstants::f16() };
+        let lift_off = |head_kt: f32| {
+            let mut a = Aircraft::new_on_runway(k.fuel);
+            // Nose north (-Z): a headwind blows southwards.
+            a.wind = Vec3::new(0.0, 0.0, head_kt * KNOT_WU);
+            let mut at = None;
+            fly_with(k.clone(), false, a, 90.0, |a, c| {
+                c.throttle = Some(1.0);
+                c.pitch = if a.knots() > 130.0 && a.euler().1 < 0.2 { 0.5 } else { 0.0 };
+                if !a.on_ground && at.is_none() {
+                    at = Some((a.time, a.ground_knots()));
+                }
+            });
+            at.expect("lifted off")
+        };
+        let (still, gs_still) = lift_off(0.0);
+        let (windy, gs_windy) = lift_off(25.0);
+        println!(
+            "lift off: still air {still:.1} s at {gs_still:.0} kt, 25 kt headwind {windy:.1} s at {gs_windy:.0} kt"
+        );
+        assert!(windy < still * 0.95, "{windy} vs {still}");
+        assert!(gs_windy < gs_still - 15.0, "{gs_windy} vs {gs_still}");
+    }
+
+    /// A crosswind drifts both models downwind; the airspeed stays what the engine gives.
+    #[test]
+    fn crosswind_drifts_the_aircraft() {
+        for classic in [false, true] {
+            let mut a = level(airborne(5000.0, 350.0, 70.0));
+            let (still, _) = fly(classic, a.clone(), 30.0, 1, |_, _| {});
+            // From the west: blowing east.
+            a.wind = Vec3::new(30.0 * KNOT_WU, 0.0, 0.0);
+            let (b, _) = fly(classic, a, 30.0, 1, |_, _| {});
+            let drift = b.ground_vel.x / KNOT_WU;
+            println!(
+                "classic {classic}: drift {drift:.1} kt, {:.0} kt vs {:.0} kt",
+                b.knots(),
+                still.knots()
+            );
+            assert!((drift - 30.0).abs() < 6.0, "classic {classic}: drift {drift}");
+            assert!((b.knots() - still.knots()).abs() < 10.0, "classic {classic}");
+        }
     }
 
     /// The autopilot holds a low altitude (both models; the classic one's sits some 50 ft under

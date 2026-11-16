@@ -438,3 +438,29 @@ aircraft-ac130 =
         Sidoskjutande attackflygplan
         40 mm- och 105 mm-kanoner riktade med kapseln
         Cirkla vänster för att få kanonerna på målet
+
+menu-wind = Vind
+wind-random = Slumpmässig
+    .facts =
+        Passar vädret: åskväder blåser hårdast
+        Ändras med varje nytt uppdrag
+wind-calm = Stiltje
+    .facts =
+        0-3 kt
+        Lugn luft, spegelblank sjö
+wind-light = Svag
+    .facts =
+        5-10 kt
+        Små vågor
+wind-moderate = Måttlig
+    .facts =
+        12-18 kt, byar upp till 25 kt
+        Vita gäss, fartygen rullar lite
+wind-strong = Hård
+    .facts =
+        20-30 kt, byar upp till 45 kt
+        Turbulens på låg höjd, grov sjö
+wind-gale = Storm
+    .facts =
+        32-45 kt, byar upp till 65 kt
+        Svår turbulens, hög sjö, rörliga hangarfartygsdäck

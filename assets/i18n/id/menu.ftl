@@ -438,3 +438,29 @@ aircraft-ac130 =
         Pesawat meriam tembak samping
         Meriam 40 mm dan 105 mm dibidik dengan pod
         Orbit ke kiri agar meriam menjangkau
+
+menu-wind = Angin
+wind-random = Acak
+    .facts =
+        Sesuai cuaca: badai bertiup paling kencang
+        Berubah setiap misi baru
+wind-calm = Tenang
+    .facts =
+        0-3 kt
+        Udara tenang, laut licin
+wind-light = Lemah
+    .facts =
+        5-10 kt
+        Ombak kecil
+wind-moderate = Sedang
+    .facts =
+        12-18 kt, hembusan hingga 25 kt
+        Buih putih, kapal sedikit oleng
+wind-strong = Kencang
+    .facts =
+        20-30 kt, hembusan hingga 45 kt
+        Turbulensi di ketinggian rendah, laut bergelombang
+wind-gale = Badai
+    .facts =
+        32-45 kt, hembusan hingga 65 kt
+        Turbulensi hebat, gelombang tinggi, dek kapal induk bergerak

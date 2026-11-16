@@ -100,6 +100,7 @@ mod rwr;
 mod savegame;
 mod scenery;
 mod script;
+mod sea;
 mod settings;
 mod sfw;
 mod shake;
@@ -131,6 +132,7 @@ mod vr_menu;
 mod weather;
 #[cfg(windows)]
 mod win_console;
+mod wind;
 mod world;
 #[cfg(feature = "xr")]
 mod xr;
@@ -354,6 +356,8 @@ pub fn run() {
             scenery::SceneryPlugin,
             sling::SlingPlugin,
             weather::WeatherPlugin,
+            wind::WindPlugin,
+            sea::SeaPlugin,
             station::StationPlugin,
             gunner::GunnerPlugin,
         ))

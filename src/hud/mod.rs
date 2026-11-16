@@ -761,7 +761,8 @@ impl HudParams<'_, '_> {
             });
             let d = crate::world::wu_to_bevy(wp.east, wp.north, alt) - eye;
             let km = (d.x.hypot(d.z) / 1000.0) as f32;
-            let ms = knots * 0.5144;
+            // Time to go at the speed over the ground.
+            let ms = a.ground_knots() * 0.5144;
             (
                 (self.waypoints.current, km, if ms > 1.0 { km * 1000.0 / ms } else { 0.0 }),
                 d.as_vec3(),

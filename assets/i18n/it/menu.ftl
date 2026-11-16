@@ -438,3 +438,29 @@ aircraft-ac130 =
         Cannoniera a tiro laterale
         Cannoni da 40 mm e 105 mm puntati col pod
         Orbitare a sinistra per puntare i cannoni
+
+menu-wind = Vento
+wind-random = Casuale
+    .facts =
+        Secondo il meteo: i temporali soffiano più forte
+        Cambia a ogni nuova missione
+wind-calm = Calmo
+    .facts =
+        0-3 kt
+        Aria calma, mare piatto
+wind-light = Debole
+    .facts =
+        5-10 kt
+        Onde piccole
+wind-moderate = Moderato
+    .facts =
+        12-18 kt, raffiche fino a 25 kt
+        Creste bianche, le navi rollano un poco
+wind-strong = Forte
+    .facts =
+        20-30 kt, raffiche fino a 45 kt
+        Turbolenza a bassa quota, mare mosso
+wind-gale = Burrasca
+    .facts =
+        32-45 kt, raffiche fino a 65 kt
+        Turbolenza forte, mare grosso, ponti delle portaerei in movimento

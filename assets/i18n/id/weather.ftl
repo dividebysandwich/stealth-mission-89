@@ -14,3 +14,6 @@ wx-sky-scattered = awan tersebar
 wx-sky-broken = awan pecah
 wx-sky-overcast = mendung
 wx-sky-storm = badai petir
+wx-wind-calm = Angin: tenang.
+wx-wind = Angin: { $dir }° { $kt } kt.
+wx-wind-gusts = Angin: { $dir }° { $kt } kt, hembusan { $gust } kt.

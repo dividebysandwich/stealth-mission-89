@@ -47,6 +47,8 @@ layout(std140) uniform Globals {
     vec4 shadow_clouds[112];
     // The stars' frame (palette.wgsl).
     vec4 star_frame[3];
+    // The sea (palette.wgsl).
+    vec4 sea;
     vec4 ground_detail;
     // Reflections (the `REFLECT` variants): x 1 on glass, y 1 on water.
     vec4 reflections;
@@ -1233,21 +1235,60 @@ float water_group(vec2 p, float t, float len, uint i) {
     return 0.3 + 1.4 * value_noise(q, 11u + i);
 }
 
+// palette.wgsl `sea_slope`, `sea_length`, `sea_dir`.
+float sea_slope() {
+    float s = g.sea.x;
+    return s < 3.0 ? 0.35 + 0.65 * s / 3.0 : 1.0 + (s - 3.0) * 0.28;
+}
+
+float sea_length() {
+    return 1.0 + max(g.sea.x - 3.0, 0.0) * 0.35;
+}
+
+vec2 sea_dir(vec2 d) {
+    vec2 wd = g.sea.yz;
+    vec2 rot = vec2(wd.x * 0.8 + wd.y * 0.6, wd.y * 0.8 - wd.x * 0.6);
+    vec2 r = vec2(d.x * rot.x - d.y * rot.y, d.x * rot.y + d.y * rot.x);
+    return normalize(mix(r, wd, 0.6 * smoothstep(1.0, 5.0, g.sea.x)) + vec2(1e-4, 0.0));
+}
+
 vec3 water_normal(vec2 p, float t, float foot, float rough) {
     vec2 q = p / 48.0 + vec2(t * 0.03, -t * 0.02);
     vec2 w = p + (vec2(value_noise(q, 3u), value_noise(q + 17.3, 5u)) - 0.5) * 14.0;
-    vec2 s = water_wave(w, t, vec2(0.8, 0.6), 64.0, 0.045 * water_group(p, t, 64.0, 0u), foot);
-    s += water_wave(w, t, vec2(-0.6, 0.8), 40.0, 0.05 * water_group(p, t, 40.0, 1u), foot);
-    s += water_wave(w, t, vec2(0.96, -0.28), 20.0, 0.06 * water_group(p, t, 20.0, 2u), foot);
-    s += water_wave(w, t, vec2(-0.28, -0.96), 12.8, 0.07 * water_group(p, t, 12.8, 3u), foot);
-    s += water_wave(w, t, vec2(0.6, -0.8), 5.12, 0.08 * water_group(p, t, 5.12, 4u), foot);
-    s += water_wave(w, t, vec2(-0.92, 0.39), 2.5, 0.09 * water_group(p, t, 2.5, 5u), foot);
+    float l = sea_length();
+    vec2 s = water_wave(w, t, sea_dir(vec2(0.8, 0.6)), 64.0 * l, 0.045 * water_group(p, t, 64.0 * l, 0u), foot);
+    s += water_wave(w, t, sea_dir(vec2(-0.6, 0.8)), 40.0 * l, 0.05 * water_group(p, t, 40.0 * l, 1u), foot);
+    s += water_wave(w, t, sea_dir(vec2(0.96, -0.28)), 20.0 * sqrt(l), 0.06 * water_group(p, t, 20.0, 2u), foot);
+    s += water_wave(w, t, sea_dir(vec2(-0.28, -0.96)), 12.8, 0.07 * water_group(p, t, 12.8, 3u), foot);
+    s += water_wave(w, t, sea_dir(vec2(0.6, -0.8)), 5.12, 0.08 * water_group(p, t, 5.12, 4u), foot);
+    s += water_wave(w, t, sea_dir(vec2(-0.92, 0.39)), 2.5, 0.09 * water_group(p, t, 2.5, 5u), foot);
     vec2 r = p / 3.0 + vec2(t * 0.2, t * 0.13);
     float r0 = value_noise(r, 7u);
     vec2 ripple = vec2(value_noise(r + vec2(0.15, 0.0), 7u) - r0, value_noise(r + vec2(0.0, 0.15), 7u) - r0);
     s += ripple * 0.5 * (1.0 - smoothstep(0.3, 1.5, foot));
-    s *= rough;
+    s *= rough * sea_slope();
     return normalize(vec3(-s.x, 1.0, -s.y));
+}
+
+// palette.wgsl `whitecaps`.
+vec3 whitecaps(vec3 rgb, vec2 p, float t, float foot) {
+    float caps = g.sea.w;
+    if (caps <= 0.0) {
+        return rgb;
+    }
+    vec2 wd = g.sea.yz;
+    float speed = 2.0 + 3.0 * g.sea.x;
+    vec2 q = vec2(dot(p, wd) - t * speed, dot(p, vec2(-wd.y, wd.x)));
+    float n = value_noise(q / vec2(3.0, 9.0), 23u) * 0.6
+        + value_noise(q / vec2(1.2, 3.5) + vec2(t * 0.4, 0.0), 29u) * 0.4;
+    float life = value_noise(q / 40.0 + vec2(t * 0.05, 0.0), 31u);
+    float thr = 1.0 - 0.32 * caps * (0.4 + 0.6 * life);
+    float near_ = smoothstep(thr, thr + 0.06, n);
+    float mean = 0.18 * caps * caps;
+    float foam = mix(near_, mean, smoothstep(0.3, 1.5, foot));
+    vec3 sky = mirrored_sky(vec3(0.0, 1.0, 0.0));
+    vec3 white = vec3(min(dot(sky, vec3(0.3, 0.59, 0.11)) * 2.4, 0.92));
+    return mix(rgb, white, foam);
 }
 
 float water_patches(vec2 p, float t) {
@@ -1308,7 +1349,8 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, 
     vec2 p = world.xz + g.noise.xy;
     float t = g.dots.y;
     float m = water_patches(p, t);
-    float rough = WATER_CALM + (WATER_ROUGH - WATER_CALM) * smoothstep(-0.6, 0.6, m);
+    float calm = mix(WATER_CALM, WATER_ROUGH * 0.8, smoothstep(2.0, 6.0, g.sea.x));
+    float rough = calm + (WATER_ROUGH - calm) * smoothstep(-0.6, 0.6, m);
     vec3 n = water_normal(p, t, foot, rough);
     vec3 r = reflect(v, n);
     r.y = abs(r.y);
@@ -1323,8 +1365,8 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec3 dir, float foot, float across, 
     float moon_hl = pow(max(dot(r, g.moon.xyz), 0.0), 250.0) * WATER_PATH
         + water_sparkle(p, v, n, g.moon.xyz, foot, t) * WATER_SPARKLE
         + water_glitter(p, r, g.moon.xyz, across, t, rough) * WATER_GLITTER * far;
-    return c + (sun_hl * g.sun.w * sun_colour(g.sun.y) * lights.x
-        + moon_hl * g.moon.w * MOON_TINT * lights.y) * (1.0 - dark);
+    return whitecaps(c + (sun_hl * g.sun.w * sun_colour(g.sun.y) * lights.x
+        + moon_hl * g.moon.w * MOON_TINT * lights.y) * (1.0 - dark), p, t, foot);
 }
 #endif
 

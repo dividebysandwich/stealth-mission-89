@@ -15,3 +15,6 @@ wx-sky-scattered = 散在雲
 wx-sky-broken = 雲量多め
 wx-sky-overcast = 曇天
 wx-sky-storm = 雷雨
+wx-wind-calm = 風: 静穏。
+wx-wind = 風: { $dir }° { $kt } kt。
+wx-wind-gusts = 風: { $dir }° { $kt } kt、最大瞬間 { $gust } kt。

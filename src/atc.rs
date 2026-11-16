@@ -128,6 +128,8 @@ pub struct AtcInput<'a> {
     pub helicopter: bool,
     /// Instrument conditions at the fields (low cloud, poor visibility).
     pub ifr: bool,
+    /// The surface wind: degrees it blows from, mean and gust speeds (knots).
+    pub wind: (f64, f64, f64),
     /// The landing waypoint is the one steered to.
     pub homeward: bool,
     /// The radio is still saying the last call (the spoken ATC): the next waits.
@@ -173,6 +175,8 @@ enum Phase {
 #[derive(Debug, Default)]
 pub struct Atc {
     callsign: String,
+    /// The surface wind the tower reads out (`AtcInput::wind`).
+    wind: (f64, f64, f64),
     phase: Phase,
     /// Countdown (s) of the phase's next action.
     wait: f32,
@@ -212,6 +216,23 @@ impl Atc {
         self.queue.push_back((delay, Call { from, text, own }));
     }
 
+    /// The tower's wind check: "wind 270 at 15" (gusting when the gusts are strong).
+    fn wind_check(&self) -> String {
+        let (from, kt, gust) = self.wind;
+        let kt = kt.round() as i32;
+        if kt < 3 {
+            return "wind calm".into();
+        }
+        let dir = ((from / 10.0).round() as i32 * 10).rem_euclid(360);
+        let dir = if dir == 0 { 360 } else { dir };
+        let gust = gust.round() as i32;
+        if gust >= kt + 5 {
+            format!("wind {dir:03} at {kt}, gusting {gust}")
+        } else {
+            format!("wind {dir:03} at {kt}")
+        }
+    }
+
     fn pilot(&mut self, text: String) {
         let cs = self.callsign.clone();
         self.say(cs, text, true);
@@ -220,6 +241,7 @@ impl Atc {
     /// One frame: the calls going out now.
     pub fn step(&mut self, i: &AtcInput) -> Vec<Call> {
         self.wait -= i.dt;
+        self.wind = i.wind;
         self.control(i);
         let mut out = Vec::new();
         if i.hold {
@@ -328,9 +350,9 @@ impl Atc {
     fn takeoff_clearance(&mut self, b: &Base, helicopter: bool) {
         let cs = self.callsign.clone();
         let text = if helicopter {
-            format!("{cs}, cleared for takeoff")
+            format!("{cs}, {}, cleared for takeoff", self.wind_check())
         } else {
-            format!("{cs}, runway {}, cleared for takeoff", self.runway(b))
+            format!("{cs}, {}, runway {}, cleared for takeoff", self.wind_check(), self.runway(b))
         };
         self.say(format!("{} Tower", b.name), text, false);
         self.phase = Phase::Departing;
@@ -445,12 +467,21 @@ impl Atc {
         self.cleared = false;
         self.gear_warned = false;
         self.straight_in = false;
-        // The runway end facing the aircraft (no wind to choose by).
+        // The runway end into the wind; in a light wind the one facing the aircraft.
+        let (from, kt, _) = i.wind;
+        let upwind = DVec2::new(from.to_radians().sin(), from.to_radians().cos());
         self.end = b
             .ends
             .iter()
             .max_by(|x, y| {
-                let f = |e: &RunwayEnd| (i.pos - e.aim).normalize_or_zero().dot(e.toward);
+                let f = |e: &RunwayEnd| {
+                    if kt > 5.0 {
+                        // Landing along -toward, into where the wind comes from.
+                        -e.toward.dot(upwind)
+                    } else {
+                        (i.pos - e.aim).normalize_or_zero().dot(e.toward)
+                    }
+                };
                 f(x).total_cmp(&f(y))
             })
             .copied();
@@ -620,7 +651,8 @@ impl Atc {
             self.say(tower, format!("{cs}, continue, traffic on the runway"), false);
             self.cleared = false;
         } else {
-            self.say(tower, format!("{cs}, runway {}, cleared to land", e.name()), false);
+            let w = self.wind_check();
+            self.say(tower, format!("{cs}, {w}, runway {}, cleared to land", e.name()), false);
             self.cleared = true;
         }
         self.wait = 1.0;
@@ -660,7 +692,8 @@ impl Atc {
         if !self.cleared && self.wait <= 0.0 {
             self.wait = 1.0;
             if !runway_busy(b, &e, along, i.traffic) {
-                self.say(tower, format!("{cs}, runway {}, cleared to land", e.name()), false);
+                let w = self.wind_check();
+                self.say(tower, format!("{cs}, {w}, runway {}, cleared to land", e.name()), false);
                 self.cleared = true;
             } else if along < 800.0 {
                 self.say(tower, format!("{cs}, go around, traffic on the runway"), false);
@@ -794,7 +827,7 @@ impl Atc {
                 text += ", continue, traffic on the runway";
             } else {
                 self.cleared = true;
-                text += &format!(", cleared to land runway {}", e.name());
+                text += &format!(", {}, cleared to land runway {}", self.wind_check(), e.name());
             }
         }
         self.say(gca, format!("{cs}, {text}"), false);
@@ -986,6 +1019,11 @@ fn control(
         has_flown: a.has_flown,
         helicopter: settings.aircraft.spec().helicopter,
         ifr,
+        wind: weather.as_ref().map_or((0.0, 0.0, 0.0), |w| {
+            // At the surface (10 m): the mean wind slowed by the ground.
+            let k = crate::wind::height_profile(30.0) as f64;
+            (w.wind.from_deg as f64, w.wind.kt as f64 * k, w.wind.gust_kt as f64 * k)
+        }),
         homeward,
         hold: tts.busy(),
         bases: &state.bases,
@@ -1165,6 +1203,7 @@ mod tests {
         flown: bool,
         ifr: bool,
         knots: f32,
+        wind: (f64, f64, f64),
     }
 
     impl Flight {
@@ -1182,6 +1221,7 @@ mod tests {
                 flown: false,
                 ifr: false,
                 knots: 0.0,
+                wind: (0.0, 0.0, 0.0),
             }
         }
 
@@ -1203,6 +1243,7 @@ mod tests {
                     has_flown: self.flown,
                     helicopter: false,
                     ifr: self.ifr,
+                    wind: self.wind,
                     homeward: false,
                     hold: false,
                     bases: &self.bases,
@@ -1283,6 +1324,29 @@ mod tests {
         f.run(3.0);
         assert!(f.said("welcome home"));
         assert_eq!(f.atc.phase, Phase::Landed);
+    }
+
+    /// With a wind the tower picks the runway into it, whichever side the aircraft comes from,
+    /// and reads the wind out with the clearance.
+    #[test]
+    fn runway_into_the_wind() {
+        let mut f = Flight::new(vec![field(true)]);
+        f.wind = (180.0, 15.0, 24.0);
+        // From the south, but the wind is southerly: runway 18.
+        f.fly(DVec2::new(0.0, -30_000.0), 2000.0, 0.0, 300.0);
+        f.gear = false;
+        f.run(9.0);
+        assert!(f.said("expect overhead runway 18"), "{:?}", f.calls);
+        let mut f = Flight::new(vec![field(true)]);
+        f.wind = (10.0, 4.0, 4.0);
+        f.fly(DVec2::new(0.0, -30_000.0), 2000.0, 0.0, 300.0);
+        f.run(9.0);
+        assert!(f.said("expect overhead runway 36"), "{:?}", f.calls);
+        assert_eq!(f.atc.wind_check(), "wind 010 at 4");
+        f.atc.wind = (180.0, 15.0, 24.0);
+        assert_eq!(f.atc.wind_check(), "wind 180 at 15, gusting 24");
+        f.atc.wind = (0.0, 1.0, 1.0);
+        assert_eq!(f.atc.wind_check(), "wind calm");
     }
 
     #[test]

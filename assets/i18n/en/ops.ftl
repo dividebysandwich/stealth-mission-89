@@ -246,3 +246,4 @@ ops-seat-free = free
 ops-flight-airborne = In the air
 ops-flight-on-ground = On the ground
 ops-flight-starting = Starting up
+ops-wind-rising = Winds rising to about { $kt } kt.

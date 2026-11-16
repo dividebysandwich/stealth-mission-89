@@ -246,3 +246,4 @@ ops-seat-free = liber
 ops-flight-airborne = În aer
 ops-flight-on-ground = La sol
 ops-flight-starting = Pornire
+ops-wind-rising = Vânt în intensificare până la circa { $kt } kt.

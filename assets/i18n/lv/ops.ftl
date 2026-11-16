@@ -246,3 +246,4 @@ ops-seat-free = brīvs
 ops-flight-airborne = Gaisā
 ops-flight-on-ground = Uz zemes
 ops-flight-starting = Iedarbina
+ops-wind-rising = Vējš pastiprinās līdz aptuveni { $kt } kt.

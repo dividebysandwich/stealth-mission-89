@@ -246,3 +246,4 @@ ops-seat-free = vaba
 ops-flight-airborne = Õhus
 ops-flight-on-ground = Maas
 ops-flight-starting = Käivitamine
+ops-wind-rising = Tuul tugevneb umbes { $kt } sõlmeni.

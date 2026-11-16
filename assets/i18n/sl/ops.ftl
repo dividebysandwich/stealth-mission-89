@@ -246,3 +246,4 @@ ops-seat-free = prosto
 ops-flight-airborne = V zraku
 ops-flight-on-ground = Na tleh
 ops-flight-starting = Zagon
+ops-wind-rising = Veter se krepi do približno { $kt } kt.

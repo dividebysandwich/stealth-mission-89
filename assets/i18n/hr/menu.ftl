@@ -438,3 +438,29 @@ aircraft-ac130 =
         Bočno pucajući vatreni zrakoplov
         Topovi od 40 mm i 105 mm ciljani kontejnerom
         Kružite ulijevo da bi topovi dosegnuli cilj
+
+menu-wind = Vjetar
+wind-random = Nasumično
+    .facts =
+        Prema vremenu: oluje pušu najjače
+        Mijenja se sa svakom novom misijom
+wind-calm = Tišina
+    .facts =
+        0-3 kt
+        Miran zrak, glatko more
+wind-light = Slab
+    .facts =
+        5-10 kt
+        Mali valovi
+wind-moderate = Umjeren
+    .facts =
+        12-18 kt, na mahove do 25 kt
+        Bijele kreste, brodovi se lagano ljuljaju
+wind-strong = Jak
+    .facts =
+        20-30 kt, na mahove do 45 kt
+        Turbulencija nisko, uzburkano more
+wind-gale = Olujni
+    .facts =
+        32-45 kt, na mahove do 65 kt
+        Jaka turbulencija, visoko more, pomične palube nosača zrakoplova

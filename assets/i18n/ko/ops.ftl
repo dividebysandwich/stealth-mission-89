@@ -246,3 +246,4 @@ ops-seat-free = 빈자리
 ops-flight-airborne = 비행 중
 ops-flight-on-ground = 지상
 ops-flight-starting = 시동 중
+ops-wind-rising = 바람이 약 { $kt } kt까지 강해집니다.

@@ -15,3 +15,6 @@ wx-sky-scattered = szórványos felhőzet
 wx-sky-broken = megszakadozó felhőzet
 wx-sky-overcast = borult
 wx-sky-storm = zivatar
+wx-wind-calm = Szél: szélcsend.
+wx-wind = Szél: { $dir }°, { $kt } kt.
+wx-wind-gusts = Szél: { $dir }°, { $kt } kt, széllökés { $gust } kt.

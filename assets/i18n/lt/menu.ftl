@@ -438,3 +438,29 @@ aircraft-ac130 =
         Į šoną šaudantis ugnies paramos lėktuvas
         40 mm ir 105 mm pabūklai, taikomi konteineriu
         Skriskite ratu į kairę, kad pabūklai pasiektų
+
+menu-wind = Vėjas
+wind-random = Atsitiktinis
+    .facts =
+        Pagal orą: perkūnija pučia stipriausiai
+        Keičiasi su kiekviena nauja misija
+wind-calm = Štilis
+    .facts =
+        0-3 kt
+        Rami oro masė, lygi kaip veidrodis jūra
+wind-light = Silpnas
+    .facts =
+        5-10 kt
+        Nedidelės bangos
+wind-moderate = Vidutinis
+    .facts =
+        12-18 kt, gūsiai iki 25 kt
+        Baltos keteros, laivai šiek tiek supasi
+wind-strong = Stiprus
+    .facts =
+        20-30 kt, gūsiai iki 45 kt
+        Turbulencija žemai, banguota jūra
+wind-gale = Audra
+    .facts =
+        32-45 kt, gūsiai iki 65 kt
+        Stipri turbulencija, aukštos bangos, judantys lėktuvnešių deniai

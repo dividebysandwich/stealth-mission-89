@@ -438,3 +438,29 @@ aircraft-ac130 =
         Ajruplan tal-kanuni li jispara mill-ġenb
         Kanuni ta' 40 mm u 105 mm immirati bil-pod
         Dur lejn ix-xellug biex il-kanuni jilħqu
+
+menu-wind = Riħ
+wind-random = Każwali
+    .facts =
+        Skont it-temp: il-maltempati jonfħu l-aktar
+        Jinbidel ma' kull missjoni ġdida
+wind-calm = Kalma
+    .facts =
+        0-3 kt
+        Arja kalma, baħar żejt
+wind-light = Ħafif
+    .facts =
+        5-10 kt
+        Mewġ żgħir
+wind-moderate = Moderat
+    .facts =
+        12-18 kt, buffi sa 25 kt
+        Ragħwa bajda, il-bastimenti jitbandlu ftit
+wind-strong = Qawwi
+    .facts =
+        20-30 kt, buffi sa 45 kt
+        Turbulenza baxxa, baħar imqalleb
+wind-gale = Maltempata
+    .facts =
+        32-45 kt, buffi sa 65 kt
+        Turbulenza qawwija, baħar għoli, gverti ta' trasportaturi tal-ajruplani jiċċaqilqu

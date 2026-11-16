@@ -246,3 +246,4 @@ ops-seat-free = ledig
 ops-flight-airborne = I luften
 ops-flight-on-ground = På jorden
 ops-flight-starting = Starter op
+ops-wind-rising = Tiltagende vind til omkring { $kt } kt.

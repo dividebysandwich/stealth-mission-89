@@ -77,6 +77,8 @@ pub struct MenuState {
     pub weather: Option<Sky>,
     /// Coverage of the main cloud layer; None: rolled.
     pub cloud_cover: Option<u8>,
+    /// None: fitting the sky.
+    pub wind: Option<stealth_mission::WindLevel>,
     pub seed: u16,
     pub mission: Option<Result<Mission, String>>,
     /// The route to fly (mission planner); reset with every new mission.
@@ -136,7 +138,7 @@ impl MenuState {
         (self.theater, self.roe, self.kind, self.opponents) =
             (s.theater, s.roe, s.kind, s.opponents);
         self.lockheed = s.plane == stealth_mission::Plane::Lockheed;
-        (self.weather, self.cloud_cover) = (s.weather, s.cloud_cover);
+        (self.weather, self.cloud_cover, self.wind) = (s.weather, s.cloud_cover, s.wind);
         (self.start_hour, self.moon) = (s.start_hour, s.moon);
         self.seed = seed;
         self.career = None;
@@ -160,6 +162,7 @@ impl Default for MenuState {
             ai_missions: true,
             weather: None,
             cloud_cover: None,
+            wind: None,
             seed: rand::random(),
             mission: None,
             route: None,
@@ -254,6 +257,9 @@ fn relaunch_in_vr(state: &MenuState, settings: &crate::settings::Settings) -> st
     .args(["--weather", state.weather.map_or("random", Sky::name)]);
     if let Some(c) = state.cloud_cover {
         cmd.args(["--cloud-cover", &c.to_string()]);
+    }
+    if let Some(w) = state.wind {
+        cmd.args(["--wind", w.name()]);
     }
     if let Some(m) = state.moon {
         cmd.args(["--moon", &m.to_string()]);
@@ -1489,6 +1495,7 @@ pub(crate) fn weather_options(
     ui: &mut egui::Ui,
     weather: &mut Option<Sky>,
     cloud_cover: &mut Option<u8>,
+    wind: &mut Option<stealth_mission::WindLevel>,
 ) {
     section(ui, t!("section-weather"));
     let options = std::iter::once((None, t!("sky-random"), t_lines!("sky-random.facts"))).chain(
@@ -1510,6 +1517,16 @@ pub(crate) fn weather_options(
             t_lines!("menu-cover-slider.facts"),
         );
     }
+    // The wind: random fits the sky (storms blow hardest).
+    use stealth_mission::WindLevel;
+    ui.label(t!("menu-wind"));
+    let options = std::iter::once((None, t!("wind-random"), t_lines!("wind-random.facts"))).chain(
+        WindLevel::ALL.into_iter().map(|w| {
+            let id = format!("wind-{}", w.name().to_lowercase());
+            (Some(w), stealth_i18n::tr(&id), stealth_i18n::tr_lines(&format!("{id}.facts")))
+        }),
+    );
+    dropdown(ui, "wind", wind, options);
 }
 
 /// The download page beside the game's page, as an absolute address (egui opens no relative one).
@@ -1775,6 +1792,7 @@ pub(crate) fn menu_ui(
             );
             mission_settings.start_hour = state.start_hour;
             mission_settings.moon = state.moon;
+            mission_settings.wind = state.wind;
             crate::mission::settings_for(&mut mission_settings, settings.aircraft);
             let aircraft = settings.aircraft;
             state.mission = Some(
@@ -1817,6 +1835,7 @@ pub(crate) fn menu_ui(
         state.lockheed,
         state.weather,
         state.cloud_cover,
+        state.wind,
         state.start_hour,
         state.moon,
     );
@@ -1875,7 +1894,12 @@ pub(crate) fn menu_ui(
                     flow.card(ui, Span::Fixed(220.0), |ui| {
                         group(ui, t!("group-conditions"), |ui| {
                             let state = &mut *state;
-                            weather_options(ui, &mut state.weather, &mut state.cloud_cover);
+                            weather_options(
+                                ui,
+                                &mut state.weather,
+                                &mut state.cloud_cover,
+                                &mut state.wind,
+                            );
                             start_time_options(ui, state);
                             moon_options(ui, &mut state.moon);
                         });
@@ -2090,6 +2114,7 @@ pub(crate) fn menu_ui(
             state.lockheed,
             state.weather,
             state.cloud_cover,
+            state.wind,
             state.start_hour,
             state.moon,
         )
@@ -2173,6 +2198,7 @@ fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
             &b.depart_line,
             &b.land_line,
             &b.weather_line,
+            &b.wind_line,
         ] {
             small(ui, l);
         }
