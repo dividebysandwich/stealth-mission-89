@@ -148,6 +148,23 @@ pub enum ConsoleKey {
     View,
     /// Gunner's console: the gun laid next (1 the 40 mm, 2 the 105 mm).
     Gun(u8),
+    /// The MH-60R sensor operator's console (`asw`): its page (0 sonar, 1 weapons, 2 map).
+    AswPage(u8),
+    /// Drop a sonobuoy (1 DIFAR, 2 DICASS, 3 BT).
+    Buoy(u8),
+    /// The selected sensor pings / goes active or passive.
+    Ping,
+    /// Lower or raise the dipping sonar, its depth (1 shallower, 2 deeper).
+    Dip,
+    Depth(u8),
+    /// The selected sensor's sound in the headset.
+    Audio,
+    /// The MAD towed body out or in; a mark where the aircraft is.
+    Mad,
+    Mark,
+    /// The torpedo release armed; the torpedo away.
+    Arm,
+    Release,
 }
 
 /// A face drawn into the instrument atlas.

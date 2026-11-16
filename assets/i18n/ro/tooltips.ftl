@@ -207,6 +207,17 @@ tip-console-track = Ține camera dronei pe sol, sub reticul
 tip-console-slave = Camera dronei înapoi pe waypoint-ul ei (înainte și în jos)
 tip-console-view = Camera dronei: TGP-ul ei sau FLIR-ul înainte pentru a o pilota
 tip-console-gun = Ochește în continuare cu acest tun lateral (trăgaciul trage cu el)
+tip-console-asw-page = Afișează această pagină pe ecranul principal
+tip-console-buoy = Lansează o baliză sonar de acest tip (pe pagina MAP: în punctul clicat)
+tip-console-ping = DICASS-ul ales sau sonarul coborât emite (din nou: înapoi la ascultare)
+tip-console-dip = Coboară sonarul din staționare sau ridică-l
+tip-console-depth = Adâncimea sonarului coborât: mai puțin sau mai adânc
+tip-console-audio = Ascultă senzorul ales în cască
+tip-console-mad = Coboară sau ridică corpul remorcat MAD
+tip-console-mark = Marchează o poziție unde se află acum aeronava
+tip-console-arm = Armează lansarea torpilei
+tip-console-release = Lansează torpila cu programul ei (armat)
+tip-display-asw = Ecranul operatorului de senzori: cascade sonar, arme, hartă tactică
 
 ## Comenzi
 

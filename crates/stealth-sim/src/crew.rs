@@ -117,7 +117,8 @@ pub struct CrewView {
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
-/// OH-58D's left seat, the RAH-66's rear one.
+/// OH-58D's left seat, the RAH-66's rear one (the MH-60R's sensor operator's console is passed
+/// in with the RAH-66).
 pub fn has_gunner_seat(spectre: bool, apache: bool, kiowa: bool, comanche: bool) -> bool {
     spectre || apache || kiowa || comanche
 }
@@ -157,7 +158,7 @@ impl Sim {
         let spectre = if self.mirror && owner != self.pl.id {
             self.remote.iter().any(|p| {
                 p.id == owner
-                    && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche)
+                    && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk)
                     && p.chute.is_none()
             })
         } else {
@@ -165,7 +166,7 @@ impl Sim {
             p.id == owner
                 && !p.absent
                 && p.eject == 0
-                && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche)
+                && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk)
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
     }
@@ -243,7 +244,7 @@ impl Sim {
                 }
                 if seat == Seat::Gunner {
                     let p = self.pilot_ref(player as usize);
-                    if !has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche) {
+                    if !has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk) {
                         return Err(text!("crew-no-such-seat"));
                     }
                     if self.gunner_of(player).is_some() {

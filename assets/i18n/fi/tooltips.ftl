@@ -207,6 +207,17 @@ tip-console-track = Pidä lennokin kamera maassa tähtäimensä kohdalla
 tip-console-slave = Lennokin kamera takaisin sen waypointiin (eteen ja alas)
 tip-console-view = Lennokin kamera: sen TGP tai eteenpäin katsova FLIR sen lentämiseen
 tip-console-gun = Suuntaa seuraavaksi tämä sivutykki (liipaisin ampuu sillä)
+tip-console-asw-page = Näytä tämä sivu pääpäätteellä
+tip-console-buoy = Pudota tämän tyypin kaikuluotainpoiju (MAP-sivulla: napsautettuun kohtaan)
+tip-console-ping = Valittu DICASS tai upotettava kaikuluotain lähettää pulssin (uudelleen: takaisin kuunteluun)
+tip-console-dip = Laske upotettava kaikuluotain leijunnasta tai nosta se
+tip-console-depth = Upotettavan kaikuluotaimen syvyys: matalammalle tai syvemmälle
+tip-console-audio = Kuuntele valittua sensoria kuulokkeista
+tip-console-mad = Laske tai nosta MAD-hinauskappale
+tip-console-mark = Merkitse paikannus siihen, missä kone nyt on
+tip-console-arm = Viritä torpedon irrotus
+tip-console-release = Irrota torpedo ohjelmineen (viritetty)
+tip-display-asw = Sensorioperaattorin näyttö: kaikuluotaimen vesiputoukset, aseet, taktinen kartta
 
 ## Säätimet
 

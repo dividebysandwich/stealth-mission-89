@@ -207,6 +207,17 @@ tip-console-track = Turēt drona kameru uz zemes zem tās tēmekļa
 tip-console-slave = Drona kamera atpakaļ uz tā waypoint (uz priekšu un uz leju)
 tip-console-view = Drona kamera: tā TGP vai FLIR uz priekšu, lai to vadītu
 tip-console-gun = Tālāk tēmēt ar šo sānu lielgabalu (mēlīte ar to šauj)
+tip-console-asw-page = Rādīt šo lapu galvenajā displejā
+tip-console-buoy = Nomest šāda veida sonoboiju (MAP lapā: noklikšķinātajā punktā)
+tip-console-ping = Izvēlētais DICASS vai iegremdējamais sonārs raida impulsu (vēlreiz: atpakaļ uz klausīšanos)
+tip-console-dip = Nolaist iegremdējamo sonāru no karāšanās vai to pacelt
+tip-console-depth = Iegremdējamā sonāra dziļums: seklāk vai dziļāk
+tip-console-audio = Klausīties izvēlēto sensoru austiņās
+tip-console-mad = Nolaist vai pacelt MAD velkamo ķermeni
+tip-console-mark = Atzīmēt pozīciju, kur gaisa kuģis ir tagad
+tip-console-arm = Aktivizēt torpēdas nomešanu
+tip-console-release = Nomest torpēdu ar tās programmu (aktivizēts)
+tip-display-asw = Sensoru operatora displejs: sonāra ūdenskritumi, ieroči, taktiskā karte
 
 ## Vadības elementi
 

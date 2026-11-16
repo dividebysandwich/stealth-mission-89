@@ -224,6 +224,17 @@ tip-console-track = Hold the drone's camera on the ground at its crosshair
 tip-console-slave = The drone's camera back to its waypoint (ahead and down)
 tip-console-view = The drone's camera: its TGP, or the FLIR looking ahead to fly it by
 tip-console-gun = Lay this side gun next (the trigger fires it)
+tip-console-asw-page = Show this page on the main display
+tip-console-buoy = Drop a sonobuoy of this kind (on the MAP page: at the clicked point)
+tip-console-ping = The selected DICASS or the dipping sonar pings (again: back to listening)
+tip-console-dip = Lower the dipping sonar from the hover, or raise it
+tip-console-depth = The dipping sonar's depth: shallower or deeper
+tip-console-audio = Listen to the selected sensor in the headset
+tip-console-mad = Lower or raise the MAD towed body
+tip-console-mark = Mark a fix where the aircraft is now
+tip-console-arm = Arm the torpedo release
+tip-console-release = Drop the torpedo with its program (armed)
+tip-display-asw = Sensor operator's display: sonar waterfalls, weapons, tactical map
 
 ## Controls
 

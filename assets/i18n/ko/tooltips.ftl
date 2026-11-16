@@ -207,6 +207,17 @@ tip-console-track = 드론 카메라를 조준선 아래 지면에 고정
 tip-console-slave = 드론 카메라를 웨이포인트로 복귀(전방 아래쪽)
 tip-console-view = 드론 카메라: TGP 또는 조종용 전방 FLIR
 tip-console-gun = 다음에 이 측면포를 조준 (방아쇠로 발사)
+tip-console-asw-page = 이 페이지를 주 화면에 표시
+tip-console-buoy = 이 종류의 소노부이 투하 (MAP 페이지에서는 클릭한 지점에)
+tip-console-ping = 선택한 DICASS 또는 디핑 소나가 핑 송신 (다시 누르면 청음으로)
+tip-console-dip = 호버링에서 디핑 소나를 내리거나 올림
+tip-console-depth = 디핑 소나 깊이: 얕게 또는 깊게
+tip-console-audio = 선택한 센서를 헤드셋으로 청취
+tip-console-mad = MAD 예인체를 내리거나 올림
+tip-console-mark = 현재 항공기 위치에 위치 표시
+tip-console-arm = 어뢰 투하 무장
+tip-console-release = 프로그램된 어뢰 투하 (무장 시)
+tip-display-asw = 센서 운용사 화면: 소나 워터폴, 무장, 전술 지도
 
 ## 조작부
 

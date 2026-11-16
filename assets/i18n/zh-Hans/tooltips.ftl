@@ -206,6 +206,17 @@ tip-console-track = 将无人机摄像机保持在十字线下的地面上
 tip-console-slave = 无人机摄像机回到其航路点（前下方）
 tip-console-view = 无人机摄像机：其 TGP，或用于驾驶的前视 FLIR
 tip-console-gun = 下一个瞄准这门侧射炮（扳机使其开火）
+tip-console-asw-page = 在主显示器上显示此页面
+tip-console-buoy = 投放此类声呐浮标（在 MAP 页面：投放到点击的位置）
+tip-console-ping = 所选 DICASS 或吊放声呐发射声脉冲（再按：恢复被动收听）
+tip-console-dip = 从悬停中放下或收起吊放声呐
+tip-console-depth = 吊放声呐深度：变浅或变深
+tip-console-audio = 在耳机中收听所选传感器
+tip-console-mad = 放下或收起磁异探测拖曳体
+tip-console-mark = 在飞机当前位置标记定位点
+tip-console-arm = 解除鱼雷投放保险
+tip-console-release = 按程序投放鱼雷（已解除保险）
+tip-display-asw = 传感器操作员显示器：声呐瀑布图、武器、战术地图
 
 ## 控件
 

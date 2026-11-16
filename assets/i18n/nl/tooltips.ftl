@@ -208,6 +208,17 @@ tip-console-track = De camera van de drone op de grond houden, onder het dradenk
 tip-console-slave = De camera van de drone terug naar zijn waypoint (vooruit en omlaag)
 tip-console-view = De camera van de drone: zijn TGP, of de FLIR vooruit om hem te vliegen
 tip-console-gun = Richt hierna dit zijkanon (de trekker vuurt het af)
+tip-console-asw-page = Deze pagina op het hoofddisplay tonen
+tip-console-buoy = Een sonarboei van deze soort lossen (op de MAP-pagina: op het aangeklikte punt)
+tip-console-ping = De gekozen DICASS of de dompelsonar pingt (nogmaals: terug naar luisteren)
+tip-console-dip = De dompelsonar vanuit de hover laten zakken of ophalen
+tip-console-depth = Diepte van de dompelsonar: ondieper of dieper
+tip-console-audio = Naar de gekozen sensor luisteren in de headset
+tip-console-mad = Het gesleepte MAD-lichaam laten zakken of ophalen
+tip-console-mark = Een fix markeren waar het toestel nu is
+tip-console-arm = De torpedolossing op scherp zetten
+tip-console-release = De torpedo met zijn programma lossen (scherp)
+tip-display-asw = Display van de sensoroperator: sonarwatervallen, wapens, tactische kaart
 
 ## Bediening
 

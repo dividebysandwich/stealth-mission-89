@@ -208,6 +208,17 @@ tip-console-track = A drón kamerájának a földön tartása a célkereszt alat
 tip-console-slave = A drón kamerája vissza a waypointjára (előre és lefelé)
 tip-console-view = A drón kamerája: a TGP-je, vagy az előre néző FLIR a vezetéséhez
 tip-console-gun = Következőként ezt az oldalágyút irányozd (a ravasz ezzel tüzel)
+tip-console-asw-page = Az oldal megjelenítése a fő kijelzőn
+tip-console-buoy = Ilyen fajta bója ledobása (a MAP oldalon: a kattintott pontra)
+tip-console-ping = A kiválasztott DICASS vagy a merülőszonár impulzust ad (újra: vissza hallgatásra)
+tip-console-dip = A merülőszonár leengedése lebegésből, vagy felhúzása
+tip-console-depth = A merülőszonár mélysége: sekélyebbre vagy mélyebbre
+tip-console-audio = A kiválasztott szenzor hallgatása a fejhallgatóban
+tip-console-mad = A MAD vontatott test leengedése vagy behúzása
+tip-console-mark = Helyzet megjelölése ott, ahol most a gép van
+tip-console-arm = A torpedóoldás élesítése
+tip-console-release = A torpedó oldása a programjával (élesítve)
+tip-display-asw = Szenzorkezelő kijelzője: szonár vízesések, fegyverek, taktikai térkép
 
 ## Kezelőszervek
 

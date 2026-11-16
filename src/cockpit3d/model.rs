@@ -446,13 +446,14 @@ impl<'a> Spawner<'a> {
                 self.panel.atlas.clone()
             }
             "screen_scope" | "screen_board" | "screen_eo" | "screen_info" | "screen_map"
-            | "screen_feed" => {
+            | "screen_feed" | "screen_asw" => {
                 let screen = match name {
                     "screen_scope" => displays::ConsoleScreen::Scope,
                     "screen_board" => displays::ConsoleScreen::Board,
                     "screen_info" => displays::ConsoleScreen::Info,
                     "screen_map" => displays::ConsoleScreen::Map,
                     "screen_feed" => displays::ConsoleScreen::Feed,
+                    "screen_asw" => displays::ConsoleScreen::Asw,
                     _ => displays::ConsoleScreen::Eo,
                 };
                 let role = CanvasRole::Console(screen);

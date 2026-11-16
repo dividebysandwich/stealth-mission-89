@@ -91,6 +91,8 @@ pub enum ConsoleScreen {
     Map,
     /// The drone command center's camera overlay (over its wide picture).
     Feed,
+    /// The MH-60R sensor operator's main display (`asw`): sonar, weapons, map.
+    Asw,
 }
 
 /// A console screen's canvas (on its mesh).
@@ -105,6 +107,7 @@ pub const INFO_CANVAS: (usize, usize) = (320, 240);
 pub const MAP_CANVAS: (usize, usize) = (640, 244);
 /// The shape of `trackcam::WIDE`.
 pub const FEED_CANVAS: (usize, usize) = (640, 270);
+pub const ASW_CANVAS: (usize, usize) = (640, 480);
 const CONSOLE_SCALE: usize = 2;
 
 /// A face in the instrument atlas.
@@ -363,6 +366,7 @@ pub(super) fn screen(
                 ConsoleScreen::Info => INFO_CANVAS,
                 ConsoleScreen::Map => MAP_CANVAS,
                 ConsoleScreen::Feed => FEED_CANVAS,
+                ConsoleScreen::Asw => ASW_CANVAS,
             };
             (
                 Canvas::scaled(w, h, CONSOLE_SCALE),

@@ -278,6 +278,7 @@ impl Server {
                 host.take_control(sim, p, tag, stores, seat)
             }
             (ToServer::Crew(cmd), Some(p)) => host.crew(sim, p, cmd),
+            (ToServer::Asw(cmd), Some(p)) => sim.asw_command(p.0, cmd).map(|()| Vec::new()),
             (ToServer::LeaveAircraft, Some(p)) => host.leave_aircraft(sim, p),
             (ToServer::Station(cmd), Some(p)) => host.station(sim, p, cmd),
             (ToServer::Hit(hit), Some(p)) => {

@@ -208,6 +208,17 @@ tip-console-track = Držet kameru dronu na zemi pod jejím zaměřovačem
 tip-console-slave = Kamera dronu zpět na jeho waypoint (dopředu a dolů)
 tip-console-view = Kamera dronu: jeho TGP, nebo FLIR dopředu pro řízení
 tip-console-gun = Dále mířit tímto bočním kanónem (spoušť z něj pálí)
+tip-console-asw-page = Zobrazit tuto stránku na hlavním displeji
+tip-console-buoy = Odhodit sonarovou bóji tohoto druhu (na stránce MAP: v kliknutém bodě)
+tip-console-ping = Vybraný DICASS nebo ponorný sonar vyšle impulz (znovu: zpět k naslouchání)
+tip-console-dip = Spustit ponorný sonar z visení, nebo jej vytáhnout
+tip-console-depth = Hloubka ponorného sonaru: mělčeji nebo hlouběji
+tip-console-audio = Poslouchat vybraný senzor ve sluchátkách
+tip-console-mad = Spustit nebo vytáhnout vlečené těleso MAD
+tip-console-mark = Označit zaměření v místě, kde je teď letoun
+tip-console-arm = Odjistit odhoz torpéda
+tip-console-release = Odhodit torpédo s jeho programem (odjištěno)
+tip-display-asw = Displej operátora senzorů: sonarové vodopády, zbraně, taktická mapa
 
 ## Ovladače
 

@@ -120,6 +120,8 @@ pub enum ToServer {
     /// A seat in an aircraft: sit at another's gunner's console, leave it, move seats, the
     /// console (its aim goes unreliable, often).
     Crew(CrewCmd),
+    /// A Seahawk crew's sensor command (`stealth_sim::asw`): buoys, sonar, MAD, torpedo, route.
+    Asw(stealth_sim::asw::AswCmd),
     /// A piece of his radio transmission (unreliable).
     Voice(VoicePacket),
     Bye,
@@ -332,6 +334,47 @@ mod tests {
         ] {
             let m = ToServer::Crew(cmd);
             assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        }
+        // The Seahawk crew's sensor commands, and the hunt as the crews see it.
+        {
+            use stealth_sim::asw::*;
+            for cmd in [
+                AswCmd::DropBuoy { kind: BuoyKind::Dicass, deep: true, at: Some((120_000, 98_000)) },
+                AswCmd::BuoyMode { id: 3, active: true },
+                AswCmd::Dip(true),
+                AswCmd::DipDepth(90),
+                AswCmd::Program(TorpProgram { heading: Some(270), delay: 20, pattern: Pattern::Snake, ceiling: 40, floor: 200 }),
+                AswCmd::Release { station: 2 },
+                AswCmd::Route { rev: 4, points: vec![(1, 2), (300_000, -5)] },
+            ] {
+                let m = ToServer::Asw(cmd);
+                assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+            }
+            let asw = Asw {
+                buoys: vec![Buoy {
+                    id: 2,
+                    kind: BuoyKind::Difar,
+                    at: [1000.5, 2000.25],
+                    depth: 120.0,
+                    sample: Sample {
+                        seq: 9,
+                        noise: 48,
+                        lines: vec![Line { snr: 7, bearing: Some(41), range: None, doppler: 0, freqs: [50, 15] }],
+                        ping: false,
+                    },
+                    ..Default::default()
+                }],
+                crews: vec![AswCrew {
+                    owner: 1,
+                    route: vec![(5, 6)],
+                    route_rev: 2,
+                    tracks: vec![Track { n: 1, at: [3.0, 4.0], vel: [1.0, 0.5], err: 120.0, last: 30.0 }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            };
+            let w = WorldFast { asw: asw.clone(), ..Default::default() };
+            assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().asw, asw);
         }
         let m = ToServer::TakeControl { tag: 9, stores: None, seat: Seat::Gunner };
         assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));

@@ -208,6 +208,17 @@ tip-console-track = Hoia drooni kaamerat maapinnal selle sihiku all
 tip-console-slave = Drooni kaamera tagasi selle waypoint'ile (ette ja alla)
 tip-console-view = Drooni kaamera: selle TGP või ettepoole vaatav FLIR selle juhtimiseks
 tip-console-gun = Sihi järgmisena selle külgkahuriga (päästik tulistab sellest)
+tip-console-asw-page = Näita seda lehte põhiekraanil
+tip-console-buoy = Heida selle liigi sonopoi (MAP-lehel: klõpsatud punktis)
+tip-console-ping = Valitud DICASS või süvasonar pingib (uuesti: tagasi kuulamisele)
+tip-console-dip = Lase süvasonar hõljumisest alla või tõsta üles
+tip-console-depth = Süvasonari sügavus: madalamale või sügavamale
+tip-console-audio = Kuula valitud sensorit kõrvaklappides
+tip-console-mad = Lase MAD-i pukseeritav keha alla või tõsta üles
+tip-console-mark = Märgi asukoht seal, kus õhusõiduk praegu on
+tip-console-arm = Relvasta torpeedo vabastamine
+tip-console-release = Vabasta torpeedo oma programmiga (relvastatud)
+tip-display-asw = Sensorioperaatori ekraan: sonari kosed, relvad, taktikaline kaart
 
 ## Juhtelemendid
 

@@ -270,6 +270,21 @@ fn console(
         keys.clear();
         return;
     };
+    // The MH-60R's sensor operator: his console is `asw`'s; the AI flies (`orbit`), LEAVE
+    // gets him up.
+    if manning.as_deref().is_some_and(|m| m.asw()) {
+        controls.roll = 0.0;
+        controls.pitch = 0.0;
+        controls.yaw = 0.0;
+        controls.gun = false;
+        controls.fire = false;
+        for ConsoleButton(k) in keys.read() {
+            if *k == ConsoleKey::Leave {
+                leave(remote, campaign.as_deref_mut(), &mut menu);
+            }
+        }
+        return;
+    }
     mfd.modern = true;
     // On the console's screen, the AH-64 gunner's TEDAC (his third, centre display), else the
     // gunner's right MFD.
@@ -339,17 +354,24 @@ fn console(
             ConsoleKey::Fire => {}
             // Up from the console: another's back to operations, his own back to the
             // pilot's seat.
-            ConsoleKey::Leave => {
-                let cmd = if remote { CrewCmd::Leave } else { CrewCmd::Seat(Seat::Pilot) };
-                match campaign.as_deref_mut() {
-                    Some(c) => c.actions.push(crate::campaign::Action::Crew(cmd)),
-                    None => {
-                        menu.seat = SeatChoice::ToPilot;
-                        menu.seat_request = true;
-                    }
-                }
-            }
+            ConsoleKey::Leave => leave(remote, campaign.as_deref_mut(), &mut menu),
             _ => {}
+        }
+    }
+}
+
+/// Up from the console: another's back to operations, his own back to the pilot's seat.
+fn leave(
+    remote: bool,
+    campaign: Option<&mut crate::campaign::ActiveCampaign>,
+    menu: &mut FlightMenu,
+) {
+    let cmd = if remote { CrewCmd::Leave } else { CrewCmd::Seat(Seat::Pilot) };
+    match campaign {
+        Some(c) => c.actions.push(crate::campaign::Action::Crew(cmd)),
+        None => {
+            menu.seat = SeatChoice::ToPilot;
+            menu.seat_request = true;
         }
     }
 }
@@ -466,7 +488,7 @@ fn send_aim(
     mut actions: MessageReader<crate::input::ActionEvent>,
     (time, settings): (Res<Time>, Res<crate::settings::Settings>),
 ) {
-    let remote = manning.as_deref().is_some_and(|m| m.remote_gunner());
+    let remote = manning.as_deref().is_some_and(|m| m.remote_gunner() && !m.asw());
     let (Some(c), true) = (campaign.as_deref_mut(), remote) else {
         designate.clear();
         track.clear();
@@ -664,7 +686,7 @@ fn panel(
     mfd: Res<crate::mfd::MfdState>,
     mut panel: ResMut<ConsolePanel>,
 ) {
-    let Some(m) = manning.filter(|m| m.gunner() && m.console()) else { return };
+    let Some(m) = manning.filter(|m| m.gunner() && m.console() && !m.asw()) else { return };
     let gun = if m.remote_gunner() {
         state.gun
     } else {
@@ -693,7 +715,7 @@ fn draw_screen(
     time: Res<Time<Real>>,
     player: Query<&Aircraft, With<Player>>,
 ) {
-    if !manning.is_some_and(|m| m.gunner() && m.console()) {
+    if !manning.is_some_and(|m| m.gunner() && m.console() && !m.asw()) {
         return;
     }
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Eo) else {
@@ -865,7 +887,7 @@ fn draw_info(
     player: Query<&Aircraft, With<Player>>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat)) = (manning.filter(|m| m.gunner() && m.console()), combat) else {
+    let (Some(m), Some(combat)) = (manning.filter(|m| m.gunner() && m.console() && !m.asw()), combat) else {
         return;
     };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else {

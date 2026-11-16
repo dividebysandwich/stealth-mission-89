@@ -207,6 +207,17 @@ tip-console-track = Garder la caméra du drone sur le sol, sous son réticule
 tip-console-slave = La caméra du drone revient sur son waypoint (vers l'avant et le bas)
 tip-console-view = La caméra du drone : sa TGP, ou le FLIR vers l'avant pour le piloter
 tip-console-gun = Pointer ensuite ce canon latéral (la détente le fait tirer)
+tip-console-asw-page = Afficher cette page sur l'écran principal
+tip-console-buoy = Larguer une bouée de ce type (sur la page MAP : au point cliqué)
+tip-console-ping = Le DICASS choisi ou le sonar trempé émet (à nouveau : retour à l'écoute)
+tip-console-dip = Descendre le sonar trempé depuis le stationnaire, ou le remonter
+tip-console-depth = Profondeur du sonar trempé : moins ou plus profond
+tip-console-audio = Écouter le capteur choisi au casque
+tip-console-mad = Sortir ou rentrer le poisson MAD
+tip-console-mark = Marquer un point là où se trouve l'appareil
+tip-console-arm = Armer le largage de la torpille
+tip-console-release = Larguer la torpille avec son programme (armé)
+tip-display-asw = Écran de l'opérateur capteurs : cascades sonar, armement, carte tactique
 
 ## Commandes
 

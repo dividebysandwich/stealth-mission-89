@@ -208,6 +208,17 @@ tip-console-track = ドローンのカメラを照準の地上地点に固定
 tip-console-slave = ドローンのカメラをウェイポイントに戻す（前方下向き）
 tip-console-view = ドローンのカメラ：TGP、または操縦用の前方FLIR
 tip-console-gun = 次にこの側面砲を照準する（トリガーで発射）
+tip-console-asw-page = このページをメインディスプレイに表示
+tip-console-buoy = この種類のソノブイを投下（MAPページではクリックした地点に）
+tip-console-ping = 選択したDICASSまたは吊下式ソナーがピン（再押下で聴音に戻る）
+tip-console-dip = ホバリングから吊下式ソナーを降ろす／揚げる
+tip-console-depth = 吊下式ソナーの深度：浅く／深く
+tip-console-audio = 選択したセンサーをヘッドセットで聴く
+tip-console-mad = MAD曳航体を降ろす／揚げる
+tip-console-mark = 現在位置に探知点をマーク
+tip-console-arm = 魚雷投下の安全装置解除
+tip-console-release = プログラム済みの魚雷を投下（安全装置解除時）
+tip-display-asw = センサー員ディスプレイ：ソナーウォーターフォール、兵装、戦術マップ
 
 ## Controls
 

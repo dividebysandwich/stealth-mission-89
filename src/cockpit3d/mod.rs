@@ -260,6 +260,12 @@ fn choice(
     if let Some(m) = manning.filter(|m| m.console()) {
         let drop = if settings.vr { VR_CONSOLE_DROP } else { 0.0 };
         let eye = settings.cockpit_origin() - Vec3::Y * drop;
+        // The MH-60R's sensor operator: its cabin console at his own eye.
+        if m.asw()
+            && let Some(c) = settings.aircraft.spec().console.as_ref()
+        {
+            return (layout::PanelStyle::Modern, c.model, eye, CONSOLE_MODEL_SCALE);
+        }
         let model = if m.drones() {
             DRONE_CONSOLE_MODEL
         } else if m.gunner() {

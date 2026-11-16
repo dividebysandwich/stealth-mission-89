@@ -266,6 +266,9 @@ pub struct WorldFast {
     /// The CBU-105s' submunitions and skeets on their way down.
     #[serde(default, skip_serializing_if = "crate::sfw::Sfw::is_empty")]
     pub sfw: crate::sfw::Sfw,
+    /// The submarine hunt as the crews see it (no submarines).
+    #[serde(default, skip_serializing_if = "crate::asw::Asw::is_empty")]
+    pub asw: crate::asw::Asw,
     pub pilots: Vec<RemotePilot>,
     /// Every pilot in the world; those not in `pilots` this time are as they were.
     #[serde(default)]
@@ -383,6 +386,7 @@ impl Sim {
             ai_missiles: self.ai_missiles().to_vec(),
             ai_cms: self.ai_countermeasures().map(|(i, k, c)| (i as u16, k as u8, c)).collect(),
             sfw: self.sfw.for_clients(),
+            asw: self.asw.for_clients(),
             pilots: self.remote_pilots(),
             present: Vec::new(),
         }
@@ -670,6 +674,7 @@ impl Sim {
             }
         }
         self.sfw = w.sfw.clone();
+        self.asw = w.asw.clone();
         for a in &mut self.ai_flight {
             a.cms = Default::default();
         }

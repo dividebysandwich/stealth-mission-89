@@ -102,7 +102,10 @@ impl Aircraft {
     /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console,
     /// the AH-64's front cockpit, the OH-58D's left seat, the RAH-66's rear one.
     pub fn gunner_seat(self) -> bool {
-        matches!(self, Aircraft::AC130 | Aircraft::AH64 | Aircraft::OH58 | Aircraft::RAH66)
+        matches!(
+            self,
+            Aircraft::AC130 | Aircraft::AH64 | Aircraft::OH58 | Aircraft::RAH66 | Aircraft::MH60R
+        )
     }
 
     /// The cargo jet: flies the munitions between the airbases and nothing else.

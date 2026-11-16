@@ -207,6 +207,17 @@ tip-console-track = Utrzymać kamerę drona na ziemi pod jej celownikiem
 tip-console-slave = Kamera drona wraca na jego waypoint (do przodu i w dół)
 tip-console-view = Kamera drona: jego TGP lub FLIR patrzący do przodu, by nim lecieć
 tip-console-gun = Jako następne celuj tym działem burtowym (spust z niego strzela)
+tip-console-asw-page = Pokaż tę stronę na głównym wyświetlaczu
+tip-console-buoy = Zrzuć pławę tego rodzaju (na stronie MAP: w klikniętym punkcie)
+tip-console-ping = Wybrany DICASS lub sonar opuszczany wysyła impuls (ponownie: powrót do nasłuchu)
+tip-console-dip = Opuść sonar z zawisu lub go podnieś
+tip-console-depth = Głębokość sonaru opuszczanego: płycej lub głębiej
+tip-console-audio = Słuchaj wybranego sensora w słuchawkach
+tip-console-mad = Opuść lub podnieś holowany korpus MAD
+tip-console-mark = Oznacz pozycję tam, gdzie jest teraz statek powietrzny
+tip-console-arm = Uzbrój zrzut torpedy
+tip-console-release = Zrzuć torpedę z jej programem (uzbrojone)
+tip-display-asw = Wyświetlacz operatora sensorów: kaskady sonarowe, uzbrojenie, mapa taktyczna
 
 ## Elementy sterowania
 

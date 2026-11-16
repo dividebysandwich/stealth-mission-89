@@ -104,10 +104,20 @@ pub struct AircraftSpec {
     /// A second cockpit for the gunner (multi-crew): the AH-64's front seat, the OH-58D's left
     /// one.
     pub gunner_seat: Option<CrewSeat>,
+    /// A crew console of its own in the cabin (the MH-60R's sensor operator's): its model and
+    /// the operator's eye (aircraft frame, m).
+    pub console: Option<ConsoleSeat>,
     /// Anti-submarine warfare (the MH-60R): sonobuoys, dipping sonar, MAD and torpedoes
     /// (`crate::asw`); not a troop helicopter.
     pub asw: bool,
     flight: fn() -> FlightConstants,
+}
+
+/// A cabin console's model (glb stem under `models/`) and the operator's eye point (aircraft
+/// frame, m).
+pub struct ConsoleSeat {
+    pub model: &'static str,
+    pub eye: Vec3,
 }
 
 /// A crew seat's own cockpit: its style, model (glb stem under `models/`) and eye point (aircraft
@@ -371,6 +381,7 @@ static F117: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::default,
 };
 
@@ -410,6 +421,7 @@ static F16: AircraftSpec = AircraftSpec {
     ground_radar: true,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::f16,
 };
 
@@ -458,6 +470,7 @@ static UH60: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::uh60,
 };
 
@@ -494,6 +507,9 @@ static MH60R: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: true,
     gunner_seat: None,
+    // The sensor operator in the cabin behind the cockpit, on the left, facing forward at his
+    // console against the cockpit's rear bulkhead (tools/models/build_console_asw.py).
+    console: Some(ConsoleSeat { model: "cockpit_asw", eye: uh60_point(-0.45, 1.05, 1.75) }),
     flight: FlightConstants::mh60r,
 };
 
@@ -541,6 +557,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::ah1z,
 };
 
@@ -595,6 +612,7 @@ static RAH66: AircraftSpec = AircraftSpec {
         model: "cockpit_rah66_cpg",
         eye: rah66_point(0.0, 1.16, 2.14),
     }),
+    console: None,
     flight: FlightConstants::rah66,
 };
 
@@ -648,6 +666,7 @@ static OH58: AircraftSpec = AircraftSpec {
         model: "cockpit_oh58_cpg",
         eye: oh58_point(-0.36, 1.10, 1.45),
     }),
+    console: None,
     flight: FlightConstants::oh58,
 };
 
@@ -703,6 +722,7 @@ static AH64: AircraftSpec = AircraftSpec {
         model: "cockpit_ah64_cpg",
         eye: ah64_point(0.0, 2.80, 2.63),
     }),
+    console: None,
     flight: FlightConstants::ah64,
 };
 
@@ -752,6 +772,7 @@ static CH47: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::ch47,
 };
 
@@ -804,6 +825,7 @@ static TORNADO: AircraftSpec = AircraftSpec {
     ground_radar: true,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::tornado,
 };
 
@@ -853,6 +875,7 @@ static A10: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::a10,
 };
 
@@ -905,6 +928,7 @@ static AV8B: AircraftSpec = AircraftSpec {
     ground_radar: true,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::av8b,
 };
 
@@ -955,6 +979,7 @@ static F22: AircraftSpec = AircraftSpec {
     ground_radar: true,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::f22,
 };
 
@@ -1016,6 +1041,7 @@ static C5: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::c5,
 };
 
@@ -1077,6 +1103,7 @@ static AC130: AircraftSpec = AircraftSpec {
     ground_radar: false,
     asw: false,
     gunner_seat: None,
+    console: None,
     flight: FlightConstants::c130,
 };
 
@@ -1129,7 +1156,7 @@ impl AircraftKind {
     /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console, the
     /// AH-64's front cockpit, the OH-58D's left seat, the RAH-66's rear one.
     pub fn crew_seat(self) -> bool {
-        self.spectre() || self.apache() || self.kiowa() || self.comanche()
+        self.spectre() || self.apache() || self.kiowa() || self.comanche() || self.seahawk()
     }
 
     pub fn rcs_page(self) -> bool {
@@ -1285,7 +1312,11 @@ pub fn cockpit_files() -> Vec<&'static str> {
         .iter()
         .flat_map(|k| {
             let s = k.spec();
-            s.cockpits.iter().map(|(_, f)| *f).chain(s.gunner_seat.as_ref().map(|g| g.model))
+            s.cockpits
+                .iter()
+                .map(|(_, f)| *f)
+                .chain(s.gunner_seat.as_ref().map(|g| g.model))
+                .chain(s.console.as_ref().map(|c| c.model))
         })
         .collect();
     v.sort_unstable();

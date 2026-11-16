@@ -226,6 +226,16 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
                 "Slave" => K::Slave,
                 "View" => K::View,
                 "Gun" => K::Gun(n()?),
+                "AswPage" => K::AswPage(n()?),
+                "Buoy" => K::Buoy(n()?),
+                "Ping" => K::Ping,
+                "Dip" => K::Dip,
+                "Depth" => K::Depth(n()?),
+                "Audio" => K::Audio,
+                "Mad" => K::Mad,
+                "Mark" => K::Mark,
+                "Arm" => K::Arm,
+                "Release" => K::Release,
                 _ => return None,
             })
         }

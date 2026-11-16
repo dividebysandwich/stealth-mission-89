@@ -208,6 +208,17 @@ tip-console-track = Die Kamera der Drohne am Boden unter ihrem Fadenkreuz halten
 tip-console-slave = Die Kamera der Drohne zurück auf ihren Wegpunkt (voraus und nach unten)
 tip-console-view = Die Kamera der Drohne: ihr TGP oder das FLIR nach vorn, um sie zu fliegen
 tip-console-gun = Als Nächstes diese Seitenkanone richten (der Abzug feuert sie)
+tip-console-asw-page = Diese Seite auf dem Hauptdisplay zeigen
+tip-console-buoy = Eine Sonarboje dieser Art abwerfen (auf der MAP-Seite: am angeklickten Punkt)
+tip-console-ping = Das gewählte DICASS oder das Tauchsonar pingt (erneut: zurück zum Horchen)
+tip-console-dip = Das Tauchsonar aus dem Schwebeflug absenken oder einholen
+tip-console-depth = Tiefe des Tauchsonars: flacher oder tiefer
+tip-console-audio = Den gewählten Sensor im Kopfhörer hören
+tip-console-mad = Den MAD-Schleppkörper ausfahren oder einholen
+tip-console-mark = Einen Fix an der jetzigen Position markieren
+tip-console-arm = Die Torpedoauslösung scharf schalten
+tip-console-release = Den Torpedo mit seinem Programm abwerfen (scharf)
+tip-display-asw = Display des Sensoroperators: Sonar-Wasserfälle, Waffen, taktische Karte
 
 ## Bedienelemente
 

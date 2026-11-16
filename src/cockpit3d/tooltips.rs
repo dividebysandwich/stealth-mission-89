@@ -376,6 +376,21 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
         ConsoleKey::View => ("FWD", "tip-console-view"),
         ConsoleKey::Gun(1) => ("40MM", "tip-console-gun"),
         ConsoleKey::Gun(_) => ("105MM", "tip-console-gun"),
+        ConsoleKey::AswPage(0) => ("SONAR", "tip-console-asw-page"),
+        ConsoleKey::AswPage(1) => ("WPN", "tip-console-asw-page"),
+        ConsoleKey::AswPage(_) => ("MAP", "tip-console-asw-page"),
+        ConsoleKey::Buoy(1) => ("DIFAR", "tip-console-buoy"),
+        ConsoleKey::Buoy(2) => ("DICASS", "tip-console-buoy"),
+        ConsoleKey::Buoy(_) => ("BT", "tip-console-buoy"),
+        ConsoleKey::Ping => ("PING", "tip-console-ping"),
+        ConsoleKey::Dip => ("DIP", "tip-console-dip"),
+        ConsoleKey::Depth(1) => ("DEPTH-", "tip-console-depth"),
+        ConsoleKey::Depth(_) => ("DEPTH+", "tip-console-depth"),
+        ConsoleKey::Audio => ("AUDIO", "tip-console-audio"),
+        ConsoleKey::Mad => ("MAD", "tip-console-mad"),
+        ConsoleKey::Mark => ("MARK", "tip-console-mark"),
+        ConsoleKey::Arm => ("ARM", "tip-console-arm"),
+        ConsoleKey::Release => ("RELEASE", "tip-console-release"),
     };
     (title, t!(id))
 }
@@ -542,6 +557,7 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Console(ConsoleScreen::Info) => "tip-display-info",
         CanvasRole::Console(ConsoleScreen::Feed) => "tip-display-feed",
         CanvasRole::Console(ConsoleScreen::Map) => "tip-display-map",
+        CanvasRole::Console(ConsoleScreen::Asw) => "tip-display-asw",
         CanvasRole::Atlas | CanvasRole::Glow | CanvasRole::Hud => return None,
     };
     let tip = tip(id, &[]);

@@ -101,6 +101,8 @@ pub enum StationKind {
     Gunner {
         remote: bool,
         cockpit: bool,
+        /// The MH-60R's sensor operator's console (`asw`).
+        asw: bool,
     },
 }
 
@@ -111,6 +113,7 @@ impl Manning {
             StationKind::Battery(b) => b.label(),
             StationKind::Gepard => "GEPARD",
             StationKind::Drones => "DCC",
+            StationKind::Gunner { asw: true, .. } => "SENSOR OPERATOR",
             StationKind::Gunner { .. } => "GUNNER",
         }
     }
@@ -144,6 +147,11 @@ impl Manning {
     /// it flies on).
     pub fn parks(&self) -> bool {
         !matches!(self.kind, StationKind::Gunner { remote: false, .. })
+    }
+
+    /// At the MH-60R's sensor operator's console.
+    pub fn asw(&self) -> bool {
+        matches!(self.kind, StationKind::Gunner { asw: true, .. })
     }
 
     /// In a gunner's cockpit (the AH-64's front seat, the OH-58D's left one): the aircraft's cockpit, not a console.
@@ -242,27 +250,33 @@ fn sync_manning(
         && matches!(phase, None | Some(Phase::Sortie));
     let me = combat.as_deref().map_or(0, |c| c.sim.active_pilot()) as usize;
     // Another's AH-64 or OH-58D: the type of his aircraft as everyone sees it, if it has a
-    // gunner's cockpit.
-    let cockpit_of = |owner: u8| {
+    // gunner's cockpit (or the MH-60R's sensor operator's console).
+    let kind_of = |owner: u8| {
         combat.as_deref().and_then(|c| {
             c.sim
                 .remote_pilots()
                 .iter()
                 .find(|p| p.id == owner)
                 .map(crate::aircraft::AircraftKind::of_remote)
-                .filter(|k| k.spec().gunner_seat.is_some())
         })
     };
+    let cockpit_of = |owner: u8| kind_of(owner).filter(|k| k.spec().gunner_seat.is_some());
+    let seat_of = |owner: u8| kind_of(owner).filter(|k| k.spec().gunner_seat.is_some() || k.seahawk());
     let want = match (phase, combat.as_deref()) {
         (Some(Phase::Crew { owner }), _) => Some(Manning {
             unit: owner as usize,
-            kind: StationKind::Gunner { remote: true, cockpit: cockpit_of(owner).is_some() },
+            kind: StationKind::Gunner {
+                remote: true,
+                cockpit: cockpit_of(owner).is_some(),
+                asw: kind_of(owner).is_some_and(|k| k.seahawk()),
+            },
         }),
         _ if own_gunner => Some(Manning {
             unit: me,
             kind: StationKind::Gunner {
                 remote: false,
                 cockpit: settings.aircraft.spec().gunner_seat.is_some(),
+                asw: settings.aircraft.seahawk(),
             },
         }),
         (Some(Phase::Station { unit }), Some(combat)) => {
@@ -282,6 +296,10 @@ fn sync_manning(
     if settings.gunner_cockpit != cockpit {
         settings.gunner_cockpit = cockpit;
     }
+    let asw = want.is_some_and(|m| m.asw());
+    if settings.asw_console != asw {
+        settings.asw_console = asw;
+    }
     if want == manning.as_deref().copied() {
         return;
     }
@@ -299,7 +317,8 @@ fn sync_manning(
             // In another's AH-64 or OH-58D: its cockpit and model are the player's while he
             // sits there, his own type back after (not when the aircraft becomes his: his
             // sortie's then).
-            let ridden = cockpit_of(m.unit as u8).filter(|_| m.remote_gunner() && m.cockpit());
+            let ridden =
+                seat_of(m.unit as u8).filter(|_| m.remote_gunner() && (m.cockpit() || m.asw()));
             let kind = ridden.map(|k| {
                 let own = ui.parked_kind.unwrap_or(settings.aircraft);
                 settings.aircraft = k;
@@ -606,7 +625,17 @@ fn buttons(
             | ConsoleKey::Track
             | ConsoleKey::Slave
             | ConsoleKey::View
-            | ConsoleKey::Gun(_) => {}
+            | ConsoleKey::Gun(_)
+            | ConsoleKey::AswPage(_)
+            | ConsoleKey::Buoy(_)
+            | ConsoleKey::Ping
+            | ConsoleKey::Dip
+            | ConsoleKey::Depth(_)
+            | ConsoleKey::Audio
+            | ConsoleKey::Mad
+            | ConsoleKey::Mark
+            | ConsoleKey::Arm
+            | ConsoleKey::Release => {}
         }
     }
     for click in clicks.read() {
@@ -625,7 +654,11 @@ fn buttons(
                 Some(board::Clicked::Resupply) => send(StationCmd::RequestResupply),
                 None => {}
             },
-            ConsoleScreen::Eo | ConsoleScreen::Info | ConsoleScreen::Map | ConsoleScreen::Feed => {}
+            ConsoleScreen::Eo
+            | ConsoleScreen::Info
+            | ConsoleScreen::Map
+            | ConsoleScreen::Feed
+            | ConsoleScreen::Asw => {}
         }
     }
     // Test aid: `--console-lock` locks the nearest hostile track once there is one (any

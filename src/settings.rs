@@ -134,6 +134,8 @@ pub struct Settings {
     /// In the aircraft's gunner's cockpit (the AH-64's front seat), not the pilot's: its
     /// cockpit and eye (`cockpit`, `cockpit_origin`). Set while he sits there.
     pub gunner_cockpit: bool,
+    /// At the aircraft's cabin console (the MH-60R's sensor operator's): its eye.
+    pub asw_console: bool,
     /// Air traffic control's radio calls (`atc.rs`; on by default).
     pub atc: bool,
     /// The coop radio (`voice`): push-to-talk on, the voices' volume (0..1), the microphone's
@@ -314,6 +316,11 @@ impl Settings {
     pub fn cockpit_origin(&self) -> Vec3 {
         let spec = self.aircraft.spec();
         let mut eye = self.gunner_seat().map_or(spec.eye, |g| g.eye);
+        if self.asw_console
+            && let Some(c) = spec.console.as_ref()
+        {
+            eye = c.eye;
+        }
         if self.vr
             && let Some(h) = spec.vr_eye_height
         {
@@ -408,6 +415,7 @@ impl Settings {
             player_labels: true,
             player_label_size: DEFAULT_PLAYER_LABEL_SIZE,
             gunner_cockpit: false,
+            asw_console: false,
             seat_height: get(&a, "--seat-height")
                 .and_then(|s| s.parse::<f32>().ok())
                 .map_or(0.0, |cm| {

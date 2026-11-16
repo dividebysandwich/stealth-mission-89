@@ -207,6 +207,17 @@ tip-console-track = Hold dronens kamera på jorden ved dens trådkors
 tip-console-slave = Dronens kamera tilbage til dens waypoint (fremad og nedad)
 tip-console-view = Dronens kamera: dens TGP eller FLIR fremad for at flyve den
 tip-console-gun = Sigt med denne sidekanon som den næste (aftrækkeren affyrer den)
+tip-console-asw-page = Vis denne side på hoveddisplayet
+tip-console-buoy = Udløs en sonarbøje af denne slags (på MAP-siden: ved det klikkede punkt)
+tip-console-ping = Den valgte DICASS eller dyppesonaren pinger (igen: tilbage til lytning)
+tip-console-dip = Sænk dyppesonaren fra svævet, eller hejs den op
+tip-console-depth = Dyppesonarens dybde: lavere eller dybere
+tip-console-audio = Lyt til den valgte sensor i headsettet
+tip-console-mad = Sænk eller hejs MAD-slæbelegemet
+tip-console-mark = Markér et fix der, hvor flyet er nu
+tip-console-arm = Armér torpedoudløsningen
+tip-console-release = Udløs torpedoen med dens program (armeret)
+tip-display-asw = Sensoroperatørens display: sonarvandfald, våben, taktisk kort
 
 ## Betjeningselementer
 

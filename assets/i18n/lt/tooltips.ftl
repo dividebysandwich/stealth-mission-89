@@ -208,6 +208,17 @@ tip-console-track = Laikyti drono kamerą ant žemės po jos taikikliu
 tip-console-slave = Drono kamera grįžta į jo waypoint (pirmyn ir žemyn)
 tip-console-view = Drono kamera: jo TGP arba FLIR į priekį, kad juo skristumėte
 tip-console-gun = Toliau taikyti šiuo šoniniu pabūklu (gaidukas iš jo šauna)
+tip-console-asw-page = Rodyti šį puslapį pagrindiniame ekrane
+tip-console-buoy = Numesti šios rūšies sonarinį plūdurą (MAP puslapyje: spustelėtame taške)
+tip-console-ping = Pasirinktas DICASS arba nuleidžiamas sonaras siunčia impulsą (vėl: atgal į klausymąsi)
+tip-console-dip = Nuleisti sonarą iš kabėjimo arba jį pakelti
+tip-console-depth = Nuleidžiamo sonaro gylis: sekliau arba giliau
+tip-console-audio = Klausytis pasirinkto jutiklio ausinėse
+tip-console-mad = Nuleisti arba pakelti MAD velkamą kūną
+tip-console-mark = Pažymėti padėtį ten, kur dabar yra orlaivis
+tip-console-arm = Užtaisyti torpedos numetimą
+tip-console-release = Numesti torpedą su jos programa (užtaisyta)
+tip-display-asw = Jutiklių operatoriaus ekranas: sonaro kriokliai, ginklai, taktinis žemėlapis
 
 ## Valdikliai
 

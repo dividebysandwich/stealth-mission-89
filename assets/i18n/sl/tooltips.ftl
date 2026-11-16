@@ -207,6 +207,17 @@ tip-console-track = Drži kamero drona na tleh pod njenim merkom
 tip-console-slave = Kamera drona nazaj na njegov waypoint (naprej in navzdol)
 tip-console-view = Kamera drona: njegov TGP ali FLIR naprej za upravljanje
 tip-console-gun = Naslednji usmeri ta bočni top (sprožilec strelja z njim)
+tip-console-asw-page = Prikaži to stran na glavnem zaslonu
+tip-console-buoy = Odvrzi sonarno bojo te vrste (na strani MAP: na kliknjeni točki)
+tip-console-ping = Izbrani DICASS ali potopni sonar odda impulz (znova: nazaj na poslušanje)
+tip-console-dip = Spusti potopni sonar iz lebdenja ali ga dvigni
+tip-console-depth = Globina potopnega sonarja: plitveje ali globlje
+tip-console-audio = Poslušaj izbrani senzor v slušalkah
+tip-console-mad = Spusti ali dvigni vlečeno telo MAD
+tip-console-mark = Označi položaj, kjer je zrakoplov zdaj
+tip-console-arm = Oboroži odvrženje torpeda
+tip-console-release = Odvrzi torpedo z njegovim programom (oboroženo)
+tip-display-asw = Zaslon operaterja senzorjev: sonarni slapovi, orožje, taktični zemljevid
 
 ## Krmilni elementi
 

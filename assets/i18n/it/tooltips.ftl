@@ -207,6 +207,17 @@ tip-console-track = Tenere la telecamera del drone sul terreno sotto il suo reti
 tip-console-slave = La telecamera del drone torna al suo waypoint (avanti e in basso)
 tip-console-view = La telecamera del drone: il suo TGP, o il FLIR in avanti per pilotarlo
 tip-console-gun = Punta poi questo cannone laterale (il grilletto lo fa sparare)
+tip-console-asw-page = Mostra questa pagina sul display principale
+tip-console-buoy = Sgancia una sonoboa di questo tipo (sulla pagina MAP: nel punto cliccato)
+tip-console-ping = Il DICASS scelto o il sonar a immersione emette (di nuovo: torna all'ascolto)
+tip-console-dip = Cala il sonar a immersione dall'hovering, o recuperalo
+tip-console-depth = Profondità del sonar a immersione: meno o più profondo
+tip-console-audio = Ascolta il sensore scelto in cuffia
+tip-console-mad = Cala o recupera il corpo rimorchiato del MAD
+tip-console-mark = Segna un punto dove si trova ora l'elicottero
+tip-console-arm = Arma lo sgancio del siluro
+tip-console-release = Sgancia il siluro con il suo programma (armato)
+tip-display-asw = Display dell'operatore sensori: cascate sonar, armi, mappa tattica
 
 ## Comandi
 

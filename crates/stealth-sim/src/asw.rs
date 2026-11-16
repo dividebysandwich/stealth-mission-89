@@ -102,6 +102,9 @@ const BEARING_KEEP: f64 = 90.0;
 const CROSS_MIN: f64 = 25.0 * DEG;
 const FIX_KEEP: f64 = 180.0;
 const TRACK_DROP: f64 = 400.0;
+/// Fixes the tracker keeps at most, and sends the others.
+const MAX_FIXES: usize = 300;
+const CLIENT_FIXES: usize = 60;
 
 /// The submarines: turn (rad/s), depth change (m/s), speeds (m/s), the range they fire their
 /// torpedoes at their target from (m), the seconds those run.
@@ -545,6 +548,9 @@ impl Asw {
         let mut a = Asw { subs: Vec::new(), rng: None, ..self.clone() };
         for c in &mut a.crews {
             c.bearings.clear();
+            // The newest fixes for the map.
+            let n = c.fixes.len();
+            c.fixes.drain(..n.saturating_sub(CLIENT_FIXES));
         }
         a
     }
@@ -1584,7 +1590,7 @@ impl Sim {
         // The newest bearing of each sensor crossed with the others' recent ones.
         let newest: Vec<Bearing> = c.bearings.iter().filter(|b| t - b.t < 1.5).copied().collect();
         for b in &newest {
-            for o in c.bearings.iter().filter(|o| o.sensor != b.sensor && t - o.t < 10.0) {
+            for o in c.bearings.iter().filter(|o| o.sensor > b.sensor && t - o.t < 1.5) {
                 let angle = wrap(b.bearing - o.bearing).abs();
                 if !(CROSS_MIN..=std::f64::consts::PI - CROSS_MIN).contains(&angle) {
                     continue;
@@ -1599,6 +1605,8 @@ impl Sim {
             }
         }
         c.fixes.retain(|f| t - f.t <= FIX_KEEP);
+        let n = c.fixes.len();
+        c.fixes.drain(..n.saturating_sub(MAX_FIXES));
         // Each fix to the nearest track it fits, else a new one.
         let mut groups: Vec<Vec<Fix>> = vec![Vec::new(); c.tracks.len()];
         let mut fresh: Vec<Vec<Fix>> = Vec::new();

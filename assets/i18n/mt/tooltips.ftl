@@ -208,6 +208,17 @@ tip-console-track = Żomm il-kamera tad-drone fuq l-art taħt il-crosshair tagħ
 tip-console-slave = Il-kamera tad-drone lura fuq il-waypoint tiegħu ('il quddiem u 'l isfel)
 tip-console-view = Il-kamera tad-drone: it-TGP tiegħu, jew il-FLIR 'il quddiem biex ittajru
 tip-console-gun = Immira dan il-kanun tal-ġenb li jmiss (il-grillu jisparah)
+tip-console-asw-page = Uri din il-paġna fuq l-iskrin ewlieni
+tip-console-buoy = Itfa' sonobuoy ta' dan it-tip (fil-paġna MAP: fil-punt ikklikkjat)
+tip-console-ping = Id-DICASS magħżul jew is-sonar mgħaddas jibgħat ping (għal darb'oħra: lura għas-smigħ)
+tip-console-dip = Niżżel is-sonar mgħaddas mill-hover, jew tellgħu
+tip-console-depth = Il-fond tas-sonar mgħaddas: inqas jew aktar fond
+tip-console-audio = Isma' s-sensur magħżul fil-headset
+tip-console-mad = Niżżel jew tella' l-ġisem irmonkjat tal-MAD
+tip-console-mark = Immarka pożizzjoni fejn qiegħed l-inġenju issa
+tip-console-arm = Arma r-rilaxx tat-torpidow
+tip-console-release = Irrilaxxa t-torpidow bil-programm tiegħu (armat)
+tip-display-asw = Skrin tal-operatur tas-sensuri: kaskati tas-sonar, armi, mappa tattika
 
 ## Kontrolli
 

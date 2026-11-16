@@ -207,6 +207,17 @@ tip-console-track = Coinnigh ceamara an dróin ar an talamh faoina chros-ribí
 tip-console-slave = Ceamara an dróin ar ais ar a waypoint (chun tosaigh agus síos)
 tip-console-view = Ceamara an dróin: a TGP, nó an FLIR chun tosaigh chun é a eitilt
 tip-console-gun = Dírigh an gunna taoibh seo ina dhiaidh sin (scaoileann an truicear é)
+tip-console-asw-page = Taispeáin an leathanach seo ar an bpríomhscáileán
+tip-console-buoy = Scaoil baoi sonair den chineál seo (ar leathanach MAP: ag an bpointe cliceáilte)
+tip-console-ping = Pingeann an DICASS roghnaithe nó an sonar tumtha (arís: ar ais ag éisteacht)
+tip-console-dip = Íslígh an sonar tumtha ón bhfoluain, nó ardaigh é
+tip-console-depth = Doimhneacht an sonair tumtha: níos éadoimhne nó níos doimhne
+tip-console-audio = Éist leis an mbraiteoir roghnaithe sna cluasáin
+tip-console-mad = Íslígh nó ardaigh corp tarraingthe an MAD
+tip-console-mark = Marcáil suíomh mar a bhfuil an t-aerárthach anois
+tip-console-arm = Armáil scaoileadh an toirpéid
+tip-console-release = Scaoil an toirpéad lena chlár (armáilte)
+tip-display-asw = Scáileán an oibreora braiteoirí: easanna sonair, airm, léarscáil oirbheartaíochta
 
 ## Rialuithe
 

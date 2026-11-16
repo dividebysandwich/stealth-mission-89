@@ -208,6 +208,17 @@ tip-console-track = Tahan kamera drone di tanah pada crosshair-nya
 tip-console-slave = Kamera drone kembali ke waypoint-nya (ke depan dan ke bawah)
 tip-console-view = Kamera drone: TGP-nya, atau FLIR ke depan untuk menerbangkannya
 tip-console-gun = Arahkan meriam samping ini berikutnya (pelatuk menembakkannya)
+tip-console-asw-page = Tampilkan halaman ini di layar utama
+tip-console-buoy = Jatuhkan sonobuoy jenis ini (di halaman MAP: di titik yang diklik)
+tip-console-ping = DICASS terpilih atau sonar celup memancarkan ping (lagi: kembali mendengar)
+tip-console-dip = Turunkan sonar celup dari posisi melayang, atau naikkan
+tip-console-depth = Kedalaman sonar celup: lebih dangkal atau lebih dalam
+tip-console-audio = Dengarkan sensor terpilih di headset
+tip-console-mad = Turunkan atau naikkan badan tarik MAD
+tip-console-mark = Tandai posisi tempat pesawat sekarang berada
+tip-console-arm = Persenjatai pelepasan torpedo
+tip-console-release = Lepaskan torpedo dengan programnya (bersenjata)
+tip-display-asw = Layar operator sensor: air terjun sonar, senjata, peta taktis
 
 ## Kontrol
 
