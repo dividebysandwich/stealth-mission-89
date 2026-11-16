@@ -264,6 +264,7 @@ impl Page {
                     AutoDetail,
                     SceneryDistance,
                     CityLightDistance,
+                    Clouds,
                     Effect(E::GroundDetail),
                     Effect(E::Glass),
                     Effect(E::Water),
@@ -288,6 +289,7 @@ impl Page {
                     Effect(E::Snow),
                     Effect(E::Mist),
                     Effect(E::CloudShadows),
+                    Effect(E::Sunbeams),
                     Effect(E::Vapour),
                     Effect(E::NightSky),
                     Back,
@@ -408,6 +410,8 @@ enum Item {
     AutoDetail,
     SceneryDistance,
     CityLightDistance,
+    /// How the clouds are drawn (`CloudQuality`).
+    Clouds,
     Cockpit,
     Hud,
     Avionics,
@@ -446,6 +450,9 @@ impl Item {
         }
         if self == Item::PixelSize {
             return pixelize(ts!("fm-pixel-size"));
+        }
+        if self == Item::Clouds {
+            return ts!("options-cloud-quality").to_uppercase().into();
         }
         ts!(match self {
             Item::Resume => "fm-resume",
@@ -492,7 +499,7 @@ impl Item {
             Item::HeadTracking => "fm-head-tracking",
             Item::TrackingMouse => "fm-tracking-mouse",
             Item::Bindings => "fm-bindings",
-            Item::Open(_) | Item::Effect(_) => unreachable!(),
+            Item::Open(_) | Item::Effect(_) | Item::Clouds => unreachable!(),
         })
         .into()
     }
@@ -511,6 +518,7 @@ impl Item {
             Item::AutoDetail => on(s.vr_auto_detail),
             Item::SceneryDistance => format!("< {:.0} KM >", s.scenery_distance / 1000.0),
             Item::CityLightDistance => format!("< {:.0} KM >", s.city_light_distance / 1000.0),
+            Item::Clouds => format!("< {} >", s.cloud_quality.name().to_uppercase()),
             Item::Cockpit => style(s.classic_cockpit),
             Item::Hud => style(s.classic_hud),
             Item::Avionics => style(s.classic_avionics),
@@ -1432,6 +1440,11 @@ fn navigate(
             let range = crate::settings::SCENERY_DISTANCE_RANGE;
             *distance = ((*distance / 1000.0).round() * 1000.0 + dir * 1000.0)
                 .clamp(*range.start(), *range.end());
+        }
+        Item::Clouds => {
+            let all = crate::weather::CloudQuality::ALL;
+            let i = all.iter().position(|&q| q == s.cloud_quality).unwrap_or(0) as isize;
+            s.cloud_quality = all[(i + dir as isize).rem_euclid(all.len() as isize) as usize];
         }
         Item::TimeOfDay => s.continuous_time = !s.continuous_time,
         Item::SunMoon => s.sun_moon = !s.sun_moon,
