@@ -149,14 +149,23 @@ struct Sample {
 
 // The deck's coverage 0..1 at a render position (its field over the threshold, soft edged).
 fn deck_cover(p: vec3<f32>) -> f32 {
+    return deck_cover_edge(p).x;
+}
+
+// The deck's coverage (x) and how much of its density is left at its edges (y).
+fn deck_cover_edge(p: vec3<f32>) -> vec2<f32> {
     let uv = map_uv(p);
     let thr = globals.deck.z;
     let field = textureSampleLevel(deck_map, map_sampler, uv, 0.0).r;
-    // A wide transition: the deck thins out over a few hundred metres past its edge.
-    let local = smoothstep(thr - 0.07, thr + 0.07, field);
+    // A wide transition: the deck thins out over a few hundred metres either side of its edge.
+    // Its density follows the cube of this (even thin cloud is opaque seen edge on), so the
+    // visible edge stays near the threshold and frays out past it.
+    let local = smoothstep(thr - 0.3, thr + 0.3, field);
     // Past the map: the layer's average.
     let off = max(abs(uv.x - 0.5), abs(uv.y - 0.5));
-    return mix(local, globals.deck_field.x, smoothstep(0.42, 0.5, off));
+    let far = smoothstep(0.42, 0.5, off);
+    let mean = globals.deck_field.x;
+    return vec2<f32>(mix(local, mean, far), mix(local * local * local, smoothstep(0.0, 0.85, mean), far));
 }
 
 fn deck_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
@@ -164,7 +173,8 @@ fn deck_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
     if (globals.deck.w == 0.0) { return s; }
     let h = (p.y - globals.deck.x) / max(globals.deck.y - globals.deck.x, 1.0);
     if (h < 0.0 || h > 1.0) { return s; }
-    let cover = deck_cover(p);
+    let ce = deck_cover_edge(p);
+    let cover = ce.x;
     if (cover <= 0.001) { return s; }
     let n = shape_at(np, DECK_TILE);
     let fbm = shape_fbm(n);
@@ -177,11 +187,11 @@ fn deck_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
     if (detail && d > 0.0) {
         // The edges fray more than the body.
         let e = detail_at(np);
-        let fray = mix(0.85, 0.3, smoothstep(0.3, 0.9, cover));
+        let fray = mix(1.0, 0.3, smoothstep(0.4, 0.95, cover));
         d = sat(remap(d, mix(e, 1.0 - e, sat(h * 3.0)) * fray, 1.0));
     }
     // Thin towards the edges: soft outlines rather than hard ones.
-    s.density = d * 1.2 * smoothstep(0.0, 0.85, cover);
+    s.density = d * 1.2 * ce.y;
     s.height = h;
     s.core = cover * smoothstep(0.1, 0.6, h) * (1.0 - smoothstep(0.7, 1.0, h));
     return s;
@@ -382,7 +392,7 @@ fn light_depth(p: vec3<f32>, sun: vec3<f32>) -> f32 {
     // Under the deck: its shade where the sun's ray meets its base.
     if (globals.deck.w > 0.0 && p.y < globals.deck.x && sun.y > 0.05) {
         let q = p + sun * ((globals.deck.x - p.y) / sun.y);
-        od += deck_cover(q) * (globals.deck.y - globals.deck.x) * 0.4;
+        od += deck_cover_edge(q).y * (globals.deck.y - globals.deck.x) * 0.4;
     }
     return od * SIGMA;
 }
@@ -551,11 +561,18 @@ fn march(m: ptr<function, March>, cam: vec3<f32>, rd: vec3<f32>, t0: f32, t1: f3
         let energy = scatter * powder * 0.75 + diffuse;
         let sunlit = 1.0 - exp(-1.5 * energy);
         // Ambient: the sky above, the ground below.
-        // At sunset the sky's light is warm too: the shaded sides take some of the sun's colour.
-        let sky_light = mix(ramp(3.0), globals.sun_color.rgb * 0.45, 0.4 * globals.sun_color.w);
-        let ambient = mix(ramp(10.0) * 0.6, sky_light, sat(s.height * 1.4)) * mix(mix(0.5, 0.2, sat(s.darken * 3.0)), 1.0, exp(-0.03 * tau)) * mix(0.35, 1.0, ao);
+        // At sunset the sky's light is warm too, and so is the light off the sea and land
+        // under a cloud: the shaded sides and the bases take on the sun's colour.
+        let sky_light = mix(ramp(3.0), globals.sun_color.rgb * 0.5, 0.6 * globals.sun_color.w);
+        let ground_light = mix(ramp(10.0) * 0.6, globals.sun_color.rgb * 0.3, 0.6 * globals.sun_color.w);
+        let ambient = mix(ground_light, sky_light, sat(s.height * 1.4)) * mix(mix(0.5, 0.2, sat(s.darken * 3.0)), 1.0, exp(-0.03 * tau)) * mix(0.35, 1.0, ao);
         var light = mix(ambient, globals.sun_color.rgb, sunlit) * mix(0.65, 1.0, ao)
             + globals.sun_color.rgb * min(max(energy - 1.5, 0.0), 1.0) * mix(0.2, 0.6, globals.sun_color.w);
+        // A warm (sunset) colour past 1 would clip channel by channel into white: scale it as a
+        // whole.
+        if (globals.sun_color.w > 0.0) {
+            light /= max(max(light.r, max(light.g, light.b)), 1.0);
+        }
         // Dark clouds (storms) darken further the deeper the light has to go and the deeper in
         // their body (an anvil's core too, lit from above as it is); thick cloud of any kind
         // shades a little in its core.

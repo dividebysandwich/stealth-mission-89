@@ -957,6 +957,9 @@ fn shade_clouds(
     }
 }
 
+/// Brightest channel of the sunset colour on the clouds (`sun_lit_color`).
+const WARM_MAX: f32 = 1.0;
+
 /// The clouds' sunlit side (`CloudShading::sun_color`): the palette's sunlit cloud grey in the
 /// sun's colour (`sun_colour` in palette.wgsl), its brightness kept and a little raised, from
 /// warm white up high to orange as the sun sets and pink below the horizon, fading out once
@@ -978,6 +981,9 @@ fn sun_lit_color(sunlit: Vec3, h: f32, on: bool) -> (Vec3, f32) {
     // peaks at the horizon instead of fading with it.
     let bright = lum(sunlit).max(0.22 * near);
     let warm = sun * (bright / lum(sun)) * (1.0 + 0.6 * w + 1.4 * near);
+    // Past 1 the channels clip one by one and the colour washes out to white: scale it down
+    // as a whole instead (a bright palette's grey times the boost is well past 1).
+    let warm = warm * (WARM_MAX / warm.max_element().max(WARM_MAX));
     (sunlit.lerp(warm, w), w)
 }
 
