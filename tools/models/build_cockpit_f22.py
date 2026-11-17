@@ -713,12 +713,12 @@ for rows, rect in (
     # The left console: behind the throttles, outboard of them, ahead of them.
     (["kKkk", "tgtt"], (-0.44, -0.22, -0.33, -0.22)),
     (["ttttt", "rgrgk"], (-0.44, -0.22, -0.21, -0.10)),
-    (["kkk", "TTk", "krk"], (-0.44, -0.22, -0.09, 0.03)),
+    (["kkk", "TTk", "tgt", "krk"], (-0.44, -0.22, -0.09, 0.17)),
     (["k", "t", "r", "k"], (-0.44, -0.37, 0.19, 0.49)),
     (["kkkk", "kTkk"], (-0.44, -0.22, 0.51, 0.59)),
     # The right console: behind the arm rest, ahead of the stick.
     (["kKkk", "tgtt"], (0.22, 0.44, -0.33, -0.22)),
-    (["ttttt", "kTkk"], (0.22, 0.44, -0.21, -0.14)),
+    (["ttttt", "kTkk", "tgtt", "kkrk"], (0.22, 0.44, -0.21, 0.01)),
     (["kKk", "rtr"], (0.22, 0.44, 0.45, 0.51)),
     (["bbbbb", "bbbbb"], (0.22, 0.34, 0.52, 0.59)),
     (["kk", "tt"], (0.35, 0.44, 0.52, 0.59)),
