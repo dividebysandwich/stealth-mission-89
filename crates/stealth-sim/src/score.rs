@@ -226,31 +226,30 @@ impl Sim {
                 points.push((Text::new(what), p));
             }
         };
-        if outcome != Outcome::Aborted {
-            add("points-primary", if o.primary_done { 100 } else { 0 });
-            add("points-secondary", if o.secondary_done { 50 } else { 0 });
-            add("points-aircraft", 10 * air);
-            add("points-unseen", 5 * unseen);
-            add("points-ground", 10 * ground);
-            add("points-drones", 15 * drones_killed);
-            if defend {
-                add("points-drones-through", -30 * drones_leaked);
-                add("points-nuclear", if nuclear_hit { -200 } else { 0 });
-            }
-            add("points-detected", -5 * (radar_ids + visual_ids));
-            add("points-missile-hits", -10 * hits);
-            add(
-                outcome.id(),
-                match outcome {
-                    Outcome::Landed => 25,
-                    Outcome::BadLanding => 5,
-                    Outcome::Ejected | Outcome::Rescued => 0,
-                    Outcome::Captured => -100,
-                    Outcome::Crashed | Outcome::EjectionFailed => -50,
-                    Outcome::Aborted => 0,
-                },
-            );
+        // An aborted flight keeps what it achieved; it only misses the landing's points.
+        add("points-primary", if o.primary_done { 100 } else { 0 });
+        add("points-secondary", if o.secondary_done { 50 } else { 0 });
+        add("points-aircraft", 10 * air);
+        add("points-unseen", 5 * unseen);
+        add("points-ground", 10 * ground);
+        add("points-drones", 15 * drones_killed);
+        if defend {
+            add("points-drones-through", -30 * drones_leaked);
+            add("points-nuclear", if nuclear_hit { -200 } else { 0 });
         }
+        add("points-detected", -5 * (radar_ids + visual_ids));
+        add("points-missile-hits", -10 * hits);
+        add(
+            outcome.id(),
+            match outcome {
+                Outcome::Landed => 25,
+                Outcome::BadLanding => 5,
+                Outcome::Ejected | Outcome::Rescued => 0,
+                Outcome::Captured => -100,
+                Outcome::Crashed | Outcome::EjectionFailed => -50,
+                Outcome::Aborted => 0,
+            },
+        );
         let multiplier = multiplier(self.diff, self.roe, training);
         let raw: i32 = points.iter().map(|p| p.1).sum();
         let total = (raw as f32 * multiplier).round() as i32;

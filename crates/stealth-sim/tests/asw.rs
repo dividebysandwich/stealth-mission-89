@@ -614,3 +614,55 @@ fn the_dipping_sonar_pings_much_farther_than_a_dicass() {
     let r = echo(true).expect("the dipping sonar's echo") as f64;
     assert!((r - 20_000.0).abs() < 1000.0, "{r}");
 }
+
+/// A generated hunt: sinking its submarine achieves both objectives; ending the flight from
+/// the menu then keeps those points (it only misses the landing's), landing adds them.
+#[test]
+fn a_single_missions_hunt_won_scores_even_when_ended_from_the_menu() {
+    let d = data();
+    let theater = (0..32)
+        .find(|&t| d.gdata.theaters.get(t).is_some_and(|th| th.world.objects.iter().any(|o| o.flags & 0x0200 != 0)))
+        .expect("a theater with a carrier");
+    let s = MissionSettings { theater, kind: MissionKind::Strike, helicopter: true, ..Default::default() };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(5)).unwrap();
+    stealth_mission::asw::for_asw(&mut m, &d.gdata, Some(stealth_mission::asw::Scenario::Carrier));
+    let opts = SimOptions { seahawk: true, helicopter: true, external_stores: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    assert_eq!(sim.asw().subs.len(), 1);
+    sim.set_loadout(&[(20, 4), (MK54_WEAPON, 1), (MK54_WEAPON, 1)]);
+    let s0 = sub(&sim).at;
+    let near = [s0[0] - 450.0, s0[1] - 450.0];
+    let ps = at(near[0], near[1], 25.0, 0.0);
+    run(&mut sim, &ps, 0.5);
+    let heading = (sub(&sim).at[0] - near[0]).atan2(sub(&sim).at[1] - near[1]).to_degrees().rem_euclid(360.0) as u16;
+    let program = TorpProgram { heading: Some(heading), delay: 5, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+    sim.asw_command(0, AswCmd::Program(program)).unwrap();
+    sim.asw_command(0, AswCmd::Arm(true)).unwrap();
+    sim.asw_command(0, AswCmd::Release { station: 1 }).unwrap();
+    for _ in 0..300 {
+        run(&mut sim, &ps, 1.0);
+        if !sub(&sim).alive {
+            break;
+        }
+    }
+    assert_eq!(sim.asw().result, AswResult::Won);
+    assert!(sim.objectives().primary_done);
+    // Ended from the menu.
+    let mut quit = sim.clone();
+    quit.quit();
+    let r = quit.mission_report();
+    assert_eq!(r.outcome, score::Outcome::Aborted);
+    assert!(r.total >= 150, "{:?} {}", r.points, r.total);
+    assert_ne!(r.rating, "Unsatisfactory");
+    // Landed back on the carrier: the landing's points too.
+    let home = m.takeoff.object_index as usize;
+    let c = object_metres(&sim.objects()[home]);
+    run(&mut sim, &at(c[0], c[1] - 3000.0, 100.0, 60.0), 2.0);
+    let mut deck = at(c[0], c[1], 20.0, 0.0);
+    deck.on_ground = true;
+    deck.gear_up = false;
+    run(&mut sim, &deck, 5.0);
+    let landed = sim.mission_report();
+    assert_eq!(landed.outcome, score::Outcome::Landed);
+    assert!(landed.total > r.total);
+}

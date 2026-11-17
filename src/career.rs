@@ -221,7 +221,7 @@ impl Pilot {
         let mut news = Vec::new();
         let rank = self.rank();
         self.sorties += 1;
-        let points = if report.outcome == Outcome::Aborted { 0 } else { report.total };
+        let points = report.total;
         self.points += points;
         let medal = (report.primary_done || report.drones_killed > 0 || report.air_kills > 0)
             .then(|| {
