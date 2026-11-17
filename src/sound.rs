@@ -7,7 +7,8 @@
 //!   Gear, bay doors, the error buzz and speech bypass the level.
 //! - Samples are optional: `sfx_NN_*` / `speech_NN_*` (.flac) register under id NN, and a
 //!   requested id with no sample stays silent, so speech can be added later by dropping files in.
-//! - Radar warning tones come from `sounds/rwr/` (ids 100 and up).
+//! - Radar warning tones come from `sounds/rwr/` (ids 100 and up); none at a gunner's console
+//!   (the AC-130's, the MH-60R's sensor station).
 //! - The cannon (sound 6) holds a loop of its burst while it fires and plays the burst's decay
 //!   when it stops (`cannon_loop.flac`, `cannon_tail.flac`; the AH-64's 30 mm chain gun
 //!   `cannon30_loop.flac`, `cannon30_tail.flac`).
@@ -770,9 +771,18 @@ fn play_sounds(
     real: Res<Time<Real>>,
     settings: Res<crate::settings::Settings>,
     view: Option<Res<ViewState>>,
+    manning: Option<Res<crate::station::Manning>>,
     mut muffler: Muffler,
 ) {
     let now = real.elapsed_secs_f64();
+    // At a gunner's console (the AC-130's, the MH-60R's sensor station) no radar warning or
+    // missile launch tones: they are the pilot's. A gunner's cockpit (AH-64, OH-58D) hears them.
+    let no_rwr = manning.as_deref().is_some_and(|m| m.gunner() && !m.cockpit());
+    if no_rwr {
+        for (e, _) in playing.iter().filter(|(_, p)| RWR_IDS.contains(&p.0)) {
+            commands.entity(e).despawn();
+        }
+    }
     for ActionEvent(a) in actions.read() {
         match a {
             Action::Volume => {
@@ -820,7 +830,8 @@ fn play_sounds(
         if outside && cockpit_only(r.id) {
             continue;
         }
-        if RWR_IDS.contains(&r.id) && !rwr_sounds(settings.rwr_tones, r.id, now, &mut last_detected)
+        if RWR_IDS.contains(&r.id)
+            && (no_rwr || !rwr_sounds(settings.rwr_tones, r.id, now, &mut last_detected))
         {
             continue;
         }
