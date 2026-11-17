@@ -1,7 +1,8 @@
 //! The MAP page: the tactical picture, north up, round the aircraft (or where it was panned):
-//! the ships, the reported datum and the blockade line, the buoys with their latest bearings,
-//! the dipping sonar, the tracker's fixes and tracks (with their course and error), the MAD
-//! marks, the torpedoes, the drops waiting for the aircraft, and the route.
+//! the ships, the reported datum and the blockade line, the buoys, the dipping sonar, the
+//! tracker's fixes and tracks from echoes and the MAD (with their course and error), the MAD
+//! marks, the torpedoes, the drops waiting for the aircraft, and the route. No bearing lines of
+//! their own: the operator draws those with his marks on the waterfalls.
 //!
 //! Touch the sea to add a waypoint after the selected one (or D, C or B first: drop that buoy
 //! there as the aircraft passes), touch a waypoint to select it, drag it to move it, drag the sea to pan. DEL removes
@@ -295,7 +296,7 @@ pub fn draw(
             }
         }
     }
-    // The buoys and their bearings.
+    // The buoys.
     for b in sim.asw().buoys_of(owner) {
         let s = at(b.at);
         let col = match b.kind {
@@ -311,12 +312,6 @@ pub fn draw(
         let letter = &b.kind.name()[..1];
         stroke_text_at(cv, s.x, s.y + 0.5, letter, 5.0, 1.0, col, Align::Centre);
         stroke_text_at(cv, s.x + 8.0, s.y - 7.0, &format!("B{}", b.id), 5.0, 1.0, col, Align::Left);
-        for l in &b.sample.lines {
-            if let Some(br) = l.bearing {
-                let len = l.range.map_or(20_000.0 / k, |r| r as f32 / k);
-                cv.dashed(s, ray(s, (br as f32).to_radians(), len), 4.0, 3.0, 0.8, col);
-            }
-        }
         if b.active {
             cv.ring(s, 9.0, 0.6, CYAN);
         }
@@ -326,12 +321,6 @@ pub fn draw(
         let s = at(crew.dip.at);
         cv.ring(s, 6.0, 1.2, CYAN);
         stroke_text_at(cv, s.x + 9.0, s.y + 8.0, "DIP", 5.0, 1.0, CYAN, Align::Left);
-        for l in &crew.dip.sample.lines {
-            if let Some(br) = l.bearing {
-                let len = l.range.map_or(20_000.0 / k, |r| r as f32 / k);
-                cv.dashed(s, ray(s, (br as f32).to_radians(), len), 4.0, 3.0, 0.8, CYAN);
-            }
-        }
     }
     // Drops waiting for the aircraft.
     for (kind, _, p) in &crew.pending {
@@ -339,7 +328,7 @@ pub fn draw(
         cv.rect(s.x as i32 - 4, s.y as i32 - 4, 8, 8, YELLOW);
         stroke_text_at(cv, s.x + 7.0, s.y + 7.0, &kind.name()[..1], 5.0, 1.0, YELLOW, Align::Left);
     }
-    // The tracker's fixes: crossed bearings and echoes faint dots, MAD marks red crosses (under
+    // The tracker's fixes: echoes faint dots, MAD marks red crosses (under
     // the rest).
     for f in &crew.fixes {
         let s = at(f.at);

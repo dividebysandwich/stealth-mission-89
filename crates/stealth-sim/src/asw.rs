@@ -4,8 +4,9 @@
 //! carrier. The crew finds them with sonobuoys (the SSQ-53 DIFAR listens and gives a bearing,
 //! the SSQ-62 DICASS listens or pings for a range and bearing, the SSQ-36 BT measures the
 //! water's temperature profile: where the layer is), the AQS-13F dipping sonar lowered from
-//! the hover (pinging or listening), and the MAD towed body close over a submarine. The
-//! automatic tracker crosses the bearings and keeps the fixes as tracks (S1, S2...). The Mk 54
+//! the hover (pinging or listening), and the MAD towed body close over a submarine. Crossing the
+//! passive bearings is the operator's work (his marks on the waterfalls, `src/asw/marks.rs`);
+//! the automatic tracker keeps the active echoes' and the MAD's fixes as tracks (S1, S2...). The Mk 54
 //! torpedo is dropped on a chute, runs out on its programmed heading, searches in its pattern
 //! after its enable delay and homes on the first submarine it hears; a hit sinks it. A
 //! submarine at periscope depth leaves a feather wake a Hellfire can hit.
@@ -110,10 +111,7 @@ pub const PING_LINE_HZ: [u16; 2] = [220, 200];
 /// Sound in sea water (m/s): an echo comes this much later than the ping it is of.
 const SOUND_SPEED: f64 = 1500.0;
 
-/// The tracker: bearing lines kept (s), crossing angle needed (rad), fixes fitted (s), a track
-/// dropped without a fix (s).
-const BEARING_KEEP: f64 = 90.0;
-const CROSS_MIN: f64 = 25.0 * DEG;
+/// The tracker: fixes fitted (s), a track dropped without a fix (s).
 const FIX_KEEP: f64 = 180.0;
 const TRACK_DROP: f64 = 400.0;
 /// Fixes the tracker keeps at most, and sends the others.
@@ -480,8 +478,8 @@ pub struct Sub {
     pub silent_for: f64,
 }
 
-/// A fix on a submarine (m east, north): its error (m), when (s), how (0 crossed bearings, 1
-/// an echo, 2 a MAD mark).
+/// A fix on a submarine (m east, north): its error (m), when (s), how (1 an echo, 2 a MAD
+/// mark).
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct Fix {
     pub at: [f64; 2],
@@ -499,17 +497,6 @@ pub struct Track {
     pub vel: [f64; 2],
     pub err: f32,
     pub last: f64,
-}
-
-/// A bearing line from a sensor: from (m east, north), its bearing (rad true), its error (rad),
-/// when (s), and which sensor (the buoy's id; 0 the dipping sonar).
-#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
-pub struct Bearing {
-    pub from: [f64; 2],
-    pub bearing: f64,
-    pub err: f64,
-    pub t: f64,
-    pub sensor: u16,
 }
 
 /// A Seahawk crew's ASW state: its route (shared by the pilot and the operator), the torpedo
@@ -540,9 +527,6 @@ pub struct AswCrew {
     pub layer: Option<u16>,
     /// The torpedoes' tracks for the map (where each one is, id).
     pub next_track: u8,
-    /// The host's: recent bearing lines.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub bearings: Vec<Bearing>,
     /// Was the MAD over the mark threshold (an automatic mark per pass).
     #[serde(default)]
     pub mad_over: bool,
@@ -603,11 +587,10 @@ impl Asw {
         self.crews.is_empty() && self.subs.is_empty() && self.buoys.is_empty() && self.torpedoes.is_empty()
     }
 
-    /// What the other simulations get: no submarines, no raw bearing lines.
+    /// What the other simulations get: no submarines.
     pub fn for_clients(&self) -> Asw {
         let mut a = Asw { subs: Vec::new(), rng: None, ..self.clone() };
         for c in &mut a.crews {
-            c.bearings.clear();
             // The newest fixes for the map.
             let n = c.fixes.len();
             c.fixes.drain(..n.saturating_sub(CLIENT_FIXES));
@@ -707,20 +690,6 @@ fn deg(a: f64) -> u16 {
 /// A world object's position (m east, north).
 pub fn object_metres(o: &GroundObject) -> [f64; 2] {
     [(o.x as f64 + 0.5) * M_PER_MAP, ((0x8000 - o.y) as f64 - 0.5) * M_PER_MAP]
-}
-
-/// Where the line `a`..`b` and the line `c`..`d` cross (both as rays from the start along their
-/// bearing): None if they are near parallel.
-fn cross(a: [f64; 2], ba: f64, c: [f64; 2], bc: f64) -> Option<([f64; 2], f64, f64)> {
-    let (da, dc) = ([ba.sin(), ba.cos()], [bc.sin(), bc.cos()]);
-    let den = da[0] * dc[1] - da[1] * dc[0];
-    if den.abs() < 1e-6 {
-        return None;
-    }
-    let w = [c[0] - a[0], c[1] - a[1]];
-    let t = (w[0] * dc[1] - w[1] * dc[0]) / den;
-    let u = (w[0] * da[1] - w[1] * da[0]) / den;
-    (t > 0.0 && u > 0.0).then(|| ([a[0] + da[0] * t, a[1] + da[1] * t], t, u))
 }
 
 /// A map point (map units, x east, y south) in metres east, north.
@@ -1215,11 +1184,10 @@ impl Sim {
         self.move_dips(dt, &helis);
         self.move_torpedoes(dt);
         self.update_mad(&helis);
-        // The sensors report `SENSE_HZ` times a second; the bearings go to the tracker once a
-        // second.
+        // The sensors report `SENSE_HZ` times a second; the tracker works once a second.
         let tick = (before * SENSE_HZ).floor() != (self.asw.clock * SENSE_HZ).floor();
         if tick {
-            self.sense((1.0 / SENSE_HZ) as f32, second);
+            self.sense((1.0 / SENSE_HZ) as f32);
         }
         if second {
             for h in &helis {
@@ -1659,9 +1627,9 @@ impl Sim {
         }
     }
 
-    /// Once a second: every sensor's report, the bearings for the tracker; pings alert the
+    /// `SENSE_HZ` times a second: every sensor's report, the echoes' fixes; pings alert the
     /// submarines that hear them.
-    fn sense(&mut self, dt: f32, full: bool) {
+    fn sense(&mut self, dt: f32) {
         let ocean = self.asw.ocean;
         let noise = ocean.noise();
         let clock = self.asw.clock;
@@ -1690,7 +1658,6 @@ impl Sim {
             .filter(|(at, ..)| self.asw.buoys.iter().any(|b| dist(*at, b.at) < SHIP_HEARD) || self.asw.crews.iter().any(|c| c.dip.wet() && dist(*at, c.dip.at) < SHIP_HEARD))
             .collect();
         let mut alerts: Vec<[f64; 2]> = Vec::new();
-        let mut bearings: Vec<(u8, Bearing)> = Vec::new();
         let mut fixes: Vec<(u8, Fix)> = Vec::new();
         // Noise in the measurements: drawn first (the borrow of the buoys below).
         let draws: Vec<f64> = (0..(self.asw.buoys.len() + self.asw.crews.len()) * subs.len().max(1) * 4)
@@ -1749,9 +1716,6 @@ impl Sim {
                     let err = (2.0 + 25.0 / (1.0 + passive)) * DEG;
                     let b = true_b + n1 * err;
                     line.bearing = Some(deg(b));
-                    if full {
-                        bearings.push((owner, Bearing { from: at, bearing: b, err, t: clock, sensor }));
-                    }
                 }
                 if ping {
                     let reach = if sensor == 0 { DIP_RANGE } else { DICASS_RANGE };
@@ -1866,9 +1830,6 @@ impl Sim {
             lines.truncate(pings + 4);
             *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping, heard, due };
         }
-        for (o, b) in bearings {
-            self.asw.crew_mut(o).bearings.push(b);
-        }
         for (o, f) in fixes {
             self.asw.crew_mut(o).fixes.push(f);
         }
@@ -1884,29 +1845,11 @@ impl Sim {
         }
     }
 
-    /// The tracker of pilot `k`'s crew: crosses its bearings into fixes, fits its tracks.
+    /// The tracker of pilot `k`'s crew: fits its tracks to its fixes (the echoes', the MAD's).
     fn tracker(&mut self, k: usize) {
         let t = self.asw.clock;
         let Some(ci) = self.asw.crews.iter().position(|c| c.owner == k as u8) else { return };
         let c = &mut self.asw.crews[ci];
-        c.bearings.retain(|b| t - b.t <= BEARING_KEEP);
-        // The newest bearing of each sensor crossed with the others' recent ones.
-        let newest: Vec<Bearing> = c.bearings.iter().filter(|b| t - b.t < 1.5).copied().collect();
-        for b in &newest {
-            for o in c.bearings.iter().filter(|o| o.sensor > b.sensor && t - o.t < 1.5) {
-                let angle = wrap(b.bearing - o.bearing).abs();
-                if !(CROSS_MIN..=std::f64::consts::PI - CROSS_MIN).contains(&angle) {
-                    continue;
-                }
-                if let Some((p, r1, r2)) = cross(b.from, b.bearing, o.from, o.bearing) {
-                    if r1 > 30_000.0 || r2 > 30_000.0 {
-                        continue;
-                    }
-                    let err = ((r1 * b.err).hypot(r2 * o.err) / angle.sin()).max(50.0);
-                    c.fixes.push(Fix { at: p, err: err as f32, t, how: 0 });
-                }
-            }
-        }
         c.fixes.retain(|f| t - f.t <= FIX_KEEP);
         let n = c.fixes.len();
         c.fixes.drain(..n.saturating_sub(MAX_FIXES));

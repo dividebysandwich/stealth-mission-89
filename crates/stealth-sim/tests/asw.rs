@@ -1,6 +1,6 @@
-//! The submarine hunt on the shipped game data: sonobuoys crossing their bearings into a
-//! track, the layer hiding a submarine, a DICASS ping making it run, the buoys' limit, the
-//! dipping sonar's cable, the MAD, the Mk 54, and the submarines torpedoing a ship or slipping
+//! The submarine hunt on the shipped game data: sonobuoys hearing a submarine's bearing, the
+//! layer hiding a submarine, a DICASS ping making it run, the buoys' limit, the dipping sonar's
+//! cable, the MAD, the Mk 54, and the submarines torpedoing a ship or slipping
 //! through a blockade.
 
 use std::sync::OnceLock;
@@ -105,28 +105,27 @@ fn drop_at(sim: &mut Sim, e: f64, n: f64, kind: BuoyKind, deep: bool) {
 }
 
 #[test]
-fn difar_bearings_cross_into_a_track_on_the_submarine() {
+fn difar_buoys_give_bearings_but_crossing_them_is_the_operators_work() {
     let mut sim = seahawk();
     let target = [HOME[0] + 1500.0, HOME[1] + 1500.0];
     hunt(&mut sim, target, 0.3, 30.0, None);
     drop_at(&mut sim, HOME[0], HOME[1], BuoyKind::Difar, true);
     drop_at(&mut sim, HOME[0] + 3000.0, HOME[1], BuoyKind::Difar, true);
     drop_at(&mut sim, HOME[0], HOME[1] + 3000.0, BuoyKind::Difar, true);
-    run(&mut sim, &at(HOME[0], HOME[1] - 2000.0, 60.0, 0.0), 150.0);
+    run(&mut sim, &at(HOME[0], HOME[1] - 2000.0, 100.0, 0.0), 150.0);
     let c = crew(&sim);
     assert!(c.buoys_left[0] == BUOY_LOAD[0] - 3);
+    // Every buoy hears it, with a bearing near the truth and its tonal lines.
     let truth = sub(&sim).at;
-    let best = c
-        .tracks
-        .iter()
-        .map(|t| (t.at[0] - truth[0]).hypot(t.at[1] - truth[1]))
-        .fold(f64::MAX, f64::min);
-    assert!(best < 300.0, "nearest track {best:.0} m off; tracks {:?}", c.tracks);
-    // Every buoy hears it, with a bearing and its tonal lines.
     for b in sim.asw().buoys.iter() {
         let l = b.sample.lines.iter().find(|l| !l.ship && !l.ping).expect("heard");
         assert!(l.bearing.is_some() && l.freqs[0] > 0, "{:?}", b.sample);
+        let want = (truth[0] - b.at[0]).atan2(truth[1] - b.at[1]).to_degrees().rem_euclid(360.0);
+        let off = (l.bearing.unwrap() as f64 - want + 540.0).rem_euclid(360.0) - 180.0;
+        assert!(off.abs() < 15.0, "bearing {:?}, truth {want:.0}", l.bearing);
     }
+    // No automatic fixes or tracks from the bearings.
+    assert!(c.fixes.is_empty() && c.tracks.is_empty(), "{:?} {:?}", c.fixes, c.tracks);
 }
 
 #[test]

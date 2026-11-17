@@ -1,7 +1,7 @@
 //! The MH-60R Seahawk's anti-submarine warfare on the client (`stealth_sim::asw` runs the
 //! hunt): the sensor operator's cabin console, its main display's pages (SONAR: the sensors'
 //! waterfalls, WPN: the torpedo's program and release, MAP: the tactical picture with the
-//! route, the buoys' bearings, the tracker's fixes and tracks, the torpedoes), its status
+//! route, the buoys, the operator's marks, the tracker's fixes and tracks, the torpedoes), its status
 //! screen and keyset; the route the operator edits becoming the pilot's waypoints.
 //!
 //! Every command goes to the simulation as an [`AswCmd`]: in a single mission straight to the
