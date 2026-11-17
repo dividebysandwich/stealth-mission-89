@@ -396,14 +396,28 @@ fn orbit(
     mut state: ResMut<GunnerState>,
     time: Res<Time>,
     asw: Option<Res<crate::asw::AswUi>>,
+    mut before_hover: Local<Option<f32>>,
 ) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
     let own = manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner());
-    // The MH-60R's operator wants the dipping sonar: a low hover (`asw::dip_pilot`).
+    let asw_seat = own && manning.as_deref().is_some_and(|m| m.asw());
+    // The MH-60R's operator wants the dipping sonar: a low hover (`asw::dip_pilot`), the height
+    // flown before it kept for after.
     if k.heli.is_some() && own && let Some(u) = asw.as_deref().filter(|u| u.low_hover) {
+        if before_hover.is_none() {
+            *before_hover = Some(state.height.unwrap_or(a.altitude - a.ground_altitude));
+        }
         crate::flight::crew_low_hover(&mut a, &k, u.hover_height.unwrap_or(crate::asw::DIP_HOVER_WU));
         state.height = None;
         return;
+    }
+    // The operator hovers only when he asks to: otherwise on along the route, back up at the
+    // height flown before.
+    if k.heli.is_some() && asw_seat {
+        crate::flight::crew_fly_on(&mut a, &k);
+    }
+    if let Some(h) = before_hover.take().filter(|_| asw_seat) {
+        state.height = Some(h);
     }
     // A helicopter flies on with its autopilot or hovers, at its height over the ground.
     if k.heli.is_some() {

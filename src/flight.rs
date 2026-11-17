@@ -733,6 +733,15 @@ pub fn crew_autopilot(a: &mut Aircraft, k: &FlightConstants) -> bool {
     a.autopilot()
 }
 
+/// The AI leaves a helicopter's auto-hover and flies on to the waypoint on the autopilot (the
+/// MH-60R's operator no longer wants the hover).
+pub fn crew_fly_on(a: &mut Aircraft, k: &FlightConstants) {
+    let Some(r) = &k.heli else { return };
+    if a.auto_hover() && !a.damage.autopilot_failed {
+        heli::engage_autopilot(a, r);
+    }
+}
+
 /// The AI brings a helicopter to a low hover where it is (the MH-60R about to dip its sonar):
 /// it slows down on the autopilot, hovers once slow enough, and holds `height` (world units)
 /// over the ground or the sea. True once it hovers there.
