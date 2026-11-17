@@ -487,22 +487,39 @@ fn another_sonars_ping_comes_back_off_a_quiet_submarine_at_its_bearing() {
         b(&sim, difar)
     );
     sim.asw_command(0, AswCmd::BuoyMode { id: dicass, active: true }).unwrap();
-    let (mut ping_at, mut echo) = (None, None);
-    for k in 0..40 {
-        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.25);
+    // Frame by frame: when the DICASS pings, when the DIFAR hears the ping and its echo.
+    let (mut sent, mut ping_at, mut echo) = (None, None, None);
+    let ps = at(HOME[0], HOME[1], 30.0, 0.0);
+    for _ in 0..20 * FS as usize {
+        let seq = b(&sim, difar).seq;
+        sim.step(&ps, FS);
         let s = b(&sim, difar);
-        if s.heard && ping_at.is_none() {
-            ping_at = Some(k);
+        if s.seq == seq {
+            continue;
+        }
+        let t = sim.asw().clock;
+        if sent.is_none() && b(&sim, dicass).ping {
+            sent = Some((t, sim.asw().buoys[1].at, sub(&sim).at));
+        }
+        if sent.is_some() && s.heard && ping_at.is_none() {
+            ping_at = Some(t);
         }
         if let Some(l) = s.lines.iter().find(|l| l.echo) {
-            echo = Some((k, *l));
+            echo = Some((t, *l));
             break;
         }
     }
+    let (t0, p, s_at) = sent.expect("the DICASS pinged");
     let ping_at = ping_at.expect("the ping heard");
-    let (k, l) = echo.expect("its echo off the submarine");
-    // A moment after the ping: the sound's longer way round by the submarine (some 1.6 s).
-    assert!((4..=10).contains(&(k - ping_at)), "echo {} reports after the ping", k - ping_at);
+    let (t, l) = echo.expect("its echo off the submarine");
+    // Each at the speed of sound, to the report nearest: the ping straight from the DICASS
+    // (some 5.7 s), the echo the longer way round by the submarine (some 7.3 s).
+    let d = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
+    let tick = 1.0 / SENSE_HZ;
+    let direct = d(p, HOME) / 1500.0;
+    assert!((ping_at - t0 - direct).abs() <= tick / 2.0 + 0.05, "ping after {:.2} s, {direct:.2} s due", ping_at - t0);
+    let round = (d(p, s_at) + d(s_at, HOME)) / 1500.0;
+    assert!((t - t0 - round).abs() <= tick / 2.0 + 0.05, "echo after {:.2} s, {round:.2} s due", t - t0);
     let brg = l.bearing.expect("a DIFAR's bearing") as i32;
     assert!((brg - 90).abs() <= 10, "the echo at {brg}, the submarine at 090");
 }

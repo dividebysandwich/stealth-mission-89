@@ -309,7 +309,8 @@ pub struct Sample {
     /// It heard another sonar's ping in this second (a DICASS or a dipping sonar near it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub heard: bool,
-    /// The host's: echoes of other sonars' pings still on their way (seconds to go, the line).
+    /// The host's: other sonars' pings and their echoes still on their way (seconds to go, the
+    /// line).
     #[serde(skip)]
     pub due: Vec<(f32, Line)>,
 }
@@ -2093,24 +2094,28 @@ impl Sim {
             lines.sort_by(|a, b| b.snr.cmp(&a.snr));
             lines.truncate(4);
             // Other sonars' pings: a line each (with its bearing on a directional sensor), and
-            // their echoes off the submarines in their reach, on their way (the sound's longer
-            // way round by the submarine), however quiet the submarine runs.
-            let mut heard = false;
+            // their echoes off the submarines in their reach, however quiet the submarine runs.
+            // Both on their way at the speed of sound: the ping straight from the pinging sonar,
+            // the echo the longer way round by the submarine. What was on its way comes in
+            // first, at the report nearest its time.
             let mut due = std::mem::take(&mut sample.due);
+            for d in due.iter_mut() {
+                d.0 -= dt;
+            }
             for &(o, id, p, p_depth, reach, sl) in &pinged {
                 let r = dist(p, at);
                 if (o, id) == (owner, sensor) || r >= PING_HEARD {
                     continue;
                 }
-                heard = true;
                 let snr = sl - ocean.loss(r, depth, p_depth) - noise;
-                lines.push(Line {
+                let line = Line {
                     snr: snr.clamp(0.0, 60.0) as i8,
                     bearing: di.map(|_| deg(bearing(at, p))),
                     freqs: [PING_LINE_HZ[(id == 0) as usize], 0],
                     ping: true,
                     ..Default::default()
-                });
+                };
+                due.push(((r / SOUND_SPEED) as f32, line));
                 for s in &subs {
                     let (r1, r2) = (dist(p, s.at).max(10.0), dist(s.at, at).max(10.0));
                     if r1 >= reach {
@@ -2133,15 +2138,14 @@ impl Sim {
                         echo: true,
                         ..Default::default()
                     };
-                    due.push((((r1 + r2 - r) / SOUND_SPEED) as f32, line));
+                    due.push((((r1 + r2) / SOUND_SPEED) as f32, line));
                 }
             }
-            // The echoes arriving now.
-            for d in due.iter_mut() {
-                d.0 -= dt;
-            }
-            lines.extend(due.iter().filter(|d| d.0 <= 0.0).map(|d| d.1));
-            due.retain(|d| d.0 > 0.0);
+            // The pings and echoes arriving now.
+            let arrived = |d: &(f32, Line)| d.0 < dt / 2.0;
+            lines.extend(due.iter().filter(|d| arrived(d)).map(|d| d.1));
+            let heard = due.iter().any(|d| arrived(d) && d.1.ping);
+            due.retain(|d| !arrived(d));
             // The pings and echoes always shown, the four loudest contacts besides.
             lines.sort_by_key(|l| (!(l.ping || l.echo), -(l.snr as i16)));
             let pings = lines.iter().filter(|l| l.ping || l.echo).count();
