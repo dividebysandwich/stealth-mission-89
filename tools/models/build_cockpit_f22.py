@@ -106,8 +106,8 @@ HUD_BODY_BACK_TOP = -0.26 + DASH_RAISE
 # Seat: its cushion's top, the eye over the hips.
 SEAT_TOP = -0.80
 # Side stick on the right console, the throttles' idle and full along the left one.
-STICK = Vector((0.30, 0.20, CONSOLE_TOP))
-THROTTLE = Vector((-0.29, 0.10, CONSOLE_TOP + 0.085))
+STICK = Vector((0.30, 0.34, CONSOLE_TOP))
+THROTTLE = Vector((-0.29, 0.24, CONSOLE_TOP + 0.085))
 THROTTLE_TRAVEL = 0.20
 # Segments of the round parts (bezels, buttons, knobs): low-poly.
 ROUND = 16
@@ -714,14 +714,14 @@ for rows, rect in (
     (["kKkk", "tgtt"], (-0.44, -0.22, -0.33, -0.22)),
     (["ttttt", "rgrgk"], (-0.44, -0.22, -0.21, -0.10)),
     (["kkk", "TTk", "krk"], (-0.44, -0.22, -0.09, 0.03)),
-    (["k", "t", "r", "k"], (-0.44, -0.37, 0.05, 0.38)),
-    (["kkkk", "tttt", "kTkk"], (-0.44, -0.22, 0.42, 0.58)),
+    (["k", "t", "r", "k"], (-0.44, -0.37, 0.19, 0.49)),
+    (["kkkk", "kTkk"], (-0.44, -0.22, 0.51, 0.59)),
     # The right console: behind the arm rest, ahead of the stick.
     (["kKkk", "tgtt"], (0.22, 0.44, -0.33, -0.22)),
     (["ttttt", "kTkk"], (0.22, 0.44, -0.21, -0.14)),
-    (["kKk", "ttt", "rr"], (0.22, 0.44, 0.30, 0.40)),
-    (["bbbbb", "bbbbb", "bbbbb"], (0.22, 0.34, 0.42, 0.58)),
-    (["kk", "tt", "kk"], (0.35, 0.44, 0.42, 0.58)),
+    (["kKk", "rtr"], (0.22, 0.44, 0.45, 0.51)),
+    (["bbbbb", "bbbbb"], (0.22, 0.34, 0.52, 0.59)),
+    (["kk", "tt"], (0.35, 0.44, 0.52, 0.59)),
 ):
     console_panel(*rect, rows)
 # Yellow handles down the consoles' inboard sides.
