@@ -129,6 +129,7 @@ struct LayeredPipelines {
     composite_depth_layout: BindGroupLayoutDescriptor,
     webgl2: bool,
     weather: Option<CachedRenderPipelineId>,
+    coverage: Option<CachedRenderPipelineId>,
     deck: Option<CachedRenderPipelineId>,
     resolve: Option<CachedRenderPipelineId>,
     march: HashMap<(bool, u32, u32), CachedRenderPipelineId>,
@@ -143,6 +144,9 @@ struct LayeredPipelines {
 struct LayeredMaps {
     weather: TextureView,
     weather_depth: TextureView,
+    /// The convective clouds' coverage (max of their soft footprints), highest top, lowest
+    /// base (negated), storm coverage.
+    coverage: TextureView,
     deck: TextureView,
     noise: Option<(TextureView, TextureView)>,
     weather_gen: u64,
@@ -230,6 +234,7 @@ fn init_layered(
                     texture_3d(float),
                     sampler(SamplerBindingType::Filtering),
                     sampler(SamplerBindingType::NonFiltering),
+                    texture_2d(float),
                 ),
             ),
         )
@@ -315,6 +320,7 @@ fn init_layered(
         ),
         webgl2,
         weather: None,
+        coverage: None,
         deck: None,
         resolve: None,
         march: HashMap::new(),
@@ -329,6 +335,7 @@ fn init_layered(
     commands.insert_resource(LayeredMaps {
         weather: map_texture(&device, "layered_weather", WEATHER_FORMAT),
         weather_depth: map_texture(&device, "layered_weather_depth", MAP_DEPTH_FORMAT),
+        coverage: map_texture(&device, "layered_coverage", WEATHER_FORMAT),
         deck: map_texture(&device, "layered_deck", DECK_FORMAT),
         noise: None,
         weather_gen: 0,
@@ -422,6 +429,33 @@ fn prepare_layered(
             }),
             ..default()
         }));
+        // The coverage: the same squares, each texel keeping the largest of each channel.
+        let max = BlendComponent {
+            src_factor: BlendFactor::One,
+            dst_factor: BlendFactor::One,
+            operation: BlendOperation::Max,
+        };
+        p.coverage = Some(pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+            label: Some("layered_coverage_map".into()),
+            layout: vec![p.map_layout.clone()],
+            vertex: VertexState {
+                shader: p.maps_shader.clone(),
+                entry_point: Some("quad".into()),
+                buffers: vec![],
+                ..default()
+            },
+            fragment: Some(FragmentState {
+                shader: p.maps_shader.clone(),
+                entry_point: Some("coverage_fragment".into()),
+                targets: vec![Some(ColorTargetState {
+                    format: WEATHER_FORMAT,
+                    blend: Some(BlendState { color: max, alpha: max }),
+                    write_mask: ColorWrites::ALL,
+                })],
+                ..default()
+            }),
+            ..default()
+        }));
         let deck = fullscreen_pipeline(
             p,
             "layered_deck_map",
@@ -495,8 +529,9 @@ fn prepare_layered(
     if !(weather_dirty || deck_dirty) {
         return;
     }
-    let (Some(weather), Some(deck)) = (
+    let (Some(weather), Some(coverage), Some(deck)) = (
         p.weather.and_then(|id| pipeline_cache.get_render_pipeline(id)),
+        p.coverage.and_then(|id| pipeline_cache.get_render_pipeline(id)),
         p.deck.and_then(|id| pipeline_cache.get_render_pipeline(id)),
     ) else {
         return;
@@ -551,6 +586,27 @@ fn prepare_layered(
             multiview_mask: None,
         });
         pass.set_pipeline(weather);
+        pass.set_bind_group(0, &bind_group, &[]);
+        pass.draw(0..6, 0..frame.instances.len() as u32);
+        drop(pass);
+        let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            label: Some("layered_coverage_map"),
+            color_attachments: &[Some(RenderPassColorAttachment {
+                view: &maps.coverage,
+                depth_slice: None,
+                resolve_target: None,
+                ops: Operations {
+                    // No cover, no top, no base (-base: the lowest base wins the max).
+                    load: LoadOp::Clear(LinearRgba::new(0.0, -60000.0, -60000.0, 0.0).into()),
+                    store: StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(coverage);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.draw(0..6, 0..frame.instances.len() as u32);
     }
@@ -813,6 +869,7 @@ fn draw_layered_clouds(
             detail,
             &p.repeat_linear,
             &p.nearest,
+            &maps.coverage,
         )),
     );
     {

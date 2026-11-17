@@ -2,8 +2,10 @@
 //! generation (and its RNG state) is untouched.
 //!
 //! The sky is a mix of up to three cloud layers, each with its own coverage:
-//! - cumulus: puffs on a [`CELL`] grid, each square holding a cloud with the layer's
-//!   coverage as probability;
+//! - cumulus: on a [`CELL`] grid, each square holding up to [`CUMULUS_SLOTS`] clouds (a main
+//!   one and smaller ones hugging it) of widely varying size, each there with the layer's
+//!   coverage as probability, clustered by a slow field over the squares (clusters fill
+//!   first, gaps stay open);
 //! - stratus (stratocumulus, altostratus): a sheet between two altitudes, present where a
 //!   smooth noise field exceeds a threshold chosen so that the layer's coverage share of the
 //!   map is covered (100 % = overcast, 50 % = big gaps of clear sky);
@@ -20,6 +22,10 @@ use crate::MscRand;
 pub const CELL: i32 = 192;
 /// Cumulonimbus grid square: storm towers are far wider than cumulus.
 pub const STORM_CELL: i32 = 4 * CELL;
+/// Cumulus per grid square at most: a main cloud and smaller ones round it.
+pub const CUMULUS_SLOTS: u8 = 3;
+/// Squares across the cumulus clustering field's lattice.
+const CLUSTER_CELLS: f32 = 4.0;
 /// Stratus noise octaves: lattice size in map units and weight.
 pub const STRATUS_OCTAVES: [(f32, f32); 3] = [(512.0, 0.6), (160.0, 0.3), (48.0, 0.1)];
 
@@ -126,9 +132,10 @@ pub struct Weather {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cloud {
     pub kind: CloudKind,
-    /// Grid square (of the kind's grid).
+    /// Grid square (of the kind's grid) and the cloud's slot in it (0: the main one).
     pub gx: i32,
     pub gy: i32,
+    pub slot: u8,
     pub x: i32,
     pub y: i32,
     pub r: i32,
@@ -356,8 +363,29 @@ impl Weather {
         if kind == CloudKind::Cumulonimbus { STORM_CELL } else { CELL }
     }
 
-    /// The cumulus or cumulonimbus cloud in grid square (gx, gy) of that kind's grid, if any.
+    /// The main cumulus or cumulonimbus cloud in grid square (gx, gy) of that kind's grid, if
+    /// any (a storm cell is the only one in its square).
     pub fn cloud(&self, kind: CloudKind, gx: i32, gy: i32) -> Option<Cloud> {
+        self.cloud_slot(kind, gx, gy, 0)
+    }
+
+    /// The clouds of grid square (gx, gy).
+    pub fn clouds_in(&self, kind: CloudKind, gx: i32, gy: i32) -> impl Iterator<Item = Cloud> + '_ {
+        let slots = if kind == CloudKind::Cumulus { CUMULUS_SLOTS } else { 1 };
+        (0..slots).filter_map(move |s| self.cloud_slot(kind, gx, gy, s))
+    }
+
+    /// The cumulus clustering field at a square, 0..1: clouds come there first.
+    fn cluster(&self, gx: i32, gy: i32) -> f32 {
+        let seed = self.layer_seed(CloudKind::Cumulus) ^ 0xC1C1;
+        let v = value_noise(gx as f32 / CLUSTER_CELLS, gy as f32 / CLUSTER_CELLS, seed);
+        // Value noise keeps near the middle: stretched, so clusters and gaps stand out.
+        let t = ((v - 0.25) / 0.5).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    }
+
+    /// Cloud `slot` of grid square (gx, gy), if there is one.
+    pub fn cloud_slot(&self, kind: CloudKind, gx: i32, gy: i32, slot: u8) -> Option<Cloud> {
         let layer = match kind {
             CloudKind::Cumulus => self.cumulus,
             CloudKind::Cumulonimbus => self.cumulonimbus,
@@ -366,31 +394,72 @@ impl Weather {
         if !layer.present() {
             return None;
         }
-        let salt = if kind == CloudKind::Cumulonimbus { 0x5354_4F52_4D00_0000 } else { 0 };
         let seed = self.layer_seed(kind) as u64;
-        let h = mix((seed << 32) ^ ((gx as u16 as u64) << 16) ^ gy as u16 as u64 ^ salt);
-        if h % 100 >= layer.cover as u64 {
+        let cell = Self::grid(kind);
+        let hash = |s: u64| {
+            let salt = if kind == CloudKind::Cumulonimbus { 0x5354_4F52_4D00_0000 } else { 0 };
+            mix((seed << 32) ^ ((gx as u16 as u64) << 16) ^ gy as u16 as u64 ^ salt ^ (s << 56))
+        };
+        let h = hash(slot as u64);
+        let f = |h: u64, shift: u32, n: u64| ((h >> shift) % n) as i32;
+        let unit = |h: u64, shift: u32| ((h >> shift) & 0xFFFF) as f32 / 65535.0;
+        if kind == CloudKind::Cumulonimbus {
+            if slot > 0 || h % 100 >= layer.cover as u64 {
+                return None;
+            }
+            return Some(Cloud {
+                kind,
+                gx,
+                gy,
+                slot,
+                x: gx * cell + cell / 2 + f(h, 16, (cell / 2) as u64) - cell / 4,
+                y: gy * cell + cell / 2 + f(h, 24, (cell / 2) as u64) - cell / 4,
+                r: cell / 4 + f(h, 8, (cell / 5) as u64),
+                base_ft: layer.base_ft,
+                top_ft: layer.top_ft - f(h, 40, 8) * 1000,
+                rank: (h % 100) as u8,
+            });
+        }
+        // Clusters fill first: the rank (the coverage the cloud needs) leans on the field,
+        // about evenly either way, so the share of clouds still follows the coverage.
+        let cluster = self.cluster(gx, gy);
+        let rank = ((h % 100) as f32 + (0.5 - cluster) * 70.0).clamp(0.0, 99.0) as u8;
+        if rank >= layer.cover {
             return None;
         }
-        let cell = Self::grid(kind);
-        let f = |shift: u32, n: u64| ((h >> shift) % n) as i32;
-        let r = cell / 4 + f(8, (cell / 5) as u64);
-        let (base_ft, top_ft) = if kind == CloudKind::Cumulonimbus {
-            (layer.base_ft, layer.top_ft - f(40, 8) * 1000)
+        // The main cloud near the square's middle, bigger in a cluster; the others smaller,
+        // hugging it (they run together into one irregular cloud).
+        let main = hash(0);
+        let (mx, my) = (
+            gx * cell + cell / 2 + f(main, 16, (cell / 2) as u64) - cell / 4,
+            gy * cell + cell / 2 + f(main, 24, (cell / 2) as u64) - cell / 4,
+        );
+        let main_r = cell as f32 * (0.18 + 0.27 * unit(main, 8).powf(1.5)) * (0.8 + 0.5 * cluster);
+        let (x, y, r, tall) = if slot == 0 {
+            (mx, my, main_r, 1.0)
         } else {
-            let b = layer.base_ft + f(40, 8) * 100;
-            (b, b + (layer.top_ft - layer.base_ft) * (40 + f(48, 61)) / 100)
+            let r = cell as f32 * (0.06 + 0.16 * unit(h, 8).powf(1.3)) * (0.8 + 0.4 * cluster);
+            let a = unit(h, 16) * std::f32::consts::TAU;
+            let d = main_r * (0.7 + 0.7 * unit(h, 32)) + 0.4 * r;
+            (mx + (a.cos() * d) as i32, my + (a.sin() * d) as i32, r, 0.35 + 0.45 * unit(h, 48))
         };
+        let b = layer.base_ft + f(h, 40, 8) * 100;
+        let span = (layer.top_ft - layer.base_ft) as f32 * (0.4 + 0.6 * unit(h, 24)) * tall;
+        // No taller than about its width (0.35 to 1.45 diameters, most of them moderate): small
+        // clouds stay low and flat, only big ones tower.
+        let wide = 2.0 * r * 32.0 * (0.35 + 1.1 * unit(mix(h), 0).powf(1.5));
+        let span = span.min(wide);
         Some(Cloud {
             kind,
             gx,
             gy,
-            x: gx * cell + cell / 2 + f(16, (cell / 2) as u64) - cell / 4,
-            y: gy * cell + cell / 2 + f(24, (cell / 2) as u64) - cell / 4,
-            r,
-            base_ft,
-            top_ft,
-            rank: (h % 100) as u8,
+            slot,
+            x,
+            y,
+            r: (r as i32).max(8),
+            base_ft: b,
+            top_ft: b + (span as i32).max(300),
+            rank,
         })
     }
 
@@ -403,8 +472,9 @@ impl Weather {
                 let cell = Self::grid(kind);
                 let (gx0, gx1) = ((x - radius).div_euclid(cell), (x + radius).div_euclid(cell));
                 let (gy0, gy1) = ((y - radius).div_euclid(cell), (y + radius).div_euclid(cell));
-                (gy0..=gy1)
-                    .flat_map(move |gy| (gx0..=gx1).filter_map(move |gx| self.cloud(kind, gx, gy)))
+                (gy0..=gy1).flat_map(move |gy| {
+                    (gx0..=gx1).flat_map(move |gx| self.clouds_in(kind, gx, gy))
+                })
             })
             .filter(move |c| {
                 let (dx, dy) = ((c.x - x) as i64, (c.y - y) as i64);
@@ -515,33 +585,34 @@ impl Weather {
                 if px * px + py * py > (reach as f64).powi(2) {
                     continue;
                 }
-                let Some(c) = self.cloud(kind, gx, gy) else { continue };
-                if hi < c.base_ft || lo > c.top_ft {
-                    continue;
-                }
-                // Part of the segment inside the cloud's circle: |a + d t - c| < r.
-                let (fx, fy) = (ax - c.x as f64, ay - c.y as f64);
-                let rr = (c.r as f64).powi(2);
-                let (t0, t1) = if len2 > 0.0 {
-                    let bq = fx * dx + fy * dy;
-                    let disc = bq * bq - len2 * (fx * fx + fy * fy - rr);
-                    if disc < 0.0 {
+                for c in self.clouds_in(kind, gx, gy) {
+                    if hi < c.base_ft || lo > c.top_ft {
                         continue;
                     }
-                    let s = disc.sqrt();
-                    (((-bq - s) / len2).max(0.0), ((-bq + s) / len2).min(1.0))
-                } else if fx * fx + fy * fy <= rr {
-                    (0.0, 1.0)
-                } else {
-                    continue;
-                };
-                if t0 > t1 {
-                    continue;
-                }
-                let alt = |t: f64| a.2 as f64 + (b.2 - a.2) as f64 * t;
-                let (z0, z1) = (alt(t0).min(alt(t1)), alt(t0).max(alt(t1)));
-                if z0 <= c.top_ft as f64 && z1 >= c.base_ft as f64 {
-                    return true;
+                    // Part of the segment inside the cloud's circle: |a + d t - c| < r.
+                    let (fx, fy) = (ax - c.x as f64, ay - c.y as f64);
+                    let rr = (c.r as f64).powi(2);
+                    let (t0, t1) = if len2 > 0.0 {
+                        let bq = fx * dx + fy * dy;
+                        let disc = bq * bq - len2 * (fx * fx + fy * fy - rr);
+                        if disc < 0.0 {
+                            continue;
+                        }
+                        let s = disc.sqrt();
+                        (((-bq - s) / len2).max(0.0), ((-bq + s) / len2).min(1.0))
+                    } else if fx * fx + fy * fy <= rr {
+                        (0.0, 1.0)
+                    } else {
+                        continue;
+                    };
+                    if t0 > t1 {
+                        continue;
+                    }
+                    let alt = |t: f64| a.2 as f64 + (b.2 - a.2) as f64 * t;
+                    let (z0, z1) = (alt(t0).min(alt(t1)), alt(t0).max(alt(t1)));
+                    if z0 <= c.top_ft as f64 && z1 >= c.base_ft as f64 {
+                        return true;
+                    }
                 }
             }
         }
@@ -662,14 +733,45 @@ mod tests {
 
     #[test]
     fn cumulus_cover_matches_layer() {
-        let count = |cover| {
-            (0..100)
+        // The share of the squares' cloud slots that hold a cloud follows the coverage.
+        let share = |cover| {
+            let w = cumulus(cover);
+            let n: usize = (0..100)
                 .flat_map(|y| (0..100).map(move |x| (x, y)))
-                .filter(|&(x, y)| cumulus(cover).cloud(CloudKind::Cumulus, x, y).is_some())
-                .count()
+                .map(|(x, y)| w.clouds_in(CloudKind::Cumulus, x, y).count())
+                .sum();
+            n * 100 / (100 * 100 * CUMULUS_SLOTS as usize)
         };
-        let (s, b) = (count(25), count(55));
-        assert!((2000..3000).contains(&s), "{s}");
-        assert!((5000..6000).contains(&b), "{b}");
+        let (s, b) = (share(25), share(55));
+        assert!((19..=31).contains(&s), "{s}");
+        assert!((49..=61).contains(&b), "{b}");
+    }
+
+    #[test]
+    fn cumulus_vary_and_cluster() {
+        let w = cumulus(45);
+        let clouds: Vec<Cloud> = (0..60)
+            .flat_map(|y| (0..60).map(move |x| (x, y)))
+            .flat_map(|(x, y)| w.clouds_in(CloudKind::Cumulus, x, y).collect::<Vec<_>>())
+            .collect();
+        // Small fragments and big clouds, short and tall.
+        let r = |f: fn(i32, i32) -> i32| clouds.iter().map(|c| c.r).reduce(f).unwrap();
+        assert!(r(i32::max) > 4 * r(i32::min), "{} {}", r(i32::min), r(i32::max));
+        let h = |c: &Cloud| c.top_ft - c.base_ft;
+        let (lo, hi) = (clouds.iter().map(h).min().unwrap(), clouds.iter().map(h).max().unwrap());
+        assert!(hi > 3 * lo, "{lo} {hi}");
+        // Clustered: blocks of squares differ far more than independent squares would.
+        let blocks: Vec<f32> = (0..15)
+            .flat_map(|by| (0..15).map(move |bx| (bx, by)))
+            .map(|(bx, by)| {
+                (0..16)
+                    .map(|i| w.clouds_in(CloudKind::Cumulus, bx * 4 + i % 4, by * 4 + i / 4).count())
+                    .sum::<usize>() as f32
+            })
+            .collect();
+        let mean = blocks.iter().sum::<f32>() / blocks.len() as f32;
+        let var = blocks.iter().map(|b| (b - mean).powi(2)).sum::<f32>() / blocks.len() as f32;
+        // Independent slots: 48 trials at p = 0.45, variance about 12.
+        assert!(var > 30.0, "variance {var} (mean {mean})");
     }
 }

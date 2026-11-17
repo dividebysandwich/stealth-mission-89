@@ -26,6 +26,7 @@
 @group(0) @binding(7) var detail_noise: texture_3d<f32>;
 @group(0) @binding(8) var noise_sampler: sampler;
 @group(0) @binding(9) var depth_sampler: sampler;
+@group(0) @binding(10) var coverage_map: texture_2d<f32>;
 
 const RES_SCALE: i32 = #{RES_SCALE};
 const MAX_STEPS: i32 = #{MARCH_STEPS};
@@ -201,17 +202,15 @@ fn large_noise(np: vec3<f32>) -> vec4<f32> {
 // How far a storm cell's anvil is blown downwind at its top (m).
 const ANVIL_SHEAR: f32 = 3500.0;
 
-fn convective_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
+// A storm cell: a towering column under an anvil spreading wide and blown downwind, from the
+// weather map's nearest cell.
+fn storm_cell(p: vec3<f32>, np: vec3<f32>, big: vec4<f32>, detail: bool) -> Sample {
     var s = Sample(0.0, 0.0, 0.0, 0.0);
-    if (globals.band.z == 0.0 || p.y < globals.band.x || p.y > globals.band.y) { return s; }
-    // Large scale noise: the footprints warped out of round, each cloud its own top and spread.
-    let big = large_noise(np);
     var w = warped_weather(p, np, big);
-    if (w.r >= 3.0) { return s; }
-    var storm = w.g >= 1.5;
+    if (w.r >= 3.0 || w.g < 1.5) { return s; }
     var h = (p.y - w.b - globals.params.w) / max(w.a - w.b, 1.0);
-    // A storm cell's anvil is blown downwind: high up, the cell is found upwind.
-    if (storm && h > 0.55) {
+    // The anvil is blown downwind: high up, the cell is found upwind.
+    if (h > 0.55) {
         let shear = globals.layer.yz * ANVIL_SHEAR * smoothstep(0.55, 0.95, h);
         let ws = warped_weather(p - vec3<f32>(shear.x, 0.0, shear.y), np, big);
         if (ws.g >= 1.5 && ws.r < w.r + 0.5) {
@@ -220,84 +219,126 @@ fn convective_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
         }
     }
     let dr = w.r;
-    if (dr >= 3.0) { return s; }
-    storm = w.g >= 1.5;
-    let fill = w.g - select(0.0, 2.0, storm);
-    if (h < 0.0 || h > 1.0) { return s; }
-    // The radius at this height, over the cloud's: a cumulus wide at its flat base, its towers
-    // rising to different heights; a storm cell's column under an anvil spreading to nearly
-    // twice its radius, flat on top.
-    var rr: f32;
-    var top_cut: f32;
-    var he = h;
-    var anvil = 0.0;
-    if (storm) {
-        // A towering column, then a thin anvil spreading wide under a flat top.
-        anvil = smoothstep(0.66, 0.8, h);
-        rr = mix(0.95 - 0.15 * h, 2.1, anvil);
-        top_cut = 1.0 - smoothstep(0.95, 1.0, h);
-    } else {
-        let reach_top = mix(0.35, 0.85, sat(big.a * 1.6 - 0.2));
-        he = h / reach_top;
-        // Rounded domes: wide most of the way up, closing over the top.
-        rr = 1.2 * sqrt(max(1.0 - pow(he, 4.0), 0.0)) * mix(0.8, 1.0, smoothstep(0.0, 0.1, h)) * (0.8 + 0.4 * big.r);
-        top_cut = 1.0 - smoothstep(0.9, 1.0, he);
-    }
-    // Coverage falls off towards the edge: there only the noise's peaks are left (billows).
+    if (dr >= 3.0 || w.g < 1.5 || h < 0.0 || h > 1.0) { return s; }
+    let fill = w.g - 2.0;
+    let anvil = smoothstep(0.66, 0.8, h);
+    let rr = mix(0.95 - 0.15 * h, 2.1, anvil);
+    let top_cut = 1.0 - smoothstep(0.95, 1.0, h);
     let cover = sat((1.0 - dr / rr) * 1.4) * fill * top_cut;
-    // Thin tufts round the cumulus, low in the layer, spreading further and joining up the
-    // more the sky is covered; and wisps drifting between the clouds.
-    let sky = globals.layer.x;
-    var tuft_cover = 0.0;
-    if (!storm) {
-        let reach = 1.8 + 1.2 * sky;
-        let low = smoothstep(0.0, 0.06, h) * (1.0 - smoothstep(0.3 + 0.3 * sky, 0.75, he));
-        tuft_cover = (1.0 - smoothstep(0.5, reach, dr / max(rr, 0.3))) * mix(0.55, 0.8, sky) * fill * low;
-        tuft_cover = max(tuft_cover, 0.4 * (0.3 + sky) * (1.0 - smoothstep(2.2, 3.0, dr)) * low);
+    if (cover <= 0.001) { return s; }
+    var n = shape_at(np, STORM_TILE);
+    if (anvil > 0.0) {
+        // The anvil's ice: fibrous, stretched sideways rather than billowing.
+        let f = shape_at(vec3<f32>(np.x, np.y * 5.0, np.z), STORM_TILE * 1.5);
+        n = mix(n, f, anvil);
     }
-    if (cover <= 0.001 && tuft_cover <= 0.001) { return s; }
-    var d = 0.0;
-    var e = 0.5;
-    if (detail) {
-        e = detail_at(np);
+    let fbm = shape_fbm(n);
+    let shape = sat(remap(n.r * 0.5 + fbm * 0.5, 0.25, 0.8)) * smoothstep(0.0, 0.04, h);
+    var d = sat(remap(shape, 1.0 - cover, 1.0)) * cover;
+    if (detail && d > 0.0) {
+        let e = detail_at(np);
+        let fray = mix(1.0, 0.65, smoothstep(0.2, 0.7, cover));
+        let billow = mix(e, 1.0 - e, sat(h * 6.0));
+        d = sat(remap(d, mix(billow, e, anvil) * fray, 1.0));
     }
-    if (cover > 0.001) {
-        var n = shape_at(np, select(CUMULUS_TILE, STORM_TILE, storm));
-        if (anvil > 0.0) {
-            // The anvil's ice: fibrous, stretched sideways rather than billowing.
-            let f = shape_at(vec3<f32>(np.x, np.y * 5.0, np.z), STORM_TILE * 1.5);
-            n = mix(n, f, anvil);
-        }
-        let fbm = shape_fbm(n);
-        let shape = sat(remap(n.r * 0.5 + fbm * 0.5, 0.25, 0.8)) * smoothstep(0.0, 0.04, h);
-        d = sat(remap(shape, 1.0 - cover, 1.0)) * cover;
-        if (detail && d > 0.0) {
-            // Wispy bases, billowing tops.
-            // The outer part frays more.
-            let fray = mix(1.0, 0.65, smoothstep(0.2, 0.7, cover));
-            let billow = mix(e, 1.0 - e, sat(he * 6.0));
-            d = sat(remap(d, mix(billow, e, anvil) * fray, 1.0));
-        }
-        // Thin towards the edges: soft, frayed outlines rather than hard ones.
-        d *= smoothstep(0.0, 0.8, cover) * select(2.0, 2.4, storm);
-        // A solid core: thick cloud is opaque (nothing bright below shows through), the
-        // noise only shaping its outer part.
-        d += smoothstep(0.55, 0.95, cover) * 0.8;
-    }
-    if (tuft_cover > 0.001) {
-        let f = shape_at(np, FRAGMENT_TILE);
-        var fd = sat(remap(f.r * 0.4 + shape_fbm(f) * 0.6, 1.0 - tuft_cover, 1.0)) * tuft_cover;
-        if (detail && fd > 0.0) {
-            fd = sat(remap(fd, e * 0.5, 1.0));
-        }
-        d = max(d, fd * 0.45);
-    }
+    d *= smoothstep(0.0, 0.8, cover) * 2.4;
+    d += smoothstep(0.55, 0.95, cover) * 0.8;
     s.density = d;
-    s.height = he;
-    s.darken = select(globals.map.w, globals.band.w, storm);
-    // How deep in the body: the footprint's middle (an anvil's too, however thin).
-    s.core = cover * select(1.0, sat(cover * 1.5), storm);
+    s.height = h;
+    s.darken = globals.band.w;
+    s.core = cover * sat(cover * 1.5);
     return s;
+}
+
+// The cumulus layer, built as UnityVolumetricCloudsURP / HDRP build theirs: one large Perlin-
+// Worley noise thresholded by the coverage (`remap(noise, 1 - curve * coverage *
+// (1 - shapeFactor), 1) * coverage^2`) under per-height density and erosion curves (its
+// Cloudy preset), eroded by inverted Worley noise and a finer micro erosion. The clouds'
+// sizes and shapes come from the noise; the coverage (the application's cumulus, soft and
+// max blended, over a thin background coverage from the layer's cover) says where it may
+// rise into cloud. Where the coverage is moderate, coverage^2 leaves whole areas of
+// translucent wisps.
+const CU_SHAPE_TILE: f32 = 14000.0;
+const CU_EROSION_TILE: f32 = 900.0;
+const CU_MICRO_TILE: f32 = 330.0;
+const CU_EROSION_FACTOR: f32 = 0.8;
+const CU_MICRO_FACTOR: f32 = 0.65;
+// Density multiplier (Unity's densityMultiplier^2 * 2 with 0.4, times its sigma 0.04 over ours).
+const CU_DENSITY: f32 = 0.45;
+
+fn cumulus_layer(p: vec3<f32>, np: vec3<f32>, big: vec4<f32>, detail: bool) -> Sample {
+    var s = Sample(0.0, 0.0, 0.0, 0.0);
+    if (globals.cumulus.z == 0.0 && globals.layer.x <= 0.0) { return s; }
+    let warp = (vec2<f32>(big.g, big.b) - 0.5) * 900.0;
+    let uv = map_uv(p + vec3<f32>(warp.x, 0.0, warp.y));
+    var c = vec4<f32>(0.0, -60000.0, -60000.0, 0.0);
+    if (all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0))) {
+        c = textureSampleLevel(coverage_map, map_sampler, uv, 0.0);
+    }
+    // Background coverage between the application's clouds: thin clouds and wisps.
+    let sky = globals.layer.x;
+    // Large scale noise clusters the clouds: whole regions denser or emptier than the
+    // individual clouds would make them.
+    let cluster = sat(big.r * 1.4 - 0.2);
+    let cov = max(c.r * mix(0.5, 1.05, cluster), 0.75 * sky * mix(0.1, 1.3, cluster));
+    if (cov <= 0.01) { return s; }
+    // Heights: the nearby clouds' (lowest base, highest top), else the layer's.
+    var base = globals.cumulus.x;
+    var top = mix(globals.cumulus.x, globals.cumulus.y, 0.6);
+    if (c.g + globals.params.w > globals.cumulus.x - 2000.0 && c.g > -50000.0) {
+        base = -c.b + globals.params.w;
+        top = c.g + globals.params.w;
+    }
+    let h = (p.y - base) / max(top - base, 1.0);
+    // Each area its own height (Unity's max cloud height channel).
+    let he = h / mix(0.45, 1.0, big.a);
+    if (h < 0.0 || he > 1.0) { return s; }
+    // Cloudy preset curves: density (0, 0) (0.15, 1) (1, 0.1); erosion (0, 1) (0.1, 0.9) (1, 1).
+    let dcurve = smoothstep(0.0, 0.15, he) * mix(1.0, 0.1, sat((he - 0.15) / 0.85));
+    let ecurve = select(mix(0.9, 1.0, (he - 0.1) / 0.9), mix(1.0, 0.9, he / 0.1), he < 0.1);
+    // Unity's shape factor (0.9 Cloudy, 0.95 Sparse, 0.5 Overcast) follows the layer's cover
+    // here: a broken sky rises into cloud over most of its coverage, a scattered one in its
+    // noise's peaks.
+    let shape_factor = mix(0.1, 1.0, mix(0.75, 0.3, sat(sky * 1.4))) * ecurve;
+    let erosion_factor = CU_EROSION_FACTOR * ecurve;
+    // Several scales: big masses, mid-sized clouds and smaller ones, not one size of blob.
+    let n_mid = shape_at(np, CU_SHAPE_TILE);
+    let n_big = shape_at(np, CU_SHAPE_TILE * 2.9);
+    let raw = sat(n_mid.r * 0.5 + n_big.r * 0.3 + (shape_fbm(n_mid) - 0.5) * 0.5 + 0.1);
+    let low = mix(1.0, raw, shape_factor);
+    let threshold = 1.0 - dcurve * cov * (1.0 - shape_factor);
+    var d = sat(remap(low, threshold, 1.0)) * cov * cov;
+    if (d <= 0.0) { return s; }
+    if (detail) {
+        let e = (1.0 - textureSampleLevel(detail_noise, noise_sampler, np / CU_EROSION_TILE, 0.0).r)
+            * erosion_factor * 0.75 * cov;
+        d = remap(d, e, 1.0);
+        let f = (1.0 - textureSampleLevel(detail_noise, noise_sampler, np / CU_MICRO_TILE, 0.0).r)
+            * CU_MICRO_FACTOR * ecurve * 0.5 * cov;
+        d = remap(d, f, 1.0);
+    } else {
+        // The light march skips the erosion: an average of it instead.
+        d -= erosion_factor * 0.1;
+    }
+    d = max(d, 0.0);
+    s.density = d * CU_DENSITY;
+    s.height = he;
+    s.darken = globals.map.w;
+    s.core = cov * cov * smoothstep(0.1, 0.5, he);
+    return s;
+}
+
+fn convective_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
+    if (globals.band.z == 0.0 || p.y < globals.band.x || p.y > globals.band.y) {
+        return Sample(0.0, 0.0, 0.0, 0.0);
+    }
+    let big = large_noise(np);
+    let a = storm_cell(p, np, big, detail);
+    let b = cumulus_layer(p, np, big, detail);
+    if (a.density >= b.density) {
+        return Sample(a.density + b.density, a.height, a.darken, a.core);
+    }
+    return Sample(a.density + b.density, b.height, b.darken, b.core);
 }
 
 fn density(p: vec3<f32>, detail: bool) -> Sample {
@@ -375,6 +416,10 @@ fn slab(y: f32, dy: f32, lo: f32, hi: f32) -> vec2<f32> {
 // within a convective cloud's reach and heights.
 fn occupied(p: vec3<f32>) -> bool {
     if (globals.deck.w > 0.0 && p.y >= globals.deck.x && p.y <= globals.deck.y && deck_cover(p) > 0.001) {
+        return true;
+    }
+    // The cumulus layer: its background coverage may raise cloud anywhere in it.
+    if (globals.cumulus.z > 0.0 && p.y >= globals.cumulus.x && p.y <= globals.cumulus.y) {
         return true;
     }
     if (globals.band.z > 0.0 && p.y >= globals.band.x && p.y <= globals.band.y) {

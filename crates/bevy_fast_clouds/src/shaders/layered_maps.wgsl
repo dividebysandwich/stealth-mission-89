@@ -68,6 +68,35 @@ fn quad_fragment(in: QuadOut) -> QuadFrag {
     return out;
 }
 
+// The convective clouds' coverage (max blended): a cumulus's soft footprint (dense in its
+// middle, thinning out to over twice its radius, so neighbours run together) with its top and (negated) base, the
+// heights kept wherever it reaches; a storm cell's coverage in w.
+@fragment
+fn coverage_fragment(in: QuadOut) -> @location(0) vec4<f32> {
+    let a = instances.c[2u * in.instance];
+    let b = instances.c[2u * in.instance + 1u];
+    let d = length(in.rel - a.xy) / max(a.z, 1.0);
+    if (d > reach(a)) { discard; }
+    if (a.w >= 1.5) {
+        return vec4<f32>(0.0, -60000.0, -60000.0, (a.w - 2.0) * (1.0 - smoothstep(0.6, 1.2, d)));
+    }
+    // Each its own size and strength (hashed from its position): neighbours differ.
+    // World position: the same when the map moves on.
+    let w = (map.anchor.xy + a.xy) * 0.01;
+    let k = value_hash(i32(floor(w.x)), i32(floor(w.y)), 77u);
+    let j = value_hash(i32(floor(w.y)), i32(floor(w.x)), 91u);
+    // Up to the square's reach (3 radii).
+    let size = mix(0.6, 1.15, k);
+    let soft = mix(0.75, 1.1, j) * (1.0 - smoothstep(0.2 * size, 2.6 * size, d));
+    // Within its radius always well covered: what the simulation's lines of sight meet is
+    // drawn as cloud.
+    let c = a.w * max(soft, 0.85 * (1.0 - smoothstep(0.6, 1.0, d)));
+    // The top falls away from the middle: each cloud's heights a dome, so a small cloud next
+    // to a tall one keeps its own (the heights are max blended).
+    let top = b.x + (b.y - b.x) * mix(0.25, 1.0, 1.0 - smoothstep(0.3 * size, 1.6 * size, d));
+    return vec4<f32>(c, top, -b.x, 0.0);
+}
+
 // --- The deck's coverage field (palette.wgsl `stratus_field`, stealth_mission's) -----------
 
 fn value_hash(ix: i32, iy: i32, seed: u32) -> f32 {

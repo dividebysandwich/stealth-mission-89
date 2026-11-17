@@ -328,8 +328,8 @@ impl Rng {
 #[derive(Component)]
 struct CloudEntity;
 
-/// A cloud of the field: its kind, layer seed and grid square.
-type CloudKey = (CloudKind, u32, i32, i32);
+/// A cloud of the field: its kind, layer seed, grid square and slot in it.
+type CloudKey = (CloudKind, u32, i32, i32, u8);
 /// A streamed cloud: its entity, centre (map units) and rank.
 type Streamed = (Entity, (i32, i32), u8);
 
@@ -657,10 +657,10 @@ fn stream_clouds(
     }
     state.streamed = Some(((x, y), w.cumulus, w.cumulonimbus));
     let keep = (DRAW_RADIUS + STORM_CELL) as i64;
-    state.puffs.retain(|&(kind, seed, gx, gy), (e, (cx, cy), _)| {
+    state.puffs.retain(|&(kind, seed, gx, gy, slot), (e, (cx, cy), _)| {
         let (dx, dy) = ((*cx - x) as i64, (*cy - y) as i64);
         let near = dx * dx + dy * dy <= keep * keep;
-        let still = w.layer_seed(kind) == seed && w.cloud(kind, gx, gy).is_some();
+        let still = w.layer_seed(kind) == seed && w.cloud_slot(kind, gx, gy, slot).is_some();
         if !(near && still) {
             commands.entity(*e).try_despawn();
         }
@@ -668,13 +668,14 @@ fn stream_clouds(
     });
     let new: Vec<Cloud> = w
         .clouds_near(x, y, DRAW_RADIUS)
-        .filter(|c| !state.puffs.contains_key(&(c.kind, w.layer_seed(c.kind), c.gx, c.gy)))
+        .filter(|c| !state.puffs.contains_key(&(c.kind, w.layer_seed(c.kind), c.gx, c.gy, c.slot)))
         .collect();
     for c in new {
         let h = hash(
             ((w.layer_seed(c.kind) as u64) << 32)
                 ^ ((c.gx as u16 as u64) << 16)
                 ^ c.gy as u16 as u64
+                ^ (c.slot as u64) << 56
                 ^ 0xC10D,
         );
         let r_m = c.r as f32 * 32.0 * WU as f32;
@@ -701,7 +702,7 @@ fn stream_clouds(
                 Visibility::default(),
             ))
             .id();
-        state.puffs.insert((c.kind, w.layer_seed(c.kind), c.gx, c.gy), (e, (c.x, c.y), c.rank));
+        state.puffs.insert((c.kind, w.layer_seed(c.kind), c.gx, c.gy, c.slot), (e, (c.x, c.y), c.rank));
     }
 }
 
@@ -1021,6 +1022,9 @@ fn layered_clouds(
     layered.darken = darken(&state, CloudKind::Cumulus);
     layered.storm_darken = STORM_DARKEN;
     layered.cumulus_cover = state.cover[0] / 100.0;
+    let cu = w.cumulus;
+    layered.cumulus_layer = (cu.present() && state.cover[0] > 0.0)
+        .then_some(((cu.base_ft as f64 * WU) as f32, (cu.top_ft as f64 * WU) as f32));
     // The clouds' texture drifts at a quarter of the wind (knots to m/s; east +x, north -z).
     let (e, n) = state.wind.velocity();
     // Anvils lean downwind (a calm day: still a direction).

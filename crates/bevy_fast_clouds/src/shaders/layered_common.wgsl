@@ -29,6 +29,8 @@ struct LayeredGlobals {
     params: vec4<f32>,
     // Cumulus coverage 0..1, downwind direction (render x, z).
     layer: vec4<f32>,
+    // The cumulus layer: base and top (render y), present.
+    cumulus: vec4<f32>,
 }
 
 // Per view: the previous frame's projection, the floating origin's move since (xyz) and

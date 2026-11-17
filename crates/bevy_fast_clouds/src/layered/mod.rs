@@ -92,6 +92,9 @@ pub struct LayeredClouds {
     pub cumulus_cover: f32,
     /// Downwind direction (render x, z; unit or zero): storm cells' anvils are blown that way.
     pub wind_dir: Vec2,
+    /// The cumulus layer's base and top (world heights, metres): the thin clouds between the
+    /// application's cumulus are drawn there.
+    pub cumulus_layer: Option<(f32, f32)>,
 }
 
 /// The uniform of the march and its passes.
@@ -123,6 +126,8 @@ pub struct LayeredGlobals {
     pub params: Vec4,
     /// Cumulus coverage 0..1, downwind direction (y, z).
     pub layer: Vec4,
+    /// The cumulus layer: base and top (render y), present.
+    pub cumulus: Vec4,
 }
 
 /// Everything the render world needs.
@@ -254,7 +259,11 @@ pub(crate) fn upload_layered_frame(
         .fold((f32::MAX, f32::MIN), |(lo, hi), c| {
             (lo.min(c.base.y as f32), hi.max(c.base.y as f32 + c.height))
         });
-    let has_band = !frame.instances.is_empty();
+    let (lo, hi) = match clouds.cumulus_layer {
+        Some((b, t)) => (lo.min(b), hi.max(t)),
+        None => (lo, hi),
+    };
+    let has_band = !frame.instances.is_empty() || clouds.cumulus_layer.is_some();
     let centre = (anchor - DVec2::new(origin.x, origin.z)).as_vec2();
     let noise_off = |v: f64| v.rem_euclid(NOISE_PERIOD) as f32;
     frame.globals = LayeredGlobals {
@@ -299,5 +308,8 @@ pub(crate) fn upload_layered_frame(
             let d = clouds.wind_dir.normalize_or_zero();
             Vec4::new(clouds.cumulus_cover.clamp(0.0, 1.0), d.x, d.y, 0.0)
         },
+        cumulus: clouds.cumulus_layer.map_or(Vec4::ZERO, |(b, t)| {
+            Vec4::new(render_y(b), render_y(t), 1.0, 0.0)
+        }),
     };
 }
