@@ -43,6 +43,13 @@ pub struct MadTrace {
     peak: i16,
 }
 
+impl MadTrace {
+    /// The strongest reading on the trail (tenths of nT, its size).
+    pub fn trail_top(&self) -> f32 {
+        self.trail.iter().map(|p| (p.mad as f32).abs()).fold(0.0, f32::max)
+    }
+}
+
 /// A point of the MAD trail: where (m east, north), when (the ASW clock), the strongest
 /// reading there (tenths of nT).
 #[derive(Debug, Clone, Copy)]
@@ -61,11 +68,14 @@ const TRAIL_KEEP: f64 = stealth_sim::asw::FIX_KEEP;
 pub const RAMP: u8 = 192;
 const RAMP_STEPS: usize = 64;
 
-/// A reading's colour on the map's trail (tenths of nT): blue in the sea's noise (to `QUIET`
-/// nT) through green and yellow to red at the mark threshold.
-pub fn trail_colour(mad: f32) -> u8 {
+/// A reading's colour on the map's trail (tenths of nT): blue in the sea's noise (to `QUIET`)
+/// through green and yellow to red at `top`, the strongest reading on the trail (never under
+/// `TOP_LEAST`), so the red marks where the bird passed closest to the submarine.
+pub fn trail_colour(mad: f32, top: f32) -> u8 {
     const QUIET: f32 = 1.0;
-    let f = (((mad / 10.0).abs() - QUIET) / (THRESHOLD - QUIET)).clamp(0.0, 1.0);
+    const TOP_LEAST: f32 = 2.0;
+    let top = (top / 10.0).abs().max(TOP_LEAST);
+    let f = (((mad / 10.0).abs() - QUIET) / (top - QUIET)).clamp(0.0, 1.0);
     RAMP + (f * (RAMP_STEPS - 1) as f32).round() as u8
 }
 

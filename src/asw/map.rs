@@ -27,6 +27,8 @@ use crate::station::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
 const TOP: f32 = 26.0;
 const BOTTOM: f32 = 456.0;
 const MID: Vec2 = Vec2::new(320.0, (TOP + BOTTOM) / 2.0);
+/// The MAD's trace window (x, y, w, h) in the bottom left corner while the bird is out.
+const MAD_WINDOW: [f32; 4] = [6.0, BOTTOM - 96.0, 200.0, 92.0];
 /// A touch this close (units) picks a waypoint; a drag this long pans.
 const PICK: f32 = 10.0;
 const MOVED: f32 = 6.0;
@@ -67,7 +69,7 @@ fn key_letter(kind: BuoyKind) -> &'static str {
     }
 }
 
-fn inside(r: [f32; 8], p: Vec2) -> bool {
+fn inside<const N: usize>(r: [f32; N], p: Vec2) -> bool {
     p.x >= r[0] && p.x <= r[0] + r[2] && p.y >= r[1] && p.y <= r[1] + r[3]
 }
 
@@ -149,6 +151,8 @@ fn drop_refused(
 pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
     let c = centre(ui, sim, owner);
     match phase {
+        // The MAD's window over the map takes no touches.
+        DragPhase::Start if crew.mad_down && inside(MAD_WINDOW, p) => {}
         DragPhase::Start => {
             if let Some((b, _, _)) = buttons().into_iter().find(|(_, r, _)| inside(*r, p)) {
                 match b {
@@ -421,8 +425,10 @@ pub fn draw(
         }
     }
     // The MAD trail: where the bird was towed, blue quiet to red at the mark threshold.
-    // A gradient: each leg in steps, the reading blended from one point's to the next.
+    // A gradient: each leg in steps, the reading blended from one point's to the next; red the
+    // strongest reading on the trail.
     const STEPS: usize = 4;
+    let top = mad.trail_top();
     for w in mad.trail.iter().collect::<Vec<_>>().windows(2) {
         if w[1].t - w[0].t > 2.0 {
             continue;
@@ -432,7 +438,7 @@ pub fn draw(
         for k in 0..STEPS {
             let (f0, f1) = (k as f32 / STEPS as f32, (k + 1) as f32 / STEPS as f32);
             let v = va + (vb - va) * (f0 + f1) / 2.0;
-            cv.stroke(a.lerp(b, f0), a.lerp(b, f1), 2.0, super::mad::trail_colour(v));
+            cv.stroke(a.lerp(b, f0), a.lerp(b, f1), 2.0, super::mad::trail_colour(v, top));
         }
     }
     // The operator's marks: a bearing line from each marked sensor, its letter on it.
@@ -551,13 +557,14 @@ pub fn draw(
     }
     // The bird out: its trace in a window in the corner.
     if mad.out {
-        let (x0, y0, x1, y1) = (6.0, BOTTOM - 96.0, 206.0, BOTTOM - 4.0);
+        let [x0, y0, w, h] = MAD_WINDOW;
+        let (x1, y1) = (x0 + w, y0 + h);
         cv.fill_rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, BLACK);
         cv.rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, GREY);
         let full = super::mad::full_scale(gain);
         let now = mad.samples.back().map_or(0.0, |&v| v as f32 / 10.0);
         stroke_text_at(cv, x0 + 6.0, y0 + 9.0, "MAD", 6.0, 1.1, GREEN, Align::Left);
-        let col = super::mad::trail_colour(now * 10.0);
+        let col = super::mad::trail_colour(now * 10.0, mad.trail_top());
         stroke_text_at(cv, x0 + 40.0, y0 + 9.0, &format!("{now:+.1}"), 6.0, 1.1, col, Align::Left);
         stroke_text_at(cv, x1 - 6.0, y0 + 9.0, &format!("+/-{full} NT"), 6.0, 1.1, CYAN, Align::Right);
         super::mad::plot(cv, mad, [x0 + 14.0, y0 + 17.0, x1 - 14.0, y1 - 17.0], full, 5.0, 10.0);

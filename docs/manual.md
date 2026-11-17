@@ -4159,8 +4159,9 @@ The MAP page is the tactical picture, north up, round the aircraft (the green ar
   over five minutes;
 - the **torpedoes**: white running, red homing;
 - the **MAD trail** while the bird is out: the aircraft's path coloured by what the MAD felt there,
-  blue in the sea's noise through green and yellow to red at the mark threshold (kept five
-  minutes), and the MAD's trace (14.3) in a window in the bottom left corner;
+  blue in the sea's noise through green and yellow to red at the strongest reading on the trail
+  (kept five minutes): the red is where you passed closest to the submarine. The MAD's trace (14.3)
+  shows in a window in the bottom left corner, which takes no touches;
 - the **route** (white, numbered), a buoy drop on it boxed in yellow with its letter, and the
   mission's own waypoints after it (grey, M1, M2... and LAND).
 
