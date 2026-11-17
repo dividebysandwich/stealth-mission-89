@@ -141,7 +141,9 @@ def walls():
     for r in regions:
         for a, b, sa, sb in tiles(r):
             pads.append(B((LEFT + PAD / 2, a, b), (PAD, sa, sb)))
-    # The right wall, quilted all over.
+    # The right wall: the skin behind, quilted all over.
+    merged("cabin", "cabin", [B((RIGHT + 0.015, (AFT + FORE) / 2, (FLOOR + ROOF_EDGE) / 2),
+                                (0.03, FORE - AFT, ROOF_EDGE - FLOOR))])
     for a, b, sa, sb in tiles((AFT, FORE, FLOOR, ROOF_EDGE)):
         pads.append(B((RIGHT - PAD / 2, a, b), (PAD, sa, sb)))
     # The roof: panels along its curve, quilted.
