@@ -3899,3 +3899,31 @@ fn only_the_seahawk_hunts_submarines() {
         state.board.iter().map(|o| o.kind).collect::<Vec<_>>()
     );
 }
+
+/// Nobody takes the hunt: the AI flies it in its Seahawks, and the submarine's sinking
+/// (reported by the simulation) achieves it.
+#[test]
+fn the_ai_hunts_the_submarine_nobody_took() {
+    use crate::{Aircraft, MissionKind};
+    let mut c = campaign("persian_gulf", 1);
+    c.rules = Some(CampaignRules::default());
+    c.tick(1.0, &WorldView::default(), &[]);
+    let asw = c.board.iter().find(|o| o.kind == MissionKind::Asw).expect("the hunt").clone();
+    let mut ev = Vec::new();
+    for _ in 0..12 {
+        ev.extend(c.tick(60.0, &WorldView::default(), &[]));
+        if c.ai_mission_for(asw.id).is_some() {
+            break;
+        }
+    }
+    let m = c.ai_mission_for(asw.id).expect("an AI flight on the hunt").clone();
+    assert_eq!(m.airframe, AiAirframe::Blue(Aircraft::MH60R));
+    for _ in 0..3 {
+        ev.extend(c.tick(30.0, &WorldView::default(), &[]));
+    }
+    assert!(!c.ai_mission_for(asw.id).expect("flying").achieved);
+    let ev = c.tick(1.0, &WorldView::default(), &[Report::AiSubSunk { tag: m.tags[0] }]);
+    let m = c.ai_mission_for(asw.id).expect("flying");
+    assert!(m.achieved, "the submarine sunk");
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })), "home again");
+}

@@ -2543,6 +2543,8 @@ impl Sim {
         }
         self.update_aircraft(&[]);
         self.update_campaign();
+        // The AI's submarine hunts go on with nobody in the air.
+        self.update_asw(&[]);
         self.update_effects();
         self.tick_frames += 1;
         if self.tick_frames >= self.fs {

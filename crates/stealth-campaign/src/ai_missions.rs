@@ -92,6 +92,9 @@ pub struct AiMission {
     /// Its objective is achieved (the recon's photo taken).
     pub achieved: bool,
     pub photographed: bool,
+    /// An ASW flight's submarine was sunk.
+    #[serde(default)]
+    pub sub_sunk: bool,
 }
 
 impl AiMission {
@@ -279,15 +282,17 @@ impl CampaignState {
             .collect();
         queue.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.posted.total_cmp(&b.1.posted)));
         // The interceptors of a cargo flight go ahead of the queue (they do not count
-        // against it).
-        let (hunts, queue): (Vec<_>, Vec<_>) =
-            queue.into_iter().partition(|(_, o)| matches!(o.objective, Objective::Cargo { .. }));
+        // against it), and so does the carrier's own submarine hunt (its Seahawks are aboard).
+        let (hunts, queue): (Vec<_>, Vec<_>) = queue.into_iter().partition(|(_, o)| {
+            matches!(o.objective, Objective::Cargo { .. } | Objective::Asw { .. })
+        });
         let mut out: Vec<(u32, f64)> =
             hunts.into_iter().map(|(t, o)| (o.id, t.max(self.clock))).collect();
         let open = self
             .ai_missions
             .iter()
             .filter(|m| m.side == side && m.open() && !matches!(m.target, AiTarget::Hunt { .. }))
+            .filter(|m| !matches!(m.offer.objective, Objective::Asw { .. }))
             .count();
         let mut window = self.launches_in_window(side);
         let mut runway = self.runway(side);
@@ -474,8 +479,10 @@ impl CampaignState {
 
     /// The objective of an AI flight is achieved.
     fn ai_achieved(&self, m: &AiMission, view: &WorldView) -> bool {
-        if let Objective::Recon { .. } = m.offer.objective {
-            return m.photographed;
+        match m.offer.objective {
+            Objective::Recon { .. } => return m.photographed,
+            Objective::Asw { .. } => return m.sub_sunk,
+            _ => {}
         }
         let aaa = match &m.offer.objective {
             Objective::Cas { aaa, .. }
@@ -565,6 +572,7 @@ impl CampaignState {
             ended: None,
             achieved: false,
             photographed: false,
+            sub_sunk: false,
         });
         if side == Side::Blue {
             self.note(text!(
@@ -613,6 +621,12 @@ impl CampaignState {
             Report::FlightLanded { tag, .. } => (tag, true),
             Report::Photographed { tag } => {
                 self.ai_photo(tag, ev);
+                return;
+            }
+            Report::AiSubSunk { tag } => {
+                if let Some(m) = self.ai_missions.iter_mut().find(|m| m.tags.contains(&tag)) {
+                    m.sub_sunk = true;
+                }
                 return;
             }
             _ => return,
@@ -965,6 +979,7 @@ impl CampaignState {
                             ended: None,
                             achieved: false,
                             photographed: false,
+                            sub_sunk: false,
                         });
                         self.ai_missions.len() - 1
                     }

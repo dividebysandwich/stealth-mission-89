@@ -728,6 +728,7 @@ impl Host {
                 SimEvent::CampaignPhotographed { tag, .. } => {
                     reports.push(Report::Photographed { tag })
                 }
+                SimEvent::CampaignSubSunk { tag } => reports.push(Report::AiSubSunk { tag }),
                 SimEvent::CampaignFlightDelivered { tag, .. } => {
                     reports.push(Report::SupplyDelivered { tag })
                 }
@@ -851,7 +852,7 @@ impl Host {
                     sim.spawn_awacs(*from as usize, *x, *y, *tag, *side == Side::Blue);
                 }
                 CampaignEvent::Recall { tag } => sim.recall_flight(*tag),
-                CampaignEvent::AiMissionLaunched { side, from, airframe, target, tags, .. } => {
+                CampaignEvent::AiMissionLaunched { id, side, from, airframe, target, tags } => {
                     let from = *from as usize;
                     let spec = match *airframe {
                         AiAirframe::Blue(a) => glue::ai_spec(a),
@@ -865,6 +866,12 @@ impl Host {
                         let i = sim.spawn_ai_mission(from, spec, task, tag, *side == Side::Blue);
                         sim.set_cas_units(tag, &glue::cas_units(&self.state, tag));
                         self.arm_from_stock(sim, i, *side, from as u16);
+                        // An ASW mission: its own submarine to hunt.
+                        if let Some(stealth_campaign::Objective::Asw { carrier }) =
+                            self.state.ai_mission_of_tag(tag).map(|m| &m.offer.objective)
+                        {
+                            sim.start_ai_hunt(*id, tag, *carrier as usize, *id);
+                        }
                     }
                 }
                 CampaignEvent::ControlLeft { player, tag, aircraft, from, target, home } => {

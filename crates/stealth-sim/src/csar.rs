@@ -357,6 +357,10 @@ impl Sim {
                 let b = self.obj(u.wp);
                 return (b.x, b.y, CRUISE_ALT, true);
             }
+            // An ASW mission's Seahawk: round the datum, then hovering over its fix.
+            if let Some(((x, y), hover)) = self.asw_ai_goal(i) {
+                return (x, y, if hover { HOVER_ALT } else { CRUISE_ALT / 2 }, hover);
+            }
             if let Some((x, y, _)) = self.campaign_pursuit(i) {
                 return (x, y, CRUISE_ALT / 2, false);
             }

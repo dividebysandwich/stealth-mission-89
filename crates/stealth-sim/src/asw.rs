@@ -143,6 +143,21 @@ const OVERHEAD_SPEED: f64 = 30.0 * KT;
 const OVERHEAD_HOLD: f64 = 150.0;
 /// A submarine stopped and silent: its noise this far under its quietest running (dB).
 const SILENT_LOSS: f64 = 35.0;
+/// The AI's hunt (a campaign's ASW mission nobody flew): its helicopters search round the datum
+/// this far out (m); within `AI_SEARCH_RANGE` of the submarine for `AI_LOCALIZE` seconds (its
+/// buoys and dips) they hold it, within `AI_FIX_ERR` (m, one sigma), and refresh that every
+/// `AI_REFIX` s; they drop a torpedo from the hover this close to the fix (m), `AI_TORPEDOES` an
+/// aircraft, `AI_DROP_EVERY` s apart.
+const AI_ORBIT: f64 = 2000.0;
+const AI_SEARCH_RANGE: f64 = 6000.0;
+const AI_LOCALIZE: f64 = 120.0;
+const AI_FIX_ERR: f64 = 200.0;
+const AI_REFIX: f64 = 90.0;
+const AI_DROP_RANGE: f64 = 150.0;
+const AI_TORPEDOES: u8 = 2;
+const AI_DROP_EVERY: f64 = 120.0;
+/// The owner of an AI helicopter's torpedo (no player's).
+pub const AI_OWNER: u8 = 255;
 /// A Hellfire striking this close to a submarine at periscope depth sinks it (m).
 pub const HELLFIRE_SUB_RADIUS: f64 = 25.0;
 
@@ -476,6 +491,30 @@ pub struct Sub {
     pub silent_in: f64,
     #[serde(default)]
     pub silent_for: f64,
+    /// A campaign's: the AI mission (its id) whose helicopters hunt it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_hunt: Option<u32>,
+}
+
+/// The AI's hunt of a campaign ASW mission (the host's): its submarine, its helicopters
+/// (campaign tags), what they know of it.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct AiHunt {
+    pub mission: u32,
+    pub sub: u16,
+    pub tags: Vec<u32>,
+    /// Where the submarine was reported (m east, north).
+    pub datum: [f64; 2],
+    /// One of its helicopters has been up.
+    pub up: bool,
+    /// Seconds searched near the submarine since the last fix or drop; where they hold it
+    /// (m east, north), and since when.
+    pub search: f64,
+    pub fix: Option<[f64; 2]>,
+    pub fix_t: f64,
+    /// Torpedoes each aircraft (tag) dropped; the clock when the next may go.
+    pub dropped: Vec<(u32, u8)>,
+    pub next_drop: f64,
 }
 
 /// A fix on a submarine (m east, north): its error (m), when (s), how (1 an echo, 2 a MAD
@@ -580,6 +619,9 @@ pub struct Asw {
     pub clock: f64,
     pub next_id: u16,
     pub rng: Option<Rng>,
+    /// The host's: the AI's hunts of a campaign's ASW missions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ai_hunts: Vec<AiHunt>,
 }
 
 impl Asw {
@@ -589,7 +631,7 @@ impl Asw {
 
     /// What the other simulations get: no submarines.
     pub fn for_clients(&self) -> Asw {
-        let mut a = Asw { subs: Vec::new(), rng: None, ..self.clone() };
+        let mut a = Asw { subs: Vec::new(), rng: None, ai_hunts: Vec::new(), ..self.clone() };
         for c in &mut a.crews {
             // The newest fixes for the map.
             let n = c.fixes.len();
@@ -748,6 +790,7 @@ impl Sub {
             hunter: None,
             silent_in: 1000.0,
             silent_for: 0.0,
+            ai_hunt: None,
         }
     }
 
@@ -820,14 +863,41 @@ impl Sim {
     /// A campaign sortie's hunt: a submarine for player `player` some 22-28 km off the carrier
     /// `carrier`, closing on one of its escorts (else the carrier).
     pub fn start_hunt_for(&mut self, player: u8, carrier: usize, seed: u32) {
-        let Some(c) = self.objects.get(carrier).map(object_metres) else { return };
+        // Gone: the one hunted before it.
+        self.asw.subs.retain(|s| s.hunter != Some(player));
+        let Some((i, datum)) = self.spawn_hunted(carrier, seed) else { return };
+        self.asw.subs[i].hunter = Some(player);
+        // Where it was reported: the crew's first waypoint.
+        let c = self.asw.crew_mut(player);
+        c.route = vec![((datum[0] / M_PER_WU) as i32, (datum[1] / M_PER_WU) as i32)];
+        c.route_rev = c.route_rev.wrapping_add(1);
+    }
+
+    /// A campaign's ASW mission the AI flies (`mission` its id): a submarine closing on the
+    /// carrier `carrier`'s group as for a player, hunted by the mission's helicopters (campaign
+    /// tags; each joins the hunt as it takes off).
+    pub fn start_ai_hunt(&mut self, mission: u32, tag: u32, carrier: usize, seed: u32) {
+        if let Some(h) = self.asw.ai_hunts.iter_mut().find(|h| h.mission == mission) {
+            if !h.tags.contains(&tag) {
+                h.tags.push(tag);
+            }
+            return;
+        }
+        let Some((i, datum)) = self.spawn_hunted(carrier, seed) else { return };
+        self.asw.subs[i].ai_hunt = Some(mission);
+        let sub = self.asw.subs[i].id;
+        self.asw.ai_hunts.push(AiHunt { mission, sub, tags: vec![tag], datum, ..Default::default() });
+    }
+
+    /// A campaign's hunted submarine some 22-28 km off the carrier `carrier`, closing on one of
+    /// its escorts (else the carrier): its index, and where it is reported (a few km off).
+    fn spawn_hunted(&mut self, carrier: usize, seed: u32) -> Option<(usize, [f64; 2])> {
+        let c = self.objects.get(carrier).map(object_metres)?;
         if self.asw.rng.is_none() {
             self.asw.rng = Some(Rng::new(seed | 1));
             let layer = 30 + self.asw.rand(90);
             self.asw.ocean = Ocean { layer: layer as f32, sea_state: 1 + self.asw.rand(4) as u8, bottom: 600.0 };
         }
-        // Gone: the one hunted before it.
-        self.asw.subs.retain(|s| s.hunter != Some(player));
         let at = (0..64).find_map(|_| {
             let a = self.asw.rand(3600) as f64 / 10.0 * DEG;
             let d = 22_000.0 + self.asw.rand(6000) as f64;
@@ -837,8 +907,7 @@ impl Sim {
                 self.sea_at([p[0] + b.sin() * 1500.0, p[1] + b.cos() * 1500.0])
             });
             (self.sea_at(p) && open).then_some(p)
-        });
-        let Some(at) = at else { return };
+        })?;
         let setup = SubSetup { at, heading: bearing(at, c), intent: Intent::Escort { carrier }, nuclear: self.asw.rand(2) == 0 };
         let id = self.asw.id();
         let mut sub = setup;
@@ -847,17 +916,117 @@ impl Sim {
             None => Intent::Attack { ship: carrier },
         };
         let mut s = Sub::from_setup(id, &sub);
-        s.hunter = Some(player);
         s.pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
         s.silent_in = (SILENT_EVERY.0 + self.asw.rand(SILENT_EVERY.1 - SILENT_EVERY.0)) as f64;
         self.asw.subs.push(s);
-        // Where it was reported (a few kilometres off): the crew's first waypoint.
         let off = self.asw.rand(3000) as f64;
         let a = self.asw.rand(3600) as f64 / 10.0 * DEG;
-        let datum = [at[0] + a.sin() * off, at[1] + a.cos() * off];
-        let c = self.asw.crew_mut(player);
-        c.route = vec![((datum[0] / M_PER_WU) as i32, (datum[1] / M_PER_WU) as i32)];
-        c.route_rev = c.route_rev.wrapping_add(1);
+        Some((self.asw.subs.len() - 1, [at[0] + a.sin() * off, at[1] + a.cos() * off]))
+    }
+
+    /// Where a flight unit is (m east, north).
+    fn flight_metres(&self, i: usize) -> [f64; 2] {
+        let u = &self.flights[i];
+        map_metres((u.x, u.y))
+    }
+
+    /// Where an AI helicopter of a hunt flies (map units), and whether it hovers there (over
+    /// its fix: dipping, then dropping); None for other aircraft.
+    pub(crate) fn asw_ai_goal(&self, i: usize) -> Option<((i32, i32), bool)> {
+        let tag = self.campaign_flight(i)?.tag;
+        let h = self.asw.ai_hunts.iter().find(|h| h.tags.contains(&tag))?;
+        let to_map = |p: [f64; 2]| ((p[0] / M_PER_MAP) as i32, 0x8000 - (p[1] / M_PER_MAP) as i32);
+        if let Some(f) = h.fix {
+            return Some((to_map(f), true));
+        }
+        // Round the datum, each of them on its own side of the circle.
+        let k = h.tags.iter().position(|&t| t == tag).unwrap_or(0) as f64;
+        let a = self.asw.clock * TAU / 160.0 + k * std::f64::consts::PI;
+        Some((to_map([h.datum[0] + a.sin() * AI_ORBIT, h.datum[1] + a.cos() * AI_ORBIT]), false))
+    }
+
+    /// Once a second: the AI's hunts. Its helicopters search, hold the submarine and drop
+    /// their torpedoes from the hover over it; with the submarine sunk (the mission's
+    /// objective) or through, or all its helicopters gone, the hunt is over.
+    fn update_ai_hunts(&mut self, dt: f64) {
+        let clock = self.asw.clock;
+        let mut k = 0;
+        while k < self.asw.ai_hunts.len() {
+            let mut h = self.asw.ai_hunts[k].clone();
+            let sub = self.asw.subs.iter().position(|s| s.id == h.sub);
+            let flying: Vec<(u32, usize)> = h.tags.iter().filter_map(|&t| Some((t, self.flight_of_tag(t)?))).collect();
+            let over = sub.is_none_or(|i| !self.asw.subs[i].alive || self.asw.subs[i].done);
+            if over || h.up && flying.is_empty() {
+                // Home; a submarine nobody hunts any more withdraws.
+                for &(_, i) in &flying {
+                    let home = self.campaign_flight(i).map_or(self.flights[i].wp, |f| f.home);
+                    self.flights[i].flags |= fflags::RTB;
+                    self.flights[i].wp = home;
+                }
+                if let Some(i) = sub.filter(|&i| self.asw.subs[i].alive && !self.asw.subs[i].done) {
+                    self.asw.subs.remove(i);
+                }
+                self.asw.ai_hunts.remove(k);
+                continue;
+            }
+            let at = self.asw.subs[sub.expect("not over")].at;
+            h.up |= !flying.is_empty();
+            if flying.iter().any(|&(_, i)| dist(self.flight_metres(i), at) < AI_SEARCH_RANGE) {
+                h.search += dt;
+            }
+            let stale = h.fix.is_none_or(|_| clock - h.fix_t > AI_REFIX);
+            if stale && h.search >= AI_LOCALIZE {
+                let (e, n) = (self.asw.gauss(), self.asw.gauss());
+                h.fix = Some([at[0] + e * AI_FIX_ERR, at[1] + n * AI_FIX_ERR]);
+                h.fix_t = clock;
+                h.search = 0.0;
+            }
+            if let Some(f) = h.fix.filter(|_| clock >= h.next_drop) {
+                for &(tag, i) in &flying {
+                    let n = h.dropped.iter().find(|d| d.0 == tag).map_or(0, |d| d.1);
+                    let p = self.flight_metres(i);
+                    if n >= AI_TORPEDOES || dist(p, f) > AI_DROP_RANGE {
+                        continue;
+                    }
+                    let id = self.asw.id();
+                    let heading = bearing(p, f);
+                    let program = TorpProgram { heading: None, delay: 2, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+                    self.asw.torpedoes.push(Torpedo {
+                        id,
+                        owner: AI_OWNER,
+                        p: [p[0], p[1], 20.0],
+                        heading,
+                        speed: 0.0,
+                        phase: TorpPhase::Air,
+                        t: 0.0,
+                        air: 1.5,
+                        program,
+                        base: p,
+                        base_heading: heading,
+                        target: None,
+                    });
+                    match h.dropped.iter_mut().find(|d| d.0 == tag) {
+                        Some(d) => d.1 += 1,
+                        None => h.dropped.push((tag, 1)),
+                    }
+                    h.next_drop = clock + AI_DROP_EVERY;
+                    h.search = 0.0;
+                    break;
+                }
+            }
+            // Out of torpedoes: home (the submarine runs on, the mission failed).
+            let left = flying.iter().any(|&(t, _)| h.dropped.iter().find(|d| d.0 == t).map_or(0, |d| d.1) < AI_TORPEDOES);
+            let running = self.asw.torpedoes.iter().any(|t| t.owner == AI_OWNER);
+            if !flying.is_empty() && !left && !running {
+                for &(_, i) in &flying {
+                    let home = self.campaign_flight(i).map_or(self.flights[i].wp, |f| f.home);
+                    self.flights[i].flags |= fflags::RTB;
+                    self.flights[i].wp = home;
+                }
+            }
+            self.asw.ai_hunts[k] = h;
+            k += 1;
+        }
     }
 
     /// Test aid: a buoy of `player`'s put in the water at `at` (m east, north) at once.
@@ -1133,7 +1302,11 @@ impl Sim {
     fn sink(&mut self, i: usize) {
         let s = &mut self.asw.subs[i];
         s.alive = false;
-        let (at, hunter) = (s.at, s.hunter);
+        let (at, hunter, ai) = (s.at, s.hunter, s.ai_hunt);
+        // The AI's: its mission achieved.
+        if let Some(tag) = ai.and_then(|m| self.asw.ai_hunts.iter().find(|h| h.mission == m)).and_then(|h| h.tags.first().copied()) {
+            self.emit(SimEvent::CampaignSubSunk { tag });
+        }
         // A campaign's: the hunter's objective.
         if let Some(p) = hunter.filter(|&p| self.pilot_exists(p as usize)) {
             let back = self.pl.id as usize;
@@ -1193,6 +1366,7 @@ impl Sim {
             for h in &helis {
                 self.tracker(h.id as usize);
             }
+            self.update_ai_hunts(1.0);
         }
         self.asw.wakes = self
             .asw
@@ -1899,7 +2073,7 @@ impl Sim {
             return;
         }
         // A campaign's hunts are each sortie's own (`sink`).
-        if self.asw.subs.iter().any(|s| s.hunter.is_some()) {
+        if self.asw.subs.iter().any(|s| s.hunter.is_some() || s.ai_hunt.is_some()) {
             return;
         }
         if self.asw.subs.iter().all(|s| !s.alive) {

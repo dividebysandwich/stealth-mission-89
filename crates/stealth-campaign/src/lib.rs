@@ -172,6 +172,10 @@ pub enum Report {
     Photographed {
         tag: u32,
     },
+    /// The submarine an AI ASW flight hunted (one of its aircraft `tag`) was sunk.
+    AiSubSunk {
+        tag: u32,
+    },
     /// A player stopped on a friendly airbase (his sortie goes on).
     PlayerLanded {
         player: PlayerId,

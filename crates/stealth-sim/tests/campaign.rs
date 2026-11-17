@@ -1405,3 +1405,45 @@ fn ai_jets_launch_from_the_catapults() {
     }
     assert_eq!(phases[4][0], Phase::Wait);
 }
+
+/// A campaign simulation of a theater with a friendly carrier (the Persian Gulf).
+fn carrier_campaign() -> Sim {
+    let d = data();
+    let s = MissionSettings { theater: 1, roe: 2, opponents: 1, kind: MissionKind::Strike, ..Default::default() };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(78)).unwrap();
+    m.world = d.gdata.theaters[1].world.clone();
+    m.weather = Default::default();
+    Sim::with_options(&d.sim, &m, SimOptions { campaign: true, ..Default::default() })
+}
+
+#[test]
+fn an_ai_asw_flight_finds_its_submarine_and_torpedoes_it() {
+    use stealth_sim::ai_missions::UH60;
+    let mut sim = carrier_campaign();
+    quiet(&mut sim);
+    let carrier = (3..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
+    let o = sim.objects()[carrier];
+    sim.spawn_ai_mission(carrier, UH60, AiTask::Patrol(o.x, o.y), 71, true);
+    sim.start_ai_hunt(5, 71, carrier, 9);
+    sim.spawn_ai_mission(carrier, UH60, AiTask::Patrol(o.x, o.y), 72, true);
+    sim.start_ai_hunt(5, 72, carrier, 9);
+    assert_eq!(sim.asw().subs.len(), 1, "one submarine for the mission");
+    assert_eq!(sim.asw().ai_hunts[0].tags, vec![71, 72]);
+    let mut sunk = None;
+    for t in 0..45 * 60 {
+        if run(&mut sim, &idle(), 1).iter().any(|e| matches!(e, SimEvent::CampaignSubSunk { tag: 71 })) {
+            sunk = Some(t);
+            break;
+        }
+    }
+    assert!(sunk.is_some_and(|t| t > 180), "not sunk: {:?} {:?}", sim.asw().ai_hunts, sim.asw().subs);
+    assert!(sim.asw().torpedoes.iter().all(|t| t.owner == stealth_sim::asw::AI_OWNER));
+    // The hunt is over: its helicopters fly home.
+    run(&mut sim, &idle(), 2);
+    assert!(sim.asw().ai_hunts.is_empty());
+    for tag in [71, 72] {
+        if let Some(i) = sim.flight_of_tag(tag) {
+            assert!(sim.flights()[i].flags & fflags::RTB != 0);
+        }
+    }
+}

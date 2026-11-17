@@ -1118,6 +1118,10 @@ pub enum SimEvent {
         unit: usize,
         tag: u32,
     },
+    /// Campaign: the submarine an AI flight's helicopters hunted (one of them `tag`) was sunk.
+    CampaignSubSunk {
+        tag: u32,
+    },
 }
 
 /// Cockpit lights driven by the threat / weapon code.
