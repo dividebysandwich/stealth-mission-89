@@ -10,7 +10,8 @@
 //!
 //! Test aids: `--asw-page sonar|wpn|map`, and `--asw-script "t:cmd,..."` (seconds after the
 //! seat is taken): `buoy=difar|dicass|bt[@east,north]` (km from the aircraft), `deep=0|1`,
-//! `active=<n>` (the n-th buoy, from 1, pings), `dip=0|1`, `depth=<m>`, `dipping=0|1` (its
+//! `active=<n>` (the n-th buoy, from 1, pings), `hover=0|1` (the dip hover asked for), `dip=0|1`
+//! (at his own console `dip=1` asks for the hover and lowers once there), `depth=<m>`, `dipping=0|1` (its
 //! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `torp=<hdg|auto>/<delay>/<pattern>`,
 //! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `smark` (MARK on the SONAR page), `tbuoy=<kind>@e,n` (a buoy put there at once), `markid=<A..H>`, `cursor=<bearing>` (the selected sensor's
 //! listening cursor, in the headset).
@@ -42,8 +43,10 @@ const CANVAS: Vec2 = Vec2::new(640.0, 480.0);
 const RELEASE_DIM: u8 = 222;
 const RELEASE_BRIGHT: u8 = 147;
 
-/// The hover the AI brings the aircraft to for a dip (world units over the sea, 40 ft).
+/// The hover the AI brings the aircraft to for a dip (world units over the sea, 40 ft), and how
+/// fast it comes down to it once hovering (world units a second, some 2.5 m/s).
 pub const DIP_HOVER_WU: f32 = 25.0;
+const DIP_DESCENT_WU: f32 = 5.0;
 
 /// Metres per world unit.
 pub const M_PER_WU: f64 = stealth_sim::aaa::M_PER_MAP / 32.0;
@@ -135,10 +138,13 @@ pub struct AswUi {
     /// A line shown on the status screen for a while.
     pub notice: Option<(String, f32)>,
     pub outbox: Vec<AswCmd>,
-    /// At his own console: DIP pressed, the AI bringing the aircraft to the hover first; the AI
-    /// to hold a low hover (that, or the sonar in the water).
-    pub dip_pending: bool,
+    /// At his own console: the AI to hold a hover (the dip hover asked for, or the sonar in
+    /// the water), the height (world units over the sea) it comes down to slowly, and whether it
+    /// is there. Test aid (`--asw-script dip=1`): the sonar lowered once there.
     pub low_hover: bool,
+    pub hover_height: Option<f32>,
+    pub in_hover: bool,
+    pub dip_pending: bool,
     /// At the console now (its choices are forgotten when he leaves it).
     pub at_console: bool,
     /// Test aid (`tbuoy`): buoys to put in the water at once.
@@ -172,6 +178,8 @@ impl Default for AswUi {
             outbox: Vec::new(),
             dip_pending: false,
             low_hover: false,
+            hover_height: None,
+            in_hover: false,
             at_console: false,
             test_buoys: Vec::new(),
             t: 0.0,
@@ -287,16 +295,11 @@ pub fn key(ui: &mut AswUi, k: ConsoleKey, crew: &AswCrew, sim: &stealth_sim::Sim
             ui.outbox.push(AswCmd::DropBuoy { kind, deep: ui.deep, at: None });
         }
         ConsoleKey::Ping => ping(ui, crew, sim, owner),
+        // The sonar down or up: from the dip hover (HOVER asks the pilot for it).
         ConsoleKey::Dip => {
-            let down = matches!(crew.dip.state, DipState::Lowering | DipState::Down) || ui.dip_pending;
-            // At his own console the AI comes to the hover first (`dip_pilot`).
-            if !down && sim.active_pilot() == owner && crew.dip.state != DipState::Broken {
-                ui.dip_pending = true;
-                ui.note("COMING TO THE HOVER");
-            } else {
-                ui.dip_pending = false;
-                ui.outbox.push(AswCmd::Dip(!down));
-            }
+            let down = matches!(crew.dip.state, DipState::Lowering | DipState::Down);
+            ui.dip_pending = false;
+            ui.outbox.push(AswCmd::Dip(!down));
             if !down {
                 ui.sensor = Some(0);
             }
@@ -585,12 +588,20 @@ fn draw_info(
             .and_then(|c| c.state().player_name(stealth_campaign::PlayerId(owner)))
             .unwrap_or("PILOT")
             .to_ascii_uppercase()
-    } else if matches!(crew.dip.state, DipState::Lowering | DipState::Down) {
-        "AI (DIP HOVER)".into()
+    } else if ui.in_hover {
+        "AI (IN DIP HOVER)".into()
+    } else if let Some(h) = ui.hover_height.filter(|_| ui.low_hover) {
+        format!("AI (HOVER {:.0} FT)", h as f64 * M_PER_WU / 0.3048)
     } else {
         "AI (ROUTE)".into()
     };
     line(cv, 1, &format!("PILOT {pilot}"), GREEN);
+    if crew.hover_req {
+        let there = owner_view(sim, owner).is_some_and(|v| {
+            (v.height as f64 * M_PER_WU) < 70.0 * 0.3048 && v.knots < 5
+        });
+        line(cv, 8, if there { "IN THE DIP HOVER" } else { "DIP HOVER REQUESTED" }, if there { GREEN } else { YELLOW });
+    }
     if let Some(v) = owner_view(sim, owner) {
         line(cv, 2, &format!("ALT {:>5.0} FT  SPD {:>3} KT", v.height as f64 * M_PER_WU / 0.3048, v.knots), GREEN);
     }
@@ -686,12 +697,14 @@ fn panel(
     }
 }
 
-/// At his own console: the AI holds a low hover while the operator dips (or is about to), and
-/// lowers the sonar once there.
+/// At his own console: the AI flying comes to a hover where it is when the operator asks for
+/// the dip hover, then down slowly to 40 ft over the sea, and holds it while the sonar is in
+/// the water. The operator lowers and raises the sonar.
 fn dip_pilot(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
     k: Res<crate::flight::FlightConstants>,
+    time: Res<Time>,
     mut ui: ResMut<AswUi>,
     player: Query<&crate::flight::Aircraft, With<crate::flight::Player>>,
 ) {
@@ -699,18 +712,33 @@ fn dip_pilot(
     let (Some(combat), true) = (combat, own) else {
         ui.low_hover = false;
         ui.dip_pending = false;
+        ui.hover_height = None;
+        ui.in_hover = false;
         return;
     };
     let me = combat.sim.active_pilot();
     let crew = combat.sim.asw().crew(me).cloned().unwrap_or_default();
     let wet = !matches!(crew.dip.state, DipState::Up | DipState::Broken);
-    ui.low_hover = ui.dip_pending || wet;
-    if !ui.dip_pending {
+    ui.low_hover = crew.hover_req || wet || ui.dip_pending;
+    let Ok(a) = player.single() else { return };
+    if !ui.low_hover || k.heli.is_none() {
+        ui.hover_height = None;
+        ui.in_hover = false;
         return;
     }
-    let Ok(a) = player.single() else { return };
-    let low = (a.altitude - a.ground_altitude - DIP_HOVER_WU).abs() < 8.0;
-    if a.auto_hover() && low && a.knots() < 4.0 && k.heli.is_some() {
+    let agl = a.altitude - a.ground_altitude;
+    let hovering = a.auto_hover() && a.knots() < 4.0;
+    // At the height it was, until it hovers; then down slowly.
+    let h = ui.hover_height.get_or_insert(agl.max(DIP_HOVER_WU));
+    if a.auto_hover() {
+        *h = (*h - DIP_DESCENT_WU * time.delta_secs()).max(DIP_HOVER_WU);
+    }
+    let there = hovering && (agl - DIP_HOVER_WU).abs() < 8.0;
+    if there && !ui.in_hover && crew.hover_req && !wet {
+        ui.note("IN THE DIP HOVER: LOWER THE SONAR");
+    }
+    ui.in_hover = there;
+    if ui.dip_pending && there {
         ui.dip_pending = false;
         ui.outbox.push(AswCmd::Dip(true));
     }
@@ -833,8 +861,13 @@ fn script(
                     ui.sensor = Some(b.id);
                 }
             }
-            "dip" if on && sim.active_pilot() == owner => ui.dip_pending = true,
+            // At his own console: the dip hover asked for, the sonar lowered once there.
+            "dip" if on && sim.active_pilot() == owner => {
+                ui.dip_pending = true;
+                ui.outbox.push(AswCmd::Hover(true));
+            }
             "dip" => ui.outbox.push(AswCmd::Dip(on)),
+            "hover" => ui.outbox.push(AswCmd::Hover(on)),
             "depth" => ui.outbox.push(AswCmd::DipDepth(val.parse().unwrap_or(60))),
             "dipping" => ui.outbox.push(AswCmd::DipMode { active: on }),
             "mad" => ui.outbox.push(AswCmd::Mad(on)),

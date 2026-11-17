@@ -3948,10 +3948,8 @@ The pilot flies; the **sensor operator** in the cabin runs the sonar and the wea
 either:
 
 - **Alone.** The in-flight menu's **GUNNER'S SEAT** entry takes you back to the console (`--seat
-  gunner[@seconds]`), and the AI flies: on along the route, or holding a hover. When you lower the
-  dipping sonar from the console, the AI first slows down and comes to a hover 40 ft over the sea,
-  then the sonar goes down; it holds the hover while the sonar is in the water. **LEAVE** takes you
-  back to the pilot's seat.
+  gunner[@seconds]`), and the AI flies: on along the route, or holding the dip hover you ask for
+  (**HOVER**, 14.4). **LEAVE** takes you back to the pilot's seat.
 - **With a friend.** In a campaign, a second player joins your Seahawk from the FLIGHTS tab (*JOIN
   AS GUNNER*) and sits at the console while you fly. He hears and sees what the sensors report; the
   route he lays becomes your waypoints; his torpedo release drops your torpedoes. If you leave or
@@ -3980,7 +3978,10 @@ The MAD is the pilot's: the **MAD** page is on his right MFD (or any MFD's forma
 - A pass over the threshold drops an **automatic mark**: a fix where the bird was, a red cross on
   the operator's map, which the tracker takes as a fix (**MARKS** counts them). **MARK** drops one by
   hand, where you are now.
-- **DIP** lowers or raises the dipping sonar (from a low, slow hover: 14.4).
+- **DIP** lowers or raises the dipping sonar (from a low, slow hover: 14.4). When the operator asks
+  for the dip hover, the page shows **DIP HOVER REQ** in yellow, and **IN DIP HOVER** in green once
+  you are below 70 ft and 5 kt; a message on the HUD tells you too when he asks, and when he no
+  longer needs it.
 
 Fly MAD runs low and straight, 60 to 100 kt, across the area the sonar points to: a cloverleaf of
 crossing runs over the estimated position finds it.
@@ -4001,7 +4002,7 @@ state, the buoys left, the torpedoes and their arming, and the layer.
 | **SSQ-53 DIFAR** buoy | Listens, and tells the **direction** of what it hears. Four carried. |
 | **SSQ-62 DICASS** buoy | Listens all round (no direction), or **pings**: an echo gives range, bearing and closing speed. 24 pings, one every 10 s. Two carried. |
 | **SSQ-36 BT** buoy | Measures the water's temperature down from the surface: it reports where the **layer** is some 25 s after it splashes, then sinks. Two carried. |
-| **AQS-13F dipping sonar** | Lowered on its cable from the hover, to as deep as 440 ft (134 m): listens (with direction) or pings (as the DICASS, farther). |
+| **AQS-13F dipping sonar** | Lowered on its cable from the hover, to as deep as 440 ft (134 m): listens (with direction) or pings: a far more powerful ping than the DICASS's, finding submarines out to some 30 km (the DICASS 12 km). |
 
 - **Dropping a buoy.** The **DIFAR**, **DICASS** and **BT** keys drop one at once, where the
   aircraft is: it falls on its chute (a few seconds) and splashes. On the MAP page, the **D**, **C**
@@ -4010,9 +4011,21 @@ state, the buoys left, the torpedoes and their arming, and the layer.
   (its **SCUTTLE** button on the SONAR page) to drop another. A buoy lives 30 minutes.
 - **Hydrophone depth.** The SONAR page's **HYD** button sets how deep the next buoys hang their
   hydrophones: **SHAL** (27 m) or **DEEP** (120 m).
-- **The dipping sonar.** **DIP** lowers it (at most 70 ft over the sea, at most 5 kt) or raises it;
-  **DEPTH-** and **DEPTH+** move it 10 m up or down. With the sonar in the water, flying faster than
-  15 kt or climbing 150 ft above it **parts the cable**: the sonar is lost for the sortie.
+- **The dip hover.** The sonar goes down only from a low, slow hover, and the pilot flies that:
+  the **HOVER** button (in the SONAR page's title bar, and on the MAP page) asks him for it, and
+  lights yellow while asked; press it again when you no longer need it.
+  - *The AI flying* (you alone at the console): it slows down and comes to a hover where it is,
+    then sinks slowly (some 8 ft a second) to **40 ft** over the sea and holds it there. The status
+    screen's pilot line follows it: *AI (HOVER 180 FT)* on the way down, *AI (IN DIP HOVER)* once
+    there, and the console tells you to lower the sonar. It keeps the hover while the sonar is in
+    the water, even after you cancel the request; with the sonar up and the request cancelled it
+    flies on along the route.
+  - *A player flying*: he gets a message on his HUD, and his MAD page shows *DIP HOVER REQ* until
+    he is there. Your status screen shows *DIP HOVER REQUESTED*, then *IN THE DIP HOVER*.
+- **The dipping sonar.** **DIP** lowers it or raises it: only in the dip hover (at most 70 ft over
+  the sea, at most 5 kt), else the console says so. **DEPTH-** and **DEPTH+** move it 10 m up or
+  down. With the sonar in the water, flying faster than 15 kt or climbing 150 ft above it **parts
+  the cable**: the sonar is lost for the sortie.
 - **Pinging.** **PING** (or the sensor's own button on the SONAR page) switches the selected DICASS
   or the dipping sonar between listening and pinging. A ping finds what passive listening misses and
   gives the range, but every submarine within 25 km hears it: it turns away, sprints and goes deep

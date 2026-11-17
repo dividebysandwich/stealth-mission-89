@@ -227,9 +227,10 @@ fn row_buttons(top: f32, h: f32, kind: Option<BuoyKind>) -> Vec<(RowButton, [f32
     v
 }
 
-/// The title bar's hydrophone depth button, the mark letter's.
+/// The title bar's hydrophone depth button, the mark letter's, the dip hover's.
 const DEPTH_BUTTON: [f32; 4] = [500.0, 3.0, 134.0, 19.0];
 const MARK_BUTTON: [f32; 4] = [400.0, 3.0, 92.0, 19.0];
+pub const HOVER_BUTTON: [f32; 4] = [326.0, 3.0, 66.0, 19.0];
 
 fn inside(r: [f32; 4], p: Vec2) -> bool {
     p.x >= r[0] && p.x <= r[0] + r[2] && p.y >= r[1] && p.y <= r[1] + r[3]
@@ -263,6 +264,10 @@ pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: 
     }
     if inside(MARK_BUTTON, p) {
         ui.mark_id = (ui.mark_id + 1) % marks::IDS as u8;
+        return;
+    }
+    if inside(HOVER_BUTTON, p) {
+        ui.outbox.push(AswCmd::Hover(!crew.hover_req));
         return;
     }
     for (k, &(id, kind)) in list.iter().enumerate() {
@@ -319,6 +324,7 @@ pub fn draw(
     cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, GREY);
     let hyd = if ui.deep { "HYD DEEP 120M" } else { "HYD SHAL 27M" };
     stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, hyd, 7.0, 1.1, WHITE, Align::Centre);
+    hover_button(cv, HOVER_BUTTON, crew.hover_req);
     let r = MARK_BUTTON;
     cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, CYAN);
     let t = format!("MARK ID {}", marks::letter(ui.mark_id));
@@ -457,6 +463,17 @@ pub fn draw(
         }
     }
     Some(pic)
+}
+
+/// The HOVER button (the SONAR and MAP pages): asks the pilot for the dip hover (yellow while
+/// asked).
+pub fn hover_button(cv: &mut Canvas, r: [f32; 4], on: bool) {
+    if on {
+        cv.fill_rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, YELLOW);
+    }
+    cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, if on { YELLOW } else { GREY });
+    let col = if on { BLACK } else { WHITE };
+    stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, "HOVER", 7.0, 1.1, col, Align::Centre);
 }
 
 /// A BT buoy's temperature profile: warm and steady down to the layer, colder under it.

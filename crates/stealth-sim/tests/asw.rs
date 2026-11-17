@@ -535,3 +535,47 @@ fn a_campaign_barrier_hunt_starts_on_the_enemys_side_of_the_line_and_makes_for_t
     // The crew sees the line on the map.
     assert_eq!(crew(&sim).barrier, Some((pa, pb)));
 }
+
+#[test]
+fn the_operator_asks_for_the_dip_hover() {
+    let mut sim = seahawk();
+    hunt(&mut sim, [HOME[0] + 30_000.0, HOME[1]], 0.0, 60.0, None);
+    run(&mut sim, &at(HOME[0], HOME[1], 300.0, 90.0), 0.2);
+    sim.asw_command(0, AswCmd::Hover(true)).unwrap();
+    assert!(crew(&sim).hover_req);
+    sim.asw_command(0, AswCmd::Hover(false)).unwrap();
+    assert!(!crew(&sim).hover_req);
+}
+
+#[test]
+fn the_dipping_sonar_pings_much_farther_than_a_dicass() {
+    // Beyond a DICASS's reach, well within the dipping sonar's.
+    let far = [HOME[0] + 20_000.0, HOME[1]];
+    let echo = |dip: bool| {
+        let mut sim = seahawk();
+        hunt(&mut sim, far, 0.0, 200.0, None);
+        let ps = at(HOME[0], HOME[1], 12.0, 0.0);
+        run(&mut sim, &ps, 0.2);
+        if dip {
+            sim.asw_command(0, AswCmd::DipDepth(60)).unwrap();
+            sim.asw_command(0, AswCmd::Dip(true)).unwrap();
+            run(&mut sim, &ps, 25.0);
+            sim.asw_command(0, AswCmd::DipMode { active: true }).unwrap();
+        } else {
+            sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Dicass, deep: true, at: None }).unwrap();
+            run(&mut sim, &ps, 5.0);
+            let id = sim.asw().buoys[0].id;
+            sim.asw_command(0, AswCmd::BuoyMode { id, active: true }).unwrap();
+        }
+        let mut ranged = None;
+        for _ in 0..60 {
+            run(&mut sim, &ps, 0.25);
+            let s = if dip { crew(&sim).dip.sample.clone() } else { sim.asw().buoys[0].sample.clone() };
+            ranged = ranged.or(s.lines.iter().find_map(|l| l.range));
+        }
+        ranged
+    };
+    assert_eq!(echo(false), None, "out of the DICASS's reach");
+    let r = echo(true).expect("the dipping sonar's echo") as f64;
+    assert!((r - 20_000.0).abs() < 1000.0, "{r}");
+}

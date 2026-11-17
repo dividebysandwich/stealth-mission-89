@@ -38,9 +38,11 @@ enum Btn {
     RangeOut,
     /// A buoy of this kind (1 DIFAR, 2 DICASS, 3 BT) to drop at the next point touched.
     Drop(u8),
+    /// The dip hover asked of the pilot, or no longer.
+    Hover,
 }
 
-fn buttons() -> [(Btn, [f32; 8], &'static str); 8] {
+fn buttons() -> [(Btn, [f32; 8], &'static str); 9] {
     [
         (Btn::Drop(1), [176.0, 3.0, 36.0, 19.0, 0.0, 0.0, 0.0, 0.0], "D"),
         (Btn::Drop(2), [216.0, 3.0, 36.0, 19.0, 0.0, 0.0, 0.0, 0.0], "C"),
@@ -48,6 +50,7 @@ fn buttons() -> [(Btn, [f32; 8], &'static str); 8] {
         (Btn::Centre, [300.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "CTR"),
         (Btn::Delete, [356.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "DEL"),
         (Btn::Clear, [412.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "CLR"),
+        (Btn::Hover, [466.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "HOVER"),
         (Btn::RangeIn, [520.0, 3.0, 50.0, 19.0, 0.0, 0.0, 0.0, 0.0], "RNG-"),
         (Btn::RangeOut, [576.0, 3.0, 56.0, 19.0, 0.0, 0.0, 0.0, 0.0], "RNG+"),
     ]
@@ -102,7 +105,7 @@ fn send_route(ui: &mut AswUi) {
 }
 
 /// A touch on the page (canvas units).
-pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
+pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
     let c = centre(ui, sim, owner);
     match phase {
         DragPhase::Start => {
@@ -129,6 +132,7 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &s
                         let kind = BuoyKind::from_key(n);
                         ui.drop = if ui.drop == kind { None } else { kind };
                     }
+                    Btn::Hover => ui.outbox.push(AswCmd::Hover(!crew.hover_req)),
                 }
                 return;
             }
@@ -136,7 +140,7 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, _crew: &AswCrew, sim: &s
                 return;
             }
             // A mark's letter on its line: that mark selected (DEL deletes it).
-            if let Some(i) = mark_at(ui, sim, _crew, owner, c, p) {
+            if let Some(i) = mark_at(ui, sim, crew, owner, c, p) {
                 ui.sel_mark = Some(i);
                 ui.sel_wp = None;
                 return;
@@ -245,6 +249,10 @@ pub fn draw(
         stroke_text_at(cv, 320.0, BOTTOM - 10.0, &t, 8.0, 1.2, YELLOW, Align::Centre);
     }
     for (b, r, label) in buttons() {
+        if b == Btn::Hover {
+            super::sonar::hover_button(cv, [r[0], r[1], r[2], r[3]], crew.hover_req);
+            continue;
+        }
         let lit = match b {
             Btn::Centre => ui.centre.is_none(),
             Btn::Drop(n) => ui.drop.is_some_and(|k| k.index() as u8 + 1 == n),

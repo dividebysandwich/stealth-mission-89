@@ -400,8 +400,8 @@ fn orbit(
     let Ok((mut a, pos)) = player.single_mut() else { return };
     let own = manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner());
     // The MH-60R's operator wants the dipping sonar: a low hover (`asw::dip_pilot`).
-    if k.heli.is_some() && own && asw.as_deref().is_some_and(|u| u.low_hover) {
-        crate::flight::crew_low_hover(&mut a, &k, crate::asw::DIP_HOVER_WU);
+    if k.heli.is_some() && own && let Some(u) = asw.as_deref().filter(|u| u.low_hover) {
+        crate::flight::crew_low_hover(&mut a, &k, u.hover_height.unwrap_or(crate::asw::DIP_HOVER_WU));
         state.height = None;
         return;
     }

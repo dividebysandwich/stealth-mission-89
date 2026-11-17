@@ -85,17 +85,19 @@ const MAD_MARK: i16 = 30;
 /// Sound (dB): the ping's source level, a submarine's target strength, the detection
 /// thresholds, the directivity of DIFAR and of the active transducers, the layer's loss.
 const PING_SL: f64 = 215.0;
+/// The dipping sonar's ping: a bigger transducer, far more power than a buoy's battery (dB).
+const DIP_SL: f64 = 228.0;
 const TARGET_STRENGTH: f64 = 15.0;
 const PASSIVE_DT: f64 = 0.0;
 const ACTIVE_DT: f64 = 10.0;
 const DIFAR_DI: f64 = 5.0;
 const ACTIVE_DI: f64 = 10.0;
 const LAYER_LOSS: f64 = 15.0;
-/// Active ranges (m): the DICASS's and the dipping sonar's.
+/// Active ranges (m): the DICASS's and (below) the dipping sonar's.
 const DICASS_RANGE: f64 = 12_000.0;
 /// Ships farther than this (m) from every sensor are not worked out (their noise is lost there).
 const SHIP_HEARD: f64 = 40_000.0;
-const DIP_RANGE: f64 = 18_000.0;
+const DIP_RANGE: f64 = 30_000.0;
 /// A submarine hears a ping within this range (m) and evades.
 const COUNTER_DETECT: f64 = 25_000.0;
 /// Sensor reports a second (each a waterfall's row).
@@ -560,6 +562,10 @@ pub struct AswCrew {
     /// Drops waiting for the aircraft to reach their point: kind, deep, where (m east, north).
     pub pending: Vec<(BuoyKind, bool, [f64; 2])>,
     pub dip: Dip,
+    /// The operator asks for the dip hover (the AI flying comes down to it; a player pilot is
+    /// told).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hover_req: bool,
     pub mad_down: bool,
     /// MAD signal (tenths of nT) now, and its marks.
     pub mad: i16,
@@ -693,6 +699,8 @@ pub enum AswCmd {
     /// A DICASS listens or pings.
     BuoyMode { id: u16, active: bool },
     Scuttle { id: u16 },
+    /// The operator asks the pilot for the dip hover (40 ft over the sea), or no longer.
+    Hover(bool),
     /// Lower or raise the dipping sonar.
     Dip(bool),
     /// Its depth set (m).
@@ -1166,6 +1174,19 @@ impl Sim {
                 let n = self.asw.buoys.len();
                 self.asw.buoys.retain(|b| !(b.id == id && b.owner == owner));
                 if self.asw.buoys.len() == n { Err(text!("asw-no-such-buoy")) } else { Ok(()) }
+            }
+            AswCmd::Hover(on) => {
+                let c = self.asw.crew_mut(owner);
+                let changed = c.hover_req != on;
+                c.hover_req = on;
+                // Another player at the console: the pilot is told.
+                if changed && player != owner {
+                    let back = self.pl.id as usize;
+                    self.activate(owner as usize);
+                    self.msg(if on { text!("asw-hover-request") } else { text!("asw-hover-cancelled") });
+                    self.activate(back);
+                }
+                Ok(())
             }
             AswCmd::Dip(down) => {
                 let d = &mut self.asw.crew_mut(owner).dip;
@@ -1916,8 +1937,9 @@ impl Sim {
             d
         };
         let mut sensors: Vec<(u8, u16, [f64; 2], f64, Option<f64>, bool, &mut Sample)> = Vec::new();
-        // The pings this second: who (owner, sensor), where, how deep, how far they reach.
-        let mut pinged: Vec<(u8, u16, [f64; 2], f64, f64)> = Vec::new();
+        // The pings this second: who (owner, sensor), where, how deep, how far they reach, how
+        // loud.
+        let mut pinged: Vec<(u8, u16, [f64; 2], f64, f64, f64)> = Vec::new();
         for b in self.asw.buoys.iter_mut().filter(|b| b.fall <= 0.0 && b.kind != BuoyKind::Bt) {
             let ping = b.kind == BuoyKind::Dicass && b.active && b.pings > 0 && {
                 b.ping_in -= dt;
@@ -1927,7 +1949,7 @@ impl Sim {
                 b.ping_in = PING_EVERY;
                 b.pings -= 1;
                 alerts.push(b.at);
-                pinged.push((b.owner, b.id, b.at, b.depth as f64, DICASS_RANGE));
+                pinged.push((b.owner, b.id, b.at, b.depth as f64, DICASS_RANGE, PING_SL));
             }
             let di = if b.kind == BuoyKind::Difar { Some(DIFAR_DI) } else { None };
             sensors.push((b.owner, b.id, b.at, b.depth as f64, di, ping, &mut b.sample));
@@ -1944,7 +1966,7 @@ impl Sim {
             if ping {
                 d.ping_in = PING_EVERY;
                 alerts.push(d.at);
-                pinged.push((c.owner, 0, d.at, d.depth as f64, DIP_RANGE));
+                pinged.push((c.owner, 0, d.at, d.depth as f64, DIP_RANGE, DIP_SL));
             }
             sensors.push((c.owner, 0, d.at, d.depth as f64, Some(DIFAR_DI), ping, &mut d.sample));
         }
@@ -1964,8 +1986,8 @@ impl Sim {
                     line.bearing = Some(deg(b));
                 }
                 if ping {
-                    let reach = if sensor == 0 { DIP_RANGE } else { DICASS_RANGE };
-                    let excess = PING_SL - 2.0 * tl + TARGET_STRENGTH - (noise - ACTIVE_DI) - ACTIVE_DT;
+                    let (reach, sl) = if sensor == 0 { (DIP_RANGE, DIP_SL) } else { (DICASS_RANGE, PING_SL) };
+                    let excess = sl - 2.0 * tl + TARGET_STRENGTH - (noise - ACTIVE_DI) - ACTIVE_DT;
                     if excess > 0.0 && r < reach {
                         let err_b = (1.5 + 10.0 / (1.0 + excess)) * DEG;
                         let b = true_b + n1 * err_b;
@@ -2025,13 +2047,13 @@ impl Sim {
             // way round by the submarine), however quiet the submarine runs.
             let mut heard = false;
             let mut due = std::mem::take(&mut sample.due);
-            for &(o, id, p, p_depth, reach) in &pinged {
+            for &(o, id, p, p_depth, reach, sl) in &pinged {
                 let r = dist(p, at);
                 if (o, id) == (owner, sensor) || r >= PING_HEARD {
                     continue;
                 }
                 heard = true;
-                let snr = PING_SL - ocean.loss(r, depth, p_depth) - noise;
+                let snr = sl - ocean.loss(r, depth, p_depth) - noise;
                 lines.push(Line {
                     snr: snr.clamp(0.0, 60.0) as i8,
                     bearing: di.map(|_| deg(bearing(at, p))),
@@ -2044,7 +2066,7 @@ impl Sim {
                     if r1 >= reach {
                         continue;
                     }
-                    let excess = PING_SL - ocean.loss(r1, p_depth, s.depth) - ocean.loss(r2, depth, s.depth)
+                    let excess = sl - ocean.loss(r1, p_depth, s.depth) - ocean.loss(r2, depth, s.depth)
                         + TARGET_STRENGTH
                         - noise
                         + di.unwrap_or(0.0)

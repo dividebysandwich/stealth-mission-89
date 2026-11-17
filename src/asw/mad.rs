@@ -1,6 +1,7 @@
 //! The pilot's MAD page (`avionics::Format::Mad`, the MH-60R's MFDs): the magnetic anomaly
 //! detector's trace over the last 30 seconds (newest at the right) against its mark threshold,
-//! the towed body's state and the height and speed it needs, the dipping sonar's state. Its
+//! the towed body's state and the height and speed it needs, the dipping sonar's state, the
+//! operator's request for the dip hover. Its
 //! buttons: MAD (the body out or in), MARK (a fix here), DIP (the sonar down or up), the gain.
 
 use std::collections::VecDeque;
@@ -34,6 +35,8 @@ pub struct MadTrace {
     pub dip: DipState,
     pub dip_depth: f32,
     pub marks: usize,
+    /// The operator asks for the dip hover.
+    pub hover_req: bool,
 }
 
 /// Samples the crew's MAD (the pilot's own aircraft, or the one he is the operator of), and
@@ -77,6 +80,7 @@ pub fn sample(
     }
     trace.dip = crew.dip.state;
     trace.dip_depth = crew.dip.depth;
+    trace.hover_req = crew.hover_req;
     trace.marks = crew.fixes.iter().filter(|f| f.how == 2).count();
     // Test aid `SM89_ASW_PNG`: the page as an MFD draws it.
     if std::env::var_os("SM89_ASW_PNG").is_some() && trace.samples.len().is_multiple_of(10) {
@@ -171,4 +175,10 @@ pub fn draw(c: &mut Canvas, t: &MadTrace, gain: u8) {
     };
     let col = if t.dip == DipState::Broken { RED } else { CYAN };
     text(c, x0, h - 24.0, &dip, col, Align::Left);
+    // The operator wants the dip hover: 40 ft (under 70), under 5 kt.
+    if t.hover_req {
+        let there = t.height_ft < 70.0 && t.knots < 5.0;
+        let s = if there { "IN DIP HOVER" } else { "DIP HOVER REQ" };
+        text(c, x1, h - 24.0, s, if there { GREEN } else { YELLOW }, Align::Right);
+    }
 }
