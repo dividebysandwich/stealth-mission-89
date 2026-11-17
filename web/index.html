@@ -43,15 +43,24 @@
     #choice li b::before { content: "> "; }
     #choice .facts, #choice li span { color: #4a8a4a; font-size: 14px; }
     #choice .facts { margin: 4px 0 14px; }
-    #choice .btn { display: block; width: 100%; box-sizing: border-box; padding: 12px; font: inherit;
-                   font-weight: bold; letter-spacing: 1px; text-align: center; text-decoration: none;
-                   cursor: pointer; color: #8f8; border: 1px solid #1d4a1d;
-                   background: rgba(4, 12, 6, 0.75); }
-    #choice .btn:hover, #choice .btn:focus-visible { color: #cfc; border-color: #cfc; }
-    #choice .btn.play { color: #031003; background: #8f8; border-color: #8f8; }
-    #choice .btn.play:hover, #choice .btn.play:focus-visible { background: #cfc; color: #031003; }
-    #choice .btn.discord { color: #fff; background: #5865f2; border-color: #5865f2; }
-    #choice .btn.discord:hover, #choice .btn.discord:focus-visible { background: #7984f5; }
+    /* Buttons: the main menu's (src/menu.rs, BigButton, left-aligned, apply_terminal_style's
+       colours): a field with a frame, its icon then its label in Hack 22; lit (a gradient, a
+       glowing edge) under the pointer, and always for the primary one (PLAY, as FLY). */
+    @font-face { font-family: lucide; src: url(assets/fonts/lucide.ttf); font-display: block; }
+    .btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px;
+           box-sizing: border-box; padding: 6px 10px 6px 20px; margin: 0; text-align: left;
+           text-decoration: none; cursor: pointer; overflow-wrap: anywhere;
+           font: 22px/1.2 Hack, "DejaVu Sans Mono", ui-monospace, Menlo, Consolas, monospace;
+           color: #6cfbae; background: #091d15; border: 1px solid #135438; border-radius: 0; }
+    .btn::before { content: "\e0b2"; font: 22px/1 lucide; flex: none; }
+    .btn.play::before { content: "\e13c"; }
+    .btn.discord::before { content: "\e116"; }
+    .btn.github::before { content: "\e28d"; }
+    .btn.play, .btn:hover, .btn:focus-visible { outline: none; color: #b7ffd8;
+           background: linear-gradient(#1f9c5b, #176f46); border: 1.5px solid #3de78c;
+           padding-left: 19.5px; box-shadow: 0 0 0 4px rgba(61, 231, 140, 0.25); }
+    .btn:hover, .btn:focus-visible { box-shadow: 0 0 0 4px rgba(61, 231, 140, 0.45); }
+    .btn:active { background: linear-gradient(#176f46, #1f9c5b); }
     #progress { width: min(420px, 100%); }
     #progress .row { display: flex; justify-content: space-between; font-size: 14px; }
     #phase { letter-spacing: 2px; }
@@ -66,12 +75,7 @@
     #bytes { color: #4a8a4a; font-size: 14px; min-height: 1.5em; overflow-wrap: anywhere; }
     #links { margin-top: 32px; width: min(420px, 100%); }
     #links p { color: #4a8a4a; font-size: 14px; margin: 0 0 8px; }
-    #links a { display: block; text-decoration: none; padding: 8px 12px; margin-top: 8px;
-               font-weight: bold; letter-spacing: 1px; }
-    #links a.discord { color: #fff; background: #5865f2; }
-    #links a.discord:hover, #links a.discord:focus-visible { background: #7984f5; }
-    #links a.download { color: #8f8; border: 1px solid #1d4a1d; background: rgba(4, 12, 6, 0.75); }
-    #links a.download:hover, #links a.download:focus-visible { color: #cfc; border-color: #cfc; }
+    #links .btn { margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -315,7 +319,7 @@
         <p class="facts" data-i18n="platforms">Windows, Linux and macOS, Steam Deck and Steam Frame</p>
         <a class="btn discord" href="https://discord.gg/zjjGeKKpC" target="_blank" rel="noopener" data-i18n="discord_btn">DISCORD</a>
         <p class="facts" data-i18n="discord_facts">Fly together, report bugs and share missions</p>
-        <a class="btn" href="https://github.com/dividebysandwich/stealth-mission-89/" target="_blank" rel="noopener" data-i18n="github">GITHUB</a>
+        <a class="btn github" href="https://github.com/dividebysandwich/stealth-mission-89/" target="_blank" rel="noopener" data-i18n="github">GITHUB</a>
         <p class="facts" data-i18n="github_facts">The source code</p>
       </div>
       <div class="col why">
@@ -340,8 +344,8 @@
     <!-- Usable before the game has finished downloading. -->
     <div id="links" hidden>
       <p data-i18n="while">While the game loads:</p>
-      <a class="discord" href="https://discord.gg/zjjGeKKpC" target="_blank" rel="noopener" data-i18n="discord">JOIN THE DISCORD</a>
-      <a class="download" href="download.html" target="_blank" data-i18n="download">DOWNLOAD THE DESKTOP GAME</a>
+      <a class="btn discord" href="https://discord.gg/zjjGeKKpC" target="_blank" rel="noopener" data-i18n="discord">JOIN THE DISCORD</a>
+      <a class="btn download" href="download.html" target="_blank" data-i18n="download">DOWNLOAD THE DESKTOP GAME</a>
     </div>
   </div></div>
   <script>
