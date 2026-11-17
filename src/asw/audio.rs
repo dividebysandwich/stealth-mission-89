@@ -6,8 +6,8 @@
 //! noise. Pointed at a contact's trace (within `CURSOR_BAND` of its bearing) that contact comes
 //! up (an omnidirectional sensor, a passive DICASS, hears every contact faintly, whatever the
 //! cursor):
-//! - a submarine: the water's rush past its hull beating slowly with its screw, its machinery's
-//!   hum (its 50 or 60 Hz line) faint under it;
+//! - a submarine on electric drive (no cavitation): the smooth rush of water past its hull, its
+//!   machinery's hum (its 50 or 60 Hz line) and its motor's whine faint under it;
 //! - a surface ship: its screws alone, the recorded `ship-big1_loop` (the carrier) or
 //!   `ship-med1_loop` (the others; made to loop by tools/gen_ship_loops.py), played faster or
 //!   slower with its blade rate.
@@ -38,8 +38,12 @@ const RATE: u32 = 48_000;
 /// rate (Hz).
 const TORPEDO_SPEED: f64 = 2.4;
 const TORPEDO_BEAT: f32 = 31.0;
-/// A submarine's machinery hum, against its flow noise (subtle).
+/// A submarine's machinery hum, against its flow noise (subtle), and its electric motor's whine
+/// (a harmonic of the hum, fainter still). It runs on its batteries or turbines with a slow,
+/// skewed screw: no cavitation, no screw beat to speak of.
 const HUM: f32 = 0.06;
+const WHINE: f32 = 0.02;
+const WHINE_HARMONIC: f32 = 7.0;
 /// What an omnidirectional sensor (a passive DICASS) hears, against a contact on the cursor.
 const OMNI_GAIN: f32 = 0.25;
 const PING_HZ: f32 = 3500.0;
@@ -285,7 +289,7 @@ fn follow(
 /// position.
 #[derive(Default, Clone, Copy)]
 struct VoiceState {
-    phase: [f32; 2],
+    phase: [f32; 3],
     beat: f32,
     lp: f32,
     pos: f64,
@@ -388,13 +392,16 @@ impl Synth {
             let speed = (blade / RECORDED_BLADE).clamp(0.6, 1.6) as f64;
             g * Self::looped(clip, &mut st.pos, speed) * 4.0
         } else {
-            // A submarine: the rush of the water past its hull beating slowly with its screw,
-            // its machinery's hum (50 or 60 Hz, as it is) faint under it.
-            st.beat = (st.beat + blade / 6.0 * dt).fract();
-            let beat = 0.7 + 0.3 * (st.beat * tau).sin();
-            st.lp += (w - st.lp) * 0.02;
+            // A submarine on electric drive: the smooth rush of the water past its hull, swelling
+            // very slowly (no cavitating screw), its machinery's hum (50 or 60 Hz, as it is)
+            // faint under it and the motor's thin whine fainter still.
+            st.beat = (st.beat + blade / 40.0 * dt).fract();
+            let swell = 0.9 + 0.1 * (st.beat * tau).sin();
+            st.lp += (w - st.lp) * 0.012;
             let hum = (st.phase[0] * tau).sin() * 0.8 + (st.phase[1] * tau).sin() * 0.2;
-            g * (beat * st.lp * 5.5 + hum * HUM)
+            st.phase[2] = (st.phase[2] + tone * WHINE_HARMONIC * dt).fract();
+            let whine = (st.phase[2] * tau).sin();
+            g * (swell * st.lp * 6.5 + hum * HUM + whine * WHINE)
         }
     }
 }
