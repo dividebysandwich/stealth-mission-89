@@ -315,15 +315,17 @@ def reeling_machine():
     rails += [B((cx + s * 0.32, cy + d, -0.21), (0.025, 0.025, 0.31)) for s in (-1, 1) for d in (-0.22, 0.22)]
     merged("yellow", "yellow", rails)
     box("black", "black", (cx, cy + 0.351, -0.75), (0.30, 0.004, 0.12))
-    mesh_label("SONAR", (cx, cy + 0.354, -0.75), 0.12)
+    mesh_label("SONAR", (cx, cy + 0.354, -0.75), 0.040)
     box("metal", "metal", (cx - 0.20, cy + 0.40, -0.92), (0.14, 0.12, 0.14))
 
 
-def mesh_label(text, at, w, rot=Euler((0, 0, 0)), parent=None):
-    """An engraved placard (`label_TEXT`), facing -Y."""
-    name = "label_" + text
-    lib.material(name, (0.1, 0.4, 0.1))
-    return lib.mesh_object(name, lib.quad_mesh(name, w, w * 11 / 28, name), at, rot, parent=parent,
+def mesh_label(text, at, h, rot=Euler((0, 0, 0)), parent=None):
+    """A legend printed on the panel (`legend_TEXT`: no key round it), its text `h` high, facing
+    -Y."""
+    name = "legend_" + text
+    lib.material(name, (0.6, 0.6, 0.6))
+    w = h * (0.62 * len(text) + 0.4)
+    return lib.mesh_object(name, lib.quad_mesh(name, w, h, name), at, rot, parent=parent,
                            props={"no_shadow": True})
 
 
@@ -414,7 +416,7 @@ merged("panel_grey", "panel_grey", grey)
 merged("black", "black", black)
 merged("metal", "metal", metal)
 for x, text in ((-0.20, "DPU"), (0.27, "ACU")):
-    mesh_label(text, (x, 0.789, -0.62), 0.07)
+    mesh_label(text, (x, 0.789, -0.62), 0.022)
 
 # The keyboard shelf: a tray on arms, a keyboard and a trackball pad on it.
 SHELF_Z = -0.40
@@ -464,7 +466,7 @@ box("panel_grey", "panel_grey", keyset.at(0.0, 0.0, -0.16), (kw + 0.02, 0.30, kh
 box("black", "black", keyset.at(0.0, 0.0, -0.004), (kw, 0.008, kh), keyset.rot)
 L, R = -0.045, 0.045
 for text, v in (("BUOY", 0.245), ("SONAR", 0.115), ("MAD/NAV", -0.055), ("WEAPONS", -0.180)):
-    mesh_label(text, keyset.at(0.0, v, 0.001), 0.05, keyset.rot)
+    mesh_label(text, keyset.at(0.0, v, 0.001), 0.013, keyset.rot)
 column(keyset, L, [
     ("Console(Buoy, 1)", "DIFAR", 0.205),
     ("Console(Buoy, 3)", "BT", 0.160),
@@ -483,7 +485,8 @@ column(keyset, R, [
     ("Console(RangeIn)", "ZOOM+", -0.140),
 ])
 # RELEASE: a big red key (its light flashes while the release is armed).
-button(keyset, "Console(Release)", "RELEASE", R + 0.012, -0.225, size=(0.040, 0.022), body="red")
+button(keyset, "Console(Release)", "RELEASE", R + 0.012, -0.225, size=(0.040, 0.022), body="red",
+       label_size=(0.034, 0.011))
 # Group rules between the key groups.
 merged("white", "white", [B(keyset.at(0.0, v, 0.001), (kw - 0.03, 0.002, 0.002), keyset.rot)
                           for v in (0.138, -0.035, -0.160)])
@@ -502,7 +505,7 @@ merged("panel_grey", "panel_grey", rock)
 merged("black", "black", knob)
 merged("white", "white", idx)
 for text, v in (("VOL", 0.245), ("BRT", -0.180)):
-    mesh_label(text, keyset.at(0.097, v, 0.001), 0.03, keyset.rot)
+    mesh_label(text, keyset.at(0.097, v, 0.001), 0.009, keyset.rot)
 
 # --- the status screen over the keyset, in its own case, turned and tilted towards the eye
 top = keyset.at(0.0, kh / 2, 0.0)

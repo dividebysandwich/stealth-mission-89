@@ -123,9 +123,10 @@ def screen(surface, mat, u, v, size, behind=None):
     box("black", "black", (0, -0.004, 0), (w + 2 * m, 0.008, h + 2 * m), parent=bezel)
 
 
-def button(surface, effect, label, u, v, size=None, body="dark"):
+def button(surface, effect, label, u, v, size=None, body="dark", label_size=None):
     """A labelled push button on a surface: origin on it, its face HEIGHT out (`size`: its half
-    width and height, else `BUTTON`; `body`: the key's material round the label)."""
+    width and height, else `BUTTON`; `body`: the key's material round the label; `label_size`:
+    the label's half width and height on a big key, else the whole face)."""
     p, rot = surface.at(u, v), surface.rot
     hw, hh = size or BUTTON
     name = "control_" + "".join(ch if ch.isalnum() else "_" for ch in effect)
@@ -134,7 +135,8 @@ def button(surface, effect, label, u, v, size=None, body="dark"):
     moving = empty("moving", (0, 0, 0), parent=c, props={"moving": True})
     lab = "label_" + label
     material(lab, (0.1, 0.4, 0.1))
-    mesh_object(lab, quad_mesh(lab, 2 * hw, 2 * hh, lab, -HEIGHT), (0, 0, 0), parent=moving,
+    lw, lh = label_size or (hw, hh)
+    mesh_object(lab, quad_mesh(lab, 2 * lw, 2 * lh, lab, -HEIGHT), (0, 0, 0), parent=moving,
                 props={"no_shadow": True})
     mesh_object(body, box_mesh(body, (2 * hw, HEIGHT - 0.0004, 2 * hh), body,
                                  (0, -(HEIGHT - 0.0004) / 2, 0)), (0, 0, 0), parent=moving)

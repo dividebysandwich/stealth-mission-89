@@ -33,6 +33,7 @@
 //!   `tools/models/build_console.py`; the camera picture is its `trackcam`). A console's buttons are `Console(Fire)` controls.
 //! * `hud_glass`: the HUD combiner glass (the HUD is drawn collimated through it).
 //! * `label_<TEXT>`: a side panel button label showing TEXT.
+//! * `legend_<TEXT>`: TEXT printed on the panel (a section's name, a placard), not a key.
 //! * Anything else is used as modelled (base colour, roughness, metallic).
 //!
 //! Object properties:
@@ -535,9 +536,18 @@ impl<'a> Spawner<'a> {
                 ));
                 return None;
             }
+            n if n.starts_with("legend_") => {
+                let text = &n["legend_".len()..];
+                let aspect = self.quad_aspect(&mesh);
+                let (tex, m) = displays::legend(text, aspect, self.fonts, self.materials, self.images);
+                ec.insert(tex);
+                m
+            }
             n if n.starts_with("label_") => {
                 let text = &n["label_".len()..];
-                let (tex, m) = displays::side_label(text, self.fonts, self.materials, self.images);
+                let aspect = self.quad_aspect(&mesh);
+                let (tex, m) =
+                    displays::side_label(text, aspect, self.fonts, self.materials, self.images);
                 let label = displays::SideLabel { text: text.to_string(), lit: None };
                 ec.insert((tex, label, LitMaterial(m.clone())));
                 still = false;
@@ -550,6 +560,21 @@ impl<'a> Spawner<'a> {
         };
         commands.entity(e).insert((Mesh3d(mesh.clone()), MeshMaterial3d(material.clone())));
         still.then_some((mesh, material))
+    }
+
+    /// A flat quad's width over its height (its two longest extents), 28/11 if unknown.
+    fn quad_aspect(&self, mesh: &Handle<Mesh>) -> f32 {
+        let Some(VertexAttributeValues::Float32x3(ps)) =
+            self.meshes.get(mesh).and_then(|m| m.attribute(Mesh::ATTRIBUTE_POSITION))
+        else {
+            return 28.0 / 11.0;
+        };
+        let (lo, hi) = ps.iter().fold((Vec3::INFINITY, Vec3::NEG_INFINITY), |(a, b), &p| {
+            (a.min(Vec3::from(p)), b.max(Vec3::from(p)))
+        });
+        let mut e = (hi - lo).to_array();
+        e.sort_by(|a, b| b.total_cmp(a));
+        if e[1] > 1e-6 { e[0] / e[1] } else { 28.0 / 11.0 }
     }
 
     /// Notes the middle of the HUD glass's lower edge (`CockpitAnchors::hud_glass_bottom`, in

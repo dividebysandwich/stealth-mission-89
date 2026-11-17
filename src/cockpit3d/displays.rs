@@ -459,17 +459,26 @@ pub(super) fn draw_side_label(canvas: &mut Canvas, fonts: &Fonts, text: &str, li
         None => (44, 47),
     };
     canvas.clear(back);
-    let w = fonts.text(&mut Canvas::new(64, 16), 0, 0, text.as_bytes(), ink);
-    fonts.text(canvas, (28 - w) / 2, 3, text.as_bytes(), ink);
+    let w = text_width(fonts, text);
+    fonts.text(canvas, (canvas.w as i32 - w) / 2, 3, text.as_bytes(), ink);
 }
 
+/// A text's width in the panel font (texels).
+fn text_width(fonts: &Fonts, text: &str) -> i32 {
+    fonts.text(&mut Canvas::new(128, 16), 0, 0, text.as_bytes(), 47)
+}
+
+/// A side panel button's label on its quad (`aspect`: its width over its height): 11 texels
+/// high, at least 28 wide, wider on a wider quad so its text keeps a key's size.
 pub(super) fn side_label(
     text: &str,
+    aspect: f32,
     fonts: &Fonts,
     materials: &mut Assets<CockpitMaterial>,
     images: &mut Assets<Image>,
 ) -> (CanvasTexture, Handle<CockpitMaterial>) {
-    let mut canvas = Canvas::new(28, 11);
+    let w = ((11.0 * aspect).round() as usize).max(28);
+    let mut canvas = Canvas::new(w, 11);
     draw_side_label(&mut canvas, fonts, text, None);
     let tex = CanvasTexture::mipmapped(canvas, images, false);
     let m = materials.add(cockpit_part(
@@ -478,6 +487,37 @@ pub(super) fn side_label(
             emissive_texture: Some(tex.image.clone()),
             emissive: LinearRgba::rgb(1.0, 1.0, 1.0),
             unlit: true,
+            fog_enabled: false,
+            ..default()
+        },
+        ViewPart::Gauges,
+    ));
+    (tex, m)
+}
+
+/// A legend printed on a panel (a section's name over its keys, a placard): pale text on the
+/// panel itself, no cap round it, lit like the paint it is with a faint glow to read at night.
+pub(super) fn legend(
+    text: &str,
+    aspect: f32,
+    fonts: &Fonts,
+    materials: &mut Assets<CockpitMaterial>,
+    images: &mut Assets<Image>,
+) -> (CanvasTexture, Handle<CockpitMaterial>) {
+    const INK: u8 = 7;
+    let tw = text_width(fonts, text);
+    let w = ((9.0 * aspect).round() as i32).max(tw + 2) as usize;
+    let mut canvas = Canvas::new(w, 9);
+    canvas.clear(crate::canvas::TRANSPARENT);
+    fonts.text(&mut canvas, (w as i32 - tw) / 2, 2, text.as_bytes(), INK);
+    let tex = CanvasTexture::mipmapped(canvas, images, true);
+    let m = materials.add(cockpit_part(
+        StandardMaterial {
+            base_color_texture: Some(tex.image.clone()),
+            emissive_texture: Some(tex.image.clone()),
+            emissive: LinearRgba::rgb(0.12, 0.12, 0.12),
+            alpha_mode: AlphaMode::Mask(0.5),
+            perceptual_roughness: 0.8,
             fog_enabled: false,
             ..default()
         },
