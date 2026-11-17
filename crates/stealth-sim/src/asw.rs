@@ -133,6 +133,18 @@ const ENEMY_TORPEDO_RUN: f64 = 300.0;
 pub const PERISCOPE_DEPTH: f64 = 15.0;
 const PD_EVERY: (i32, i32) = (600, 1100);
 const PD_FOR: f64 = 180.0;
+/// Every so often (s) a submarine stops dead and shuts down all it can for a while (s): no
+/// noise a passive sensor hears (a ping still finds it).
+const SILENT_EVERY: (i32, i32) = (700, 1300);
+const SILENT_FOR: (i32, i32) = (150, 330);
+/// A helicopter low and slow within this range (m) is heard by a submarine (its rotor, a
+/// dipping sonar's splash): it goes silent till the helicopter has been gone this long (s).
+const OVERHEAD_RANGE: f64 = 2500.0;
+const OVERHEAD_HEIGHT: f64 = 250.0 * FT;
+const OVERHEAD_SPEED: f64 = 30.0 * KT;
+const OVERHEAD_HOLD: f64 = 150.0;
+/// A submarine stopped and silent: its noise this far under its quietest running (dB).
+const SILENT_LOSS: f64 = 35.0;
 /// A Hellfire striking this close to a submarine at periscope depth sinks it (m).
 pub const HELLFIRE_SUB_RADIUS: f64 = 25.0;
 
@@ -432,6 +444,9 @@ pub enum Posture {
     Evade,
     /// Its torpedoes away at its target.
     Attack,
+    /// Stopped, everything shut down that can be: silent to a passive sensor (a ping still
+    /// finds it). Every so often, and while a helicopter hovers near it.
+    Silent,
 }
 
 /// A submarine (the host's alone).
@@ -458,6 +473,11 @@ pub struct Sub {
     /// A campaign's: the player whose sortie hunts it (its sinking his objective).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hunter: Option<u8>,
+    /// Seconds to its next silent stop, and how long it stays silent (from `posture_t` 0).
+    #[serde(default)]
+    pub silent_in: f64,
+    #[serde(default)]
+    pub silent_for: f64,
 }
 
 /// A fix on a submarine (m east, north): its error (m), when (s), how (0 crossed bearings, 1
@@ -757,12 +777,18 @@ impl Sub {
             alive: true,
             done: false,
             hunter: None,
+            silent_in: 1000.0,
+            silent_for: 0.0,
         }
     }
 
-    /// Its noise (dB): louder with speed, much louder cavitating or snorkelling.
-    fn level(&self) -> f64 {
+    /// Its noise (dB): louder with speed, much louder cavitating or snorkelling; stopped and
+    /// silent next to nothing.
+    pub fn level(&self) -> f64 {
         let kt = self.speed / KT;
+        if self.posture == Posture::Silent {
+            return self.quiet - SILENT_LOSS + 20.0 * (kt.max(0.1) / 5.0).log10().max(-3.0) * 0.5;
+        }
         let mut sl = self.quiet + 20.0 * (kt.max(2.0) / 5.0).log10();
         if kt > 12.0 && self.depth < 80.0 {
             sl += 15.0;
@@ -802,6 +828,7 @@ impl Sim {
         }
         for i in 0..self.asw.subs.len() {
             self.asw.subs[i].pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
+            self.asw.subs[i].silent_in = (SILENT_EVERY.0 + self.asw.rand(SILENT_EVERY.1 - SILENT_EVERY.0)) as f64;
         }
     }
 
@@ -853,6 +880,7 @@ impl Sim {
         let mut s = Sub::from_setup(id, &sub);
         s.hunter = Some(player);
         s.pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
+        s.silent_in = (SILENT_EVERY.0 + self.asw.rand(SILENT_EVERY.1 - SILENT_EVERY.0)) as f64;
         self.asw.subs.push(s);
         // Where it was reported (a few kilometres off): the crew's first waypoint.
         let off = self.asw.rand(3000) as f64;
@@ -1182,7 +1210,7 @@ impl Sim {
         for h in &helis {
             self.asw.crew_mut(h.id);
         }
-        self.move_subs(dt);
+        self.move_subs(dt, &helis);
         self.move_buoys(dt, &helis);
         self.move_dips(dt, &helis);
         self.move_torpedoes(dt);
@@ -1208,7 +1236,7 @@ impl Sim {
         self.judge_hunt(present);
     }
 
-    fn move_subs(&mut self, dt: f64) {
+    fn move_subs(&mut self, dt: f64, helis: &[Heli]) {
         // A campaign's submarine whose hunter has gone home withdraws.
         let gone: Vec<bool> = self
             .asw
@@ -1241,6 +1269,11 @@ impl Sim {
                 .find(|&p| dist(p, self.asw.subs[i].at) < 3000.0);
             let layer = self.asw.ocean.layer as f64;
             let r = self.asw.rand(1000);
+            let r2 = self.asw.rand(1000);
+            // A helicopter low and slow near it: heard (its rotor on the water).
+            let overhead = helis.iter().any(|h| {
+                h.height < OVERHEAD_HEIGHT && h.speed < OVERHEAD_SPEED && dist(h.at, self.asw.subs[i].at) < OVERHEAD_RANGE
+            });
             let s = &mut self.asw.subs[i];
             if let Some(p) = torp
                 && s.posture != Posture::Attack
@@ -1250,10 +1283,33 @@ impl Sim {
                 s.threat = Some(p);
             }
             s.posture_t += dt;
+            // Silent: stopped every so often, and while a helicopter hovers near (till it has
+            // been gone a while); running for it once hunted in earnest (a ping, a torpedo).
+            s.silent_in -= dt;
+            if matches!(s.posture, Posture::Transit | Posture::Periscope) && (s.silent_in <= 0.0 || overhead) {
+                s.posture = Posture::Silent;
+                s.posture_t = 0.0;
+                s.silent_for = if overhead {
+                    OVERHEAD_HOLD
+                } else {
+                    (SILENT_FOR.0 + r2 * (SILENT_FOR.1 - SILENT_FOR.0) / 1000) as f64
+                };
+            }
+            if s.posture == Posture::Silent {
+                if overhead {
+                    s.silent_for = s.silent_for.max(s.posture_t + OVERHEAD_HOLD);
+                }
+                if s.posture_t > s.silent_for {
+                    s.posture = Posture::Transit;
+                    s.posture_t = 0.0;
+                    s.silent_in = (SILENT_EVERY.0 + r2 * (SILENT_EVERY.1 - SILENT_EVERY.0) / 1000) as f64;
+                }
+            }
             let to_goal = bearing(s.at, goal);
             let (want_heading, want_speed, want_depth) = match s.posture {
                 Posture::Transit | Posture::Attack => (to_goal, TRANSIT, layer + 40.0),
                 Posture::Periscope => (to_goal, QUIET, PERISCOPE_DEPTH),
+                Posture::Silent => (s.heading, 0.0, s.depth),
                 Posture::Evade => {
                     let away = s.threat.map_or(to_goal + std::f64::consts::FRAC_PI_2, |t| bearing(t, s.at));
                     // Away from the threat, but bending back toward its goal.

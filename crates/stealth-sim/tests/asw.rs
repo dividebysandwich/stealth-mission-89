@@ -98,7 +98,8 @@ fn crew(sim: &Sim) -> &AswCrew {
 }
 
 fn drop_at(sim: &mut Sim, e: f64, n: f64, kind: BuoyKind, deep: bool) {
-    let ps = at(e, n, 30.0, 0.0);
+    // High enough not to be heard by the submarine (it would stop and go silent).
+    let ps = at(e, n, 100.0, 0.0);
     run(sim, &ps, 0.2);
     sim.asw_command(0, AswCmd::DropBuoy { kind, deep, at: None }).expect("dropped");
 }
@@ -470,4 +471,34 @@ fn another_sonars_ping_comes_back_off_a_quiet_submarine_at_its_bearing() {
     assert!((4..=10).contains(&(k - ping_at)), "echo {} reports after the ping", k - ping_at);
     let brg = l.bearing.expect("a DIFAR's bearing") as i32;
     assert!((brg - 90).abs() <= 10, "the echo at {brg}, the submarine at 090");
+}
+
+#[test]
+fn a_submarine_goes_silent_under_a_hovering_helicopter_and_every_so_often() {
+    let mut sim = seahawk();
+    hunt(&mut sim, [HOME[0] + 2000.0, HOME[1]], 0.0, 200.0, None);
+    drop_at(&mut sim, HOME[0], HOME[1], BuoyKind::Difar, true);
+    let away = at(HOME[0] - 8000.0, HOME[1], 300.0, 100.0);
+    run(&mut sim, &away, 10.0);
+    let heard = |sim: &Sim| sim.asw().buoys[0].sample.lines.iter().any(|l| !l.ship && !l.ping && !l.torpedo && !l.echo);
+    assert!(heard(&sim), "heard running: {:?}", sim.asw().buoys[0].sample);
+    // The helicopter comes to a hover over it: it stops dead, nothing to hear.
+    let s = sub(&sim).at;
+    let over = at(s[0], s[1], 15.0, 0.0);
+    run(&mut sim, &over, 30.0);
+    assert_eq!(sub(&sim).posture, Posture::Silent);
+    assert!(sub(&sim).speed < 0.5, "stopped: {}", sub(&sim).speed);
+    assert!(!heard(&sim), "silent: {:?}", sim.asw().buoys[0].sample);
+    // It stays silent a while after the helicopter has gone, then runs on.
+    run(&mut sim, &away, 60.0);
+    assert_eq!(sub(&sim).posture, Posture::Silent);
+    run(&mut sim, &away, 150.0);
+    assert_ne!(sub(&sim).posture, Posture::Silent);
+    // Left alone, it stops now and then of its own accord.
+    let mut silent = false;
+    for _ in 0..1500 {
+        run(&mut sim, &away, 1.0);
+        silent |= sub(&sim).posture == Posture::Silent;
+    }
+    assert!(silent, "a silent stop in 25 minutes: {:?}", sub(&sim));
 }
