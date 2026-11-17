@@ -313,3 +313,30 @@ pub(crate) fn upload_layered_frame(
         }),
     };
 }
+
+#[cfg(test)]
+mod tests {
+    /// Every noise tile of the march divides `NOISE_PERIOD`: positions wrap there, and a tile
+    /// that doesn't fit leaves a straight seam through the clouds.
+    #[test]
+    fn noise_tiles_divide_the_period() {
+        let shader = include_str!("../shaders/layered_cloud.wgsl");
+        let tiles: Vec<(String, f64)> = shader
+            .lines()
+            .filter_map(|l| {
+                let l = l.trim().strip_prefix("const ")?;
+                let (name, rest) = l.split_once(": f32 = ")?;
+                if !name.ends_with("TILE") {
+                    return None;
+                }
+                let v: f64 = rest.trim_end_matches(';').parse().expect("a number");
+                Some((name.to_string(), v))
+            })
+            .collect();
+        assert!(tiles.len() >= 8, "{tiles:?}");
+        for (name, tile) in tiles {
+            let n = super::NOISE_PERIOD / tile;
+            assert!((n - n.round()).abs() < 1e-9, "{name} = {tile} doesn't divide the period");
+        }
+    }
+}

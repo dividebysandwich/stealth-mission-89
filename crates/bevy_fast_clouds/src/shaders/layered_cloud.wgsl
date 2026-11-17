@@ -42,7 +42,8 @@ const BAND_RANGE: f32 = 44000.0;
 const DECK_RANGE: f32 = 40000.0;
 // Scene depth beyond this (m) is the sky's background, not geometry.
 const SKY_DEPTH: f32 = 400000.0;
-// Noise tiles (m).
+// Noise tiles (m). Each must divide NOISE_PERIOD: positions wrap there, and a tile that
+// doesn't fit leaves a straight seam through the clouds.
 const NOISE_PERIOD: f32 = 24000.0;
 const CUMULUS_TILE: f32 = 3000.0;
 const STORM_TILE: f32 = 6000.0;
@@ -179,7 +180,7 @@ fn deck_density(p: vec3<f32>, np: vec3<f32>, detail: bool) -> Sample {
 }
 
 // Large scale noise tile (m): the shapes' variety from cloud to cloud.
-const LARGE_TILE: f32 = 16000.0;
+const LARGE_TILE: f32 = 12000.0;
 // Small fragments' noise tile (m).
 const FRAGMENT_TILE: f32 = 1600.0;
 // How far the footprints are warped (m).
@@ -229,7 +230,7 @@ fn storm_cell(p: vec3<f32>, np: vec3<f32>, big: vec4<f32>, detail: bool) -> Samp
     var n = shape_at(np, STORM_TILE);
     if (anvil > 0.0) {
         // The anvil's ice: fibrous, stretched sideways rather than billowing.
-        let f = shape_at(vec3<f32>(np.x, np.y * 5.0, np.z), STORM_TILE * 1.5);
+        let f = shape_at(vec3<f32>(np.x, np.y * 5.0, np.z), ANVIL_TILE);
         n = mix(n, f, anvil);
     }
     let fbm = shape_fbm(n);
@@ -258,9 +259,11 @@ fn storm_cell(p: vec3<f32>, np: vec3<f32>, big: vec4<f32>, detail: bool) -> Samp
 // max blended, over a thin background coverage from the layer's cover) says where it may
 // rise into cloud. Where the coverage is moderate, coverage^2 leaves whole areas of
 // translucent wisps.
-const CU_SHAPE_TILE: f32 = 14000.0;
-const CU_EROSION_TILE: f32 = 900.0;
-const CU_MICRO_TILE: f32 = 330.0;
+const CU_SHAPE_TILE: f32 = 12000.0;
+const CU_BIG_TILE: f32 = 24000.0;
+const ANVIL_TILE: f32 = 8000.0;
+const CU_EROSION_TILE: f32 = 800.0;
+const CU_MICRO_TILE: f32 = 300.0;
 const CU_EROSION_FACTOR: f32 = 0.8;
 const CU_MICRO_FACTOR: f32 = 0.65;
 // Density multiplier (Unity's densityMultiplier^2 * 2 with 0.4, times its sigma 0.04 over ours).
@@ -303,7 +306,7 @@ fn cumulus_layer(p: vec3<f32>, np: vec3<f32>, big: vec4<f32>, detail: bool) -> S
     let erosion_factor = CU_EROSION_FACTOR * ecurve;
     // Several scales: big masses, mid-sized clouds and smaller ones, not one size of blob.
     let n_mid = shape_at(np, CU_SHAPE_TILE);
-    let n_big = shape_at(np, CU_SHAPE_TILE * 2.9);
+    let n_big = shape_at(np, CU_BIG_TILE);
     let raw = sat(n_mid.r * 0.5 + n_big.r * 0.3 + (shape_fbm(n_mid) - 0.5) * 0.5 + 0.1);
     let low = mix(1.0, raw, shape_factor);
     let threshold = 1.0 - dcurve * cov * (1.0 - shape_factor);
