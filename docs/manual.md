@@ -3926,6 +3926,12 @@ does what it came to do. Submarines are never seen: only heard, felt by the MAD,
 minutes now and then, glimpsed as the feather of spray a periscope cuts when one comes up to
 periscope depth to snorkel.
 
+Every so often a submarine **stops dead** and shuts down all it can for a few minutes: no passive
+sensor hears it then, and its trace vanishes from the waterfalls. It does the same whenever it
+hears a helicopter **hovering low near it** (within some 2.5 km), and stays silent for a couple
+of minutes after the helicopter has gone. A ping still finds a silent submarine, and so does the
+MAD.
+
 **Single missions.** In the eight theaters with a friendly carrier, an MH-60R's mission is a hunt
 from the carrier and back (`--asw-scenario blockade|convoy|carrier` picks one, else the seed does):
 
@@ -3934,13 +3940,24 @@ from the carrier and back (`--asw-scenario blockade|convoy|carrier` picks one, e
 - **Convoy.** It closes on one of the carrier's escorts to torpedo it.
 - **Carrier.** It goes for the carrier itself.
 
+The **Gulf of Finland** has no carrier: its hunt is always a blockade, flown from Helsinki. A
+submarine of the Baltic Fleet slips out of the gulf toward the open sea, and the line it must not
+cross runs from Helsinki to Tallinn. The gulf is shallow (100 m), its layer high.
+
 With more opponents there are two. The hunt is won when every submarine is sunk; it is lost when a
 submarine fires on its target (from some 8 km) or crosses the line. Then land back on the carrier.
 
 **The campaign.** Theaters with a friendly carrier have an **ASW** offer on the mission board, which
 only the MH-60R flies (and the MH-60R flies nothing else). Taking it, a submarine is reported closing
 on the carrier's group some 22 to 28 km out; its datum is your first waypoint. Sinking it achieves
-the objective. Leave it alone and it may torpedo one of the carrier's escorts.
+the objective. Leave it alone and it may torpedo one of the carrier's escorts. In the Gulf of
+Finland the offer is the breakout past the Helsinki-Tallinn line instead (*ASW - submarine breaking
+out past Helsinki and Tallinn*).
+
+If nobody takes the hunt, the **AI flies it** like the board's other missions: two Seahawks from the
+carrier (or Helsinki) search round the datum with their buoys and dips, hold the submarine after a
+while near it, hover over it and drop their torpedoes. Its sinking achieves the mission and they
+fly home.
 
 ## 14.2 The crew
 
@@ -4043,6 +4060,12 @@ the dipping sonar under it.
 escorts too, so the waterfalls of buoys near the group are full of them. A torpedo in the water is
 loud. A sensor also hears the pings of the other active sonars near it (25 km).
 
+**Another sonar's ping** is a very loud event: every sensor near it hears it, whatever its cursor,
+and the water rings on after it for several seconds, dying away. A moment later its **echoes** come
+back off the submarines it reached, at their bearings, the later the longer the sound's way round
+by them. An echo comes back however quietly the submarine runs, even stopped: one DICASS or the
+dipping sonar pinging lights the submarines up on the DIFARs around it, each giving a bearing.
+
 ### The waterfalls
 
 ![The SONAR page: three DIFARs, each with the submarine marked A; a torpedo's trace curving across the first; the DICASS's pings](images/asw_sonar.png)
@@ -4057,7 +4080,9 @@ row is how strongly the sensor hears each direction:
   heard); a ship's or a torpedo's cavitating screws make a broader one. As the contact moves past the
   sensor its trace **slants across** the waterfall: a slow drift for a submarine, a fast curve for a
   torpedo;
-- another sonar's **ping** is a short sharp dash at its bearing; the sensor's own ping a bright row;
+- another sonar's **ping** is a bright dash at its bearing, the whole row lit and a glow ringing on
+  under it for some seconds; its **echoes** off submarines are short sharp dashes at their bearings,
+  a moment after it; the sensor's own ping a bright row;
 - a sensor that cannot tell direction (a DICASS listening) raises its whole row when it hears
   something.
 
@@ -4079,7 +4104,8 @@ down onto another waterfall to listen to that sensor instead. **AUDIO** turns th
 - A **ship** is the churning beat of its screws, heavy and slow for the carrier, quicker for the
   smaller ships.
 - A **torpedo** is a fast, high, cavitating whine: unmistakable.
-- Another sonar's **ping** sounds when the cursor points at it.
+- Another sonar's **ping** is loud whatever the cursor (louder pointed at it), and rings on for
+  seconds; an **echo** is a short, fainter ping, heard with the cursor on its bearing.
 
 Listening tells a submarine from the ships around it: on a waterfall full of traces, sweep the
 cursor across them and listen for the one that is not a ship.
@@ -4096,8 +4122,12 @@ and the map draws its bearing line:
 3. Mark the **same contact with the same letter** on the other sensors that hear it.
 
 A mark **follows its trace** as it moves across the waterfall. When the trace fades into the noise
-the mark stays where it was and turns grey (lost) until the trace comes back near it. **MARK** on a
-marked trace deletes the mark (so does selecting it on the map and **DEL**).
+the mark stays where it was and turns grey (lost) until the trace comes back near it. An **echo**
+can be marked too, for half a minute after it went by: put the cursor on its dash and press MARK.
+**MARK** on a marked trace deletes the mark (so does selecting it on the map and **DEL**).
+
+Marks **fade** on the map over five minutes from when their trace was last seen (cyan, then grey,
+then dark) and are gone after that; a fading mark's line still counts for its letter's estimate.
 
 On the MAP page each mark is a dashed **bearing line** from its sensor, its letter boxed on it. A
 letter on two or more sensors also shows where its lines cross: a **yellow ring** at the estimated
@@ -4106,33 +4136,33 @@ error (*A 3X 0.3KM*). The more sensors hold it, and the wider the angles between
 smaller the ring. Lines nearly parallel (sensors in a row with the contact) cross badly: lay your
 buoys round where it may be.
 
-### The automatic tracker
+### The tracker
 
-Besides your marks, the console's tracker works by itself: it crosses the DIFARs' and the dipping
-sonar's bearings on contacts it classifies as submarines, takes the DICASS's and the dipping sonar's
-echoes and the MAD's marks as fixes (the faint dots on the map), and fits **tracks** to them: a
-yellow diamond labelled S1, S2... with its course and speed (*S1 040/6*), a line ahead where it will
-be in two minutes, and a ring as wide as its error. A track with no new fix for a few minutes is
-dropped.
+Crossing the passive bearings is your work: the map draws no bearing lines of its own, only your
+marks'. The console's tracker takes only the fixes that need no crossing: the range and bearing of
+an echo of your own DICASS's or dipping sonar's ping, and the MAD's marks (the faint dots and red
+crosses on the map). It fits **tracks** to them: a yellow diamond labelled S1, S2... with its course
+and speed (*S1 040/6*), a line ahead where it will be in two minutes, and a ring as wide as its
+error. Fixes and tracks fade over five minutes and are gone after that.
 
 ## 14.5 The map
 
-![The MAP page at 4 km: three DIFARs' bearing lines marked A crossing on the estimate ring; the tracker's S1 beside it; the route](images/asw_map.png)
+![The MAP page at 4 km: three DIFARs' marks A crossing on the estimate ring; the route](images/asw_map.png)
 
 The MAP page is the tactical picture, north up, round the aircraft (the green arrow):
 
-- the **buoys** (D, C, B in a ring; grey while falling), their sensors' latest bearings as dashed
-  lines, a pinging DICASS ringed;
+- the **buoys** (D, C, B in a ring; grey while falling), a pinging DICASS ringed;
 - the **dipping sonar** (DIP) while it is down;
 - the **ships** (friendly blue, enemy red) and the **datum** (a yellow cross in a ring), a
-  blockade's **line** (red);
-- the **marks**, their **estimates**, the tracker's **fixes** and **tracks** (14.4);
+  blockade's **line** (red; the campaign's Helsinki-Tallinn line too);
+- the **marks**, their **estimates**, the tracker's **fixes** and **tracks** (14.4), all fading
+  over five minutes;
 - the **torpedoes**: white running, red homing;
 - the **route** (white, numbered) and the mission's own waypoints after it (grey, M1, M2...).
 
 **Buttons.** **RNG-** and **RNG+** (or the keyset's ZOOM keys) zoom from 1 to 64 km; drag the sea to
 pan, **CTR** to centre on the aircraft again. **D**, **C**, **B** drop a buoy at the next point you
-touch.
+touch. **HOVER** asks the pilot for the dip hover (14.4).
 
 **The route.** Touch the sea to add a waypoint after the selected one (or at the end); drag a
 waypoint to move it; touch one to select it, **DEL** removes it, **CLR** the whole route. The route
@@ -4186,6 +4216,11 @@ Hellfire striking within 25 m of it sinks it: lase the feather with the targetin
   it may be, a few kilometres apart, a BT first to find the layer.
 - **Listen before you ping.** Passive DIFARs give the submarine no warning. Find it, mark it on two
   or three buoys, and let the crossing pin it.
+- **Don't hover over it.** A helicopter hovering low near a submarine makes it stop and go silent:
+  lay the buoys in passing, and dip away from where you think it is.
+- **A silent submarine still echoes.** If the traces are gone, one ping from a DICASS or the
+  dipping sonar shows it on every DIFAR around as an echo: mark those. The dipping sonar's ping
+  reaches much farther (some 30 km) than a DICASS's.
 - **Then close in.** Ping with a DICASS or the dipping sonar for a range, or run the MAD over the
   estimate to be sure.
 - **Shoot from a good fix.** Drop the torpedo over the estimate or ahead of the track's line, with a
