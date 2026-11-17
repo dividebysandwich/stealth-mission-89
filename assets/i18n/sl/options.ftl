@@ -112,6 +112,8 @@ cloud-quality-medium = Srednja
     .facts = Polovična ločljivost, finejše podrobnosti
 cloud-quality-high = Visoka
     .facts = Polna ločljivost, najfinejše podrobnosti in lastna senca (porabi čas GPE)
+cloud-quality-ultra = Ultra
+    .facts = Oblačna plast, kopasti in nevihtni oblaki kot prostornine, skozi katere letiš (najdražje za GPE)
 
 ## ZVOK
 

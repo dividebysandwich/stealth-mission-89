@@ -112,6 +112,8 @@ cloud-quality-medium = Vidutinė
     .facts = Pusė raiškos, smulkesnės detalės
 cloud-quality-high = Aukšta
     .facts = Visa raiška, smulkiausios detalės ir savas šešėlis (naudoja GPU laiką)
+cloud-quality-ultra = Ultra
+    .facts = Debesų sluoksnis, kamuoliniai ir perkūnijos debesys kaip praskrendami tūriai (brangiausia GPU)
 
 ## GARSAS
 

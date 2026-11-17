@@ -113,6 +113,8 @@ cloud-quality-medium = Medium
     .facts = Half the resolution, finer detail
 cloud-quality-high = High
     .facts = Full resolution, finest detail and self shadow (costs GPU time)
+cloud-quality-ultra = Ultra
+    .facts = Overcast deck, cumulus and thunderstorms as volumes you fly through (costs the most GPU time)
 
 ## SOUND
 

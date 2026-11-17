@@ -112,6 +112,8 @@ cloud-quality-medium = 中
     .facts = 一半分辨率，细节更多
 cloud-quality-high = 高
     .facts = 全分辨率，最细的细节和自身阴影（耗费 GPU 时间）
+cloud-quality-ultra = 极高
+    .facts = 云层、积云和雷暴云以可穿越的体积呈现（耗费最多 GPU 时间）
 
 ## 声音
 

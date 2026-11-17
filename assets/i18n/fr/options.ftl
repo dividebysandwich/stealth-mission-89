@@ -112,6 +112,8 @@ cloud-quality-medium = Moyenne
     .facts = Moitié de la résolution, détails plus fins
 cloud-quality-high = Élevée
     .facts = Pleine résolution, détails les plus fins et ombre propre (coûte du temps GPU)
+cloud-quality-ultra = Ultra
+    .facts = Couche nuageuse, cumulus et orages en volumes que l’on traverse (le plus coûteux pour le GPU)
 
 ## SON
 

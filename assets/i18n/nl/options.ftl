@@ -112,6 +112,8 @@ cloud-quality-medium = Middel
     .facts = Halve resolutie, fijnere details
 cloud-quality-high = Hoog
     .facts = Volledige resolutie, fijnste details en eigen schaduw (kost GPU-tijd)
+cloud-quality-ultra = Ultra
+    .facts = Wolkendek, stapelwolken en onweersbuien als volumes om doorheen te vliegen (kost de meeste GPU-tijd)
 
 ## GELUID
 

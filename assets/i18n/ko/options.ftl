@@ -112,6 +112,8 @@ cloud-quality-medium = 중간
     .facts = 절반 해상도, 더 세밀함
 cloud-quality-high = 높음
     .facts = 전체 해상도, 가장 세밀한 표현과 자체 그림자 (GPU 시간 소모)
+cloud-quality-ultra = 울트라
+    .facts = 구름층, 적운과 뇌우를 통과할 수 있는 볼륨으로 표현 (GPU 시간 가장 많이 소모)
 
 ## 사운드
 

@@ -76,7 +76,8 @@ Cockpit and graphics
   --shadows                    sun shadows
   --local-lights               cockpit lamps, explosions, flares, missile motors, runway lights
   --no-auto-detail             VR: keep full scenery detail (else it follows the frame rate)
-  --clouds <quality>           auto, billboard (flat puffs), low, medium, high (volumetric)
+  --clouds <quality>           auto, billboard (flat puffs), low, medium, high (volumetric),
+                               ultra (layered: deck, cumulus, storms)
   --effects <list>             atmosphere effects: names on, -name off, all, none
                                (shake, flashes, barrage, cockpit-night, nvg, snow, mist,
                                cloud-shadows, ground-detail, glass, water, sunbeams,

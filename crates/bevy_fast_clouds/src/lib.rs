@@ -1,5 +1,6 @@
 #![doc = concat!(include_str!("../docs/crate.md"), "\n\n", include_str!("../docs/ridge_march.svg"))]
 
+pub mod layered;
 pub mod lod;
 pub mod render;
 pub mod volume;
@@ -7,7 +8,8 @@ pub mod wavelet;
 
 use bevy::{prelude::*, render::render_resource::TextureUsages};
 
-pub use lod::{CloudRenderSettings, LodPolicy, lod_bands};
+pub use layered::{CloudDeck, ConvectiveCloud, LayeredClouds};
+pub use lod::{CloudMode, CloudRenderSettings, LodPolicy, lod_bands};
 pub use render::{CloudCamera, CloudShading, CloudVolume};
 pub use volume::{CloudSphere, WaveletVolume, anvil_spheres, cumulus_spheres};
 pub use wavelet::steering_set;

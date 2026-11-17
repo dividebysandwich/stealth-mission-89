@@ -16,8 +16,20 @@ impl Default for LodPolicy {
     }
 }
 
+/// How the clouds are drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum CloudMode {
+    /// Each [`crate::CloudVolume`] marched within its hull (wavelet ridges over spheres).
+    #[default]
+    Wavelet,
+    /// One march through the whole sky ([`crate::layered`]): the deck and the convective
+    /// clouds of [`crate::layered::LayeredClouds`]; the volumes are not drawn.
+    Layered,
+}
+
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct CloudRenderSettings {
+    pub mode: CloudMode,
     pub j_cap: u32,
     pub h_cap: u32,
     pub keep_alpha: f32,
@@ -44,6 +56,7 @@ pub struct CloudRenderSettings {
 impl Default for CloudRenderSettings {
     fn default() -> Self {
         Self {
+            mode: CloudMode::Wavelet,
             j_cap: 3,
             h_cap: 4,
             keep_alpha: 0.72,

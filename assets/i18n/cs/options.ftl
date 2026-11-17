@@ -112,6 +112,8 @@ cloud-quality-medium = Střední
     .facts = Poloviční rozlišení, jemnější detaily
 cloud-quality-high = Vysoká
     .facts = Plné rozlišení, nejjemnější detaily a vlastní stín (stojí čas GPU)
+cloud-quality-ultra = Ultra
+    .facts = Oblačná vrstva, kupy i bouřkové oblaky jako objemy, kterými lze proletět (nejnáročnější na GPU)
 
 ## ZVUK
 

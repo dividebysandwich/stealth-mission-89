@@ -155,6 +155,10 @@ opt-level = 1
 [profile.dev.package."*"]
 opt-level = 3
 
+# The layered clouds' noise textures are made at start (a few seconds unoptimized).
+[profile.dev.package.bevy_fast_clouds]
+opt-level = 3
+
 # The browser build (Trunk.toml). Quick to build for now; for a smaller download (about a third
 # less) add opt-level = "s", lto = "fat", codegen-units = 1 and set data-wasm-opt="s" in
 # web/index.html, at about 15 minutes a build.

@@ -16,12 +16,12 @@ use bevy::math::DVec3;
 use bevy::mesh::MeshTag;
 use bevy::prelude::*;
 use bevy_fast_clouds::{
-    CloudRenderSettings, CloudShading, CloudSphere, CloudSystems, CloudVolume, FastCloudsPlugin,
-    LodPolicy, WaveletVolume,
+    CloudDeck, CloudMode, CloudRenderSettings, CloudShading, CloudSphere, CloudSystems,
+    CloudVolume, ConvectiveCloud, FastCloudsPlugin, LayeredClouds, LodPolicy, WaveletVolume,
 };
 use stealth_campaign::weather::{FADE, Forecast, Now, cloud_fade};
 use stealth_mission::Weather;
-use stealth_mission::weather::{CELL, Cloud, CloudKind, Layer, STORM_CELL};
+use stealth_mission::weather::{CELL, Cloud, CloudKind, Layer, STORM_CELL, STRATUS_OCTAVES};
 
 use crate::camera::EyeCamera;
 use crate::camera::OffscreenCamera;
@@ -64,6 +64,7 @@ impl Plugin for WeatherPlugin {
                 stream_clouds,
                 fade_clouds,
                 cloud_shadows,
+                layered_clouds,
                 lightning,
                 rain,
             )
@@ -156,6 +157,9 @@ pub struct WeatherState {
     puffs: HashMap<CloudKey, Streamed>,
     /// Where and with which layers the clouds were last streamed.
     streamed: Option<((i32, i32), Layer, Layer)>,
+    /// The deck is drawn by the layered clouds (`CloudQuality::Ultra`), not by its planes and
+    /// the sky.
+    pub deck_volumetric: bool,
 }
 
 impl WeatherState {
@@ -185,8 +189,14 @@ impl WeatherState {
 
     /// Shader `storm_haze`: in a storm, haze in the air under the deck as thick as the deck
     /// covers the sky (x), reaching the visibility in metres (y).
+    /// z: 1 while the layered clouds draw the deck (the sky leaves it out).
     pub fn storm_haze(&self) -> Vec4 {
-        Vec4::new(self.storm * self.cover[1] / 100.0, (self.vis_km * 1000.0).max(1000.0), 0.0, 0.0)
+        Vec4::new(
+            self.storm * self.cover[1] / 100.0,
+            (self.vis_km * 1000.0).max(1000.0),
+            self.deck_volumetric as u32 as f32,
+            0.0,
+        )
     }
 
     /// `Globals::atmos`: ground mist (`Effects::mist`; strength, depth and the ground it lies on,
@@ -679,7 +689,7 @@ fn stream_clouds(
         let e = commands
             .spawn((
                 CloudEntity,
-                CloudShade { r: r_m, storm: c.kind == CloudKind::Cumulonimbus },
+                CloudShade { r: r_m, h: h_m, storm: c.kind == CloudKind::Cumulonimbus },
                 CloudVolume::new(volumes.add(volume))
                     .with_core(1.0)
                     .with_fill(state.fade(c.kind, c.rank))
@@ -700,6 +710,8 @@ fn stream_clouds(
 #[derive(Component)]
 struct CloudShade {
     r: f32,
+    /// Height (m), for the layered clouds.
+    h: f32,
     storm: bool,
 }
 
@@ -915,16 +927,24 @@ fn shade_clouds(
     };
     let q = settings.cloud_quality.level(settings.vr);
     let env = |name: &str| std::env::var(name).ok().and_then(|v| v.parse::<u32>().ok());
+    // Ultra: the layered clouds march more steps at half resolution.
+    let layered = layered_on(&settings);
+    let (steps, scale) = if layered {
+        (LAYERED_STEPS, LAYERED_SCALE)
+    } else {
+        (q.step_count, q.resolution_scale)
+    };
     let want = CloudRenderSettings {
+        mode: if layered { CloudMode::Layered } else { CloudMode::Wavelet },
         j_cap: env("SM89_CLOUD_JCAP").unwrap_or(q.j_cap),
         h_cap: q.h_cap,
-        step_count: env("SM89_CLOUD_STEPS").unwrap_or(q.step_count),
+        step_count: env("SM89_CLOUD_STEPS").unwrap_or(steps),
         max_march_span: 30_000.0,
         interior_span: 3_000.0,
         sigma_t: 0.02,
         dither: !settings.modern_shading,
         sun_shadow: env("SM89_CLOUD_SHADOW").map_or(q.sun_shadow, |v| v != 0),
-        resolution_scale: env("SM89_CLOUD_SCALE").unwrap_or(q.resolution_scale),
+        resolution_scale: env("SM89_CLOUD_SCALE").unwrap_or(scale),
         ..default()
     };
     if *render != want {
@@ -932,8 +952,86 @@ fn shade_clouds(
     }
 }
 
-/// How the clouds are drawn (`Settings::cloud_quality`, OPTIONS): as billboards, or how finely
-/// the volumetric clouds are marched.
+/// Ultra's layered clouds: most primary march steps and view pixels per marched pixel.
+const LAYERED_STEPS: u32 = 64;
+const LAYERED_SCALE: u32 = 2;
+
+/// `--gl-vr`: the headset drawn by glvr, which has only the hull march.
+fn gl_vr() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::args().any(|a| a == "--gl-vr"))
+}
+
+/// Ultra draws the layered clouds (Bevy's renderer, modern shading) once their noise textures
+/// are made; until then, and with glvr or classic shading, the hull march as on High.
+pub fn layered_on(settings: &crate::settings::Settings) -> bool {
+    if settings.cloud_quality != CloudQuality::Ultra || !settings.modern_shading || gl_vr() {
+        return false;
+    }
+    bevy_fast_clouds::layered::noise::start();
+    bevy_fast_clouds::layered::noise::ready()
+}
+
+/// The layered clouds' deck and convective clouds (`CloudQuality::Ultra`): the streamed
+/// clouds and the stratus layer as the simulation has them. The deck's planes are hidden
+/// meanwhile, and the sky leaves the deck out (`WeatherState::deck_volumetric`).
+#[allow(clippy::too_many_arguments)]
+fn layered_clouds(
+    settings: Res<crate::settings::Settings>,
+    origin: Res<FloatingOrigin>,
+    time: Res<Time>,
+    clouds: Query<(&WorldPos, &CloudShade, &CloudVolume)>,
+    mut decks: Query<&mut Visibility, With<DeckPlane>>,
+    mut layered: ResMut<LayeredClouds>,
+    mut state: ResMut<WeatherState>,
+) {
+    let on = layered_on(&settings) && clouds_enabled();
+    state.deck_volumetric = on && state.cover[1] > 0.0;
+    let want = if on { Visibility::Hidden } else { Visibility::Inherited };
+    for mut v in &mut decks {
+        v.set_if_neq(want);
+    }
+    if !on {
+        layered.clouds.clear();
+        layered.deck = None;
+        return;
+    }
+    let w = state.weather;
+    let l = w.stratus;
+    layered.origin = origin.origin;
+    layered.deck = (state.cover[1] > 0.0).then(|| CloudDeck {
+        base: (l.base_ft as f64 * WU) as f32,
+        top: (l.top_ft as f64 * WU) as f32,
+        threshold: state.stratus_threshold,
+        seed: w.layer_seed(CloudKind::Stratus) & 0xFFFF,
+        unit: (32.0 * WU) as f32,
+        octaves: STRATUS_OCTAVES,
+        mean_cover: state.cover[1] / 100.0,
+    });
+    layered.clouds = clouds
+        .iter()
+        .map(|(p, s, v)| ConvectiveCloud {
+            base: p.0,
+            radius: s.r,
+            height: s.h,
+            storm: s.storm,
+            fill: v.fill,
+        })
+        .collect();
+    layered.darken = darken(&state, CloudKind::Cumulus);
+    layered.storm_darken = STORM_DARKEN;
+    layered.cumulus_cover = state.cover[0] / 100.0;
+    // The clouds' texture drifts at a quarter of the wind (knots to m/s; east +x, north -z).
+    let (e, n) = state.wind.velocity();
+    // Anvils lean downwind (a calm day: still a direction).
+    layered.wind_dir = Vec2::new(e, -n).try_normalize().unwrap_or(Vec2::new(0.8, 0.6));
+    let drift = layered.drift - Vec2::new(e, -n) * 0.514 * 0.25 * time.delta_secs();
+    let period = bevy_fast_clouds::layered::NOISE_PERIOD as f32;
+    layered.drift = Vec2::new(drift.x.rem_euclid(period), drift.y.rem_euclid(period));
+}
+
+/// How the clouds are drawn (`Settings::cloud_quality`, OPTIONS): as billboards, how finely
+/// the volumetric clouds are marched, or (Ultra) as one layered sky with the deck.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum CloudQuality {
     /// Low in VR, high on the screen.
@@ -944,6 +1042,9 @@ pub enum CloudQuality {
     Low,
     Medium,
     High,
+    /// The layered clouds: the deck, cumulus and cumulonimbus marched as one sky
+    /// (`bevy_fast_clouds::layered`); High's hull march where those can't draw.
+    Ultra,
 }
 
 impl Default for CloudQuality {
@@ -963,15 +1064,16 @@ pub struct CloudLevel {
 }
 
 impl CloudQuality {
-    pub const ALL: [CloudQuality; 5] = [
+    pub const ALL: [CloudQuality; 6] = [
         CloudQuality::Auto,
         CloudQuality::Billboard,
         CloudQuality::Low,
         CloudQuality::Medium,
         CloudQuality::High,
+        CloudQuality::Ultra,
     ];
 
-    /// `--clouds <name>`: auto, billboard, low, medium or high.
+    /// `--clouds <name>`: auto, billboard, low, medium, high or ultra.
     pub fn parse(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|q| q.id().strip_prefix("cloud-quality-") == Some(name))
     }
@@ -988,6 +1090,7 @@ impl CloudQuality {
             CloudQuality::Low => "cloud-quality-low",
             CloudQuality::Medium => "cloud-quality-medium",
             CloudQuality::High => "cloud-quality-high",
+            CloudQuality::Ultra => "cloud-quality-ultra",
         }
     }
 
@@ -1021,7 +1124,7 @@ impl CloudQuality {
                 sun_shadow: false,
                 resolution_scale: 2,
             },
-            CloudQuality::High => CloudLevel {
+            CloudQuality::High | CloudQuality::Ultra => CloudLevel {
                 j_cap: 3,
                 h_cap: 4,
                 step_count: 16,

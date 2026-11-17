@@ -184,7 +184,7 @@ const CLOUD_DATA_WIDTH: u32 = 1024;
 const SPHERE_BASE: u32 = 4 * MAX_VOLUMES as u32;
 const CLOUD_DATA_TEXELS: u32 = SPHERE_BASE + MAX_SPHERES as u32;
 
-fn storage_buffers(render_device: &RenderDevice) -> bool {
+pub(crate) fn storage_buffers(render_device: &RenderDevice) -> bool {
     render_device.limits().max_storage_buffers_per_shader_stage > 0
 }
 
@@ -202,6 +202,12 @@ fn volume_texels(v: &GpuVolume) -> [[u32; 4]; 4] {
 pub(crate) fn build_render(app: &mut App) {
     embedded_asset!(app, "shaders/wavelet_cloud.wgsl");
     embedded_asset!(app, "shaders/cloud_composite.wgsl");
+    embedded_asset!(app, "shaders/layered_common.wgsl");
+    embedded_asset!(app, "shaders/layered_maps.wgsl");
+    embedded_asset!(app, "shaders/layered_cloud.wgsl");
+    embedded_asset!(app, "shaders/layered_resolve.wgsl");
+    embedded_asset!(app, "shaders/layered_composite.wgsl");
+    crate::layered::build_render(app);
     app.init_resource::<CloudShading>()
         .init_resource::<CloudFrame>()
         .add_plugins((
@@ -464,7 +470,7 @@ struct ViewCloudPipelines([CachedRenderPipelineId; 8], [CachedRenderPipelineId; 
 struct ViewCloudTarget(CachedTexture, CachedTexture);
 
 /// Premultiplied colour and coverage over what is there.
-const PREMULTIPLIED_OVER: BlendState = BlendState {
+pub(crate) const PREMULTIPLIED_OVER: BlendState = BlendState {
     color: BlendComponent {
         src_factor: BlendFactor::One,
         dst_factor: BlendFactor::OneMinusSrcAlpha,

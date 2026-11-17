@@ -112,6 +112,8 @@ cloud-quality-medium = Vidēja
     .facts = Puse izšķirtspējas, smalkākas detaļas
 cloud-quality-high = Augsta
     .facts = Pilna izšķirtspēja, smalkākās detaļas un pašēna (patērē GPU laiku)
+cloud-quality-ultra = Ultra
+    .facts = Mākoņu slānis, gubu un negaisa mākoņi kā cauri lidojami tilpumi (visdārgākais GPU)
 
 ## SKAŅA
 

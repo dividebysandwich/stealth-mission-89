@@ -112,6 +112,8 @@ cloud-quality-medium = Medju
     .facts = Nofs ir-riżoluzzjoni, dettall aktar fin
 cloud-quality-high = Għoli
     .facts = Riżoluzzjoni sħiħa, l-iżjed dettall fin u dell proprju (jiswa ħin tal-GPU)
+cloud-quality-ultra = Ultra
+    .facts = Saff ta’ sħab, kumulus u maltempati bħala volumi li ttir minnhom (jiswa l-aktar ħin tal-GPU)
 
 ## ŻUNA
 

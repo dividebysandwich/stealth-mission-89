@@ -112,6 +112,8 @@ cloud-quality-medium = 中
     .facts = 解像度2分の1、より細かい表示
 cloud-quality-high = 高
     .facts = 最大解像度、最も細かい表示と自己影（GPU時間を使います）
+cloud-quality-ultra = 最高
+    .facts = 雲層、積雲、積乱雲を通り抜けられる立体として描画（GPU時間を最も使います）
 
 ## SOUND
 

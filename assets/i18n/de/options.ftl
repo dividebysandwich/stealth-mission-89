@@ -112,6 +112,8 @@ cloud-quality-medium = Mittel
     .facts = Halbe Auflösung, feinere Details
 cloud-quality-high = Hoch
     .facts = Volle Auflösung, feinste Details und Eigenschatten (kostet GPU-Zeit)
+cloud-quality-ultra = Ultra
+    .facts = Wolkendecke, Haufen- und Gewitterwolken als durchfliegbare Volumen (am teuersten für die GPU)
 
 ## TON
 

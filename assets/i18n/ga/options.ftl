@@ -112,6 +112,8 @@ cloud-quality-medium = Meánach
     .facts = Leath den taifeach, mionsonraí níos mine
 cloud-quality-high = Ard
     .facts = Taifeach iomlán, na mionsonraí is mine agus féinscáth (cosnaíonn sé am GPU)
+cloud-quality-ultra = Ultra
+    .facts = Brat scamall, carnáin agus stoirmeacha mar thoirteanna a eitlíonn tú tríd (is mó am GPU)
 
 ## FUAIM
 

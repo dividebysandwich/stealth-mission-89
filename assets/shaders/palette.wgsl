@@ -2116,7 +2116,8 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         // the ground above it, where the layer's coverage field has cloud. Only in the variant
         // for a sky with a deck (`FX_STRATUS`).
 #ifdef PALETTE_STRATUS
-        if (globals.clouds.z != 0.0) {
+        // Unless the layered clouds draw the deck (`storm_haze.z`).
+        if (globals.clouds.z != 0.0 && globals.storm_haze.z == 0.0) {
             let eye_y = eye.y;
             let nd = normalize(dir);
             var d = -1.0;

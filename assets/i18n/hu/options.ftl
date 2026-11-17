@@ -112,6 +112,8 @@ cloud-quality-medium = Közepes
     .facts = Fél felbontás, finomabb részletek
 cloud-quality-high = Magas
     .facts = Teljes felbontás, legfinomabb részletek és saját árnyék (GPU-időbe kerül)
+cloud-quality-ultra = Ultra
+    .facts = Felhőréteg, gomolyfelhők és zivatarfelhők átrepülhető térfogatként (a legtöbb GPU-időbe kerül)
 
 ## HANG
 

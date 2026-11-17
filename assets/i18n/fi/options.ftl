@@ -112,6 +112,8 @@ cloud-quality-medium = Keskitaso
     .facts = Puolet resoluutiosta, tarkemmat yksityiskohdat
 cloud-quality-high = Korkea
     .facts = Täysi resoluutio, tarkimmat yksityiskohdat ja omavarjo (vie GPU-aikaa)
+cloud-quality-ultra = Ultra
+    .facts = Pilvikerros, kumpu- ja ukkospilvet läpi lennettävinä tilavuuksina (vie eniten GPU-aikaa)
 
 ## ÄÄNI
 

@@ -112,6 +112,8 @@ cloud-quality-medium = Sedang
     .facts = Setengah resolusi, detail lebih halus
 cloud-quality-high = Tinggi
     .facts = Resolusi penuh, detail terhalus dan bayangan sendiri (memakan waktu GPU)
+cloud-quality-ultra = Ultra
+    .facts = Lapisan awan, kumulus, dan badai sebagai volume yang bisa diterbangi (paling banyak memakan waktu GPU)
 
 ## SUARA
 

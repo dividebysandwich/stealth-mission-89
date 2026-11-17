@@ -112,6 +112,8 @@ cloud-quality-medium = Medel
     .facts = Halva upplösningen, finare detaljer
 cloud-quality-high = Hög
     .facts = Full upplösning, finaste detaljer och egen skugga (kostar GPU-tid)
+cloud-quality-ultra = Ultra
+    .facts = Molntäcke, cumulus och åskmoln som volymer man flyger igenom (kostar mest GPU-tid)
 
 ## LJUD
 

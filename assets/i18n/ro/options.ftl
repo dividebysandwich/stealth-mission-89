@@ -112,6 +112,8 @@ cloud-quality-medium = Medie
     .facts = Jumătate din rezoluție, detalii mai fine
 cloud-quality-high = Ridicată
     .facts = Rezoluție completă, cele mai fine detalii și umbră proprie (costă timp GPU)
+cloud-quality-ultra = Ultra
+    .facts = Strat noros, cumulus și furtuni ca volume prin care zbori (cel mai costisitor pentru GPU)
 
 ## SUNET
 

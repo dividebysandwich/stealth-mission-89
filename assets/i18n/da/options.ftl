@@ -112,6 +112,8 @@ cloud-quality-medium = Middel
     .facts = Halv opløsning, finere detaljer
 cloud-quality-high = Høj
     .facts = Fuld opløsning, fineste detaljer og egen skygge (koster GPU-tid)
+cloud-quality-ultra = Ultra
+    .facts = Skydække, cumulus og tordenskyer som rumfang, man kan flyve igennem (dyrest for GPU)
 
 ## LYD
 

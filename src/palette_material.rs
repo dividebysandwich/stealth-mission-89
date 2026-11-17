@@ -472,7 +472,8 @@ pub struct Globals {
     pub shadow_cascades: [Mat4; 4],
     pub shadow_texel: Vec4,
     pub shadow_light: Vec4,
-    /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
+    /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y); the deck
+    /// drawn by the layered clouds (z, `WeatherState::deck_volumetric`).
     pub storm_haze: Vec4,
     /// Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
     /// colour (xyz) and reach in metres (w).

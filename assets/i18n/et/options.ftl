@@ -112,6 +112,8 @@ cloud-quality-medium = Keskmine
     .facts = Pool eraldusvõimest, peenemad detailid
 cloud-quality-high = Kõrge
     .facts = Täielik eraldusvõime, peenimad detailid ja omavari (kulutab GPU aega)
+cloud-quality-ultra = Ultra
+    .facts = Pilvekiht, rünkpilved ja äikesepilved läbilennatavate ruumaladena (kulutab kõige rohkem GPU aega)
 
 ## HELI
 
