@@ -4,7 +4,8 @@
 //!
 //! The cursor is a bearing: pointed where nothing is, it hears only the sea, a faint brown
 //! noise. Pointed at a contact's trace (within `CURSOR_BAND` of its bearing) that contact comes
-//! up (an omnidirectional sensor hears every contact, whatever the cursor):
+//! up (an omnidirectional sensor, a passive DICASS, hears every contact faintly, whatever the
+//! cursor):
 //! - a submarine: the water's rush past its hull beating slowly with its screw, its machinery's
 //!   hum (its 50 or 60 Hz line) faint under it;
 //! - a surface ship: its screws alone, the recorded `ship-big1_loop` (the carrier) or
@@ -39,6 +40,8 @@ const TORPEDO_SPEED: f64 = 2.4;
 const TORPEDO_BEAT: f32 = 31.0;
 /// A submarine's machinery hum, against its flow noise (subtle).
 const HUM: f32 = 0.06;
+/// What an omnidirectional sensor (a passive DICASS) hears, against a contact on the cursor.
+const OMNI_GAIN: f32 = 0.25;
 const PING_HZ: f32 = 3500.0;
 const PING_SECS: f32 = 0.35;
 /// Sound in sea water (m/s).
@@ -220,7 +223,10 @@ fn follow(
         if off > CURSOR_BAND * CURSOR_EDGE || k >= SOURCES {
             continue;
         }
-        let g = ((l.snr as f32 + 6.0) / 30.0).clamp(0.0, 0.7) * (-(off / CURSOR_BAND).powi(2)).exp();
+        // An omnidirectional sensor cannot be steered: what it hears without a bearing is
+        // faint under the cursor's contacts, whichever way the cursor points.
+        let omni = if l.bearing.is_none() { OMNI_GAIN } else { 1.0 };
+        let g = ((l.snr as f32 + 6.0) / 30.0).clamp(0.0, 0.7) * (-(off / CURSOR_BAND).powi(2)).exp() * omni;
         let v = &p.voices[k];
         set(&v.tone, l.freqs[0] as f32);
         set(&v.gain, g);
