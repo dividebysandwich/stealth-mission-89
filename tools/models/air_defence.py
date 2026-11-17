@@ -21,6 +21,7 @@ import os
 import sys
 
 import bpy
+from bpy_extras import anim_utils
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
@@ -68,7 +69,7 @@ LENS = 0xDF
 HOLE = 0x00
 
 TURRET_SLOT, GUN_SLOT, RADAR_SLOT = 21, 22, 16
-# The shooter's pose (`_s23vN`) and his signalling hand's circling (slot 24).
+# The shooter's pose (`_s23vN`) and his signalling hand's circling (slot 24: the frame).
 POSE_SLOT, HAND_SLOT = 23, 24
 
 
@@ -1245,7 +1246,7 @@ def shooter_idle():
     return g
 
 
-# The run-up signal: the right arm up, its forearm (from the elbow) circling the two fingers
+# The run-up signal: the right arm up, its hand (the elbow still) circling the two fingers
 # held up over the head.
 ELBOW = (0.36, 0.06, 1.68)
 
@@ -1259,14 +1260,85 @@ def shooter_runup():
 
 
 def runup_forearm():
-    """The forearm about the elbow, leaning out so the hand circles; two fingers up."""
+    """The forearm from the elbow (the origin) straight up along +z, two fingers up; the rig
+    (`runup_frames`) swings it."""
     g = Geo()
-    tip = (0.12, 0.0, 0.36)
-    g.add(limb((0, 0, 0), tip, 0.05, JERSEY, 0.045))
-    g.add(hand((0.13, 0.0, 0.4), s=0.045))
+    g.add(limb((0, 0, 0), (0, 0, FOREARM), 0.05, JERSEY, 0.045))
+    g.add(hand((0, 0, FOREARM + 0.04), s=0.045))
     for dx in (-0.02, 0.025):
-        g.add(block(0.13 + dx - 0.012, 0.13 + dx + 0.012, -0.012, 0.012, 0.44, 0.55, GLOVES))
+        g.add(block(dx - 0.012, dx + 0.012, -0.012, 0.012, FOREARM + 0.07, FOREARM + 0.16, GLOVES))
     return g
+
+
+# The hand's circle: frames baked (`_s23v1_s24vN`, slot 24 the frame), its radius over the
+# elbow and the forearm's length (m).
+HAND_FRAMES = 16
+HAND_CIRCLE = 0.1
+FOREARM = 0.26
+
+
+def runup_frames(name, parent):
+    """The run-up signal animated in Blender: an empty goes round a circle over the elbow
+    (Follow Path, one turn in HAND_FRAMES frames) and the forearm, pivoting at the elbow, keeps
+    pointing at it (Damped Track: a swing without twist, so the hand circles, fingers up and
+    palm forward, while the elbow stays put). Each frame is baked into a mesh of its own beside
+    the elbow (the engine has no skeletal or keyed animation), shown by slot 24's value; the rig
+    is removed again."""
+    scene = bpy.context.scene
+    elbow = mklib.v3(ELBOW)
+    top = elbow + mklib.v3((0, 0, math.sqrt(FOREARM ** 2 - HAND_CIRCLE ** 2)))
+    curve = bpy.data.curves.new(name + "_rig_circle", "CURVE")
+    curve.dimensions = "3D"
+    curve.path_duration = HAND_FRAMES
+    spline = curve.splines.new("NURBS")
+    pts = 8
+    spline.points.add(pts - 1)
+    for k, p in enumerate(spline.points):
+        a = 2 * math.pi * k / pts
+        r = HAND_CIRCLE / math.cos(math.pi / pts)  # a closed NURBS runs inside its points
+        p.co = (r * math.cos(a) * K, r * math.sin(a) * K, 0.0, 1.0)
+    spline.use_cyclic_u = True
+    spline.order_u = 4
+    circle = bpy.data.objects.new(name + "_rig_circle", curve)
+    scene.collection.objects.link(circle)
+    circle.parent = parent
+    circle.location = tuple(c * K for c in top)
+    target = bpy.data.objects.new(name + "_rig_hand", None)
+    scene.collection.objects.link(target)
+    follow = target.constraints.new("FOLLOW_PATH")
+    follow.target = circle
+    follow.use_fixed_location = True
+    follow.offset_factor = 0.0
+    follow.keyframe_insert("offset_factor", frame=0)
+    follow.offset_factor = 1.0
+    follow.keyframe_insert("offset_factor", frame=HAND_FRAMES)
+    anim = target.animation_data
+    for fc in anim_utils.action_get_channelbag_for_slot(anim.action, anim.action_slot).fcurves:
+        for kp in fc.keyframe_points:
+            kp.interpolation = "LINEAR"  # an even pace
+    forearm = mesh_obj(name + "_rig_forearm", runup_forearm(), parent, ELBOW)
+    track = forearm.constraints.new("DAMPED_TRACK")
+    track.target = target
+    track.track_axis = "TRACK_Z"
+    frames = []
+    for f in range(HAND_FRAMES):
+        scene.frame_set(f)
+        bpy.context.view_layer.update()
+        local = parent.matrix_world.inverted() @ forearm.matrix_world
+        me = forearm.data.copy()
+        me.transform(local)
+        me.name = "%s_s24v%d" % (name, f)
+        ob = bpy.data.objects.new(me.name, me)
+        scene.collection.objects.link(ob)
+        ob.parent = parent
+        frames.append(ob)
+    scene.frame_set(0)
+    mesh = forearm.data
+    for ob in (forearm, target, circle):
+        bpy.data.objects.remove(ob, do_unlink=True)
+    bpy.data.meshes.remove(mesh)
+    bpy.data.curves.remove(curve)
+    return frames
 
 
 def shooter_lunge():
@@ -1297,14 +1369,14 @@ def shooter_lunge():
 
 def shooter():
     """The shooter stands at the origin facing +y (the aircraft): idle (`_s23v0`), giving the
-    run-up signal (`_s23v1`, the hand circling on slot 24), lunging for the launch towards +x
+    run-up signal (`_s23v1`, the hand circling: forearm frame N on slot 24, `_s24vN`), lunging for the launch towards +x
     (`_s23v2`) or -x (`_s23v3`)."""
     name = "aaa_%03d" % SHOOTER
     root, lod0, _ = levels(SHOOTER, 4000, far_level=False)
     lod0["radius"] = int(2 * K)
     mesh_obj(name + "_lod0_s23v0", shooter_idle(), lod0)
     runup = mesh_obj(name + "_lod0_s23v1", shooter_runup(), lod0)
-    part(name + "_lod0_s23v1_part1", runup_forearm(), runup, ELBOW, HAND_SLOT, 0)
+    runup_frames(name + "_lod0_s23v1", runup)
     mesh_obj(name + "_lod0_s23v2", shooter_lunge(), lod0)
     mesh_obj(name + "_lod0_s23v3", shooter_lunge().mirrored(), lod0)
 

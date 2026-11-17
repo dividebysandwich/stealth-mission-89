@@ -38,9 +38,11 @@ impl Plugin for CatapultCrewPlugin {
 /// The shooter's model (tools/models/air_defence.py `SHOOTER`).
 const SHOOTER_MODEL: &str = "aaa_124";
 /// His pose (`_s23vN`: idle, run-up, lunge to his right, lunge to his left) and his signalling
-/// hand's circling (BAM).
+/// hand's circling: the frame shown (`_s24vN`) of the circle animated in Blender.
 const POSE_SLOT: usize = 23;
 const HAND_SLOT: usize = 24;
+/// Frames in one circle of his hand (air_defence.py `HAND_FRAMES`).
+const HAND_FRAMES: f32 = 16.0;
 /// Where he stands from the aircraft's hold-back point (m: ahead along the track, out to the
 /// side).
 const AHEAD_M: f64 = 5.0;
@@ -249,7 +251,7 @@ fn pose(
         pos.0 = at;
         tf.rotation = rot;
         state.0[POSE_SLOT] = v as i16;
-        state.0[HAND_SLOT] = (s.hand * 65536.0) as i32 as i16;
+        state.0[HAND_SLOT] = ((s.hand * HAND_FRAMES) as i16).min(HAND_FRAMES as i16 - 1);
     }
 }
 
