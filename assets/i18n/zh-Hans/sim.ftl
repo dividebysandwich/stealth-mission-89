@@ -74,6 +74,7 @@ sim-select-aa-ag = 请选择 A-A 或 A-G 模式
 asw-not-seahawk = 不在海鹰机组中
 asw-no-buoys = { $kind } 浮标已用完
 asw-buoys-live = 已有 { $n } 个浮标在水中
+asw-route-full = 航线已满
 asw-no-such-buoy = 没有该浮标
 asw-dip-broken = 吊放声呐丢失
 asw-dip-limits = 吊放：低于 70 ft、低于 5 kt 悬停

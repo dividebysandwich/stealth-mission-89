@@ -76,6 +76,7 @@ sim-select-aa-ag = Επιλέξτε λειτουργία A-A ή A-G
 asw-not-seahawk = Δεν είστε σε πλήρωμα Seahawk
 asw-no-buoys = Δεν απομένουν σημαντήρες { $kind }
 asw-buoys-live = Ήδη { $n } σημαντήρες στο νερό
+asw-route-full = Η διαδρομή είναι πλήρης
 asw-no-such-buoy = Δεν υπάρχει τέτοιος σημαντήρας
 asw-dip-broken = Το βυθιζόμενο σόναρ χάθηκε
 asw-dip-limits = Σόναρ: αιώρηση κάτω από 70 ft, κάτω από 5 kt

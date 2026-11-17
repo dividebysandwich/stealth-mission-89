@@ -76,6 +76,7 @@ sim-select-aa-ag = Vali režiim A-A või A-G
 asw-not-seahawk = Pole Seahawki meeskonnas
 asw-no-buoys = { $kind } poid on otsas
 asw-buoys-live = Juba { $n } poid vees
+asw-route-full = Marsruut on täis
 asw-no-such-buoy = Sellist poid pole
 asw-dip-broken = Süvasonar kadunud
 asw-dip-limits = Sonar: hõljumine alla 70 ft, alla 5 kt

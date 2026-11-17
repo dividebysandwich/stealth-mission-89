@@ -76,6 +76,7 @@ sim-select-aa-ag = Изберете режим A-A или A-G
 asw-not-seahawk = Не сте в екипаж на Seahawk
 asw-no-buoys = Няма останали буи { $kind }
 asw-buoys-live = Вече { $n } буи във водата
+asw-route-full = Маршрутът е пълен
 asw-no-such-buoy = Няма такава буя
 asw-dip-broken = Спускаемият сонар е загубен
 asw-dip-limits = Сонар: висене под 70 ft, под 5 kt

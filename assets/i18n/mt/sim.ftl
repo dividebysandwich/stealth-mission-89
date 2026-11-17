@@ -76,6 +76,7 @@ sim-select-aa-ag = Agħżel il-modalità A-A jew A-G
 asw-not-seahawk = M'intix f'ekwipaġġ ta' Seahawk
 asw-no-buoys = Ma fadalx sonobuoys { $kind }
 asw-buoys-live = Diġà { $n } buoys fl-ilma
+asw-route-full = Ir-rotta hi mimlija
 asw-no-such-buoy = M'hemmx buoy bħal din
 asw-dip-broken = Is-sonar mgħaddas intilef
 asw-dip-limits = Għaddas: hover taħt 70 ft, taħt 5 kt

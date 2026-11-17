@@ -75,6 +75,7 @@ sim-select-aa-ag = Välj läge A-A eller A-G
 asw-not-seahawk = Inte i en Seahawk-besättning
 asw-no-buoys = Inga { $kind }-bojar kvar
 asw-buoys-live = Redan { $n } bojar i vattnet
+asw-route-full = Rutten är full
 asw-no-such-buoy = Ingen sådan boj
 asw-dip-broken = Doppsonar förlorad
 asw-dip-limits = Doppa: sväva under 70 ft, under 5 kt

@@ -12,7 +12,8 @@
 //! seat is taken): `buoy=difar|dicass|bt[@east,north]` (km from the aircraft), `deep=0|1`,
 //! `active=<n>` (the n-th buoy, from 1, pings), `hover=0|1` (the dip hover asked for), `dip=0|1`
 //! (at his own console `dip=1` asks for the hover and lowers once there), `depth=<m>`, `dipping=0|1` (its
-//! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `torp=<hdg|auto>/<delay>/<pattern>`,
+//! pings), `mad=0|1`, `mark`, `wp=<east>,<north>` (km), `dropwp=<kind>@e,n` (a drop waypoint), `movewp=<i>@e,n`,
+//! `delwp=<i>` (waypoint i from 1, the route's then the mission's), `torp=<hdg|auto>/<delay>/<pattern>`,
 //! `arm`, `release`, `page=sonar|wpn|map`, `audio`, `sensor=<n>` (the n-th buoy), `smark` (MARK on the SONAR page), `tbuoy=<kind>@e,n` (a buoy put there at once), `markid=<A..H>`, `cursor=<bearing>` (the selected sensor's
 //! listening cursor, in the headset).
 
@@ -118,11 +119,20 @@ pub struct AswUi {
     /// The map's centre (m east, north; None: on the aircraft) and range (km, the half height).
     pub centre: Option<[f64; 2]>,
     pub range_km: f64,
+    /// The selected waypoint: the route's points first, then the mission's.
     pub sel_wp: Option<usize>,
     pub drag: Option<Drag>,
-    /// The route as edited here (world units east, north), sent with `route_rev`.
+    /// The route as edited here (world units east, north), sent with `route_rev`, and the buoy
+    /// dropped at each of its points.
     pub route: Vec<(i32, i32)>,
     pub route_rev: u16,
+    pub drops: Vec<Option<(BuoyKind, bool)>>,
+    /// The mission's waypoints after the route as edited here (the last, the landing, stays),
+    /// and when they were last sent (the crew's taken again after a while if it never came).
+    pub mission: Vec<(i32, i32)>,
+    pub mission_sent: Option<f32>,
+    /// When the route was last sent.
+    pub route_sent: Option<f32>,
     /// The torpedo station the release takes (1 left inner, 2 right inner).
     pub station: u8,
     /// The sensors' histories.
@@ -167,6 +177,10 @@ impl Default for AswUi {
             drag: None,
             route: Vec::new(),
             route_rev: 0,
+            drops: Vec::new(),
+            mission: Vec::new(),
+            mission_sent: None,
+            route_sent: None,
             station: 1,
             falls: HashMap::new(),
             audio: None,
@@ -266,11 +280,7 @@ fn input(
             ui.notice = None;
         }
     }
-    // The route as the simulation has it, unless edited here since.
-    if crew.route_rev != ui.route_rev && ui.drag.is_none() {
-        ui.route = crew.route.clone();
-        ui.route_rev = crew.route_rev;
-    }
+    follow_crew(&mut ui, &crew);
     for ConsoleButton(k) in keys.read() {
         key(&mut ui, *k, &crew, sim, owner);
     }
@@ -278,6 +288,70 @@ fn input(
         let p = d.uv * CANVAS;
         touch(&mut ui, p, d.phase, &crew, sim, owner);
     }
+}
+
+/// Waiting this long (s) for an edit to come back from the simulation (a campaign's host), the
+/// crew's own taken again (it was refused).
+const EDIT_WAIT: f32 = 3.0;
+
+/// The route and the mission's waypoints as the crew has them, unless edited here since (sent
+/// and not back yet, or being dragged).
+fn follow_crew(ui: &mut AswUi, crew: &AswCrew) {
+    if ui.drag.is_some() {
+        return;
+    }
+    let waiting = |sent: Option<f32>| sent.is_some_and(|t| ui.t - t < EDIT_WAIT);
+    // Ahead of the crew's revision: sent, not back yet.
+    let ahead = (ui.route_rev.wrapping_sub(crew.route_rev) as i16) > 0;
+    if !(ahead && waiting(ui.route_sent)) {
+        ui.route_sent = None;
+        ui.route = crew.route.clone();
+        ui.route_rev = crew.route_rev;
+        ui.drops = drops_of(crew);
+    }
+    if crew.mission == ui.mission || !waiting(ui.mission_sent) {
+        ui.mission_sent = None;
+        ui.mission = crew.mission.clone();
+    }
+    let n = ui.route.len() + ui.mission.len();
+    if ui.sel_wp.is_some_and(|i| i >= n) {
+        ui.sel_wp = None;
+    }
+}
+
+/// The buoy waiting at each of the crew's route points.
+pub fn drops_of(crew: &AswCrew) -> Vec<Option<(BuoyKind, bool)>> {
+    crew.route
+        .iter()
+        .map(|&p| {
+            let at = stealth_sim::asw::wu_metres(p);
+            crew.pending
+                .iter()
+                .find(|d| (d.2[0] - at[0]).abs() < 1.0 && (d.2[1] - at[1]).abs() < 1.0)
+                .map(|d| (d.0, d.1))
+        })
+        .collect()
+}
+
+/// The route's drops as the command has them: the point's index, kind, deep.
+pub fn route_drops(drops: &[Option<(BuoyKind, bool)>]) -> Vec<(u8, BuoyKind, bool)> {
+    drops.iter().enumerate().filter_map(|(i, d)| d.map(|(k, deep)| (i as u8, k, deep))).collect()
+}
+
+/// The route as edited here to the simulation.
+pub fn send_route(ui: &mut AswUi) {
+    ui.drops.resize(ui.route.len(), None);
+    ui.route_rev = ui.route_rev.wrapping_add(1);
+    let (rev, points, drops) = (ui.route_rev, ui.route.clone(), route_drops(&ui.drops));
+    ui.route_sent = Some(ui.t);
+    ui.outbox.push(AswCmd::Route { rev, points, drops });
+}
+
+/// The mission's waypoints as edited here to the simulation.
+pub fn send_mission(ui: &mut AswUi) {
+    ui.mission_sent = Some(ui.t);
+    let points = ui.mission.clone();
+    ui.outbox.push(AswCmd::Mission { points });
 }
 
 /// A key of the keyset.
@@ -438,57 +512,122 @@ fn send(
     }
 }
 
-/// The pilot's waypoints follow the crew's route: its points first, then the mission's.
+/// What the pilot's waypoints were last built from: the crew's route revision, its mission
+/// points and drops, the mission's own waypoints and their anchors as the aircraft first had
+/// them, and the mission point flown to (counting from the first after the route).
+#[derive(Default)]
+pub struct RouteSeen {
+    built: Option<(u16, Vec<(i32, i32)>, Vec<Option<(BuoyKind, bool)>>)>,
+    base: Option<(Vec<crate::hud::Waypoint>, Vec<usize>)>,
+    mission_at: usize,
+    /// The revision the passed route points were trimmed at.
+    trimmed: Option<u16>,
+}
+
+/// The mission's waypoints as the crew starts with them: in world units, a point repeated
+/// (the primary as the secondary, a hunt's datum) once, with where each was.
+fn mission_points(base: &[crate::hud::Waypoint]) -> (Vec<(i32, i32)>, Vec<usize>) {
+    let mut points: Vec<(i32, i32)> = Vec::new();
+    let mut index = Vec::new();
+    for w in base {
+        let p = (w.east as i32, w.north as i32);
+        if points.last() != Some(&p) {
+            points.push(p);
+        }
+        index.push(points.len() - 1);
+    }
+    (points, index)
+}
+
+/// The pilot's waypoints follow the crew's route: its points first, then the mission's (as the
+/// operator may have moved them; the landing stays last). The route's points are dropped from
+/// it once passed, so an edit does not send the aircraft back to them.
 fn route_sync(
     combat: Option<Res<Combat>>,
     settings: Res<crate::settings::Settings>,
     manning: Option<Res<Manning>>,
     mut wps: Option<ResMut<crate::hud::Waypoints>>,
     mut ui: ResMut<AswUi>,
-    mut seen: Local<Option<(u16, Vec<crate::hud::Waypoint>, Vec<usize>)>>,
+    mut seen: Local<RouteSeen>,
 ) {
     let (Some(combat), Some(wps)) = (combat, wps.as_deref_mut()) else { return };
     // A remote operator's own waypoints are his parked aircraft's: not the crew's.
     if !settings.aircraft.seahawk() || manning.as_deref().is_some_and(|m| m.remote_gunner()) {
         return;
     }
+    let (base, anchors) =
+        seen.base.get_or_insert_with(|| (wps.points.clone(), wps.anchors.clone())).clone();
+    let (start, index) = mission_points(&base);
     let me = combat.sim.active_pilot();
+    let queued = ui.outbox.iter().any(|c| matches!(c, AswCmd::Mission { .. }));
     let Some(crew) = combat.sim.asw().crew(me) else {
         // The crew begins with the first command; the mission's route goes with it.
-        if !wps.points.is_empty() && ui.outbox.is_empty() {
-            let points = wps.points.iter().map(|w| (w.east as i32, w.north as i32)).collect();
-            ui.outbox.push(AswCmd::Mission { points });
+        if !start.is_empty() && ui.outbox.is_empty() {
+            ui.outbox.push(AswCmd::Mission { points: start });
         }
         return;
     };
-    let (rev, base, anchors) = seen.get_or_insert_with(|| (0, wps.points.clone(), wps.anchors.clone()));
-    // The operator sees the mission's waypoints too.
-    let mission: Vec<(i32, i32)> = base.iter().map(|w| (w.east as i32, w.north as i32)).collect();
-    if crew.mission != mission && !ui.outbox.iter().any(|c| matches!(c, AswCmd::Mission { .. })) {
-        ui.outbox.push(AswCmd::Mission { points: mission });
+    if crew.mission.is_empty() && !start.is_empty() && !queued {
+        ui.outbox.push(AswCmd::Mission { points: start.clone() });
     }
-    if crew.route_rev == *rev {
+    let mission = if crew.mission.is_empty() { start.clone() } else { crew.mission.clone() };
+    let drops = drops_of(crew);
+    let key = (crew.route_rev, mission.clone(), drops.clone());
+    if seen.built.as_ref() == Some(&key) {
+        // The route's points passed: off the route (their drops are gone by then), once the
+        // waypoints are built from the crew's route as it is (not one trimmed already).
+        let tactical = wps.tactical.min(crew.route.len());
+        let passed =
+            (0..tactical).take_while(|&i| wps.passed.get(i).copied().unwrap_or(false)).count();
+        if passed > 0 && seen.trimmed != Some(crew.route_rev) {
+            seen.trimmed = Some(crew.route_rev);
+            let mut drops = drops_of(crew);
+            drops.drain(..passed);
+            let rev = crew.route_rev.wrapping_add(1);
+            let points = crew.route[passed..].to_vec();
+            ui.outbox.push(AswCmd::Route { rev, points, drops: route_drops(&drops) });
+        }
         return;
     }
-    *rev = crew.route_rev;
+    // The mission point flown to, kept through the rebuild.
+    if seen.built.is_none() {
+        seen.mission_at = index.get(wps.current).copied().unwrap_or(0);
+    } else if wps.current >= wps.tactical {
+        seen.mission_at = wps.current - wps.tactical;
+    }
+    seen.built = Some(key);
     let n = crew.route.len();
     let mut points: Vec<crate::hud::Waypoint> = crew
         .route
         .iter()
+        .chain(&mission)
         .map(|&(e, n)| crate::hud::Waypoint { east: e as f64, north: n as f64 })
         .collect();
-    points.extend(base.iter().copied());
-    let anchors: Vec<usize> = if anchors.is_empty() {
-        (0..base.len()).map(|k| k + n).collect()
-    } else {
-        anchors.iter().map(|k| k + n).collect()
-    };
-    let current = if n > 0 { 0 } else { wps.current.min(points.len().saturating_sub(1)) };
+    if points.is_empty() {
+        points = base.clone();
+    }
+    // The mission's anchors (midpoint, primary, secondary, landing) on its points as they are:
+    // where they were, or within the points left once the operator moved them, the landing last.
+    let own: Vec<usize> =
+        if anchors.is_empty() { (0..base.len()).collect() } else { anchors.clone() };
+    let last = mission.len().saturating_sub(1);
+    let mut anchors: Vec<usize> =
+        own.iter().map(|&k| index.get(k).copied().unwrap_or(k).min(last)).collect();
+    if mission != start
+        && let Some(land) = anchors.get_mut(3)
+    {
+        *land = last;
+    }
+    let anchors: Vec<usize> = anchors.into_iter().map(|k| k + n).collect();
+    let current = if n > 0 { 0 } else { (n + seen.mission_at).min(points.len().saturating_sub(1)) };
     let editing = wps.editing;
     *wps = crate::hud::Waypoints::planned(points, anchors);
     wps.current = current;
+    wps.mission_current = current;
     wps.editing = editing;
     wps.tactical = n;
+    wps.drop_points =
+        drops.iter().enumerate().filter(|(_, d)| d.is_some()).map(|(i, _)| i).collect();
 }
 
 /// The main display.
@@ -875,10 +1014,50 @@ fn script(
             "wp" => {
                 if let Some(p) = km(val) {
                     ui.route.push(((p[0] / M_PER_WU) as i32, (p[1] / M_PER_WU) as i32));
-                    let rev = ui.route_rev.wrapping_add(1);
-                    ui.route_rev = rev;
-                    let points = ui.route.clone();
-                    ui.outbox.push(AswCmd::Route { rev, points });
+                    send_route(&mut ui);
+                }
+            }
+            // As the MAP page's D/C/B and a touch: a drop waypoint at the route's end.
+            "dropwp" => {
+                let (kind, at) = val.split_once('@').unwrap_or((val, ""));
+                let kind = match kind {
+                    "dicass" => BuoyKind::Dicass,
+                    "bt" => BuoyKind::Bt,
+                    _ => BuoyKind::Difar,
+                };
+                if let Some(p) = km(at) {
+                    ui.route.push(stealth_sim::asw::wu_point(p));
+                    let n = ui.route.len();
+                    ui.drops.resize(n - 1, None);
+                    let deep = ui.deep;
+                    ui.drops.push(Some((kind, deep)));
+                    send_route(&mut ui);
+                }
+            }
+            // Waypoint i (from 1: the route's, then the mission's) moved to a point, or deleted.
+            "movewp" | "delwp" => {
+                let (i, at) = val.split_once('@').unwrap_or((val, ""));
+                let i = i.parse::<usize>().unwrap_or(1).saturating_sub(1);
+                let n = ui.route.len();
+                let at = km(at).map(stealth_sim::asw::wu_point);
+                if i < n {
+                    match at {
+                        Some(p) => ui.route[i] = p,
+                        None => {
+                            ui.route.remove(i);
+                            ui.drops.resize(n, None);
+                            ui.drops.remove(i);
+                        }
+                    }
+                    send_route(&mut ui);
+                } else if i - n + 1 < ui.mission.len() {
+                    match at {
+                        Some(p) => ui.mission[i - n] = p,
+                        None => {
+                            ui.mission.remove(i - n);
+                        }
+                    }
+                    send_mission(&mut ui);
                 }
             }
             "torp" => {

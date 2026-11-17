@@ -75,6 +75,7 @@ sim-select-aa-ag = Seleziona la modalità A-A o A-G
 asw-not-seahawk = Non sei in un equipaggio Seahawk
 asw-no-buoys = Sonoboe { $kind } esaurite
 asw-buoys-live = Già { $n } boe in acqua
+asw-route-full = La rotta è piena
 asw-no-such-buoy = Boa inesistente
 asw-dip-broken = Sonar a immersione perso
 asw-dip-limits = Immersione: hovering sotto 70 ft, sotto 5 kt

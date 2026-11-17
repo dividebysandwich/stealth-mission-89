@@ -76,6 +76,7 @@ sim-select-aa-ag = Modus A-A oder A-G wählen
 asw-not-seahawk = Nicht in einer Seahawk-Besatzung
 asw-no-buoys = Keine { $kind }-Bojen mehr
 asw-buoys-live = Schon { $n } Bojen im Wasser
+asw-route-full = Die Route ist voll
 asw-no-such-buoy = Keine solche Boje
 asw-dip-broken = Tauchsonar verloren
 asw-dip-limits = Tauchen: Schwebeflug unter 70 ft, unter 5 kt

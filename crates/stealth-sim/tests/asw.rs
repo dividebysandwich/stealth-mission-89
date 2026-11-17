@@ -206,8 +206,43 @@ fn a_drop_on_the_map_waits_for_the_aircraft_to_get_there() {
     sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: Some(point) }).unwrap();
     run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 1.0);
     assert!(sim.asw().buoys.is_empty());
+    // The drop is a waypoint of the route, for the aircraft to fly to.
+    let crew = sim.asw().crew(0).unwrap();
+    assert_eq!(
+        crew.route.last().copied(),
+        Some(stealth_sim::asw::wu_point([point.0 as f64, point.1 as f64]))
+    );
     run(&mut sim, &at(HOME[0] + 2000.0, HOME[1], 30.0, 0.0), 1.0);
     assert_eq!(sim.asw().buoys.len(), 1);
+}
+
+#[test]
+fn the_route_carries_its_drops_moved_and_deleted_with_their_points() {
+    let mut sim = seahawk();
+    hunt(&mut sim, [HOME[0] + 30_000.0, HOME[1]], 0.0, 60.0, None);
+    run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.2);
+    let a = stealth_sim::asw::wu_point([HOME[0] + 2000.0, HOME[1]]);
+    let b = stealth_sim::asw::wu_point([HOME[0] + 4000.0, HOME[1]]);
+    let route = |points: Vec<(i32, i32)>, drops| AswCmd::Route { rev: 10, points, drops };
+    sim.asw_command(0, route(vec![a, b], vec![(1, BuoyKind::Dicass, true)])).unwrap();
+    let c = sim.asw().crew(0).unwrap();
+    assert_eq!(c.pending.len(), 1);
+    assert_eq!(c.pending[0].2, stealth_sim::asw::wu_metres(b));
+    // Moved: the drop with its point; passing the old point drops nothing.
+    let moved = stealth_sim::asw::wu_point([HOME[0] + 6000.0, HOME[1]]);
+    sim.asw_command(0, route(vec![a, moved], vec![(1, BuoyKind::Dicass, true)])).unwrap();
+    run(&mut sim, &at(HOME[0] + 4000.0, HOME[1], 30.0, 0.0), 1.0);
+    assert!(sim.asw().buoys.is_empty());
+    run(&mut sim, &at(HOME[0] + 6000.0, HOME[1], 30.0, 0.0), 1.0);
+    assert_eq!(sim.asw().buoys.len(), 1);
+    // Deleted with its point: nothing waits.
+    sim.asw_command(0, route(vec![a, b], vec![(1, BuoyKind::Difar, false)])).unwrap();
+    sim.asw_command(0, route(vec![a], vec![])).unwrap();
+    assert!(sim.asw().crew(0).unwrap().pending.is_empty());
+    // No more drops than buoys aboard (four DIFARs).
+    let many: Vec<(i32, i32)> = (0..5).map(|k| (a.0 + k * 10, a.1)).collect();
+    let drops = (0..5).map(|k| (k as u8, BuoyKind::Difar, false)).collect();
+    assert!(sim.asw_command(0, route(many, drops)).is_err());
 }
 
 #[test]

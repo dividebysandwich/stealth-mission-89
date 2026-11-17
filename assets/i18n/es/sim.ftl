@@ -74,6 +74,7 @@ sim-select-aa-ag = Seleccione el modo A-A o A-G
 asw-not-seahawk = No estás en una tripulación de Seahawk
 asw-no-buoys = No quedan sonoboyas { $kind }
 asw-buoys-live = Ya hay { $n } boyas en el agua
+asw-route-full = La ruta está llena
 asw-no-such-buoy = No existe esa boya
 asw-dip-broken = Sonar calable perdido
 asw-dip-limits = Calar: estacionario bajo 70 ft, menos de 5 kt

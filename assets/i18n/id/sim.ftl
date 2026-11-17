@@ -75,6 +75,7 @@ sim-select-aa-ag = Pilih mode A-A atau A-G
 asw-not-seahawk = Bukan awak Seahawk
 asw-no-buoys = Sonobuoy { $kind } habis
 asw-buoys-live = Sudah { $n } pelampung di air
+asw-route-full = Rute sudah penuh
 asw-no-such-buoy = Pelampung itu tidak ada
 asw-dip-broken = Sonar celup hilang
 asw-dip-limits = Celup: melayang di bawah 70 ft, di bawah 5 kt

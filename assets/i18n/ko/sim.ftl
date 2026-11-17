@@ -75,6 +75,7 @@ sim-select-aa-ag = A-A 또는 A-G 모드를 선택하십시오
 asw-not-seahawk = 시호크 승무원이 아님
 asw-no-buoys = { $kind } 부이 없음
 asw-buoys-live = 이미 부이 { $n }개가 물속에 있음
+asw-route-full = 경로가 가득 참
 asw-no-such-buoy = 해당 부이 없음
 asw-dip-broken = 디핑 소나 손실
 asw-dip-limits = 디핑: 70 ft 미만, 5 kt 미만 호버링

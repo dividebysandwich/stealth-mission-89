@@ -76,6 +76,7 @@ sim-select-aa-ag = Izberite način A-A ali A-G
 asw-not-seahawk = Niste v posadki Seahawka
 asw-no-buoys = Ni več boj { $kind }
 asw-buoys-live = Že { $n } boje v vodi
+asw-route-full = Pot je polna
 asw-no-such-buoy = Takšne boje ni
 asw-dip-broken = Potopni sonar izgubljen
 asw-dip-limits = Potapljanje: lebdenje pod 70 ft, pod 5 kt

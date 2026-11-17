@@ -76,6 +76,7 @@ sim-select-aa-ag = Roghnaigh mód A-A nó A-G
 asw-not-seahawk = Ní i gcriú Seahawk thú
 asw-no-buoys = Níl baoithe { $kind } fágtha
 asw-buoys-live = Tá { $n } baoi san uisce cheana
+asw-route-full = Tá an bealach lán
 asw-no-such-buoy = Níl a leithéid de bhaoi ann
 asw-dip-broken = Sonar tumtha caillte
 asw-dip-limits = Tumadh: foluain faoi 70 ft, faoi 5 kt

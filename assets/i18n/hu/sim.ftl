@@ -76,6 +76,7 @@ sim-select-aa-ag = Válaszd az A-A vagy A-G módot
 asw-not-seahawk = Nem vagy Seahawk-személyzetben
 asw-no-buoys = Nincs több { $kind } bója
 asw-buoys-live = Már { $n } bója van a vízben
+asw-route-full = Az útvonal megtelt
 asw-no-such-buoy = Nincs ilyen bója
 asw-dip-broken = A merülőszonár elveszett
 asw-dip-limits = Merítés: lebegés 70 ft és 5 kt alatt

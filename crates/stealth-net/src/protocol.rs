@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 49;
+pub const PROTOCOL: u16 = 50;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -345,7 +345,11 @@ mod tests {
                 AswCmd::DipDepth(90),
                 AswCmd::Program(TorpProgram { heading: Some(270), delay: 20, pattern: Pattern::Snake, ceiling: 40, floor: 200 }),
                 AswCmd::Release { station: 2 },
-                AswCmd::Route { rev: 4, points: vec![(1, 2), (300_000, -5)] },
+                AswCmd::Route {
+                    rev: 4,
+                    points: vec![(1, 2), (300_000, -5)],
+                    drops: vec![(1, BuoyKind::Difar, true)],
+                },
             ] {
                 let m = ToServer::Asw(cmd);
                 assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
@@ -359,8 +363,16 @@ mod tests {
                     sample: Sample {
                         seq: 9,
                         noise: 48,
-                        lines: vec![Line { snr: 7, bearing: Some(41), range: None, doppler: 0, freqs: [50, 15] }],
+                        lines: vec![Line {
+                            snr: 7,
+                            bearing: Some(41),
+                            range: None,
+                            doppler: 0,
+                            freqs: [50, 15],
+                            ..Default::default()
+                        }],
                         ping: false,
+                        ..Default::default()
                     },
                     ..Default::default()
                 }],

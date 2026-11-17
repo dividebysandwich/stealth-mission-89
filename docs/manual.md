@@ -4036,7 +4036,7 @@ state, the buoys left, the torpedoes and their arming, and the layer.
     screen's pilot line follows it: *AI (HOVER 180 FT)* on the way down, *AI (IN DIP HOVER)* once
     there, and the console tells you to lower the sonar. It keeps the hover while the sonar is in
     the water, even after you cancel the request; with the sonar up and the request cancelled it
-    flies on along the route.
+    flies on along the route, climbing back to the height it flew before.
   - *A player flying*: he gets a message on his HUD, and his MAD page shows *DIP HOVER REQ* until
     he is there. Your status screen shows *DIP HOVER REQUESTED*, then *IN THE DIP HOVER*.
 - **The dipping sonar.** **DIP** lowers it or raises it: only in the dip hover (at most 70 ft over
@@ -4158,17 +4158,21 @@ The MAP page is the tactical picture, north up, round the aircraft (the green ar
 - the **marks**, their **estimates**, the tracker's **fixes** and **tracks** (14.4), all fading
   over five minutes;
 - the **torpedoes**: white running, red homing;
-- the **route** (white, numbered) and the mission's own waypoints after it (grey, M1, M2...).
+- the **route** (white, numbered), a buoy drop on it boxed in yellow with its letter, and the
+  mission's own waypoints after it (grey, M1, M2... and LAND).
 
 **Buttons.** **RNG-** and **RNG+** (or the keyset's ZOOM keys) zoom from 1 to 64 km; drag the sea to
-pan, **CTR** to centre on the aircraft again. **D**, **C**, **B** drop a buoy at the next point you
-touch. **HOVER** asks the pilot for the dip hover (14.4).
+pan, **CTR** to centre on the aircraft again. **D**, **C**, **B** put a drop waypoint at the next
+point you touch: the route goes there and the buoy drops as the aircraft passes over it. **HOVER** asks the pilot for the dip hover (14.4).
 
 **The route.** Touch the sea to add a waypoint after the selected one (or at the end); drag a
-waypoint to move it; touch one to select it, **DEL** removes it, **CLR** the whole route. The route
-is shared: it becomes the pilot's first waypoints, before the mission's own, on his HSD, map and WAY
-pages, and the AI flies it when nobody is in the pilot's seat. A route waypoint is passed within
-1 km of it. Lay the route over the drop points to sow a buoy field in one pass.
+waypoint to move it; touch one to select it, **DEL** removes it (a drop waypoint with its buoy),
+**CLR** the whole route and its drops. The mission's waypoints move and go the same way, all but
+LAND; a waypoint added after a selected M point joins them. The route is shared: it becomes the
+pilot's first waypoints, before the mission's own, on his HSD, map and WAY pages, and the AI flies
+it when nobody is in the pilot's seat. A route waypoint is passed within 1 km of it (a drop
+waypoint within about 100 m) and then leaves the route. Put several drop waypoints in a row to sow
+a buoy field in one pass.
 
 ## 14.6 Torpedoes
 

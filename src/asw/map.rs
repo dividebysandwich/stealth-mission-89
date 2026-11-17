@@ -4,10 +4,11 @@
 //! marks, the torpedoes, the drops waiting for the aircraft, and the route. No bearing lines of
 //! their own: the operator draws those with his marks on the waterfalls.
 //!
-//! Touch the sea to add a waypoint after the selected one (or D, C or B first: drop that buoy
-//! there as the aircraft passes), touch a waypoint to select it, drag it to move it, drag the sea to pan. DEL removes
-//! the selected waypoint (or the mark whose letter was touched), CLR the whole route, CTR puts
-//! the aircraft back in the middle.
+//! Touch the sea to add a waypoint after the selected one (or D, C or B first: a waypoint where
+//! that buoy is dropped as the aircraft passes), touch a waypoint to select it, drag it to move
+//! it, drag the sea to pan. The mission's waypoints (M1..) move and go the same way, all but
+//! the landing. DEL removes the selected waypoint with its drop (or the mark whose letter was
+//! touched), CLR the operator's route and its drops, CTR puts the aircraft back in the middle.
 //!
 //! The operator's marks (`marks`): a bearing line from each marked sensor with its letter;
 //! a letter on two or more sensors also its estimated position, a ring as wide as its error.
@@ -15,7 +16,7 @@
 use bevy::prelude::*;
 use stealth_sim::asw::{AswCmd, AswCrew, BuoyKind, TorpPhase};
 
-use super::{AswUi, Drag, M_PER_WU, marks, owner_at};
+use super::{AswUi, Drag, M_PER_WU, marks, owner_at, send_mission, send_route};
 use crate::canvas::Canvas;
 use crate::cockpit3d::DragPhase;
 use crate::font::{Align, stroke_text_at};
@@ -56,6 +57,15 @@ fn buttons() -> [(Btn, [f32; 8], &'static str); 9] {
     ]
 }
 
+/// A buoy kind's letter, as on the drop buttons (D DIFAR, C DICASS, B BT).
+fn key_letter(kind: BuoyKind) -> &'static str {
+    match kind {
+        BuoyKind::Difar => "D",
+        BuoyKind::Dicass => "C",
+        BuoyKind::Bt => "B",
+    }
+}
+
 fn inside(r: [f32; 8], p: Vec2) -> bool {
     p.x >= r[0] && p.x <= r[0] + r[2] && p.y >= r[1] && p.y <= r[1] + r[3]
 }
@@ -88,9 +98,14 @@ fn wp_units(p: [f64; 2]) -> (i32, i32) {
     ((p[0] / M_PER_WU) as i32, (p[1] / M_PER_WU) as i32)
 }
 
+/// A waypoint the operator may move or delete: the route's (index from 0), then the mission's
+/// but its last, the landing.
 fn waypoint_at(ui: &AswUi, c: [f64; 2], s: Vec2) -> Option<usize> {
+    let movable = ui.route.len() + ui.mission.len().saturating_sub(1);
     ui.route
         .iter()
+        .chain(&ui.mission)
+        .take(movable)
         .enumerate()
         .map(|(i, &w)| (i, to_screen(ui, c, wp_metres(w)).distance(s)))
         .filter(|&(_, d)| d < PICK)
@@ -98,10 +113,35 @@ fn waypoint_at(ui: &AswUi, c: [f64; 2], s: Vec2) -> Option<usize> {
         .map(|(i, _)| i)
 }
 
-fn send_route(ui: &mut AswUi) {
-    ui.route_rev = ui.route_rev.wrapping_add(1);
-    let (rev, points) = (ui.route_rev, ui.route.clone());
-    ui.outbox.push(AswCmd::Route { rev, points });
+/// Waypoint `i` (the route's, then the mission's).
+fn point_mut(ui: &mut AswUi, i: usize) -> Option<&mut (i32, i32)> {
+    let n = ui.route.len();
+    if i < n { ui.route.get_mut(i) } else { ui.mission.get_mut(i - n) }
+}
+
+/// The edited waypoint `i` to the simulation: the route or the mission's.
+fn send_point(ui: &mut AswUi, i: usize) {
+    if i < ui.route.len() { send_route(ui) } else { send_mission(ui) }
+}
+
+/// A new buoy drop on the route can be had: one of the kind aboard and not already waiting,
+/// and no more in the water and waiting than the receivers follow.
+fn drop_refused(
+    ui: &AswUi,
+    crew: &AswCrew,
+    sim: &stealth_sim::Sim,
+    owner: u8,
+    kind: BuoyKind,
+) -> Option<String> {
+    let waiting = ui.drops.iter().flatten().filter(|d| d.0 == kind).count();
+    if waiting >= crew.buoys_left[kind.index()] as usize {
+        return Some(format!("NO {} LEFT", kind.name()));
+    }
+    let live = sim.asw().buoys_of(owner).count() + ui.drops.iter().flatten().count();
+    if live >= stealth_sim::asw::MAX_BUOYS {
+        return Some(format!("{} BUOYS ALREADY", stealth_sim::asw::MAX_BUOYS));
+    }
+    None
 }
 
 /// A touch on the page (canvas units).
@@ -115,14 +155,25 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &st
                     Btn::Delete => {
                         if let Some(i) = ui.sel_mark.take().filter(|&i| i < ui.marks.len()) {
                             ui.marks.remove(i);
-                        } else if let Some(i) = ui.sel_wp.filter(|&i| i < ui.route.len()) {
-                            ui.route.remove(i);
-                            ui.sel_wp = i.checked_sub(1).or((!ui.route.is_empty()).then_some(0));
-                            send_route(ui);
+                        } else if let Some(i) = ui.sel_wp {
+                            let n = ui.route.len();
+                            if i < n {
+                                ui.route.remove(i);
+                                ui.drops.resize(n, None);
+                                ui.drops.remove(i);
+                                send_route(ui);
+                            } else if i - n + 1 < ui.mission.len() {
+                                // Not the landing.
+                                ui.mission.remove(i - n);
+                                send_mission(ui);
+                            }
+                            let all = ui.route.len() + ui.mission.len();
+                            ui.sel_wp = i.checked_sub(1).or((all > 0).then_some(0));
                         }
                     }
                     Btn::Clear => {
                         ui.route.clear();
+                        ui.drops.clear();
                         ui.sel_wp = None;
                         send_route(ui);
                     }
@@ -155,8 +206,11 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &st
             });
         }
         DragPhase::Move => match ui.drag {
-            Some(Drag::Wp(i)) if i < ui.route.len() => {
-                ui.route[i] = wp_units(to_map(ui, c, p));
+            Some(Drag::Wp(i)) => {
+                let at = wp_units(to_map(ui, c, p));
+                if let Some(w) = point_mut(ui, i) {
+                    *w = at;
+                }
             }
             Some(Drag::Pan { from, centre, moved }) => {
                 if moved || p.distance(from) > MOVED {
@@ -170,21 +224,34 @@ pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &st
         },
         DragPhase::End => {
             match ui.drag.take() {
-                Some(Drag::Wp(_)) => send_route(ui),
-                // A touch on the sea: a buoy dropped there, else a waypoint after the selected.
+                Some(Drag::Wp(i)) => send_point(ui, i),
+                // A touch on the sea: a waypoint after the selected one (a buoy dropped there,
+                // on the route), else at the route's end.
                 Some(Drag::Pan { moved: false, .. }) => {
-                    let at = to_map(ui, c, p);
-                    if let Some(kind) = ui.drop.take() {
-                        ui.outbox.push(AswCmd::DropBuoy {
-                            kind,
-                            deep: ui.deep,
-                            at: Some((at[0] as i32, at[1] as i32)),
-                        });
-                    } else if ui.route.len() < 16 {
-                        let i = ui.sel_wp.map_or(ui.route.len(), |i| (i + 1).min(ui.route.len()));
-                        ui.route.insert(i, wp_units(at));
-                        ui.sel_wp = Some(i);
-                        send_route(ui);
+                    let at = wp_units(to_map(ui, c, p));
+                    let n = ui.route.len();
+                    let drop = ui.drop.take();
+                    if let Some(why) = drop.and_then(|k| drop_refused(ui, crew, sim, owner, k)) {
+                        ui.note(why);
+                        return;
+                    }
+                    let in_mission = ui.sel_wp.filter(|&i| i >= n && i - n + 1 < ui.mission.len());
+                    match in_mission {
+                        // After a mission point (not past the landing).
+                        Some(i) if drop.is_none() && ui.mission.len() < 32 => {
+                            ui.mission.insert(i - n + 1, at);
+                            ui.sel_wp = Some(i + 1);
+                            send_mission(ui);
+                        }
+                        _ if n < stealth_sim::asw::MAX_ROUTE => {
+                            let i = ui.sel_wp.filter(|&i| i < n).map_or(n, |i| i + 1);
+                            ui.route.insert(i, at);
+                            ui.drops.resize(n, None);
+                            ui.drops.insert(i, drop.map(|k| (k, ui.deep)));
+                            ui.sel_wp = Some(i);
+                            send_route(ui);
+                        }
+                        _ => ui.note("ROUTE FULL"),
                     }
                 }
                 _ => {}
@@ -321,7 +388,7 @@ pub fn draw(
         } else {
             cv.ring(s, 5.0, 1.4, if ui.sensor == Some(b.id) { YELLOW } else { col });
         }
-        let letter = &b.kind.name()[..1];
+        let letter = key_letter(b.kind);
         stroke_text_at(cv, s.x, s.y + 0.5, letter, 5.0, 1.0, col, Align::Centre);
         stroke_text_at(cv, s.x + 8.0, s.y - 7.0, &format!("B{}", b.id), 5.0, 1.0, col, Align::Left);
         if b.active {
@@ -333,12 +400,6 @@ pub fn draw(
         let s = at(crew.dip.at);
         cv.ring(s, 6.0, 1.2, CYAN);
         stroke_text_at(cv, s.x + 9.0, s.y + 8.0, "DIP", 5.0, 1.0, CYAN, Align::Left);
-    }
-    // Drops waiting for the aircraft.
-    for (kind, _, p) in &crew.pending {
-        let s = at(*p);
-        cv.rect(s.x as i32 - 4, s.y as i32 - 4, 8, 8, YELLOW);
-        stroke_text_at(cv, s.x + 7.0, s.y + 7.0, &kind.name()[..1], 5.0, 1.0, YELLOW, Align::Left);
     }
     // The tracker's fixes: echoes faint dots, MAD marks red crosses (under the rest), fading
     // over five minutes.
@@ -415,16 +476,20 @@ pub fn draw(
         cv.stroke(s, ray(s, t.heading as f32, 9.0), 1.2, col);
     }
     // The mission's own waypoints (flown after the route), grey.
-    let mission: Vec<Vec2> = crew.mission.iter().map(|&w| at(wp_metres(w))).collect();
+    let mission: Vec<Vec2> = ui.mission.iter().map(|&w| at(wp_metres(w))).collect();
     for w in mission.windows(2) {
         cv.dashed(w[0], w[1], 6.0, 4.0, 0.8, GREY);
     }
     if let (Some(last), Some(first)) = (ui.route.last(), mission.first()) {
         cv.dashed(at(wp_metres(*last)), *first, 6.0, 4.0, 0.8, GREY);
     }
+    let n = ui.route.len();
     for (i, s) in mission.iter().enumerate() {
-        cv.rect(s.x as i32 - 3, s.y as i32 - 3, 6, 6, GREY);
-        stroke_text_at(cv, s.x + 7.0, s.y + 8.0, &format!("M{}", i + 1), 5.0, 1.0, GREY, Align::Left);
+        let col = if ui.sel_wp == Some(n + i) { YELLOW } else { GREY };
+        let land = i + 1 == mission.len();
+        cv.rect(s.x as i32 - 3, s.y as i32 - 3, 6, 6, col);
+        let label = if land { "LAND".to_string() } else { format!("M{}", i + 1) };
+        stroke_text_at(cv, s.x + 7.0, s.y + 8.0, &label, 5.0, 1.0, col, Align::Left);
     }
     // The route.
     let pts: Vec<Vec2> = ui.route.iter().map(|&w| at(wp_metres(w))).collect();
@@ -439,7 +504,22 @@ pub fn draw(
     for (i, s) in pts.iter().enumerate() {
         let col = if ui.sel_wp == Some(i) { YELLOW } else { WHITE };
         cv.ring(*s, 5.0, 1.2, col);
-        stroke_text_at(cv, s.x + 8.0, s.y + 8.0, &format!("{}", i + 1), 6.0, 1.0, col, Align::Left);
+        let label = format!("{}", i + 1);
+        stroke_text_at(cv, s.x + 8.0, s.y + 8.0, &label, 6.0, 1.0, col, Align::Left);
+        // A buoy dropped there: its letter in a box round the point.
+        if let Some(Some((kind, _))) = ui.drops.get(i) {
+            cv.rect(s.x as i32 - 8, s.y as i32 - 8, 16, 16, YELLOW);
+            stroke_text_at(
+                cv,
+                s.x + 8.0,
+                s.y - 7.0,
+                key_letter(*kind),
+                6.0,
+                1.0,
+                YELLOW,
+                Align::Left,
+            );
+        }
     }
     // The aircraft.
     if let Some((p, heading)) = here {

@@ -76,6 +76,7 @@ sim-select-aa-ag = Pasirinkite režimą A-A arba A-G
 asw-not-seahawk = Nesate Seahawk įgulos narys
 asw-no-buoys = { $kind } plūdurų neliko
 asw-buoys-live = Jau { $n } plūdurai vandenyje
+asw-route-full = Maršrutas pilnas
 asw-no-such-buoy = Tokio plūduro nėra
 asw-dip-broken = Nuleidžiamas sonaras prarastas
 asw-dip-limits = Nuleidimas: kabėjimas žemiau 70 ft, lėčiau nei 5 kt

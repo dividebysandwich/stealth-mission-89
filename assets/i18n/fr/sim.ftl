@@ -74,6 +74,7 @@ sim-select-aa-ag = Sélectionnez le mode A-A ou A-G
 asw-not-seahawk = Pas dans un équipage de Seahawk
 asw-no-buoys = Plus de bouées { $kind }
 asw-buoys-live = Déjà { $n } bouées à l'eau
+asw-route-full = La route est pleine
 asw-no-such-buoy = Bouée inconnue
 asw-dip-broken = Sonar trempé perdu
 asw-dip-limits = Tremper : stationnaire sous 70 ft, moins de 5 kt

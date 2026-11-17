@@ -76,6 +76,7 @@ sim-select-aa-ag = Vælg tilstand A-A eller A-G
 asw-not-seahawk = Ikke i en Seahawk-besætning
 asw-no-buoys = Ingen { $kind }-bøjer tilbage
 asw-buoys-live = Allerede { $n } bøjer i vandet
+asw-route-full = Ruten er fuld
 asw-no-such-buoy = Ingen sådan bøje
 asw-dip-broken = Dyppesonar tabt
 asw-dip-limits = Dyp: svæv under 70 ft, under 5 kt

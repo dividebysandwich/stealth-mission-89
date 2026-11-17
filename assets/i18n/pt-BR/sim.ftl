@@ -75,6 +75,7 @@ sim-select-aa-ag = Selecione o modo A-A ou A-G
 asw-not-seahawk = Não está numa tripulação de Seahawk
 asw-no-buoys = Sem sonoboias { $kind }
 asw-buoys-live = Já há { $n } boias na água
+asw-route-full = A rota está cheia
 asw-no-such-buoy = Boia inexistente
 asw-dip-broken = Sonar de imersão perdido
 asw-dip-limits = Imersão: pairar abaixo de 70 ft, menos de 5 kt

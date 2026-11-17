@@ -81,6 +81,7 @@ sim-select-aa-ag = Wybierz tryb A-A lub A-G
 asw-not-seahawk = Nie jesteś w załodze Seahawka
 asw-no-buoys = Brak pław { $kind }
 asw-buoys-live = Już { $n } pławy w wodzie
+asw-route-full = Trasa jest pełna
 asw-no-such-buoy = Nie ma takiej pławy
 asw-dip-broken = Sonar opuszczany utracony
 asw-dip-limits = Opuszczanie: zawis poniżej 70 ft, poniżej 5 kt

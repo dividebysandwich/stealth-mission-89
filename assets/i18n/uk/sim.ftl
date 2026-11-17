@@ -76,6 +76,7 @@ sim-select-aa-ag = Виберіть режим A-A або A-G
 asw-not-seahawk = Ви не в екіпажі Seahawk
 asw-no-buoys = Буїв { $kind } не залишилося
 asw-buoys-live = Уже { $n } буї у воді
+asw-route-full = Маршрут заповнено
 asw-no-such-buoy = Такого буя немає
 asw-dip-broken = Опускну ГАС втрачено
 asw-dip-limits = Опускання: висіння нижче 70 ft, менше 5 kt

@@ -76,6 +76,7 @@ sim-gun-empty = { $gun } out of ammunition
 asw-not-seahawk = Not in a Seahawk crew
 asw-no-buoys = No { $kind } buoys left
 asw-buoys-live = { $n } buoys already in the water
+asw-route-full = The route is full
 asw-no-such-buoy = No such buoy
 asw-dip-broken = Dipping sonar lost
 asw-dip-limits = Dip: hover below 70 ft, under 5 kt

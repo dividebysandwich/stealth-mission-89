@@ -57,6 +57,23 @@ pub const BUOY_DEPTHS: [f32; 2] = [27.0, 120.0];
 /// DICASS: pings it holds, seconds between pings.
 const DICASS_PINGS: u8 = 24;
 const PING_EVERY: f32 = 10.0;
+/// The most points the crew's route has.
+pub const MAX_ROUTE: usize = 16;
+
+/// A route point (world units east, north) of a point (m east, north), and back.
+pub fn wu_point(p: [f64; 2]) -> (i32, i32) {
+    ((p[0] / M_PER_WU).round() as i32, (p[1] / M_PER_WU).round() as i32)
+}
+
+pub fn wu_metres(p: (i32, i32)) -> [f64; 2] {
+    [p.0 as f64 * M_PER_WU, p.1 as f64 * M_PER_WU]
+}
+
+/// The buoys of a kind a crew has left.
+fn c_left(sim: &Sim, owner: u8, kind: BuoyKind) -> usize {
+    sim.asw.crew(owner).map_or(0, |c| c.buoys_left[kind.index()] as usize)
+}
+
 /// A pending drop goes when the aircraft passes this close to its point (m).
 const DROP_RADIUS: f64 = 150.0;
 
@@ -695,7 +712,7 @@ impl Asw {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AswCmd {
     /// Drop a buoy (deep: its hydrophone at the deeper setting) here, or at a point (m east,
-    /// north), dropped as the aircraft passes over it.
+    /// north), dropped as the aircraft passes over it (the point added to the route's end).
     DropBuoy { kind: BuoyKind, deep: bool, at: Option<(i32, i32)> },
     /// A DICASS listens or pings.
     BuoyMode { id: u16, active: bool },
@@ -715,8 +732,9 @@ pub enum AswCmd {
     Arm(bool),
     /// The operator drops the torpedo on this station (armed).
     Release { station: u8 },
-    /// The route, whole (world units east, north), at this revision.
-    Route { rev: u16, points: Vec<(i32, i32)> },
+    /// The route, whole (world units east, north), at this revision, and the buoys to drop at
+    /// its points (the point's index, the kind, deep): these replace the drops waiting.
+    Route { rev: u16, points: Vec<(i32, i32)>, drops: Vec<(u8, BuoyKind, bool)> },
     /// The pilot's client: the mission's waypoints after the route (world units east, north).
     Mission { points: Vec<(i32, i32)> },
 }
@@ -1151,10 +1169,25 @@ impl Sim {
                 if live >= MAX_BUOYS {
                     return Err(text!("asw-buoys-live", n = MAX_BUOYS as i64));
                 }
+                let waiting = self
+                    .asw
+                    .crew(owner)
+                    .map_or(0, |c| c.pending.iter().filter(|d| d.0 == kind).count());
+                if at.is_some() && waiting >= c_left(self, owner, kind) {
+                    return Err(text!("asw-no-buoys", kind = kind.name()));
+                }
                 let point = at.map(|(e, n)| [e as f64, n as f64]);
                 match point {
                     Some(p) if dist(p, heli.at) > DROP_RADIUS => {
-                        self.asw.crew_mut(owner).pending.push((kind, deep, p));
+                        // A waypoint for it: the drop waits at that point of the route.
+                        let c = self.asw.crew_mut(owner);
+                        if c.route.len() >= MAX_ROUTE {
+                            return Err(text!("asw-route-full"));
+                        }
+                        let wp = wu_point(p);
+                        c.route.push(wp);
+                        c.route_rev = c.route_rev.wrapping_add(1);
+                        c.pending.push((kind, deep, wu_metres(wp)));
                         Ok(())
                     }
                     _ => self.drop_buoy(&heli, kind, deep),
@@ -1279,11 +1312,27 @@ impl Sim {
                 self.asw.crew_mut(owner).mission = points.into_iter().take(32).collect();
                 Ok(())
             }
-            AswCmd::Route { rev, points } => {
+            AswCmd::Route { rev, points, drops } => {
+                let points: Vec<(i32, i32)> = points.into_iter().take(MAX_ROUTE).collect();
+                let drops: Vec<(BuoyKind, bool, [f64; 2])> = drops
+                    .into_iter()
+                    .filter_map(|(i, k, d)| points.get(i as usize).map(|&p| (k, d, wu_metres(p))))
+                    .collect();
+                // Only the buoys left, and no more in the water and waiting than the receivers
+                // follow.
+                for kind in [BuoyKind::Difar, BuoyKind::Dicass, BuoyKind::Bt] {
+                    if drops.iter().filter(|d| d.0 == kind).count() > c_left(self, owner, kind) {
+                        return Err(text!("asw-no-buoys", kind = kind.name()));
+                    }
+                }
+                if self.asw.buoys_of(owner).count() + drops.len() > MAX_BUOYS {
+                    return Err(text!("asw-buoys-live", n = MAX_BUOYS as i64));
+                }
                 let c = self.asw.crew_mut(owner);
                 // Last writer wins: a change made on the older route is still taken.
-                c.route = points.into_iter().take(16).collect();
+                c.route = points;
                 c.route_rev = rev.max(c.route_rev.wrapping_add(1));
+                c.pending = drops;
                 Ok(())
             }
         }

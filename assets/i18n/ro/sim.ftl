@@ -76,6 +76,7 @@ sim-select-aa-ag = Selectați modul A-A sau A-G
 asw-not-seahawk = Nu sunteți într-un echipaj Seahawk
 asw-no-buoys = Nu mai sunt balize { $kind }
 asw-buoys-live = Deja { $n } balize în apă
+asw-route-full = Ruta este plină
 asw-no-such-buoy = Nu există o astfel de baliză
 asw-dip-broken = Sonarul coborât a fost pierdut
 asw-dip-limits = Coborâre: staționare sub 70 ft, sub 5 kt

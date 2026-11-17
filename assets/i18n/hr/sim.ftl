@@ -76,6 +76,7 @@ sim-select-aa-ag = Odaberite način A-A ili A-G
 asw-not-seahawk = Niste u posadi Seahawka
 asw-no-buoys = Nema više plutača { $kind }
 asw-buoys-live = Već { $n } plutače u vodi
+asw-route-full = Ruta je puna
 asw-no-such-buoy = Nema takve plutače
 asw-dip-broken = Uronjivi sonar izgubljen
 asw-dip-limits = Uranjanje: lebdjenje ispod 70 ft, ispod 5 kt

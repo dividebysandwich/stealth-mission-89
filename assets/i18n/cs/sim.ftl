@@ -75,6 +75,7 @@ sim-select-aa-ag = Zvolte režim A-A nebo A-G
 asw-not-seahawk = Nejste v posádce Seahawku
 asw-no-buoys = Žádné bóje { $kind } nezbývají
 asw-buoys-live = Už { $n } bóje ve vodě
+asw-route-full = Trasa je plná
 asw-no-such-buoy = Taková bóje neexistuje
 asw-dip-broken = Ponorný sonar ztracen
 asw-dip-limits = Sonar: visení pod 70 ft, pod 5 kt

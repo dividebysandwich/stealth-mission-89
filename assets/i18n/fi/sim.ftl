@@ -76,6 +76,7 @@ sim-select-aa-ag = Valitse tila A-A tai A-G
 asw-not-seahawk = Et ole Seahawkin miehistössä
 asw-no-buoys = { $kind }-poijut loppu
 asw-buoys-live = Jo { $n } poijua vedessä
+asw-route-full = Reitti on täynnä
 asw-no-such-buoy = Ei sellaista poijua
 asw-dip-broken = Upotettava kaikuluotain menetetty
 asw-dip-limits = Upotus: leijunta alle 70 ft, alle 5 kt

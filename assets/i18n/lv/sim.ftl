@@ -76,6 +76,7 @@ sim-select-aa-ag = Izvēlieties režīmu A-A vai A-G
 asw-not-seahawk = Neesat Seahawk apkalpē
 asw-no-buoys = { $kind } boiju vairs nav
 asw-buoys-live = Jau { $n } boijas ūdenī
+asw-route-full = Maršruts ir pilns
 asw-no-such-buoy = Šādas boijas nav
 asw-dip-broken = Iegremdējamais sonārs zaudēts
 asw-dip-limits = Iegremdēšana: karāšanās zem 70 ft, zem 5 kt

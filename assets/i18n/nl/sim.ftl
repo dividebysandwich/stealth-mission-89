@@ -75,6 +75,7 @@ sim-select-aa-ag = Kies modus A-A of A-G
 asw-not-seahawk = Niet in een Seahawk-bemanning
 asw-no-buoys = Geen { $kind }-boeien meer
 asw-buoys-live = Al { $n } boeien in het water
+asw-route-full = De route is vol
 asw-no-such-buoy = Die boei bestaat niet
 asw-dip-broken = Dompelsonar verloren
 asw-dip-limits = Dompelen: hoveren onder 70 ft, onder 5 kt

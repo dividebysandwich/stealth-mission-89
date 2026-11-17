@@ -205,10 +205,15 @@ pub struct Waypoints {
     /// The first points are this many tactical ones (the MH-60R operator's route, `asw`):
     /// reached within `TACTICAL_REACH`, wherever the leg into them starts.
     pub tactical: usize,
+    /// Of those, the ones a buoy is dropped at: reached within `DROP_REACH`, inside the drop's
+    /// own radius, so the aircraft does not turn away before the buoy goes.
+    pub drop_points: Vec<usize>,
 }
 
 /// Map units within which a tactical waypoint is reached (1 km).
 const TACTICAL_REACH: f64 = 64.0;
+/// Map units within which a tactical waypoint with a buoy drop is reached (some 110 m).
+const DROP_REACH: f64 = 7.0;
 
 impl Waypoints {
     /// The landing base's index among the waypoints.
@@ -227,6 +232,7 @@ impl Waypoints {
             anchors,
             editing: false,
             tactical: 0,
+            drop_points: Vec::new(),
         }
     }
 
@@ -577,7 +583,7 @@ fn waypoint_bearing(pos: &WorldPos, wp: Waypoint) -> u16 {
 /// such as a logistics sortie's around its base, is not passed all at once.
 fn reach_radius(wps: &Waypoints, i: usize) -> f64 {
     if i < wps.tactical {
-        return TACTICAL_REACH;
+        return if wps.drop_points.contains(&i) { DROP_REACH } else { TACTICAL_REACH };
     }
     let n = wps.points.len();
     let (a, b) = (wps.points[(i + n - 1) % n], wps.points[i]);

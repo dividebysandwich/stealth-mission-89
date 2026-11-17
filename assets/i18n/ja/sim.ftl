@@ -75,6 +75,7 @@ sim-select-aa-ag = A-AまたはA-Gモードを選択してください
 asw-not-seahawk = シーホークの乗員ではない
 asw-no-buoys = { $kind } ブイの残りなし
 asw-buoys-live = 既に { $n } 個のブイが水中
+asw-route-full = ルートが満杯
 asw-no-such-buoy = 該当するブイなし
 asw-dip-broken = 吊下式ソナー喪失
 asw-dip-limits = 吊下：70 ft 未満・5 kt 未満でホバリング
