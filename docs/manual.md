@@ -4099,8 +4099,8 @@ signal of what is under it shown at the cursor's top. Drag along the waterfall t
 down onto another waterfall to listen to that sensor instead. **AUDIO** turns the headset off and on.
 
 - Pointed **where nothing is**, you hear only the faint hiss of the sea.
-- A **submarine** is a low rush of water past its hull, beating slowly with its screw, its
-  machinery's hum faint under it.
+- A **submarine** runs on electric drive with no cavitation: a smooth, low rush of water past its
+  hull, its machinery's hum and its motor's thin whine faint under it.
 - A **ship** is the churning beat of its screws, heavy and slow for the carrier, quicker for the
   smaller ships.
 - A **torpedo** is a fast, high, cavitating whine: unmistakable.
