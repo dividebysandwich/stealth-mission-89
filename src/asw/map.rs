@@ -340,27 +340,27 @@ pub fn draw(
         cv.rect(s.x as i32 - 4, s.y as i32 - 4, 8, 8, YELLOW);
         stroke_text_at(cv, s.x + 7.0, s.y + 7.0, &kind.name()[..1], 5.0, 1.0, YELLOW, Align::Left);
     }
-    // The tracker's fixes: echoes faint dots, MAD marks red crosses (under
-    // the rest).
+    // The tracker's fixes: echoes faint dots, MAD marks red crosses (under the rest), fading
+    // over five minutes.
+    let now = sim.asw().clock;
+    let keep = stealth_sim::asw::FIX_KEEP as f32;
     for f in &crew.fixes {
         let s = at(f.at);
+        let age = (now - f.t) as f32;
         if f.how == 2 {
-            cv.stroke(s - Vec2::splat(5.0), s + Vec2::splat(5.0), 0.8, RED);
-            cv.stroke(s + Vec2::new(-5.0, 5.0), s + Vec2::new(5.0, -5.0), 0.8, RED);
-        } else {
+            let Some(col) = marks::faded_colour(RED, age, keep) else { continue };
+            cv.stroke(s - Vec2::splat(5.0), s + Vec2::splat(5.0), 0.8, col);
+            cv.stroke(s + Vec2::new(-5.0, 5.0), s + Vec2::new(5.0, -5.0), 0.8, col);
+        } else if age < keep {
             cv.fill_rect(s.x as i32, s.y as i32, 1, 1, DARK);
         }
     }
     // The operator's marks: a bearing line from each marked sensor, its letter on it.
     for (i, m) in ui.marks.iter().enumerate() {
         let Some(from) = sensor_at(sim, crew, owner, m.sensor) else { continue };
-        let col = if ui.sel_mark == Some(i) {
-            YELLOW
-        } else if m.lost(ui.t) {
-            GREY
-        } else {
-            CYAN
-        };
+        // Fading from when its trace was last seen.
+        let Some(col) = marks::faded_colour(CYAN, ui.t - m.seen, marks::FADE) else { continue };
+        let col = if ui.sel_mark == Some(i) { YELLOW } else { col };
         let s = at(from);
         let t = m.bearing.to_radians();
         cv.dashed(s, ray(s, t, 30_000.0 / k), 7.0, 3.0, 1.0, col);
@@ -374,7 +374,7 @@ pub fn draw(
         let lines: Vec<([f64; 2], f32)> = ui
             .marks
             .iter()
-            .filter(|m| m.id == id && !m.lost(ui.t))
+            .filter(|m| m.id == id && !m.faded(ui.t))
             .filter_map(|m| sensor_at(sim, crew, owner, m.sensor).map(|p| (p, m.bearing)))
             .collect();
         let Some((p, err)) = marks::estimate(&lines) else { continue };
@@ -382,26 +382,30 @@ pub fn draw(
         cv.ring(s, (err as f32 / k).max(4.0), 1.4, YELLOW);
         cv.stroke(s - Vec2::new(3.0, 0.0), s + Vec2::new(3.0, 0.0), 1.2, YELLOW);
         cv.stroke(s - Vec2::new(0.0, 3.0), s + Vec2::new(0.0, 3.0), 1.2, YELLOW);
-        let t = format!("{} {}x {:.1}KM", marks::letter(id), lines.len(), err / 1000.0);
+        let t = format!("{} {}X {:.1}KM", marks::letter(id), lines.len(), err / 1000.0);
         // Below its ring (a track's label is above).
         let below = (err as f32 / k).max(4.0) + 9.0;
         stroke_text_at(cv, s.x, s.y + below, &t, 6.0, 1.0, YELLOW, Align::Centre);
     }
     // The tracks: a diamond, its course for two minutes, its error ring.
     for t in &crew.tracks {
+        let Some(col) = marks::faded_colour(YELLOW, (now - t.last) as f32, stealth_sim::asw::TRACK_DROP as f32)
+        else {
+            continue;
+        };
         let s = at(t.at);
         let d = 6.0;
         cv.polyline(
             &[s + Vec2::new(0.0, -d), s + Vec2::new(d, 0.0), s + Vec2::new(0.0, d), s + Vec2::new(-d, 0.0), s + Vec2::new(0.0, -d)],
             1.6,
-            YELLOW,
+            col,
         );
         let ahead = at([t.at[0] + t.vel[0] * 120.0, t.at[1] + t.vel[1] * 120.0]);
-        cv.stroke(s, ahead, 1.2, YELLOW);
-        cv.ring(s, (t.err / k).max(3.0), 0.7, YELLOW);
+        cv.stroke(s, ahead, 1.2, col);
+        cv.ring(s, (t.err / k).max(3.0), 0.7, col);
         let kt = t.vel[0].hypot(t.vel[1]) / 0.514;
         let course = (t.vel[0].atan2(t.vel[1]).to_degrees().rem_euclid(360.0)) as i32;
-        stroke_text_at(cv, s.x + 10.0, s.y - 10.0, &format!("S{} {course:03}/{kt:.0}", t.n), 6.0, 1.0, YELLOW, Align::Left);
+        stroke_text_at(cv, s.x + 10.0, s.y - 10.0, &format!("S{} {course:03}/{kt:.0}", t.n), 6.0, 1.0, col, Align::Left);
     }
     // The torpedoes.
     for t in sim.asw().torpedoes.iter().filter(|t| t.owner == owner) {

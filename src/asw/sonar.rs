@@ -191,9 +191,9 @@ pub fn record(
         }
     }
     ui.falls.retain(|id, _| live.contains(id));
-    // A sensor gone: its marks with it.
+    // A sensor gone: its marks with it; marks faded away.
     let n = ui.marks.len();
-    ui.marks.retain(|m| live.contains(&m.sensor));
+    ui.marks.retain(|m| live.contains(&m.sensor) && !m.faded(now));
     if ui.marks.len() != n {
         ui.sel_mark = None;
     }

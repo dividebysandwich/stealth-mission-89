@@ -113,9 +113,10 @@ pub const PING_LINE_HZ: [u16; 2] = [220, 200];
 /// Sound in sea water (m/s): an echo comes this much later than the ping it is of.
 const SOUND_SPEED: f64 = 1500.0;
 
-/// The tracker: fixes fitted (s), a track dropped without a fix (s).
-const FIX_KEEP: f64 = 180.0;
-const TRACK_DROP: f64 = 400.0;
+/// The tracker: fixes fitted (s), a track dropped without a fix (s): both fade from the map
+/// over five minutes.
+pub const FIX_KEEP: f64 = 300.0;
+pub const TRACK_DROP: f64 = 300.0;
 /// Fixes the tracker keeps at most, and sends the others.
 const MAX_FIXES: usize = 300;
 const CLIENT_FIXES: usize = 60;

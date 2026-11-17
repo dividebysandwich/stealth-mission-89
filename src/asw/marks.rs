@@ -6,7 +6,10 @@
 //!
 //! A mark follows its trace from report to report (the trace nearest it within `FOLLOW`
 //! degrees, heard over the noise); with none it stays where it was and is lost after `LOST`
-//! seconds, until its trace comes back near it. The marks are the operator's own (his client's).
+//! seconds, until its trace comes back near it. A mark fades from the map over `FADE` seconds
+//! from when its trace was last seen, and is gone after that (the map stays clear); its line still
+//! counts for the estimate while it fades (an echo's mark is only seen for a moment). The marks are
+//! the operator's own (his client's).
 
 use super::sonar::bearing_off;
 
@@ -15,8 +18,9 @@ pub const IDS: usize = 8;
 /// A mark follows a trace this close (degrees); a trace this weak (dB) is not followed.
 pub const FOLLOW: f32 = 10.0;
 const WEAKEST: i8 = 2;
-/// Seconds without its trace before a mark is lost.
+/// Seconds without its trace before a mark is lost; before it has faded away.
 const LOST: f32 = 3.0;
+pub const FADE: f32 = 300.0;
 /// How well a marked bearing is known (degrees, one sigma).
 const BEARING_SIGMA: f64 = 4.0;
 
@@ -38,6 +42,22 @@ impl Mark {
 
     pub fn lost(&self, now: f32) -> bool {
         now - self.seen > LOST
+    }
+
+    pub fn faded(&self, now: f32) -> bool {
+        now - self.seen > FADE
+    }
+}
+
+/// A colour faded with age (s) over `fade` seconds: full the first third, grey the second, dark
+/// the last; None after.
+pub fn faded_colour(col: u8, age: f32, fade: f32) -> Option<u8> {
+    use crate::station::scope::{DARK, GREY};
+    match age / fade {
+        f if f < 1.0 / 3.0 => Some(col),
+        f if f < 2.0 / 3.0 => Some(GREY),
+        f if f < 1.0 => Some(DARK),
+        _ => None,
     }
 }
 
@@ -145,5 +165,9 @@ mod tests {
         }
         assert!((marks[0].bearing - 95.0).abs() < 0.5);
         assert!(marks[0].lost(10.0));
+        assert!(!marks[0].faded(10.0) && marks[0].faded(400.0));
+        assert_eq!(faded_colour(11, 10.0, FADE), Some(11));
+        assert_eq!(faded_colour(11, 250.0, FADE), Some(crate::station::scope::DARK));
+        assert_eq!(faded_colour(11, 301.0, FADE), None);
     }
 }
