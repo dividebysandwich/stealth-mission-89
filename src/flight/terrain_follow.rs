@@ -181,7 +181,7 @@ pub(super) fn scan(
         least = (least.0.max(ground - slope * d), least.1.max(top - slope * d));
         profile.push((d, top - here.y));
         // On along the curving track (a positive angle turns right, north to east).
-        let left = to_go - turned;
+        let left = (to_go - turned).max(0.0);
         let turn = (turn_rate * step / speed).clamp(-left, left);
         turned += turn.abs();
         dir = Vec2::from_angle(turn).rotate(dir);
