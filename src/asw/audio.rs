@@ -14,9 +14,11 @@
 //! A torpedo running: its fast screw, cavitating (the smaller ship's recording run fast, with
 //! a buzz and crackle).
 //!
-//! Another sonar's ping shows as a dash at its bearing on the waterfall: with the cursor
-//! pointed at it, `sonarbuoy.flac` plays as it is heard. The sensor's own ping sounds as a
-//! 3.5 kHz tone with its echo after the range's two-way travel time.
+//! Another sonar's ping is loud in the water: `sonarbuoy.flac` plays as it is heard whatever the
+//! cursor (louder with the cursor on its bearing), and the water rings on after it for seconds,
+//! dying away. Its echo off a submarine comes a moment later at the submarine's bearing: with the
+//! cursor on that, a fainter, shorter ping. The sensor's own ping sounds as a 3.5 kHz tone with
+//! its echo after the range's two-way travel time.
 
 use std::num::NonZero;
 use std::sync::Arc;
@@ -53,6 +55,14 @@ const SEA: f32 = 0.05;
 const RECORDED_BLADE: f32 = 12.0;
 /// Ships turning their screws slower than this are the big ones (the carrier's 11 Hz).
 const BIG_BLADE: u16 = 13;
+/// Another sonar's ping heard: the recording's loudness (off and on its bearing), the water's
+/// ringing after it (loudness, time constant in s, its pitch in Hz).
+const HEARD_GAIN: [f32; 2] = [1.1, 1.6];
+const REVERB_GAIN: f32 = 0.35;
+const REVERB_TAU: f32 = 1.8;
+const REVERB_HZ: f32 = 2200.0;
+/// An echo off a submarine: the recording's first this many seconds, faded out.
+const ECHO_SECS: f32 = 0.7;
 
 pub struct AswAudioPlugin;
 
@@ -95,8 +105,13 @@ struct Params {
     /// loudness.
     pings: AtomicU32,
     heard: AtomicU32,
+    heard_gain: AtomicU32,
     echo_delay: AtomicU32,
     echo_gain: AtomicU32,
+    /// Counts up with each echo of another sonar's ping heard on the cursor's bearing; its
+    /// loudness.
+    echoes: AtomicU32,
+    bistatic_gain: AtomicU32,
 }
 
 fn set(a: &AtomicU32, v: f32) {
@@ -234,12 +249,21 @@ fn follow(
             set(&p.echo_gain, echo.map_or(0.0, |(_, snr)| ((snr as f32) / 40.0).clamp(0.05, 0.5)));
             p.pings.fetch_add(1, Ordering::Relaxed);
         }
-        // Another sonar's ping: heard with the cursor on its line.
-        let on_ping = cursor.is_some_and(|brg| {
-            s.lines.iter().any(|l| l.ping && off_line(l, brg) <= CURSOR_BAND * CURSOR_EDGE)
-        });
-        if on_ping {
+        // Another sonar's ping: heard loud whatever the cursor, louder on its line.
+        if s.heard {
+            let on_ping = cursor.is_some_and(|brg| {
+                s.lines.iter().any(|l| l.ping && off_line(l, brg) <= CURSOR_BAND * CURSOR_EDGE)
+            });
+            set(&p.heard_gain, HEARD_GAIN[on_ping as usize]);
             p.heard.fetch_add(1, Ordering::Relaxed);
+        }
+        // Its echo off a submarine, with the cursor on the submarine's bearing.
+        let echo = cursor.and_then(|brg| {
+            s.lines.iter().filter(|l| l.echo && off_line(l, brg) <= CURSOR_BAND * CURSOR_EDGE).map(|l| l.snr).max()
+        });
+        if let Some(snr) = echo {
+            set(&p.bistatic_gain, ((snr as f32 + 10.0) / 40.0).clamp(0.15, 0.8));
+            p.echoes.fetch_add(1, Ordering::Relaxed);
         }
     }
     link.seq = w.seq;
@@ -270,6 +294,14 @@ pub struct Synth {
     rng: u32,
     pings: u32,
     heard: u32,
+    echoes: u32,
+    /// The water ringing after another sonar's ping (its loudness now), a resonator's state.
+    reverb: f32,
+    res: [f32; 2],
+    /// Where an echo's recording is (None: not playing), its loudness.
+    echo_pos: Option<usize>,
+    bistatic: f32,
+    heard_gain: f32,
     /// Seconds since the last own ping (None: none ringing), the echo's delay and loudness.
     ping_t: Option<f32>,
     echo: (f32, f32),
@@ -281,6 +313,7 @@ impl Synth {
     fn new(p: Arc<Params>, clips: Arc<Clips>) -> Self {
         let pings = p.pings.load(Ordering::Relaxed);
         let heard = p.heard.load(Ordering::Relaxed);
+        let echoes = p.echoes.load(Ordering::Relaxed);
         Synth {
             p,
             clips,
@@ -289,6 +322,12 @@ impl Synth {
             rng: 0x2545_F491,
             pings,
             heard,
+            echoes,
+            reverb: 0.0,
+            res: [0.0; 2],
+            echo_pos: None,
+            bistatic: 0.0,
+            heard_gain: HEARD_GAIN[0],
             ping_t: None,
             echo: (-1.0, 0.0),
             heard_pos: None,
@@ -366,19 +405,48 @@ impl Iterator for Synth {
         for k in 0..SOURCES {
             y += self.voice(k, dt);
         }
-        // Another sonar's ping heard: its recording from the start.
+        // Another sonar's ping heard: its recording from the start, loud, and the water
+        // ringing on after it.
         let heard = self.p.heard.load(Ordering::Relaxed);
         if heard != self.heard {
             self.heard = heard;
             self.heard_pos = Some(0);
+            self.heard_gain = get(&self.p.heard_gain).max(HEARD_GAIN[0]);
+            self.reverb = 1.0;
         }
         if let Some(i) = self.heard_pos {
             match self.clips.ping.get(i) {
                 Some(&v) => {
-                    y += v * 0.8;
+                    y += v * self.heard_gain;
                     self.heard_pos = Some(i + 1);
                 }
                 None => self.heard_pos = None,
+            }
+        }
+        if self.reverb > 1e-3 {
+            // White noise through a resonator near the ping's pitch, beating as it dies away.
+            let w = self.white();
+            let (r, c) = (0.995f32, (std::f32::consts::TAU * REVERB_HZ / RATE as f32).cos());
+            let v = 2.0 * r * c * self.res[0] - r * r * self.res[1] + w * 0.05;
+            self.res = [v, self.res[0]];
+            y += v * self.reverb * REVERB_GAIN;
+            self.reverb *= (-dt / REVERB_TAU).exp();
+        }
+        // An echo off a submarine on the cursor's bearing: the recording's start, faded.
+        let echoes = self.p.echoes.load(Ordering::Relaxed);
+        if echoes != self.echoes {
+            self.echoes = echoes;
+            self.echo_pos = Some(0);
+            self.bistatic = get(&self.p.bistatic_gain);
+        }
+        if let Some(i) = self.echo_pos {
+            let t = i as f32 * dt;
+            match self.clips.ping.get(i).filter(|_| t < ECHO_SECS) {
+                Some(&v) => {
+                    y += v * self.bistatic * (1.0 - t / ECHO_SECS);
+                    self.echo_pos = Some(i + 1);
+                }
+                None => self.echo_pos = None,
             }
         }
         // An own ping, and its echo.
@@ -461,12 +529,23 @@ mod tests {
         assert!(play(50.0, 0.0, 0.5) > 4.0 * sea, "a submarine");
         assert!(play(60.0, 2.0, 0.5) > 4.0 * sea, "a ship's screws");
         assert!(play(150.0, 3.0, 0.5) > 4.0 * sea, "a torpedo's screw");
-        // Another sonar's ping.
+        // Another sonar's ping: loud, and the water ringing on for seconds after the
+        // recording has ended.
         let p = Arc::new(Params::default());
         let mut s = Synth::new(p.clone(), clips.clone());
         let quiet: Vec<f32> = (&mut s).take(1000).collect();
         p.heard.fetch_add(1, Ordering::Relaxed);
-        let loud: Vec<f32> = s.take(1000).collect();
+        let loud: Vec<f32> = (&mut s).take(1000).collect();
         assert!(rms(&loud) > 10.0 * rms(&quiet).max(1e-4));
+        let _: Vec<f32> = (&mut s).take(RATE as usize).collect();
+        let tail: Vec<f32> = (&mut s).take(RATE as usize / 4).collect();
+        assert!(rms(&tail) > 5.0 * rms(&quiet).max(1e-4), "the reverberation after 1.5 s");
+        // An echo on the cursor.
+        let p = Arc::new(Params::default());
+        let mut s = Synth::new(p.clone(), clips.clone());
+        set(&p.bistatic_gain, 0.5);
+        p.echoes.fetch_add(1, Ordering::Relaxed);
+        let echo: Vec<f32> = (&mut s).take(1000).collect();
+        assert!(rms(&echo) > 10.0 * rms(&quiet).max(1e-4));
     }
 }

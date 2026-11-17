@@ -434,3 +434,40 @@ fn a_buoy_hears_another_sonars_ping() {
     assert!(heard, "the DIFAR heard the DICASS ping, a line with its bearing");
     assert!(!own, "the DICASS doesn't count its own");
 }
+
+#[test]
+fn another_sonars_ping_comes_back_off_a_quiet_submarine_at_its_bearing() {
+    let mut sim = seahawk();
+    // Too far off the DIFAR to be heard running quietly; the DICASS 3 km from it.
+    hunt(&mut sim, [HOME[0] + 8000.0, HOME[1]], 0.0, 200.0, None);
+    drop_at(&mut sim, HOME[0], HOME[1], BuoyKind::Difar, true);
+    drop_at(&mut sim, HOME[0] + 8000.0, HOME[1] + 3000.0, BuoyKind::Dicass, true);
+    run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 5.0);
+    let difar = sim.asw().buoys[0].id;
+    let dicass = sim.asw().buoys[1].id;
+    let b = |sim: &Sim, id| sim.asw().buoys.iter().find(|b| b.id == id).unwrap().sample.clone();
+    assert!(
+        !b(&sim, difar).lines.iter().any(|l| !l.ship && !l.ping && !l.torpedo),
+        "not heard passively: {:?}",
+        b(&sim, difar)
+    );
+    sim.asw_command(0, AswCmd::BuoyMode { id: dicass, active: true }).unwrap();
+    let (mut ping_at, mut echo) = (None, None);
+    for k in 0..40 {
+        run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.25);
+        let s = b(&sim, difar);
+        if s.heard && ping_at.is_none() {
+            ping_at = Some(k);
+        }
+        if let Some(l) = s.lines.iter().find(|l| l.echo) {
+            echo = Some((k, *l));
+            break;
+        }
+    }
+    let ping_at = ping_at.expect("the ping heard");
+    let (k, l) = echo.expect("its echo off the submarine");
+    // A moment after the ping: the sound's longer way round by the submarine (some 1.6 s).
+    assert!((4..=10).contains(&(k - ping_at)), "echo {} reports after the ping", k - ping_at);
+    let brg = l.bearing.expect("a DIFAR's bearing") as i32;
+    assert!((brg - 90).abs() <= 10, "the echo at {brg}, the submarine at 090");
+}

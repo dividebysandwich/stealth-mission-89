@@ -344,13 +344,23 @@ pub fn mark_signal(ui: &mut AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner
             None => return,
         },
     };
-    let Some(l) = marks::trace_near(&sample, brg) else {
+    // The trace under the cursor, else an echo heard there lately (it went by in a moment).
+    let echo = || {
+        let w = ui.falls.get(&sensor)?;
+        w.echoes
+            .iter()
+            .rev()
+            .map(|&(_, b, snr)| (b as f32, snr))
+            .find(|&(b, _)| sonar::bearing_off(b, brg).abs() <= marks::FOLLOW)
+    };
+    let Some((bearing, snr)) = marks::trace_near(&sample, brg).map(|l| (l.bearing.unwrap_or_default() as f32, l.snr)).or_else(echo)
+    else {
         ui.note("NO SIGNAL AT THE CURSOR");
         return;
     };
     let (id, t) = (ui.mark_id, ui.t);
     ui.marks.retain(|m| !(m.sensor == sensor && m.id == id));
-    ui.marks.push(marks::Mark { id, sensor, bearing: l.bearing.unwrap_or_default() as f32, snr: l.snr, seen: t });
+    ui.marks.push(marks::Mark { id, sensor, bearing, snr, seen: t });
     ui.note(format!("MARK {} ON {}", marks::letter(id), if sensor == 0 { "DIP".to_string() } else { format!("B{sensor}") }));
 }
 

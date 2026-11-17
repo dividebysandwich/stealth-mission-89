@@ -3,8 +3,10 @@
 //! sensor's reports, newest at the top, four a second (`asw::SENSE_HZ`): across it the true
 //! bearing (000 to 360), the signal heard from each direction: the sea's noise as speckle, each
 //! contact a trace at its bearing (wider the less sure its bearing, cavitating screws wider
-//! still), moving across as its bearing from the sensor changes; another sonar's ping a sharp
-//! dash at its bearing, the sensor's own ping a bright row. An omnidirectional sensor (a DICASS
+//! still), moving across as its bearing from the sensor changes; another sonar's ping a bright
+//! dash at its bearing ringing on in the water for seconds after it (the reverberation), and its
+//! echoes off the submarines (sharp dashes at their bearings, a moment later: the sound's way
+//! round by them) however quiet they run; the sensor's own ping a bright row. An omnidirectional sensor (a DICASS
 //! listening) raises its whole row: it cannot tell the direction. Each row's header has the
 //! sensor's kind, number, depth, mode, the strongest contact's signal, bearing, range and
 //! Doppler; touch a header to select the sensor (PING and AUDIO then act on it), its buttons
@@ -41,7 +43,19 @@ pub struct Waterfall {
     pub last: Sample,
     /// Its own noise stream (the speckle).
     pub rng: u32,
+    /// Another sonar's ping heard: its ringing in the water dying away (1 at the ping), the
+    /// bearing it came from (None: an omnidirectional sensor).
+    pub reverb: f32,
+    pub reverb_at: Option<f32>,
+    /// The echoes heard lately (the console's clock, bearing, signal): a mark can be put on one
+    /// after it has gone by.
+    pub echoes: VecDeque<(f32, u16, i8)>,
 }
+
+/// The reverberation's time constant (s) after a ping heard: it dies away over a few seconds.
+const REVERB_TAU: f32 = 1.6;
+/// Echoes kept for marking (s).
+pub const ECHO_KEEP: f32 = 30.0;
 
 /// The angle between two bearings (degrees, 0..180).
 pub fn bearing_off(a: f32, b: f32) -> f32 {
@@ -56,22 +70,52 @@ impl Waterfall {
         self.rng
     }
 
-    /// A row from a report: signal strength over bearing.
-    fn push(&mut self, s: &Sample) {
+    /// A row from a report (at `now` on the console's clock): signal strength over bearing.
+    fn push(&mut self, s: &Sample, now: f32) {
         let mut row = [0f32; BINS];
         let base = 25.0 + s.noise.saturating_sub(40) as f32 * 3.0;
         for v in row.iter_mut() {
             let n = self.noise();
             *v = base + (n % 45) as f32 + if n % 23 == 0 { 40.0 } else { 0.0 };
         }
+        // Another sonar's ping heard: it rings on in the water for seconds, loudest from its
+        // direction, everywhere at first.
+        if s.heard {
+            self.reverb = 1.0;
+            self.reverb_at = s.lines.iter().find(|l| l.ping).and_then(|l| l.bearing.map(|b| b as f32));
+        } else {
+            self.reverb *= (-1.0 / (stealth_sim::asw::SENSE_HZ as f32 * REVERB_TAU)).exp();
+        }
+        if self.reverb > 0.02 {
+            let r = self.reverb;
+            for (k, v) in row.iter_mut().enumerate() {
+                let n = (self.noise() % 100) as f32 / 100.0;
+                let toward = self.reverb_at.map_or(0.5, |b| {
+                    let d = bearing_off(k as f32 * DEG_PER_BIN + DEG_PER_BIN / 2.0, b);
+                    (-(d * d) / (2.0 * 25.0 * 25.0)).exp()
+                });
+                *v += r * (60.0 + 140.0 * toward) * (0.6 + 0.4 * n);
+            }
+        }
         for l in &s.lines {
             let snr = l.snr.max(0) as f32;
-            let strength = if l.ping { 200.0 } else { (40.0 + snr * 3.0).clamp(20.0, 200.0) };
+            let strength = if l.ping {
+                255.0
+            } else if l.echo {
+                (150.0 + snr * 3.0).min(255.0)
+            } else {
+                (40.0 + snr * 3.0).clamp(20.0, 200.0)
+            };
+            if l.echo
+                && let Some(b) = l.bearing
+            {
+                self.echoes.push_back((now, b, l.snr));
+            }
             match l.bearing {
                 // A trace at its bearing, as wide as the bearing is uncertain (cavitating
-                // screws spread wider), smooth at its edges.
+                // screws spread wider), smooth at its edges; a ping and an echo sharp.
                 Some(b) => {
-                    let mut sigma = if l.ping { 2.0 } else { 3.0 + 30.0 / (1.0 + snr) };
+                    let mut sigma = if l.ping || l.echo { 2.0 } else { 3.0 + 30.0 / (1.0 + snr) };
                     if l.ship || l.torpedo {
                         sigma *= 1.6;
                     }
@@ -80,13 +124,18 @@ impl Waterfall {
                         *v += strength * (-(d * d) / (2.0 * sigma * sigma)).exp();
                     }
                 }
-                // An omnidirectional sensor: the energy over every bearing.
+                // An omnidirectional sensor: the energy over every bearing (a ping heard all
+                // of it).
                 None => {
+                    let k = if l.ping { 1.0 } else { 0.25 };
                     for v in row.iter_mut() {
-                        *v += strength * 0.25;
+                        *v += strength * k;
                     }
                 }
             }
+        }
+        while self.echoes.front().is_some_and(|e| now - e.0 > ECHO_KEEP) {
+            self.echoes.pop_front();
         }
         if s.ping {
             for v in row.iter_mut() {
@@ -129,7 +178,7 @@ pub fn record(
         live.push(b.id);
         let w = ui.falls.entry(b.id).or_insert_with(|| Waterfall { rng: 0x9E37_79B9 ^ b.id as u32, ..Default::default() });
         if w.seq != b.sample.seq {
-            w.push(&b.sample);
+            w.push(&b.sample, now);
             marks::follow(&mut ui.marks, b.id, &b.sample, now);
         }
     }
@@ -137,7 +186,7 @@ pub fn record(
         live.push(0);
         let w = ui.falls.entry(0).or_insert_with(|| Waterfall { rng: 0x1234_5679, ..Default::default() });
         if w.seq != crew.dip.sample.seq {
-            w.push(&crew.dip.sample);
+            w.push(&crew.dip.sample, now);
             marks::follow(&mut ui.marks, 0, &crew.dip.sample, now);
         }
     }

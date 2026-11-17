@@ -107,6 +107,8 @@ const PING_HEARD: f64 = 25_000.0;
 /// Where another sonar's ping shows on a waterfall (Hz): the pings are kHz, above its scale, so
 /// each kind of sonar has its line there (a DICASS's, a dipping sonar's).
 pub const PING_LINE_HZ: [u16; 2] = [220, 200];
+/// Sound in sea water (m/s): an echo comes this much later than the ping it is of.
+const SOUND_SPEED: f64 = 1500.0;
 
 /// The tracker: bearing lines kept (s), crossing angle needed (rad), fixes fitted (s), a track
 /// dropped without a fix (s).
@@ -243,6 +245,10 @@ pub struct Line {
     /// A torpedo running: its fast screws cavitating.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub torpedo: bool,
+    /// Another sonar's ping come back off a submarine (at the submarine's bearing): heard
+    /// whatever its own noise, after the extra way the sound went round by it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub echo: bool,
 }
 
 /// A sensor's report of the last second: a waterfall's row.
@@ -258,6 +264,9 @@ pub struct Sample {
     /// It heard another sonar's ping in this second (a DICASS or a dipping sonar near it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub heard: bool,
+    /// The host's: echoes of other sonars' pings still on their way (seconds to go, the line).
+    #[serde(skip)]
+    pub due: Vec<(f32, Line)>,
 }
 
 /// A sonobuoy.
@@ -1628,7 +1637,7 @@ impl Sim {
         let mut bearings: Vec<(u8, Bearing)> = Vec::new();
         let mut fixes: Vec<(u8, Fix)> = Vec::new();
         // Noise in the measurements: drawn first (the borrow of the buoys below).
-        let draws: Vec<f64> = (0..(self.asw.buoys.len() + self.asw.crews.len()) * subs.len().max(1) * 2)
+        let draws: Vec<f64> = (0..(self.asw.buoys.len() + self.asw.crews.len()) * subs.len().max(1) * 4)
             .map(|_| self.asw.gauss())
             .collect();
         let mut di = 0usize;
@@ -1638,8 +1647,8 @@ impl Sim {
             d
         };
         let mut sensors: Vec<(u8, u16, [f64; 2], f64, Option<f64>, bool, &mut Sample)> = Vec::new();
-        // The pings this second: who (owner, sensor) and where.
-        let mut pinged: Vec<(u8, u16, [f64; 2])> = Vec::new();
+        // The pings this second: who (owner, sensor), where, how deep, how far they reach.
+        let mut pinged: Vec<(u8, u16, [f64; 2], f64, f64)> = Vec::new();
         for b in self.asw.buoys.iter_mut().filter(|b| b.fall <= 0.0 && b.kind != BuoyKind::Bt) {
             let ping = b.kind == BuoyKind::Dicass && b.active && b.pings > 0 && {
                 b.ping_in -= dt;
@@ -1649,7 +1658,7 @@ impl Sim {
                 b.ping_in = PING_EVERY;
                 b.pings -= 1;
                 alerts.push(b.at);
-                pinged.push((b.owner, b.id, b.at));
+                pinged.push((b.owner, b.id, b.at, b.depth as f64, DICASS_RANGE));
             }
             let di = if b.kind == BuoyKind::Difar { Some(DIFAR_DI) } else { None };
             sensors.push((b.owner, b.id, b.at, b.depth as f64, di, ping, &mut b.sample));
@@ -1666,7 +1675,7 @@ impl Sim {
             if ping {
                 d.ping_in = PING_EVERY;
                 alerts.push(d.at);
-                pinged.push((c.owner, 0, d.at));
+                pinged.push((c.owner, 0, d.at, d.depth as f64, DIP_RANGE));
             }
             sensors.push((c.owner, 0, d.at, d.depth as f64, Some(DIFAR_DI), ping, &mut d.sample));
         }
@@ -1745,15 +1754,18 @@ impl Sim {
             }
             lines.sort_by(|a, b| b.snr.cmp(&a.snr));
             lines.truncate(4);
-            // Other sonars' pings: a line each (with its bearing on a directional sensor).
+            // Other sonars' pings: a line each (with its bearing on a directional sensor), and
+            // their echoes off the submarines in their reach, on their way (the sound's longer
+            // way round by the submarine), however quiet the submarine runs.
             let mut heard = false;
-            for &(o, id, p) in &pinged {
+            let mut due = std::mem::take(&mut sample.due);
+            for &(o, id, p, p_depth, reach) in &pinged {
                 let r = dist(p, at);
                 if (o, id) == (owner, sensor) || r >= PING_HEARD {
                     continue;
                 }
                 heard = true;
-                let snr = PING_SL - ocean.loss(r, depth, 60.0) - noise;
+                let snr = PING_SL - ocean.loss(r, depth, p_depth) - noise;
                 lines.push(Line {
                     snr: snr.clamp(0.0, 60.0) as i8,
                     bearing: di.map(|_| deg(bearing(at, p))),
@@ -1761,12 +1773,42 @@ impl Sim {
                     ping: true,
                     ..Default::default()
                 });
+                for s in &subs {
+                    let (r1, r2) = (dist(p, s.at).max(10.0), dist(s.at, at).max(10.0));
+                    if r1 >= reach {
+                        continue;
+                    }
+                    let excess = PING_SL - ocean.loss(r1, p_depth, s.depth) - ocean.loss(r2, depth, s.depth)
+                        + TARGET_STRENGTH
+                        - noise
+                        + di.unwrap_or(0.0)
+                        - ACTIVE_DT;
+                    if excess <= 0.0 {
+                        continue;
+                    }
+                    let err = (1.5 + 10.0 / (1.0 + excess)) * DEG;
+                    let b = bearing(at, s.at) + draw() * err;
+                    let line = Line {
+                        snr: excess.clamp(1.0, 60.0) as i8,
+                        bearing: di.map(|_| deg(b)),
+                        freqs: [PING_LINE_HZ[(id == 0) as usize], 0],
+                        echo: true,
+                        ..Default::default()
+                    };
+                    due.push((((r1 + r2 - r) / SOUND_SPEED) as f32, line));
+                }
             }
-            // The pings always shown, the four loudest contacts besides.
-            lines.sort_by_key(|l| (!l.ping, -(l.snr as i16)));
-            let pings = lines.iter().filter(|l| l.ping).count();
+            // The echoes arriving now.
+            for d in due.iter_mut() {
+                d.0 -= dt;
+            }
+            lines.extend(due.iter().filter(|d| d.0 <= 0.0).map(|d| d.1));
+            due.retain(|d| d.0 > 0.0);
+            // The pings and echoes always shown, the four loudest contacts besides.
+            lines.sort_by_key(|l| (!(l.ping || l.echo), -(l.snr as i16)));
+            let pings = lines.iter().filter(|l| l.ping || l.echo).count();
             lines.truncate(pings + 4);
-            *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping, heard };
+            *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping, heard, due };
         }
         for (o, b) in bearings {
             self.asw.crew_mut(o).bearings.push(b);
