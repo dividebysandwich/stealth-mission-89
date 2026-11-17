@@ -37,6 +37,61 @@ pub struct MadTrace {
     pub marks: usize,
     /// The operator asks for the dip hover.
     pub hover_req: bool,
+    /// Where the bird has been towed (the MAP page's trail), and the strongest reading since
+    /// the trail's last point.
+    pub trail: VecDeque<TrailPoint>,
+    peak: i16,
+}
+
+/// A point of the MAD trail: where (m east, north), when (the ASW clock), the strongest
+/// reading there (tenths of nT).
+#[derive(Debug, Clone, Copy)]
+pub struct TrailPoint {
+    pub at: [f64; 2],
+    pub t: f64,
+    pub mad: i16,
+}
+
+/// Trail points this often (s), kept this long (s, as the tracker's fixes).
+const TRAIL_EVERY: f64 = 0.5;
+const TRAIL_KEEP: f64 = stealth_sim::asw::FIX_KEEP;
+
+/// The trail's colour ramp: palette indices `RAMP..` on the main ASW display, its own colours
+/// (`ramp_rgb`) there in place of the palette's.
+pub const RAMP: u8 = 192;
+const RAMP_STEPS: usize = 64;
+
+/// A reading's colour on the map's trail (tenths of nT): blue in the sea's noise (to `QUIET`
+/// nT) through green and yellow to red at the mark threshold.
+pub fn trail_colour(mad: f32) -> u8 {
+    const QUIET: f32 = 1.0;
+    let f = (((mad / 10.0).abs() - QUIET) / (THRESHOLD - QUIET)).clamp(0.0, 1.0);
+    RAMP + (f * (RAMP_STEPS - 1) as f32).round() as u8
+}
+
+/// The ramp's colour at palette index `i` (8-bit sRGB), or None outside it.
+pub fn ramp_rgb(i: u8) -> Option<[u8; 3]> {
+    const STOPS: [[f32; 3]; 4] =
+        [[60.0, 110.0, 245.0], [60.0, 230.0, 80.0], [240.0, 225.0, 60.0], [235.0, 50.0, 45.0]];
+    let k = (i as usize).checked_sub(RAMP as usize).filter(|&k| k < RAMP_STEPS)?;
+    let t = k as f32 / (RAMP_STEPS - 1) as f32 * (STOPS.len() - 1) as f32;
+    let j = (t as usize).min(STOPS.len() - 2);
+    let f = t - j as f32;
+    let (a, b) = (STOPS[j], STOPS[j + 1]);
+    Some(std::array::from_fn(|c| (a[c] + (b[c] - a[c]) * f).round() as u8))
+}
+
+/// The live palette as 8-bit sRGB RGBA words with the trail's ramp laid over it.
+pub fn console_colours(palette: &crate::palette::Palette) -> std::sync::Arc<[u32; 256]> {
+    let mut lut = [0u32; 256];
+    for (i, v) in lut.iter_mut().enumerate() {
+        let [r, g, b] = ramp_rgb(i as u8).unwrap_or_else(|| {
+            let c = palette.color(i as u8).to_srgba();
+            [(c.red * 255.0) as u8, (c.green * 255.0) as u8, (c.blue * 255.0) as u8]
+        });
+        *v = u32::from_le_bytes([r, g, b, 255]);
+    }
+    std::sync::Arc::new(lut)
 }
 
 /// Samples the crew's MAD (the pilot's own aircraft, or the one he is the operator of), and
@@ -74,6 +129,23 @@ pub fn sample(
         trace.samples.pop_front();
     }
     trace.out = crew.mad_down;
+    // The trail: the strongest reading of each half second, where the aircraft was.
+    let now = sim.asw().clock;
+    if crew.mad_down {
+        if crew.mad.abs() > trace.peak.abs() {
+            trace.peak = crew.mad;
+        }
+        let due = trace.trail.back().is_none_or(|p| now - p.t >= TRAIL_EVERY || now < p.t);
+        if due && let Some((at, _)) = super::owner_at(sim, owner) {
+            let mad = std::mem::take(&mut trace.peak);
+            trace.trail.push_back(TrailPoint { at, t: now, mad });
+        }
+    } else {
+        trace.peak = 0;
+    }
+    while trace.trail.front().is_some_and(|p| now - p.t > TRAIL_KEEP || p.t > now) {
+        trace.trail.pop_front();
+    }
     if let Some(v) = super::owner_view(sim, owner) {
         trace.height_ft = (v.height as f64 * super::M_PER_WU / 0.3048) as f32;
         trace.knots = v.knots as f32;
@@ -123,11 +195,11 @@ pub fn osb(
 
 /// Draws the page on an MFD canvas (the label bands top and bottom left clear).
 pub fn draw(c: &mut Canvas, t: &MadTrace, gain: u8) {
-    use crate::station::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
+    use crate::station::scope::{BLACK, CYAN, GREEN, GREY, RED, WHITE, YELLOW};
     c.clear(BLACK);
     let (w, h) = (c.w as f32, c.h as f32);
     let (x0, x1, y0, y1) = (8.0, w - 8.0, 52.0, h - 44.0);
-    let full = SCALES[(gain as usize).min(SCALES.len() - 1)];
+    let full = full_scale(gain);
     let text = |c: &mut Canvas, x: f32, y: f32, s: &str, col: u8, a: Align| {
         stroke_text_at(c, x, y, s, 7.0, 1.2, col, a);
     };
@@ -139,33 +211,7 @@ pub fn draw(c: &mut Canvas, t: &MadTrace, gain: u8) {
     text(c, x0, 38.0, &format!("{:.0} FT", t.height_ft), ft_col, Align::Left);
     text(c, (x0 + x1) / 2.0, 38.0, &format!("{:.0} KT", t.knots), kt_col, Align::Centre);
     text(c, x1, 38.0, &format!("MARKS {}", t.marks), YELLOW, Align::Right);
-    // The trace's box, its zero line and the mark threshold either way.
-    c.rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, DARK);
-    let mid = (y0 + y1) / 2.0;
-    let y_of = |nt: f32| mid - (nt / full).clamp(-1.0, 1.0) * (y1 - y0) / 2.0;
-    c.line(x0 as i32, mid as i32, x1 as i32, mid as i32, GREY);
-    for th in [THRESHOLD, -THRESHOLD] {
-        c.dashed(Vec2::new(x0, y_of(th)), Vec2::new(x1, y_of(th)), 4.0, 3.0, 1.0, RED);
-    }
-    for s in (0..=SECONDS).step_by(10) {
-        let x = x1 - (x1 - x0) * s as f32 / SECONDS as f32;
-        c.line(x as i32, y1 as i32, x as i32, y1 as i32 + 3, GREY);
-        text(c, x, y1 + 9.0, &format!("-{s}"), GREY, Align::Centre);
-    }
-    let n = SECONDS * RATE as usize;
-    let pts: Vec<Vec2> = t
-        .samples
-        .iter()
-        .enumerate()
-        .map(|(i, &v)| {
-            let x = x1 - (x1 - x0) * (t.samples.len() - 1 - i) as f32 / (n - 1) as f32;
-            Vec2::new(x, y_of(v as f32 / 10.0))
-        })
-        .collect();
-    if pts.len() > 1 {
-        let peak = t.samples.back().is_some_and(|&v| (v as f32 / 10.0).abs() > THRESHOLD);
-        c.polyline(&pts, 1.3, if peak { YELLOW } else { GREEN });
-    }
+    plot(c, t, [x0, y0, x1, y1], full, 7.0, 9.0);
     let dip = match t.dip {
         DipState::Up => "DIP UP".to_string(),
         DipState::Broken => "DIP LOST".to_string(),
@@ -181,4 +227,42 @@ pub fn draw(c: &mut Canvas, t: &MadTrace, gain: u8) {
         let s = if there { "IN DIP HOVER" } else { "DIP HOVER REQ" };
         text(c, x1, h - 24.0, s, if there { GREEN } else { YELLOW }, Align::Right);
     }
+}
+
+/// The trace in a box (`r`: x0, y0, x1, y1) at full scale `full` (nT): its zero line, the mark
+/// threshold either way, the seconds along the bottom (`size` their text, `below` the box).
+pub fn plot(c: &mut Canvas, t: &MadTrace, r: [f32; 4], full: f32, size: f32, below: f32) {
+    use crate::station::scope::{DARK, GREEN, GREY, RED, YELLOW};
+    let [x0, y0, x1, y1] = r;
+    c.rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, DARK);
+    let mid = (y0 + y1) / 2.0;
+    let y_of = |nt: f32| mid - (nt / full).clamp(-1.0, 1.0) * (y1 - y0) / 2.0;
+    c.line(x0 as i32, mid as i32, x1 as i32, mid as i32, GREY);
+    for th in [THRESHOLD, -THRESHOLD] {
+        c.dashed(Vec2::new(x0, y_of(th)), Vec2::new(x1, y_of(th)), 4.0, 3.0, 1.0, RED);
+    }
+    for s in (0..=SECONDS).step_by(10) {
+        let x = x1 - (x1 - x0) * s as f32 / SECONDS as f32;
+        c.line(x as i32, y1 as i32, x as i32, y1 as i32 + 3, GREY);
+        stroke_text_at(c, x, y1 + below, &format!("-{s}"), size, 1.2, GREY, Align::Centre);
+    }
+    let n = SECONDS * RATE as usize;
+    let pts: Vec<Vec2> = t
+        .samples
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| {
+            let x = x1 - (x1 - x0) * (t.samples.len() - 1 - i) as f32 / (n - 1) as f32;
+            Vec2::new(x, y_of(v as f32 / 10.0))
+        })
+        .collect();
+    if pts.len() > 1 {
+        let peak = t.samples.back().is_some_and(|&v| (v as f32 / 10.0).abs() > THRESHOLD);
+        c.polyline(&pts, 1.3, if peak { YELLOW } else { GREEN });
+    }
+}
+
+/// The full scale (nT) at a gain step.
+pub fn full_scale(gain: u8) -> f32 {
+    SCALES[(gain as usize).min(SCALES.len() - 1)]
 }

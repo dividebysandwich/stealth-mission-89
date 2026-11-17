@@ -1,7 +1,8 @@
 //! The MAP page: the tactical picture, north up, round the aircraft (or where it was panned):
 //! the ships, the reported datum and the blockade line, the buoys, the dipping sonar, the
 //! tracker's fixes and tracks from echoes and the MAD (with their course and error), the MAD
-//! marks, the torpedoes, the drops waiting for the aircraft, and the route. No bearing lines of
+//! marks, the torpedoes, the drops waiting for the aircraft, the route; with the MAD's bird out
+//! its trail (the path coloured by the reading, `mad::trail_colour`) and its trace in a window. No bearing lines of
 //! their own: the operator draws those with his marks on the waterfalls.
 //!
 //! Touch the sea to add a waypoint after the selected one (or D, C or B first: a waypoint where
@@ -295,6 +296,7 @@ fn ray(a: Vec2, bearing: f32, len: f32) -> Vec2 {
     a + Vec2::new(bearing.sin(), -bearing.cos()) * len
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn draw(
     cv: &mut Canvas,
     ui: &AswUi,
@@ -302,6 +304,8 @@ pub fn draw(
     sim: &stealth_sim::Sim,
     owner: u8,
     hunt: Option<&stealth_mission::asw::Hunt>,
+    mad: &super::mad::MadTrace,
+    gain: u8,
 ) {
     cv.reset_clip();
     cv.clear(BLACK);
@@ -414,6 +418,21 @@ pub fn draw(
             cv.stroke(s + Vec2::new(-5.0, 5.0), s + Vec2::new(5.0, -5.0), 0.8, col);
         } else if age < keep {
             cv.fill_rect(s.x as i32, s.y as i32, 1, 1, DARK);
+        }
+    }
+    // The MAD trail: where the bird was towed, blue quiet to red at the mark threshold.
+    // A gradient: each leg in steps, the reading blended from one point's to the next.
+    const STEPS: usize = 4;
+    for w in mad.trail.iter().collect::<Vec<_>>().windows(2) {
+        if w[1].t - w[0].t > 2.0 {
+            continue;
+        }
+        let (a, b) = (at(w[0].at), at(w[1].at));
+        let (va, vb) = ((w[0].mad as f32).abs(), (w[1].mad as f32).abs());
+        for k in 0..STEPS {
+            let (f0, f1) = (k as f32 / STEPS as f32, (k + 1) as f32 / STEPS as f32);
+            let v = va + (vb - va) * (f0 + f1) / 2.0;
+            cv.stroke(a.lerp(b, f0), a.lerp(b, f1), 2.0, super::mad::trail_colour(v));
         }
     }
     // The operator's marks: a bearing line from each marked sensor, its letter on it.
@@ -529,6 +548,19 @@ pub fn draw(
         let l = ray(s, h + 2.5, 6.0);
         let r = ray(s, h - 2.5, 6.0);
         cv.polyline(&[tip, l, r, tip], 1.6, GREEN);
+    }
+    // The bird out: its trace in a window in the corner.
+    if mad.out {
+        let (x0, y0, x1, y1) = (6.0, BOTTOM - 96.0, 206.0, BOTTOM - 4.0);
+        cv.fill_rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, BLACK);
+        cv.rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, GREY);
+        let full = super::mad::full_scale(gain);
+        let now = mad.samples.back().map_or(0.0, |&v| v as f32 / 10.0);
+        stroke_text_at(cv, x0 + 6.0, y0 + 9.0, "MAD", 6.0, 1.1, GREEN, Align::Left);
+        let col = super::mad::trail_colour(now * 10.0);
+        stroke_text_at(cv, x0 + 40.0, y0 + 9.0, &format!("{now:+.1}"), 6.0, 1.1, col, Align::Left);
+        stroke_text_at(cv, x1 - 6.0, y0 + 9.0, &format!("+/-{full} NT"), 6.0, 1.1, CYAN, Align::Right);
+        super::mad::plot(cv, mad, [x0 + 14.0, y0 + 17.0, x1 - 14.0, y1 - 17.0], full, 5.0, 10.0);
     }
     cv.reset_clip();
     cv.line(0, TOP as i32, 640, TOP as i32, DARK);

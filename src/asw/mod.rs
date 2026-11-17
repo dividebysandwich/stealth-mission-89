@@ -26,6 +26,7 @@ pub mod sonar;
 pub mod wpn;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy::prelude::*;
 use stealth_sim::asw::{AswCmd, AswCrew, BuoyKind, DipState, Pattern, TorpProgram};
@@ -637,6 +638,10 @@ fn draw_main(
     combat: Option<Res<Combat>>,
     mission: Option<Res<crate::mission::ActiveMission>>,
     mut ui: ResMut<AswUi>,
+    mad: Res<mad::MadTrace>,
+    mfd: Res<crate::mfd::MfdState>,
+    palette: Option<Res<crate::palette::Palette>>,
+    mut colours: Local<Option<Arc<[u32; 256]>>>,
     time: Res<Time<Real>>,
     mut since: Local<f32>,
     mut dumped: Local<f32>,
@@ -655,6 +660,15 @@ fn draw_main(
     tex.dirty = true;
     // Opaque: the waterfalls' picture shows where the canvas is index 0.
     tex.transparent = false;
+    // The palette with the MAD trail's colour ramp over it.
+    if let Some(p) = palette
+        && (colours.is_none() || p.is_changed())
+    {
+        *colours = Some(mad::console_colours(&p));
+    }
+    if tex.colours.as_ref().map(Arc::as_ptr) != colours.as_ref().map(Arc::as_ptr) {
+        tex.colours = colours.clone();
+    }
     let hunt = mission.as_deref().and_then(|m| m.0.hunt.clone());
     match ui.page {
         Page::Sonar => {
@@ -668,7 +682,7 @@ fn draw_main(
         }
         Page::Map => {
             tex.backdrop = None;
-            map::draw(&mut tex.canvas, &ui, &crew, sim, owner, hunt.as_ref());
+            map::draw(&mut tex.canvas, &ui, &crew, sim, owner, hunt.as_ref(), &mad, mfd.av.mad_gain);
         }
     }
     // The page keys' row along the bottom.
@@ -1122,6 +1136,7 @@ pub fn dump_png(c: &crate::canvas::Canvas, under: Option<&crate::canvas::Picture
     let rgb = |i: u8| -> [u8; 3] {
         match i {
             scope::DARK => [60, 66, 60],
+            i if mad::ramp_rgb(i).is_some() => mad::ramp_rgb(i).unwrap_or_default(),
             scope::GREY => [150, 155, 150],
             scope::GREEN => [60, 230, 80],
             scope::CYAN => [70, 220, 235],
