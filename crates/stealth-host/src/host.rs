@@ -737,7 +737,9 @@ impl Host {
                         Some(Objective::Recon { object, .. }) => {
                             reports.push(Report::PhotoTaken { player, object: *object });
                         }
-                        Some(Objective::Asw { .. }) => reports.push(Report::SubSunk { player }),
+                        Some(Objective::Asw { .. } | Objective::Barrier { .. }) => {
+                            reports.push(Report::SubSunk { player })
+                        }
                         _ => {}
                     }
                 }
@@ -867,10 +869,12 @@ impl Host {
                         sim.set_cas_units(tag, &glue::cas_units(&self.state, tag));
                         self.arm_from_stock(sim, i, *side, from as u16);
                         // An ASW mission: its own submarine to hunt.
-                        if let Some(stealth_campaign::Objective::Asw { carrier }) =
-                            self.state.ai_mission_of_tag(tag).map(|m| &m.offer.objective)
+                        if let Some(hunt) = self
+                            .state
+                            .ai_mission_of_tag(tag)
+                            .and_then(|m| glue::hunt_target(&self.state, &m.offer.objective))
                         {
-                            sim.start_ai_hunt(*id, tag, *carrier as usize, *id);
+                            sim.start_ai_hunt(*id, tag, hunt, *id);
                         }
                     }
                 }
@@ -992,9 +996,10 @@ impl Host {
                     let airframe = self.rules.sortie_airframe(sortie);
                     let mut start =
                         sim.respawn_pilot(player.0, base, glue::sim_objective(sortie), airframe);
-                    // Hunting a submarine: his own, closing on the carrier's group.
-                    if let Objective::Asw { carrier } = sortie.offer.objective {
-                        sim.start_hunt_for(player.0, carrier as usize, sortie.offer.id);
+                    // Hunting a submarine: his own, closing on the carrier's group or making for
+                    // the barrier.
+                    if let Some(hunt) = glue::hunt_target(&self.state, &sortie.offer.objective) {
+                        sim.start_hunt_for(player.0, hunt, sortie.offer.id);
                     }
                     // Flying a cargo run: hunted and escorted as its AI aircraft would be.
                     if let Objective::Airlift { run } = sortie.offer.objective {

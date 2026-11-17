@@ -9,13 +9,22 @@
 //!
 //! The primary target (mission type [`HUNT`]) is the reported datum, where the submarine was
 //! last seen; it is achieved when every submarine of the mission is sunk ([`Hunt::subs`], run by
-//! the simulation's `asw`). Only theaters with a friendly carrier have these missions; elsewhere
-//! the generated mission stays as it is.
+//! the simulation's `asw`). Theaters with a friendly carrier have these missions; a narrow sea
+//! without one ([`BARRIERS`]: the Gulf of Finland) has a blockade across it between two friendly
+//! airfields, flown from the first; elsewhere the generated mission stays as it is.
 
 use serde::{Deserialize, Serialize};
 
 use crate::world::{WorldObject, flags as F};
 use crate::{Base, GameData, MapPoint, Mission, OrdersLine, Target};
+
+/// The narrow seas a submarine slips out of past a line between two friendly airfields, the
+/// hunt of a theater without a carrier: (theater, airfield, airfield; the hunt flies from the
+/// first). The Gulf of Finland's: the Baltic Fleet's boats out of Kronstadt past the line from
+/// Helsinki to Tallinn.
+pub const BARRIERS: &[(&str, &str, &str)] = &[("gulf_of_finland", "Helsinki", "Tallinn")];
+/// A barrier's sea: shallow (m), the layer high in it.
+const BARRIER_BOTTOM: u16 = 100;
 
 /// Mission type: hunt the submarines.
 pub const HUNT: i16 = 12;
@@ -76,6 +85,9 @@ pub struct Hunt {
     pub sea_state: u8,
     /// The reported datum (map units).
     pub datum: (i32, i32),
+    /// The sea's depth (m; 0: deep water).
+    #[serde(default)]
+    pub bottom: u16,
 }
 
 fn dist(a: (i32, i32), b: (i32, i32)) -> f64 {
@@ -106,13 +118,26 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     let w = &m.world;
     let n = w.objects.len();
     let friendly = |o: &WorldObject| o.flags & F::FRIENDLY != 0;
-    let Some(carrier) = (3..n)
+    let carrier = (3..n)
         .filter(|&i| w.objects[i].flags & F::CARRIER != 0 && friendly(&w.objects[i]))
-        .min_by_key(|&i| dist(pos(&w.objects[i]), (m.takeoff.position.x, m.takeoff.position.y)) as i64)
-    else {
+        .min_by_key(|&i| dist(pos(&w.objects[i]), (m.takeoff.position.x, m.takeoff.position.y)) as i64);
+    // No carrier: a narrow sea's barrier between two friendly airfields.
+    let barrier = carrier.is_none().then(|| {
+        let code = crate::ALL_THEATERS.get(m.settings.theater)?;
+        let &(_, a, b) = BARRIERS.iter().find(|t| t.0 == *code)?;
+        let field = |name: &str| {
+            (3..n).find(|&i| {
+                let o = &w.objects[i];
+                o.flags & F::AIRFIELD != 0 && friendly(o) && w.name(o.name as i32) == name
+            })
+        };
+        Some((field(a)?, field(b)?))
+    });
+    let barrier = barrier.flatten();
+    let Some(home) = carrier.or(barrier.map(|b| b.0)) else {
         return;
     };
-    let cp = pos(&w.objects[carrier]);
+    let cp = pos(&w.objects[home]);
     let r = roll(m, 1);
     // A point `d` map units from `from` at a bearing the seed picks, on the sea.
     let sea_point = |from: (i32, i32), d: (f64, f64), salt: u32| {
@@ -136,6 +161,9 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
         1 => Scenario::Convoy,
         _ => Scenario::Carrier,
     });
+    if barrier.is_some() {
+        scenario = Scenario::Blockade;
+    }
     let count = if m.settings.opponents >= 3 { 2 } else { 1 };
     let nuclear = r & 0x10 != 0;
     // An enemy port: an enemy object by the sea, nearest the carrier but some way off it.
@@ -153,6 +181,54 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     let mut subs = Vec::new();
     let (protect, place_name, area);
     match scenario {
+        Scenario::Blockade if barrier.is_some() => {
+            let (fa, fb) = barrier.expect("checked");
+            let (a, b) = (pos(&w.objects[fa]), pos(&w.objects[fb]));
+            let mid = ((a.0 + b.0) as f64 / 2.0, (a.1 + b.1) as f64 / 2.0);
+            let len = dist(a, b).max(1.0);
+            let along = ((b.0 - a.0) as f64 / len, (b.1 - a.1) as f64 / len);
+            // Across the line, toward the enemy (its named place nearest the line).
+            let enemy = (3..n)
+                .filter(|&i| {
+                    let o = &w.objects[i];
+                    !friendly(o) && o.flags & F::NEUTRAL == 0 && o.name != 0
+                })
+                .min_by_key(|&i| {
+                    let p = pos(&w.objects[i]);
+                    dist(p, (mid.0 as i32, mid.1 as i32)) as i64
+                });
+            let mut normal = (-along.1, along.0);
+            if let Some(e) = enemy {
+                let p = pos(&w.objects[e]);
+                if (p.0 as f64 - mid.0) * normal.0 + (p.1 as f64 - mid.1) * normal.1 < 0.0 {
+                    normal = (-normal.0, -normal.1);
+                }
+            }
+            let at = |s: f64, d: f64| {
+                ((mid.0 + along.0 * s + normal.0 * d) as i32, (mid.1 + along.1 * s + normal.1 * d) as i32)
+            };
+            let open = |p: (i32, i32)| {
+                water(p)
+                    && (0..8).all(|j| {
+                        let b = (j as f64 * 45.0).to_radians();
+                        water(((p.0 as f64 + b.sin() * KM) as i32, (p.1 as f64 - b.cos() * KM) as i32))
+                    })
+            };
+            let goal = [20.0, 35.0, 10.0].into_iter().map(|km| at(0.0, -km * KM)).find(|&g| water(g)).unwrap_or(at(0.0, -20.0 * KM));
+            for k in 0..count {
+                let start = (0..48).find_map(|j| {
+                    let salt = r.wrapping_add(k * 97).wrapping_add(j * 7919);
+                    let s = ((salt % 70) as f64 / 100.0 - 0.35) * len;
+                    let d = START.0 + (START.1 - START.0) * ((salt >> 8) % 100) as f64 / 100.0;
+                    Some(at(s, d)).filter(|&p| open(p))
+                });
+                let Some(p) = start else { continue };
+                subs.push(SubPlan { at: p, heading: heading_to(p, goal), intent: SubIntent::Blockade { a, b, goal }, nuclear });
+            }
+            protect = None;
+            place_name = format!("{} and {}", w.name(w.objects[fa].name as i32), w.name(w.objects[fb].name as i32));
+            area = subs.first().map_or(cp, |s| s.at);
+        }
         Scenario::Blockade => {
             let (pi, start) = port.expect("checked");
             let (dx, dy) = ((cp.0 - start.0) as f64, (cp.1 - start.1) as f64);
@@ -175,7 +251,7 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
             area = at(line, 0.0);
         }
         Scenario::Convoy | Scenario::Carrier => {
-            let target = carrier;
+            let target = home;
             let tp = pos(&w.objects[target]);
             for k in 0..count {
                 let Some(p) = sea_point(tp, START, r.wrapping_add(k * 97)) else { continue };
@@ -202,26 +278,32 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     let off = (r >> 16) as f64 / 65536.0 * DATUM_ERROR;
     let ang = ((r >> 4) % 360) as f64;
     let datum = ((area.0 as f64 + ang.to_radians().sin() * off) as i32, (area.1 as f64 - ang.to_radians().cos() * off) as i32);
-    let layer = 30 + (r >> 20) % 91;
+    let (layer, bottom) = if barrier.is_some() { (15 + (r >> 20) % 20, BARRIER_BOTTOM) } else { (30 + (r >> 20) % 91, 0) };
     let sea_state = 1 + ((r >> 24) % 4) as u8;
-    m.hunt = Some(Hunt { scenario, subs: subs.clone(), layer: layer as u16, sea_state, datum });
+    m.hunt = Some(Hunt { scenario, subs: subs.clone(), layer: layer as u16, sea_state, datum, bottom });
 
-    // From the carrier and back to it.
-    let co = w.objects[carrier];
+    // From the carrier (or the barrier's airfield) and back to it.
+    let co = w.objects[home];
     let base = Base {
-        object_index: carrier as i16,
+        object_index: home as i16,
         name: w.name(co.name as i32).to_string(),
         position: MapPoint { x: cp.0, y: cp.1 },
-        carrier: true,
+        carrier: carrier.is_some(),
         neutral: false,
         distance: 0,
     };
     m.takeoff = base.clone();
     m.landing = base;
-    m.exit_code = 0x0D;
+    if carrier.is_some() {
+        m.exit_code = 0x0D;
+    }
     let carrier_name = m.takeoff.name.clone();
     let boats = if subs.len() > 1 { "Two enemy submarines are" } else { "An enemy submarine is" };
     let primary_summary = match scenario {
+        Scenario::Blockade if barrier.is_some() => format!(
+            "{boats} trying to slip out to the open sea past the line between {place_name}. None \
+             may get through."
+        ),
         Scenario::Blockade => format!(
             "{boats} putting out from {place_name} to break our blockade. Hold the line between \
              there and the carrier group: none may slip through."
@@ -243,8 +325,11 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
          Mk 54 torpedoes. The layer is reported at about {layer} m: drop a BT buoy to be sure.",
         if subs.len() > 1 { "both submarines" } else { "the submarine" }
     );
-    let secondary_summary = format!("Recover aboard the {carrier_name}.");
-    let secondary_objective = "Sink every submarine, then land back on the carrier.".to_string();
+    let (secondary_summary, secondary_objective) = if carrier.is_some() {
+        (format!("Recover aboard the {carrier_name}."), "Sink every submarine, then land back on the carrier.".to_string())
+    } else {
+        (format!("Land back at {carrier_name}."), format!("Sink every submarine, then land back at {carrier_name}."))
+    };
     let template = m.primary.clone();
     let hunt_target = |summary: &String, objective: &String| Target {
         mission_type: HUNT,
@@ -256,7 +341,7 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
         special_model: None,
         object_index: protect.map_or(-1, |p| p as i16),
         // The simulation starts at the primary target's base: the carrier.
-        base_index: carrier as i16,
+        base_index: home as i16,
         place_name: place_name.clone(),
         placed_by_generator: false,
         position: MapPoint { x: datum.0, y: datum.1 },
@@ -310,16 +395,18 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     lines.retain(|l| !l.is_empty());
     b.lines = lines;
     let what = match scenario {
+        Scenario::Blockade if barrier.is_some() => format!("between {place_name}"),
         Scenario::Blockade => format!("off {place_name}"),
         _ => format!("near the {place_name}"),
     };
+    let recover = if carrier.is_some() { "Recover aboard" } else { "Land at" };
     let o = &mut m.orders;
     o.lines = vec![
         OrdersLine { text: "Hunt the enemy submarine".into(), color: 0x11 },
         OrdersLine { text: what.clone(), color: 0x11 },
-        OrdersLine { text: "Recover aboard".into(), color: 0x29 },
+        OrdersLine { text: recover.into(), color: 0x29 },
         OrdersLine { text: carrier_name.clone(), color: 0x29 },
     ];
     o.primary = format!("SINK THE SUBMARINE {}", what.to_uppercase());
-    o.secondary = format!("RECOVER ABOARD {}", carrier_name.to_uppercase());
+    o.secondary = format!("{} {}", recover.to_uppercase(), carrier_name.to_uppercase());
 }

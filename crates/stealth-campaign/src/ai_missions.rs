@@ -284,7 +284,10 @@ impl CampaignState {
         // The interceptors of a cargo flight go ahead of the queue (they do not count
         // against it), and so does the carrier's own submarine hunt (its Seahawks are aboard).
         let (hunts, queue): (Vec<_>, Vec<_>) = queue.into_iter().partition(|(_, o)| {
-            matches!(o.objective, Objective::Cargo { .. } | Objective::Asw { .. })
+            matches!(
+                o.objective,
+                Objective::Cargo { .. } | Objective::Asw { .. } | Objective::Barrier { .. }
+            )
         });
         let mut out: Vec<(u32, f64)> =
             hunts.into_iter().map(|(t, o)| (o.id, t.max(self.clock))).collect();
@@ -292,7 +295,7 @@ impl CampaignState {
             .ai_missions
             .iter()
             .filter(|m| m.side == side && m.open() && !matches!(m.target, AiTarget::Hunt { .. }))
-            .filter(|m| !matches!(m.offer.objective, Objective::Asw { .. }))
+            .filter(|m| !matches!(m.offer.objective, Objective::Asw { .. } | Objective::Barrier { .. }))
             .count();
         let mut window = self.launches_in_window(side);
         let mut runway = self.runway(side);
@@ -481,7 +484,7 @@ impl CampaignState {
     fn ai_achieved(&self, m: &AiMission, view: &WorldView) -> bool {
         match m.offer.objective {
             Objective::Recon { .. } => return m.photographed,
-            Objective::Asw { .. } => return m.sub_sunk,
+            Objective::Asw { .. } | Objective::Barrier { .. } => return m.sub_sunk,
             _ => {}
         }
         let aaa = match &m.offer.objective {
@@ -605,7 +608,8 @@ impl CampaignState {
             | Objective::Intercept { .. }
             | Objective::Escort { .. }
             | Objective::Awacs { .. }
-            | Objective::Asw { .. } => AiTarget::Patrol { x: o.x, y: o.y },
+            | Objective::Asw { .. }
+            | Objective::Barrier { .. } => AiTarget::Patrol { x: o.x, y: o.y },
             Objective::Cargo { tag } => {
                 self.cargo_run(*tag)?;
                 AiTarget::Hunt { tag: *tag, x: o.x, y: o.y }

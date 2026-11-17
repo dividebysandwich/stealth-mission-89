@@ -550,6 +550,9 @@ pub struct AswCrew {
     /// The mission's own waypoints after it, as the pilot's aircraft has them (for the operator).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mission: Vec<(i32, i32)>,
+    /// A campaign barrier hunt's line (m east, north): the submarine must not slip past it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub barrier: Option<([f64; 2], [f64; 2])>,
     pub program: TorpProgram,
     /// The release is armed (the operator's ARM; the pilot's own pickle needs none).
     pub armed: bool,
@@ -592,6 +595,15 @@ pub struct SubSetup {
     pub heading: f64,
     pub intent: Intent,
     pub nuclear: bool,
+}
+
+/// What a campaign's hunted submarine is out to do: close on a carrier's group (the carrier's
+/// world object), or slip out past the line between two friendly bases (world objects), from
+/// the side of the enemy's point `enemy` (map units).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HuntTarget {
+    Carrier(usize),
+    Barrier { a: usize, b: usize, enemy: (i32, i32) },
 }
 
 /// What a mission's hunt starts with.
@@ -763,7 +775,11 @@ impl AswSetup {
             .collect();
         let seed = (m.rng.holdrand_entry as u32) ^ (m.rng.holdrand_exit as u32).rotate_left(16);
         Some(AswSetup {
-            ocean: Ocean { layer: h.layer as f32, sea_state: h.sea_state, bottom: 600.0 },
+            ocean: Ocean {
+                layer: h.layer as f32,
+                sea_state: h.sea_state,
+                bottom: if h.bottom > 0 { h.bottom as f32 } else { 600.0 },
+            },
             subs,
             seed,
         })
@@ -860,62 +876,114 @@ impl Sim {
             })
     }
 
-    /// A campaign sortie's hunt: a submarine for player `player` some 22-28 km off the carrier
-    /// `carrier`, closing on one of its escorts (else the carrier).
-    pub fn start_hunt_for(&mut self, player: u8, carrier: usize, seed: u32) {
+    /// A campaign sortie's hunt: a submarine for player `player`, closing on a carrier's group
+    /// or making for a barrier line (`spawn_hunted`).
+    pub fn start_hunt_for(&mut self, player: u8, target: HuntTarget, seed: u32) {
         // Gone: the one hunted before it.
         self.asw.subs.retain(|s| s.hunter != Some(player));
-        let Some((i, datum)) = self.spawn_hunted(carrier, seed) else { return };
+        let Some((i, datum)) = self.spawn_hunted(target, seed) else { return };
         self.asw.subs[i].hunter = Some(player);
+        let barrier = match self.asw.subs[i].intent {
+            Intent::Blockade { a, b, .. } => Some((a, b)),
+            _ => None,
+        };
         // Where it was reported: the crew's first waypoint.
         let c = self.asw.crew_mut(player);
         c.route = vec![((datum[0] / M_PER_WU) as i32, (datum[1] / M_PER_WU) as i32)];
         c.route_rev = c.route_rev.wrapping_add(1);
+        c.barrier = barrier;
     }
 
-    /// A campaign's ASW mission the AI flies (`mission` its id): a submarine closing on the
-    /// carrier `carrier`'s group as for a player, hunted by the mission's helicopters (campaign
-    /// tags; each joins the hunt as it takes off).
-    pub fn start_ai_hunt(&mut self, mission: u32, tag: u32, carrier: usize, seed: u32) {
+    /// A campaign's ASW mission the AI flies (`mission` its id): a submarine as for a player,
+    /// hunted by the mission's helicopters (campaign tags; each joins the hunt as it takes
+    /// off).
+    pub fn start_ai_hunt(&mut self, mission: u32, tag: u32, target: HuntTarget, seed: u32) {
         if let Some(h) = self.asw.ai_hunts.iter_mut().find(|h| h.mission == mission) {
             if !h.tags.contains(&tag) {
                 h.tags.push(tag);
             }
             return;
         }
-        let Some((i, datum)) = self.spawn_hunted(carrier, seed) else { return };
+        let Some((i, datum)) = self.spawn_hunted(target, seed) else { return };
         self.asw.subs[i].ai_hunt = Some(mission);
         let sub = self.asw.subs[i].id;
         self.asw.ai_hunts.push(AiHunt { mission, sub, tags: vec![tag], datum, ..Default::default() });
     }
 
-    /// A campaign's hunted submarine some 22-28 km off the carrier `carrier`, closing on one of
-    /// its escorts (else the carrier): its index, and where it is reported (a few km off).
-    fn spawn_hunted(&mut self, carrier: usize, seed: u32) -> Option<(usize, [f64; 2])> {
-        let c = self.objects.get(carrier).map(object_metres)?;
+    /// A campaign's hunted submarine: some 22-28 km off the carrier, closing on one of its
+    /// escorts (else the carrier); or as far out on the enemy's side of the barrier line,
+    /// making for the open sea beyond it. Its index, and where it is reported (a few km off).
+    fn spawn_hunted(&mut self, target: HuntTarget, seed: u32) -> Option<(usize, [f64; 2])> {
+        let barrier = match target {
+            HuntTarget::Barrier { a, b, enemy } => {
+                let (a, b) = (self.objects.get(a).map(object_metres)?, self.objects.get(b).map(object_metres)?);
+                Some((a, b, map_metres(enemy)))
+            }
+            HuntTarget::Carrier(_) => None,
+        };
         if self.asw.rng.is_none() {
             self.asw.rng = Some(Rng::new(seed | 1));
             let layer = 30 + self.asw.rand(90);
             self.asw.ocean = Ocean { layer: layer as f32, sea_state: 1 + self.asw.rand(4) as u8, bottom: 600.0 };
+            // A barrier across a narrow sea: shallow water (the Gulf of Finland's), the layer
+            // high in it.
+            if barrier.is_some() {
+                self.asw.ocean.layer = (15 + self.asw.rand(20)) as f32;
+                self.asw.ocean.bottom = 100.0;
+            }
         }
-        let at = (0..64).find_map(|_| {
-            let a = self.asw.rand(3600) as f64 / 10.0 * DEG;
-            let d = 22_000.0 + self.asw.rand(6000) as f64;
-            let p = [c[0] + a.sin() * d, c[1] + a.cos() * d];
-            let open = (0..8).all(|k| {
-                let b = k as f64 * 45.0 * DEG;
-                self.sea_at([p[0] + b.sin() * 1500.0, p[1] + b.cos() * 1500.0])
-            });
-            (self.sea_at(p) && open).then_some(p)
-        })?;
-        let setup = SubSetup { at, heading: bearing(at, c), intent: Intent::Escort { carrier }, nuclear: self.asw.rand(2) == 0 };
-        let id = self.asw.id();
-        let mut sub = setup;
-        sub.intent = match self.escort_of(carrier, at) {
-            Some(ship) => Intent::Approach { ship },
-            None => Intent::Attack { ship: carrier },
+        let open = |sim: &Sim, p: [f64; 2]| {
+            sim.sea_at(p)
+                && (0..8).all(|k| {
+                    let b = k as f64 * 45.0 * DEG;
+                    sim.sea_at([p[0] + b.sin() * 1500.0, p[1] + b.cos() * 1500.0])
+                })
         };
+        let nuclear = self.asw.rand(2) == 0;
+        let (at, sub) = match (target, barrier) {
+            (HuntTarget::Barrier { .. }, Some((a, b, enemy))) => {
+                let mid = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
+                let len = dist(a, b).max(1.0);
+                let along = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+                // Across the line toward the enemy.
+                let mut n = [-along[1], along[0]];
+                if (enemy[0] - mid[0]) * n[0] + (enemy[1] - mid[1]) * n[1] < 0.0 {
+                    n = [-n[0], -n[1]];
+                }
+                let at = (0..64).find_map(|_| {
+                    let s = (self.asw.rand(700) as f64 / 1000.0 - 0.35) * len;
+                    let d = 22_000.0 + self.asw.rand(6000) as f64;
+                    let p = [mid[0] + along[0] * s + n[0] * d, mid[1] + along[1] * s + n[1] * d];
+                    open(self, p).then_some(p)
+                })?;
+                // Beyond the line: the open sea it makes for.
+                let goal = [20_000.0, 35_000.0, 10_000.0]
+                    .iter()
+                    .map(|&d| [mid[0] - n[0] * d, mid[1] - n[1] * d])
+                    .find(|&g| self.sea_at(g))
+                    .unwrap_or([mid[0] - n[0] * 20_000.0, mid[1] - n[1] * 20_000.0]);
+                let setup = SubSetup { at, heading: bearing(at, goal), intent: Intent::Blockade { a, b, goal }, nuclear };
+                (at, setup)
+            }
+            (HuntTarget::Carrier(carrier), _) => {
+                let c = self.objects.get(carrier).map(object_metres)?;
+                let at = (0..64).find_map(|_| {
+                    let a = self.asw.rand(3600) as f64 / 10.0 * DEG;
+                    let d = 22_000.0 + self.asw.rand(6000) as f64;
+                    let p = [c[0] + a.sin() * d, c[1] + a.cos() * d];
+                    open(self, p).then_some(p)
+                })?;
+                let intent = match self.escort_of(carrier, at) {
+                    Some(ship) => Intent::Approach { ship },
+                    None => Intent::Attack { ship: carrier },
+                };
+                (at, SubSetup { at, heading: bearing(at, c), intent, nuclear })
+            }
+            _ => return None,
+        };
+        let id = self.asw.id();
         let mut s = Sub::from_setup(id, &sub);
+        s.depth = s.depth.min(self.asw.ocean.bottom as f64 - 20.0);
         s.pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
         s.silent_in = (SILENT_EVERY.0 + self.asw.rand(SILENT_EVERY.1 - SILENT_EVERY.0)) as f64;
         self.asw.subs.push(s);
@@ -1125,8 +1193,9 @@ impl Sim {
                 }
             }
             AswCmd::DipDepth(m) => {
+                let bottom = self.asw.ocean.bottom;
                 let d = &mut self.asw.crew_mut(owner).dip;
-                d.set = (m as f32).clamp(10.0, DIP_MAX);
+                d.set = (m as f32).clamp(10.0, DIP_MAX.min(bottom - 5.0));
                 if d.state == DipState::Down {
                     d.state = DipState::Lowering;
                 }
@@ -1235,7 +1304,7 @@ impl Sim {
             kind,
             at,
             fall: fall as f32,
-            depth: BUOY_DEPTHS[deep as usize],
+            depth: BUOY_DEPTHS[deep as usize].min(self.asw.ocean.bottom - 5.0),
             active: false,
             pings: if kind == BuoyKind::Dicass { DICASS_PINGS } else { 0 },
             ping_in: 0.0,
@@ -1410,6 +1479,7 @@ impl Sim {
                 .map(|t| [t.p[0], t.p[1]])
                 .find(|&p| dist(p, self.asw.subs[i].at) < 3000.0);
             let layer = self.asw.ocean.layer as f64;
+            let bottom = self.asw.ocean.bottom as f64;
             let r = self.asw.rand(1000);
             let r2 = self.asw.rand(1000);
             // A helicopter low and slow near it: heard (its rotor on the water).
@@ -1478,6 +1548,8 @@ impl Sim {
             let turn = wrap(want_heading - s.heading).clamp(-SUB_TURN * dt, SUB_TURN * dt);
             s.heading = (s.heading + turn).rem_euclid(TAU);
             s.speed += (want_speed - s.speed).clamp(-0.3 * dt, 0.3 * dt);
+            // Off the bottom (a shallow sea's).
+            let want_depth = want_depth.min(bottom - 20.0).max(PERISCOPE_DEPTH.min(want_depth));
             s.depth += (want_depth - s.depth).clamp(-SUB_DIVE * dt, SUB_DIVE * dt);
             let next = [s.at[0] + s.heading.sin() * s.speed * dt, s.at[1] + s.heading.cos() * s.speed * dt];
             let ahead = [s.at[0] + s.heading.sin() * 1500.0, s.at[1] + s.heading.cos() * 1500.0];

@@ -280,6 +280,31 @@ pub fn stores(kind: MissionKind) -> [i16; 4] {
     }
 }
 
+/// The submarine hunt of an ASW objective as the simulation sets it up: a carrier's group to
+/// close on, or a barrier line to slip past from the enemy's side (the enemy place nearest it).
+pub fn hunt_target(
+    state: &CampaignState,
+    objective: &stealth_campaign::Objective,
+) -> Option<stealth_sim::asw::HuntTarget> {
+    use stealth_campaign::{Objective, Side};
+    use stealth_sim::asw::HuntTarget;
+    match *objective {
+        Objective::Asw { carrier } => Some(HuntTarget::Carrier(carrier as usize)),
+        Objective::Barrier { a, b } => {
+            let (sa, sb) = (state.site(a)?, state.site(b)?);
+            let (mx, my) = ((sa.x + sb.x) / 2, (sa.y + sb.y) / 2);
+            let enemy = state
+                .places
+                .iter()
+                .filter(|p| p.owner == Side::Red)
+                .min_by_key(|p| ((p.x - mx) as i64).pow(2) + ((p.y - my) as i64).pow(2))
+                .map(|p| (p.x, p.y))?;
+            Some(HuntTarget::Barrier { a: a as usize, b: b as usize, enemy })
+        }
+        _ => None,
+    }
+}
+
 /// The objective a sortie puts in the simulation's primary slot (mission type 1 photo, 2
 /// destroy; object).
 pub fn sim_objective(sortie: &Sortie) -> Option<(i32, usize)> {
@@ -290,6 +315,7 @@ pub fn sim_objective(sortie: &Sortie) -> Option<(i32, usize)> {
         Objective::Interdict { object, .. } => Some((2, object as usize)),
         Objective::AntiShip { ship } => Some((2, ship as usize)),
         Objective::Asw { carrier } => Some((stealth_sim::asw::HUNT_MISSION, carrier as usize)),
+        Objective::Barrier { a, .. } => Some((stealth_sim::asw::HUNT_MISSION, a as usize)),
         Objective::Sead { ref sites, .. } => sites.first().map(|&o| (2, o as usize)),
         _ => None,
     }
@@ -531,6 +557,7 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
         Objective::Interdict { object, .. } => t!("brief-interdict", place = site(object)),
         Objective::AntiShip { .. } => t!("brief-anti-ship").into(),
         Objective::Asw { carrier } => t!("brief-asw", carrier = site(carrier)),
+        Objective::Barrier { a, b } => t!("brief-asw-barrier", a = site(a), b = site(b)),
         Objective::Resupply { request } => match state.supply_request(request) {
             Some(r) => t!("brief-resupply", unit = r.title().tr(), task = describe(o.kind)),
             None => describe(o.kind).into(),

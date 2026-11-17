@@ -423,6 +423,12 @@ pub enum Objective {
     Asw {
         carrier: ObjectId,
     },
+    /// Sink the submarine slipping out past the line between these two friendly bases (a
+    /// narrow sea's: `stealth_mission::asw::BARRIERS`).
+    Barrier {
+        a: ObjectId,
+        b: ObjectId,
+    },
     /// Hold the air over a point.
     Cap {
         x: i32,

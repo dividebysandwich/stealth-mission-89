@@ -432,7 +432,9 @@ impl CampaignState {
                     s.progress.on_station =
                         s.progress.cap_kills as f64 * CAP_SECONDS / CAP_KILLS as f64;
                 }
-                (Report::SubSunk { player }, Objective::Asw { .. }) if *player == slot.id => {
+                (Report::SubSunk { player }, Objective::Asw { .. } | Objective::Barrier { .. })
+                    if *player == slot.id =>
+                {
                     s.progress.sub_sunk = true;
                 }
                 (Report::PhotoTaken { player, object }, Objective::Recon { object: o, .. })
@@ -607,7 +609,7 @@ impl CampaignState {
             }
             Objective::Strike { airfield, .. } => !self.site(*airfield).is_some_and(Site::alive),
             Objective::AntiShip { ship } => !self.site(*ship).is_some_and(Site::alive),
-            Objective::Asw { .. } => p.sub_sunk,
+            Objective::Asw { .. } | Objective::Barrier { .. } => p.sub_sunk,
             Objective::Cap { .. } => p.on_station >= CAP_SECONDS,
             Objective::Escort { insertion } => {
                 p.present()

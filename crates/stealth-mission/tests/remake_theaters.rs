@@ -301,17 +301,33 @@ fn asw_hunts_start_from_the_carrier_with_submarines_at_sea() {
         let carrier = th.world.objects.iter().any(|o| {
             o.flags & world::flags::CARRIER != 0 && o.flags & world::flags::FRIENDLY != 0
         });
+        // A narrow sea without a carrier: its blockade between two friendly airfields.
+        let barrier = asw::BARRIERS.iter().any(|b| b.0 == stealth_formats::ALL_THEATERS[theater]);
         for (k, scenario) in [Scenario::Blockade, Scenario::Convoy, Scenario::Carrier].into_iter().enumerate() {
             let s = MissionSettings { theater, kind: MissionKind::Strike, helicopter: true, opponents: (k % 2) as u8 * 3, ..Default::default() };
             let Ok(mut m) = generate(&data, &s, Seed::Srand(k as u16 * 911 + 5)) else { continue };
             asw::for_asw(&mut m, &data, Some(scenario));
             let name = m.theater_name.clone();
-            if !carrier {
+            if !carrier && !barrier {
                 assert_ne!(m.primary.mission_type, asw::HUNT, "{name}: no carrier, no hunt");
                 continue;
             }
             assert_eq!(m.primary.mission_type, asw::HUNT, "{name} {scenario:?}");
             let h = m.hunt.as_ref().expect("a hunt");
+            if barrier && !carrier {
+                // Always the blockade, from the first airfield, in shallow water.
+                assert_eq!(h.scenario, Scenario::Blockade, "{name}");
+                assert!(!m.takeoff.carrier && m.takeoff.object_index > 0, "{name}");
+                assert!((15..=34).contains(&h.layer) && h.bottom == 100, "{name}");
+                for sub in &h.subs {
+                    assert!(th.is_water(sub.at.0, sub.at.1), "{name}: sub on land");
+                    let SubIntent::Blockade { a, b, goal } = sub.intent else { panic!("{name}: {:?}", sub.intent) };
+                    let side = |p: (i32, i32)| ((b.0 - a.0) as i64) * ((p.1 - a.1) as i64) - ((b.1 - a.1) as i64) * ((p.0 - a.0) as i64);
+                    assert!(side(sub.at).signum() != side(goal).signum(), "{name}: the goal across the line");
+                }
+                assert!(!h.subs.is_empty());
+                continue;
+            }
             *seen.entry(format!("{:?}", h.scenario)).or_default() += 1;
             assert!(m.takeoff.carrier && m.landing.carrier, "{name}");
             assert_eq!(m.primary.base_index, m.takeoff.object_index, "{name}");

@@ -8,6 +8,10 @@ use crate::tuning::*;
 use crate::{CampaignEvent, Convoy, ConvoyUnit, Report, WorldView};
 use stealth_i18n::{Text, text};
 
+/// The narrow seas a submarine slips out of past a line between two friendly bases, the ASW
+/// hunt of a theater without a carrier (the single missions' too).
+use stealth_mission::asw::BARRIERS as ASW_BARRIERS;
+
 impl CampaignState {
     pub(crate) fn report(&mut self, r: &Report, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         self.sortie_report(r);
@@ -1884,6 +1888,30 @@ impl CampaignState {
         for &(carrier, x, y) in carriers.iter().take(1) {
             add(self, MissionKind::Asw, text!("cb-asw"), Objective::Asw { carrier }, x, y, 0);
         }
+        // Without a carrier, a narrow sea's: a submarine slipping out past the line between
+        // two friendly bases on its shores.
+        if carriers.is_empty() {
+            for &(code, a, b) in ASW_BARRIERS {
+                if self.setup.theater_code != code {
+                    continue;
+                }
+                let base = |n: &str| {
+                    self.sites
+                        .iter()
+                        .find(|s| s.kind == SiteKind::Airfield && s.name == n && s.alive())
+                        .filter(|s| self.owner(s.object) == Some(side))
+                        .map(|s| (s.object, s.x, s.y))
+                };
+                let (Some(a), Some(b)) = (base(a), base(b)) else { continue };
+                let title = text!(
+                    "cb-asw-barrier",
+                    a = self.site(a.0).map_or(String::new(), |s| s.name.clone()),
+                    b = self.site(b.0).map_or(String::new(), |s| s.name.clone())
+                );
+                let objective = Objective::Barrier { a: a.0, b: b.0 };
+                add(self, MissionKind::Asw, title, objective, (a.1 + b.1) / 2, (a.2 + b.2) / 2, 0);
+            }
+        }
         // CAP: where enemy fighters are near friendly places or insertions, else over the
         // friendly place nearest the front.
         let mut guarded: Vec<(i32, i32, Text)> = self
@@ -2021,5 +2049,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Cargo { tag } => (18, tag as i64),
         Objective::Airlift { run } => (19, run as i64),
         Objective::Asw { carrier } => (20, carrier as i64),
+        Objective::Barrier { a, b } => (21, (a as i64) << 16 | b as i64),
     }
 }

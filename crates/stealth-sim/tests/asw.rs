@@ -385,13 +385,13 @@ fn a_campaign_hunt_spawns_off_the_carrier_and_its_sinking_is_the_hunters_objecti
     let carrier = (0..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
     let c = object_metres(&sim.objects()[carrier]);
     sim.set_pilot_target(0, Some((HUNT_MISSION, carrier)));
-    sim.start_hunt_for(0, carrier, 99);
+    sim.start_hunt_for(0, HuntTarget::Carrier(carrier), 99);
     let s = sub(&sim).clone();
     let d = (s.at[0] - c[0]).hypot(s.at[1] - c[1]);
     assert!((21_000.0..=29_000.0).contains(&d), "{d:.0} m off the carrier");
     assert_eq!(s.hunter, Some(0));
     // Another sortie's hunt replaces it.
-    sim.start_hunt_for(0, carrier, 7);
+    sim.start_hunt_for(0, HuntTarget::Carrier(carrier), 7);
     assert_eq!(sim.asw().subs.len(), 1);
     // A torpedo onto it, from close by.
     let near = [sub(&sim).at[0] - 450.0, sub(&sim).at[1] - 450.0];
@@ -500,4 +500,38 @@ fn a_submarine_goes_silent_under_a_hovering_helicopter_and_every_so_often() {
         silent |= sub(&sim).posture == Posture::Silent;
     }
     assert!(silent, "a silent stop in 25 minutes: {:?}", sub(&sim));
+}
+
+#[test]
+fn a_campaign_barrier_hunt_starts_on_the_enemys_side_of_the_line_and_makes_for_the_far_side() {
+    let mut sim = seahawk();
+    let fields: Vec<usize> = (3..sim.objects().len()).filter(|&i| sim.objects()[i].x != 0).collect();
+    // Two places some way apart (the bases): the line between them.
+    let (a, b) = fields
+        .iter()
+        .flat_map(|&a| fields.iter().map(move |&b| (a, b)))
+        .find(|&(a, b)| {
+            let (pa, pb) = (object_metres(&sim.objects()[a]), object_metres(&sim.objects()[b]));
+            (40_000.0..90_000.0).contains(&(pa[0] - pb[0]).hypot(pa[1] - pb[1]))
+        })
+        .expect("two bases");
+    let (pa, pb) = (object_metres(&sim.objects()[a]), object_metres(&sim.objects()[b]));
+    let mid = [(pa[0] + pb[0]) / 2.0, (pa[1] + pb[1]) / 2.0];
+    // The enemy to the east of the line's middle.
+    let enemy = (((mid[0] + 100_000.0) / M_PER_MAP) as i32, 0x8000 - (mid[1] / M_PER_MAP) as i32);
+    sim.set_pilot_target(0, Some((HUNT_MISSION, a)));
+    sim.start_hunt_for(0, HuntTarget::Barrier { a, b, enemy }, 5);
+    let s = sub(&sim).clone();
+    let Intent::Blockade { goal, .. } = s.intent else { panic!("{:?}", s.intent) };
+    let side = |p: [f64; 2]| (pb[0] - pa[0]) * (p[1] - pa[1]) - (pb[1] - pa[1]) * (p[0] - pa[0]);
+    let toward_enemy = side([mid[0] + 100_000.0, mid[1]]);
+    assert!(side(s.at) * toward_enemy > 0.0, "on the enemy's side");
+    assert!(side(goal) * toward_enemy < 0.0, "making for the far side");
+    let d = (s.at[0] - mid[0]).hypot(s.at[1] - mid[1]);
+    assert!((21_000.0..40_000.0).contains(&d), "{d:.0} m off the line");
+    // A narrow sea's water: shallow, the submarine off the bottom.
+    assert_eq!(sim.asw().ocean.bottom, 100.0);
+    assert!(s.depth <= 80.0);
+    // The crew sees the line on the map.
+    assert_eq!(crew(&sim).barrier, Some((pa, pb)));
 }

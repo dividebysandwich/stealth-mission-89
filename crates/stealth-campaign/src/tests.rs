@@ -3927,3 +3927,17 @@ fn the_ai_hunts_the_submarine_nobody_took() {
     assert!(m.achieved, "the submarine sunk");
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Recall { .. })), "home again");
 }
+
+/// The Gulf of Finland has no carrier: its hunt is a submarine slipping out of the gulf past
+/// the line from Helsinki to Tallinn.
+#[test]
+fn the_gulf_of_finland_hunts_a_submarine_breaking_out() {
+    use crate::{MissionKind, Objective};
+    let mut state = campaign("gulf_of_finland", 10);
+    state.tick(1.0, &WorldView::default(), &[]);
+    let o = state.board.iter().find(|o| o.kind == MissionKind::Asw).expect("a hunt on the board");
+    let Objective::Barrier { a, b } = o.objective else { panic!("{:?}", o.objective) };
+    let name = |k| state.site(k).map(|s| s.name.clone()).unwrap_or_default();
+    assert_eq!((name(a).as_str(), name(b).as_str()), ("Helsinki", "Tallinn"));
+    assert!(state.objective_met(&o.objective, &crate::Progress { sub_sunk: true, ..Default::default() }));
+}

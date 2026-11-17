@@ -296,6 +296,10 @@ pub fn draw(
             }
         }
     }
+    // A campaign barrier hunt's line.
+    if let Some((a, b)) = crew.barrier {
+        cv.dashed(at(a), at(b), 10.0, 6.0, 1.2, RED);
+    }
     // The buoys.
     for b in sim.asw().buoys_of(owner) {
         let s = at(b.at);

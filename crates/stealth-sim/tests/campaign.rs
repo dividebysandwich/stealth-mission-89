@@ -1424,9 +1424,9 @@ fn an_ai_asw_flight_finds_its_submarine_and_torpedoes_it() {
     let carrier = (3..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
     let o = sim.objects()[carrier];
     sim.spawn_ai_mission(carrier, UH60, AiTask::Patrol(o.x, o.y), 71, true);
-    sim.start_ai_hunt(5, 71, carrier, 9);
+    sim.start_ai_hunt(5, 71, stealth_sim::asw::HuntTarget::Carrier(carrier), 9);
     sim.spawn_ai_mission(carrier, UH60, AiTask::Patrol(o.x, o.y), 72, true);
-    sim.start_ai_hunt(5, 72, carrier, 9);
+    sim.start_ai_hunt(5, 72, stealth_sim::asw::HuntTarget::Carrier(carrier), 9);
     assert_eq!(sim.asw().subs.len(), 1, "one submarine for the mission");
     assert_eq!(sim.asw().ai_hunts[0].tags, vec![71, 72]);
     let mut sunk = None;
