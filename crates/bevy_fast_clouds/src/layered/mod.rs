@@ -128,6 +128,8 @@ pub struct LayeredGlobals {
     pub layer: Vec4,
     /// The cumulus layer: base and top (render y), present.
     pub cumulus: Vec4,
+    /// The sunlit side's colour (`CloudShading::sun_color`).
+    pub sun_color: Vec4,
 }
 
 /// Everything the render world needs.
@@ -311,6 +313,7 @@ pub(crate) fn upload_layered_frame(
         cumulus: clouds.cumulus_layer.map_or(Vec4::ZERO, |(b, t)| {
             Vec4::new(render_y(b), render_y(t), 1.0, 0.0)
         }),
+        sun_color: s.sun_color,
     };
 }
 

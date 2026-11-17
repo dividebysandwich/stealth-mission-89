@@ -105,6 +105,14 @@ fn phase(c: f32, k: f32) -> f32 {
     return mix(hg(c, 0.8 * k), hg(c, -0.3 * k), 0.5);
 }
 
+// What distant clouds haze into: the sunlit cloud colour, at sunset warmer towards the sun
+// (as the sky is there).
+fn haze_color(cos_t: f32) -> vec3<f32> {
+    let towards = sat(cos_t);
+    let w = globals.sun_color.w * (0.5 + 0.5 * towards);
+    return mix(globals.ramp[0].rgb, globals.sun_color.rgb * (0.8 + 0.6 * towards * towards), w);
+}
+
 // Noise position of a render position.
 fn noise_pos(p: vec3<f32>) -> vec3<f32> {
     let x = p.x + globals.noise.x;
@@ -482,6 +490,7 @@ fn march(m: ptr<function, March>, cam: vec3<f32>, rd: vec3<f32>, t0: f32, t1: f3
     let sun = globals.sun.xyz;
     let cos_t = dot(rd, sun);
     let haze = haze_distance(cam);
+    let haze_col = haze_color(cos_t);
     var t = t0 + jitter * step_at(t0);
     var taken = 0;
     var skipped = false;
@@ -542,9 +551,11 @@ fn march(m: ptr<function, March>, cam: vec3<f32>, rd: vec3<f32>, t0: f32, t1: f3
         let energy = scatter * powder * 0.75 + diffuse;
         let sunlit = 1.0 - exp(-1.5 * energy);
         // Ambient: the sky above, the ground below.
-        let ambient = mix(ramp(10.0) * 0.6, ramp(3.0), sat(s.height * 1.4)) * mix(mix(0.5, 0.2, sat(s.darken * 3.0)), 1.0, exp(-0.03 * tau)) * mix(0.35, 1.0, ao);
-        var light = mix(ambient, globals.ramp[0].rgb, sunlit) * mix(0.65, 1.0, ao)
-            + globals.ramp[0].rgb * min(max(energy - 1.5, 0.0), 1.0) * 0.2;
+        // At sunset the sky's light is warm too: the shaded sides take some of the sun's colour.
+        let sky_light = mix(ramp(3.0), globals.sun_color.rgb * 0.45, 0.4 * globals.sun_color.w);
+        let ambient = mix(ramp(10.0) * 0.6, sky_light, sat(s.height * 1.4)) * mix(mix(0.5, 0.2, sat(s.darken * 3.0)), 1.0, exp(-0.03 * tau)) * mix(0.35, 1.0, ao);
+        var light = mix(ambient, globals.sun_color.rgb, sunlit) * mix(0.65, 1.0, ao)
+            + globals.sun_color.rgb * min(max(energy - 1.5, 0.0), 1.0) * mix(0.2, 0.6, globals.sun_color.w);
         // Dark clouds (storms) darken further the deeper the light has to go and the deeper in
         // their body (an anvil's core too, lit from above as it is); thick cloud of any kind
         // shades a little in its core.
@@ -553,7 +564,7 @@ fn march(m: ptr<function, March>, cam: vec3<f32>, rd: vec3<f32>, t0: f32, t1: f3
         light += globals.flash.rgb + globals.line_color.rgb * line_glow(p);
         // Haze: towards the sunlit cloud colour with distance.
         if (haze > 0.0) {
-            light = mix(light, globals.ramp[0].rgb, sat(t / (1.5 * haze)));
+            light = mix(light, haze_col, sat(t / (1.5 * haze)));
         }
         let w = (*m).transmittance * (1.0 - step_t);
         (*m).light += light * w;
@@ -643,11 +654,11 @@ fn fragment(in: FullscreenVertexOutput) -> FragOut {
             let from_above = cam.y > globals.deck.y;
             let sun_up = max(globals.sun.y, 0.0);
             // As the marched deck looks there: hazed alike, so the two meet without a seam.
-            var c = select(ramp(8.0), mix(ramp(3.0), globals.ramp[0].rgb, 0.5 * sun_up), from_above)
+            var c = select(ramp(8.0), mix(ramp(3.0), globals.sun_color.rgb, 0.5 * sun_up), from_above)
                 * (1.0 - globals.deck_field.y);
             let haze = haze_distance(cam);
             if (haze > 0.0) {
-                c = mix(c, globals.ramp[0].rgb, sat(f0 / (1.5 * haze)));
+                c = mix(c, haze_color(dot(rd, globals.sun.xyz)), sat(f0 / (1.5 * haze)));
             }
             let w = m.transmittance * alpha;
             m.light += c * w;

@@ -105,6 +105,10 @@ pub struct CloudShading {
     pub line_color: Vec3,
     /// Fog over the clouds (inside another cloud): colour, amount 0..1.
     pub fog: Vec4,
+    /// The sunlit side's colour, linear RGB: the ramp's entry 0 in the sun's colour (orange
+    /// at sunset); and how warm it is 0..1 (distant clouds towards the sun haze into it). Only
+    /// the layered clouds use it.
+    pub sun_color: Vec4,
 }
 
 impl Default for CloudShading {
@@ -118,6 +122,7 @@ impl Default for CloudShading {
             line_b: Vec4::ZERO,
             line_color: Vec3::ONE,
             fog: Vec4::ZERO,
+            sun_color: Vec4::new(0.9, 0.9, 0.9, 0.0),
         }
     }
 }

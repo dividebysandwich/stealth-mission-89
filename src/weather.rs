@@ -906,14 +906,16 @@ fn shade_clouds(
     // The night palette's cloud ramp is all but black: by night the clouds are lit by the
     // moon and the sky instead, tops brighter than the sky behind them, bases darker.
     let night = 1.0 - lighting.daylight.clamp(0.0, 1.0);
+    let (sun_color, warmth) = sun_lit_color(linear(CLOUD_RAMP), sky.sun.y, sky.on && !nvg);
     let sky = linear(NIGHT_SKY);
     // Moonlight is greyer than the sky.
     let sky = sky.lerp(Vec3::splat(sky.dot(Vec3::new(0.2126, 0.7152, 0.0722))), 0.5);
+    let moonlit = |k: f32| (sky * (1.8 - 1.3 * k) + Vec3::splat(0.004 * (1.0 - k))) * night;
+    let moonlit_top = moonlit(0.0);
     *shading = CloudShading {
         sun_dir: lighting.sun.truncate(),
         ramp: std::array::from_fn(|i| {
-            let k = i as f32 / 15.0;
-            let moonlit = (sky * (1.8 - 1.3 * k) + Vec3::splat(0.004 * (1.0 - k))) * night;
+            let moonlit = moonlit(i as f32 / 15.0);
             // Grey days (`whiteout` in palette.wgsl).
             let c = linear(CLOUD_RAMP + i as u8).max(moonlit) * (1.0 - 0.3 * state.gloom) * lit;
             tint(c).extend(1.0)
@@ -925,6 +927,8 @@ fn shade_clouds(
         line_color,
         // Inside a cloud everything fades into it (`whiteout` in palette.wgsl).
         fog: tint(linear(CLOUD_RAMP + 2) * lit).extend(state.whiteout),
+        sun_color: tint(sun_color.max(moonlit_top) * (1.0 - 0.3 * state.gloom) * lit)
+            .extend(warmth),
     };
     let q = settings.cloud_quality.level(settings.vr);
     let env = |name: &str| std::env::var(name).ok().and_then(|v| v.parse::<u32>().ok());
@@ -951,6 +955,30 @@ fn shade_clouds(
     if *render != want {
         *render = want;
     }
+}
+
+/// The clouds' sunlit side (`CloudShading::sun_color`): the palette's sunlit cloud grey in the
+/// sun's colour (`sun_colour` in palette.wgsl), its brightness kept and a little raised, from
+/// warm white up high to orange as the sun sets and pink below the horizon, fading out once
+/// it is well below. `h` is the sun's true elevation (sine; the light's is clamped); `on`: continuous time of day (the classic
+/// palettes have no sunset). Also returns the warmth 0..1.
+fn sun_lit_color(sunlit: Vec3, h: f32, on: bool) -> (Vec3, f32) {
+    let w = if on { (1.0 - smoothstep(0.12, 0.45, h)) * smoothstep(-0.2, -0.11, h) } else { 0.0 };
+    if w <= 0.0 {
+        return (sunlit, 0.0);
+    }
+    let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+    // Below the horizon the afterglow on the clouds' undersides turns pink.
+    let low = Vec3::new(1.0, 0.25, 0.28).lerp(Vec3::new(1.0, 0.38, 0.06), smoothstep(-0.13, -0.06, h));
+    let sun = low.lerp(Vec3::new(1.0, 0.93, 0.78), smoothstep(-0.06, 0.3, h));
+    // Brightest and deepest as the sun goes down (seen from the air the horizon dips: the
+    // disc meets it at about -0.06).
+    let near = 1.0 - smoothstep(0.0, 0.12, (h + 0.06).abs());
+    // The palette's cloud grey is already dimming for dusk then: hold a floor so the glow
+    // peaks at the horizon instead of fading with it.
+    let bright = lum(sunlit).max(0.22 * near);
+    let warm = sun * (bright / lum(sun)) * (1.0 + 0.6 * w + 1.4 * near);
+    (sunlit.lerp(warm, w), w)
 }
 
 /// Ultra's layered clouds: most primary march steps and view pixels per marched pixel.

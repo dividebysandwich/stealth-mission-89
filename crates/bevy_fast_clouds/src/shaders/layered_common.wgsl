@@ -31,6 +31,8 @@ struct LayeredGlobals {
     layer: vec4<f32>,
     // The cumulus layer: base and top (render y), present.
     cumulus: vec4<f32>,
+    // The sunlit side's colour (the ramp's entry 0 in the sun's colour), its warmth 0..1.
+    sun_color: vec4<f32>,
 }
 
 // Per view: the previous frame's projection, the floating origin's move since (xyz) and
