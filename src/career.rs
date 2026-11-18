@@ -402,13 +402,14 @@ pub fn career_ui(
     let window = screen_window(ctx, "Career", CAREER_SIZE);
     crate::menu::Panel::new(t!("career-title")).note(t!("menu-career")).window(window, ctx, |ui| {
         let split = Split::new(ui, "career");
-        let compact = split.compact();
+        let theaters = split.list(ui, "theaters");
+        let aircraft_list = split.list(ui, "aircraft");
         split.body(ui, |ui| {
             let mut flow = Flow::new(ui);
-            flow.card(ui, Span::Fixed(210.0), |ui| {
+            let tour_card = flow.card(ui, Span::Fixed(210.0), |ui| {
                 group(ui, t!("career-group-tour"), |ui| {
                     ui.add_enabled_ui(tour.is_none(), |ui| {
-                        crate::menu::theater_options(ui, &mut state.theater, compact);
+                        crate::menu::theater_options(ui, &mut state.theater, theaters);
                         crate::menu::situation_options(ui, &mut state.roe);
                         crate::menu::opponent_options(ui, &mut state.opponents);
                     });
@@ -417,6 +418,7 @@ pub fn career_ui(
                     }
                 });
             });
+            split.lists(ui, theaters, tour_card);
             flow.card(ui, Span::Fixed(220.0), |ui| {
                 group(ui, t!("group-conditions"), |ui| {
                     crate::menu::weather_options(
@@ -427,15 +429,21 @@ pub fn career_ui(
                     );
                     crate::menu::moon_options(ui, &mut state.moon);
                 });
-                crate::menu::simulation_options(ui, settings, None, |_| {});
-            });
-            flow.card(ui, Span::Fixed(crate::menu::VEHICLE_WIDTH), |ui| {
-                group(ui, t!("group-vehicle"), |ui| {
-                    crate::aircraft_preview::show(ui, preview);
-                    let lockheed = tour.is_none().then_some(&mut state.lockheed);
-                    crate::menu::vehicle_options(ui, settings, lockheed, compact);
+                let aircraft = settings.aircraft;
+                crate::menu::simulation_options(ui, settings, None, |ui| {
+                    // A tour sets the weapons itself.
+                    if tour.is_none() {
+                        crate::menu::realistic_weapons_option(ui, aircraft, &mut state.lockheed);
+                    }
                 });
             });
+            let vehicle = flow.card(ui, Span::Fixed(crate::menu::VEHICLE_WIDTH), |ui| {
+                group(ui, t!("group-vehicle"), |ui| {
+                    crate::aircraft_preview::show(ui, preview);
+                    crate::menu::vehicle_options(ui, settings, aircraft_list);
+                });
+            });
+            split.lists(ui, aircraft_list, vehicle);
             flow.card(ui, Span::Fixed(260.0), |ui| {
                 section(ui, t!("career-pilots"));
                 let mut renamed = None;
