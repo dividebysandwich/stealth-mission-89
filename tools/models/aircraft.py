@@ -137,11 +137,14 @@ class Station:
     that outer wing part (the pylon a part of its own on it, turning back against the sweep);
     `side`: on a rail on the side of that station's pylon, `out` m from its middle."""
 
-    def __init__(self, depth, chord=1.4, w=0.07, kind="pylon", part=None, side=None, out=0.32, rail=None, top=None):
+    def __init__(self, depth, chord=1.4, w=0.07, kind="pylon", part=None, side=None, out=0.32, rail=None, top=None,
+                 edge=False):
         # `top`: z of the structure the pylon hangs from, where its surface is not the lowest
-        # above the station (the Harrier's outrigger fairings).
+        # above the station (the Harrier's outrigger fairings). `edge`: a wingtip launcher
+        # rail on the tip's edge, the missile lying on its side against it (its lugs inboard,
+        # its axis at the station's x and level with the wing at z `top`).
         self.depth, self.chord, self.w, self.kind, self.part = depth, chord, w, kind, part
-        self.side, self.out, self.rail, self.top = side, out, rail, top
+        self.side, self.out, self.rail, self.top, self.edge = side, out, rail, top, edge
 
 
 def underside(geos, x, y, top=10.0):
@@ -183,7 +186,10 @@ def hang_stations(craft, paint):
         if st.side is not None:
             continue
         y = nose - aft
-        if st.part is None:
+        if st.edge:
+            s = 1.0 if x > 0 else -1.0
+            hung.append((i, None, (x - s * TIP_RAIL_INSET, y, st.top), -90.0 * s))
+        elif st.part is None:
             z = underside([craft.body], x, y) if st.top is None else st.top
             if st.depth > 0:
                 craft.body.add(store_pylon(x, y, st.chord, z + 0.06, z - st.depth, st.w, paint))
@@ -216,6 +222,23 @@ def hang_stations(craft, paint):
         craft.subparts[sub][1].add(rail)
         hung.append((i, (stations[st.side].part, sub), (inboard * st.out, 0.0, z), -90.0 * inboard))
     return sorted(hung)
+
+
+# Wingtip rails: the rail's outboard face this far inboard of the station's x (the AIM-9's
+# radius, so a Sidewinder's axis is on the station; an AMRAAM's lies a little further out).
+TIP_RAIL_INSET = 0.0635
+
+
+def tip_rail(s, edge, x, y0, y1, z, paint):
+    """A wingtip launcher rail (`s` -1 left, 1 right) from the tip's edge at x `edge` out to
+    its face under a station at x `x` (a missile's axis there, level with the wing at z), from
+    y0 forward to y1, the dark rail slot along its face."""
+    def box(xa, xb, ya, yb, za, zb, p):
+        return block(min(s * xa, s * xb), max(s * xa, s * xb), min(ya, yb), max(ya, yb), za, zb, p)
+    face = x - TIP_RAIL_INSET
+    g = box(edge, face - 0.012, y0, y1, z - 0.04, z + 0.04, paint)
+    g.add(box(face - 0.012, face, y0 - 0.15, y1, z - 0.022, z + 0.022, DARK))
+    return g
 
 
 class RailPylon:
@@ -309,7 +332,7 @@ def f16_arch(y, sill, hw, top, n=8):
 
 def f16():
     rings = [f16_section(*s) for s in F16_BODY]
-    g = tube(rings, F16_GREY, paints=[RADOME, RADOME] + [F16_GREY] * (len(rings) - 3))
+    g = tube(rings, F16_GREY, paints=[RADOME, RADOME] + [F16_GREY] * (len(rings) - 3), wound=True)
     g.add(tube([f16_arch(*s) for s in F16_CANOPY], CANOPY))
     g.add(tube([f16_arch(*s) for s in F16_FAIRING], F16_GREY))
     g.add(tube([f16_section(y, top, top - 0.3, hw, top - 0.42, hw, 3.0, 3.0, m=2) for y, top, hw in F16_DORSAL], F16_GREY))
@@ -330,8 +353,8 @@ def f16():
     # slot 28 is 1 on the flyable one, its stores hung by the game: `F16_STATIONS`).
     tips = Geo()
     for s in (-1, 1):
-        g.add(f16_tip_launcher(s))
-        tips.add(missile(s * F16_TIP_X, -0.9, F16_TIP_LUGS - 0.08, 3.0))
+        g.add(tip_rail(s, 4.56, F16_TIP_X, -1.55, -3.30, 0.0, F16_GREY))
+        tips.add(missile(s * (F16_TIP_X - TIP_RAIL_INSET + 0.08), -0.9, 0.0, 3.0))
     # The fin on its base, the ventral fins canted out.
     g.add(wing((0, -3.87, 1.1), 2.58, (0, -6.77, 3.27), 0.71, F16_GREY, t=0.05, vertical=True, mirror=False))
     g.add(wing((0.5, -2.96, -0.72), 1.31, (0.67, -3.34, -1.33), 0.3, F16_GREY, t=0.05, vertical=True))
@@ -341,27 +364,14 @@ def f16():
                  stations=("F16_STATIONS", F16_STATIONS, F16_GREY), groups=[([(STORES_SLOT, 0)], tips)])
 
 
-# The wingtip launchers (LAU-129): x of the missile's axis, outboard of the tip's edge (x 4.60)
-# so the fins clear it; z of the lugs under the launcher's rail.
+# The wingtip launchers (LAU-129): x of a Sidewinder's axis, outboard of the tip's edge (x
+# 4.60), level with the wing.
 F16_TIP_X = 4.80
-F16_TIP_LUGS = -0.15
-
-
-def f16_tip_launcher(s):
-    """The launcher on the wingtip's edge (`s` -1 left, 1 right): the fairing joining it to the
-    tip, its housing along the missile's axis, the rail underneath."""
-    def box(x0, x1, y0, y1, z0, z1, paint):
-        return block(min(s * x0, s * x1), max(s * x0, s * x1), y0, y1, z0, z1, paint)
-    x = F16_TIP_X
-    g = box(4.56, x, -2.19, -3.30, -0.025, 0.025, F16_GREY)
-    g.add(box(x - 0.05, x + 0.05, -1.55, -3.30, F16_TIP_LUGS + 0.02, 0.035, F16_GREY))
-    g.add(box(x - 0.022, x + 0.022, -1.70, -3.30, F16_TIP_LUGS, F16_TIP_LUGS + 0.02, DARK))
-    return g
 
 
 # The F-16's stations 1 to 9: the wingtip launchers, the outer wing's launcher rails on short
 # pylons, the wing pylons, the centreline pylon under the intake.
-F16_STATIONS = [Station(0.0),
+F16_STATIONS = [Station(0.0, top=0.0, edge=True),
                 Station(0.18, chord=1.3, w=0.05, rail=RailPylon(F16_GREY)), Station(0.40, chord=1.6),
                 Station(0.42, chord=1.7), Station(0.09, chord=1.5)]
 F16_STATIONS = F16_STATIONS + F16_STATIONS[3::-1]
@@ -1483,10 +1493,12 @@ FA18E_MOUTH = [(0.58, 0.30), (1.36, 0.33), (1.22, -0.58), (0.50, -0.60)]
 FA18E_LIP_S = (8.20, 9.50)
 FA18E_TRUNK_S = 9.65
 FA18E_TIP_X = 6.78
+# The wing's chord plane at the tip.
+FA18E_TIP_Z = 0.38
 # The F/A-18E's stations 1 to 11 (src/loadout.rs `FA18E_STATIONS`): the wingtip rails, the
 # deep wing pylons, the outer ones shorter, the nacelle stations' launchers under the intake
 # trunks, the centreline pylon.
-FA18E_STATIONS = [Station(0.0), Station(0.30, chord=1.5), Station(0.42, chord=1.8), Station(0.42, chord=1.9),
+FA18E_STATIONS = [Station(0.0, top=FA18E_TIP_Z, edge=True), Station(0.30, chord=1.5), Station(0.42, chord=1.8), Station(0.42, chord=1.9),
                   Station(0.07, chord=1.3, w=0.05)]
 FA18E_STATIONS = FA18E_STATIONS + [Station(0.14, chord=1.6)] + FA18E_STATIONS[::-1]
 # The EA-18G Growler's: the same without the wingtips (its ALQ-218 receivers' pods are there).
@@ -1587,15 +1599,15 @@ def fa18e(growler=False):
                               (3.72, 16.87, 17.96, 0.20, 0.03)], FA18E_GREY)))
     g.add(wing(tuple(fa18e_p(0.98, 12.76, 0.70)), 2.78, tuple(fa18e_p(1.90, 14.83, 3.13)), 1.24, FA18E_GREY,
                t=0.05, vertical=True))
-    # The wingtip launchers: a fairing off the tip's edge, the rail outboard of it so the
-    # Sidewinder's fins clear the tip (its axis at x `FA18E_TIP_X`). The Growler's: the ALQ-218
-    # pods, long round pods with dark radomes fore and aft.
+    # The wingtip launchers: a rail on the tip's edge, the Sidewinder on its side against it
+    # (its axis at x `FA18E_TIP_X`, level with the wing). The Growler's: a fairing off the
+    # tip's edge carrying the ALQ-218 pods, long round pods with dark radomes fore and aft.
     for sx in (-1, 1):
         def box(xa, xb, s0, s1, z0, z1, paint):
             x0, x1 = sorted((sx * xa, sx * xb))
             g.add(block(x0, x1, FA18E_NOSE - s1, FA18E_NOSE - s0, z0, z1, paint))
-        box(6.50, FA18E_TIP_X, 11.40, 13.21, 0.35, 0.41, FA18E_GREY)
         if growler:
+            box(6.50, FA18E_TIP_X, 11.40, 13.21, 0.35, 0.41, FA18E_GREY)
             x = sx * (FA18E_TIP_X - 0.02)
             # A round body with blunt ends: each slopes in a little to a flat cap (the user's
             # reference photo), two small blades on top.
@@ -1609,8 +1621,7 @@ def fa18e(growler=False):
                 g.add(block(x - 0.012, x + 0.012, FA18E_NOSE - s_ - 0.22, FA18E_NOSE - s_, 0.52, 0.64,
                             FA18E_GREY, taper_y=0.12))
         else:
-            box(FA18E_TIP_X - 0.05, FA18E_TIP_X + 0.05, 10.27, 13.21, 0.20, 0.41, FA18E_GREY)
-            box(FA18E_TIP_X - 0.022, FA18E_TIP_X + 0.022, 10.42, 13.21, 0.18, 0.20, DARK)
+            g.add(tip_rail(sx, 6.50, FA18E_TIP_X, FA18E_NOSE - 10.27, FA18E_NOSE - 13.21, FA18E_TIP_Z, FA18E_GREY))
     if growler:
         # The blade antennas along the spine and under the nose.
         for s_, z in ((9.6, 1.24), (11.2, 1.13)):
@@ -1625,7 +1636,8 @@ def fa18e(growler=False):
     fl = Geo()
     for sx in (-1, 1):
         fl.add(flame(sx * 0.55, FA18E_NOSE - 17.4, 0.24, 0.38, 3.2))
-    tip = lambda sx: (sx * (FA18E_TIP_X + 0.05), FA18E_NOSE - 12.6, 0.36)
+    # The navigation lights at the launch rails' front ends, ahead of the wingtip.
+    tip = lambda sx: (sx * (FA18E_TIP_X - TIP_RAIL_INSET - 0.02), FA18E_NOSE - 10.20, FA18E_TIP_Z)
     fin = lambda sx: (sx * 1.90, FA18E_NOSE - 15.9, 3.13)
     stations = ("EA18G_STATIONS", EA18G_STATIONS, FA18E_GREY) if growler else (
         "FA18E_STATIONS", FA18E_STATIONS, FA18E_GREY)
