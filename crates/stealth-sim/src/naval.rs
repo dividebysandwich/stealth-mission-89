@@ -123,7 +123,8 @@ const RAID_KM: f64 = 8.0;
 /// The fleet's defence.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Naval {
-    /// The mounts were placed (on the first threat).
+    /// The mounts were placed (at the start when the mission has a fleet, else on the first
+    /// threat).
     pub armed: bool,
     pub mounts: Vec<Ciws>,
     /// The mounts' tracers (m, m/s: east, north, up).
@@ -184,7 +185,8 @@ impl Sim {
         out
     }
 
-    /// Places the fleet's mounts (once): two on each carrier, one on each escort.
+    /// Places the fleet's mounts (once, at the start or on the first threat): two on each
+    /// carrier, one on each escort.
     pub(crate) fn arm_fleet(&mut self) {
         if self.naval.armed {
             return;

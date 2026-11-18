@@ -725,6 +725,10 @@ impl Sim {
                 sim.start_asw(&s);
             }
         }
+        // The fleet's Phalanx mounts stand from the start (seen before any threat).
+        if !sim.fleet().is_empty() {
+            sim.arm_fleet();
+        }
         let st = sim.start_state();
         sim.ingest(&st);
         sim.find_nearest_base();
