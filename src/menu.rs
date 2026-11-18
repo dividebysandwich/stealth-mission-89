@@ -9,7 +9,7 @@ use bevy_egui::{
 use stealth_mission::{Mission, MissionKind, Sky};
 
 use crate::aircraft::AircraftKind;
-use crate::layout::{Flow, Span, Split, screen_window};
+use crate::layout::{Flow, ListFit, Span, Split, screen_window};
 use crate::mission::{ActiveMission, MissionData, clean_text};
 use crate::settings::{AppState, MissionSetup};
 use stealth_i18n::{t, t_lines};
@@ -1255,23 +1255,28 @@ type SettingsMut<'a> = ResMut<'a, crate::settings::Settings>;
 /// saves, the network and the simulation): the modern drone wars first, then the classics.
 pub const THEATER_ORDER: [usize; 12] = [9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8];
 
-/// The theaters as a list of radio buttons, or a dropdown where the window is too small
-/// (`compact`, from `Split::compact`).
-pub(crate) fn theater_options(ui: &mut egui::Ui, theater: &mut usize, compact: bool) {
+/// The theaters as a list of radio buttons (in a box that scrolls where the window is not high
+/// enough for all), or a dropdown where it is too small for a few (`list`, from `Split::list`).
+pub(crate) fn theater_options(ui: &mut egui::Ui, theater: &mut usize, list: ListFit) {
     section(ui, t!("section-theater"));
-    if compact {
+    if list.is_dropdown() {
         let options = THEATER_ORDER
             .into_iter()
             .map(|i| (i, crate::i18n::theater_name(i), crate::i18n::theater_facts(i)));
         dropdown(ui, "theater", theater, options);
         return;
     }
-    for i in THEATER_ORDER {
-        facts(
-            ui.radio_value(theater, i, crate::i18n::theater_name(i)),
-            crate::i18n::theater_facts(i),
-        );
-    }
+    list.rows(ui, |ui, first| {
+        for i in THEATER_ORDER {
+            let row = facts(
+                ui.radio_value(theater, i, crate::i18n::theater_name(i)),
+                crate::i18n::theater_facts(i),
+            );
+            if first && *theater == i {
+                row.scroll_to_me(Some(egui::Align::Center));
+            }
+        }
+    });
 }
 
 pub(crate) fn opponent_options(ui: &mut egui::Ui, opponents: &mut u8) {
@@ -1327,36 +1332,44 @@ fn start_time_options(ui: &mut egui::Ui, state: &mut MenuState) {
     }
 }
 
-/// The aircraft, with its weapons switch; `lockheed` shows "Realistic weapons". A dropdown
-/// where the window is too small for the list (`compact`).
-pub(crate) fn vehicle_options(
-    ui: &mut egui::Ui,
-    settings: &mut SettingsMut,
-    lockheed: Option<&mut bool>,
-    compact: bool,
-) {
+/// The aircraft, as radio buttons (in a box that scrolls where the window is not high enough for
+/// all), or a dropdown where it is too small for a few (`list`, from `Split::list`).
+pub(crate) fn vehicle_options(ui: &mut egui::Ui, settings: &mut SettingsMut, list: ListFit) {
     let s = settings.bypass_change_detection();
     let mut picked = false;
-    if compact {
+    if list.is_dropdown() {
         let was = s.aircraft;
         let options = AIRCRAFT.into_iter().map(|k| (k, k.name(), crate::i18n::aircraft_facts(k)));
         dropdown(ui, "aircraft", &mut s.aircraft, options);
         picked = s.aircraft != was;
-    }
-    for kind in AIRCRAFT.into_iter().filter(|_| !compact) {
-        picked |= facts(
-            ui.radio_value(&mut s.aircraft, kind, kind.name()),
-            crate::i18n::aircraft_facts(kind),
-        )
-        .changed();
+    } else {
+        list.rows(ui, |ui, first| {
+            for kind in AIRCRAFT {
+                let row = facts(
+                    ui.radio_value(&mut s.aircraft, kind, kind.name()),
+                    crate::i18n::aircraft_facts(kind),
+                );
+                picked |= row.changed();
+                if first && s.aircraft == kind {
+                    row.scroll_to_me(Some(egui::Align::Center));
+                }
+            }
+        });
     }
     if picked {
         settings.set_changed();
     }
-    // The F-16 carries AIM-9s and AIM-120s on its pylons anyway.
-    if settings.aircraft == AircraftKind::F117
-        && let Some(lockheed) = lockheed
-    {
+}
+
+/// "Realistic weapons", the F-117A's real bays: only shown for the F-117A, the other aircraft
+/// have no such limits (the F-16 carries AIM-9s and AIM-120s on its pylons anyway). It is not in
+/// a card with a long list, so showing it or not never changes how the lists are shown.
+pub(crate) fn realistic_weapons_option(
+    ui: &mut egui::Ui,
+    aircraft: AircraftKind,
+    lockheed: &mut bool,
+) {
+    if aircraft == AircraftKind::F117 {
         facts(
             ui.checkbox(lockheed, t!("menu-realistic-weapons")),
             t_lines!("menu-realistic-weapons.facts"),
@@ -1881,19 +1894,22 @@ pub(crate) fn menu_ui(
         }
         panel.window(screen_window(ctx, "Single mission", MISSION_SIZE), ctx, |ui| {
             let split = Split::new(ui, "single mission");
-            let compact = split.compact();
+            // A career has no options here, so no lists to measure.
+            let lists =
+                (!career_mode).then(|| (split.list(ui, "theaters"), split.list(ui, "aircraft")));
             split.body(ui, |ui| {
                 let mut flow = Flow::new(ui);
-                if !career_mode {
+                if let Some((theaters, aircraft_list)) = lists {
                     // Options: three narrow columns, under each other where the window is narrow.
-                    flow.card(ui, Span::Fixed(210.0), |ui| {
+                    let mission = flow.card(ui, Span::Fixed(210.0), |ui| {
                         group(ui, t!("group-mission"), |ui| {
-                            theater_options(ui, &mut state.theater, compact);
+                            theater_options(ui, &mut state.theater, theaters);
                             situation_options(ui, &mut state.roe);
                             opponent_options(ui, &mut state.opponents);
                             mission_options(ui, &mut state);
                         });
                     });
+                    split.lists(ui, theaters, mission);
                     flow.card(ui, Span::Fixed(220.0), |ui| {
                         group(ui, t!("group-conditions"), |ui| {
                             let state = &mut *state;
@@ -1906,13 +1922,16 @@ pub(crate) fn menu_ui(
                             start_time_options(ui, state);
                             moon_options(ui, &mut state.moon);
                         });
-                        simulation_options(ui, &mut settings, None, |_| {});
+                        let aircraft = settings.aircraft;
+                        simulation_options(ui, &mut settings, None, |ui| {
+                            realistic_weapons_option(ui, aircraft, &mut state.lockheed);
+                        });
                     });
-                    flow.card(ui, Span::Fixed(VEHICLE_WIDTH), |ui| {
+                    let vehicle = flow.card(ui, Span::Fixed(VEHICLE_WIDTH), |ui| {
                         group(ui, t!("group-vehicle"), |ui| {
                             crate::aircraft_preview::show(ui, &mut preview);
                             let was = settings.aircraft;
-                            vehicle_options(ui, &mut settings, Some(&mut state.lockheed), compact);
+                            vehicle_options(ui, &mut settings, aircraft_list);
                             // A troop helicopter flies the same seed's targets as insertions,
                             // the cargo jet as an airdrop and a delivery; helicopters fly
                             // short missions.
@@ -1926,6 +1945,7 @@ pub(crate) fn menu_ui(
                             }
                         });
                     });
+                    split.lists(ui, aircraft_list, vehicle);
                 }
                 flow.card(ui, Span::Fill(SUMMARY_LEAST), |ui| {
                     // Mission summary in big type, the full briefing below in small type.

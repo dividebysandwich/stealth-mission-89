@@ -359,7 +359,8 @@ fn multiplayer_window(
     panel.window(window, ctx, |ui| {
         let named = !state.player_name.trim().is_empty();
         let split = Split::new(ui, "multiplayer");
-        let compact = split.compact();
+        // Only the host page has the theaters.
+        let theater_list = (w.page == Page::Host).then(|| split.list(ui, "theaters"));
         split.body(ui, |ui| {
             let mut flow = Flow::new(ui);
             flow.card(ui, Span::Fixed(NAME_WIDTH), |ui| {
@@ -512,9 +513,12 @@ fn multiplayer_window(
                 }
                 Page::Host => {
                     let mut flow = Flow::new(ui);
-                    flow.card(ui, Span::Fixed(210.0), |ui| {
-                        crate::menu::theater_options(ui, &mut state.theater, compact);
-                    });
+                    if let Some(theater_list) = theater_list {
+                        let theaters = flow.card(ui, Span::Fixed(210.0), |ui| {
+                            crate::menu::theater_options(ui, &mut state.theater, theater_list);
+                        });
+                        split.lists(ui, theater_list, theaters);
+                    }
                     flow.card(ui, Span::Fixed(220.0), |ui| {
                         crate::menu::opponent_options(ui, &mut state.opponents);
                         crate::menu::situation_options(ui, &mut state.roe);

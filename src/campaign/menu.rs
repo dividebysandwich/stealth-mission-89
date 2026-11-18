@@ -147,16 +147,17 @@ pub fn campaign_window(
         ctx,
         |ui| {
             let split = Split::new(ui, "campaign setup");
-            let compact = split.compact();
+            let theaters = split.list(ui, "theaters");
             split.body(ui, |ui| {
                 let mut flow = Flow::new(ui);
-                flow.card(ui, Span::Fixed(210.0), |ui| {
+                let campaign = flow.card(ui, Span::Fixed(210.0), |ui| {
                     group(ui, t!("cm-group-campaign"), |ui| {
-                        crate::menu::theater_options(ui, &mut state.theater, compact);
+                        crate::menu::theater_options(ui, &mut state.theater, theaters);
                         crate::menu::situation_options(ui, &mut state.roe);
                         crate::menu::opponent_options(ui, &mut state.opponents);
                     });
                 });
+                split.lists(ui, theaters, campaign);
                 flow.card(ui, Span::Fixed(220.0), |ui| {
                     group(ui, t!("group-conditions"), |ui| {
                         section(ui, t!("section-weather"));
