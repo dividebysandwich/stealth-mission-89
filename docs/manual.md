@@ -52,6 +52,7 @@ centers and remotely pilot recon, attack and interceptor drones, quadrotors and 
 | [12. Areas of Conflict](#12-areas-of-conflict) | The twelve theaters |
 | [13. Know Your Enemy](#13-know-your-enemy) | Aircraft, air defences, ships and armour |
 | [14. Anti-Submarine Warfare](#14-anti-submarine-warfare) | The MH-60R's hunt: MAD, sonobuoys, the dipping sonar, the operator's console, torpedoes |
+| [15. Electronic War, Stand-off Weapons and the Fleet](#15-electronic-war-stand-off-weapons-and-the-fleet) | JSOW, MALD, the EA-18G Growler, enemy jammers, the fleet's defence, paratroopers |
 | [Appendices](#appendices) | Keys, your files, glossary |
 
 
@@ -4241,6 +4242,109 @@ Hellfire striking within 25 m of it sinks it: lase the feather with the targetin
 
 ---
 
+# 15. ELECTRONIC WAR, STAND-OFF WEAPONS AND THE FLEET
+
+The radars and the missiles keep moving on: jets that blind the radars, weapons the radars must
+shoot down, a fleet that has to defend itself, and troops that come down by parachute.
+
+## 15.1 The JSOW
+
+The AGM-154C JSOW is a glide bomb: no motor, a pair of long wings that unfold off the pylon.
+The F-16C, the Tornado and the F/A-18E carry it.
+
+- It flies to the point you aim it at: the targeting pod's point or the ground lock, else the
+  mission's primary target. Out of reach it stays on its pylon ("JSOW: target out of range");
+  too close (under 6 km) as well.
+- Its reach comes from your height and speed. A fast release trades speed for height first,
+  then the bomb glides at its best speed and noses over into a steep dive onto the target.
+  Low down it reaches some 20 km, from 30,000 ft well over 100 km. The HUD shows its launch
+  zone like a missile's.
+- It is small but not invisible: a SAM site that sees it close in may fire at it, and a hit
+  brings it down ("JSOW shot down").
+
+## 15.2 The MALD
+
+The ADM-160 MALD is a decoy: a small jet that shows the air defences an aircraft's signature.
+The F-16C, the F/A-18E and the EA-18G carry it.
+
+- It flies at your altitude to the point you aim it at, then straight on for up to ten minutes.
+- The sites see it as far as their missiles reach, come up tracking it (radars on the air are
+  HARM targets) and fire at it. Every missile at a MALD is one not at you, and a site that
+  just fired waits before it fires again.
+- Launch the MALDs ahead of the strike, let the sites waste their salvoes, then go in.
+
+## 15.3 The EA-18G Growler
+
+The Growler is the Super Hornet's electronic attack two-seater. It flies like the F/A-18E, has
+no gun, and carries the ALQ-218 receivers in its wingtip pods and up to three ALQ-99 jammer pods
+(the centreline and the middle wing pylons), with HARMs, AMRAAMs and MALDs.
+
+**The JAM page** (right DDI, only with jammer pods aboard):
+
+| Button | Does |
+|---|---|
+| Left side | Picks one of the five strongest radars heard (symbol, range; J by those jammed) |
+| POD1-POD3 (top) | Sets that pod on the picked radar; again with the same radar: off it |
+| XMIT (top) | The transmitters on or off |
+| FWD1-FWD3 (right) | Sets that pod on the 60-degree sector ahead, turning with the aircraft |
+
+A radar jammed sees every friendly aircraft much less until it comes within about 10 km of it
+(its burn-through range), and its missiles may lose their lock. It covers your whole package,
+not only you. But the noise is seen: jamming raises your own EMV.
+
+**The electronic warfare officer.** In a campaign another player can take the Growler's back
+seat (as he would an Apache's front seat) and work the JAM page there while you fly. The owner
+can also sit in back himself; the autopilot then flies on along the route at the altitude and
+speed it had.
+
+## 15.4 Enemy jammers
+
+The MiG-29, MiG-31, Su-27, Su-34 and Su-35 carry self-protection jammers. On the A-A radar's
+B-scope a jamming fighter beyond about 26 km is a dashed strobe on its bearing marked JAM: you
+know where it is, not how far. The radar cannot track it until it burns through, and the
+datalink shows it only where a friendly radar burns through its noise.
+
+## 15.5 The fleet's defence
+
+The carriers and their escorts defend themselves with Phalanx mounts: two on each carrier, on
+sponsons just under the flight deck, one on each escort. A mount fights the nearest threat in
+its reach with bursts of its 20 mm gun (you hear the tearing buzz, you see the tracers) and may
+knock it down. It is the last line, not the only one: some always get through.
+
+**Submarine missiles.** An enemy submarine closing on the carrier group comes up to periscope
+depth some 45 km out and fires a salvo of two to four sea-skimming missiles ("Missile launch
+from a submarine!", a plume on the sea). They climb off the water, skim it, pop up and dive at
+the end. An escort hit sinks; the carrier takes it. The launch gives the submarine away: hunt it.
+
+**A submarine on the surface.** A helicopter passing low near a submarine may bring it up to the
+surface: its crew fires SA-14s from the fin for a minute and a half, then it dives. On the
+surface everyone sees it, and bombs, missiles and gun rounds can sink it. A helicopter hovering
+over it to hunt it does not: then the submarine goes silent.
+
+**Attack boats.** Unmanned explosive boats (like the Sea Baby) race in at the fleet in swarms,
+weaving until the last few hundred metres, then straight at a ship's side. They are small and
+low: the Phalanx gets few of them. Guns, rockets, Hellfires and the AC-130 stop them.
+
+**The fleet defence mission** (campaign, FLEET-DEF on the board while a carrier is afloat):
+your own swarm of attack boats comes at the carrier group. Sink every one before one reaches a
+ship. The gunships, the MH-60R, the AC-130, the A-10, the F/A-18E and the AV-8B fly it.
+
+## 15.6 Paratroopers
+
+The C-5 and the CH-47 can fly an insertion and drop paratroopers instead of landing troops.
+
+- Load: PARA (the C-5 two sticks of 40, the CH-47 one stick of 30), aboard for an insertion.
+- The jump: 500 to 1500 ft over the ground, under 150 kt, the C-5's ramp down. Fire: the stick
+  goes, one man after another; their chutes open after two seconds.
+- When the last man is down, most of the stick inside the drop zone (900 m round the place)
+  takes it. Men landing in the water are lost.
+
+## 15.7 Pages that come with their weapons
+
+The modern avionics offer a weapon's page only with that weapon aboard: the HARM display with
+HARMs, the SLAM page with SLAM-ERs, the JAM page with jammer pods. A bottom button whose page
+is not offered stays blank.
+
 # APPENDICES
 
 ## Appendix A: Key controls summary
@@ -4320,11 +4424,14 @@ between Windows, macOS and Linux; your options and bindings stay on each compute
 | **AWACS** | Airborne Warning and Control System: a radar aircraft. |
 | **CAP** | Combat air patrol. |
 | **CAS** | Close air support: attacks on enemy forces near your own. |
+| **Burn-through** | The range inside which a radar sees its target through the jamming. |
 | **CCIP / CCRP** | Continuously computed impact point / release point: the two bombsight modes. |
+| **CIWS** | Close-in weapon system: a ship's Phalanx gun against missiles and boats. |
 | **CSAR** | Combat search and rescue. |
 | **DED** | Data entry display: the small text display under the HUD. |
 | **ECM** | Electronic countermeasures: the radar jammer. |
 | **EGR / EAR** | The F-117A's bar graph strips for ground and airborne radar signals. |
+| **EWO** | Electronic warfare officer: the Growler's back seat. |
 | **EMV** | Electromagnetic visibility: how visible your aircraft is to radar. |
 | **E-scope** | The Tornado's terrain following radar display. |
 | **FLIR** | Forward-looking infrared: a thermal camera. |
@@ -4340,6 +4447,8 @@ between Windows, macOS and Linux; your options and bindings stay on each compute
 | **OTH** | Over-the-horizon (radar). |
 | **RCS** | Radar cross section. |
 | **RWR** | Radar warning receiver. |
+| **JSOW** | Joint stand-off weapon: a glide bomb. |
+| **MALD** | Miniature air-launched decoy. |
 | **SAM** | Surface-to-air missile. |
 | **SEAD** | Suppression of enemy air defences. |
 | **SMS** | Stores management system: the weapons page. |
@@ -4347,4 +4456,5 @@ between Windows, macOS and Linux; your options and bindings stay on each compute
 | **SPI** | Sensor point of interest: the point the targeting pod marks. |
 | **TFR** | Terrain following radar. |
 | **TGP** | Targeting pod. |
+| **USV** | Unmanned surface vessel: an attack boat. |
 | **V/STOL** | Vertical/short take-off and landing. |
