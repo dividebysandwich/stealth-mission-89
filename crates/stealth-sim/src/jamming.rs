@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::Sim;
 use crate::math::{approx, s16};
-use crate::types::*;
 
 /// The AN/ALQ-99 jammer pod's weapon type (never released).
 pub const ALQ99_WEAPON: i32 = 29;

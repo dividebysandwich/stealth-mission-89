@@ -51,6 +51,9 @@ pub struct GunnerAim {
     pub helmet: Option<PodAim>,
     #[serde(default)]
     pub gun_pod: bool,
+    /// The EA-18G's electronic warfare officer: his JAM page's settings (the owner's pods).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jam: Option<crate::jamming::JamInput>,
 }
 
 /// The crew's targeting pod, one for both seats: as the crew member who last moved it has it
@@ -158,7 +161,7 @@ impl Sim {
         let spectre = if self.mirror && owner != self.pl.id {
             self.remote.iter().any(|p| {
                 p.id == owner
-                    && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk)
+                    && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk || p.growler)
                     && p.chute.is_none()
             })
         } else {
@@ -166,7 +169,7 @@ impl Sim {
             p.id == owner
                 && !p.absent
                 && p.eject == 0
-                && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk)
+                && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk || p.growler)
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
     }
@@ -244,7 +247,7 @@ impl Sim {
                 }
                 if seat == Seat::Gunner {
                     let p = self.pilot_ref(player as usize);
-                    if !has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk) {
+                    if !has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk || p.growler) {
                         return Err(text!("crew-no-such-seat"));
                     }
                     if self.gunner_of(player).is_some() {
@@ -366,10 +369,17 @@ impl Sim {
             if fire.is_some() {
                 self.pl.crew_launch = fire;
             }
-        } else {
+        } else if !self.pilot_ref(k).growler {
+            // (The Growler's EWO fires nothing: its pilot keeps his weapons.)
             ps.cmd.trigger = aim.trigger;
             ps.cmd.gun = false;
             ps.cmd.fire = false;
+        }
+        // The Growler's pods as its EWO sets them.
+        if self.pilot_ref(k).growler
+            && let Some(j) = aim.jam
+        {
+            ps.jam = Some(j);
         }
         if cmd.designate_at.is_some() || cmd.designate_unit.is_some() {
             ps.cmd.designate_at = cmd.designate_at;

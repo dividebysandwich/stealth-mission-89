@@ -541,3 +541,26 @@ fn the_comanche_gunner_fires_a_hellfire_at_his_spot() {
     let (x, y) = hit.expect("the Hellfire hit");
     assert!((x - at.0).abs() <= 8 && (y - at.1).abs() <= 8, "hit {x},{y}, spot {at:?}");
 }
+
+/// The EA-18G has an electronic warfare officer's seat; his JAM page sets the owner's pods
+/// (the pilot's own trigger untouched), and the owner may sit there himself.
+#[test]
+fn the_growlers_ewo_sets_its_pods() {
+    let (mut sim, at) = crewed();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    let airframe =
+        Airframe { external_stores: true, hornet: true, growler: true, ..Default::default() };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.set_pilot_loadout(0, &[(jamming::ALQ99_WEAPON, 1), (2, 1)], 0);
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    assert!(sim.gunner_seat_free(0));
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_of(1), Some((0, Seat::Gunner)));
+    let jam = jamming::JamInput { on: true, pods: [Some(jamming::JamTarget::Site(5)), None, None] };
+    sim.crew_command(1, CrewCmd::Aim(GunnerAim { jam: Some(jam), ..Default::default() })).unwrap();
+    sim.step_pilots(&[(0, orbit(at, true))], 15);
+    assert_eq!(sim.pilot_input(0).jam, Some(jam), "the EWO's settings on the owner's pods");
+    assert!(sim.pilot_input(0).cmd.trigger, "the pilot keeps his trigger");
+}

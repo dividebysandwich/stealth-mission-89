@@ -396,6 +396,7 @@ fn orbit(
     mut state: ResMut<GunnerState>,
     time: Res<Time>,
     asw: Option<Res<crate::asw::AswUi>>,
+    settings: Res<crate::settings::Settings>,
     mut before_hover: Local<Option<f32>>,
 ) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
@@ -432,6 +433,27 @@ fn orbit(
         if a.orbit.take().is_some() {
             a.autopilot_alt = 0.0;
         }
+        return;
+    }
+    // The EA-18G with its pilot in the back seat: its autopilot flies on along the route at the
+    // altitude and speed it had (over the terrain ahead), no orbit.
+    if settings.aircraft == crate::aircraft::AircraftKind::EA18G {
+        let first = !a.autopilot();
+        if first {
+            a.autopilot_alt = crate::flight::view_z(a.altitude).max(1.0);
+            let stall = a.stall_speed / 27.0;
+            state.orbit_speed = a.knots().max(stall * ORBIT_STALL_MARGIN);
+            state.throttle_trim = (a.set_thrust / 100.0).clamp(0.0, 1.0);
+        }
+        if let Some(t) = a.terrain_ahead {
+            let clear = crate::flight::view_z(t.top.max(t.ground) + ORBIT_CLEARANCE);
+            a.autopilot_alt = a.autopilot_alt.max(clear);
+        }
+        let err = state.orbit_speed - a.knots();
+        let dt = time.delta_secs();
+        state.throttle_trim =
+            (state.throttle_trim + err * SPEED_INTEGRAL * dt).clamp(0.0, 1.0);
+        state.orbit_throttle = (state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0);
         return;
     }
     // The point the pod holds (not while it is slewed), else where the orbit was, else here.
@@ -592,6 +614,8 @@ fn send_aim(
         station: if cockpit { state.station } else { None },
         helmet: mfd.av.helmet.map(|d| crate::combat::sight_aim(d, None)),
         gun_pod: state.gun_pod,
+        // The EWO's JAM page: the owner's pods (their bearing ahead by the aircraft's).
+        jam: mfd.jam_input(own_heading(combat.as_deref())),
     };
     state.since += time.delta_secs();
     if state.sent != Some(aim) || state.since >= AIM_REFRESH {
@@ -600,6 +624,11 @@ fn send_aim(
         cmds.push(CrewCmd::Aim(aim));
     }
     c.actions.extend(cmds.into_iter().map(crate::campaign::Action::Crew));
+}
+
+/// The aircraft's heading (BAM) as the crew member's simulation has it.
+fn own_heading(combat: Option<&Combat>) -> u16 {
+    combat.map_or(0, |c| c.sim.player().heading as u16)
 }
 
 /// The crew's shared pod, when another player is aboard: my client and his, the pod moved

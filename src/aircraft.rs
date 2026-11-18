@@ -1253,7 +1253,12 @@ impl AircraftKind {
     /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console, the
     /// AH-64's front cockpit, the OH-58D's left seat, the RAH-66's rear one.
     pub fn crew_seat(self) -> bool {
-        self.spectre() || self.apache() || self.kiowa() || self.comanche() || self.seahawk()
+        self.spectre()
+            || self.apache()
+            || self.kiowa()
+            || self.comanche()
+            || self.seahawk()
+            || self == AircraftKind::EA18G
     }
 
     pub fn rcs_page(self) -> bool {

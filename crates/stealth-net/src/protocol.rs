@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 55;
+pub const PROTOCOL: u16 = 56;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -320,6 +320,10 @@ mod tests {
                 station: Some(2),
                 helmet: Some(stealth_sim::PodAim { heading: 0x3000, pitch: -0x400, ground: None }),
                 gun_pod: true,
+                jam: Some(stealth_sim::jamming::JamInput {
+                    on: true,
+                    pods: [Some(stealth_sim::jamming::JamTarget::Sector(0x2000)), None, None],
+                }),
             }),
             CrewCmd::Pod(stealth_sim::crew::SharedPod {
                 by: 2,

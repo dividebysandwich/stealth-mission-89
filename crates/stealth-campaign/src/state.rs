@@ -111,7 +111,12 @@ impl Aircraft {
     pub fn gunner_seat(self) -> bool {
         matches!(
             self,
-            Aircraft::AC130 | Aircraft::AH64 | Aircraft::OH58 | Aircraft::RAH66 | Aircraft::MH60R
+            Aircraft::AC130
+                | Aircraft::AH64
+                | Aircraft::OH58
+                | Aircraft::RAH66
+                | Aircraft::MH60R
+                | Aircraft::EA18G
         )
     }
 
