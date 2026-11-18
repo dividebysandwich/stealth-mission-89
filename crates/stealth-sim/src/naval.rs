@@ -55,8 +55,11 @@ const TRACER_SECS: f64 = 1.6;
 /// A tracer every this many frames a mount fires.
 const TRACER_EVERY: i32 = 2;
 /// Mounts on the carrier (nimitz.blend metres: starboard aft sponson, port bow sponson), the
-/// height their sponsons stand at (ft: some 2 m under the flight deck), and on an escort.
-const CARRIER_MOUNTS: [(f64, f64); 2] = [(42.0, -122.0), (-40.0, 112.0)];
+/// height their sponsons stand at (ft: some 2 m under the flight deck), and on an escort. The
+/// gun and its radome rise above the deck, so each stands outboard of the deck's edge (x 28.2 at
+/// y -122, -18.2 at y 112) by its barrels' reach (some 1.3 m), its sponson running back under
+/// the deck to the hull (tools/models/air_defence.py `phalanx_base`).
+const CARRIER_MOUNTS: [(f64, f64); 2] = [(29.8, -122.0), (-19.8, 112.0)];
 const CARRIER_MOUNT_ALT: f64 = crate::catapult::DECK_WU - 7.0;
 const ESCORT_MOUNT_ALT: f64 = 30.0;
 
