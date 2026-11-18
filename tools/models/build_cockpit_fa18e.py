@@ -88,14 +88,17 @@ WING = 384.0
 BEVEL = 40.0
 BOTTOM = 192.0
 # The upper tier (|x| <= TIER_HALF, y < UFC_LINE: the two DDIs and the up-front controller
-# between them) stands TIER_RAISE m off the panel, the controller UFC_RAISE (|x| <= UFC_HALF);
-# the centre display, the engine display and the standby instruments are set back under it.
+# between them) stands TIER_RAISE m off the panel; the controller (|x| <= UFC_HALF) a deep
+# housing further out, UFC_RAISE at its bottom and UFC_RAISE_TOP at its top, so its face leans
+# forward of the panel's (UFC_TILT), nearly upright; the centre display, the engine display and
+# the standby instruments are set back under the tier.
 # The controller's glass (layout mm) GLASS_T m thick on it.
 TIER_HALF = 282.0
 TIER_RAISE = 0.075
 UFC_HALF = 94.0
 UFC_LINE = -10.0
-UFC_RAISE = 0.100
+UFC_RAISE = 0.120
+UFC_RAISE_TOP = 0.175
 UFC_GLASS = (-87.0, -179.0, 174.0, 164.0)
 GLASS_T = 0.003
 # The glare shield: from the panel's top forward to COAMING_BACK in the middle (narrowing to
@@ -141,10 +144,18 @@ def in_ufc(u, v):
     return abs(u) <= UFC_HALF and v < UFC_LINE
 
 
+def ufc_raise(v):
+    """How far the controller's face stands out at layout y `v`."""
+    return UFC_RAISE + (UFC_RAISE_TOP - UFC_RAISE) * (UFC_LINE - v) / (UFC_LINE - PANEL_TOP)
+
+
+UFC_TILT = math.atan2(UFC_RAISE_TOP - UFC_RAISE, (UFC_LINE - PANEL_TOP) / 1000)
+
+
 def raised(u, v):
     """How far the panel's face stands out at (u, v): the controller, the upper tier, else 0."""
     if in_ufc(u, v):
-        return UFC_RAISE
+        return ufc_raise(v)
     if abs(u) <= TIER_HALF and v < UFC_LINE:
         return TIER_RAISE
     return 0.0
@@ -158,7 +169,13 @@ def point(u, v, offset=0.0):
 
 
 def rotation(u=0.0, v=0.0):
-    return Matrix((RIGHT, -NORMAL, UP)).transposed().to_quaternion()
+    """The panel's frame at (u, v): x right, -y into it, z up it; the controller's face leaning
+    forward UFC_TILT."""
+    up, normal = UP, NORMAL
+    if in_ufc(u, v):
+        c, s = math.cos(UFC_TILT), math.sin(UFC_TILT)
+        up, normal = UP * c + NORMAL * s, NORMAL * c - UP * s
+    return Matrix((RIGHT, -normal, up)).transposed().to_quaternion()
 
 
 def centre(r):
@@ -522,7 +539,7 @@ def rod(name, a, b, radius, mat, parent=root, n=KNOB):
 # --- glare shield: from the panel's top edge forward, narrowing along the windscreen's sides,
 # dropping towards the windscreen; a lip over the panel's face
 THICK = 0.016
-LIP = UFC_RAISE + 0.010
+LIP = TIER_RAISE + 0.010
 edge = [(-WING, PANEL_TOP + BEVEL), (-(WING - BEVEL), PANEL_TOP), (WING - BEVEL, PANEL_TOP), (WING, PANEL_TOP + BEVEL)]
 front = [point(u, v) + UP * THICK + NORMAL * LIP for u, v in edge]
 # The controller's raised strip: the lip comes out over it.
@@ -574,8 +591,13 @@ plate("panel_grey", "panel_grey", [[
 ]], 0.03)
 box("dark", "dark", PANEL_CENTRE - UP * ((PANEL_TOP + UFC_LINE) / 2000) + NORMAL * (TIER_RAISE / 2),
     (2 * TIER_HALF / 1000, TIER_RAISE, (UFC_LINE - PANEL_TOP) / 1000), rotation())
-box("dark", "dark", PANEL_CENTRE - UP * ((PANEL_TOP + UFC_LINE) / 2000) + NORMAL * ((TIER_RAISE + UFC_RAISE) / 2),
-    (2 * UFC_HALF / 1000, UFC_RAISE - TIER_RAISE, (UFC_LINE - PANEL_TOP) / 1000), rotation())
+# The controller's housing: a wedge from the tier's face out to its leaning face.
+corners = [(-UFC_HALF, PANEL_TOP), (UFC_HALF, PANEL_TOP), (UFC_HALF, UFC_LINE), (-UFC_HALF, UFC_LINE)]
+base = [PANEL_CENTRE + RIGHT * (u / 1000) - UP * (v / 1000) + NORMAL * TIER_RAISE for u, v in corners]
+lean = [PANEL_CENTRE + RIGHT * (u / 1000) - UP * (v / 1000) + NORMAL * ufc_raise(v) for u, v in corners]
+mesh_object("dark", section_mesh("dark", [base, lean], "dark"), (0, 0, 0))
+# Under the hood's lip, a strip from the panel's top edge out to the lip: no gap over the tier.
+plane_box("dark", "dark", (-WING, PANEL_TOP - 6.0, 2 * WING, 6.0), 0.0, LIP)
 # Dark recesses out to the walls beside the panel, under the glare shield's cheeks (their top
 # under the canopy's sills).
 RECESS_TOP = -95.0
@@ -652,7 +674,9 @@ for mat, r in plates:
 # the scratchpad and the soft keys on the glass.
 panel_box("black", "black", UFC_GLASS, GLASS_T)
 gx, gy, gw, gh = UFC_GLASS
-frame("dark", (gx - 4.0, PANEL_TOP, gw + 8.0, UFC_LINE - PANEL_TOP), UFC_GLASS, UFC_RAISE, UFC_RAISE + GLASS_T + 0.002)
+for r in ((gx - 4.0, PANEL_TOP, gw + 8.0, gy - PANEL_TOP), (gx - 4.0, gy + gh, gw + 8.0, UFC_LINE - gy - gh),
+          (gx - 4.0, gy, 4.0, gh), (gx + gw, gy, 4.0, gh)):
+    panel_box("dark", "dark", r, GLASS_T + 0.002)
 # The master arm switch on its stripes.
 x, y, w, h = faces["Item(Hazard)"]
 toggle(x + w / 2, y + h / 2, PLATE + 0.001)
