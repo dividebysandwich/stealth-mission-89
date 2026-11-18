@@ -142,6 +142,8 @@ impl Tts {
         false
     }
 
+    pub fn stop(&self) {}
+
     pub fn busy(&self) -> bool {
         false
     }
