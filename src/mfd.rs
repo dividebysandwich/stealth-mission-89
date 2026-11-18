@@ -759,6 +759,8 @@ pub struct Contact {
     pub seen: bool,
     /// The player's own weapon in flight (blue on the HSD).
     pub own: bool,
+    /// An enemy aircraft with a self-protection jammer (`stealth_sim::radar::jammer_type`).
+    pub jammer: bool,
 }
 
 /// A radar's threat ring on the HSD.

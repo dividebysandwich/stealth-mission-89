@@ -12,6 +12,9 @@
 //! - A lock on an aircraft the radar can follow (in its gimbals, seen) stops the scan: the
 //!   antenna tracks it (single target track) and gives its aspect, heading, speed and closure.
 //!
+//! - A fighter jamming it (`Target::jam`) shows as a strobe on its bearing, without its range,
+//!   until it comes within the burn-through range; the antenna cannot track it outside it.
+//!
 //! It transmits while its format is up and not in standby (`AvionicsState::fcr_on`); the
 //! simulation hears it as it does the ground map (`PlayerState::radar`).
 
@@ -62,6 +65,10 @@ const SIGHT_STEP: f64 = 250.0;
 const VEL_TAU: f64 = 0.5;
 /// Frames of the scan a brick is kept.
 const KEEP_FRAMES: f32 = 2.0;
+/// The range (metres) inside which the radar burns through a fighter's jamming
+/// (`combat::BURN_THROUGH_MAP`), and how far out (detection ranges) its noise is seen.
+pub const BURN_M: f64 = crate::combat::BURN_THROUGH_MAP as f64 * 15.625;
+const JAM_HEARD: f64 = 2.0;
 
 /// The scan the pilot set: its half width, bars and the antenna's elevation (radians over the
 /// horizon).
@@ -102,6 +109,18 @@ pub struct Target {
     pub friendly: bool,
     /// Its detection range (metres).
     pub detect: f64,
+    /// It jams the radar (an enemy fighter's self-protection jammer).
+    pub jam: bool,
+}
+
+/// A jammer's noise on the B-scope: a strobe along its bearing.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Strobe {
+    /// Azimuth from the nose (radians, right positive).
+    pub az: f32,
+    pub target: ContactRef,
+    /// Seconds since the beam last crossed it.
+    pub age: f32,
 }
 
 /// A search return on the B-scope.
@@ -156,6 +175,7 @@ pub struct AaRadar {
     /// The beam's elevation over the horizon (radians).
     pub elevation: f32,
     pub bricks: Vec<Brick>,
+    pub strobes: Vec<Strobe>,
     pub track: Option<Track>,
     /// The frame's length (seconds), for the bricks' age.
     pub frame: f32,
@@ -174,6 +194,7 @@ impl Default for AaRadar {
             bar: 0,
             elevation: 0.0,
             bricks: Vec::new(),
+            strobes: Vec::new(),
             track: None,
             frame: 1.0,
             passes: 0,
@@ -210,6 +231,7 @@ impl AaRadar {
     fn clear(&mut self) {
         self.on = false;
         self.bricks.clear();
+        self.strobes.clear();
         self.track = None;
         self.motions.clear();
         self.own = None;
@@ -256,8 +278,12 @@ impl AaRadar {
         for b in &mut self.bricks {
             b.age += dt;
         }
+        for s in &mut self.strobes {
+            s.age += dt;
+        }
         let keep = KEEP_FRAMES * self.frame;
         self.bricks.retain(|b| b.age < keep);
+        self.strobes.retain(|s| s.age < keep);
         let motions = &self.motions;
         let vel = |t: &Target| {
             motions.iter().find(|m| m.target == t.target).map_or(DVec3::ZERO, |m| m.vel)
@@ -277,6 +303,10 @@ impl AaRadar {
         self.track = locked.and_then(|l| targets.iter().find(|t| t.target == l)).and_then(|t| {
             let (az, el, range) = geometry(own, heading, t.pos);
             if az.abs() > GIMBAL || el.abs() > GIMBAL || !seen(t, el, range, TRACK_RANGE) {
+                return None;
+            }
+            // Jammed: no range to hold until it burns through.
+            if t.jam && range > BURN_M {
                 return None;
             }
             let v = vel(t);
@@ -334,11 +364,21 @@ impl AaRadar {
             }) else {
                 continue;
             };
+            // Jamming beyond the burn-through: its noise on its bearing, from far out.
+            if t.jam && range > BURN_M {
+                if range < t.detect * JAM_HEARD && sight(own, t.pos) {
+                    self.strobes.retain(|s| s.target != t.target);
+                    self.strobes.push(Strobe { az, target: t.target, age: 0.0 });
+                }
+                self.bricks.retain(|b| b.target != t.target);
+                continue;
+            }
             let edge =
                 FADE_IN + (1.0 / FADE_IN - FADE_IN) * unit(hash(seed(t.target), pass, 7)) as f64;
             if !seen(t, el, range, edge) {
                 continue;
             }
+            self.strobes.retain(|s| s.target != t.target);
             self.bricks.retain(|b| b.target != t.target);
             self.bricks.push(Brick {
                 az,
@@ -364,6 +404,7 @@ fn targets(contacts: &Contacts) -> Vec<Target> {
                 heading: (k.heading as f64 / 65536.0 * std::f64::consts::TAU) as f32,
                 friendly: k.friendly,
                 detect: if k.kind == ContactKind::Drone { DRONE_M } else { FIGHTER_M },
+                jam: k.jammer,
             })
         })
         .collect()
@@ -422,6 +463,7 @@ mod tests {
             heading,
             friendly: false,
             detect: FIGHTER_M,
+            jam: false,
         }
     }
 
@@ -444,6 +486,30 @@ mod tests {
             }
             radar.step(dt, DVec3::new(0.0, 0.0, 3000.0), 0.0, scan, targets, locked, sight);
         }
+    }
+
+    /// A jamming fighter far out is a strobe on its bearing (no brick, no track); inside the
+    /// burn-through it is painted and can be tracked.
+    #[test]
+    fn a_jammer_strobes_until_it_burns_through() {
+        let mut radar = AaRadar::default();
+        let mut far = fighter(1, 5_000.0, 60_000.0, 3500.0, 3.0);
+        far.jam = true;
+        let mut t = [far];
+        let lock = Some(ContactRef::Unit(1));
+        run(&mut radar, A6_4B.frame() + 0.2, A6_4B, &mut t, 0.0, None, |_, _| true);
+        assert!(radar.bricks.is_empty(), "{:?}", radar.bricks);
+        let s = radar.strobes.iter().find(|s| s.target == ContactRef::Unit(1)).expect("strobe");
+        assert!(s.az > 0.03 && s.az < 0.15, "{s:?}");
+        run(&mut radar, 0.5, A6_4B, &mut t, 0.0, lock, |_, _| true);
+        assert!(radar.track.is_none(), "tracked through the noise");
+        // Within the burn-through.
+        t[0].pos = DVec3::new(2_000.0, 20_000.0, 3500.0);
+        run(&mut radar, 0.5, A6_4B, &mut t, 0.0, lock, |_, _| true);
+        assert!(radar.track.is_some(), "burnt through");
+        run(&mut radar, A6_4B.frame() + 0.2, A6_4B, &mut t, 0.0, None, |_, _| true);
+        assert!(radar.bricks.iter().any(|b| b.target == ContactRef::Unit(1)));
+        assert!(radar.strobes.iter().all(|s| s.target != ContactRef::Unit(1)));
     }
 
     #[test]

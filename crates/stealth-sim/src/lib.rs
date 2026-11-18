@@ -57,6 +57,7 @@ pub use radar::{
 pub use rng::Rng;
 pub use targeting::{HELMET_SEEKER, SEEKER_GIMBAL};
 pub use types::*;
+pub use radar::jammer_type;
 
 use math::{s16, view_z};
 use serde::{Deserialize, Serialize};

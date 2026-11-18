@@ -1198,3 +1198,10 @@ mod tests {
         }
     }
 }
+
+/// The aircraft types (`units.ron` aircraft rows) that carry a self-protection jammer when they
+/// fly for the enemy: the MiG-29, MiG-31, Su-27, Su-34 and Su-35. A radar sees one only as a
+/// strobe on its bearing, without its range, until it burns through.
+pub fn jammer_type(spec: i32) -> bool {
+    matches!(spec, 2 | 3 | 4 | 31 | 32)
+}

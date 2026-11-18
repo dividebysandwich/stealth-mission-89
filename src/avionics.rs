@@ -2213,6 +2213,19 @@ fn fcr_contacts(
     at: impl Fn(f32, f32) -> Vec2,
 ) {
     use crate::aa_radar::GIMBAL;
+    // Jammers' strobes: a dashed line up their bearing, JAM over it.
+    for s in &radar.strobes {
+        if s.az.abs() > GIMBAL {
+            continue;
+        }
+        let colour = if s.age > radar.frame { GREY } else { WHITE };
+        for k in 0..14 {
+            let (a, b) = (k as f32 / 14.0, (k as f32 + 0.55) / 14.0);
+            c.stroke(at(s.az, a), at(s.az, b), 1.2, colour);
+        }
+        let top = at(s.az, 1.0);
+        stroke_text_at(c, top.x, top.y + 9.0, "JAM", 6.0, 1.0, colour, Align::Centre);
+    }
     for b in &radar.bricks {
         let k = b.range / range;
         if k > 1.0 || b.az.abs() > GIMBAL {
@@ -4525,6 +4538,7 @@ mod tests {
             threat: None,
             seen: true,
             own: false,
+            jammer: false,
         };
         let contacts = Contacts {
             list: vec![
@@ -4553,6 +4567,7 @@ mod tests {
             threat: None,
             seen: true,
             own: false,
+            jammer: false,
         };
         let contacts =
             Contacts { list: vec![at(1000.0, true, 1), at(1100.0, false, 2)], ..default() };

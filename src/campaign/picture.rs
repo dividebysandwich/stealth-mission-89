@@ -95,7 +95,7 @@ pub struct Picture {
     pub player: Option<(i32, i32)>,
 }
 
-fn near(ax: i32, ay: i32, bx: i32, by: i32, r: i32) -> bool {
+pub fn near(ax: i32, ay: i32, bx: i32, by: i32, r: i32) -> bool {
     stealth_campaign::dist(ax - bx, ay - by) < r
 }
 

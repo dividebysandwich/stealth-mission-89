@@ -1030,6 +1030,12 @@ pub fn remote_missiles(sim: &Sim) -> Vec<RemoteMissile> {
         .collect()
 }
 
+/// The player's radar burns through a jamming fighter's noise this close (map units, about
+/// 26 km: a third of the range it sees a fighter at); the other friendly radars at this share
+/// (percent) of their reach.
+pub const BURN_THROUGH_MAP: i32 = 1664;
+pub const BURN_THROUGH_PCT: i32 = 35;
+
 /// `--log-flight` / `--log-sim`: simulation events on stdout (test automation).
 fn log_event(data: &SimData, e: &SimEvent, t: f32) {
     match e {
@@ -1409,6 +1415,8 @@ fn publish(
     zone.ease(dt);
     // A radar in standby adds nothing to the friendly side's air picture.
     let radar_off = out.mfd.modern && out.mfd.av.radar_off();
+    // A radar jet's picture of the enemy's jamming fighters: only inside a radar's burn-through.
+    let jam_aware = out.mfd.modern && out.mfd.av.radar;
     combat.sim.set_player_radar_off(radar_off);
     let combat = &*combat;
     let Outputs {
@@ -1587,6 +1595,7 @@ fn publish(
     let eyes = radar_off.then(|| {
         crate::campaign::picture::friendly_eyes(campaign.as_ref().map(|c| c.state()), sim)
     });
+    let mut jam_eyes: Option<Vec<(i32, i32, i32)>> = None;
     for (i, u, _) in sim.active_aircraft() {
         if u.flags & fflags::AIRBORNE == 0 || u.flags & fflags::DESTROYED != 0 {
             continue;
@@ -1598,10 +1607,30 @@ fn publish(
             ContactKind::Aircraft
         };
         let friendly = sim.friendly_unit(i, u.spec);
-        // Friendly aircraft and the drones are on the datalink.
-        let seen = friendly
-            || kind == ContactKind::Drone
-            || eyes.as_ref().is_none_or(|e| crate::campaign::picture::seen_by(e, u.x, u.y));
+        let jammer = !friendly && kind == ContactKind::Aircraft && stealth_sim::jammer_type(u.spec);
+        // Friendly aircraft and the drones are on the datalink. A jamming fighter: only where
+        // a radar burns through its noise (the player's own, unless in standby, and the other
+        // friendly radars, much closer in than they see a fighter).
+        let seen = if jammer && jam_aware {
+            let p = sim.player();
+            let own = !radar_off
+                && crate::campaign::picture::near(u.x, u.y, p.mx, p.my, BURN_THROUGH_MAP);
+            own || jam_eyes
+                .get_or_insert_with(|| {
+                    crate::campaign::picture::friendly_eyes(
+                        campaign.as_ref().map(|c| c.state()),
+                        sim,
+                    )
+                })
+                .iter()
+                .any(|&(ex, ey, r)| {
+                    crate::campaign::picture::near(u.x, u.y, ex, ey, r * BURN_THROUGH_PCT / 100)
+                })
+        } else {
+            friendly
+                || kind == ContactKind::Drone
+                || eyes.as_ref().is_none_or(|e| crate::campaign::picture::seen_by(e, u.x, u.y))
+        };
         contacts.list.push(Contact {
             kind,
             east,
@@ -1613,6 +1642,7 @@ fn publish(
             threat: None,
             seen,
             own: false,
+            jammer,
         });
     }
     // The other players: friendly aircraft, and their weapons in flight.
@@ -1631,6 +1661,7 @@ fn publish(
                 threat: None,
                 seen: true,
                 own: false,
+                jammer: false,
             });
         }
         for (_, m) in &p.missiles {
@@ -1646,6 +1677,7 @@ fn publish(
                 threat: None,
                 seen: true,
                 own: false,
+                jammer: false,
             });
         }
     }
@@ -1664,6 +1696,7 @@ fn publish(
             threat: None,
             seen: true,
             own,
+            jammer: false,
         });
     }
     let objects = sim.objects();
@@ -1702,6 +1735,7 @@ fn publish(
                 threat,
                 seen: true,
                 own: false,
+                jammer: false,
             });
         }
     }
@@ -1733,6 +1767,7 @@ fn publish(
             threat,
             seen: true,
             own: false,
+            jammer: false,
         });
         ship_at.push((ob.x, ob.y));
     }
@@ -1764,6 +1799,7 @@ fn publish(
             threat: None,
             seen: true,
             own: false,
+            jammer: false,
         });
     }
     let heading_bam = to_bam(a.euler().0);
@@ -1823,6 +1859,7 @@ fn publish(
                 threat: None,
                 seen: true,
                 own: false,
+                jammer: false,
             });
         }
     }
