@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: projektil uništen
 sim-usv-swarm = Jurišni čamci približavaju se floti!
 sim-carrier-hit-boat = { $ship } pogođen jurišnim čamcem
 sim-ship-sunk-boat = { $ship } potopljen jurišnim čamcem
+sim-raid-beaten = Jurišni čamci uništeni: flota je sigurna
 sim-visual-id = Vizualna ID - { $aircraft }
 sim-fired-by = { $missile } ispalio: { $launcher }
 sim-frame = Snimka { $frame }

@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: diúracán scriosta
 sim-usv-swarm = Báid ionsaithe ag druidim leis an gcabhlach!
 sim-carrier-hit-boat = { $ship } buailte ag bád ionsaithe
 sim-ship-sunk-boat = { $ship } curtha go tóin poill ag bád ionsaithe
+sim-raid-beaten = Báid ionsaithe scriosta: tá an cabhlach slán
 sim-visual-id = ID amhairc - { $aircraft }
 sim-fired-by = { $missile } scaoilte ag { $launcher }
 sim-frame = Fráma { $frame }

@@ -69,6 +69,7 @@ sim-ciws-missile-down = Phalanx: rudal dihancurkan
 sim-usv-swarm = Kapal serang mendekati armada!
 sim-carrier-hit-boat = { $ship } terkena kapal serang
 sim-ship-sunk-boat = { $ship } tenggelam oleh kapal serang
+sim-raid-beaten = Kapal serang dihancurkan: armada aman
 sim-visual-id = ID visual - { $aircraft }
 sim-fired-by = { $missile } ditembakkan oleh { $launcher }
 sim-frame = Bingkai { $frame }

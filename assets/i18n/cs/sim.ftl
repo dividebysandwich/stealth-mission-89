@@ -69,6 +69,7 @@ sim-ciws-missile-down = Phalanx: střela zničena
 sim-usv-swarm = Útočné čluny se blíží k loďstvu!
 sim-carrier-hit-boat = { $ship } zasažena útočným člunem
 sim-ship-sunk-boat = { $ship } potopena útočným člunem
+sim-raid-beaten = Útočné čluny zničeny: loďstvo je v bezpečí
 sim-visual-id = Vizuální ID - { $aircraft }
 sim-fired-by = { $missile } odpálena: { $launcher }
 sim-frame = Snímek { $frame }

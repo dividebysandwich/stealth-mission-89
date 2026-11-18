@@ -75,6 +75,7 @@ sim-ciws-missile-down = Phalanx: pocisk zniszczony
 sim-usv-swarm = Łodzie szturmowe zbliżają się do floty!
 sim-carrier-hit-boat = { $ship } trafiony przez łódź szturmową
 sim-ship-sunk-boat = { $ship } zatopiony przez łódź szturmową
+sim-raid-beaten = Łodzie szturmowe zniszczone: flota jest bezpieczna
 sim-visual-id = Identyfikacja wzrokowa - { $aircraft }
 sim-fired-by = { $missile } - odpalenie: { $launcher }
 sim-frame = Klatka { $frame }

@@ -740,6 +740,9 @@ impl Host {
                         Some(Objective::Asw { .. } | Objective::Barrier { .. }) => {
                             reports.push(Report::SubSunk { player })
                         }
+                        Some(Objective::FleetDefence { .. }) => {
+                            reports.push(Report::RaidBeaten { player })
+                        }
                         _ => {}
                     }
                 }
@@ -1000,6 +1003,10 @@ impl Host {
                     // the barrier.
                     if let Some(hunt) = glue::hunt_target(&self.state, &sortie.offer.objective) {
                         sim.start_hunt_for(player.0, hunt, sortie.offer.id);
+                    }
+                    // Defending the fleet: his own swarm of attack boats racing in at it.
+                    if let Objective::FleetDefence { carrier } = sortie.offer.objective {
+                        sim.start_raid_for(player.0, carrier as usize, sortie.offer.id);
                     }
                     // Flying a cargo run: hunted and escorted as its AI aircraft would be.
                     if let Objective::Airlift { run } = sortie.offer.objective {

@@ -145,7 +145,11 @@ impl AiMission {
 pub fn ai_flown(kind: MissionKind) -> bool {
     !matches!(
         kind,
-        MissionKind::Insertion | MissionKind::Csar | MissionKind::Resupply | MissionKind::Logistics
+        MissionKind::Insertion
+            | MissionKind::Csar
+            | MissionKind::Resupply
+            | MissionKind::Logistics
+            | MissionKind::FleetDefence
     )
 }
 

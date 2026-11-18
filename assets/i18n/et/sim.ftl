@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: rakett hävitatud
 sim-usv-swarm = Ründepaadid lähenevad laevastikule!
 sim-carrier-hit-boat = { $ship } sai ründepaadi tabamuse
 sim-ship-sunk-boat = { $ship } uputati ründepaadiga
+sim-raid-beaten = Ründepaadid hävitatud: laevastik on ohutu
 sim-visual-id = Visuaalne ID - { $aircraft }
 sim-fired-by = { $missile } välja lastud: { $launcher }
 sim-frame = Kaader { $frame }

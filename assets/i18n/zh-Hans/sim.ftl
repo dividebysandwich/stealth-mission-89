@@ -68,6 +68,7 @@ sim-ciws-missile-down = 密集阵：导弹已摧毁
 sim-usv-swarm = 攻击艇正逼近舰队！
 sim-carrier-hit-boat = { $ship } 被攻击艇击中
 sim-ship-sunk-boat = { $ship } 被攻击艇击沉
+sim-raid-beaten = 攻击艇已摧毁：舰队安全
 sim-visual-id = 目视识别 - { $aircraft }
 sim-fired-by = { $missile } 由 { $launcher } 发射
 sim-frame = 帧 { $frame }

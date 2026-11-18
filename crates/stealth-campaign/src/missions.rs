@@ -437,6 +437,11 @@ impl CampaignState {
                 {
                     s.progress.sub_sunk = true;
                 }
+                (Report::RaidBeaten { player }, Objective::FleetDefence { .. })
+                    if *player == slot.id =>
+                {
+                    s.progress.raid_beaten = true;
+                }
                 (Report::PhotoTaken { player, object }, Objective::Recon { object: o, .. })
                     if *player == slot.id && object == o =>
                 {
@@ -610,6 +615,7 @@ impl CampaignState {
             Objective::Strike { airfield, .. } => !self.site(*airfield).is_some_and(Site::alive),
             Objective::AntiShip { ship } => !self.site(*ship).is_some_and(Site::alive),
             Objective::Asw { .. } | Objective::Barrier { .. } => p.sub_sunk,
+            Objective::FleetDefence { .. } => p.raid_beaten,
             Objective::Cap { .. } => p.on_station >= CAP_SECONDS,
             Objective::Escort { insertion } => {
                 p.present()

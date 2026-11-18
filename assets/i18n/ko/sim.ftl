@@ -69,6 +69,7 @@ sim-ciws-missile-down = 팰렁스: 미사일 격파
 sim-usv-swarm = 공격정이 함대로 접근 중!
 sim-carrier-hit-boat = { $ship } 공격정 피격
 sim-ship-sunk-boat = { $ship } 공격정에 격침
+sim-raid-beaten = 공격정 격파: 함대는 안전하다
 sim-visual-id = 육안 식별 - { $aircraft }
 sim-fired-by = { $missile } 발사: { $launcher }
 sim-frame = 프레임 { $frame }

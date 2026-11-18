@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: raķete iznīcināta
 sim-usv-swarm = Uzbrukuma laivas tuvojas flotei!
 sim-carrier-hit-boat = { $ship } trāpīts ar uzbrukuma laivu
 sim-ship-sunk-boat = { $ship } nogremdēts ar uzbrukuma laivu
+sim-raid-beaten = Uzbrukuma laivas iznīcinātas: flote ir drošībā
 sim-visual-id = Vizuālā identifikācija - { $aircraft }
 sim-fired-by = { $missile } palaidis: { $launcher }
 sim-frame = Kadrs { $frame }

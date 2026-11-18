@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: ракетата унищожена
 sim-usv-swarm = Атакуващи лодки приближават флота!
 sim-carrier-hit-boat = { $ship } уцелен от атакуваща лодка
 sim-ship-sunk-boat = { $ship } потопен от атакуваща лодка
+sim-raid-beaten = Атакуващите лодки унищожени: флотът е в безопасност
 sim-visual-id = Визуална идентификация - { $aircraft }
 sim-fired-by = { $missile } пусната от { $launcher }
 sim-frame = Кадър { $frame }

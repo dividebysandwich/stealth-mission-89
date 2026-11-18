@@ -69,6 +69,7 @@ sim-ciws-missile-down = ファランクス: ミサイル撃破
 sim-usv-swarm = 攻撃艇が艦隊に接近中!
 sim-carrier-hit-boat = { $ship } が攻撃艇の体当たりを受けた
 sim-ship-sunk-boat = { $ship } が攻撃艇で撃沈
+sim-raid-beaten = 攻撃艇を撃破: 艦隊は無事
 sim-visual-id = 目視ID - { $aircraft }
 sim-fired-by = { $launcher } が { $missile } を発射
 sim-frame = フレーム { $frame }

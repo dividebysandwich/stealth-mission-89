@@ -143,6 +143,10 @@ pub enum Report {
     SubSunk {
         player: PlayerId,
     },
+    /// The attack boats a player fought are all sunk, none reached a ship (fleet defence).
+    RaidBeaten {
+        player: PlayerId,
+    },
     /// A player photographed a world object (recon).
     PhotoTaken {
         player: PlayerId,

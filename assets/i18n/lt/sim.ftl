@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: raketa sunaikinta
 sim-usv-swarm = Atakos kateriai artėja prie laivyno!
 sim-carrier-hit-boat = { $ship } pataikytas atakos katerio
 sim-ship-sunk-boat = { $ship } nuskandintas atakos katerio
+sim-raid-beaten = Atakos kateriai sunaikinti: laivynas saugus
 sim-visual-id = Vizualus ID - { $aircraft }
 sim-fired-by = { $missile } paleido { $launcher }
 sim-frame = Kadras { $frame }

@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: missila meqruda
 sim-usv-swarm = Dgħajjes tal-attakk qed joqorbu lejn il-flotta!
 sim-carrier-hit-boat = { $ship } milqut minn dgħajsa tal-attakk
 sim-ship-sunk-boat = { $ship } għerqet minn dgħajsa tal-attakk
+sim-raid-beaten = Dgħajjes tal-attakk meqruda: il-flotta hija sigura
 sim-visual-id = ID viżiv - { $aircraft }
 sim-fired-by = { $missile } sparat minn { $launcher }
 sim-frame = Frejm { $frame }

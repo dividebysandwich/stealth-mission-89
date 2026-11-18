@@ -105,6 +105,21 @@ pub struct Ciws {
     pub out: f32,
 }
 
+/// A campaign sortie's raid: the attack boats a player fights (`Sim::units` indices), one of
+/// them has reached a ship.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct Raid {
+    pub player: u8,
+    pub boats: Vec<u16>,
+    pub hit: bool,
+}
+
+/// The mission type of a sortie's primary slot fighting a raid (after the hunt's 12).
+pub const RAID_MISSION: i32 = 13;
+/// A raid's boats: how many (the least, and up to so many more) and how far out (km).
+const RAID_BOATS: (usize, usize) = (4, 3);
+const RAID_KM: f64 = 8.0;
+
 /// The fleet's defence.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Naval {
@@ -113,6 +128,9 @@ pub struct Naval {
     pub mounts: Vec<Ciws>,
     /// The mounts' tracers (m, m/s: east, north, up).
     pub shells: Vec<Shell>,
+    /// The campaign sorties' raids (the host's).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub raids: Vec<Raid>,
 }
 
 impl Naval {
@@ -246,6 +264,7 @@ impl Sim {
             }
         }
         self.drive_boats();
+        self.check_raids();
         self.update_mounts();
         let dt = 1.0 / self.fs.max(1) as f64;
         self.naval.shells.retain_mut(|s| {
@@ -518,6 +537,11 @@ impl Sim {
     /// east, north), the bearing out to it (rad) and the ship. None without a fleet or water.
     fn fleet_sea_spot(&mut self, km: f64) -> Option<([f64; 2], f64, usize)> {
         let home = *self.fleet().first()?;
+        self.sea_spot_off(home, km)
+    }
+
+    /// Open water `km` from ship `home`: its middle (m east, north), the bearing out (rad).
+    fn sea_spot_off(&mut self, home: usize, km: f64) -> Option<([f64; 2], f64, usize)> {
         let c = crate::asw::object_metres(&self.objects[home]);
         let wet = |s: &Sim, p: [f64; 2]| {
             !s.water.known()
@@ -547,13 +571,76 @@ impl Sim {
     /// on open water, at the carrier's group. The number placed (none without a fleet or open
     /// water).
     pub fn spawn_usv_swarm(&mut self, count: usize, km: f64) -> usize {
-        let Some((c, dir, _)) = self.fleet_sea_spot(km) else { return 0 };
+        let Some(&home) = self.fleet().first() else { return 0 };
+        self.spawn_swarm_at(home, count, km).len()
+    }
+
+    /// A campaign sortie's raid: attack boats racing in at carrier `carrier`'s group for
+    /// player `player` to fight (his primary objective: sink them all before one reaches a
+    /// ship). The one he fought before is gone.
+    pub fn start_raid_for(&mut self, player: u8, carrier: usize, seed: u32) {
+        self.end_raid_of(player);
+        let count = RAID_BOATS.0 + (seed as usize) % (RAID_BOATS.1 + 1);
+        let boats = self.spawn_swarm_at(carrier, count, RAID_KM);
+        if !boats.is_empty() {
+            let boats = boats.into_iter().map(|b| b as u16).collect();
+            self.naval.raids.push(Raid { player, boats, hit: false });
+        }
+    }
+
+    /// Player `player`'s raid ends: its boats still going leave.
+    fn end_raid_of(&mut self, player: u8) {
+        let Some(k) = self.naval.raids.iter().position(|r| r.player == player) else { return };
+        let r = self.naval.raids.remove(k);
+        for b in r.boats {
+            if let Some(u) = self.units.get_mut(b as usize).filter(|u| !u.destroyed) {
+                u.destroyed = true;
+                u.gone = true;
+            }
+        }
+    }
+
+    /// The raids: one whose boats are all sunk, none on a ship, is its player's objective; one
+    /// whose player has gone home ends.
+    fn check_raids(&mut self) {
+        for k in (0..self.naval.raids.len()).rev() {
+            let r = self.naval.raids[k].clone();
+            let p = r.player as usize;
+            if !self.pilot_exists(p) || self.pilot_absent(r.player) {
+                self.end_raid_of(r.player);
+                continue;
+            }
+            // (A boat's slot taken by another unit since: that boat is long gone.)
+            let gone = |b: u16| {
+                self.units.get(b as usize).is_none_or(|u| u.destroyed || u.kind != GroundKind::Usv)
+            };
+            if !r.boats.iter().all(|&b| gone(b)) {
+                continue;
+            }
+            self.naval.raids.remove(k);
+            if r.hit {
+                continue;
+            }
+            let back = self.pl.id as usize;
+            self.activate(p);
+            if self.pl.targets[0].mission_type == RAID_MISSION {
+                self.mark_target_reached(0);
+            }
+            self.msg(text!("sim-raid-beaten"));
+            self.activate(back);
+        }
+    }
+
+    /// `count` attack boats `km` out from ship `home` on open water, racing in at its group
+    /// (`Sim::units` indices; none without open water).
+    fn spawn_swarm_at(&mut self, home: usize, count: usize, km: f64) -> Vec<usize> {
+        let Some((c, dir, _)) = self.sea_spot_off(home, km) else { return Vec::new() };
         self.arm_fleet();
         if self.aaa_rng.is_none() {
             self.aaa_rng = Some(crate::rng::Rng::new(self.rng.hold ^ 0x05EA_BAB7));
         }
         let r = km * 1000.0;
-        let mut placed = 0;
+        let mut placed = Vec::new();
         for k in 0..count {
             // Abreast, some 60 m apart.
             let side = (k as f64 - (count as f64 - 1.0) / 2.0) * 60.0;
@@ -572,7 +659,7 @@ impl Sim {
                 cooldown: (k as i32) * 37,
                 ..Default::default()
             });
-            placed += 1;
+            placed.push(self.units.len() - 1);
         }
         self.msg(text!("sim-usv-swarm"));
         placed
@@ -656,6 +743,9 @@ impl Sim {
         let u = self.units[i];
         self.units[i].destroyed = true;
         self.units[i].gone = true;
+        for r in &mut self.naval.raids {
+            r.hit |= r.boats.contains(&(i as u16));
+        }
         self.emit(SimEvent::Explosion { x: u.x, y: u.y, alt: SEA_BLAST_ALT, kind: 0x10 });
         let o = self.objects[t];
         let name = self.place_name(t);

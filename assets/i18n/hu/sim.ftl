@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: rakéta megsemmisítve
 sim-usv-swarm = Támadó csónakok közelednek a flottához!
 sim-carrier-hit-boat = { $ship } támadó csónaktól találatot kapott
 sim-ship-sunk-boat = { $ship } támadó csónaktól elsüllyedt
+sim-raid-beaten = Támadó csónakok megsemmisítve: a flotta biztonságban
 sim-visual-id = Vizuális azonosítás - { $aircraft }
 sim-fired-by = { $missile } kilőve: { $launcher }
 sim-frame = { $frame }. kocka

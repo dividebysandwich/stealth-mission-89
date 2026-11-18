@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: ракета уничтожена
 sim-usv-swarm = Ударные катера приближаются к флоту!
 sim-carrier-hit-boat = { $ship } поражён ударным катером
 sim-ship-sunk-boat = { $ship } потоплен ударным катером
+sim-raid-beaten = Ударные катера уничтожены: флот в безопасности
 sim-visual-id = Визуальное опознание - { $aircraft }
 sim-fired-by = { $missile } пущена: { $launcher }
 sim-frame = Кадр { $frame }

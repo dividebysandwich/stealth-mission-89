@@ -229,3 +229,32 @@ fn a_submarine_surfaces_to_fire_manpads_at_a_low_helicopter() {
     assert!(surfaced > 0 && surfaced < 6, "{surfaced} of 6 surfaced");
     assert!(shots > 0);
 }
+
+/// A campaign sortie's raid: its boats all sunk (by whoever) is the player's objective; one
+/// that reaches a ship spoils it.
+#[test]
+fn a_raid_sunk_is_the_players_objective() {
+    for spoil in [false, true] {
+        let (mut sim, carrier, c) = fleet();
+        sim.set_pilot_target(0, Some((naval::RAID_MISSION, carrier)));
+        sim.start_raid_for(0, carrier, 2);
+        let boats: Vec<usize> =
+            (0..sim.units().len()).filter(|&i| sim.units()[i].kind == GroundKind::Usv).collect();
+        assert_eq!(boats.len(), 6);
+        let ps = at(c[0], c[1] - 20_000.0, 300.0, 0.0);
+        sim.step(&ps, FS);
+        if spoil {
+            // One straight onto the carrier.
+            let f = sim.units()[boats[0]].fine.unwrap();
+            sim.units_mut()[boats[0]].fine =
+                Some(stealth_sim::aaa::Fine { e: c[0] as f32 + 20.0, n: c[1] as f32, ..f });
+            sim.step(&ps, FS);
+        }
+        for &b in &boats {
+            sim.units_mut()[b].destroyed = true;
+        }
+        let ev: Vec<SimEvent> = (0..FS).flat_map(|_| sim.step(&ps, FS)).collect();
+        let done = ev.iter().any(|e| matches!(e, SimEvent::ObjectiveDone { primary: true }));
+        assert_eq!(done, !spoil, "spoilt {spoil}: {ev:?}");
+    }
+}

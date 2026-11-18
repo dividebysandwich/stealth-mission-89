@@ -266,6 +266,8 @@ pub enum MissionKind {
     Airlift,
     /// Hunt the enemy submarine reported closing on a friendly carrier group (the MH-60R).
     Asw,
+    /// Stop a swarm of unmanned attack boats racing in at a friendly carrier group.
+    FleetDefence,
 }
 
 impl MissionKind {
@@ -288,6 +290,7 @@ impl MissionKind {
             MissionKind::Logistics => "LOGISTICS",
             MissionKind::Airlift => "AIRLIFT",
             MissionKind::Asw => "ASW",
+            MissionKind::FleetDefence => "FLEET-DEF",
         }
     }
 
@@ -304,11 +307,15 @@ impl MissionKind {
             return aircraft.airlifter() && self == MissionKind::Airlift;
         }
         if aircraft.spectre() {
-            return self == MissionKind::Cas;
+            return matches!(self, MissionKind::Cas | MissionKind::FleetDefence);
         }
-        // The Seahawk hunts submarines, and nothing else does.
-        if aircraft == Aircraft::MH60R || self == MissionKind::Asw {
-            return aircraft == Aircraft::MH60R && self == MissionKind::Asw;
+        // The Seahawk hunts submarines, and nothing else does (it also fights attack boats
+        // with its Hellfires).
+        if aircraft == Aircraft::MH60R {
+            return matches!(self, MissionKind::Asw | MissionKind::FleetDefence);
+        }
+        if self == MissionKind::Asw {
+            return false;
         }
         match self {
             MissionKind::Insertion => aircraft.transport(),
@@ -340,6 +347,7 @@ impl MissionKind {
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
             MissionKind::Airlift => &[C5],
             MissionKind::Asw => &[MH60R],
+            MissionKind::FleetDefence => &[AH64, AH1Z, MH60R, OH58, RAH66, AC130, A10, FA18E, AV8B],
         }
     }
 
@@ -391,7 +399,8 @@ impl MissionKind {
             | MissionKind::Defend
             | MissionKind::Csar
             | MissionKind::Insertion
-            | MissionKind::Asw => 150,
+            | MissionKind::Asw
+            | MissionKind::FleetDefence => 150,
             MissionKind::Interdiction => 200,
             MissionKind::Awacs => 250,
         }
@@ -426,6 +435,11 @@ pub enum Objective {
     },
     /// Sink the submarine closing on this friendly carrier's group.
     Asw {
+        carrier: ObjectId,
+    },
+    /// Sink the attack boats racing in at this friendly carrier's group before one reaches a
+    /// ship.
+    FleetDefence {
         carrier: ObjectId,
     },
     /// Sink the submarine slipping out past the line between these two friendly bases (a
@@ -619,6 +633,9 @@ pub struct Progress {
     /// The submarine he hunted is sunk (ASW).
     #[serde(default)]
     pub sub_sunk: bool,
+    /// The attack boats he fought are all sunk, none reached a ship (fleet defence).
+    #[serde(default)]
+    pub raid_beaten: bool,
     /// Objective achieved (stays achieved).
     pub achieved: bool,
     /// Friendly aircraft lost in the CAP area, and enemy aircraft the pilot shot down there.

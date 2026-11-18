@@ -1213,7 +1213,7 @@ impl Sim {
     }
 
     /// Pilot `k` is in the simulation.
-    fn pilot_exists(&self, k: usize) -> bool {
+    pub(crate) fn pilot_exists(&self, k: usize) -> bool {
         k < self.pilot_count() && self.pilot_ref(k).id as usize == k
     }
 

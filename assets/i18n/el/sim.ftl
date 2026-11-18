@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: ο πύραυλος καταστράφηκε
 sim-usv-swarm = Σκάφη επίθεσης πλησιάζουν τον στόλο!
 sim-carrier-hit-boat = { $ship } χτυπήθηκε από σκάφος επίθεσης
 sim-ship-sunk-boat = { $ship } βυθίστηκε από σκάφος επίθεσης
+sim-raid-beaten = Σκάφη επίθεσης καταστράφηκαν: ο στόλος είναι ασφαλής
 sim-visual-id = Οπτική ταυτοποίηση - { $aircraft }
 sim-fired-by = { $missile } εκτοξεύτηκε από { $launcher }
 sim-frame = Καρέ { $frame }

@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: ohjus tuhottu
 sim-usv-swarm = Iskuveneitä lähestyy laivastoa!
 sim-carrier-hit-boat = { $ship } sai iskuveneen osuman
 sim-ship-sunk-boat = { $ship } upposi iskuveneen osumasta
+sim-raid-beaten = Iskuveneet tuhottu: laivasto on turvassa
 sim-visual-id = Näkötunnistus - { $aircraft }
 sim-fired-by = { $missile } ampunut: { $launcher }
 sim-frame = Ruutu { $frame }

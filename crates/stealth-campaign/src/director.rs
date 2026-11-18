@@ -1887,6 +1887,10 @@ impl CampaignState {
             .collect();
         for &(carrier, x, y) in carriers.iter().take(1) {
             add(self, MissionKind::Asw, text!("cb-asw"), Objective::Asw { carrier }, x, y, 0);
+            // Attack boats reported racing in at it: the gunships' work (its own Phalanx
+            // mounts stop only so many).
+            let o = Objective::FleetDefence { carrier };
+            add(self, MissionKind::FleetDefence, text!("cb-fleet-defence"), o, x, y, 0);
         }
         // Without a carrier, a narrow sea's: a submarine slipping out past the line between
         // two friendly bases on its shores.
@@ -1975,6 +1979,8 @@ impl CampaignState {
                 MissionKind::Escort | MissionKind::Logistics | MissionKind::Airlift => 1,
                 // The carrier group's only hunt, for the only aircraft that flies it.
                 MissionKind::Asw => 1,
+                // The carrier group's own defence against the attack boats.
+                MissionKind::FleetDefence => 2,
                 MissionKind::Interdiction => 2,
                 MissionKind::Cap | MissionKind::AntiShip => 3,
                 _ => 4 + front_index(&front, &o.objective),
@@ -2050,5 +2056,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Airlift { run } => (19, run as i64),
         Objective::Asw { carrier } => (20, carrier as i64),
         Objective::Barrier { a, b } => (21, (a as i64) << 16 | b as i64),
+        Objective::FleetDefence { carrier } => (22, carrier as i64),
     }
 }

@@ -70,6 +70,7 @@ sim-ciws-missile-down = Phalanx: rachetă distrusă
 sim-usv-swarm = Ambarcațiuni de atac se apropie de flotă!
 sim-carrier-hit-boat = { $ship } lovit de o ambarcațiune de atac
 sim-ship-sunk-boat = { $ship } scufundat de o ambarcațiune de atac
+sim-raid-beaten = Ambarcațiuni de atac distruse: flota e în siguranță
 sim-visual-id = ID vizual - { $aircraft }
 sim-fired-by = { $missile } lansată de { $launcher }
 sim-frame = Cadrul { $frame }
