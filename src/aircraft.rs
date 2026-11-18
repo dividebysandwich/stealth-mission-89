@@ -1004,16 +1004,18 @@ static FA18E: AircraftSpec = AircraftSpec {
     eye: fa18e_point(0.0, 5.00, 1.25),
     cockpit_view: Some(CockpitView {
         canopy_colours: &[144, 145],
-        cut: (Vec3::new(-0.45, -1.15, -1.25), Vec3::new(0.45, 0.40, 0.80)),
+        cut: (Vec3::new(-0.45, -1.10, -1.05), Vec3::new(0.45, 0.40, 0.70)),
         two_sided: false,
         parts: false,
     }),
-    cockpits: &[(PanelStyle::F16, "cockpit_f16")],
+    cockpits: &[(PanelStyle::Fa18e, "cockpit_fa18e")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
-    hud_scale: 2080.0,
-    vr_hud_scale: 2080.0,
+    // The symbology inside the combiner (x +-0.115, z -0.115 .. 0.055 at 0.53 m in front of the
+    // eye, tools/models/build_cockpit_fa18e.py): the F-22's scaled by the tangents.
+    hud_scale: 2300.0,
+    vr_hud_scale: 2300.0,
     bomb_bay: false,
     helicopter: false,
     turret: false,
