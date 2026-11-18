@@ -1802,6 +1802,8 @@ impl Sim {
         // Stealthy aircraft: radars find them this much closer (percent).
         let stealth: Vec<i32> =
             self.flights.iter().map(|u| self.ac_type(u.spec).stealth as i32).collect();
+        // Sites a Growler jams: they find the friendly aircraft only much closer.
+        let jammed: Vec<bool> = (0..self.ground_units).map(|i| self.site_jammed(i)).collect();
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         // The nearest aircraft of a side in reach (`low` for a SAM radar's low flyers).
@@ -1834,6 +1836,7 @@ impl Sim {
             let spec = self.site_missile(o.unit_type);
             let lock = (self.missile(spec).lock_range as i32) << 6;
             let reach = lock * if c.intel[i] { INTEL_DETECTION } else { 10 } / 10;
+            let reach = if jammed[i] { reach * crate::jamming::JAM_SCORE_PCT / 100 } else { reach };
             let Some((j, d)) = near(o.x, o.y, true, reach, true, 15.0) else {
                 continue;
             };

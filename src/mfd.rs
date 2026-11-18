@@ -213,6 +213,13 @@ impl MfdState {
         (self.modern && self.av.offered(crate::avionics::Format::Slam)).then(|| self.av.slam.input())
     }
 
+    /// The JAM page's report to the simulation (the EA-18G with the modern avionics), the
+    /// aircraft heading `heading` (BAM).
+    pub fn jam_input(&self, heading: u16) -> Option<stealth_sim::jamming::JamInput> {
+        (self.modern && self.av.offered(crate::avionics::Format::Jam))
+            .then(|| self.av.jam.input(heading))
+    }
+
     /// The moving map is up (classic: the left MFD's map; modern: the MAP format).
     pub fn map_shown(&self) -> bool {
         if self.modern {
@@ -317,6 +324,8 @@ pub enum MfdCmd {
     Asw(crate::avionics::AswOsb),
     /// The SLAM page's buttons (the F/A-18E).
     Slam(crate::slam_page::SlamOsb),
+    /// The JAM page's buttons (the EA-18G).
+    Jam(crate::jam_page::JamOsb),
     /// WAY page: nudges the selected waypoint one step over the map (screen x right, y up), as
     /// the keypad does (`edit_waypoints`).
     WaypointNudge(i8, i8),
@@ -526,7 +535,7 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) | MfdCmd::Burst(_) => {
             Action::Ordnance
         }
-        MfdCmd::Slam(_) => Action::Ordnance,
+        MfdCmd::Slam(_) | MfdCmd::Jam(_) => Action::Ordnance,
     }
 }
 
@@ -895,8 +904,9 @@ fn mfd_keys(
     // The weapons' pages come with those weapons loaded (fired or not).
     let loaded = |w| stores.bays.iter().any(|b| b.weapon == w);
     let (harm, slam) = (loaded(stealth_sim::HARM_WEAPON), loaded(stealth_sim::SLAMER_WEAPON));
-    if (state.av.harm_loaded, state.av.slam_loaded) != (harm, slam) {
-        state.av.set_stores(harm, slam);
+    let jam = loaded(stealth_sim::jamming::ALQ99_WEAPON);
+    if (state.av.harm_loaded, state.av.slam_loaded, state.av.jam_loaded) != (harm, slam, jam) {
+        state.av.set_stores(harm, slam, jam);
     }
     if state.av.aircraft != settings.aircraft {
         state.av.aircraft = settings.aircraft;

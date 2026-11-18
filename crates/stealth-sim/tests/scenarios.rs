@@ -4030,3 +4030,42 @@ fn the_chinook_drops_its_stick() {
     }
     assert_eq!(sim.paradrop().jumpers.len(), paradrop::STICK_CH47 as usize);
 }
+
+/// A Growler with its three pods 19 km from an SA-2: with its transmitters off the site finds
+/// it and fires; jamming the site, it does not (it sees the Growler only inside its
+/// burn-through range), though the Growler's noise raises its EMV.
+#[test]
+fn a_growler_jamming_a_site_keeps_it_blind() {
+    let run = |jam: bool| {
+        let d = data();
+        let m = mission(d, 3, 0x1234, 1);
+        let opts =
+            SimOptions { external_stores: true, hornet: true, growler: true, ..Default::default() };
+        let mut sim = Sim::with_options(&d.sim, &m, opts);
+        let (mx, my) = sandbox(&mut sim, &m);
+        sim.set_loadout(&[
+            (jamming::ALQ99_WEAPON, 1),
+            (jamming::ALQ99_WEAPON, 1),
+            (jamming::ALQ99_WEAPON, 1),
+        ]);
+        place_site(&mut sim, 3, 1, mx, my - 1200);
+        let mut p = player_at(mx, my, 6000, 0x4000, 200);
+        p.jam = Some(jamming::JamInput {
+            on: jam,
+            pods: [Some(jamming::JamTarget::Site(3)), None, None],
+        });
+        let mut launched = false;
+        for _ in 0..15 * 120 {
+            for e in sim.step(&p, 15) {
+                launched |=
+                    matches!(e, SimEvent::MissileLaunched { launcher: Launcher::Site(3), .. });
+            }
+        }
+        (launched, sim.emv(), sim.site_jammed(3))
+    };
+    let (open, quiet_emv, _) = run(false);
+    let (jammed, loud_emv, on) = run(true);
+    assert!(open, "the site never fired at the Growler with its pods off");
+    assert!(on && !jammed, "the jammed site fired");
+    assert!(loud_emv > quiet_emv, "emv {quiet_emv} -> {loud_emv}");
+}

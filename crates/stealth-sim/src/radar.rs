@@ -349,6 +349,10 @@ impl Sim {
         } else {
             emv(agl, p.velocity, p.roll, self.pl.pflags, self.diff, self.pl.lockheed)
         };
+        // The Growler's noise is seen from afar.
+        if self.jamming() {
+            self.pl.emv += crate::jamming::JAM_EMV;
+        }
     }
 
     /// The enemy missile slot launcher `i` fires into: its own (`i & 7`), or with more pilots
@@ -498,6 +502,8 @@ impl Sim {
         } else {
             self.detect(o.x, o.y, 0, o.unit_type)
         };
+        // A Growler jamming it: much less of the pilot until he is close.
+        let score = self.jammed_score(i, score);
         let emv = self.pl.emv;
         let doppler = self.threat_type(o.unit_type).is_some_and(|t| t.flags & 1 != 0);
         if score > 0 {

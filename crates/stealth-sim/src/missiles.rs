@@ -245,7 +245,11 @@ impl Sim {
             locked = self.acquire(s, tgx, tgy, self.pl.p.view_z, cls);
             best = self.acq_range;
             aim = self.acq_aim;
+            // Its radar jammed by a Growler: as against the aircraft's own jammer.
+            let launcher = self.proj[s].launcher;
+            let jammed = cls > 0 && launcher > 2 && self.site_jammed(launcher as usize);
             let jam = (self.ecm_on() && cls > 0)
+                || jammed
                 || (self.irj_on() && cls <= 0)
                 || (self.alarm_recent() > self.alarm_timer && spec != 0x21);
             if jam && ((self.diff << 8) + 0x180 < best || cls == 1 || cls == -1) {

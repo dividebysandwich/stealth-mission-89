@@ -661,6 +661,7 @@ fn player_state(
         mode_weapons: mfd.modern,
         radar: mfd.modern && mfd.av.radar_emitting(),
         slam: mfd.slam_input(),
+        jam: mfd.jam_input(to_bam(h).round() as i32 as u16),
         cmd: SimCommands { gun, trigger, ..cmd },
     }
 }

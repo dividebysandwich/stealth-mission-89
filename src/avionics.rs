@@ -64,7 +64,7 @@ impl Plugin for AvionicsPlugin {
             )
             .add_systems(
                 Update,
-                crate::slam_page::update
+                (crate::slam_page::update, crate::jam_page::update)
                     .after(crate::combat::CombatSystems)
                     .before(crate::trackcam::update_camera)
                     .run_if(in_state(crate::settings::AppState::Flight)),
@@ -96,6 +96,8 @@ pub enum Format {
     Mad,
     /// The F/A-18E's SLAM-ER channels and seeker picture (`crate::slam_page`).
     Slam,
+    /// The EA-18G's jammer pods (`crate::jam_page`).
+    Jam,
 }
 
 /// The MAD page's bezel buttons (`MfdCmd::Asw`): the towed body out or in, a mark, the
@@ -136,7 +138,7 @@ pub const CARGO_FOURTH_FORMATS: [Format; 5] =
 
 /// Every format, in the order the format menu lists them down its sides (the radar's only with
 /// the radar, the cargo page only on the cargo jet): an aircraft has ten at most.
-pub const ALL_FORMATS: [Format; 13] = [
+pub const ALL_FORMATS: [Format; 14] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -150,6 +152,7 @@ pub const ALL_FORMATS: [Format; 13] = [
     Format::Cgo,
     Format::Mad,
     Format::Slam,
+    Format::Jam,
 ];
 
 /// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
@@ -183,6 +186,7 @@ impl Format {
             Format::Cgo => "CGO",
             Format::Mad => "MAD",
             Format::Slam => "SLAM",
+            Format::Jam => "JAM",
         }
     }
 
@@ -211,7 +215,8 @@ impl Format {
             | Format::Rcs
             | Format::Cgo
             | Format::Mad
-            | Format::Slam => Action::Maps,
+            | Format::Slam
+            | Format::Jam => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -297,10 +302,14 @@ pub struct AvionicsState {
     /// only then (`offered`).
     pub harm_loaded: bool,
     pub slam_loaded: bool,
+    /// Jammer pods are loaded (the JAM page).
+    pub jam_loaded: bool,
     /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
     pub aircraft: crate::aircraft::AircraftKind,
     /// The SLAM-ER page's channels (`crate::slam_page`).
     pub slam: crate::slam_page::SlamPage,
+    /// The JAM page's pods (`crate::jam_page`).
+    pub jam: crate::jam_page::JamPage,
     /// The MAD page: the trace's gain step, the towed body out, the dipping sonar down (`asw`).
     pub mad_gain: u8,
     pub mad_out: bool,
@@ -646,7 +655,9 @@ impl Default for AvionicsState {
             cargo: false,
             harm_loaded: true,
             slam_loaded: false,
+            jam_loaded: false,
             slam: default(),
+            jam: default(),
             mad_gain: 1,
             mad_out: false,
             dip_down: false,
@@ -754,6 +765,10 @@ impl AvionicsState {
             if side == MfdSide::Right && self.offered(Format::Slam) {
                 row[3] = Format::Slam;
             }
+            // The EA-18G's: the JAM page there.
+            if side == MfdSide::Right && self.offered(Format::Jam) {
+                row[3] = Format::Jam;
+            }
             row
         })
     }
@@ -770,14 +785,16 @@ impl AvionicsState {
         self.has(f)
             && (f != Format::Harm || self.harm_loaded)
             && (f != Format::Slam || self.slam_loaded)
+            && (f != Format::Jam || self.jam_loaded)
     }
 
     /// The stores loaded changed (a new flight, a rearm): the weapons' formats come and go as
     /// with `set_radar`, the rows keeping their buttons (blank while not offered).
-    pub fn set_stores(&mut self, harm: bool, slam: bool) {
+    pub fn set_stores(&mut self, harm: bool, slam: bool, jam: bool) {
         let old = self.clone();
         self.harm_loaded = harm;
         self.slam_loaded = slam;
+        self.jam_loaded = jam;
         self.refit(&old);
     }
 
@@ -788,6 +805,7 @@ impl AvionicsState {
             && (f != Format::Cgo || self.cargo)
             && (f != Format::Mad || self.aircraft.seahawk())
             && (f != Format::Slam || self.aircraft == crate::aircraft::AircraftKind::FA18E)
+            && (f != Format::Jam || self.aircraft == crate::aircraft::AircraftKind::EA18G)
     }
 
     /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
@@ -1144,6 +1162,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         // The rest are the crew's sensor commands (`asw::mad::osb`).
         MfdCmd::Asw(_) => {}
         MfdCmd::Slam(o) => av.slam.apply(o),
+        MfdCmd::Jam(o) => av.jam.apply(o),
         MfdCmd::Burst(d) => {
             av.burst = (av.burst as i32 + d as i32).clamp(0, BURST_FT.len() as i32 - 1) as usize;
         }
@@ -1333,6 +1352,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         }
         (Format::Sms, 17) if !av.sms_ord => ("SPC-", Cmd(MfdCmd::RippleSpacing(-1)), false),
         (Format::Slam, _) => return crate::slam_page::osb(slot, s),
+        (Format::Jam, _) => return crate::jam_page::osb(slot, s),
         (Format::Hsi, 0) => ("WP-", Action(A::LastWaypoint), false),
         (Format::Hsi, 1) => ("WP+", Action(A::NextWaypoint), false),
         _ => return None,
@@ -1382,6 +1402,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Mad => crate::asw::mad::draw(c, &p.mad, p.state.av.mad_gain),
         Format::Cgo => crate::cargo_page::draw(c, p.cues.drop.as_ref(), crate::hud::blink(&p.time)),
         Format::Slam => crate::slam_page::draw(p, c, p.camera_see_through(side)),
+        Format::Jam => crate::jam_page::draw(p, c),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.
@@ -3773,25 +3794,25 @@ mod tests {
         let mut av = AvionicsState::default();
         av.select(MfdSide::Right, Format::Harm);
         assert_eq!(label(&av, MfdSide::Left, 1), Some("HARM"));
-        av.set_stores(false, false);
+        av.set_stores(false, false, false);
         assert_ne!(av.format(MfdSide::Right), Format::Harm);
         assert_eq!(label(&av, MfdSide::Left, 1), None);
         assert!(av.available().all(|f| f != Format::Harm));
         assert_ne!(av.next_left_format(), Some(Format::Harm));
-        av.set_stores(true, false);
+        av.set_stores(true, false, false);
         assert!(av.available().any(|f| f == Format::Harm));
 
         // The F/A-18E: the SLAM page on the right DDI's row with SLAM-ERs, else the map.
         let mut av = AvionicsState { aircraft: crate::aircraft::AircraftKind::FA18E, ..default() };
-        av.set_stores(true, false);
+        av.set_stores(true, false, false);
         assert_eq!(av.formats(MfdSide::Right)[3], Format::Map);
         assert!(av.available().all(|f| f != Format::Slam));
-        av.set_stores(true, true);
+        av.set_stores(true, true, false);
         assert_eq!(av.formats(MfdSide::Right)[3], Format::Slam);
         assert!(av.available().any(|f| f == Format::Slam));
         // Not on another aircraft, loaded or not.
         let mut av = AvionicsState::default();
-        av.set_stores(true, true);
+        av.set_stores(true, true, false);
         assert!(!av.offered(Format::Slam));
     }
 

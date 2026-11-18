@@ -108,6 +108,7 @@ mod sea;
 mod settings;
 mod sfw;
 mod naval;
+mod jam_page;
 mod slam_page;
 mod shake;
 mod side_guns;

@@ -586,6 +586,9 @@ pub struct PlayerState {
     /// slew steering the selected missile once its seeker is on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slam: Option<crate::slam::SlamInput>,
+    /// The JAM page (`crate::jamming`): the EA-18G's transmitters and its pods' targets.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jam: Option<crate::jamming::JamInput>,
     pub cmd: Commands,
 }
 
