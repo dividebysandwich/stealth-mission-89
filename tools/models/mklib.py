@@ -120,11 +120,15 @@ def basis(axis):
     return u, w
 
 
-def tube(rings, paint, cap0=True, cap1=True, paints=None):
-    """Closed tube through rings of equal point count (each ring a list of points)."""
+def tube(rings, paint, cap0=True, cap1=True, paints=None, wound=False):
+    """Closed tube through rings of equal point count (each ring a list of points).
+    Each side face is turned away from its rings' centres, which flips a face that overhangs
+    towards the centre (a LEX's underside); `wound` instead keeps the rings' winding for all
+    side faces, turned outwards by the majority."""
     g = Geo()
     m = len(rings[0])
     centres = [sum((v3(p) for p in r), Vector()) / m for r in rings]
+    sides = []
     for i in range(len(rings) - 1):
         a, b = rings[i], rings[i + 1]
         p = paints[i] if paints else paint
@@ -141,7 +145,14 @@ def tube(rings, paint, cap0=True, cap1=True, paints=None):
             if len(uniq) > 1 and (uniq[0] - uniq[-1]).length < 1e-6:
                 uniq.pop()
             if len(uniq) >= 3:
-                g.face(uniq, p, mid)
+                sides.append((uniq, p, mid))
+    if wound:
+        out = sum(1 if normal(q).dot(sum(q, Vector()) / len(q) - mid) > 0 else -1 for q, _, mid in sides)
+        for q, p, _ in sides:
+            g.face(q if out >= 0 else q[::-1], p)
+    else:
+        for q, p, mid in sides:
+            g.face(q, p, mid)
     for cap, r, c, other in ((cap0, rings[0], centres[0], centres[1]), (cap1, rings[-1], centres[-1], centres[-2])):
         if cap and max((v3(x) - c).length for x in r) > 1e-6:
             g.face(r, paints[0] if paints and r is rings[0] else (paints[-1] if paints else paint), other)

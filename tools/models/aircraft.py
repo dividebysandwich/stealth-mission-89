@@ -1536,13 +1536,20 @@ def fa18e_mouth_at(z):
 
 def fa18e():
     rings = [fa18e_ring(s, *spec) if spec[0] == "round" else fa18e_ring(s, spec[0]) for s, *spec in FA18E_BODY]
-    g = Geo().add(tube(rings, FA18E_GREY, cap1=False))
+    g = Geo().add(tube(rings, FA18E_GREY, cap1=False, wound=True))
     g.face(rings[-1], DARK, fa18e_p(0, 15.0, 0.2))
     g.add(tube([fa18e_glass(*r) for r in FA18E_CANOPY], CANOPY, cap1=False))
     # The windscreen's bow and the canopy's frame along the sills.
     bow = [p + Vector((0, 0, 0.012)) for p in fa18e_glass(4.44, 0.97, 0.47, 1.50)]
     g.add(tube([bow, [p - Vector((0, 0.06, 0)) for p in bow]], DARK, cap0=False, cap1=False))
     g.add(tube([fa18e_glass(*r) for r in FA18E_SPINE], FA18E_GREY, cap0=False))
+    # The glass and the spine stand open-bottomed on the deck a centimetre or two above it in
+    # places: a grey skirt from their sills down into the fuselage closes the slit.
+    sills = FA18E_CANOPY + FA18E_SPINE[1:]
+    for sx in (-1, 1):
+        edge = [(fa18e_p(sx * hw, s, sill), fa18e_p(sx * hw, s, sill - 0.10)) for s, sill, hw, _ in sills]
+        for (a, b), (c, d) in zip(edge, edge[1:]):
+            g.face([a, c, d, b], FA18E_GREY, Vector((0, 0.5 * (a.y + c.y), a.z)))
     # The intakes: the trunks' walls from the raked lips back into the fuselage's wide rings,
     # grey outside, dark inside, the mouth a black plane just inside the lips.
     for sx in (-1, 1):
