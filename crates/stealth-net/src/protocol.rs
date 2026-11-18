@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 50;
+pub const PROTOCOL: u16 = 51;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -514,6 +514,7 @@ mod tests {
             spectre: false,
             apache: false,
             seahawk: false,
+            hornet: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             catapult: 0,
@@ -616,6 +617,17 @@ mod tests {
             ..a
         };
         let w = WorldFast { pilots: vec![h.clone()], ..Default::default() };
-        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![h]);
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![h.clone()]);
+        // The F/A-18E's, with its wing stores.
+        let f = RemotePilot {
+            helicopter: false,
+            gunship: false,
+            seahawk: false,
+            hornet: true,
+            stores: vec![(0, 1), (1, 1), (255, 0), (17, 1), (255, 0), (1, 1), (0, 1)],
+            ..h
+        };
+        let w = WorldFast { pilots: vec![f.clone()], ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().pilots, vec![f]);
     }
 }

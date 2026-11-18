@@ -206,6 +206,11 @@ aircraft-f16 =
         Pesawat tempur multiperan
         Kelas Mach 2, 9 g, roll cepat
         Kokpit F-16 dengan RWR
+aircraft-fa18e =
+    .facts =
+        Pesawat tempur multiperan, dari kapal induk
+        Mach 1,6 – 7,5 g
+        Kokpit kaca, UFC layar sentuh
 aircraft-tornado =
     .facts =
         Pesawat serang terbang rendah

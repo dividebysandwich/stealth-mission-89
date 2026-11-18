@@ -206,6 +206,11 @@ aircraft-f16 =
         다목적 전투기
         마하 2급, 9 g, 빠른 롤
         RWR이 있는 F-16 조종석
+aircraft-fa18e =
+    .facts =
+        다목적 전투기, 항공모함에서 출격
+        마하 1.6, 7.5 g
+        글라스 콕핏, 터치스크린 UFC
 aircraft-tornado =
     .facts =
         저고도 타격기

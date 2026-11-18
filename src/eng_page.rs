@@ -238,7 +238,9 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
             thin_bars(c, (8.0, top, w - 8.0, bottom - 12.0), e, &ah64_groups(e));
         }
         AircraftKind::OH58 => half_dials(c, w, top, e),
-        AircraftKind::RAH66 | AircraftKind::F22 => thick_bars(c, w, top, bottom - 12.0, e),
+        AircraftKind::RAH66 | AircraftKind::F22 | AircraftKind::FA18E => {
+            thick_bars(c, w, top, bottom - 12.0, e)
+        }
         AircraftKind::C5 => four_columns(c, w, top, bottom - 12.0, e, JET_LABELS),
         AircraftKind::AC130 => four_columns(c, w, top, bottom - 12.0, e, TURBOPROP_LABELS),
     }
@@ -965,8 +967,10 @@ mod tests {
         }
         for (i, (k1, p1)) in pages.iter().enumerate() {
             for (k2, p2) in &pages[i + 1..] {
-                // The F-22's own page is avionics' (this one is the RAH-66's fallback).
-                if *k1 != AircraftKind::F22 && *k2 != AircraftKind::F22 {
+                // The F-22's own page is avionics' (this one is the RAH-66's fallback); the
+                // F/A-18E shares the RAH-66's two thick bars.
+                let own = |k: &AircraftKind| matches!(k, AircraftKind::F22 | AircraftKind::FA18E);
+                if !own(k1) && !own(k2) {
                     assert_ne!(p1, p2, "{k1:?} and {k2:?} look the same");
                 }
             }

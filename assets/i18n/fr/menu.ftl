@@ -206,6 +206,11 @@ aircraft-f16 =
         Chasseur multirôle
         Classe Mach 2, 9 g, roulis rapide
         Cockpit de F-16 avec RWR
+aircraft-fa18e =
+    .facts =
+        Chasseur multirôle, depuis les porte-avions
+        Mach 1,6 – 7,5 g
+        Cockpit tout écran, UFC tactile
 aircraft-tornado =
     .facts =
         Avion d'attaque à basse altitude

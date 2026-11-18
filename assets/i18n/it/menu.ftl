@@ -206,6 +206,11 @@ aircraft-f16 =
         Caccia multiruolo
         Classe Mach 2, 9 g, rollio rapido
         Cockpit dell'F-16 con RWR
+aircraft-fa18e =
+    .facts =
+        Caccia multiruolo, dalle portaerei
+        Mach 1,6 – 7,5 g
+        Cabina glass cockpit, UFC touchscreen
 aircraft-tornado =
     .facts =
         Aereo d'attacco a bassa quota

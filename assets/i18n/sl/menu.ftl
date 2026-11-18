@@ -206,6 +206,11 @@ aircraft-f16 =
         Večnamenski lovec
         Razred Mach 2, 9 g, hitro kotaljenje
         Kabina F-16 z RWR
+aircraft-fa18e =
+    .facts =
+        Večnamenski lovec, z letalonosilk
+        Mach 1,6 – 7,5 g
+        Stekleni kokpit, UFC na dotik
 aircraft-tornado =
     .facts =
         Jurišno letalo za nizko letenje

@@ -206,6 +206,11 @@ aircraft-f16 =
         Wielozadaniowy myśliwiec
         Klasa Mach 2, 9 g, szybki przechył
         Kokpit F-16 z RWR
+aircraft-fa18e =
+    .facts =
+        Wielozadaniowy myśliwiec, z lotniskowców
+        Mach 1,6 – 7,5 g
+        Szklany kokpit, dotykowy UFC
 aircraft-tornado =
     .facts =
         Samolot uderzeniowy do lotów na małej wysokości

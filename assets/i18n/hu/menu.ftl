@@ -206,6 +206,11 @@ aircraft-f16 =
         Sokoldalú vadászgép
         Mach 2 kategória, 9 g, gyors orsózás
         F-16 pilótafülke RWR-rel
+aircraft-fa18e =
+    .facts =
+        Sokoldalú vadászgép, a repülőgép-hordozókról
+        Mach 1,6 – 7,5 g
+        Üvegpilótafülke, érintőképernyős UFC
 aircraft-tornado =
     .facts =
         Kis magasságú csapásmérő repülőgép

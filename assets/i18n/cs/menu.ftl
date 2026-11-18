@@ -206,6 +206,11 @@ aircraft-f16 =
         Víceúčelová stíhačka
         Třída Mach 2, 9 g, rychlé klonění
         Kokpit F-16 s RWR
+aircraft-fa18e =
+    .facts =
+        Víceúčelová stíhačka, z letadlových lodí
+        Mach 1,6 – 7,5 g
+        Skleněný kokpit, dotykový UFC
 aircraft-tornado =
     .facts =
         Útočný letoun pro nízké výšky

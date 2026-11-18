@@ -425,9 +425,13 @@ mod tests {
     /// (tools/models/aircraft.py rebuilt after a change to src/loadout.rs).
     #[test]
     fn every_station_hangs_its_stores() {
-        for kind in
-            [AircraftKind::F16, AircraftKind::Tornado, AircraftKind::A10, AircraftKind::AV8B]
-        {
+        for kind in [
+            AircraftKind::F16,
+            AircraftKind::FA18E,
+            AircraftKind::Tornado,
+            AircraftKind::A10,
+            AircraftKind::AV8B,
+        ] {
             let hung = stations(kind.spec().model).unwrap_or_else(|| panic!("{kind:?}"));
             let lay = crate::loadout::layout(kind, false);
             assert_eq!(hung.len(), lay.hardpoints.len(), "{kind:?}");

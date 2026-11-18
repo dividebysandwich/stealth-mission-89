@@ -22,6 +22,7 @@ pub const RAH66: i32 = 41;
 pub const OH58: i32 = 42;
 pub const CH47: i32 = 43;
 pub const AH64: i32 = 44;
+pub const FA18E: i32 = 46;
 
 /// The other side's ground units this close to a CAS flight's point are its targets (map
 /// units, 5 km).

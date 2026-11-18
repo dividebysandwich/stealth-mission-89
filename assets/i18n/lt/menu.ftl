@@ -206,6 +206,11 @@ aircraft-f16 =
         Daugiafunkcis naikintuvas
         Mach 2 klasės, 9 g, greitas posvyris
         F-16 kabina su RWR
+aircraft-fa18e =
+    .facts =
+        Daugiafunkcis naikintuvas, iš lėktuvnešių
+        Mach 1,6 – 7,5 g
+        Stiklinė kabina, jutiklinis UFC
 aircraft-tornado =
     .facts =
         Žemo aukščio smūgio orlaivis

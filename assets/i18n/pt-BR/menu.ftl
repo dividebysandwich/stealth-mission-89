@@ -206,6 +206,11 @@ aircraft-f16 =
         Caça multifunção
         Classe Mach 2, 9 g, rolamento rápido
         Cockpit de F-16 com RWR
+aircraft-fa18e =
+    .facts =
+        Caça multifunção, a partir dos porta-aviões
+        Mach 1,6 – 7,5 g
+        Cabine digital, UFC sensível ao toque
 aircraft-tornado =
     .facts =
         Aeronave de ataque em baixa altitude

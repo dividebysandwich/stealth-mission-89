@@ -206,6 +206,11 @@ aircraft-f16 =
         多用途戦闘機
         マッハ 2 級、9 g、素早いロール
         RWR 付きの F-16 コックピット
+aircraft-fa18e =
+    .facts =
+        多用途戦闘機、空母から発艦
+        マッハ 1.6、7.5 g
+        グラスコックピット、タッチスクリーン UFC
 aircraft-tornado =
     .facts =
         低空侵攻攻撃機

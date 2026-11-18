@@ -206,6 +206,11 @@ aircraft-f16 =
         Ġellied multirole
         Klassi Mach 2, 9 g, roll veloċi
         Kokpit F-16 bl-RWR
+aircraft-fa18e =
+    .facts =
+        Ġellied multirole, mill-ġarrieri tal-ajruplani
+        Mach 1.6, 7.5 g
+        Cockpit tal-ħġieġ, UFC bil-mess
 aircraft-tornado =
     .facts =
         Ajruplan ta' strike f'altitudni baxxa

@@ -73,6 +73,8 @@ pub struct RemotePilot {
     pub apache: bool,
     /// The MH-60R Seahawk (with `helicopter`).
     pub seahawk: bool,
+    /// The F/A-18E.
+    pub hornet: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -96,8 +98,8 @@ pub struct RemotePilot {
 /// A-10, RAH-66, AV-8B, OH-58D, CH-47),
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
 /// the nozzle angle, the OH-58D's pylons (left in the low four bits), a jet's stores, more
-/// aircraft types (bit 0 the F-22A, bit 1 the C-5, bit 2 the AC-130, bit 3 the AH-64), the
-/// catapult launch.
+/// aircraft types (bit 0 the F-22A, bit 1 the C-5, bit 2 the AC-130, bit 3 the AH-64, bit 4
+/// the MH-60R, bit 5 the F/A-18E), the catapult launch.
 
 #[derive(Serialize, Deserialize)]
 struct RemoteWire(
@@ -151,9 +153,12 @@ impl From<RemotePilot> for RemoteWire {
             p.nozzle,
             p.pylons[0].min(15) | p.pylons[1].min(15) << 4,
             p.stores,
-            p.raptor as u8 | (p.galaxy as u8) << 1 | (p.spectre as u8) << 2
+            p.raptor as u8
+                | (p.galaxy as u8) << 1
+                | (p.spectre as u8) << 2
                 | (p.apache as u8) << 3
-                | (p.seahawk as u8) << 4,
+                | (p.seahawk as u8) << 4
+                | (p.hornet as u8) << 5,
             p.catapult,
         )
     }
@@ -226,6 +231,7 @@ impl From<RemoteWire> for RemotePilot {
             spectre: kinds & 4 != 0,
             apache: kinds & 8 != 0,
             seahawk: kinds & 16 != 0,
+            hornet: kinds & 32 != 0,
             gun_aim,
             catapult,
             chute,
@@ -438,6 +444,7 @@ impl Sim {
                     spectre: p.spectre,
                     apache: p.apache,
                     seahawk: p.seahawk,
+                    hornet: p.hornet,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

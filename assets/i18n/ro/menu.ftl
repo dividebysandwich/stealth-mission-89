@@ -206,6 +206,11 @@ aircraft-f16 =
         Avion de vânătoare multirol
         Clasa Mach 2, 9 g, ruliu rapid
         Cockpit F-16 cu RWR
+aircraft-fa18e =
+    .facts =
+        Avion de vânătoare multirol, de pe portavioane
+        Mach 1,6 – 7,5 g
+        Cockpit digital, UFC cu ecran tactil
 aircraft-tornado =
     .facts =
         Aeronavă de lovitură la joasă înălțime

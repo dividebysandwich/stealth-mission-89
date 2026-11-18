@@ -206,6 +206,11 @@ aircraft-f16 =
         Mitmeotstarbeline hävitaja
         Mach 2 klass, 9 g, kiire rull
         F-16 cockpit RWR-iga
+aircraft-fa18e =
+    .facts =
+        Mitmeotstarbeline hävitaja, lennukikandjatelt
+        Mach 1,6 – 7,5 g
+        Klaaskokpit, puutetundlik UFC
 aircraft-tornado =
     .facts =
         Madallennu ründelennuk

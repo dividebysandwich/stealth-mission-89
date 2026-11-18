@@ -682,6 +682,9 @@ pub struct Airframe {
     /// operator's console ([`crate::crew`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub seahawk: bool,
+    /// The F/A-18E Super Hornet (external stores, as the F-16).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hornet: bool,
 }
 
 /// Landing option.
@@ -756,6 +759,9 @@ pub struct SimOptions {
     /// The aircraft is the MH-60R Seahawk.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub seahawk: bool,
+    /// The aircraft is the F/A-18E Super Hornet: seen as one by the other pilots.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub hornet: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -810,6 +816,7 @@ impl Default for SimOptions {
             spectre: false,
             apache: false,
             seahawk: false,
+            hornet: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

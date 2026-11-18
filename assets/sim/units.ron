@@ -93,6 +93,8 @@
         (id: "ah64", name: "AH-64D", nato: "Apache", kmh: 293, radius_km: 240, agility: 2, radar: "none", model: 77, kind: Helicopter),
         // The drone command center's X-12 jet interceptor (appended: the types are numbered in order).
         (id: "x12", name: "X-12", nato: "X-12", kmh: 700, radius_km: 63, agility: 4, radar: "none", model: 106, kind: Drone),
+        // The F/A-18E Super Hornet, a player's aircraft (appended).
+        (id: "fa18e", name: "F/A-18E", nato: "Super Hornet", mach: 1.6, radius_km: 720, agility: 5, radar: "friendly", model: 79),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,

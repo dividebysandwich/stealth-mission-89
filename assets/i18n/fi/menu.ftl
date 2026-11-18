@@ -206,6 +206,11 @@ aircraft-f16 =
         Monitoimihävittäjä
         Mach 2 -luokka, 9 g, nopea kallistus
         F-16-ohjaamo RWR:llä
+aircraft-fa18e =
+    .facts =
+        Monitoimihävittäjä, lentotukialuksilta
+        Mach 1,6 – 7,5 g
+        Lasiohjaamo, kosketusnäyttö-UFC
 aircraft-tornado =
     .facts =
         Matalalento-iskukone

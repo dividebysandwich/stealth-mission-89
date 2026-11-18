@@ -401,6 +401,52 @@ impl Aero {
         vtol: None,
     };
 
+    /// The F/A-18E: two F414s (about 26,000 lbf dry, 44,000 lbf with the afterburners) on
+    /// 47,000 lb, 500 ft^2 of wing with big leading edge extensions, so it flies to a high angle
+    /// of attack and comes aboard slowly with its flaps down; draggy through the transonic
+    /// (its stores hang canted), Mach 1.6 at most, 7.5 g.
+    pub const FA18E: Aero = Aero {
+        wing_loading: 100.0,
+        dry_weight: 32_000.0,
+        ref_weight: 47_000.0,
+        thrust_ratio: 0.55,
+        ab_thrust_ratio: 0.94,
+        ab_thrust_mach: 0.5,
+        thrust_mach: 0.0,
+        cl_alpha: 4.4,
+        alpha_stall: 0.62,
+        alpha_stall_neg: -0.30,
+        alpha_limit: 0.55,
+        alpha_limit_neg: -0.25,
+        cl_flaps: 0.38,
+        alpha_flaps: 0.04,
+        cd0: 0.024,
+        cd_k: 0.12,
+        cd_sep: 0.45,
+        cl_sep: 1.3,
+        cd_gear: 0.02,
+        cd_flaps: 0.05,
+        cd_speed_brake: 0.10,
+        cd_bay: 0.0,
+        cd_idle: 0.022,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Supersonic {
+            start: 0.82,
+            peak_mach: 1.1,
+            peak: 0.048,
+            supersonic: 0.027,
+        },
+        n_max: 7.5,
+        n_min: -3.0,
+        roll_rate: 3.5,
+        pitch_rate_max: 0.8,
+        push_rate: 0.6,
+        yaw_rate_max: 0.7,
+        rotate_rate: ROTATE_RATE,
+        swing_wing: None,
+        vtol: None,
+    };
+
     pub const TORNADO: Aero = Aero {
         wing_loading: 147.0,
         dry_weight: 31_000.0,

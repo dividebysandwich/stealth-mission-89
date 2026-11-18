@@ -919,6 +919,7 @@ fn callsign(kind: crate::aircraft::AircraftKind, (flight, position): (u8, u8)) -
         K::OH58 => "Kiowa",
         K::CH47 => "Chinook",
         K::F22 => "Raptor",
+        K::FA18E => "Rhino",
         K::C5 => "Reach",
         K::AC130 => "Spectre",
         K::AH64 => "Apache",

@@ -1157,6 +1157,31 @@ static F22_STATIONS: [Hardpoint; 4] = [
     bay("hardpoint-f22-right-side-bay", "RS", 1.75, 8.85, false, 0, &SIDEWINDER)
         .carrying(&F22_SIDE_QTY),
 ];
+/// The F/A-18E's wing pylons take anything but the camera and the cargo, its outer ones the
+/// lighter stores and the air-to-air missiles; AMRAAMs on the nacelle stations, the camera pod,
+/// a tank or the cargo on the centreline; Sidewinders on the wingtips.
+const FA18E_OUTER: [u8; 15] = [0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, CBU105];
+const FA18E_WING: [u8; 18] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105];
+const FA18E_NACELLE: [u8; 1] = [1];
+/// The middle wing pylons' Fireyes and fuel-air bombs one to a pylon: a rack of them reaches
+/// the inner pylon's (tools/models/store_clearance.py).
+const FA18E_MID_QTY: [(u8, u8); 2] = [(12, 1), (14, 1)];
+/// The F/A-18E's stations 1 (left wingtip) to 11 (right wingtip).
+static FA18E_STATIONS: [Hardpoint; 11] = [
+    pylon("hardpoint-station-1-left-wingtip", "1", -6.78, 11.80, Some(10), &SIDEWINDER),
+    pylon("hardpoint-station-2-left-outer-wing", "2", -4.60, 11.75, Some(9), &FA18E_OUTER),
+    pylon("hardpoint-station-3-left-wing", "3", -3.45, 11.40, Some(8), &FA18E_WING)
+        .carrying(&FA18E_MID_QTY),
+    pylon("hardpoint-station-4-left-inner-wing", "4", -2.30, 11.10, Some(7), &FA18E_WING),
+    pylon("hardpoint-a10-5-left-fuselage", "5", -0.85, 9.90, Some(6), &FA18E_NACELLE),
+    pylon("hardpoint-a10-6-centreline", "6", 0.00, 10.60, None, &CENTRE),
+    pylon("hardpoint-a10-7-right-fuselage", "7", 0.85, 9.90, Some(4), &FA18E_NACELLE),
+    pylon("hardpoint-fa18e-8-right-inner-wing", "8", 2.30, 11.10, Some(3), &FA18E_WING),
+    pylon("hardpoint-a10-9-right-wing", "9", 3.45, 11.40, Some(2), &FA18E_WING)
+        .carrying(&FA18E_MID_QTY),
+    pylon("hardpoint-fa18e-10-right-outer-wing", "10", 4.60, 11.75, Some(1), &FA18E_OUTER),
+    pylon("hardpoint-fa18e-11-right-wingtip", "11", 6.78, 11.80, Some(0), &SIDEWINDER),
+];
 static F22_LAYOUT: Layout =
     Layout { outline: F22_OUTLINE, half_span: 6.76, length: 18.62, hardpoints: &F22_STATIONS };
 static TORNADO_LAYOUT: Layout = Layout {
@@ -1174,6 +1199,64 @@ static AH1Z_STATIONS: [Hardpoint; 6] = [
     pylon("hardpoint-station-5-right-outer-pylon", "5", 1.75, 5.5, Some(1), &HELLFIRES),
     pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.30, 5.6, Some(0), &SIDEWINDER),
 ];
+/// aircraft_079 (tools/models/aircraft.py `fa18e`) seen from above: half span 6.80 m, length
+/// 18.14 m.
+const FA18E_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.26, 0.58),
+    (0.36, 1.10),
+    (0.52, 4.36),
+    (1.34, 5.98),
+    (1.86, 8.08),
+    (1.92, 9.04),
+    (4.68, 10.40),
+    (4.88, 10.40),
+    (6.50, 11.28),
+    (6.72, 11.26),
+    (6.72, 10.28),
+    (6.80, 10.28),
+    (6.80, 13.20),
+    (1.34, 13.44),
+    (1.34, 13.64),
+    (1.88, 14.82),
+    (1.88, 15.00),
+    (3.70, 16.88),
+    (3.70, 17.94),
+    (3.16, 18.14),
+    (1.14, 17.08),
+    (0.92, 17.08),
+    (0.90, 17.28),
+    (0.16, 17.28),
+    (0.12, 16.40),
+    (0.00, 16.38),
+    (-0.12, 16.40),
+    (-0.16, 17.28),
+    (-0.90, 17.28),
+    (-0.92, 17.08),
+    (-1.14, 17.08),
+    (-3.16, 18.14),
+    (-3.70, 17.94),
+    (-3.70, 16.88),
+    (-1.88, 15.00),
+    (-1.88, 14.82),
+    (-1.34, 13.64),
+    (-1.34, 13.44),
+    (-6.80, 13.20),
+    (-6.80, 10.28),
+    (-6.72, 10.28),
+    (-6.72, 11.26),
+    (-6.50, 11.28),
+    (-4.88, 10.40),
+    (-4.68, 10.40),
+    (-1.92, 9.04),
+    (-1.86, 8.08),
+    (-1.34, 5.98),
+    (-0.52, 4.36),
+    (-0.36, 1.10),
+    (-0.26, 0.58),
+];
+static FA18E_LAYOUT: Layout =
+    Layout { outline: FA18E_OUTLINE, half_span: 6.80, length: 18.14, hardpoints: &FA18E_STATIONS };
 /// aircraft_075 (tools/models/aircraft.py `f22`) seen from above, the bays shut: half span 6.76
 /// m, length 18.62 m.
 const F22_OUTLINE: &[(f32, f32)] = &[
@@ -1504,6 +1587,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::A10 => &A10_LAYOUT,
         AircraftKind::AV8B => &AV8B_LAYOUT,
         AircraftKind::F22 => &F22_LAYOUT,
+        AircraftKind::FA18E => &FA18E_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::MH60R => &MH60R_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
@@ -1579,8 +1663,13 @@ impl PlannedLoadout {
                     *s = h.loads.first().copied();
                 }
             }
-            AircraftKind::F16 | AircraftKind::Tornado | AircraftKind::A10 | AircraftKind::AV8B => {
+            AircraftKind::F16
+            | AircraftKind::FA18E
+            | AircraftKind::Tornado
+            | AircraftKind::A10
+            | AircraftKind::AV8B => {
                 let tornado = aircraft == AircraftKind::Tornado;
+                let hornet = aircraft == AircraftKind::FA18E;
                 let a10 = aircraft == AircraftKind::A10;
                 let harrier = aircraft == AircraftKind::AV8B;
                 // The mission's camera or cargo first: its station must not be blocked.
@@ -1595,6 +1684,12 @@ impl PlannedLoadout {
                         4 if harrier => &[3],
                         5 if harrier => &[1, 2],
                         _ if harrier => &[2, 3, 1],
+                        0 if hornet => &[0, 1, 2],
+                        1 if hornet => &[4, 1, 2],
+                        16 | 18 if hornet => &[5],
+                        17 if hornet => &[5, 3],
+                        4 if hornet => &[3, 2],
+                        _ if hornet => &[3, 2, 1],
                         0 if a10 => &[0],
                         16 | 18 if a10 => &[5],
                         17 if a10 => &[3],

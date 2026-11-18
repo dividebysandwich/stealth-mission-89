@@ -206,6 +206,11 @@ aircraft-f16 =
         Mångsidigt jaktflygplan
         Mach 2-klass, 9 g, snabb rullning
         F-16-cockpit med RWR
+aircraft-fa18e =
+    .facts =
+        Mångsidigt jaktflygplan, från hangarfartygen
+        Mach 1,6 – 7,5 g
+        Glascockpit, pekskärms-UFC
 aircraft-tornado =
     .facts =
         Attackflygplan för låg höjd

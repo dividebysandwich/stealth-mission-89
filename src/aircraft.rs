@@ -26,6 +26,7 @@ pub enum AircraftKind {
     AC130,
     AH64,
     MH60R,
+    FA18E,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -297,6 +298,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         32 => Some(A10_LIFT - RUNWAY_Y),
         47 => Some(HARRIER_LIFT - RUNWAY_Y),
         75 => Some(F22_LIFT - RUNWAY_Y),
+        79 => Some(FA18E_LIFT - RUNWAY_Y),
         30 => Some(C5_LIFT - RUNWAY_Y),
         76 => Some(C130_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
@@ -323,6 +325,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         77 => ah64_point(0.0, 4.05, 1.35) - Vec3::Y * AH64_LIFT,
         49 => ch47_point(0.0, 6.4, 1.38) - Vec3::Y * CH47_LIFT,
         75 => f22_point(0.0, 5.30, -1.05) - Vec3::Y * F22_LIFT,
+        79 => fa18e_point(0.0, 5.75, -0.50) - Vec3::Y * FA18E_LIFT,
         30 => c5_point(0.0, 27.0, -3.9) - Vec3::Y * C5_LIFT,
         76 => c130_point(0.0, 11.35, -2.0) - Vec3::Y * C130_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
@@ -983,6 +986,55 @@ static F22: AircraftSpec = AircraftSpec {
     flight: FlightConstants::f22,
 };
 
+/// The F/A-18E's wheels are 1.80 m below its model origin (tools/models/aircraft.py
+/// `FA18E_GROUND`).
+const FA18E_LIFT: f32 = 1.80 + RUNWAY_Y;
+/// A point of the F/A-18E's builder (tools/models/aircraft.py `fa18e`: metres, x right, s aft
+/// of the nose, z up from the nose tip) in the aircraft frame: the model is centred on its
+/// length, its middle 9.085 m behind the nose.
+const fn fa18e_point(x: f32, s: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(FA18E_LIFT, x * K, z * K, -(9.085 - s) * K)
+}
+
+static FA18E: AircraftSpec = AircraftSpec {
+    model: "aircraft_079",
+    model_lift: FA18E_LIFT,
+    // Under the bubble (s 3.2..6.4 m, sill z 0.93..1.00, top 1.59 m), 0.34 m under its top.
+    eye: fa18e_point(0.0, 5.00, 1.25),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        cut: (Vec3::new(-0.45, -1.15, -1.25), Vec3::new(0.45, 0.40, 0.80)),
+        two_sided: false,
+        parts: false,
+    }),
+    cockpits: &[(PanelStyle::F16, "cockpit_f16")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    hud_scale: 2080.0,
+    vr_hud_scale: 2080.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::Hmcs,
+    // The M61 in the nose's top, ahead of the windscreen.
+    muzzle: Some(fa18e_point(0.0, 1.0, 0.42)),
+    sight: None,
+    // Between the two nozzles.
+    exhaust: fa18e_point(0.0, 17.3, 0.24),
+    nozzles: &[fa18e_point(0.55, 17.3, 0.24), fa18e_point(-0.55, 17.3, 0.24)],
+    nozzle_radius: 0.36,
+    nozzle_rect: None,
+    swing_wing: false,
+    vtol: false,
+    ground_radar: true,
+    asw: false,
+    gunner_seat: None,
+    console: None,
+    flight: FlightConstants::fa18e,
+};
+
 /// The C-5's wheels are 5.72 m below its model origin (tools/models/aircraft.py `C5_GROUND`).
 const C5_LIFT: f32 = 5.72 + RUNWAY_Y;
 /// A point of the C-5's builder (tools/models/aircraft.py `c5`: metres, x right, y forward from
@@ -1163,10 +1215,11 @@ impl AircraftKind {
         matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
     }
 
-    pub const ALL: [AircraftKind; 15] = [
+    pub const ALL: [AircraftKind; 16] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::F22,
+        AircraftKind::FA18E,
         AircraftKind::Tornado,
         AircraftKind::A10,
         AircraftKind::AV8B,
@@ -1205,6 +1258,8 @@ impl AircraftKind {
             AircraftKind::AV8B
         } else if p.raptor {
             AircraftKind::F22
+        } else if p.hornet {
+            AircraftKind::FA18E
         } else if p.galaxy {
             AircraftKind::C5
         } else if p.spectre {
@@ -1233,6 +1288,7 @@ impl AircraftKind {
             AircraftKind::AC130 => &AC130,
             AircraftKind::AH64 => &AH64,
             AircraftKind::MH60R => &MH60R,
+            AircraftKind::FA18E => &FA18E,
         }
     }
 
@@ -1254,6 +1310,7 @@ impl AircraftKind {
             AircraftKind::AC130 => "ac130",
             AircraftKind::AH64 => "ah64",
             AircraftKind::MH60R => "mh60r",
+            AircraftKind::FA18E => "fa18e",
         }
     }
 
@@ -1278,6 +1335,10 @@ impl AircraftKind {
                     && *k == AircraftKind::OH58)
                 || (matches!(s.as_str(), "chinook" | "ch47f" | "ch47d") && *k == AircraftKind::CH47)
                 || (matches!(s.as_str(), "f22a" | "raptor") && *k == AircraftKind::F22)
+                || (matches!(
+                    s.as_str(),
+                    "f18" | "f18e" | "fa18" | "f/a18e" | "superhornet" | "hornet"
+                ) && *k == AircraftKind::FA18E)
                 || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m")
                     && *k == AircraftKind::C5)
                 || (matches!(s.as_str(), "c130" | "gunship" | "spectre" | "ac130h" | "ac130u")
@@ -1302,6 +1363,7 @@ impl AircraftKind {
             AircraftKind::AC130 => "AC-130 Spectre",
             AircraftKind::AH64 => "AH-64D Apache",
             AircraftKind::MH60R => "MH-60R Seahawk",
+            AircraftKind::FA18E => "F/A-18E Super Hornet",
         }
     }
 }
@@ -1372,6 +1434,7 @@ mod tests {
             AircraftKind::A10,
             AircraftKind::AV8B,
             AircraftKind::F22,
+            AircraftKind::FA18E,
         ] {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(

@@ -206,6 +206,11 @@ aircraft-f16 =
         Daudzfunkcionāls iznīcinātājs
         Mach 2 klase, 9 g, ātra ruļļošanās
         F-16 kabīne ar RWR
+aircraft-fa18e =
+    .facts =
+        Daudzfunkcionāls iznīcinātājs, no aviācijas bāzeskuģiem
+        Mach 1,6 – 7,5 g
+        Stikla kabīne, skārienjutīgs UFC
 aircraft-tornado =
     .facts =
         Zemlidojuma triecienlidmašīna

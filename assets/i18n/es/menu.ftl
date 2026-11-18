@@ -206,6 +206,11 @@ aircraft-f16 =
         Caza polivalente
         Clase Mach 2, 9 g, alabeo rápido
         Cabina de F-16 con RWR
+aircraft-fa18e =
+    .facts =
+        Caza polivalente, desde los portaaviones
+        Mach 1,6 – 7,5 g
+        Cabina de cristal, UFC táctil
 aircraft-tornado =
     .facts =
         Avión de ataque a baja cota

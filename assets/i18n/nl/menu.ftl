@@ -206,6 +206,11 @@ aircraft-f16 =
         Multirole-jager
         Klasse Mach 2, 9 g, snelle rol
         F-16-cockpit met RWR
+aircraft-fa18e =
+    .facts =
+        Multirole-jager, vanaf de vliegdekschepen
+        Mach 1,6 – 7,5 g
+        Glazen cockpit, touchscreen-UFC
 aircraft-tornado =
     .facts =
         Aanvalsvliegtuig voor lage hoogte

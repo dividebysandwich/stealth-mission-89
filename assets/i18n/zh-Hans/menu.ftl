@@ -206,6 +206,11 @@ aircraft-f16 =
         多用途战斗机
         2 马赫级，9 g，滚转迅速
         带 RWR 的 F-16 座舱
+aircraft-fa18e =
+    .facts =
+        多用途战斗机，从航母起飞
+        1.6 马赫，7.5 g
+        玻璃座舱，触摸屏 UFC
 aircraft-tornado =
     .facts =
         低空突击机

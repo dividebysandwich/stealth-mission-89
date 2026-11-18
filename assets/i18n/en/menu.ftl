@@ -206,6 +206,11 @@ aircraft-f16 =
         Multirole fighter
         Mach 2 class, 9 g, quick roll
         F-16 cockpit with RWR
+aircraft-fa18e =
+    .facts =
+        Multirole fighter, from the carriers
+        Mach 1.6, 7.5 g
+        Glass cockpit, touchscreen UFC
 aircraft-tornado =
     .facts =
         Low-level strike aircraft

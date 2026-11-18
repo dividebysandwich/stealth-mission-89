@@ -206,6 +206,11 @@ aircraft-f16 =
         Mehrzweckjäger
         Mach-2-Klasse, 9 g, schnelle Rolle
         F-16-Cockpit mit RWR
+aircraft-fa18e =
+    .facts =
+        Mehrzweckjäger, von den Flugzeugträgern
+        Mach 1,6 – 7,5 g
+        Glascockpit, Touchscreen-UFC
 aircraft-tornado =
     .facts =
         Angriffsflugzeug für den Tiefflug

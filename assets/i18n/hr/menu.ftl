@@ -206,6 +206,11 @@ aircraft-f16 =
         Višenamjenski lovac
         Klasa Mach 2, 9 g, brzo valjanje
         Kokpit F-16 s RWR-om
+aircraft-fa18e =
+    .facts =
+        Višenamjenski lovac, s nosača zrakoplova
+        Mach 1,6 – 7,5 g
+        Stakleni kokpit, UFC na dodir
 aircraft-tornado =
     .facts =
         Jurišni zrakoplov za niske visine

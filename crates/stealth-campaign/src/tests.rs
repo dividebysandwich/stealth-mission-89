@@ -1645,6 +1645,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::CH47,
         Aircraft::F22,
         Aircraft::AH64,
+        Aircraft::FA18E,
     ];
     for k in kinds {
         for last in all {
@@ -1678,6 +1679,11 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Cap.pick(Aircraft::F22), Aircraft::F22);
     assert_eq!(Strike.pick(Aircraft::F22), Aircraft::F22);
     assert_eq!(Cas.pick(Aircraft::F22), Aircraft::A10);
+    // The F/A-18E flies the fighters' and the strike missions, close support too.
+    assert_eq!(Cap.pick(Aircraft::FA18E), Aircraft::FA18E);
+    assert_eq!(AntiShip.pick(Aircraft::FA18E), Aircraft::FA18E);
+    assert_eq!(Cas.pick(Aircraft::FA18E), Aircraft::FA18E);
+    assert_eq!(Csar.pick(Aircraft::FA18E), Aircraft::UH60);
     assert_eq!(Insertion.pick(Aircraft::CH47), Aircraft::UH60);
     assert_eq!(Csar.pick(Aircraft::CH47), Aircraft::UH60);
     assert_eq!(Strike.pick(Aircraft::CH47), Aircraft::F117);

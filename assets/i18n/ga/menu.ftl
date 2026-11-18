@@ -206,6 +206,11 @@ aircraft-f16 =
         Trodaire il-róil
         Aicme Mach 2, 9 g, rolladh tapa
         Cockpit F-16 le RWR
+aircraft-fa18e =
+    .facts =
+        Trodaire il-róil, ó na hiompróirí
+        Mach 1.6, 7.5 g
+        Cockpit gloine, UFC tadhaill
 aircraft-tornado =
     .facts =
         Aerárthach ionsaithe ísealairde

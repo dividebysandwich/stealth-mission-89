@@ -53,6 +53,8 @@ pub enum Aircraft {
     /// The MH-60R Seahawk: the anti-submarine helicopter, from the carriers, with a sensor
     /// operator's console (multi-crew).
     MH60R,
+    /// The F/A-18E Super Hornet: the carriers' multirole jet, stores on its wings.
+    FA18E,
 }
 
 impl Aircraft {
@@ -73,6 +75,7 @@ impl Aircraft {
             Aircraft::AC130 => "AC-130",
             Aircraft::AH64 => "AH-64D",
             Aircraft::MH60R => "MH-60R",
+            Aircraft::FA18E => "F/A-18E",
         }
     }
 
@@ -323,14 +326,16 @@ impl MissionKind {
     pub fn suited(self) -> &'static [Aircraft] {
         use Aircraft::*;
         match self {
-            MissionKind::Recon | MissionKind::Strike => &[F117, F16, Tornado, A10, AV8B, F22],
-            MissionKind::AntiShip => &[F117, F16, Tornado, F22],
-            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22],
-            MissionKind::Sead => &[F16, Tornado, F117, F22],
-            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22],
-            MissionKind::Intercept => &[F16, F22, AH1Z, AH64, RAH66, OH58],
-            MissionKind::Cas => &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, Tornado, F117],
-            MissionKind::Escort => &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, A10],
+            MissionKind::Recon | MissionKind::Strike => {
+                &[F117, F16, Tornado, A10, AV8B, F22, FA18E]
+            }
+            MissionKind::AntiShip => &[F117, F16, Tornado, F22, FA18E],
+            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22, FA18E],
+            MissionKind::Sead => &[F16, Tornado, F117, F22, FA18E],
+            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22, FA18E],
+            MissionKind::Intercept => &[F16, F22, FA18E, AH1Z, AH64, RAH66, OH58],
+            MissionKind::Cas => &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, FA18E, Tornado, F117],
+            MissionKind::Escort => &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, FA18E, A10],
             MissionKind::Insertion | MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
             MissionKind::Airlift => &[C5],
