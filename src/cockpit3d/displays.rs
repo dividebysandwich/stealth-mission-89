@@ -36,11 +36,12 @@ const TEXT_SCALE: i32 = 3;
 /// Instrument atlas width (texels), and its height but in [`atlas_rows`]' cockpits.
 const ATLAS: usize = 512;
 
-/// The instrument atlas's height (texels): twice the width in the OH-58D's and the MH-60R's
-/// cockpits, whose four MFDs' bezel buttons don't fit the square one.
+/// The instrument atlas's height (texels): twice the width in the OH-58D's, the MH-60R's and the
+/// F/A-18E's cockpits, whose four MFDs' bezel buttons (and the F/A-18E's soft keys) don't fit
+/// the square one.
 fn atlas_rows(style: PanelStyle) -> usize {
     match style {
-        PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r => 2 * ATLAS,
+        PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r | PanelStyle::Fa18e => 2 * ATLAS,
         _ => ATLAS,
     }
 }
@@ -309,7 +310,8 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::Ah64Cpg
         | PanelStyle::Oh58Cpg
         | PanelStyle::Rah66Cpg
-        | PanelStyle::Mh60r => MM_TEXELS,
+        | PanelStyle::Mh60r
+        | PanelStyle::Fa18e => MM_TEXELS,
     }
 }
 
@@ -758,6 +760,11 @@ pub(super) fn update_displays(
                 draw_label(c, &fonts, r, text, fg, bg, t);
                 true
             }
+            // A touchscreen's soft key: lit with the screen.
+            Face::Item(Elem::SoftKey(text)) => {
+                draw_lamp(c, &fonts, r, text, BUTTON.off, k, t);
+                true
+            }
             Face::Item(Elem::Arrow(arrow, fg, bg)) => {
                 draw_arrow(c, r, arrow, fg, bg);
                 true
@@ -840,6 +847,7 @@ mod tests {
             PanelStyle::Oh58Cpg,
             PanelStyle::Rah66Cpg,
             PanelStyle::Mh60r,
+            PanelStyle::Fa18e,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

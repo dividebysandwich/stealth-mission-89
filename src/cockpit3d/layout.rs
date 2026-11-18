@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py` and `build_cockpit_mh60r.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py` and `build_cockpit_fa18e.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -68,6 +68,10 @@ pub enum PanelStyle {
     /// fourth), the caution/advisory panel and standby instruments between them; the two
     /// flight management keyboards and the AFCS panel on the centre console.
     Mh60r,
+    /// The F/A-18E's: the two DDIs high either side of the up-front controller (one glass
+    /// touchscreen) under the HUD, the large centre display under it with the engine and fuel
+    /// display lower left of it and the standby instruments right; a centre stick.
+    Fa18e,
 }
 
 /// A rectangle in panel pixels.
@@ -177,6 +181,9 @@ pub enum Elem {
     Gauge,
     /// Text (lines separated by '\n'), foreground and background colour.
     Label(&'static str, u8, u8),
+    /// A soft key drawn on a touchscreen (the F/A-18E's up-front controller): its legend in a
+    /// green outline on the dark glass, glowing as the screen does.
+    SoftKey(&'static str),
     /// An arrow glyph, foreground and background colour.
     Arrow(Arrow, u8, u8),
     /// Yellow and black warning stripes.
@@ -349,7 +356,8 @@ impl PanelStyle {
             | PanelStyle::C5
             | PanelStyle::Oh58
             | PanelStyle::Oh58Cpg
-            | PanelStyle::Mh60r => 4,
+            | PanelStyle::Mh60r
+            | PanelStyle::Fa18e => 4,
             PanelStyle::Modern | PanelStyle::Tornado | PanelStyle::Ah64Cpg => 3,
             _ => 2,
         }
@@ -378,6 +386,7 @@ impl PanelLayout {
             PanelStyle::Ah64 => Self::ah64(),
             PanelStyle::Ah64Cpg => Self::ah64_cpg(),
             PanelStyle::Mh60r => Self::mh60r(),
+            PanelStyle::Fa18e => Self::fa18e(),
         }
     }
 
@@ -1871,6 +1880,198 @@ impl PanelLayout {
         }
     }
 
+    /// The F/A-18E Super Hornet's panel (millimetres, x right and y down, life size, the origin
+    /// on the centre line 180 mm under the panel's top edge; `tools/models/build_cockpit_fa18e.py`),
+    /// after the Block II's:
+    /// - The up-front controller under the HUD (|x| <= 86, y < -14, raised off the panel): one
+    ///   glass touchscreen, the scratchpad (the `ded`) at its top left over the keypad's soft
+    ///   keys (1-9, CLR 0 ENT, not wired), two columns of option keys right of them (D/L ILS,
+    ///   the channel windows, AP MODE lit with the autopilot, HUD DCLT, TCN = steerpoint, MARK,
+    ///   IFF, HMD lit while the helmet display is on, MENU) and a row along its foot (NVG, VOL,
+    ///   TIME, ORD, EMCON).
+    /// - The left and right DDIs (the left and right MFDs) high either side of it; the large
+    ///   centre display (the third MFD, the HSI at first) under it, between the knees, and the
+    ///   engine and fuel display (the fourth MFD, the engines) lower left of that.
+    /// - Outboard of the left DDI: the fire light and the master caution, the stall and lock
+    ///   lights, the master mode keys (A/A, A/G, NAV), the master arm on its stripes. Outboard
+    ///   of the right DDI: the RWR scope with its keys, the warning and caution lights.
+    /// - Under the left DDI: the gear lights (the handle modelled under them), FLAPS and BRAKE,
+    ///   the target buttons (modelled) at the panel's foot. Right of the centre display: the
+    ///   standby attitude indicator and clock over the airspeed indicator and altimeter, the
+    ///   vertical velocity and AOA tapes beside them; outboard of them the fuel and thrust readouts, the EMV
+    ///   gauge, the countermeasures and the jammers, fuel quantity.
+    pub fn fa18e() -> Self {
+        use Effect as E;
+        use LampId::*;
+        let mut items = Vec::new();
+        let mut put = |elem: Elem, rect: PxRect, cap: Option<Effect>, round: bool| {
+            items.push(Placed { elem, rect, cap, round })
+        };
+        // Unlit legends of the lights the game doesn't drive (amber).
+        const CAUTION: (u8, u8) = (16, 43);
+        let soft = |label| Elem::SoftKey(label);
+        // The up-front controller's glass: the scratchpad over the keypad, the option keys
+        // right of them, a row of keys along its foot.
+        let ded = rect(-82.0, -175.0, 97.0, 97.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32);
+        for (k, label) in
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "CLR", "0", "ENT"].into_iter().enumerate()
+        {
+            let r = rect(-82.0 + 33.0 * (k % 3) as f32, -130.0 + 23.0 * (k / 3) as f32, 31.0, 20.0);
+            put(soft(label), r, None, false);
+        }
+        for (k, (elem, cap)) in [
+            (soft("D/L\nILS"), Some(E::Action(Action::Ils))),
+            (soft("CH 1\n305.0"), None),
+            (Elem::Lamp(Auto, Some("AP\nMODE")), Some(E::Action(Action::Autopilot))),
+            (soft("HUD\nDCLT"), Some(E::Action(Action::HudDeclutter))),
+            (soft("TCN"), Some(E::Action(Action::SelectWaypoint))),
+            (soft("MARK"), Some(E::Action(Action::DesignateTarget))),
+            (soft("IFF"), None),
+            (Elem::Lamp(Hmd, None), Some(E::Action(Action::HmdMode))),
+            (soft("MENU"), Some(E::Action(Action::Menu))),
+            (soft("CH 2\n245.0"), None),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let r = rect(19.0 + 33.0 * (k % 2) as f32, -175.0 + 27.0 * (k / 2) as f32, 31.0, 24.0);
+            put(elem, r, cap, false);
+        }
+        for (k, (label, cap)) in [
+            ("NVG", Some(E::Action(Action::Nvg))),
+            ("VOL", Some(E::Action(Action::Volume))),
+            ("TIME", Some(E::TimeToggle)),
+            ("ORD", Some(E::Action(Action::MissionOrders))),
+            ("EMCON", None),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            put(soft(label), rect(-82.0 + 33.0 * k as f32, -36.0, 31.0, 18.0), cap, false);
+        }
+        // Outboard of the left DDI: the fire light and the master caution, the stall and lock
+        // lights, the master mode keys, the master arm on its stripes.
+        let mc = Some(E::Action(Action::MasterCaution));
+        put(Elem::Lamp(Fire, Some("L ENG\nFIRE")), rect(-366.0, -174.0, 34.0, 16.0), None, false);
+        put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-326.0, -174.0, 40.0, 16.0), mc, false);
+        put(Elem::Lamp(Stall, None), rect(-366.0, -152.0, 34.0, 13.0), None, false);
+        put(Elem::Lamp(Lock, None), rect(-326.0, -152.0, 34.0, 13.0), None, false);
+        for (k, (id, label, mode)) in
+            [(Air, "A/A", 1), (Gnd, "A/G", 2), (Nav, "NAV", 0)].into_iter().enumerate()
+        {
+            let r = rect(-344.0, -132.0 + 18.0 * k as f32, 32.0, 14.0);
+            put(Elem::Lamp(id, Some(label)), r, Some(E::HudMode(mode)), false);
+        }
+        put(Elem::Hazard, rect(-360.0, -72.0, 26.0, 30.0), None, false);
+        put(Elem::Label("MASTER\nARM", 15, 5), rect(-360.0, -38.0, 26.0, 12.0), None, false);
+        put(Elem::Label("EMERG\nJETT", 17, 5), rect(-326.0, -70.0, 30.0, 14.0), None, false);
+        // Outboard of the right DDI: the RWR scope, its keys under it, the warning and caution
+        // lights two across under them.
+        let rwr = rect(290.0, -176.0, 70.0, 70.0);
+        for (k, (id, action)) in
+            [(RwrPri, Action::RwrPriority), (RwrSep, Action::RwrSeparate)].into_iter().enumerate()
+        {
+            let r = rect(298.0 + 30.0 * k as f32, -100.0, 24.0, 14.0);
+            put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
+        }
+        for (k, elem) in [
+            Elem::Lamp(Fire, Some("R ENG\nFIRE")),
+            Elem::Lamp(Eng, Some("ENGINE")),
+            Elem::Lamp(Fc, Some("FCS")),
+            Elem::Lamp(Rad, Some("LAUNCH")),
+            Elem::Lamp(Ir, None),
+            Elem::Lamp(Trak, Some("TRACK")),
+            Elem::Lamp(Jam, None),
+            Elem::Lamp(Av, None),
+            Elem::Lamp(Fuel, None),
+            Elem::Lamp(Bd, None),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let r = rect(288.0 + 38.0 * (k % 2) as f32, -80.0 + 17.0 * (k / 2) as f32, 34.0, 14.0);
+            put(elem, r, None, false);
+        }
+        // Under the left DDI: the gear lights (the handle under them), FLAPS and BRAKE.
+        put(Elem::GearLights, rect(-372.0, 22.0, 40.0, 32.0), None, false);
+        for (k, (id, action)) in
+            [(Flaps, Action::Flaps), (Brake, Action::Brakes)].into_iter().enumerate()
+        {
+            let r = rect(-324.0, 22.0 + 18.0 * k as f32, 38.0, 14.0);
+            put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
+        }
+        put(Elem::Label("HOOK", 15, 5), rect(-324.0, 62.0, 38.0, 10.0), None, false);
+        // Right of the centre display: the standby attitude indicator and the clock over the
+        // airspeed indicator and the altimeter, the vertical velocity and AOA tapes beside them.
+        let adi = rect(110.0, 18.0, 62.0, 62.0);
+        put(Elem::Dial(Dial::Clock), rect(184.0, 26.0, 46.0, 46.0), None, true);
+        put(Elem::Dial(Dial::Airspeed), rect(108.0, 90.0, 44.0, 44.0), None, true);
+        put(Elem::Dial(Dial::Altimeter), rect(156.0, 90.0, 44.0, 44.0), None, true);
+        put(Elem::Dial(Dial::Vvi), rect(208.0, 88.0, 14.0, 48.0), None, false);
+        put(Elem::Dial(Dial::Aoa), rect(228.0, 88.0, 14.0, 48.0), None, false);
+        // Outboard of them: the fuel and thrust readouts, the EMV gauge, the countermeasures
+        // (release caps, counts, released lights) with the jammers, fuel quantity.
+        put(Elem::Led(LedId::Fuel), rect(258.0, 10.0, 40.0, 13.0), None, false);
+        put(Elem::Label("FUEL", 47, 79), rect(300.0, 10.0, 30.0, 13.0), None, false);
+        put(Elem::Lamp(LowFuel, Some("BINGO")), rect(332.0, 10.0, 34.0, 13.0), None, false);
+        put(Elem::Led(LedId::Thrust), rect(258.0, 27.0, 40.0, 13.0), None, false);
+        put(Elem::Label("THRUST", 47, 79), rect(300.0, 27.0, 36.0, 13.0), None, false);
+        put(Elem::Label("EGR\nEAR", 47, 33), rect(258.0, 44.0, 20.0, 13.0), None, false);
+        put(Elem::Gauge, rect(280.0, 44.0, 84.0, 13.0), None, false);
+        put(Elem::Label("EMV", 47, 33), rect(258.0, 61.0, 20.0, 13.0), None, false);
+        put(Elem::Lamp(EmvWarn, None), rect(280.0, 61.0, 18.0, 13.0), None, false);
+        for (k, (label, action, led, act)) in [
+            ("CHAFF", Action::Chaff, LedId::Chaff, ChaffAct),
+            ("FLARE", Action::Flare, LedId::Flares, FlareAct),
+            ("DECOY", Action::Decoy, LedId::Decoys, DecoyAct),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let y = 82.0 + 17.0 * k as f32;
+            let cap = Some(E::Action(action));
+            put(Elem::Label(label, 47, 38), rect(258.0, y, 30.0, 13.0), cap, false);
+            put(Elem::Led(led), rect(291.0, y, 20.0, 13.0), None, false);
+            put(Elem::Lamp(act, None), rect(314.0, y, 16.0, 13.0), None, false);
+        }
+        for (k, (id, action)) in
+            [(Ecm, Action::Ecm), (Irj, Action::IrJammer)].into_iter().enumerate()
+        {
+            let r = rect(334.0, 82.0 + 17.0 * k as f32, 34.0, 13.0);
+            put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
+        }
+        put(Elem::Dial(Dial::Fuel), rect(300.0, 136.0, 44.0, 44.0), None, true);
+        put(
+            Elem::Label("CAUTION\nLT TEST", CAUTION.0, CAUTION.1),
+            rect(258.0, 146.0, 36.0, 14.0),
+            None,
+            false,
+        );
+
+        // The HIRES canvas' shape: the DDIs 140 mm wide high either side of the controller,
+        // the centre display 170 under it, the engine and fuel display 110 lower left of that.
+        let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
+        let (dw, cw, ew) = (140.0, 170.0, 110.0);
+        let unit = |side, screen| MfdUnit { side, screen, osbs: true };
+        Self {
+            style: PanelStyle::Fa18e,
+            items,
+            adi,
+            mfds: vec![
+                unit(MfdSide::Left, rect(-118.0 - dw, -150.0, dw, dw * hires)),
+                unit(MfdSide::Right, rect(118.0, -150.0, dw, dw * hires)),
+                unit(MfdSide::Third, rect(-cw / 2.0, 22.0, cw, cw * hires)),
+                unit(MfdSide::Fourth, rect(-124.0 - ew, 34.0, ew, ew * hires)),
+            ],
+            rwr: Some(rwr),
+            hsi: None,
+            tfr: None,
+            ded: Some(ded),
+            lmpd: None,
+            rmpd: None,
+        }
+    }
+
     /// The C-5M's flight deck (millimetres, x right and y down, life size;
     /// `tools/models/build_cockpit_c5.py`), after the C-5M's: one wide main panel across both
     /// seats under a deep glare shield, its origin in front of the pilot (in the left seat; the
@@ -2919,7 +3120,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 18] {
+    fn all() -> [PanelLayout; 19] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -2939,6 +3140,7 @@ mod tests {
             PanelLayout::ah64_cpg(),
             PanelLayout::rah66_cpg(),
             PanelLayout::mh60r(),
+            PanelLayout::fa18e(),
         ]
     }
 
@@ -3031,6 +3233,7 @@ mod tests {
             PanelLayout::ah64_cpg(),
             PanelLayout::rah66_cpg(),
             PanelLayout::mh60r(),
+            PanelLayout::fa18e(),
         ] {
             bezel_buttons_of(&l);
         }

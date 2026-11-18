@@ -9,7 +9,7 @@
 //! `build_cockpit_oh58.py`, the CH-47F's by `build_cockpit_ch47.py`, the F-22A's by
 //! `build_cockpit_f22.py`, the AH-64D's by `build_cockpit_ah64.py` (the pilot's, `cockpit_ah64.glb`) and
 //! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`), the MH-60R's by
-//! `build_cockpit_mh60r.py`).
+//! `build_cockpit_mh60r.py`, the F/A-18E's by `build_cockpit_fa18e.py`).
 //!
 //! Every visible part comes from the model. The game binds behaviour to it by material name
 //! and by object custom properties (glTF extras):
@@ -539,7 +539,8 @@ impl<'a> Spawner<'a> {
             n if n.starts_with("legend_") => {
                 let text = &n["legend_".len()..];
                 let aspect = self.quad_aspect(&mesh);
-                let (tex, m) = displays::legend(text, aspect, self.fonts, self.materials, self.images);
+                let (tex, m) =
+                    displays::legend(text, aspect, self.fonts, self.materials, self.images);
                 ec.insert(tex);
                 m
             }
@@ -891,6 +892,7 @@ mod tests {
             (PanelStyle::Oh58Cpg, "cockpit_oh58_cpg", "build_cockpit_oh58"),
             (PanelStyle::Rah66Cpg, "cockpit_rah66_cpg", "build_cockpit_rah66"),
             (PanelStyle::Mh60r, "cockpit_mh60r", "build_cockpit_mh60r"),
+            (PanelStyle::Fa18e, "cockpit_fa18e", "build_cockpit_fa18e"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -929,6 +931,7 @@ mod tests {
             ("cockpit_oh58_cpg", PanelStyle::Oh58Cpg),
             ("cockpit_rah66_cpg", PanelStyle::Rah66Cpg),
             ("cockpit_mh60r", PanelStyle::Mh60r),
+            ("cockpit_fa18e", PanelStyle::Fa18e),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -986,6 +989,16 @@ mod tests {
                     "screen_third",
                     "screen_fourth",
                     "screen_lmpd",
+                    "ded",
+                    "trackcam_left",
+                    "trackcam_third",
+                    "trackcam_fourth",
+                    "label_NEAR",
+                ],
+                PanelStyle::Fa18e => vec![
+                    "screen_third",
+                    "screen_fourth",
+                    "screen_rwr",
                     "ded",
                     "trackcam_left",
                     "trackcam_third",

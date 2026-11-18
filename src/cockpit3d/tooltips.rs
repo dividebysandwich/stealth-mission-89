@@ -524,7 +524,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
             };
             return Some(tip(id, &[]).reading(Readout::Dial(dial)));
         }
-        Elem::Label(..) | Elem::Arrow(..) | Elem::Hazard => return None,
+        Elem::Label(..) | Elem::SoftKey(..) | Elem::Arrow(..) | Elem::Hazard => return None,
     };
     Some(Tip::new(title, detail, &[]))
 }
@@ -1052,6 +1052,7 @@ mod tests {
             PanelStyle::Oh58Cpg,
             PanelStyle::Rah66Cpg,
             PanelStyle::Mh60r,
+            PanelStyle::Fa18e,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));

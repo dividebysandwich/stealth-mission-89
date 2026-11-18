@@ -996,10 +996,12 @@ impl PanelParams<'_, '_> {
 
     /// The F-16's data entry display: a CNI-style page with the radio channels (fixed), the
     /// steerpoint and the target, the clock, the leg to the steerpoint and the time on target
-    /// or the fuel, 24 columns of 5 lines in amber.
+    /// or the fuel, 24 columns of 5 lines in amber (green on the F/A-18E's touchscreen).
     pub fn draw_ded(&self, c: &mut Canvas, fonts: &Fonts) {
         use crate::cockpit3d::layout::{DED_COLS, DED_SCALE};
         const AMBER: u8 = 18;
+        // The F/A-18E's scratchpad is on the up-front controller's green touchscreen.
+        let ink = if self.settings.cockpit().0 == PanelStyle::Fa18e { GREEN.on.0 } else { AMBER };
         c.clear(5);
         let a = self.aircraft.single().ok();
         let t = self.clock.start_seconds
@@ -1048,7 +1050,7 @@ impl PanelParams<'_, '_> {
                 4,
                 2 + i as i32 * 8 * DED_SCALE,
                 cut(line, DED_COLS as usize).as_bytes(),
-                AMBER,
+                ink,
                 DED_SCALE,
             );
         }
