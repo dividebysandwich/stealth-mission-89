@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, rechter binnenvleugel
 hardpoint-fa18e-10-right-outer-wing = Station 10, rechter buitenvleugel
 hardpoint-fa18e-11-right-wingtip = Station 11, rechter vleugeltip
 hardpoint-c5-hold = Laadruim (afwerppallets)
+hardpoint-ch47-cabin = Cabine (parachutisten)
 weapon-role-21 = Lucht-lucht, infraroodgeleiding, zeer kort bereik
 employment-21 = Bereik: 1-6 km, verder frontaal
 loadout-none-in-stock = (niet op voorraad)
@@ -193,3 +194,7 @@ weapon-role-27 = Lokdoel vanuit de lucht: vliegt met de signatuur van een vliegt
 employment-27 =
     Vliegt naar het aangewezen punt en dan rechtdoor, tot 10 minuten
     Onschadelijk voor doelen
+weapon-role-28 = Parachutisten: een stick soldaten om af te werpen boven een plaats die ze innemen
+employment-28 =
+    Uit de deuren van de C-5 (twee sticks) of over de laadklep van de CH-47 (één stick) boven de dropzone
+    Springen tussen 500 en 1500 ft boven de grond, onder 150 kt; het grootste deel van een stick moet in de zone landen

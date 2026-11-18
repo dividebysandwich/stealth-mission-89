@@ -437,6 +437,11 @@ impl CampaignState {
                 {
                     s.progress.sub_sunk = true;
                 }
+                (Report::TroopsDropped { player }, Objective::Insertion { .. })
+                    if *player == slot.id =>
+                {
+                    s.progress.dropped = true;
+                }
                 (Report::RaidBeaten { player }, Objective::FleetDefence { .. })
                     if *player == slot.id =>
                 {
@@ -464,6 +469,17 @@ impl CampaignState {
             let me = view.players.iter().find(|p| p.id == id && p.airborne);
             if let Some(me) = me {
                 p.last = Some((me.x, me.y));
+            }
+            // His paratroopers down in the drop zone: they take the place.
+            if p.dropped {
+                p.dropped = false;
+                let enroute = p
+                    .insertion
+                    .and_then(|i| self.insertion(i))
+                    .is_some_and(|i| i.state == InsertionState::Enroute);
+                if enroute {
+                    captures.extend(p.insertion);
+                }
             }
             // The helicopter landed where it counts: the troops get out, the downed pilot
             // boards; with him aboard, landed at a friendly base he is home.

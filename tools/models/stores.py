@@ -688,7 +688,7 @@ def _loadout_text():
 
 
 def _u8_lists(text):
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] =\s*\[([^\]]*)\];", text, re.M):
         out[name] = [named[v] if v in named else int(v) for v in (x.strip() for x in body.split(",")) if v]
@@ -719,7 +719,7 @@ def exclusive_stations(table):
 
 def _qty_lists(text):
     """The `[(u8, u8); n]` constants: weapon type -> rounds."""
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
         pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)

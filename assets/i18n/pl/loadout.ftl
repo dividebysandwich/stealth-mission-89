@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stacja 8, prawe skrzydło wewnętrzna
 hardpoint-fa18e-10-right-outer-wing = Stacja 10, prawe skrzydło zewnętrzna
 hardpoint-fa18e-11-right-wingtip = Stacja 11, koniec prawego skrzydła
 hardpoint-c5-hold = Ładownia (palety zrzutowe)
+hardpoint-ch47-cabin = Kabina (spadochroniarze)
 weapon-role-21 = Powietrze-powietrze, naprowadzanie na podczerwień, bardzo krótki zasięg
 employment-21 = Zasięg: 1-6 km, większy czołowo
 loadout-none-in-stock = (brak w magazynie)
@@ -193,3 +194,7 @@ weapon-role-27 = Wabik zrzucany z powietrza: wlatuje w obronę przeciwlotniczą 
 employment-27 =
     Leci do wskazanego punktu, potem prosto do 10 minut
     Nieszkodliwy dla celów
+weapon-role-28 = Spadochroniarze: grupa żołnierzy zrzucana nad miejscem, które zajmą
+employment-28 =
+    Przez drzwi C-5 (dwie grupy) lub rampę CH-47 (jedna grupa) nad strefą zrzutu
+    Skok od 500 do 1500 ft nad ziemią, poniżej 150 kt; większość grupy musi wylądować w strefie

@@ -136,6 +136,10 @@ const POSITION_MODEL: i32 = AAA_MODELS + 13;
 pub const PHALANX_MODEL: i32 = AAA_MODELS + 15;
 const USV_MODEL: i32 = AAA_MODELS + 16;
 pub const SUB_MODEL: i32 = AAA_MODELS + 17;
+const PARATROOPER_MODEL: i32 = AAA_MODELS + 18;
+/// A paratrooper's canopy against the pilot's, and the seconds it takes to blossom.
+const TROOP_CANOPY: f32 = 0.8;
+const TROOP_OPEN_SECS: f32 = 1.0;
 
 /// The model of a ground unit of kind `k`.
 fn unit_model(k: stealth_sim::aaa::GroundKind) -> i32 {
@@ -570,6 +574,8 @@ struct AaaVisuals {
     /// The ships' Phalanx mounts, and the submarines up on the surface (hidden when spare).
     mounts: Vec<Entity>,
     subs: Vec<Entity>,
+    /// The paratroopers: each one's figure and his canopy.
+    troops: Vec<(Entity, Entity)>,
     material: Option<Handle<PaletteMaterial>>,
 }
 
@@ -861,6 +867,51 @@ fn sync_aaa(
         pos.0 = aaa_point([s.at[0], s.at[1], -s.depth as f64]);
         tf.rotation = Quat::from_rotation_y(-s.heading);
         vis.set_if_neq(Visibility::Inherited);
+    }
+
+    // The paratroopers: falling, hanging under their canopies, standing where they landed.
+    let jumpers = &sim.paradrop().jumpers;
+    if av.troops.len() < jumpers.len() {
+        let file = library.load(&server, "aaa");
+        while av.troops.len() < jumpers.len() {
+            let Some(man) = spawn_model(&mut commands, &assets, &file, PARATROOPER_MODEL, false)
+            else {
+                break;
+            };
+            let canopy = spawn_canopy(&mut commands, &assets);
+            av.troops.push((man, canopy));
+        }
+    }
+    for (k, &(man, canopy)) in av.troops.iter().enumerate() {
+        let j = jumpers.get(k).filter(|j| j.alive || j.landed.is_none());
+        if let Ok((mut pos, mut tf, _, mut vis)) = q.get_mut(man) {
+            match j {
+                Some(j) => {
+                    pos.0 = aaa_point(j.p);
+                    let h = j.v[0].atan2(j.v[1]) as f32;
+                    tf.rotation = Quat::from_rotation_y(-h);
+                    vis.set_if_neq(Visibility::Inherited);
+                }
+                None => {
+                    vis.set_if_neq(Visibility::Hidden);
+                }
+            }
+        }
+        if let Ok((mut pos, mut tf, _, mut vis)) = q.get_mut(canopy) {
+            match j.filter(|j| j.open() && j.landed.is_none()) {
+                Some(j) => {
+                    pos.0 = aaa_point(j.p);
+                    let grow = ((j.t - stealth_sim::paradrop::STATIC_LINE as f32)
+                        / TROOP_OPEN_SECS)
+                        .clamp(0.15, 1.0);
+                    tf.scale = Vec3::splat(TROOP_CANOPY * grow);
+                    vis.set_if_neq(Visibility::Inherited);
+                }
+                None => {
+                    vis.set_if_neq(Visibility::Hidden);
+                }
+            }
+        }
     }
 
     // Tracers: every gun's shells (the flak's too, until they burst), also those the guns

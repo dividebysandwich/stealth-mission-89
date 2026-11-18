@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, parem siseosa tiib
 hardpoint-fa18e-10-right-outer-wing = Station 10, parem välistiib
 hardpoint-fa18e-11-right-wingtip = Station 11, parem tiivaots
 hardpoint-c5-hold = Lastiruum (heiteaalused)
+hardpoint-ch47-cabin = Kabiin (langevarjurid)
 weapon-role-21 = Õhk-õhk, infrapunajuhtimine, väga lühike ulatus
 employment-21 = Ulatus: 1-6 km, eestpoolt suurem
 loadout-none-in-stock = (laos puudub)
@@ -193,3 +194,7 @@ weapon-role-27 = Õhust lastav peibutis: lendab lennuki signatuuriga õhutõrjes
 employment-27 =
     Lendab määratud punkti ja siis otse edasi kuni 10 minutit
     Sihtmärkidele kahjutu
+weapon-role-28 = Langevarjurid: rühm sõdureid, kes hüppavad paiga kohale ja vallutavad selle
+employment-28 =
+    C-5 ustest (kaks rühma) või CH-47 rambilt (üks rühm) hüppeala kohal
+    Hüpe 500–1500 ft maapinnast, alla 150 kt; suurem osa rühmast peab maanduma alale

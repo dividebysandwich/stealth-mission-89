@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = 스테이션 8, 오른쪽 안쪽 날개
 hardpoint-fa18e-10-right-outer-wing = 스테이션 10, 오른쪽 바깥 날개
 hardpoint-fa18e-11-right-wingtip = 스테이션 11, 오른쪽 날개 끝
 hardpoint-c5-hold = 화물칸 (공중 투하 팔레트)
+hardpoint-ch47-cabin = 객실 (공수부대)
 weapon-role-21 = 공대공, 적외선 유도, 매우 짧은 사거리
 employment-21 = 사거리: 1-6 km, 정면에서는 더 멀리
 loadout-none-in-stock = (재고 없음)
@@ -193,3 +194,7 @@ weapon-role-27 = 공중 발사 기만체: 항공기 신호로 방공망에 날�
 employment-27 =
     지정 지점까지 날아간 뒤 최대 10분간 직진
     목표에는 무해
+weapon-role-28 = 공수부대: 점령할 지점 상공에서 투하하는 1개 조
+employment-28 =
+    C-5의 문(2개 조)이나 CH-47의 램프(1개 조)로 강하 지역 상공에서
+    지상 500~1500 ft, 150 kt 미만에서 강하. 조의 대부분이 지역에 착지해야 함

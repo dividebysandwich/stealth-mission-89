@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stotis 8, dešinysis vidinis sparnas
 hardpoint-fa18e-10-right-outer-wing = Stotis 10, dešinysis išorinis sparnas
 hardpoint-fa18e-11-right-wingtip = Stotis 11, dešinysis sparno galas
 hardpoint-c5-hold = Krovinių skyrius (numetami padėklai)
+hardpoint-ch47-cabin = Salonas (parašiutininkai)
 weapon-role-21 = Oras-oras, infraraudonųjų spindulių vedimas, labai trumpas nuotolis
 employment-21 = Nuotolis: 1-6 km, didesnis iš priekio
 loadout-none-in-stock = (nėra sandėlyje)
@@ -193,3 +194,7 @@ weapon-role-27 = Iš oro paleidžiamas masalas: skrenda su lėktuvo signatūra �
 employment-27 =
     Skrenda į nurodytą tašką, tada tiesiai iki 10 minučių
     Taikiniams nepavojingas
+weapon-role-28 = Parašiutininkai: karių grupė, išmetama virš vietovės, kurią jie užima
+employment-28 =
+    Pro C-5 duris (dvi grupės) arba CH-47 rampą (viena grupė) virš išmetimo zonos
+    Šuolis 500–1500 ft virš žemės, lėčiau nei 150 kt; dauguma grupės turi nusileisti zonoje

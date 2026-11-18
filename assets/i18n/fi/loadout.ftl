@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Asema 8, oikea sisäsiipi
 hardpoint-fa18e-10-right-outer-wing = Asema 10, oikea ulkosiipi
 hardpoint-fa18e-11-right-wingtip = Asema 11, oikea siivenkärki
 hardpoint-c5-hold = Ruuma (pudotuslavat)
+hardpoint-ch47-cabin = Matkustamo (laskuvarjojääkärit)
 weapon-role-21 = Ilma-ilma, infrapunaohjaus, hyvin lyhyt kantama
 employment-21 = Kantama: 1-6 km, suurempi suoraan edestä
 loadout-none-in-stock = (ei varastossa)
@@ -193,3 +194,7 @@ weapon-role-27 = Ilmasta laukaistava harhamaali: lentää koneen tunnisteella il
 employment-27 =
     Lentää osoitettuun pisteeseen ja sitten suoraan jopa 10 minuuttia
     Vaaraton maaleille
+weapon-role-28 = Laskuvarjojääkärit: ryhmä sotilaita pudotettavaksi paikkaan, jonka he valtaavat
+employment-28 =
+    C-5:n ovista (kaksi ryhmää) tai CH-47:n rampilta (yksi ryhmä) pudotusalueen yllä
+    Hyppy 500–1500 ft maanpinnasta, alle 150 kt; suurimman osan ryhmästä on laskeuduttava alueelle

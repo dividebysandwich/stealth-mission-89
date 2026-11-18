@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 28] = [
+pub const WEAPONS: [(&str, &str); 29] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -44,6 +44,7 @@ pub const WEAPONS: [(&str, &str); 28] = [
     ("AGM-84H SLAM-ER", "weapon-role-25"),
     ("AGM-154C JSOW", "weapon-role-26"),
     ("ADM-160 MALD", "weapon-role-27"),
+    ("Paratroopers", "weapon-role-28"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -56,7 +57,7 @@ pub const WEAPONS: [(&str, &str); 28] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 28] = [
+const EMPLOYMENT: [&str; 29] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -85,6 +86,7 @@ const EMPLOYMENT: [&str; 28] = [
     "employment-25",
     "employment-26",
     "employment-27",
+    "employment-28",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -101,12 +103,12 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 28] =
-    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1];
+const BAY_QTY: [u8; 29] =
+    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 28] =
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1];
+const PYLON_QTY: [u8; 29] =
+    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
@@ -119,6 +121,8 @@ pub const SLAMER: u8 = 25;
 /// The JSOW's and the MALD's weapon types (`stealth_sim::standoff`).
 pub const JSOW: u8 = 26;
 pub const MALD: u8 = 27;
+/// The paratroopers' weapon type: a stick a round (`stealth_sim::paradrop`).
+pub const PARA: u8 = 28;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -1570,8 +1574,20 @@ static MH60R_LAYOUT: Layout =
 static UH60_LAYOUT: Layout =
     Layout { outline: UH60_OUTLINE, half_span: 2.16, length: 15.1, hardpoints: &[] };
 /// The CH-47 slings cargo, no stores.
+/// The CH-47's cabin: a stick of paratroopers (an insertion it drops rather than lands).
+static CH47_STATIONS: [Hardpoint; 1] = [Hardpoint {
+    name: "hardpoint-ch47-cabin",
+    label: "CABIN",
+    pos: (0.0, 8.0),
+    bay: true,
+    fantasy: false,
+    mirror: None,
+    loads: &[PARA],
+    qty: &[(PARA, 1)],
+    excludes: &[],
+}];
 static CH47_LAYOUT: Layout =
-    Layout { outline: CH47_OUTLINE, half_span: 1.94, length: 15.84, hardpoints: &[] };
+    Layout { outline: CH47_OUTLINE, half_span: 1.94, length: 15.84, hardpoints: &CH47_STATIONS };
 
 /// The C-5 carries its cargo inside: the airdrop pallets in the hold, dropped over the ramp.
 static C5_STATIONS: [Hardpoint; 1] = [Hardpoint {
@@ -1581,8 +1597,8 @@ static C5_STATIONS: [Hardpoint; 1] = [Hardpoint {
     bay: true,
     fantasy: false,
     mirror: None,
-    loads: &[18],
-    qty: &[(18, 4)],
+    loads: &[18, PARA],
+    qty: &[(18, 4), (PARA, 2)],
     excludes: &[],
 }];
 static C5_LAYOUT: Layout =
@@ -1591,6 +1607,11 @@ static C5_LAYOUT: Layout =
 /// The AC-130's guns are fixed in its cabin: no stores.
 static AC130_LAYOUT: Layout =
     Layout { outline: C130_OUTLINE, half_span: 20.28, length: 29.90, hardpoints: &[] };
+
+/// A campaign insertion's mission (the C-5 and CH-47 drop paratroopers on it).
+fn insertion(m: &Mission) -> bool {
+    m.primary.type_name == "INSERTION"
+}
 
 /// The hardpoints of an aircraft (`realistic`: the F-117A's real two bays).
 pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
@@ -1658,11 +1679,20 @@ impl PlannedLoadout {
                     stores[i] = Some(w);
                 }
             }
-            AircraftKind::UH60 | AircraftKind::CH47 | AircraftKind::AC130 => {}
-            // The pallets for an airdrop, else an empty hold (the cargo it lands is the
-            // mission's, not a store).
+            AircraftKind::UH60 | AircraftKind::AC130 => {}
+            // An insertion: paratroopers to drop on the place (else the cabin is empty: its
+            // sling loads are the mission's).
+            AircraftKind::CH47 => {
+                stores[0] = insertion(m).then_some(PARA);
+            }
+            // The pallets for an airdrop, paratroopers for an insertion, else an empty hold
+            // (the cargo it lands is the mission's, not a store).
             AircraftKind::C5 => {
-                stores[0] = briefed.into_iter().any(|w| w == 18).then_some(18);
+                stores[0] = if insertion(m) {
+                    Some(PARA)
+                } else {
+                    briefed.into_iter().any(|w| w == 18).then_some(18)
+                };
             }
             AircraftKind::OH58 => {
                 stores[0] = Some(HELLFIRE);

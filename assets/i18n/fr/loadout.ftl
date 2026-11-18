@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, aile droite intérieure
 hardpoint-fa18e-10-right-outer-wing = Station 10, aile droite extérieure
 hardpoint-fa18e-11-right-wingtip = Station 11, saumon d'aile droit
 hardpoint-c5-hold = Soute (palettes de largage)
+hardpoint-ch47-cabin = Cabine (parachutistes)
 weapon-role-21 = Air-air, guidage infrarouge, très courte portée
 employment-21 = Portée : 1-6 km, plus loin de face
 loadout-none-in-stock = (plus en stock)
@@ -193,3 +194,7 @@ weapon-role-27 = Leurre aéroporté : présente la signature d'un avion à la d�
 employment-27 =
     Vole jusqu'au point désigné, puis tout droit jusqu'à 10 minutes
     Inoffensif pour les cibles
+weapon-role-28 = Parachutistes : un stick de soldats à larguer sur un lieu qu'ils prennent
+employment-28 =
+    Par les portes du C-5 (deux sticks) ou la rampe du CH-47 (un stick) au-dessus de la zone de saut
+    Saut entre 500 et 1500 ft sol, sous 150 kt ; la plupart d'un stick doit atterrir dans la zone

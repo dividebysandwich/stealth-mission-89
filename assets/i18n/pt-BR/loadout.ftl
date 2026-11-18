@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Estação 8, asa direita interna
 hardpoint-fa18e-10-right-outer-wing = Estação 10, asa direita externa
 hardpoint-fa18e-11-right-wingtip = Estação 11, ponta da asa direita
 hardpoint-c5-hold = Compartimento de carga (paletes de lançamento)
+hardpoint-ch47-cabin = Cabine (paraquedistas)
 weapon-role-21 = Ar-ar, guiagem infravermelha, alcance muito curto
 employment-21 = Alcance: 1-6 km, maior de frente
 loadout-none-in-stock = (sem estoque)
@@ -193,3 +194,7 @@ weapon-role-27 = Chamariz lançado do ar: mostra a assinatura de uma aeronave à
 employment-27 =
     Voa até o ponto designado e segue reto por até 10 minutos
     Inofensivo para os alvos
+weapon-role-28 = Paraquedistas: um grupo de soldados para lançar sobre um local que eles tomam
+employment-28 =
+    Pelas portas do C-5 (dois grupos) ou pela rampa do CH-47 (um grupo) sobre a zona de lançamento
+    Salto entre 500 e 1500 ft acima do solo, abaixo de 150 kt; a maior parte do grupo deve pousar na zona

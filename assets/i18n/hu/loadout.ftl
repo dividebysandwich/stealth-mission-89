@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = 8. állomás, jobb belső szárny
 hardpoint-fa18e-10-right-outer-wing = 10. állomás, jobb külső szárny
 hardpoint-fa18e-11-right-wingtip = 11. állomás, jobb szárnyvég
 hardpoint-c5-hold = Raktér (ledobható raklapok)
+hardpoint-ch47-cabin = Utastér (ejtőernyősök)
 weapon-role-21 = Levegő-levegő, infravörös önirányítás, nagyon rövid hatótáv
 employment-21 = Hatótáv: 1-6 km, szemből nagyobb
 loadout-none-in-stock = (nincs készleten)
@@ -193,3 +194,7 @@ weapon-role-27 = Levegőből indított csali: repülőgép jelével repül a lé
 employment-27 =
     A kijelölt pontig repül, majd egyenesen tovább legfeljebb 10 percig
     A célokra ártalmatlan
+weapon-role-28 = Ejtőernyősök: katonák egy csoportja, akiket egy elfoglalandó hely fölé dobnak le
+employment-28 =
+    A C-5 ajtain (két csoport) vagy a CH-47 rámpáján (egy csoport) az ugrózóna fölött
+    Ugrás 500 és 1500 ft között a föld fölött, 150 kt alatt; a csoport nagyobb részének a zónában kell földet érnie

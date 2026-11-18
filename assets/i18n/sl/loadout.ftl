@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Postaja 8, desno notranje krilo
 hardpoint-fa18e-10-right-outer-wing = Postaja 10, desno zunanje krilo
 hardpoint-fa18e-11-right-wingtip = Postaja 11, desna konica krila
 hardpoint-c5-hold = Tovorni prostor (palete za odmet)
+hardpoint-ch47-cabin = Kabina (padalci)
 weapon-role-21 = Zrak-zrak, infrardeče navajanje, zelo kratek doseg
 employment-21 = Doseg: 1-6 km, večji od spredaj
 loadout-none-in-stock = (ni na zalogi)
@@ -193,3 +194,7 @@ weapon-role-27 = Vaba, izstreljena iz zraka: z letalskim podpisom prileti v zra�
 employment-27 =
     Leti do določene točke, nato naravnost do 10 minut
     Za cilje neškodljiva
+weapon-role-28 = Padalci: skupina vojakov za odmet nad krajem, ki ga zavzamejo
+employment-28 =
+    Skozi vrata C-5 (dve skupini) ali po rampi CH-47 (ena skupina) nad območjem odmeta
+    Skok med 500 in 1500 ft nad tlemi, pod 150 kt; večina skupine mora pristati v območju

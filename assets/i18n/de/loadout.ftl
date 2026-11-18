@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, rechter Innenflügel
 hardpoint-fa18e-10-right-outer-wing = Station 10, rechter Außenflügel
 hardpoint-fa18e-11-right-wingtip = Station 11, rechte Flügelspitze
 hardpoint-c5-hold = Frachtraum (Abwurfpaletten)
+hardpoint-ch47-cabin = Kabine (Fallschirmjäger)
 weapon-role-21 = Luft-Luft, Infrarot-Suchkopf, sehr kurze Reichweite
 employment-21 = Reichweite: 1-6 km, bei frontalem Anflug mehr
 loadout-none-in-stock = (nicht auf Lager)
@@ -193,3 +194,7 @@ weapon-role-27 = Luftgestützter Täuschkörper: fliegt mit der Signatur eines F
 employment-27 =
     Fliegt zum bezeichneten Punkt, dann geradeaus weiter, bis zu 10 Minuten
     Für Ziele harmlos
+weapon-role-28 = Fallschirmjäger: ein Trupp Soldaten zum Absetzen über einem Ort, den sie einnehmen
+employment-28 =
+    Aus den Türen der C-5 (zwei Trupps) oder über die Rampe der CH-47 (ein Trupp) über der Absetzzone
+    Absprung zwischen 500 und 1500 ft über Grund, unter 150 kt; der Großteil eines Trupps muss in der Zone landen

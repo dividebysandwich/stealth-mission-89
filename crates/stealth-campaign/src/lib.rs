@@ -147,6 +147,10 @@ pub enum Report {
     RaidBeaten {
         player: PlayerId,
     },
+    /// A player's paratroopers came down in the drop zone of his insertion.
+    TroopsDropped {
+        player: PlayerId,
+    },
     /// A player photographed a world object (recon).
     PhotoTaken {
         player: PlayerId,

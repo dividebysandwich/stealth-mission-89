@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stacija 8, labais iekšējais spārns
 hardpoint-fa18e-10-right-outer-wing = Stacija 10, labais ārējais spārns
 hardpoint-fa18e-11-right-wingtip = Stacija 11, labais spārna gals
 hardpoint-c5-hold = Kravas nodalījums (nometamās paletes)
+hardpoint-ch47-cabin = Salons (desantnieki)
 weapon-role-21 = Gaiss-gaiss, infrasarkanā vadība, ļoti mazs darbības rādiuss
 employment-21 = Darbības rādiuss: 1-6 km, lielāks no priekšas
 loadout-none-in-stock = (nav noliktavā)
@@ -193,3 +194,7 @@ weapon-role-27 = No gaisa palaižams mānekļis: ielido pretgaisa aizsardzībā 
 employment-27 =
     Lido uz norādīto punktu, tad taisni līdz 10 minūtēm
     Mērķiem nekaitīgs
+weapon-role-28 = Desantnieki: karavīru grupa, ko izmet virs vietas, kuru tie ieņem
+employment-28 =
+    Pa C-5 durvīm (divas grupas) vai CH-47 rampu (viena grupa) virs izsēdināšanas zonas
+    Lēciens 500–1500 ft virs zemes, lēnāk par 150 kt; lielākajai daļai grupas jānolaižas zonā

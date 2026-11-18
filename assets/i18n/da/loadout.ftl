@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, højre indre vinge
 hardpoint-fa18e-10-right-outer-wing = Station 10, højre ydre vinge
 hardpoint-fa18e-11-right-wingtip = Station 11, højre vingespids
 hardpoint-c5-hold = Lastrum (nedkastningspaller)
+hardpoint-ch47-cabin = Kabine (faldskærmstropper)
 weapon-role-21 = Luft-luft, infrarød målsøgning, meget kort rækkevidde
 employment-21 = Rækkevidde: 1-6 km, længere forfra
 loadout-none-in-stock = (ikke på lager)
@@ -193,3 +194,7 @@ weapon-role-27 = Luftaffyret lokkemiddel: flyver med et flys signatur ind i luft
 employment-27 =
     Flyver til det udpegede punkt og derefter ligeud i op til 10 minutter
     Ufarlig for mål
+weapon-role-28 = Faldskærmstropper: en stick soldater, der springer over et sted, de indtager
+employment-28 =
+    Ud af C-5'ens døre (to sticks) eller CH-47'ens rampe (én stick) over springzonen
+    Spring mellem 500 og 1500 ft over jorden, under 150 kt; det meste af en stick skal lande i zonen

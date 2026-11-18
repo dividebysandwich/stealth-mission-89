@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stația 8, aripa dreaptă interioară
 hardpoint-fa18e-10-right-outer-wing = Stația 10, aripa dreaptă exterioară
 hardpoint-fa18e-11-right-wingtip = Stația 11, vârf de aripă dreapta
 hardpoint-c5-hold = Cală de marfă (paleți pentru parașutare)
+hardpoint-ch47-cabin = Cabină (parașutiști)
 weapon-role-21 = Aer-aer, ghidare în infraroșu, rază foarte scurtă
 employment-21 = Rază: 1-6 km, mai mare frontal
 loadout-none-in-stock = (fără stoc)
@@ -193,3 +194,7 @@ weapon-role-27 = Momeală lansată din aer: zboară cu semnătura unui avion în
 employment-27 =
     Zboară până la punctul desemnat, apoi drept înainte până la 10 minute
     Inofensivă pentru ținte
+weapon-role-28 = Parașutiști: o grupă de soldați lansați deasupra unui loc pe care îl cuceresc
+employment-28 =
+    Prin ușile C-5 (două grupe) sau pe rampa CH-47 (o grupă) deasupra zonei de lansare
+    Salt între 500 și 1500 ft deasupra solului, sub 150 kt; majoritatea grupei trebuie să aterizeze în zonă

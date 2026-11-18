@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stazione 8, ala destra interna
 hardpoint-fa18e-10-right-outer-wing = Stazione 10, ala destra esterna
 hardpoint-fa18e-11-right-wingtip = Stazione 11, estremità alare destra
 hardpoint-c5-hold = Stiva (pallet da aviolancio)
+hardpoint-ch47-cabin = Cabina (paracadutisti)
 weapon-role-21 = Aria-aria, guida a infrarossi, gittata molto breve
 employment-21 = Gittata: 1-6 km, maggiore in frontale
 loadout-none-in-stock = (esaurito)
@@ -193,3 +194,7 @@ weapon-role-27 = Esca aviolanciata: mostra alla difesa aerea la firma di un aere
 employment-27 =
     Vola fino al punto designato, poi dritto per al massimo 10 minuti
     Innocua per i bersagli
+weapon-role-28 = Paracadutisti: uno stick di soldati da lanciare su un luogo che conquistano
+employment-28 =
+    Dalle porte del C-5 (due stick) o dalla rampa del CH-47 (uno stick) sopra la zona di lancio
+    Lancio tra 500 e 1500 ft dal suolo, sotto 150 kt; la maggior parte dello stick deve atterrare nella zona

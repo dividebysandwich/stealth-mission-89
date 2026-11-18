@@ -240,6 +240,8 @@
                      "radar": 7, "rig": 6, "industry": 7, "pen": 5, "small_ship": 5, "large_ship": 3, "armour": 4}),
         // The ADM-160 MALD decoy: harmless, it draws the air defences' missiles.
         (id: "mald", short: "ADM-160", long: "MALD", missile: "mald", picture: 12, bay: 1),
+        // Paratroopers: a stick a round, out of the C-5's or the CH-47's rear (paradrop.rs).
+        (id: "para", short: "PARA", long: "Paratroopers", missile: "none", picture: 5, bay: 1),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

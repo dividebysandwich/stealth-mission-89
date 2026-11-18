@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stazzjon 8, ġewnaħ ta' ġewwa tal-lemin
 hardpoint-fa18e-10-right-outer-wing = Stazzjon 10, ġewnaħ ta' barra tal-lemin
 hardpoint-fa18e-11-right-wingtip = Stazzjon 11, ras il-ġewnaħ tal-lemin
 hardpoint-c5-hold = Stiva tal-merkanzija (pallets għall-waqgħa mill-ajru)
+hardpoint-ch47-cabin = Kabina (paraxutisti)
 weapon-role-21 = Arja-arja, gwida infraħamra, firxa qasira ħafna
 employment-21 = Firxa: 1-6 km, akbar minn quddiem
 loadout-none-in-stock = (m'hemmx stokk)
@@ -193,3 +194,7 @@ weapon-role-27 = Lixka mniedja mill-ajru: ittir bil-firma ta' ajruplan fid-difi�
 employment-27 =
     Ittir sal-punt magħżul, imbagħad dritt sa 10 minuti
     Ma tagħmel l-ebda ħsara lill-miri
+weapon-role-28 = Paraxutisti: grupp ta' suldati li jinżlu fuq post li jieħdu
+employment-28 =
+    Mill-bibien tas-C-5 (żewġ gruppi) jew mir-rampa tas-CH-47 (grupp wieħed) fuq iż-żona tal-qabża
+    Aqbeż bejn 500 u 1500 ft fuq l-art, taħt 150 kt; il-biċċa l-kbira tal-grupp trid tinżel fiż-żona

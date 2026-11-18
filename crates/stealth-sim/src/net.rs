@@ -278,6 +278,9 @@ pub struct WorldFast {
     /// The fleet's close-in defence: its mounts and their tracers.
     #[serde(default, skip_serializing_if = "crate::naval::Naval::is_empty")]
     pub naval: crate::naval::Naval,
+    /// The paratroopers in the air and on the ground.
+    #[serde(default, skip_serializing_if = "crate::paradrop::Paradrop::is_empty")]
+    pub paradrop: crate::paradrop::Paradrop,
     pub pilots: Vec<RemotePilot>,
     /// Every pilot in the world; those not in `pilots` this time are as they were.
     #[serde(default)]
@@ -397,6 +400,7 @@ impl Sim {
             sfw: self.sfw.for_clients(),
             asw: self.asw.for_clients(),
             naval: self.naval.clone(),
+            paradrop: self.paradrop.clone(),
             pilots: self.remote_pilots(),
             present: Vec::new(),
         }
@@ -687,6 +691,7 @@ impl Sim {
         self.sfw = w.sfw.clone();
         self.asw = w.asw.clone();
         self.naval = w.naval.clone();
+        self.paradrop = w.paradrop.clone();
         for a in &mut self.ai_flight {
             a.cms = Default::default();
         }

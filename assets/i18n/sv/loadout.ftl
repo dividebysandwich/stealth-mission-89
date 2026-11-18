@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, höger innervinge
 hardpoint-fa18e-10-right-outer-wing = Station 10, höger yttervinge
 hardpoint-fa18e-11-right-wingtip = Station 11, höger vingspets
 hardpoint-c5-hold = Lastrum (fällningspallar)
+hardpoint-ch47-cabin = Kabin (fallskärmsjägare)
 weapon-role-21 = Luft-luft, infraröd målsökning, mycket kort räckvidd
 employment-21 = Räckvidd: 1-6 km, längre rakt framifrån
 loadout-none-in-stock = (slut i lager)
@@ -193,3 +194,7 @@ weapon-role-27 = Luftburet skenmål: flyger med ett flygplans signatur in i luft
 employment-27 =
     Flyger till den utpekade punkten och sedan rakt fram i upp till 10 minuter
     Ofarlig för mål
+weapon-role-28 = Fallskärmsjägare: en grupp soldater att släppa över en plats de tar
+employment-28 =
+    Ut genom C-5:ans dörrar (två grupper) eller CH-47:ans ramp (en grupp) över hoppzonen
+    Hopp mellan 500 och 1500 ft över marken, under 150 kt; större delen av gruppen måste landa i zonen

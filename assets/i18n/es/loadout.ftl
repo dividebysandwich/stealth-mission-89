@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Estación 8, ala derecha interior
 hardpoint-fa18e-10-right-outer-wing = Estación 10, ala derecha exterior
 hardpoint-fa18e-11-right-wingtip = Estación 11, punta del ala derecha
 hardpoint-c5-hold = Bodega de carga (palés de lanzamiento)
+hardpoint-ch47-cabin = Cabina (paracaidistas)
 weapon-role-21 = Aire-aire, guiado infrarrojo, alcance muy corto
 employment-21 = Alcance: 1-6 km, más en frontal
 loadout-none-in-stock = (sin existencias)
@@ -193,3 +194,7 @@ weapon-role-27 = Señuelo lanzado desde el aire: muestra la firma de un avión a
 employment-27 =
     Vuela hasta el punto designado y luego sigue recto hasta 10 minutos
     Inofensivo para los objetivos
+weapon-role-28 = Paracaidistas: un grupo de soldados para lanzar sobre un lugar que toman
+employment-28 =
+    Por las puertas del C-5 (dos grupos) o la rampa del CH-47 (un grupo) sobre la zona de salto
+    Salto entre 500 y 1500 ft sobre el suelo, por debajo de 150 kt; la mayor parte del grupo debe caer en la zona

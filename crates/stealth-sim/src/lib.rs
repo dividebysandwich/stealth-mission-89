@@ -36,6 +36,7 @@ pub mod sfw;
 pub mod slam;
 pub mod standoff;
 pub mod naval;
+pub mod paradrop;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -266,6 +267,9 @@ pub struct Sim {
     /// The fleet's close-in defence and the sea-skimmers it fights ([`naval`]).
     #[serde(default, skip_serializing_if = "naval::Naval::is_empty")]
     pub(crate) naval: naval::Naval,
+    /// Paratroopers in the air and on the ground ([`paradrop`]).
+    #[serde(default, skip_serializing_if = "paradrop::Paradrop::is_empty")]
+    pub(crate) paradrop: paradrop::Paradrop,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -638,6 +642,7 @@ impl Sim {
             sfw: sfw::Sfw::default(),
             asw: asw::Asw::default(),
             naval: naval::Naval::default(),
+            paradrop: paradrop::Paradrop::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,
@@ -1029,6 +1034,7 @@ impl Sim {
         self.update_sfw();
         self.update_asw(&present);
         self.update_naval();
+        self.update_paradrop(&present);
         for &k in &present {
             self.activate(k);
             self.update_cm_timers();
@@ -1283,7 +1289,10 @@ impl Sim {
 
     /// Weapon type `w` is fired as the cannon (a machine gun pod), not from its station.
     pub fn gun_pod(&self, w: i32) -> bool {
-        w >= 0 && self.weapon_types.get(w as usize).is_some_and(|t| t.spec == 0)
+        // (The paratroopers fire nothing either: they are not a gun.)
+        w >= 0
+            && w != paradrop::PARA_WEAPON
+            && self.weapon_types.get(w as usize).is_some_and(|t| t.spec == 0)
     }
 
     /// The OH-58D's left and right weapons pylon as its model shows them (state slots 26 and

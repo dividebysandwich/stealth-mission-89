@@ -1672,7 +1672,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(Cas.pick(Aircraft::AV8B), Aircraft::AV8B);
     assert_eq!(Sead.pick(Aircraft::AV8B), Aircraft::F16);
     assert_eq!(Interdiction.pick(Aircraft::RAH66), Aircraft::F117);
-    // The CH-47 slings cargo and does nothing else.
+    // The CH-47 slings cargo (and drops paratroopers).
     assert_eq!(Logistics.pick(Aircraft::CH47), Aircraft::CH47);
     assert_eq!(Resupply.pick(Aircraft::CH47), Aircraft::CH47);
     // The F-22A flies the jets' missions, never close support.
@@ -1684,10 +1684,13 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(AntiShip.pick(Aircraft::FA18E), Aircraft::FA18E);
     assert_eq!(Cas.pick(Aircraft::FA18E), Aircraft::FA18E);
     assert_eq!(Csar.pick(Aircraft::FA18E), Aircraft::UH60);
-    assert_eq!(Insertion.pick(Aircraft::CH47), Aircraft::UH60);
+    // The CH-47 and the C-5 drop paratroopers on an insertion's place.
+    assert_eq!(Insertion.pick(Aircraft::CH47), Aircraft::CH47);
+    assert_eq!(Insertion.pick(Aircraft::C5), Aircraft::C5);
+    assert!(Insertion.flyable_by(Aircraft::C5) && !Cas.flyable_by(Aircraft::C5));
     assert_eq!(Csar.pick(Aircraft::CH47), Aircraft::UH60);
     assert_eq!(Strike.pick(Aircraft::CH47), Aircraft::F117);
-    assert!(!Insertion.flyable_by(Aircraft::CH47) && !Csar.flyable_by(Aircraft::CH47));
+    assert!(Insertion.flyable_by(Aircraft::CH47) && !Csar.flyable_by(Aircraft::CH47));
     assert!(!Cas.flyable_by(Aircraft::CH47) && !Escort.flyable_by(Aircraft::CH47));
 }
 

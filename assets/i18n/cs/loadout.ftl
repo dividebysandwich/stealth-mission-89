@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stanice 8, pravé vnitřní křídlo
 hardpoint-fa18e-10-right-outer-wing = Stanice 10, pravé vnější křídlo
 hardpoint-fa18e-11-right-wingtip = Stanice 11, pravý konec křídla
 hardpoint-c5-hold = Nákladový prostor (palety k shozu)
+hardpoint-ch47-cabin = Kabina (výsadkáři)
 weapon-role-21 = Vzduch-vzduch, infračervené navádění, velmi krátký dosah
 employment-21 = Dosah: 1-6 km, větší zepředu
 loadout-none-in-stock = (není na skladě)
@@ -193,3 +194,7 @@ weapon-role-27 = Klamný cíl vypouštěný ze vzduchu: vletí do protivzdušné
 employment-27 =
     Letí k určenému bodu, pak rovně až 10 minut
     Pro cíle neškodný
+weapon-role-28 = Výsadkáři: skupina vojáků k výsadku nad místem, které obsadí
+employment-28 =
+    Dveřmi C-5 (dvě skupiny) nebo po rampě CH-47 (jedna skupina) nad výsadkovou zónou
+    Seskok mezi 500 a 1500 ft nad zemí, pod 150 kt; většina skupiny musí přistát v zóně

@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Stáisiún 8, sciathán deas istigh
 hardpoint-fa18e-10-right-outer-wing = Stáisiún 10, sciathán deas seachtrach
 hardpoint-fa18e-11-right-wingtip = Stáisiún 11, barr sciatháin dheis
 hardpoint-c5-hold = Coimeádán lasta (pailléid aerscaoilte)
+hardpoint-ch47-cabin = Cábán (paraitrooperí)
 weapon-role-21 = Aer-aer, treorú infridhearg, raon an-ghearr
 employment-21 = Raon: 1-6 km, níos mó ón tosach
 loadout-none-in-stock = (gan stoc)
@@ -193,3 +194,7 @@ weapon-role-27 = Mealladh aerscaoilte: eitlíonn le síniú aerárthaigh isteach
 employment-27 =
     Eitlíonn go dtí an pointe ainmnithe, ansin díreach ar aghaidh suas le 10 nóiméad
     Neamhdhíobhálach do spriocanna
+weapon-role-28 = Paraitrooperí: buíon saighdiúirí le scaoileadh os cionn áite a ghabhann siad
+employment-28 =
+    Trí dhoirse an C-5 (dhá bhuíon) nó rampa an CH-47 (buíon amháin) os cionn an chriosa titime
+    Léim idir 500 agus 1500 ft os cionn na talún, faoi 150 kt; ní mór don chuid is mó den bhuíon tuirlingt sa chrios

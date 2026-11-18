@@ -743,6 +743,9 @@ impl Host {
                         Some(Objective::FleetDefence { .. }) => {
                             reports.push(Report::RaidBeaten { player })
                         }
+                        Some(Objective::Insertion { .. }) => {
+                            reports.push(Report::TroopsDropped { player })
+                        }
                         _ => {}
                     }
                 }
@@ -1003,6 +1006,19 @@ impl Host {
                     // the barrier.
                     if let Some(hunt) = glue::hunt_target(&self.state, &sortie.offer.objective) {
                         sim.start_hunt_for(player.0, hunt, sortie.offer.id);
+                    }
+                    // An insertion: its place's centre is the drop zone of his paratroopers.
+                    if let Objective::Insertion { .. } = sortie.offer.objective
+                        && let Some(t) = sortie
+                            .progress
+                            .insertion
+                            .and_then(|i| self.state.insertion(i))
+                            .map(|i| i.target)
+                    {
+                        sim.set_pilot_target(
+                            player.0,
+                            Some((stealth_sim::paradrop::PARA_MISSION, t as usize)),
+                        );
                     }
                     // Defending the fleet: his own swarm of attack boats racing in at it.
                     if let Objective::FleetDefence { carrier } = sortie.offer.objective {

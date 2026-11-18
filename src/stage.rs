@@ -10,7 +10,8 @@
 //!   searchlight follows rather than drone `k` while there is one), `fleet` (from behind
 //!   the first Phalanx mount of the fleet, looking at the nearest threat at sea: a
 //!   sea-skimmer, an attack boat, else out from the ship); a negative distance looks back at
-//!   the mount from out over the water.
+//!   the mount from out over the water; `para` (beside the paratroopers in the air, else
+//!   on the ground, looking at them).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -105,6 +106,26 @@ fn stage_camera(
         view.view = View::Chase;
     }
     let sim = &combat.sim;
+    if mode == "para" {
+        // The paratroopers in the air (else on the ground): from beside them, looking at them.
+        let j = &sim.paradrop().jumpers;
+        let up: Vec<_> = j.iter().filter(|j| j.landed.is_none()).collect();
+        let pick: Vec<_> = if up.is_empty() { j.iter().collect() } else { up };
+        if pick.is_empty() {
+            return;
+        }
+        let n = pick.len() as f64;
+        let c = pick.iter().fold([0.0; 3], |a, j| [a[0] + j.p[0], a[1] + j.p[1], a[2] + j.p[2]]);
+        let at = crate::sim_render::metres_point([c[0] / n, c[1] / n, c[2] / n]);
+        let eye = at + DVec3::new(dist as f64, height as f64, dist as f64 * 0.3);
+        let world_rot =
+            Transform::from_translation(eye.as_vec3()).looking_at(at.as_vec3(), Vec3::Y).rotation;
+        let local = a.orientation.inverse();
+        *head = Transform::from_translation(local * (eye - pos.0).as_vec3())
+            .with_rotation(local * world_rot);
+        *cam = Transform::IDENTITY;
+        return;
+    }
     if mode == "fleet" {
         let Some(mount) = sim.naval().mounts.first() else { return };
         let at = crate::sim_render::metres_point(mount.at);

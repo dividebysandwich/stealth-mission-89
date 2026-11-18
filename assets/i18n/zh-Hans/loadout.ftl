@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = 8 号挂点，右内翼
 hardpoint-fa18e-10-right-outer-wing = 10 号挂点，右外翼
 hardpoint-fa18e-11-right-wingtip = 11 号挂点，右翼尖
 hardpoint-c5-hold = 货舱 (空投货盘)
+hardpoint-ch47-cabin = 机舱（伞兵）
 weapon-role-21 = 空对空，红外制导，射程很短
 employment-21 = 射程：1-6 km，正面更远
 loadout-none-in-stock = （无库存）
@@ -193,3 +194,7 @@ weapon-role-27 = 空射诱饵：以飞机的信号特征飞入防空区，吸引
 employment-27 =
     飞至指定点，然后直飞最多 10 分钟
     对目标无害
+weapon-role-28 = 伞兵：在其将夺取的地点上空空投的一个分队
+employment-28 =
+    从 C-5 的舱门（两个分队）或 CH-47 的尾舱门（一个分队）在空降区上空跳出
+    离地 500 至 1500 英尺、低于 150 节时跳伞；分队大部分须落在空降区内

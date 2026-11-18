@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, sayap kanan dalam
 hardpoint-fa18e-10-right-outer-wing = Station 10, sayap kanan luar
 hardpoint-fa18e-11-right-wingtip = Station 11, ujung sayap kanan
 hardpoint-c5-hold = Ruang kargo (palet jatuhan udara)
+hardpoint-ch47-cabin = Kabin (pasukan payung)
 weapon-role-21 = Udara-ke-udara, pengarah inframerah, jangkauan sangat pendek
 employment-21 = Jangkauan: 1-6 km, lebih jauh dari depan
 loadout-none-in-stock = (stok habis)
@@ -193,3 +194,7 @@ weapon-role-27 = Umpan yang diluncurkan dari udara: terbang dengan jejak pesawat
 employment-27 =
     Terbang ke titik yang ditentukan, lalu lurus hingga 10 menit
     Tidak berbahaya bagi sasaran
+weapon-role-28 = Pasukan payung: satu regu prajurit yang diterjunkan di atas tempat yang mereka rebut
+employment-28 =
+    Dari pintu C-5 (dua regu) atau rampa CH-47 (satu regu) di atas zona penerjunan
+    Terjun antara 500 dan 1500 ft di atas tanah, di bawah 150 kt; sebagian besar regu harus mendarat di zona

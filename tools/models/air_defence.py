@@ -53,6 +53,8 @@ SHOOTER = 124
 PHALANX = 125
 USV = 126
 SUBMARINE = 127
+# A paratrooper (crates/stealth-sim/src/paradrop.rs): hanging under his chute, then standing.
+PARATROOPER = 128
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -1509,6 +1511,18 @@ def submarine():
     mesh_obj("aaa_127_lod0", g, lod0)
 
 
+def paratrooper():
+    """A paratrooper standing (his feet at the origin), his reserve chute on his chest and his
+    pack on his back, his rifle slung."""
+    root, lod0, _ = levels(PARATROOPER, 32769, far_level=False)
+    lod0["radius"] = int(2 * K)
+    g = soldier(False)
+    g.add(block(-0.16, 0.16, 0.13, 0.25, 1.15, 1.4, OLIVE_DARK))
+    g.add(block(-0.2, 0.2, -0.33, -0.13, 1.05, 1.5, OLIVE_DARK))
+    g.add(barrel(-0.4, 0.5, 0.025, x=0.24, z=1.2, paint=STEEL).rotated_x(0.0))
+    mesh_obj("aaa_128_lod0", g, lod0)
+
+
 # -------------------------------------------------------------------------------------- common
 
 
@@ -1562,6 +1576,7 @@ def main():
     phalanx()
     usv()
     submarine()
+    paratrooper()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

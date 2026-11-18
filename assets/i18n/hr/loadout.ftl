@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = Nosač 8, desno unutarnje krilo
 hardpoint-fa18e-10-right-outer-wing = Nosač 10, desno vanjsko krilo
 hardpoint-fa18e-11-right-wingtip = Nosač 11, vrh desnog krila
 hardpoint-c5-hold = Teretni prostor (palete za izbacivanje)
+hardpoint-ch47-cabin = Kabina (padobranci)
 weapon-role-21 = Zrak-zrak, infracrveno navođenje, vrlo kratak domet
 employment-21 = Domet: 1-6 km, veći sprijeda
 loadout-none-in-stock = (nema na zalihi)
@@ -193,3 +194,7 @@ weapon-role-27 = Mamac lansiran iz zraka: s potpisom zrakoplova uleti u protuzra
 employment-27 =
     Leti do označene točke, zatim ravno do 10 minuta
     Bezopasan za ciljeve
+weapon-role-28 = Padobranci: skupina vojnika za desant nad mjestom koje zauzimaju
+employment-28 =
+    Kroz vrata C-5 (dvije skupine) ili rampu CH-47 (jedna skupina) iznad zone desanta
+    Skok između 500 i 1500 ft iznad tla, ispod 150 kt; većina skupine mora sletjeti u zonu

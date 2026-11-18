@@ -161,6 +161,7 @@ hardpoint-fa18e-8-right-inner-wing = ステーション 8、右翼内側
 hardpoint-fa18e-10-right-outer-wing = ステーション 10、右翼外側
 hardpoint-fa18e-11-right-wingtip = ステーション 11、右翼端
 hardpoint-c5-hold = 貨物室 (空中投下パレット)
+hardpoint-ch47-cabin = キャビン (空挺部隊)
 weapon-role-21 = 空対空、赤外線誘導、非常に短射程
 employment-21 = 射程：1-6 km、正面からはさらに遠く
 loadout-none-in-stock = (在庫なし)
@@ -193,3 +194,7 @@ weapon-role-27 = 空中発射デコイ: 航空機の信号を示して防空網�
 employment-27 =
     指定地点まで飛び、その後最大10分間まっすぐ飛ぶ
     目標には無害
+weapon-role-28 = 空挺部隊: 奪取する地点の上空で降下させる一個班
+employment-28 =
+    C-5 の扉 (二個班) か CH-47 のランプ (一個班) から降下地域の上空で
+    対地 500〜1500 ft、150 kt 未満で降下。班の大半が降下地域に着地すること

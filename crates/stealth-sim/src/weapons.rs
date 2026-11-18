@@ -444,6 +444,9 @@ impl Sim {
             if !in_mode {
                 self.mode_msg();
                 self.pl.fire_cooldown = 4;
+            } else if !ccrp && self.selected_weapon().0 == crate::paradrop::PARA_WEAPON {
+                self.release_stick();
+                self.pl.fire_cooldown = 4;
             } else if !ccrp {
                 if bomb {
                     self.release_bombs(ps);

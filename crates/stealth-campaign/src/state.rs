@@ -303,8 +303,12 @@ impl MissionKind {
     /// cargo helicopters, which fly nothing but them and (the troop helicopter) rescues (it
     /// picks the pilot up, the others cover it). The gunship flies the rest.
     pub fn flyable_by(self, aircraft: Aircraft) -> bool {
-        if aircraft.airlifter() || self == MissionKind::Airlift {
-            return aircraft.airlifter() && self == MissionKind::Airlift;
+        if self == MissionKind::Airlift {
+            return aircraft.airlifter();
+        }
+        // The cargo jet also drops paratroopers to take a place.
+        if aircraft.airlifter() {
+            return self == MissionKind::Insertion;
         }
         if aircraft.spectre() {
             return matches!(self, MissionKind::Cas | MissionKind::FleetDefence);
@@ -318,7 +322,8 @@ impl MissionKind {
             return false;
         }
         match self {
-            MissionKind::Insertion => aircraft.transport(),
+            // The UH-60 lands its troops; the CH-47 lands them or drops paratroopers.
+            MissionKind::Insertion => aircraft.transport() || aircraft == Aircraft::CH47,
             MissionKind::Resupply | MissionKind::Logistics => aircraft.cargo(),
             MissionKind::Csar => aircraft != Aircraft::CH47,
             _ => !aircraft.cargo(),
@@ -343,7 +348,8 @@ impl MissionKind {
             MissionKind::Intercept => &[F16, F22, FA18E, AH1Z, AH64, RAH66, OH58],
             MissionKind::Cas => &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, FA18E, Tornado, F117],
             MissionKind::Escort => &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, FA18E, A10],
-            MissionKind::Insertion | MissionKind::Csar => &[UH60],
+            MissionKind::Insertion => &[UH60, CH47, C5],
+            MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],
             MissionKind::Airlift => &[C5],
             MissionKind::Asw => &[MH60R],
@@ -665,6 +671,9 @@ pub struct Progress {
     /// brought home.
     #[serde(default)]
     pub heli: bool,
+    /// His paratroopers came down in the drop zone (an insertion flown by the C-5 or CH-47).
+    #[serde(default)]
+    pub dropped: bool,
     #[serde(default)]
     pub insertion: Option<u32>,
     #[serde(default)]

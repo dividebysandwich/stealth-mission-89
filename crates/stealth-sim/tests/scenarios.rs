@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x82424435576bc3d1,
-        0x20f1e3f67a6d0e9b,
-        0x0be51abc8ca7a446,
-        0x16cb6b5f9d45bc19,
-        0x06fb58f8d33b477b,
-        0x1bd51a0c20aff0b7,
-        0xba36c099d53c5837,
-        0x04d1fe76217873a6,
-        0xca45792807647f58,
-        0x2371f1a9a27b48cc,
-        0x5e5aba26e0658e72,
-        0xcf85cbe545f26688,
-        0x2e66e60bd8e3857f,
-        0xc63e8861641f061e,
-        0xc03bf4f9f2eed201,
-        0x4ed2680cfcb6678e,
-        0xaa2d43cba375907f,
-        0x63fc1e2331d8fa84,
+        0x012fa8c62f815ffd,
+        0x648a4e4a0d18013f,
+        0x677aaa328b6f746a,
+        0x5b92e5974fccd3d5,
+        0x9f623ce7e0bed39f,
+        0x6f8809d3f4067413,
+        0x22612b2025eb2803,
+        0x2beaeab68451dee2,
+        0xfa299dcd3e04dbac,
+        0x2ef9cc43dc903fec,
+        0xd2a21976e16f5cf6,
+        0x86bd160036c5e354,
+        0x4bccb84c5fe72fe3,
+        0x3a4f91d029c3d18a,
+        0x878615471ea61f05,
+        0xf2feb5cf2a6cd14e,
+        0xe73ea4d9e10d2293,
+        0x6e4f26c771f98840,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -3938,4 +3938,95 @@ fn sites_shoot_down_some_jsows() {
     }
     println!("{fired} missiles at JSOWs, {downed} of 8 shot down");
     assert!(fired > 0 && downed > 0, "{fired} fired, {downed} down");
+}
+
+/// A paratroop drop: the C-5 at `ft` over a sandbox at 130 kt heading north, its ramp down, two
+/// sticks aboard, the mission's primary target moved `north` map units ahead as the drop zone.
+/// Returns the simulation, the input, the drop zone and the events of the green light.
+fn para_run(ft: u16, north: i32) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
+    let d = data();
+    let (m, mut sim) = aaa_mission_with(d, SimOptions { galaxy: true, ..Default::default() });
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(paradrop::PARA_WEAPON, 2)]);
+    sim.units_mut().clear();
+    let dz = (mx, my - north);
+    let k = sim.target_slots()[0].object as usize;
+    {
+        let o = &mut sim.objects_mut()[k];
+        o.x = dz.0;
+        o.y = dz.1;
+    }
+    let id = sim.active_pilot();
+    sim.set_pilot_target(id, Some((paradrop::PARA_MISSION, k)));
+    let mut p = player_at(mx, my, ft, 0, 130);
+    p.cmd.toggle_bay = true;
+    for _ in 0..15 * 12 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    let ev = sim.step(&p, 15);
+    p.cmd = Commands::default();
+    (sim, p, dz, ev)
+}
+
+/// Over the drop zone, inside the limits: the stick jumps, the chutes open, they come down in
+/// the zone and take it.
+#[test]
+fn paratroopers_dropped_on_the_zone_take_it() {
+    let (mut sim, p, _, ev) = para_run(1000, 0);
+    assert!(ev.iter().any(|e| is_msg(e, "Green light: go, go, go!")), "{ev:?}");
+    let mut done = false;
+    let mut opened = false;
+    for _ in 0..15 * 240 {
+        for e in sim.step(&p, 15) {
+            done |= matches!(e, SimEvent::ObjectiveDone { primary: true });
+        }
+        opened |= sim.paradrop().jumpers.iter().any(|j| j.open() && j.landed.is_none());
+        if done {
+            break;
+        }
+    }
+    assert!(opened, "no chute opened");
+    assert_eq!(sim.paradrop().jumpers.len(), paradrop::STICK_C5 as usize);
+    assert!(
+        done,
+        "zone not taken: {:?}",
+        sim.paradrop().jumpers.iter().filter(|j| j.landed.is_some()).count()
+    );
+}
+
+/// Too high: the stick stays aboard.
+#[test]
+fn paratroopers_stay_aboard_outside_the_limits() {
+    let (sim, _, _, ev) = para_run(3000, 0);
+    assert!(
+        ev.iter().any(|e| is_msg(e, "Jump limits: 500 to 1500 ft over the ground, below 150 kt")),
+        "{ev:?}"
+    );
+    assert!(sim.paradrop().jumpers.is_empty());
+}
+
+/// The CH-47's stick: its paratroopers are selected (not a gun), and jump in NAV mode too.
+#[test]
+fn the_chinook_drops_its_stick() {
+    let d = data();
+    let opts = SimOptions { helicopter: true, chinook: true, ..Default::default() };
+    let (m, mut sim) = aaa_mission_with(d, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_loadout(&[(paradrop::PARA_WEAPON, 1)]);
+    sim.select_bay(0);
+    assert!(!sim.gun_selected());
+    let mut p = player_at(mx, my, 1000, 0, 110);
+    p.mode_weapons = true;
+    sim.step(&p, 15);
+    p.cmd.fire = true;
+    let ev = sim.step(&p, 15);
+    assert!(ev.iter().any(|e| is_msg(e, "Green light: go, go, go!")), "{ev:?}");
+    p.cmd = Commands::default();
+    for _ in 0..15 * 30 {
+        sim.step(&p, 15);
+    }
+    assert_eq!(sim.paradrop().jumpers.len(), paradrop::STICK_CH47 as usize);
 }

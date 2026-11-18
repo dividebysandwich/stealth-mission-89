@@ -169,6 +169,7 @@ hardpoint-fa18e-8-right-inner-wing = Station 8, right inner wing
 hardpoint-fa18e-10-right-outer-wing = Station 10, right outer wing
 hardpoint-fa18e-11-right-wingtip = Station 11, right wingtip
 hardpoint-c5-hold = Cargo hold (airdrop pallets)
+hardpoint-ch47-cabin = Cabin (paratroopers)
 weapon-role-21 = Air-to-air, infrared homing, very short range
 employment-21 = Range: 1-6 km, farther head-on
 weapon-role-22 = Machine gun pod: fired as the gun, along the nose
@@ -193,3 +194,7 @@ weapon-role-27 = Air-launched decoy: flies an aircraft's signature into the air 
 employment-27 =
     Flies to the designated point, then straight on for up to 10 minutes
     Harmless to targets
+weapon-role-28 = Paratroopers: a stick of soldiers to drop on a place they take
+employment-28 =
+    Out of the C-5's doors (two sticks) or the CH-47's ramp (one stick) over the drop zone
+    Jump between 500 and 1500 ft over the ground, below 150 kt; most of a stick must land in the zone
