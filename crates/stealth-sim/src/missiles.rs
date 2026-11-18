@@ -219,6 +219,10 @@ impl Sim {
             self.glide_frame(s);
             return;
         }
+        // A sea-skimmer flies with the fleet's war (`naval`).
+        if self.proj[s].sea.is_some() {
+            return;
+        }
         if s < ENEMY_SLOTS && self.proj[s].intercept.is_some() {
             self.intercept_frame(s);
             return;

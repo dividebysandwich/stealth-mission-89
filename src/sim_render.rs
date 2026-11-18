@@ -131,6 +131,19 @@ const AAA_LOD_RANGE: f32 = 4.0;
 /// The sandbag wall round a defensive position (in `models/aaa.glb`), its radius as built (m),
 /// and how far outside the units in it it stands (m: a Shilka's half length and room).
 const POSITION_MODEL: i32 = AAA_MODELS + 13;
+/// The naval models in `models/aaa.glb` after the catapult officer: a ship's Phalanx mount, an
+/// attack boat, a submarine up on the surface.
+pub const PHALANX_MODEL: i32 = AAA_MODELS + 15;
+const USV_MODEL: i32 = AAA_MODELS + 16;
+pub const SUB_MODEL: i32 = AAA_MODELS + 17;
+
+/// The model of a ground unit of kind `k`.
+fn unit_model(k: stealth_sim::aaa::GroundKind) -> i32 {
+    match k {
+        stealth_sim::aaa::GroundKind::Usv => USV_MODEL,
+        k => AAA_MODELS + k as i32,
+    }
+}
 const POSITION_WALL_M: f64 = 10.0;
 const POSITION_ROOM_M: f64 = 7.0;
 
@@ -554,6 +567,9 @@ struct AaaVisuals {
     positions: Vec<Entity>,
     /// Campaign: the AI's missiles at AI aircraft (a glowing dot each).
     ai_missiles: Vec<Entity>,
+    /// The ships' Phalanx mounts, and the submarines up on the surface (hidden when spare).
+    mounts: Vec<Entity>,
+    subs: Vec<Entity>,
     material: Option<Handle<PaletteMaterial>>,
 }
 
@@ -564,6 +580,12 @@ pub struct DrawnUnits(pub Vec<(DVec3, f32)>);
 
 /// How far behind a vehicle's centre its dust rises (m).
 const VEHICLE_REAR: f32 = 3.6;
+
+/// Bevy world position of a point in the simulation's metres (east, north, up): the ships'
+/// Phalanx mounts'.
+pub fn metres_point(p: [f64; 3]) -> DVec3 {
+    aaa_point(p)
+}
 
 /// Bevy world position of a point in the air defences' metres (east, north, up).
 fn aaa_point(p: [f64; 3]) -> DVec3 {
@@ -661,7 +683,7 @@ fn sync_aaa(
         av.kinds = kinds;
         let file = library.load(&server, "aaa");
         for u in units {
-            let model = AAA_MODELS + u.kind as i32;
+            let model = unit_model(u.kind);
             let Some(e) = spawn_model(&mut commands, &assets, &file, model, false) else { break };
             commands.entity(e).insert(crate::models::LodRange(AAA_LOD_RANGE));
             av.units.push(e);
@@ -736,7 +758,7 @@ fn sync_aaa(
                 // Driving (a frame's move, at the simulation's rate): dust behind the hull.
                 let gap = combat.frame_gap.max(1.0) / crate::combat::FS as f32;
                 let speed = (f.e - e0).hypot(f.n - n0) / gap;
-                if !u.destroyed && speed > 1.0 {
+                if !u.destroyed && speed > 1.0 && u.kind != stealth_sim::aaa::GroundKind::Usv {
                     let dir = Vec3::new(heading.sin(), 0.0, -heading.cos());
                     dust.0.push((i, at - (dir * VEHICLE_REAR).as_dvec3(), dir, speed));
                 }
@@ -791,9 +813,60 @@ fn sync_aaa(
         vis.set_if_neq(Visibility::Inherited);
     }
 
+    // The fleet's Phalanx mounts, their guns at the threat they fight.
+    let naval = sim.naval();
+    let surfaced = &sim.asw().surfaced;
+    if av.mounts.len() < naval.mounts.len() || av.subs.len() < surfaced.len() {
+        let file = library.load(&server, "aaa");
+        while av.mounts.len() < naval.mounts.len() {
+            let Some(e) = spawn_model(&mut commands, &assets, &file, PHALANX_MODEL, false) else {
+                break;
+            };
+            commands.entity(e).insert(crate::models::LodRange(AAA_LOD_RANGE));
+            av.mounts.push(e);
+        }
+        while av.subs.len() < surfaced.len() {
+            let Some(e) = spawn_model(&mut commands, &assets, &file, SUB_MODEL, false) else {
+                break;
+            };
+            commands.entity(e).insert(crate::models::LodRange(AAA_LOD_RANGE));
+            av.subs.push(e);
+        }
+    }
+    for (k, &e) in av.mounts.iter().enumerate() {
+        let Ok((mut pos, mut tf, state, mut vis)) = q.get_mut(e) else { continue };
+        let Some(m) = naval.mounts.get(k) else {
+            vis.set_if_neq(Visibility::Hidden);
+            continue;
+        };
+        let gone = sim
+            .objects()
+            .get(m.ship as usize)
+            .is_none_or(|o| o.flags & stealth_sim::oflags::DESTROYED != 0);
+        pos.0 = aaa_point(m.at);
+        tf.rotation = Quat::IDENTITY;
+        vis.set_if_neq(if gone { Visibility::Hidden } else { Visibility::Inherited });
+        if let Some(mut s) = state {
+            s.0[AAA_TURRET_SLOT] = bam16(m.az);
+            s.0[AAA_GUN_SLOT] = bam16(-m.el);
+        }
+    }
+    // A submarine on the surface: its hull and fin, sinking out of sight as it dives.
+    for (k, &e) in av.subs.iter().enumerate() {
+        let Ok((mut pos, mut tf, _, mut vis)) = q.get_mut(e) else { continue };
+        let Some(s) = surfaced.get(k) else {
+            vis.set_if_neq(Visibility::Hidden);
+            continue;
+        };
+        pos.0 = aaa_point([s.at[0], s.at[1], -s.depth as f64]);
+        tf.rotation = Quat::from_rotation_y(-s.heading);
+        vis.set_if_neq(Visibility::Inherited);
+    }
+
     // Tracers: every gun's shells (the flak's too, until they burst), also those the guns
-    // fire at AI aircraft in a campaign, friendly and enemy.
-    let shells: Vec<_> = sim.aaa_shells().iter().chain(sim.ai_shells()).collect();
+    // fire at AI aircraft in a campaign, friendly and enemy, and the ships' Phalanx rounds.
+    let shells: Vec<_> =
+        sim.aaa_shells().iter().chain(sim.ai_shells()).chain(&sim.naval().shells).collect();
     let material = av
         .material
         .get_or_insert_with(|| {

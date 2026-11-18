@@ -518,6 +518,9 @@ impl Sim {
     /// A shell of pilot `pilot`'s gun `gun` came down at `at` (metres east, north, up): the
     /// vehicles and guns it hits, the objects it destroys.
     fn side_shell_impact(&mut self, pilot: u8, gun: usize, at: [f64; 3]) {
+        if !self.asw.surfaced.is_empty() {
+            self.strike_on_sea([at[0], at[1]], gun == 0);
+        }
         let back = self.pl.id as usize;
         let shooter =
             (0..self.pilot_count()).find(|&k| self.pilot_ref(k).id == pilot).unwrap_or(back);

@@ -166,6 +166,8 @@
         // The MALD: a small jet decoy that flies a fighter's signature into the air defences
         // (standoff.rs) and draws their missiles.
         (id: "mald", name: "MALD", family: Ground, range_km: 900, mach: 0.8, g: 4, seeker: Optical, model: 15),
+        // The enemy submarines' sea-skimming anti-ship missile, flown by naval.rs.
+        (id: "3m54", name: "3M-54", family: Ground, range_km: 60, mach: 0.8, g: 6, seeker: AntiShip, model: 15),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well

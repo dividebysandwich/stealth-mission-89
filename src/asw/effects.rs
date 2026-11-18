@@ -36,10 +36,12 @@ pub fn splashes(
                 0 => 3.0,
                 1 => 6.0,
                 2 => 70.0,
+                // A missile breaking the surface from a submarine.
+                4 => 15.0,
                 _ => 45.0,
             };
             ex.pending.push((p, Blast::SeaPlume { height }));
-            if kind >= 2 {
+            if matches!(kind, 2 | 3) {
                 sounds.write(crate::sound::PlaySound { id: EXPLOSION_SOUND, priority: 2 });
             }
         }

@@ -188,6 +188,9 @@ pub struct Projectile {
     /// An enemy missile fired at one of its pilot's stand-off weapons: that weapon's slot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intercept: Option<u8>,
+    /// A submarine's sea-skimmer at a ship (`crate::naval`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sea: Option<crate::naval::SeaGuide>,
 }
 
 fn no_burst(b: &u16) -> bool {
@@ -931,6 +934,8 @@ pub enum Launcher {
     Player,
     /// A MANPADS team (`Sim::units` index).
     Manpads(usize),
+    /// A submarine (its id): its sea-skimmers, its MANPADS when it has surfaced.
+    Sub(u16),
 }
 
 /// Radar warning receiver tones.
@@ -1004,7 +1009,7 @@ pub enum SimEvent {
     },
     /// The submarine hunt ([`crate::asw`]): something hit the sea at `at` (decimetres east,
     /// north): kind 0 a sonobuoy, 1 a torpedo, 2 a submarine sunk (its plume), 3 a ship
-    /// torpedoed.
+    /// torpedoed, 4 a submarine's missile breaking the surface.
     AswSplash {
         at: [i32; 2],
         kind: u8,
@@ -1046,6 +1051,10 @@ pub enum SimEvent {
         x: i32,
         y: i32,
         alt: i32,
+    },
+    /// A ship's Phalanx mount (`Sim::naval` index) opened fire.
+    CiwsFiring {
+        mount: u8,
     },
     /// An attack drone reached its target (map position).
     DroneImpact {

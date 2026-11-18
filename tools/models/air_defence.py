@@ -48,6 +48,11 @@ NASAMS_RADAR = 122
 POSITION = 123
 # A carrier's catapult officer, the "shooter" (not a unit: drawn beside each catapult).
 SHOOTER = 124
+# The fleet's war (crates/stealth-sim/src/naval.rs): a ship's Phalanx mount, the enemy's
+# unmanned attack boat, a submarine up on the surface.
+PHALANX = 125
+USV = 126
+SUBMARINE = 127
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -1381,6 +1386,114 @@ def shooter():
     mesh_obj(name + "_lod0_s23v3", shooter_lunge().mirrored(), lod0)
 
 
+# ------------------------------------------------------------------------------------- naval
+
+HAZE = Ramp(0xE3, 0xE8)
+HAZE_LIGHT = Ramp(0xE3, 0xE5)
+HULL_BLACK = Ramp(0xEC, 0xEF)
+
+
+def phalanx_base(paint=HAZE):
+    """The Mk 15 mount's pedestal and the round training base on it (pivot at its top), on
+    its sponson: a platform with a rail round it, braced down to the ship's side."""
+    g = Geo()
+    g.add(block(-1.8, 1.8, -1.8, 1.8, -0.25, 0.0, paint))
+    for x0, x1, y0, y1 in ((-1.8, 1.8, 1.75, 1.8), (-1.8, 1.8, -1.8, -1.75), (-1.8, -1.75, -1.8, 1.8),
+                           (1.75, 1.8, -1.8, 1.8)):
+        g.add(block(x0, x1, y0, y1, 0.0, 1.0, paint))
+    g.add(mklib.hexa([(-1.2, -1.6, -0.25), (1.2, -1.6, -0.25), (1.2, 1.6, -0.25), (-1.2, 1.6, -0.25),
+                      (-0.3, -0.4, -2.6), (0.3, -0.4, -2.6), (0.3, 0.4, -2.6), (-0.3, 0.4, -2.6)], paint))
+    g.add(frustum((0, 0, 0), (0, 0, 0.9), 0.75, 0.7, paint, n=12))
+    g.add(frustum((0, 0, 0.9), (0, 0, 1.15), 0.95, 0.95, paint, n=12))
+    return g
+
+
+def phalanx_turret(paint=HAZE):
+    """The carriage on the training base: the two arms the gun's cradle swings between and the
+    ammunition drum's housing behind (pivot at the base's top)."""
+    g = Geo()
+    g.add(block(-0.75, 0.75, -0.7, 0.5, 0.0, 0.5, paint))
+    for sx in (-1, 1):
+        g.add(block(sx * 0.62 - 0.12, sx * 0.62 + 0.12, -0.35, 0.45, 0.5, 1.55, paint))
+    return g
+
+
+def phalanx_gun(paint=HAZE, light=HAZE_LIGHT):
+    """The elevating part about its trunnions: the white radome on its stalk (the "R2-D2"
+    dome), the drum under it, the six M61 barrels in their shroud with the muzzle clamp."""
+    g = Geo()
+    # Drum and gun body.
+    g.add(frustum((0, -1.3, -0.15), (0, 0.4, -0.15), 0.42, 0.42, paint, n=10))
+    # Barrels (a shroud with the clamp at the muzzle).
+    g.add(frustum((0, 0.4, -0.15), (0, 2.1, -0.15), 0.14, 0.12, STEEL, n=6))
+    g.add(frustum((0, 2.0, -0.15), (0, 2.12, -0.15), 0.17, 0.17, STEEL, n=6))
+    # The radome: a cylinder with a domed top, on a stalk above the gun.
+    g.add(block(-0.12, 0.12, -0.5, 0.0, 0.25, 0.75, paint))
+    g.add(frustum((0, -0.3, 0.75), (0, -0.3, 2.0), 0.62, 0.62, light, n=12))
+    g.add(frustum((0, -0.3, 2.0), (0, -0.3, 2.35), 0.62, 0.42, light, n=12))
+    g.add(frustum((0, -0.3, 2.35), (0, -0.3, 2.5), 0.42, 0.05, light, n=12))
+    return g
+
+
+def phalanx():
+    root, lod0, _ = levels(PHALANX, 32769, far_level=False)
+    base = mesh_obj("aaa_125_lod0_s1v0", phalanx_base(), lod0)
+    turret = part("aaa_125_lod0_s1v0_part1", phalanx_turret(), base, (0, 0, 1.15), TURRET_SLOT, 0)
+    part("aaa_125_lod0_s1v0_part2", phalanx_gun(), turret, (0, 0.0, 1.15), GUN_SLOT, 1)
+    mesh_obj("aaa_125_lod0_s1v1", phalanx_base(BURNT), lod0)
+
+
+def usv_hull(paint=HULL_BLACK, deck=OLIVE_DARK):
+    """A Sea Baby style attack boat (about 6 m by 2 m): a low hard-chined hull riding at the
+    waterline, its sharp bow, the flat deck with the sensor and antenna mast aft of the bow."""
+    g = Geo()
+    # Plan half widths and heights along the hull (y from the stern 0 to the bow).
+    stations = [(-3.0, 0.0, 0.9, 0.35), (-1.5, 0.0, 1.0, 0.4), (0.8, 0.0, 0.95, 0.4),
+                (2.2, 0.05, 0.55, 0.32), (3.1, 0.15, 0.05, 0.2)]
+    g.add(mklib.loft([(y, z, hw, hh) for y, z, hw, hh in stations], paint, n=8, power=6.0))
+    # Deck hatch and the mast with its camera ball and antenna.
+    g.add(block(-0.45, 0.45, -1.8, 0.4, 0.38, 0.48, deck))
+    g.add(block(-0.08, 0.08, 0.8, 0.95, 0.35, 1.25, deck))
+    g.add(frustum((0, 0.88, 1.25), (0, 0.88, 1.4), 0.12, 0.12, GLASS, n=6))
+    g.add(frustum((0.25, -2.2, 0.4), (0.25, -2.2, 1.6), 0.02, 0.01, STEEL, n=4))
+    return g
+
+
+def usv():
+    root, lod0, _ = levels(USV, 32769, far_level=False)
+    mesh_obj("aaa_126_lod0_s1v0", usv_hull(), lod0)
+    # Sunk: only some burnt wreckage awash.
+    w = Geo()
+    w.add(block(-0.6, 0.5, -1.5, 0.8, -0.2, 0.1, BURNT))
+    w.add(block(-0.3, 0.4, 1.0, 1.6, -0.2, 0.05, BURNT).rotated_z(0.4))
+    mesh_obj("aaa_126_lod0_s1v1", w, lod0)
+
+
+def submarine():
+    """A diesel attack submarine (Kilo class, 73 m by 10 m) on the surface: the round hull
+    awash with its casing deck a metre or two out of the water, the fin amidships forward with
+    its masts, the X-free cruciform tail's upper rudder (model origin at the waterline)."""
+    root, lod0, _ = levels(SUBMARINE, 32769, far_level=False)
+    lod0["radius"] = int(40 * K)
+    g = Geo()
+    hull = [(-36.5, -2.0, 0.6, 0.6), (-33.0, -2.2, 2.6, 2.6), (-24.0, -2.4, 4.6, 4.6),
+            (20.0, -2.4, 4.9, 4.9), (31.0, -2.4, 4.4, 4.2), (35.5, -2.6, 2.4, 2.2),
+            (36.6, -2.8, 0.5, 0.5)]
+    g.add(mklib.loft(hull, HULL_BLACK, n=14))
+    # The casing deck along the top.
+    g.add(block(-1.2, 1.2, -28.0, 30.0, 2.3, 2.6, HULL_BLACK))
+    # The fin, its rounded front, the masts above it.
+    g.add(mklib.loft([(0.0, 2.6, 0.2, 0.1), (1.0, 2.6, 1.0, 0.1), (3.0, 2.6, 1.4, 0.1),
+                      (10.0, 2.6, 1.2, 0.1)], HULL_BLACK, n=8))
+    g.add(block(-1.3, 1.3, 0.0, 9.5, 2.6, 9.0, HULL_BLACK, taper=0.15, taper_y=0.4))
+    for x, y, h in ((0.0, 6.0, 11.5), (0.3, 4.0, 10.8), (-0.3, 7.2, 10.5)):
+        g.add(frustum((x, y, 9.0), (x, y, h), 0.15, 0.12, STEEL, n=6))
+    # The upper rudder and the stern planes.
+    g.add(block(-0.15, 0.15, -36.0, -31.0, 0.0, 4.5, HULL_BLACK, taper_y=1.5))
+    g.add(block(-5.0, 5.0, -35.5, -32.5, -2.6, -2.3, HULL_BLACK))
+    mesh_obj("aaa_127_lod0", g, lod0)
+
+
 # -------------------------------------------------------------------------------------- common
 
 
@@ -1431,6 +1544,9 @@ def main():
     nasams_radar()
     position()
     shooter()
+    phalanx()
+    usv()
+    submarine()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

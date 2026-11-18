@@ -7,7 +7,9 @@
 //!   looking past him at the drone), `side`, `high`, `missile` (behind the player's missile,
 //!   else `behind`), `drone` (past the drone, looking back over it at the player), `follow`
 //!   (behind the drone on its own heading and above it, looking at it; the drone a town's
-//!   searchlight follows rather than drone `k` while there is one).
+//!   searchlight follows rather than drone `k` while there is one), `fleet` (from behind
+//!   the first Phalanx mount of the fleet, looking at the nearest threat at sea: a
+//!   sea-skimmer, an attack boat, else out from the ship).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -102,6 +104,38 @@ fn stage_camera(
         view.view = View::Chase;
     }
     let sim = &combat.sim;
+    if mode == "fleet" {
+        let Some(mount) = sim.naval().mounts.first() else { return };
+        let at = crate::sim_render::metres_point(mount.at);
+        let boat = sim
+            .units()
+            .iter()
+            .filter(|u| u.kind == stealth_sim::aaa::GroundKind::Usv && !u.destroyed)
+            .map(|u| crate::sim_render::metres_point(u.metres()));
+        let missile = sim
+            .active_projectiles()
+            .into_iter()
+            .filter(|(s, m, _, _)| *s < 8 && m.sea.is_some())
+            .map(|(_, m, _, _)| {
+                crate::sim_render::map_point(m.x as f64 + 0.5, m.y as f64 + 0.5, m.alt as f64)
+            });
+        let threat = missile
+            .chain(boat)
+            .min_by(|a, b| a.distance(at).total_cmp(&b.distance(at)))
+            .unwrap_or(at + DVec3::NEG_Z * 1000.0);
+        let ax = (threat - at).with_y(0.0).try_normalize().unwrap_or(DVec3::NEG_Z);
+        let (d, h) = (dist as f64, height as f64);
+        let side = ax.cross(DVec3::Y);
+        let eye = at - ax * d + side * (d * 0.6) + DVec3::Y * h;
+        let look = at.lerp(threat, 0.5_f64.min(60.0 / threat.distance(at).max(1.0)));
+        let world_rot =
+            Transform::from_translation(eye.as_vec3()).looking_at(look.as_vec3(), Vec3::Y).rotation;
+        let local = a.orientation.inverse();
+        *head = Transform::from_translation(local * (eye - pos.0).as_vec3())
+            .with_rotation(local * world_rot);
+        *cam = Transform::IDENTITY;
+        return;
+    }
     let lit = barrage.lit_drone().filter(|_| mode == "follow");
     let Some(i) = lit.or_else(|| chased_unit(&mission.0)) else { return };
     let Some(u) = sim.flights().get(i) else { return };

@@ -275,6 +275,9 @@ pub struct WorldFast {
     /// The submarine hunt as the crews see it (no submarines).
     #[serde(default, skip_serializing_if = "crate::asw::Asw::is_empty")]
     pub asw: crate::asw::Asw,
+    /// The fleet's close-in defence: its mounts and their tracers.
+    #[serde(default, skip_serializing_if = "crate::naval::Naval::is_empty")]
+    pub naval: crate::naval::Naval,
     pub pilots: Vec<RemotePilot>,
     /// Every pilot in the world; those not in `pilots` this time are as they were.
     #[serde(default)]
@@ -393,6 +396,7 @@ impl Sim {
             ai_cms: self.ai_countermeasures().map(|(i, k, c)| (i as u16, k as u8, c)).collect(),
             sfw: self.sfw.for_clients(),
             asw: self.asw.for_clients(),
+            naval: self.naval.clone(),
             pilots: self.remote_pilots(),
             present: Vec::new(),
         }
@@ -682,6 +686,7 @@ impl Sim {
         }
         self.sfw = w.sfw.clone();
         self.asw = w.asw.clone();
+        self.naval = w.naval.clone();
         for a in &mut self.ai_flight {
             a.cms = Default::default();
         }

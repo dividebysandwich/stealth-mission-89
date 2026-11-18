@@ -88,6 +88,7 @@ impl Plugin for SoundPlugin {
         app.add_message::<PlaySound>()
             .add_message::<Thunder>()
             .add_message::<GunReport>()
+            .add_message::<CiwsReport>()
             .add_message::<ShellBurst>()
             .init_resource::<SoundLevel>()
             .init_resource::<Alarms>()
@@ -121,7 +122,7 @@ impl Plugin for SoundPlugin {
             )
             .add_systems(
                 Update,
-                (follow_head, distant_aircraft, sam_launches, gun_reports)
+                (follow_head, distant_aircraft, sam_launches, gun_reports, ciws_reports)
                     .chain()
                     .after(CombatSystems)
                     .run_if(in_state(AppState::Flight)),
@@ -144,6 +145,12 @@ pub const DIRECT: u8 = 255;
 pub struct GunReport {
     pub at: bevy::math::DVec3,
     pub calibre: crate::explosions::Calibre,
+}
+
+/// A ship's Phalanx mount at `at` (Bevy world) firing a second's burst.
+#[derive(Message, Debug, Clone, Copy)]
+pub struct CiwsReport {
+    pub at: bevy::math::DVec3,
 }
 
 /// A gunship's shell burst at `at` (Bevy world): the 105 mm's blast (explosion1-3.ogg), the
@@ -467,6 +474,8 @@ struct SoundBank {
     side_guns: [Option<Handle<AudioSource>>; 2],
     /// The 105 mm's shells bursting (explosion1-3.ogg).
     booms: Vec<Handle<AudioSource>>,
+    /// A ship's Phalanx firing (a second's burst).
+    phalanx: Option<Handle<AudioSource>>,
 }
 
 /// A playing one-shot sound (one instance per id at a time, like the single-voice driver, but
@@ -682,6 +691,7 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
     bank.afterburner = optional("afterburner.flac");
     bank.aim9 = AIM9_FILES.map(optional);
     bank.side_guns = [optional("40mm.ogg"), optional("105mm.ogg")];
+    bank.phalanx = optional("phalanx.flac");
     bank.booms = ["explosion1.ogg", "explosion2.ogg", "explosion3.ogg"]
         .into_iter()
         .filter_map(optional)
@@ -1732,6 +1742,48 @@ fn gun_reports(
             },
             WorldPos(p),
             Transform::from_translation((p - origin.origin).as_vec3()),
+            GunSound,
+        ));
+    }
+}
+
+/// A ship's Phalanx: heard up to this range (m), at full volume within the reference distance.
+const PHALANX: (f32, f32, f32) = (8_000.0, 60.0, 1.0);
+
+/// The ships' Phalanx mounts firing, each burst heard from where it fires.
+fn ciws_reports(
+    mut commands: Commands,
+    mut fired: MessageReader<CiwsReport>,
+    bank: Option<Res<SoundBank>>,
+    level: Res<SoundLevel>,
+    origin: Res<FloatingOrigin>,
+    eye: Query<&GlobalTransform, With<EyeCamera>>,
+    settings: Res<crate::settings::Settings>,
+    mut muffler: Muffler,
+) {
+    let (Some(bank), Ok(eye_tf)) = (bank.filter(|_| level.0 >= 1), eye.single()) else {
+        fired.clear();
+        return;
+    };
+    let ear = origin.origin + eye_tf.translation().as_dvec3();
+    for c in fired.read() {
+        let dist = (c.at - ear).length() as f32;
+        if dist > PHALANX.0 {
+            continue;
+        }
+        let Some(muffled) = bank.phalanx.as_ref().and_then(|s| muffler.once(s)) else { continue };
+        commands.spawn((
+            AudioPlayer(muffled),
+            PlaybackSettings {
+                volume: Volume::Linear(
+                    heard_volume(PHALANX, dist) * Channel::Effects.gain(&settings),
+                ),
+                spatial: true,
+                spatial_scale: Some(SpatialScale::new(1.0 / PHALANX.0)),
+                ..PlaybackSettings::DESPAWN
+            },
+            WorldPos(c.at),
+            Transform::from_translation((c.at - origin.origin).as_vec3()),
             GunSound,
         ));
     }

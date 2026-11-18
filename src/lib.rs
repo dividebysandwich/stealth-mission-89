@@ -107,6 +107,7 @@ mod script;
 mod sea;
 mod settings;
 mod sfw;
+mod naval;
 mod slam_page;
 mod shake;
 mod side_guns;
@@ -368,6 +369,7 @@ pub fn run() {
             station::StationPlugin,
             gunner::GunnerPlugin,
             asw::AswPlugin,
+            naval::NavalPlugin,
         ))
         .add_plugins((
             fires::FiresPlugin,

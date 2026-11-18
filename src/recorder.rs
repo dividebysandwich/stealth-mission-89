@@ -544,7 +544,7 @@ impl FlightRecord {
         let kind = match *e {
             SimEvent::MissileLaunched { spec, launcher, .. } => match launcher {
                 Launcher::Site(i) => MarkKind::Launch { site: Some(i), spec },
-                Launcher::Aircraft(_) | Launcher::Manpads(_) => {
+                Launcher::Aircraft(_) | Launcher::Manpads(_) | Launcher::Sub(_) => {
                     MarkKind::Launch { site: None, spec }
                 }
                 Launcher::Player => return,

@@ -152,6 +152,9 @@ pub enum GroundKind {
     NasamsLauncher,
     /// NASAMS AN/MPQ-64 Sentinel radar: tracks for the launchers around it.
     NasamsRadar,
+    /// An unmanned explosive attack boat (a Sea Baby): races in at a ship and blows up against
+    /// its side (`crate::naval`).
+    Usv,
 }
 
 /// A friendly missile battery: a radar that tracks and the launchers around it that fire on
@@ -262,6 +265,7 @@ impl GroundKind {
             GroundKind::Bmp2 => "BMP-2",
             GroundKind::NasamsLauncher => "NASAMS",
             GroundKind::NasamsRadar => "NASAMS radar",
+            GroundKind::Usv => "USV",
         }
     }
 
@@ -291,7 +295,9 @@ impl GroundKind {
     /// No gun and no MANPADS of its own to fire at aircraft: a missile battery's launcher or
     /// radar, a drone command center, a tank or an infantry fighting vehicle.
     pub fn unarmed(self) -> bool {
-        self.battery().is_some() || self == GroundKind::DroneCenter || self.armour()
+        self.battery().is_some()
+            || matches!(self, GroundKind::DroneCenter | GroundKind::Usv)
+            || self.armour()
     }
 
     /// A main battle tank.
@@ -849,6 +855,7 @@ impl Sim {
                 | GroundKind::PatriotRadar
                 | GroundKind::NasamsLauncher
                 | GroundKind::NasamsRadar
+                | GroundKind::Usv
                 | GroundKind::Gepard
                 | GroundKind::DroneCenter
                 | GroundKind::T90
@@ -942,6 +949,15 @@ impl Sim {
     /// A MANPADS team fires an SA-14 if a missile slot is free (never one in flight).
     fn launch_manpads(&mut self, i: usize) {
         let u = self.units[i];
+        let alt = self.hill_alt(u.x, u.y);
+        self.launch_manpads_from((u.x, u.y), alt, Launcher::Manpads(i));
+    }
+
+    /// An SA-14 fired from map point `at` (`alt` the ground's altitude there) at the active
+    /// pilot, if a missile slot is free: a MANPADS team's, a surfaced submarine's.
+    pub(crate) fn launch_manpads_from(&mut self, at: (i32, i32), alt: i32, launcher: Launcher) {
+        let u = (at.0, at.1);
+        let u = GroundUnit { x: u.0, y: u.1, ..Default::default() };
         if !self.may_launch(SA14, (u.x, u.y, 0)) {
             return;
         }
@@ -951,7 +967,7 @@ impl Sim {
         self.proj[k] = Projectile {
             x: u.x,
             y: u.y,
-            alt: self.hill_alt(u.x, u.y),
+            alt,
             speed: 1,
             heading: s16(brg),
             pitch: 0x2000,
@@ -968,11 +984,7 @@ impl Sim {
         self.msg(text!("sim-missile-launch"));
         self.proj_pilot[k] = self.pl.id;
         self.pl.launches += 1;
-        self.emit(SimEvent::MissileLaunched {
-            slot: k,
-            spec: SA14,
-            launcher: Launcher::Manpads(i),
-        });
+        self.emit(SimEvent::MissileLaunched { slot: k, spec: SA14, launcher });
     }
 
     /// Player bombs, missiles and gun rounds that went off on the ground this frame destroy the

@@ -800,6 +800,7 @@ impl Sim {
             slam: None,
             glide: None,
             intercept: None,
+            sea: None,
         };
         if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {
             pr.speed >>= 1;

@@ -36,6 +36,9 @@
 - autocannon: one round of an infantry fighting vehicle's 25 or 30 mm gun: a hard bang over
   a short thump, a quick echo (the game plays one per round of a burst).
 - autocannon_far: the same far off: a dull knock.
+- phalanx: a second of a ship's Phalanx firing: 75 rounds a second from the six barrels run
+  together into its tearing buzz over the gun's whine (the game plays it each second a mount
+  fires).
 
 Each one is scaled to the loudness (RMS) the game's mix expects of it. Mono, 44.1 kHz,
 16 bit, like the other game sounds.
@@ -295,6 +298,20 @@ def autocannon(far):
     return fades(x, 0.0003, 0.08)
 
 
+def phalanx():
+    global rng
+    rng = np.random.default_rng(175)
+    t = 1.15
+    n = int(1.0 * 75)
+    rounds = sum(
+        at(t, i / 75.0, noise(0.03, 250, 7000) * env(0.03, 0.0002, 0.006)) for i in range(n)
+    )
+    tear = buzz(1.0, 75, 30) * env(1.0, 0.01, 10.0)
+    whine = np.sin(2 * np.pi * 1150 * seconds(1.0)) * env(1.0, 0.05, 10.0)
+    x = 1.0 * rounds + 0.45 * at(t, 0.0, tear) + 0.05 * at(t, 0.0, whine)
+    return fades(x, 0.003, 0.12)
+
+
 def contact():
     t = 0.42
     beep = lambda: buzz(0.075, 1100, 4, phase_rng=False) * env(0.075, 0.003, 1.0)
@@ -416,6 +433,7 @@ if __name__ == "__main__":
         "tank_gun_far.flac": (lambda: tank_gun(True), -16.0),
         "autocannon.flac": (lambda: autocannon(False), -15.0),
         "autocannon_far.flac": (lambda: autocannon(True), -19.0),
+        "phalanx.flac": (phalanx, -15.0),
     }
     if wanted:
         for name in wanted:

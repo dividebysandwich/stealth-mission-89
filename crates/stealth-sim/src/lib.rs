@@ -35,6 +35,7 @@ pub mod score;
 pub mod sfw;
 pub mod slam;
 pub mod standoff;
+pub mod naval;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -261,6 +262,9 @@ pub struct Sim {
     /// pictures ([`asw`]).
     #[serde(default, skip_serializing_if = "asw::Asw::is_empty")]
     pub(crate) asw: asw::Asw,
+    /// The fleet's close-in defence and the sea-skimmers it fights ([`naval`]).
+    #[serde(default, skip_serializing_if = "naval::Naval::is_empty")]
+    pub(crate) naval: naval::Naval,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -632,6 +636,7 @@ impl Sim {
             column: None,
             sfw: sfw::Sfw::default(),
             asw: asw::Asw::default(),
+            naval: naval::Naval::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,
@@ -1022,6 +1027,7 @@ impl Sim {
         self.update_missiles(&present);
         self.update_sfw();
         self.update_asw(&present);
+        self.update_naval();
         for &k in &present {
             self.activate(k);
             self.update_cm_timers();
@@ -1041,6 +1047,7 @@ impl Sim {
         if self.aaa_rng.is_some() {
             self.aaa_damage();
         }
+        self.sea_strikes();
         for &k in &present {
             self.activate(k);
             self.update_light_timers();

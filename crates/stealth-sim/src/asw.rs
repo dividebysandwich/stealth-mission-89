@@ -146,6 +146,27 @@ const QUIET: f64 = 4.0 * KT;
 const TRANSIT: f64 = 7.0 * KT;
 const SPRINT: f64 = 20.0 * KT;
 const ATTACK_RANGE: f64 = 8000.0;
+/// Its anti-ship missiles: fired from periscope depth within this range of its ship (m), two
+/// to four of them this many seconds apart.
+const MISSILE_RANGE: f64 = 45_000.0;
+const SALVO_GAP: f64 = 4.0;
+/// Surfacing against a helicopter: one low (m) within this range (m) of it, the chance it
+/// takes it (per mille, each time one comes), how long it stays up (s) and how soon after
+/// it may again (s); a MANPADS shot every so many seconds at one within reach (m), up this
+/// fast (m/s).
+const SURFACE_HELI_HEIGHT: f64 = 1500.0 * FT;
+const SURFACE_RANGE: f64 = 4000.0;
+const SURFACE_CHANCE: i32 = 500;
+const SURFACED_FOR: f64 = 90.0;
+const SURFACE_EVERY: f64 = 240.0;
+const MANPADS_EVERY: f64 = 20.0;
+const MANPADS_REACH: f64 = 5000.0;
+const SURFACE_RATE: f64 = 4.0;
+/// A surfaced submarine: a blast this close (m) sinks it; a gun round this close one time in
+/// so many.
+const SURFACED_BLAST_REACH: f64 = 30.0;
+const SURFACED_ROUND_REACH: f64 = 15.0;
+const SURFACED_ROUND_ODDS: i32 = 10;
 const ENEMY_TORPEDO_RUN: f64 = 300.0;
 /// Periscope depth (m): reached every so often for a while (s).
 pub const PERISCOPE_DEPTH: f64 = 15.0;
@@ -481,7 +502,21 @@ pub enum Posture {
     /// Stopped, everything shut down that can be: silent to a passive sensor (a ping still
     /// finds it). Every so often, and while a helicopter hovers near it.
     Silent,
+    /// Up on the surface, its crew on the fin with MANPADS against a helicopter low nearby.
+    Surfaced,
 }
+
+/// A submarine at the surface (or near it: its fin shows above `SURFACED_DEPTH`), as everyone
+/// sees it: where (m east, north), its heading (rad clockwise from north) and how deep (m).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
+pub struct Surfaced {
+    pub at: [f64; 2],
+    pub heading: f32,
+    pub depth: f32,
+}
+
+/// Shallower than this (m) a submarine's fin and hull show above the sea.
+pub const SURFACED_DEPTH: f64 = 8.0;
 
 /// A submarine (the host's alone).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -515,6 +550,20 @@ pub struct Sub {
     /// A campaign's: the AI mission (its id) whose helicopters hunt it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_hunt: Option<u32>,
+    /// Its anti-ship missiles: fired its salvo (from periscope depth, in range of its ship),
+    /// the missiles of it still to go and the seconds to the next.
+    #[serde(default)]
+    pub fired: bool,
+    #[serde(default)]
+    pub salvo: u8,
+    #[serde(default)]
+    pub salvo_t: f64,
+    /// Seconds before it may surface again against a helicopter, and to its next MANPADS
+    /// shot while surfaced.
+    #[serde(default)]
+    pub surface_in: f64,
+    #[serde(default)]
+    pub manpads_t: f64,
 }
 
 /// The AI's hunt of a campaign ASW mission (the host's): its submarine, its helicopters
@@ -651,6 +700,9 @@ pub struct Asw {
     pub crews: Vec<AswCrew>,
     /// Periscope wakes on the sea (m east, north): a submarine at periscope depth.
     pub wakes: Vec<[f64; 2]>,
+    /// The submarines up on (or coming up to, or diving from) the surface, for all to see.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub surfaced: Vec<Surfaced>,
     pub result: AswResult,
     /// Seconds since the hunt began; the second the sensors last reported.
     pub clock: f64,
@@ -663,7 +715,11 @@ pub struct Asw {
 
 impl Asw {
     pub fn is_empty(&self) -> bool {
-        self.crews.is_empty() && self.subs.is_empty() && self.buoys.is_empty() && self.torpedoes.is_empty()
+        self.crews.is_empty()
+            && self.subs.is_empty()
+            && self.buoys.is_empty()
+            && self.torpedoes.is_empty()
+            && self.surfaced.is_empty()
     }
 
     /// What the other simulations get: no submarines.
@@ -835,6 +891,11 @@ impl Sub {
             silent_in: 1000.0,
             silent_for: 0.0,
             ai_hunt: None,
+            fired: false,
+            salvo: 0,
+            salvo_t: 0.0,
+            surface_in: 0.0,
+            manpads_t: 0.0,
         }
     }
 
@@ -1440,6 +1501,58 @@ impl Sim {
         false
     }
 
+    /// The pilots' bombs, missiles and gun rounds that went off this frame strike a submarine
+    /// up on the surface.
+    pub(crate) fn sea_strikes(&mut self) {
+        if self.asw.surfaced.is_empty() || self.mirror {
+            return;
+        }
+        let fine = (32 * ROUND_FINE) as f64;
+        let hits: Vec<([f64; 2], bool)> = self
+            .events
+            .iter()
+            .filter_map(|e| match *e {
+                SimEvent::Explosion { x, y, alt, kind } if alt < 60 && kind != -1 && kind != -16 => {
+                    Some(([x as f64 * M_PER_MAP, (0x8000 - y) as f64 * M_PER_MAP], false))
+                }
+                SimEvent::RoundImpact { x, y, .. } => Some((
+                    [x as f64 / fine * M_PER_MAP, (0x8000 as f64 - y as f64 / fine) * M_PER_MAP],
+                    true,
+                )),
+                _ => None,
+            })
+            .collect();
+        for (at, round) in hits {
+            self.strike_on_sea(at, round);
+        }
+    }
+
+    /// Test aid: submarine `i` comes up to the surface (and fires at helicopters near).
+    pub fn surface_sub(&mut self, i: usize) {
+        if let Some(s) = self.asw.subs.get_mut(i) {
+            s.posture = Posture::Surfaced;
+            s.posture_t = 0.0;
+            s.manpads_t = 5.0;
+            s.depth = s.depth.min(SURFACED_DEPTH);
+        }
+    }
+
+    /// A bomb's or missile's blast (`round` false) or a gun round (true) on the sea at (m east,
+    /// north): a submarine up on the surface there may sink (a round only now and then).
+    pub(crate) fn strike_on_sea(&mut self, at: [f64; 2], round: bool) {
+        let reach = if round { SURFACED_ROUND_REACH } else { SURFACED_BLAST_REACH };
+        let hit = self
+            .asw
+            .subs
+            .iter()
+            .position(|s| s.alive && s.depth < SURFACED_DEPTH && dist(s.at, at) < reach);
+        if let Some(i) = hit
+            && (!round || self.asw.rand(SURFACED_ROUND_ODDS) == 0)
+        {
+            self.sink(i);
+        }
+    }
+
     fn sink(&mut self, i: usize) {
         let s = &mut self.asw.subs[i];
         s.alive = false;
@@ -1493,7 +1606,15 @@ impl Sim {
         for h in &helis {
             self.asw.crew_mut(h.id);
         }
-        self.move_subs(dt, &helis);
+        // Every helicopter passing low over the sea: a submarine may surface to fire at it (one
+        // hovering over it, hunting it, it hides from: silent).
+        let lows: Vec<Heli> = present
+            .iter()
+            .filter(|&&k| self.pilot_ref(k).helicopter && self.pilot_ref(k).eject == 0)
+            .map(|&k| self.heli(k))
+            .filter(|h| h.height < SURFACE_HELI_HEIGHT && h.speed > OVERHEAD_SPEED)
+            .collect();
+        self.move_subs(dt, &helis, &lows);
         self.move_buoys(dt, &helis);
         self.move_dips(dt, &helis);
         self.move_torpedoes(dt);
@@ -1516,10 +1637,20 @@ impl Sim {
             .filter(|s| s.alive && s.depth <= PERISCOPE_DEPTH + 2.0)
             .map(|s| s.at)
             .collect();
+        self.asw.surfaced = self
+            .asw
+            .subs
+            .iter()
+            .filter(|s| s.alive && s.depth < SURFACED_DEPTH)
+            .map(|s| Surfaced { at: s.at, heading: s.heading as f32, depth: s.depth as f32 })
+            .collect();
         self.judge_hunt(present);
     }
 
-    fn move_subs(&mut self, dt: f64, helis: &[Heli]) {
+    fn move_subs(&mut self, dt: f64, helis: &[Heli], lows: &[Heli]) {
+        // Missiles and MANPADS shots this frame: (from, ship, sub) and (from, pilot, sub).
+        let mut missiles: Vec<([f64; 2], usize, u16)> = Vec::new();
+        let mut manpads: Vec<([f64; 2], u8, u16)> = Vec::new();
         // A campaign's submarine whose hunter has gone home withdraws.
         let gone: Vec<bool> = self
             .asw
@@ -1558,7 +1689,42 @@ impl Sim {
             let overhead = helis.iter().any(|h| {
                 h.height < OVERHEAD_HEIGHT && h.speed < OVERHEAD_SPEED && dist(h.at, self.asw.subs[i].at) < OVERHEAD_RANGE
             });
+            let low = lows
+                .iter()
+                .filter(|h| dist(h.at, self.asw.subs[i].at) < SURFACE_RANGE)
+                .min_by(|a, b| dist(a.at, self.asw.subs[i].at).total_cmp(&dist(b.at, self.asw.subs[i].at)))
+                .map(|h| (h.id, h.at));
             let s = &mut self.asw.subs[i];
+            // A helicopter low near it: it may come up and fight it with MANPADS.
+            s.surface_in -= dt;
+            if torp.is_none()
+                && low.is_some()
+                && s.surface_in <= 0.0
+                && matches!(s.posture, Posture::Transit | Posture::Periscope | Posture::Silent)
+            {
+                s.surface_in = SURFACE_EVERY;
+                if r2 < SURFACE_CHANCE {
+                    s.posture = Posture::Surfaced;
+                    s.posture_t = 0.0;
+                    s.manpads_t = 0.0;
+                }
+            }
+            if s.posture == Posture::Surfaced {
+                if s.posture_t > SURFACED_FOR {
+                    s.posture = Posture::Transit;
+                    s.posture_t = 0.0;
+                    s.surface_in = SURFACE_EVERY;
+                } else if s.depth < 1.0 {
+                    s.manpads_t -= dt;
+                    if let Some((k, at)) = low.filter(|l| dist(l.1, s.at) < MANPADS_REACH)
+                        && s.manpads_t <= 0.0
+                    {
+                        s.manpads_t = MANPADS_EVERY;
+                        manpads.push((s.at, k, s.id));
+                        let _ = at;
+                    }
+                }
+            }
             if let Some(p) = torp
                 && s.posture != Posture::Attack
             {
@@ -1594,6 +1760,7 @@ impl Sim {
                 Posture::Transit | Posture::Attack => (to_goal, TRANSIT, layer + 40.0),
                 Posture::Periscope => (to_goal, QUIET, PERISCOPE_DEPTH),
                 Posture::Silent => (s.heading, 0.0, s.depth),
+                Posture::Surfaced => (s.heading, 0.0, 0.0),
                 Posture::Evade => {
                     let away = s.threat.map_or(to_goal + std::f64::consts::FRAC_PI_2, |t| bearing(t, s.at));
                     // Away from the threat, but bending back toward its goal.
@@ -1622,7 +1789,8 @@ impl Sim {
             s.speed += (want_speed - s.speed).clamp(-0.3 * dt, 0.3 * dt);
             // Off the bottom (a shallow sea's).
             let want_depth = want_depth.min(bottom - 20.0).max(PERISCOPE_DEPTH.min(want_depth));
-            s.depth += (want_depth - s.depth).clamp(-SUB_DIVE * dt, SUB_DIVE * dt);
+            let rate = if s.posture == Posture::Surfaced { SURFACE_RATE } else { SUB_DIVE };
+            s.depth += (want_depth - s.depth).clamp(-rate * dt, rate * dt);
             let next = [s.at[0] + s.heading.sin() * s.speed * dt, s.at[1] + s.heading.cos() * s.speed * dt];
             let ahead = [s.at[0] + s.heading.sin() * 1500.0, s.at[1] + s.heading.cos() * 1500.0];
             let (s_heading, s_at) = (s.heading, s.at);
@@ -1648,6 +1816,35 @@ impl Sim {
                     }
                 }
                 Intent::Approach { ship } | Intent::Attack { ship } | Intent::Escort { carrier: ship } => {
+                    // In missile range: up to periscope depth, then its salvo at its ship (an
+                    // escort of the carrier's, or the carrier).
+                    let d = dist(s.at, goal);
+                    let free = !matches!(s.posture, Posture::Evade | Posture::Surfaced | Posture::Attack);
+                    if !s.fired && free && d < MISSILE_RANGE && d > ATTACK_RANGE {
+                        let sub = &mut self.asw.subs[i];
+                        if sub.posture != Posture::Periscope {
+                            sub.posture = Posture::Periscope;
+                            sub.posture_t = 0.0;
+                        }
+                        if sub.depth <= PERISCOPE_DEPTH + 2.0 {
+                            sub.fired = true;
+                            sub.salvo = 2 + (r % 3) as u8;
+                            sub.salvo_t = 0.0;
+                        }
+                    }
+                    let sub = &mut self.asw.subs[i];
+                    if sub.salvo > 0 {
+                        sub.salvo_t -= dt;
+                        if sub.salvo_t <= 0.0 {
+                            sub.salvo -= 1;
+                            sub.salvo_t = SALVO_GAP;
+                            let target = match s.intent {
+                                Intent::Escort { carrier } => self.escort_of(carrier, s.at).unwrap_or(carrier),
+                                _ => ship,
+                            };
+                            missiles.push((s.at, target, s.id));
+                        }
+                    }
                     if s.posture != Posture::Attack && dist(s.at, goal) < ATTACK_RANGE {
                         let sub = &mut self.asw.subs[i];
                         sub.posture = Posture::Attack;
@@ -1662,9 +1859,26 @@ impl Sim {
                 }
             }
         }
+        for (at, ship, id) in missiles {
+            if self.launch_sea_missile(at, ship, id) {
+                self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 4 });
+                self.tell_crews(text!("asw-missile-launch"));
+            } else if let Some(s) = self.asw.subs.iter_mut().find(|s| s.id == id) {
+                // No missile slot free: it goes once one is.
+                s.salvo += 1;
+                s.salvo_t = 1.0;
+            }
+        }
+        let back = self.pl.id as usize;
+        for (at, k, id) in manpads {
+            self.activate(k as usize);
+            let map = ((at[0] / M_PER_MAP) as i32, (0x8000 as f64 - at[1] / M_PER_MAP) as i32);
+            self.launch_manpads_from(map, 0, Launcher::Sub(id));
+        }
+        self.activate(back);
     }
 
-    fn lose_hunt(&mut self, why: AswResult, ship: Option<usize>) {
+    pub(crate) fn lose_hunt(&mut self, why: AswResult, ship: Option<usize>) {
         if let Some(o) = ship
             && o < self.objects.len()
         {

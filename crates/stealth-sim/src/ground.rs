@@ -302,6 +302,10 @@ impl Sim {
 
     /// Unit `k` is in a convoy on the move.
     pub fn unit_moving(&self, k: usize) -> bool {
+        // An attack boat is always under way.
+        if self.units.get(k).is_some_and(|u| u.kind == crate::aaa::GroundKind::Usv) {
+            return true;
+        }
         let tag = self.unit_convoy(k);
         tag != 0 && self.convoys().iter().any(|c| c.tag == tag)
     }
