@@ -25,6 +25,7 @@ sim-target-photographed = Sprioc grianghrafadh.
 sim-drop-supplies = Scaoil na soláthairtí anois
 sim-no-target = Gan sprioc
 sim-no-target-designated = Níor ainmníodh sprioc
+sim-slam-channels-busy = Gach cainéal SLAM-ER in úsáid
 sim-bay-closed = Bá dúnta
 sim-ramp-closed = Rampa dúnta
 sim-insufficient-altitude = Airde easnamhach

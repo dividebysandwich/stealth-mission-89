@@ -25,6 +25,7 @@ sim-target-photographed = Sihtmärk pildistatud.
 sim-drop-supplies = Heida varustus nüüd
 sim-no-target = Sihtmärki pole
 sim-no-target-designated = Sihtmärki pole määratud
+sim-slam-channels-busy = Kõik SLAM-ER-i kanalid on kasutusel
 sim-bay-closed = Relvaluuk suletud
 sim-ramp-closed = Kaldtee suletud
 sim-insufficient-altitude = Kõrgus ebapiisav

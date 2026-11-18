@@ -181,3 +181,7 @@ weapon-role-24 = Leichttorpedo: sinkt am Fallschirm, sucht unter Wasser und steu
 employment-24 =
     Programmiert auf der WPN-Seite des Sensoroperators: Kurs, Aktivierungsverzögerung, Suchmuster
     Auslösen: über Wasser, unter 300 ft und 100 kt
+weapon-role-25 = Abstandsflugkörper gegen Landziele: fliegt zum Ziel, dann lenkt ihn der Pilot über das Suchkopfbild
+employment-25 =
+    Programmiert auf der SLAM-Seite: Reiseflughöhe, Suchkopfentfernung, primäres oder sekundäres Ziel
+    Reichweite: bis 250 km, vier gleichzeitig in der Luft

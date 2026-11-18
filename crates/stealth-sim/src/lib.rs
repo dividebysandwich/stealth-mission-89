@@ -33,6 +33,7 @@ mod radar;
 pub mod relief;
 pub mod score;
 pub mod sfw;
+pub mod slam;
 pub mod station;
 pub mod supply;
 mod targeting;

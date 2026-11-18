@@ -181,3 +181,7 @@ weapon-role-24 = Torpilă ușoară: coboară cu parașuta, caută sub apă și s
 employment-24 =
     Programată pe pagina WPN a operatorului de senzori: direcție, întârziere de activare, model de căutare
     Lansare: deasupra apei, sub 300 ft și 100 kt
+weapon-role-25 = Rachetă de atac la sol de la distanță: zboară până la țintă, apoi pilotul o ghidează după imaginea capului de căutare
+employment-25 =
+    Programată pe pagina SLAM: altitudinea de croazieră, distanța capului de căutare, ținta principală sau secundară
+    Bătaie: până la 250 km, patru în zbor în același timp

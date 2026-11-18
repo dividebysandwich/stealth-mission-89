@@ -24,6 +24,7 @@ sim-target-photographed = Doel gefotografeerd.
 sim-drop-supplies = Drop de voorraden nu
 sim-no-target = Geen doel
 sim-no-target-designated = Geen doel aangewezen
+sim-slam-channels-busy = Alle SLAM-ER-kanalen in gebruik
 sim-bay-closed = Ruim gesloten
 sim-ramp-closed = Laadklep dicht
 sim-insufficient-altitude = Onvoldoende hoogte

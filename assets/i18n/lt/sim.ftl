@@ -25,6 +25,7 @@ sim-target-photographed = Taikinys nufotografuotas.
 sim-drop-supplies = Numeskite atsargas dabar
 sim-no-target = Nėra taikinio
 sim-no-target-designated = Taikinys nenurodytas
+sim-slam-channels-busy = Visi SLAM-ER kanalai užimti
 sim-bay-closed = Skyrius uždarytas
 sim-ramp-closed = Rampa uždaryta
 sim-insufficient-altitude = Per mažas aukštis

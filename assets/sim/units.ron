@@ -157,6 +157,9 @@
         (id: "aa11", name: "AA-11", family: Air, range_km: 30, mach: 2.5, g: 60, seeker: Ir, model: 15),
         // NASAMS: the AIM-120 fired from the friendly campaign batteries' ground launchers.
         (id: "aim120_sl", name: "AIM-120 NASAMS", family: Sam, range_km: 40, mach: 4.0, g: 40, seeker: TrackViaMissile, model: 15),
+        // The SLAM-ER: cruises to its programmed target, then the pilot steers it by its
+        // seeker's picture (slam.rs flies it).
+        (id: "slamer", name: "SLAM-ER", family: Ground, range_km: 250, mach: 0.8, g: 6, seeker: Optical, model: 15),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -219,6 +222,10 @@
         // The MH-60R's lightweight torpedo: falls on its chute like a retarded bomb, then runs
         // and homes under water (asw.rs); harmless to anything on land.
         (id: "mk54", short: "Mk 54", long: "Torpedo", missile: "retarded", picture: 12, bay: 1),
+        // The F/A-18E's stand-off missile, steered onto its target by the pilot (slam.rs).
+        (id: "slamer", short: "AGM-84H", long: "SLAM-ER", missile: "slamer", picture: 12, bay: 1,
+            effect: {"shelter": 6, "aircraft": 7, "building": 7, "bridge": 6, "bunker": 6, "depot": 7, "launcher": 7,
+                     "radar": 8, "rig": 7, "industry": 7, "pen": 3, "small_ship": 8, "large_ship": 6, "armour": 6}),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

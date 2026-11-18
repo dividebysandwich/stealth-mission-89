@@ -25,6 +25,7 @@ sim-target-photographed = Țintă fotografiată.
 sim-drop-supplies = Lansați proviziile acum
 sim-no-target = Nicio țintă
 sim-no-target-designated = Nicio țintă desemnată
+sim-slam-channels-busy = Toate canalele SLAM-ER sunt ocupate
 sim-bay-closed = Soută închisă
 sim-ramp-closed = Rampă închisă
 sim-insufficient-altitude = Altitudine insuficientă

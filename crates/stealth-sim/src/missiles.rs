@@ -211,6 +211,10 @@ impl Sim {
             self.fall_bomb(s);
             return;
         }
+        if self.proj[s].slam.is_some() {
+            self.slam_frame(s);
+            return;
+        }
         let spec = self.proj[s].spec;
         let mt = self.missile(spec).clone();
         let cls = mt.class as i32;

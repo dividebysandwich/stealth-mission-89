@@ -449,6 +449,8 @@ impl Sim {
                     self.release_bombs(ps);
                 } else if self.selected_spec() == CBU105_SPEC {
                     self.release_sfw(ps);
+                } else if self.selected_spec() == SLAMER_SPEC {
+                    self.release_slam(ps);
                 } else {
                     self.fire_missile();
                 }
@@ -586,7 +588,7 @@ impl Sim {
     }
 
     /// Release the selected store.
-    fn fire_missile(&mut self) {
+    pub(crate) fn fire_missile(&mut self) {
         let (w, count) = self.selected_weapon();
         if count <= 0 {
             return;
@@ -793,6 +795,7 @@ impl Sim {
             burst_ft: 0,
             cm_rolled: 0,
             cm_fooled: 0,
+            slam: None,
         };
         if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {
             pr.speed >>= 1;

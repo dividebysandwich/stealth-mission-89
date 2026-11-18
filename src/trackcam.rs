@@ -222,6 +222,25 @@ pub(crate) fn update_camera(
     if !want {
         return site(&mut sites, None);
     }
+    // A SLAM-ER's seeker: the camera rides the missile, looking along its nose, wings level.
+    if let Some(r) = mfd.av.slam.picture().filter(|_| mfd.slam_picture())
+        && let Some((at, rot)) = crate::sim_render::projectile_pose(&combat, r.slot)
+    {
+        let dir = (rot * Vec3::NEG_Z).normalize_or_zero();
+        let zoom = mfd.cam_zoom.unwrap_or(SLAM_ZOOM);
+        *info = TrackCam {
+            live: true,
+            name: ["SLAM-ER".into(), String::new()],
+            range_km: r.range_m.map(|m| m / 1000.0),
+            bearing: None,
+            zoom: zoom + 1,
+            ..default()
+        };
+        aim(&mut tf, &mut pos, &mut proj, dir, None, at, zoom, false);
+        // The ground ahead of it streamed in in detail.
+        let ahead = at + dir.as_dvec3() * r.range_m.map_or(CONSOLE_AHEAD, |m| m as f64);
+        return site(&mut sites, Some(ahead));
+    }
     // The camera looks from the mast-mounted sight above the rotor where there is one.
     let eye = apos.0 + (a.orientation * settings.aircraft.spec().pod_origin()).as_dvec3();
     if mfd.ils {
@@ -360,6 +379,9 @@ fn aim(
     }
 }
 
+/// The SLAM-ER seeker's zoom step (2X) unless the pilot picks another.
+const SLAM_ZOOM: u8 = 1;
+
 /// Half width (tangent) of the unzoomed camera: 38.5 pixels at f = 256.
 const BASE_TAN_HALF_W: f32 = 38.5 / 256.0;
 /// Widest ILS view (about 30 degrees each side).
@@ -426,7 +448,7 @@ fn flir_background(
     >,
 ) {
     let Some(palette) = palette else { return };
-    let want = if mfd.flir { &palette.background_flir } else { &palette.background };
+    let want = if mfd.flir_on() { &palette.background_flir } else { &palette.background };
     for mut m in &mut q {
         if m.0 != *want {
             m.0 = want.clone();

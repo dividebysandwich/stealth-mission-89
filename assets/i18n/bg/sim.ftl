@@ -25,6 +25,7 @@ sim-target-photographed = Целта е сфотографирана.
 sim-drop-supplies = Пускайте припасите сега
 sim-no-target = Няма цел
 sim-no-target-designated = Няма определена цел
+sim-slam-channels-busy = Всички канали на SLAM-ER са заети
 sim-bay-closed = Отсекът е затворен
 sim-ramp-closed = Рампата е затворена
 sim-insufficient-altitude = Недостатъчна височина

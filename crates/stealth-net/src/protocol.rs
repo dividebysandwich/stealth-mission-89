@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 51;
+pub const PROTOCOL: u16 = 52;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -430,6 +430,15 @@ mod tests {
             seq: 7,
             state: PlayerState { x: 123_456, altitude: 3000, ..Default::default() },
             recent: vec![(6, Commands { fire: true, ..Default::default() })],
+        };
+        assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
+        // The SLAM-ER page's channels and slew.
+        let prog = stealth_sim::slam::SlamProgram { flt: 2, seeker_nm: 8, target: 1 };
+        let slam = stealth_sim::slam::SlamInput { sel: 3, prog: [prog; 4], steer: (-90, 40) };
+        let m = ToServer::Input {
+            seq: 8,
+            state: PlayerState { slam: Some(slam), ..Default::default() },
+            recent: Vec::new(),
         };
         assert_eq!(decode::<ToServer>(&encode(&m)), Some(m));
         let plan = ToServer::Plan {

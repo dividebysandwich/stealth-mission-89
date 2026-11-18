@@ -310,6 +310,7 @@ fn cmd_text(c: MfdCmd) -> String {
             Format::Rcs => "tip-cmd-rcs",
             Format::Cgo => "tip-cmd-cgo",
             Format::Mad => "tip-cmd-mad",
+            Format::Slam => "tip-cmd-slam",
         },
         MfdCmd::Asw(crate::avionics::AswOsb::Mad) => "tip-cmd-mad-body",
         MfdCmd::Asw(crate::avionics::AswOsb::Mark) => "tip-cmd-mad-mark",
@@ -351,6 +352,11 @@ fn cmd_text(c: MfdCmd) -> String {
         MfdCmd::TgpSp => "tip-cmd-tgp-sp",
         MfdCmd::TgpSlave => "tip-cmd-tgp-slave",
         MfdCmd::TgpCz => "tip-cmd-tgp-cz",
+        MfdCmd::Slam(crate::slam_page::SlamOsb::Channel(_)) => "tip-cmd-slam-channel",
+        MfdCmd::Slam(crate::slam_page::SlamOsb::Flt) => "tip-cmd-slam-flt",
+        MfdCmd::Slam(crate::slam_page::SlamOsb::Target) => "tip-cmd-slam-target",
+        MfdCmd::Slam(crate::slam_page::SlamOsb::Seeker(1..)) => "tip-cmd-slam-seeker-up",
+        MfdCmd::Slam(crate::slam_page::SlamOsb::Seeker(..=0)) => "tip-cmd-slam-seeker-down",
     })
     .to_string()
 }

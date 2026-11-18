@@ -107,6 +107,7 @@ mod script;
 mod sea;
 mod settings;
 mod sfw;
+mod slam_page;
 mod shake;
 mod side_guns;
 mod sim_render;

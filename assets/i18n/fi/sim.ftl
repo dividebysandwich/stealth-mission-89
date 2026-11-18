@@ -25,6 +25,7 @@ sim-target-photographed = Kohde kuvattu.
 sim-drop-supplies = Pudota tarvikkeet nyt
 sim-no-target = Ei kohdetta
 sim-no-target-designated = Kohdetta ei ole osoitettu
+sim-slam-channels-busy = Kaikki SLAM-ER-kanavat käytössä
 sim-bay-closed = Ruuma kiinni
 sim-ramp-closed = Ramppi kiinni
 sim-insufficient-altitude = Riittämätön korkeus

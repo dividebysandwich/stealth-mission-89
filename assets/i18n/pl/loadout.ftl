@@ -181,3 +181,7 @@ weapon-role-24 = Lekka torpeda: opada na spadochronie, szuka pod wodą i naprowa
 employment-24 =
     Programowana na stronie WPN operatora sensorów: kurs, opóźnienie aktywacji, wzór poszukiwania
     Zrzut: nad wodą, poniżej 300 ft i 100 kt
+weapon-role-25 = Pocisk do atakowania celów naziemnych z dystansu: leci do celu, a potem pilot naprowadza go według obrazu z głowicy
+employment-25 =
+    Programowany na stronie SLAM: wysokość przelotowa, odległość włączenia głowicy, cel główny lub zapasowy
+    Zasięg: do 250 km, cztery w locie jednocześnie

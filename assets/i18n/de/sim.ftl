@@ -25,6 +25,7 @@ sim-target-photographed = Ziel fotografiert.
 sim-drop-supplies = Nachschub jetzt abwerfen
 sim-no-target = Kein Ziel
 sim-no-target-designated = Kein Ziel markiert
+sim-slam-channels-busy = Alle SLAM-ER-Kanäle belegt
 sim-bay-closed = Schacht geschlossen
 sim-ramp-closed = Rampe geschlossen
 sim-insufficient-altitude = Zu geringe Höhe

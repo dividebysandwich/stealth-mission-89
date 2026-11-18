@@ -181,3 +181,7 @@ weapon-role-24 = Ľahké torpédo: padá na padáku, hľadá pod vodou a navádz
 employment-24 =
     Programuje sa na stránke WPN operátora senzorov: kurz, oneskorenie aktivácie, vzor hľadania
     Zhodenie: nad vodou, pod 300 ft a 100 kt
+weapon-role-25 = Strela proti pozemným cieľom z odstupu: doletí k cieľu a pilot ju potom navádza podľa obrazu z hľadača
+employment-25 =
+    Programuje sa na stránke SLAM: cestovná výška, vzdialenosť zapnutia hľadača, hlavný alebo vedľajší cieľ
+    Dosah: až 250 km, štyri vo vzduchu naraz

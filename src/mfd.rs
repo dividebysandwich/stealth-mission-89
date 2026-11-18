@@ -190,10 +190,27 @@ impl MfdState {
     /// targeting pod on either MFD).
     pub fn camera_shown(&self) -> bool {
         if self.modern {
-            self.av.shown(crate::avionics::Format::Tgp).is_some()
+            self.slam_picture() || self.av.shown(crate::avionics::Format::Tgp).is_some()
         } else {
             self.right == RightMfd::Camera
         }
+    }
+
+    /// A SLAM-ER's seeker picture is up: the SLAM page shown, the selected missile's seeker on.
+    pub fn slam_picture(&self) -> bool {
+        self.modern
+            && self.av.shown(crate::avionics::Format::Slam).is_some()
+            && self.av.slam.picture().is_some()
+    }
+
+    /// The tracking camera's picture is FLIR: switched on, or a SLAM-ER's seeker (always).
+    pub fn flir_on(&self) -> bool {
+        self.flir || self.slam_picture()
+    }
+
+    /// The SLAM-ER page's report to the simulation (the F/A-18E with the modern avionics).
+    pub fn slam_input(&self) -> Option<stealth_sim::slam::SlamInput> {
+        (self.modern && self.av.has(crate::avionics::Format::Slam)).then(|| self.av.slam.input())
     }
 
     /// The moving map is up (classic: the left MFD's map; modern: the MAP format).
@@ -224,7 +241,13 @@ impl MfdState {
     /// The tracking camera page is on this MFD (not covered by its format menu).
     pub fn camera_on(&self, side: MfdSide) -> bool {
         if self.modern {
-            self.av.shown(crate::avionics::Format::Tgp) == Some(side)
+            // A SLAM-ER's seeker picture takes the camera from the pod.
+            let page = if self.slam_picture() {
+                crate::avionics::Format::Slam
+            } else {
+                crate::avionics::Format::Tgp
+            };
+            self.av.shown(page) == Some(side)
                 && self.av.menu(side).is_none()
         } else {
             side == MfdSide::Right && self.right == RightMfd::Camera
@@ -292,6 +315,8 @@ pub enum MfdCmd {
     TgpCz,
     /// The MAD page's buttons (the MH-60R).
     Asw(crate::avionics::AswOsb),
+    /// The SLAM page's buttons (the F/A-18E).
+    Slam(crate::slam_page::SlamOsb),
     /// WAY page: nudges the selected waypoint one step over the map (screen x right, y up), as
     /// the keypad does (`edit_waypoints`).
     WaypointNudge(i8, i8),
@@ -501,6 +526,7 @@ pub fn cmd_action(cmd: MfdCmd) -> Action {
         MfdCmd::Sms(false) | MfdCmd::Ripple(_) | MfdCmd::RippleSpacing(_) | MfdCmd::Burst(_) => {
             Action::Ordnance
         }
+        MfdCmd::Slam(_) => Action::Ordnance,
     }
 }
 
@@ -1999,7 +2025,7 @@ impl MfdParams<'_, '_> {
 
     /// Black text with FLIR (colour 5: black in every flight palette, 0 is see-through).
     pub(crate) fn camera_text_colour(&self) -> u8 {
-        if self.state.flir { 5 } else { crate::hud::HUD_COLOURS.0 }
+        if self.state.flir_on() { 5 } else { crate::hud::HUD_COLOURS.0 }
     }
 
     /// Clock time shown on the WAY page.

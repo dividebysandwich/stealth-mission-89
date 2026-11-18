@@ -654,6 +654,7 @@ fn player_state(
         // Realistic avionics: each weapon in its own HUD mode, no automatic locks.
         mode_weapons: mfd.modern,
         radar: mfd.modern && mfd.av.radar_emitting(),
+        slam: mfd.slam_input(),
         cmd: SimCommands { gun, trigger, ..cmd },
     }
 }

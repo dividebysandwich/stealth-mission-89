@@ -181,3 +181,7 @@ weapon-role-24 = Könnyű torpedó: ejtőernyővel ereszkedik, a víz alatt kere
 employment-24 =
     A szenzorkezelő WPN oldalán programozható: irány, élesítési késleltetés, keresési minta
     Oldás: víz felett, 300 ft és 100 kt alatt
+weapon-role-25 = Távolról indítható földi célok elleni rakéta: a célig repül, majd a pilóta a keresőfej képe alapján irányítja
+employment-25 =
+    A SLAM oldalon programozható: utazómagasság, a keresőfej bekapcsolási távolsága, elsődleges vagy másodlagos cél
+    Hatótáv: legfeljebb 250 km, egyszerre négy lehet a levegőben

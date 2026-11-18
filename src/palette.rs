@@ -530,7 +530,7 @@ fn update_globals(
         *v = (alt / ((16 - k as i32) * 32) - alt / 512) as f32;
     }
     g.ground_g = pack16(ground);
-    let flir = mfd.is_some_and(|m| m.flir);
+    let flir = mfd.is_some_and(|m| m.flir_on());
     g.params = Vec4::new(
         1.0,
         crate::world::WU as f32,

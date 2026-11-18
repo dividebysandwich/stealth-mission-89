@@ -24,6 +24,7 @@ sim-target-photographed = Target terfoto.
 sim-drop-supplies = Jatuhkan suplai sekarang
 sim-no-target = Tidak ada target
 sim-no-target-designated = Tidak ada target ditetapkan
+sim-slam-channels-busy = Semua kanal SLAM-ER sedang dipakai
 sim-bay-closed = Ruang senjata tertutup
 sim-ramp-closed = Rampa tertutup
 sim-insufficient-altitude = Ketinggian tidak cukup

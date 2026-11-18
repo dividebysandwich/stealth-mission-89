@@ -181,3 +181,7 @@ weapon-role-24 = Kerge torpeedo: laskub langevarjuga, otsib vee all ja sihib all
 employment-24 =
     Programmeeritakse sensorioperaatori WPN-lehel: kurss, aktiveerimise viivitus, otsingumuster
     Vabastamine: vee kohal, alla 300 ft ja 100 kt
+weapon-role-25 = Kaugrünnaku rakett maapealsete sihtmärkide vastu: lendab sihtmärgini, seejärel juhib piloot seda otsija pildi järgi
+employment-25 =
+    Programmeeritakse SLAM-lehel: lennukõrgus, otsija sisselülitamise kaugus, esmane või teisene sihtmärk
+    Laskekaugus: kuni 250 km, neli korraga õhus

@@ -181,3 +181,7 @@ weapon-role-24 = Lengvoji torpeda: leidžiasi parašiutu, ieško po vandeniu ir 
 employment-24 =
     Programuojama jutiklių operatoriaus WPN puslapyje: kursas, aktyvinimo delsa, paieškos schema
     Numetimas: virš vandens, žemiau 300 ft ir 100 kt
+weapon-role-25 = Tolimo nuotolio raketa prieš antžeminius taikinius: skrenda iki taikinio, o tada pilotas ją valdo pagal ieškiklio vaizdą
+employment-25 =
+    Programuojama SLAM puslapyje: skrydžio aukštis, ieškiklio įjungimo nuotolis, pagrindinis ar atsarginis taikinys
+    Nuotolis: iki 250 km, keturios ore vienu metu

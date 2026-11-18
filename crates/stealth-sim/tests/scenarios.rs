@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x1021de8f0faa2589,
-        0xa4dc3fc4b98781c3,
-        0xffc9a7a90d9f800e,
-        0xae6588f18c4e0391,
-        0xeeefbb23f6411773,
-        0xb44dd5115efa30bf,
-        0x33a9284f807c6caf,
-        0xcde86942ae620ede,
-        0x7b88b7e91357c460,
-        0x15aa8b6bb9487fa2,
-        0x25a4f5e29b65d39a,
-        0x5d75caa86198d7f0,
-        0xb2fa86000fad83a7,
-        0xbac7313e7ff4cd26,
-        0x8d8937a09b8bba39,
-        0x75cf7a3fac348fdc,
-        0xe02a1e73a10dcbe7,
-        0xd39b254fbd4763fc,
+        0xc35b6051a0988827,
+        0x13ae23af2d37fb61,
+        0xa2714c3ceb3dc200,
+        0x9f47a2bb4715d033,
+        0xe68010f113ccf3d5,
+        0x6924caf80191b2d5,
+        0xbb48dbc4f0f9e975,
+        0xac973c5bc477ac74,
+        0x191c2f22b7bfbf2e,
+        0x25330a2483783006,
+        0x00ac421172229568,
+        0x0a1a5de81ccfb162,
+        0x66fa204f93565f4d,
+        0xe5e9dcaa0afa2834,
+        0xf3670d1c66c50c33,
+        0x26c80c7b22bfc260,
+        0x276b7dbbda5156c9,
+        0x4d4d1438968b6c6e,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -3670,3 +3670,124 @@ fn cargo_jet_airlifts_are_quiet_or_escorted() {
     assert!(escorted * 10 >= checks * 9, "escorted {escorted}/{checks}");
     assert!(hit * 4 <= front, "{hit} of {front} front-line airlifts hit");
 }
+
+/// A SLAM-ER run: an F/A-18E-like jet 20,000 ft up heading north in a sandbox, the mission's
+/// primary target moved `north` map units ahead of it, `rounds` SLAM-ERs on a pylon, channel 0
+/// programmed `prog`. Returns the simulation, the input and the target's map point after the
+/// launch press.
+fn slam_run(
+    north: i32,
+    rounds: i32,
+    prog: slam::SlamProgram,
+) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
+    let d = data();
+    let (m, mut sim) = aaa_mission_with(d, SimOptions { external_stores: true, ..Default::default() });
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(SLAMER_WEAPON, rounds)]);
+    sim.units_mut().clear();
+    let target = (mx + 10, my - north);
+    let k = sim.target_slots()[0].object as usize;
+    {
+        let o = &mut sim.objects_mut()[k];
+        o.x = target.0;
+        o.y = target.1;
+    }
+    let mut p = player_at(mx, my, 20000, 0, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.slam = Some(slam::SlamInput { sel: 0, prog: [prog; 4], steer: (0, 0) });
+    let mut events = Vec::new();
+    for _ in 0..4 {
+        events.extend(sim.step(&p, 15));
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    events.extend(sim.step(&p, 15));
+    p.cmd = Commands::default();
+    (sim, p, target, events)
+}
+
+/// Fired at the primary target, the SLAM-ER descends to its cruise altitude, stays level, turns
+/// its seeker on at the programmed range and, left alone, snaps onto the target and hits it.
+#[test]
+fn slam_er_cruises_to_its_target_and_snaps_onto_it() {
+    let prog = slam::SlamProgram { flt: 0, seeker_nm: 3, target: 0 };
+    let (mut sim, p, target, _) = slam_run(4000, 1, prog);
+    let fine = ROUND_FINE as f64;
+    let (tx, ty) = (target.0 as f64 * 32.0 + 16.0, target.1 as f64 * 32.0 + 16.0);
+    let mut low = f64::MAX;
+    let mut active_at = None;
+    let mut hit = None;
+    for _ in 0..15 * 400 {
+        let ev = sim.step(&p, 15);
+        let Some((_, m)) = sim.slam_rounds().into_iter().next() else {
+            hit = ev.iter().find_map(|e| match *e {
+                SimEvent::Explosion { x, y, kind: 0x10, .. } => Some((x, y)),
+                _ => None,
+            });
+            break;
+        };
+        assert_eq!(m.roll, 0, "always level");
+        let f = m.flight.unwrap();
+        let (x, y, alt) = (f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine);
+        let g = m.slam.unwrap();
+        if g.active && active_at.is_none() {
+            active_at = Some((x - tx).hypot(y - ty));
+        }
+        if !g.active {
+            low = low.min(alt);
+        }
+    }
+    assert!((450.0..800.0).contains(&low), "cruised down to {low}");
+    let seeker = 3.0 * 1852.0 / WU_METRES;
+    let at = active_at.expect("seeker came on");
+    assert!((at - seeker).abs() < 1000.0, "seeker on {at} wu out, want {seeker}");
+    let (x, y) = hit.expect("hit the ground with a blast");
+    assert!((x - target.0).abs() <= 2 && (y - target.1).abs() <= 2, "{x},{y} vs {target:?}");
+}
+
+/// The pilot's slew turns the missile once its seeker is on: right turns it east.
+#[test]
+fn slam_er_follows_the_slew() {
+    let prog = slam::SlamProgram { flt: 1, seeker_nm: 10, target: 0 };
+    let (mut sim, mut p, _, _) = slam_run(1500, 1, prog);
+    let heading = |sim: &Sim| sim.slam_rounds()[0].1.heading as u16;
+    for _ in 0..15 * 400 {
+        sim.step(&p, 15);
+        if sim.slam_rounds()[0].1.slam.unwrap().active {
+            break;
+        }
+    }
+    let before = heading(&sim);
+    p.slam.as_mut().unwrap().steer = (127, 0);
+    for _ in 0..30 {
+        sim.step(&p, 15);
+    }
+    let turned = heading(&sim).wrapping_sub(before) as i16;
+    // 10 degrees/s for 2 s: about 20 degrees (3640 BAM).
+    assert!((3000..4300).contains(&turned), "turned {turned} BAM");
+    assert_eq!(sim.slam_rounds()[0].1.roll, 0);
+}
+
+/// Four in flight take all the channels: a fifth stays on its pylon.
+#[test]
+fn slam_er_four_channels_at_most() {
+    let prog = slam::SlamProgram::default();
+    let (mut sim, mut p, _, _) = slam_run(1500, 5, prog);
+    let mut events = Vec::new();
+    for _ in 0..4 {
+        for _ in 0..6 {
+            events.extend(sim.step(&p, 15));
+        }
+        p.cmd.fire = true;
+        events.extend(sim.step(&p, 15));
+        p.cmd = Commands::default();
+    }
+    let rounds = sim.slam_rounds();
+    assert_eq!(rounds.len(), 4);
+    let mut chans: Vec<u8> = rounds.iter().map(|r| r.1.slam.unwrap().ch).collect();
+    chans.sort();
+    assert_eq!(chans, [0, 1, 2, 3]);
+    assert!(events.iter().any(|e| is_msg(e, "All SLAM-ER channels in use")));
+}
+

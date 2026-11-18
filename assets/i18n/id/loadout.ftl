@@ -181,3 +181,7 @@ weapon-role-24 = Torpedo ringan: turun dengan parasut, mencari di bawah air dan 
 employment-24 =
     Diprogram di halaman WPN operator sensor: arah, jeda aktivasi, pola pencarian
     Pelepasan: di atas air, di bawah 300 ft dan 100 kt
+weapon-role-25 = Rudal serang darat jarak jauh: terbang ke sasarannya, lalu pilot mengarahkannya lewat gambar pencarinya
+employment-25 =
+    Diprogram di halaman SLAM: ketinggian jelajah, jarak pencari aktif, sasaran utama atau sekunder
+    Jangkauan: hingga 250 km, empat di udara sekaligus

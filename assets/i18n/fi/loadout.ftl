@@ -181,3 +181,7 @@ weapon-role-24 = Kevyt torpedo: putoaa laskuvarjolla, etsii veden alla ja hakeut
 employment-24 =
     Ohjelmoidaan sensorioperaattorin WPN-sivulla: suunta, aktivointiviive, etsintäkuvio
     Irrotus: veden yllä, alle 300 ft ja 100 kt
+weapon-role-25 = Kaukoase maamaaleja vastaan: lentää maalille, minkä jälkeen lentäjä ohjaa sitä hakupään kuvan avulla
+employment-25 =
+    Ohjelmoidaan SLAM-sivulla: matkalentokorkeus, hakupään kytkentäetäisyys, ensisijainen tai toissijainen maali
+    Kantama: enintään 250 km, neljä ilmassa kerralla

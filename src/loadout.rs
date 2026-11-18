@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 25] = [
+pub const WEAPONS: [(&str, &str); 26] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -41,6 +41,7 @@ pub const WEAPONS: [(&str, &str); 25] = [
     ("M3P .50 cal gun pod", "weapon-role-22"),
     ("CBU-105 SFW", "weapon-role-23"),
     ("Mk 54 lightweight torpedo", "weapon-role-24"),
+    ("AGM-84H SLAM-ER", "weapon-role-25"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -53,7 +54,7 @@ pub const WEAPONS: [(&str, &str); 25] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 25] = [
+const EMPLOYMENT: [&str; 26] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -79,6 +80,7 @@ const EMPLOYMENT: [&str; 25] = [
     "employment-22",
     "employment-23",
     "employment-24",
+    "employment-25",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -95,11 +97,12 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 25] = [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1];
+const BAY_QTY: [u8; 26] =
+    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 25] =
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1];
+const PYLON_QTY: [u8; 26] =
+    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
@@ -107,6 +110,8 @@ pub const GUN_POD: u8 = 22;
 pub const CBU105: u8 = 23;
 /// The Mk 54 torpedo's weapon type (the MH-60R's).
 pub const MK54: u8 = 24;
+/// The SLAM-ER's weapon type (the F/A-18E's, `stealth_sim::slam`).
+pub const SLAMER: u8 = 25;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -1161,7 +1166,8 @@ static F22_STATIONS: [Hardpoint; 4] = [
 /// lighter stores and the air-to-air missiles; AMRAAMs on the nacelle stations, the camera pod,
 /// a tank or the cargo on the centreline; Sidewinders on the wingtips.
 const FA18E_OUTER: [u8; 15] = [0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, CBU105];
-const FA18E_WING: [u8; 18] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105];
+const FA18E_WING: [u8; 19] =
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105, SLAMER];
 const FA18E_NACELLE: [u8; 1] = [1];
 /// The middle wing pylons' Fireyes and fuel-air bombs one to a pylon: a rack of them reaches
 /// the inner pylon's (tools/models/store_clearance.py).

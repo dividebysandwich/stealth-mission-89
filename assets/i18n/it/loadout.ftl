@@ -181,3 +181,7 @@ weapon-role-24 = Siluro leggero: scende col paracadute, cerca sott'acqua e si di
 employment-24 =
     Programmato sulla pagina WPN dell'operatore sensori: rotta, ritardo di attivazione, schema di ricerca
     Sgancio: sull'acqua, sotto 300 ft e 100 kt
+weapon-role-25 = Missile da attacco al suolo a distanza: vola fino al bersaglio, poi il pilota lo guida con l'immagine del suo sensore
+employment-25 =
+    Programmato sulla pagina SLAM: quota di crociera, distanza del sensore, bersaglio primario o secondario
+    Portata: fino a 250 km, quattro in volo alla volta

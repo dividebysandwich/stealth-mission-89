@@ -23,6 +23,7 @@ sim-target-photographed = 目标已拍摄。
 sim-drop-supplies = 立即投放补给
 sim-no-target = 无目标
 sim-no-target-designated = 未指定目标
+sim-slam-channels-busy = 所有 SLAM-ER 通道均已占用
 sim-bay-closed = 弹舱已关闭
 sim-ramp-closed = 货舱坡道关闭
 sim-insufficient-altitude = 高度不足

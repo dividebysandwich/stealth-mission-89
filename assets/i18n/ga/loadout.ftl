@@ -181,3 +181,7 @@ weapon-role-24 = Toirpéad éadrom: titeann sé ar pharaisiút, cuardaíonn sé 
 employment-24 =
     Cláraithe ar leathanach WPN an oibreora braiteoirí: ceannteideal, moill ghníomhachtaithe, patrún cuardaigh
     Scaoileadh: os cionn uisce, faoi 300 ft agus 100 kt
+weapon-role-25 = Diúracán ionsaithe talún ó achar: eitlíonn sé go dtí an sprioc, ansin stiúrann an píolóta é de réir phictiúr a bhrathadóra
+employment-25 =
+    Ríomhchláraithe ar an leathanach SLAM: airde chúrsála, raon an bhrathadóra, príomhsprioc nó sprioc thánaisteach
+    Raon: suas le 250 km, ceithre cinn san aer ag an am céanna

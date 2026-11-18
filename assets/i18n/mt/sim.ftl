@@ -25,6 +25,7 @@ sim-target-photographed = Mira ritrattata.
 sim-drop-supplies = Xaljar il-provvisti issa
 sim-no-target = L-ebda mira
 sim-no-target-designated = L-ebda mira ddeżinjata
+sim-slam-channels-busy = Il-kanali kollha tas-SLAM-ER qed jintużaw
 sim-bay-closed = Bay magħluq
 sim-ramp-closed = Ir-rampa magħluqa
 sim-insufficient-altitude = Altitudni insuffiċjenti

@@ -181,3 +181,7 @@ weapon-role-24 = Lahki torpedo: spušča se s padalom, išče pod vodo in se usm
 employment-24 =
     Programira se na strani WPN operaterja senzorjev: smer, zakasnitev aktivacije, vzorec iskanja
     Odvrženje: nad vodo, pod 300 ft in 100 kt
+weapon-role-25 = Izstrelek za napad na kopenske cilje z razdalje: poleti do cilja, nato ga pilot vodi po sliki iskalnika
+employment-25 =
+    Programira se na strani SLAM: potovalna višina, razdalja vklopa iskalnika, glavni ali drugotni cilj
+    Doseg: do 250 km, štirje hkrati v zraku

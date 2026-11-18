@@ -28,6 +28,7 @@ sim-target-photographed = Target photographed.
 sim-drop-supplies = Drop supplies now
 sim-no-target = No target
 sim-no-target-designated = No target designated
+sim-slam-channels-busy = All SLAM-ER channels in use
 sim-bay-closed = Bay closed
 sim-ramp-closed = Ramp closed
 sim-insufficient-altitude = Insufficient Altitude

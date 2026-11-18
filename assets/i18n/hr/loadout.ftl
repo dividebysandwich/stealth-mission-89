@@ -181,3 +181,7 @@ weapon-role-24 = Lako torpedo: spušta se padobranom, traži pod vodom i navodi 
 employment-24 =
     Programira se na stranici WPN operatera senzora: kurs, kašnjenje aktivacije, obrazac pretraživanja
     Ispuštanje: iznad vode, ispod 300 ft i 100 kt
+weapon-role-25 = Projektil za napad na kopnene ciljeve s udaljenosti: leti do cilja, a zatim ga pilot navodi prema slici tražila
+employment-25 =
+    Programira se na stranici SLAM: visina krstarenja, udaljenost uključivanja tražila, glavni ili sporedni cilj
+    Domet: do 250 km, četiri istodobno u zraku

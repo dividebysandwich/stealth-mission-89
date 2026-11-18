@@ -181,3 +181,7 @@ weapon-role-24 = Vieglā torpēda: nolaižas ar izpletni, meklē zem ūdens un t
 employment-24 =
     Programmē sensoru operatora WPN lapā: kurss, aktivizēšanas aizture, meklēšanas shēma
     Nomešana: virs ūdens, zem 300 ft un 100 kt
+weapon-role-25 = Tālas darbības raķete pret sauszemes mērķiem: lido līdz mērķim, pēc tam pilots to vada pēc meklētāja attēla
+employment-25 =
+    Programmē SLAM lapā: lidojuma augstums, meklētāja ieslēgšanas attālums, galvenais vai rezerves mērķis
+    Darbības attālums: līdz 250 km, četras gaisā vienlaikus

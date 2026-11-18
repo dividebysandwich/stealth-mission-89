@@ -24,6 +24,7 @@ sim-target-photographed = 目標を撮影した。
 sim-drop-supplies = 今すぐ物資を投下
 sim-no-target = 目標なし
 sim-no-target-designated = 目標が指定されていない
+sim-slam-channels-busy = SLAM-ERのチャンネルはすべて使用中
 sim-bay-closed = ベイ閉鎖中
 sim-ramp-closed = ランプ閉鎖中
 sim-insufficient-altitude = 高度不足

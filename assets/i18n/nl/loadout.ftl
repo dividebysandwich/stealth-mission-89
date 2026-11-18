@@ -181,3 +181,7 @@ weapon-role-24 = Lichte torpedo: daalt aan een parachute, zoekt onder water en s
 employment-24 =
     Geprogrammeerd op de WPN-pagina van de sensoroperator: koers, activeringsvertraging, zoekpatroon
     Lossen: boven water, onder 300 ft en 100 kt
+weapon-role-25 = Stand-off-raket tegen gronddoelen: vliegt naar het doel, daarna stuurt de piloot hem op het zoekerbeeld
+employment-25 =
+    Geprogrammeerd op de SLAM-pagina: kruishoogte, zoekerafstand, primair of secundair doel
+    Bereik: tot 250 km, vier tegelijk in de lucht

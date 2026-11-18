@@ -24,6 +24,7 @@ sim-target-photographed = Målet fotograferat.
 sim-drop-supplies = Fäll förnödenheter nu
 sim-no-target = Inget mål
 sim-no-target-designated = Inget mål utpekat
+sim-slam-channels-busy = Alla SLAM-ER-kanaler används
 sim-bay-closed = Bombutrymmet stängt
 sim-ramp-closed = Rampen stängd
 sim-insufficient-altitude = För låg höjd

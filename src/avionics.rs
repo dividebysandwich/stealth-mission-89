@@ -61,6 +61,13 @@ impl Plugin for AvionicsPlugin {
                     .after(crate::combat::CombatSystems)
                     .before(crate::trackcam::update_camera)
                     .run_if(in_state(crate::settings::AppState::Flight)),
+            )
+            .add_systems(
+                Update,
+                crate::slam_page::update
+                    .after(crate::combat::CombatSystems)
+                    .before(crate::trackcam::update_camera)
+                    .run_if(in_state(crate::settings::AppState::Flight)),
             );
     }
 }
@@ -87,6 +94,8 @@ pub enum Format {
     Cgo,
     /// The MH-60R's magnetic anomaly detector: its trace (`crate::asw::mad`).
     Mad,
+    /// The F/A-18E's SLAM-ER channels and seeker picture (`crate::slam_page`).
+    Slam,
 }
 
 /// The MAD page's bezel buttons (`MfdCmd::Asw`): the towed body out or in, a mark, the
@@ -127,7 +136,7 @@ pub const CARGO_FOURTH_FORMATS: [Format; 5] =
 
 /// Every format, in the order the format menu lists them down its sides (the radar's only with
 /// the radar, the cargo page only on the cargo jet): an aircraft has ten at most.
-pub const ALL_FORMATS: [Format; 12] = [
+pub const ALL_FORMATS: [Format; 13] = [
     Format::Hsd,
     Format::Harm,
     Format::Tgp,
@@ -140,6 +149,7 @@ pub const ALL_FORMATS: [Format; 12] = [
     Format::Rcs,
     Format::Cgo,
     Format::Mad,
+    Format::Slam,
 ];
 
 /// The formats an MFD's bottom bezel buttons start with (`radar`: the aircraft has a ground map
@@ -172,6 +182,7 @@ impl Format {
             Format::Rcs => "RCS",
             Format::Cgo => "CGO",
             Format::Mad => "MAD",
+            Format::Slam => "SLAM",
         }
     }
 
@@ -182,7 +193,10 @@ impl Format {
 
     /// Formats with a cursor (or a pod) the slew controls move.
     pub fn soi_capable(self) -> bool {
-        matches!(self, Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr)
+        matches!(
+            self,
+            Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr | Format::Slam
+        )
     }
 
     /// The key that brings the format up (script `press=` lookups).
@@ -196,7 +210,8 @@ impl Format {
             | Format::Eng
             | Format::Rcs
             | Format::Cgo
-            | Format::Mad => Action::Maps,
+            | Format::Mad
+            | Format::Slam => Action::Maps,
             Format::Tgp => Action::CamAhead,
             Format::Sms => Action::Ordnance,
             Format::Hsi => Action::SelectWaypoint,
@@ -280,6 +295,8 @@ pub struct AvionicsState {
     pub cargo: bool,
     /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
     pub aircraft: crate::aircraft::AircraftKind,
+    /// The SLAM-ER page's channels (`crate::slam_page`).
+    pub slam: crate::slam_page::SlamPage,
     /// The MAD page: the trace's gain step, the towed body out, the dipping sonar down (`asw`).
     pub mad_gain: u8,
     pub mad_out: bool,
@@ -623,6 +640,7 @@ impl Default for AvionicsState {
             radar: false,
             rcs: false,
             cargo: false,
+            slam: default(),
             mad_gain: 1,
             mad_out: false,
             dip_down: false,
@@ -724,7 +742,14 @@ impl AvionicsState {
 
     /// The formats on an MFD's bottom bezel buttons.
     pub fn formats(&self, side: MfdSide) -> [Format; 5] {
-        self.rows[index(side)].unwrap_or_else(|| formats(side, self.radar, self.cargo))
+        self.rows[index(side)].unwrap_or_else(|| {
+            let mut row = formats(side, self.radar, self.cargo);
+            // The F/A-18E's right DDI: the SLAM-ER page instead of the map.
+            if side == MfdSide::Right && self.has(Format::Slam) {
+                row[3] = Format::Slam;
+            }
+            row
+        })
     }
 
     /// The formats the format menu offers: all of them, the radar's with the radar only, the
@@ -739,6 +764,7 @@ impl AvionicsState {
             && (f != Format::Rcs || self.rcs)
             && (f != Format::Cgo || self.cargo)
             && (f != Format::Mad || self.aircraft.seahawk())
+            && (f != Format::Slam || self.aircraft == crate::aircraft::AircraftKind::FA18E)
     }
 
     /// F3: the left MFD's next map format (HSD, MAP, HARM, FCR, GM) along its bottom row, one
@@ -1090,6 +1116,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         }
         // The rest are the crew's sensor commands (`asw::mad::osb`).
         MfdCmd::Asw(_) => {}
+        MfdCmd::Slam(o) => av.slam.apply(o),
         MfdCmd::Burst(d) => {
             av.burst = (av.burst as i32 + d as i32).clamp(0, BURST_FT.len() as i32 - 1) as usize;
         }
@@ -1273,6 +1300,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
             (SPACING_LABELS[av.ripple_spacing.min(SPACING_LABELS.len() - 1)], Readout, false)
         }
         (Format::Sms, 17) if !av.sms_ord => ("SPC-", Cmd(MfdCmd::RippleSpacing(-1)), false),
+        (Format::Slam, _) => return crate::slam_page::osb(slot, s),
         (Format::Hsi, 0) => ("WP-", Action(A::LastWaypoint), false),
         (Format::Hsi, 1) => ("WP+", Action(A::NextWaypoint), false),
         _ => return None,
@@ -1321,6 +1349,7 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
         Format::Rcs => draw_rcs_page(p, c),
         Format::Mad => crate::asw::mad::draw(c, &p.mad, p.state.av.mad_gain),
         Format::Cgo => crate::cargo_page::draw(c, p.cues.drop.as_ref(), crate::hud::blink(&p.time)),
+        Format::Slam => crate::slam_page::draw(p, c, p.camera_see_through(side)),
         Format::Sms if !av.sms_ord => draw_sms(p, c),
         _ => {
             // The classic pages, between the label bands.

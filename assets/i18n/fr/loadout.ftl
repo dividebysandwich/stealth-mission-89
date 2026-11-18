@@ -181,3 +181,7 @@ weapon-role-24 = Torpille légère : descend sous parachute, cherche sous l'eau 
 employment-24 =
     Programmée sur la page WPN de l'opérateur capteurs : cap, délai d'activation, schéma de recherche
     Largage : au-dessus de l'eau, sous 300 ft et 100 kt
+weapon-role-25 = Missile d'attaque au sol à distance de sécurité : vole jusqu'à sa cible, puis le pilote le guide grâce à l'image de son autodirecteur
+employment-25 =
+    Programmé sur la page SLAM : altitude de croisière, distance d'activation de l'autodirecteur, cible principale ou secondaire
+    Portée : jusqu'à 250 km, quatre en vol à la fois

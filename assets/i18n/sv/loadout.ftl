@@ -181,3 +181,7 @@ weapon-role-24 = Lätt torped: faller i fallskärm, söker under vattnet och må
 employment-24 =
     Programmeras på sensoroperatörens WPN-sida: kurs, aktiveringsfördröjning, sökmönster
     Fällning: över vatten, under 300 ft och 100 kt
+weapon-role-25 = Avståndsrobot mot markmål: flyger till målet, sedan styr piloten den efter målsökarens bild
+employment-25 =
+    Programmeras på SLAM-sidan: marschhöjd, målsökaravstånd, primärt eller sekundärt mål
+    Räckvidd: upp till 250 km, fyra i luften samtidigt

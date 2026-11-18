@@ -25,6 +25,7 @@ sim-target-photographed = Mērķis nofotografēts.
 sim-drop-supplies = Nometiet krājumus tagad
 sim-no-target = Nav mērķa
 sim-no-target-designated = Mērķis nav norādīts
+sim-slam-channels-busy = Visi SLAM-ER kanāli ir aizņemti
 sim-bay-closed = Nodalījums aizvērts
 sim-ramp-closed = Rampa aizvērta
 sim-insufficient-altitude = Nepietiekams augstums

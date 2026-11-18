@@ -181,3 +181,7 @@ weapon-role-24 = Torpedo leve: desce de paraquedas, busca debaixo d'água e se g
 employment-24 =
     Programado na página WPN do operador de sensores: rumo, atraso de ativação, padrão de busca
     Lançamento: sobre a água, abaixo de 300 ft e 100 kt
+weapon-role-25 = Míssil de ataque ao solo a distância: voa até o alvo e então o piloto o guia pela imagem do seu buscador
+employment-25 =
+    Programado na página SLAM: altitude de cruzeiro, distância do buscador, alvo primário ou secundário
+    Alcance: até 250 km, quatro em voo ao mesmo tempo

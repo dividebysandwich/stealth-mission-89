@@ -181,3 +181,7 @@ weapon-role-24 = Let torpedo: falder i faldskærm, søger under vandet og måls�
 employment-24 =
     Programmeres på sensoroperatørens WPN-side: kurs, aktiveringsforsinkelse, søgemønster
     Udløsning: over vand, under 300 ft og 100 kt
+weapon-role-25 = Stand-off-missil mod landmål: flyver til målet, hvorefter piloten styrer det efter søgerens billede
+employment-25 =
+    Programmeres på SLAM-siden: marchhøjde, søgerafstand, primært eller sekundært mål
+    Rækkevidde: op til 250 km, fire i luften ad gangen

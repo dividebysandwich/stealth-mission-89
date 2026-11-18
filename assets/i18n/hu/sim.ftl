@@ -25,6 +25,7 @@ sim-target-photographed = Célpont lefényképezve.
 sim-drop-supplies = Dobd le az ellátmányt
 sim-no-target = Nincs célpont
 sim-no-target-designated = Nincs kijelölt célpont
+sim-slam-channels-busy = Minden SLAM-ER csatorna foglalt
 sim-bay-closed = A rekesz zárva
 sim-ramp-closed = Rámpa zárva
 sim-insufficient-altitude = Nincs elég magasság

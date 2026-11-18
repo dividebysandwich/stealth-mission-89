@@ -24,6 +24,7 @@ sim-target-photographed = Cíl vyfotografován.
 sim-drop-supplies = Shoďte zásoby teď
 sim-no-target = Žádný cíl
 sim-no-target-designated = Žádný cíl neoznačen
+sim-slam-channels-busy = Všechny kanály SLAM-ER obsazeny
 sim-bay-closed = Šachta zavřena
 sim-ramp-closed = Rampa zavřena
 sim-insufficient-altitude = Nedostatečná výška

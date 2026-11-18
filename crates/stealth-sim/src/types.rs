@@ -179,6 +179,9 @@ pub struct Projectile {
     pub cm_rolled: u8,
     #[serde(default, skip_serializing_if = "no_drop")]
     pub cm_fooled: u8,
+    /// A SLAM-ER: its channel, program and terminal guidance (`crate::slam`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slam: Option<crate::slam::SlamGuide>,
 }
 
 fn no_burst(b: &u16) -> bool {
@@ -570,6 +573,10 @@ pub struct PlayerState {
     /// lift.
     #[serde(default, skip_serializing_if = "is_zero_engine")]
     pub engine: [u8; 3],
+    /// The SLAM-ER page (`crate::slam`): the channel selected, each channel's program and the
+    /// slew steering the selected missile once its seeker is on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slam: Option<crate::slam::SlamInput>,
     pub cmd: Commands,
 }
 
@@ -611,6 +618,9 @@ pub const CBU105_SPEC: i32 = 49;
 pub const CBU105_WEAPON: i32 = 23;
 /// The CBU-105's burst altitude unless the SMS page sets another (ft above the ground).
 pub const SFW_DEFAULT_BURST_FT: u16 = 1500;
+/// The SLAM-ER's missile table entry and weapon type (`crate::slam`).
+pub const SLAMER_SPEC: i32 = 52;
+pub const SLAMER_WEAPON: i32 = 25;
 /// The AIM-9's and the air-launched Stinger's missile table entries.
 pub const AIM9_SPEC: i32 = 23;
 pub const STINGER_SPEC: i32 = 48;

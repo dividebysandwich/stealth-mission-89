@@ -181,3 +181,7 @@ weapon-role-24 = Lightweight torpedo: drops on a chute, searches under water and
 employment-24 =
     Programmed on the sensor operator's WPN page: heading, enable delay, search pattern
     Release: over water, below 300 ft and 100 kt
+weapon-role-25 = Stand-off land attack missile: cruises to its target, then the pilot steers it by its seeker picture
+employment-25 =
+    Programmed on the SLAM page: cruise altitude, seeker range, primary or secondary target
+    Range: up to 250 km, four in flight at once

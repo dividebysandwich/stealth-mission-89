@@ -28,6 +28,9 @@ const CAMERA: i32 = 16;
 const FUEL_TANK: i32 = 17;
 /// State slot showing a missile's motor flame (`_s14v1`).
 const MOTOR_SLOT: usize = 14;
+/// A SLAM-ER's wings: folded on the pylon (0), open once it has dropped clear (1)
+/// (tools/models/stores.py `WINGS_SLOT`).
+const WINGS_SLOT: usize = 15;
 
 #[derive(Deserialize)]
 struct Table {
@@ -352,6 +355,10 @@ fn release_stores(
             let v = (crate::trails::is_missile(m.spec) && m.motor_visible()) as i16;
             if state.0[MOTOR_SLOT] != v {
                 state.0[MOTOR_SLOT] = v;
+            }
+            let wings = (m.slam.is_some() && m.drop == 0) as i16;
+            if state.0[WINGS_SLOT] != wings {
+                state.0[WINGS_SLOT] = wings;
             }
         }
         if seen.get(&key) != Some(&e) {

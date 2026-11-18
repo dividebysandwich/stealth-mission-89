@@ -181,3 +181,7 @@ weapon-role-24 = Torpidow ħafif: jinżel bil-paraxut, ifittex taħt l-ilma u ji
 employment-24 =
     Ipprogrammat fil-paġna WPN tal-operatur tas-sensuri: direzzjoni, dewmien tal-attivazzjoni, mudell tat-tfittxija
     Rilaxx: fuq l-ilma, taħt 300 ft u 100 kt
+weapon-role-25 = Missila ta' attakk fuq l-art mill-bogħod: ittir sal-mira, imbagħad il-pilota jidderiġiha bl-istampa tas-sensor tagħha
+employment-25 =
+    Ipprogrammata fil-paġna SLAM: altitudni tal-kruċiera, distanza tas-sensor, mira primarja jew sekondarja
+    Firxa: sa 250 km, erbgħa fl-ajru f'daqqa
