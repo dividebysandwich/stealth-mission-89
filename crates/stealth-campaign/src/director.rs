@@ -120,7 +120,7 @@ impl CampaignState {
                 let target = self.insertions[k].target;
                 let Some(t) = self.site(target) else { return };
                 if dist(t.x - x, t.y - y) <= CAPTURE_RADIUS {
-                    self.capture(k, ev);
+                    self.capture(k, view, ev);
                     return;
                 }
                 // Down somewhere else: that one takes nobody there.
@@ -154,12 +154,32 @@ impl CampaignState {
     }
 
     /// Insertion `k` landed: its place changes hands.
-    pub(crate) fn capture(&mut self, k: usize, ev: &mut Vec<CampaignEvent>) {
-        let (id, place) = (self.insertions[k].id, self.insertions[k].place);
+    /// Insertion `k`'s troops are down at its place: they take it, unless its garrison still
+    /// holds it (its guns and armour must be destroyed first, as for a column).
+    pub(crate) fn capture(&mut self, k: usize, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
+        let place = self.insertions[k].place;
+        if self.garrison_holds(place, view) {
+            self.insertion_failed(k, "cl-why-garrison", ev);
+            return;
+        }
+        let id = self.insertions[k].id;
         self.insertions[k].state = InsertionState::Captured;
         let side = self.insertions[k].side;
         self.settle_insertion(id, InsertionState::Captured);
         self.capture_place(place, side, ev);
+    }
+
+    /// Place `place` still has a garrison of its owner's: a gun, a MANPADS team or a vehicle
+    /// alive within `GARRISON_RADIUS` of it (not a column driving through).
+    pub(crate) fn garrison_holds(&self, place: PlaceId, view: &WorldView) -> bool {
+        let p = &self.places[place as usize];
+        let moving: Vec<u32> = self.convoys.iter().filter(|c| c.active()).map(|c| c.id).collect();
+        view.units.iter().any(|u| {
+            u.alive
+                && u.side == p.owner
+                && !moving.contains(&u.convoy)
+                && dist(u.x - p.x, u.y - p.y) <= GARRISON_RADIUS
+        })
     }
 
     /// A place changes hands (an insertion landed, or a convoy took it).
@@ -984,6 +1004,7 @@ impl CampaignState {
         let candidate = self.front(Side::Blue).into_iter().find(|&p| {
             let q = &self.places[p as usize];
             !self.active_insertion(p)
+                && !self.garrison_holds(p, view)
                 && self.threat_of(p, Some(view)) <= AUTO_INSERT_THREAT
                 && self.insertion_base(Side::Blue, q.x, q.y).is_some()
         });
@@ -1001,6 +1022,7 @@ impl CampaignState {
             let q = &self.places[p as usize];
             self.operation_on(p, &front).is_some_and(|o| o.ready())
                 && !self.active_insertion(p)
+                && !self.garrison_holds(p, view)
                 && self.failed_lately(Side::Blue, p) == 0
                 && self.threat_of(p, Some(view)) <= OPERATION_THREAT
                 && self.insertion_base(Side::Blue, q.x, q.y).is_some()
@@ -1033,6 +1055,8 @@ impl CampaignState {
                     self.insertion_base(Side::Red, p.x, p.y).is_some()
                 })
                 .filter(|&p| !self.active_insertion(p))
+                // Its garrison gone: troops landing among the guns and armour take nothing.
+                .filter(|&p| !self.garrison_holds(p, view))
                 .filter(|&p| !self.capped(p))
                 .map(|p| {
                     let cost = self.threat_of(p, Some(view)) + SAM_THREAT * self.failed_at(p);

@@ -2935,6 +2935,11 @@ minutes. When they come within 80 km of an enemy airfield the enemy sends a figh
 UH-60 yourself, land within 1.5 km of the place and stay on the ground for 15 seconds; ending your sortie
 leaves the others flying on.
 
+**The garrison first.** Troops landing (or jumping) among the place's guns, MANPADS teams and armour take
+nothing: the insertion fails ("its garrison still held it"). Destroy everything of the defender's within
+some 6 km of the place first (the CAS and armour missions there), then send the troops in. The AI's own
+insertions, yours and the enemy's, go only where the garrison is already gone.
+
 ## 9.7 The ground war
 
 <table>
@@ -4337,7 +4342,8 @@ The C-5 and the CH-47 can fly an insertion and drop paratroopers instead of land
 - The jump: 500 to 1500 ft over the ground, under 150 kt, the C-5's ramp down. Fire: the stick
   goes, one man after another; their chutes open after two seconds.
 - When the last man is down, most of the stick inside the drop zone (900 m round the place)
-  takes it. Men landing in the water are lost.
+  takes it, if its garrison is destroyed (see 9.6): paratroopers dropped on a defended place take
+  nothing. Men landing in the water are lost.
 
 ## 15.7 Pages that come with their weapons
 

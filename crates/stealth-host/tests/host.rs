@@ -118,7 +118,8 @@ fn friendly_air_defences_stand_from_the_start() {
 }
 
 /// The enemy's offensive played out in the simulation: its raid and its insertion end one way
-/// or the other (the strike aircraft bomb or are stopped, the Hinds land or are shot down).
+/// or the other (the strike aircraft bomb, are stopped or called off with their target gone, the
+/// Hinds land or are shot down, or find the garrison still holding the place).
 #[test]
 fn the_enemy_offensive_plays_out() {
     use stealth_campaign::{InsertionState, RaidState, Side, tuning};
@@ -139,8 +140,9 @@ fn the_enemy_offensive_plays_out() {
         let raid = host.state.raids.first().map(|r| r.state);
         let ins = host.state.insertions.iter().find(|i| i.side == Side::Red).map(|i| i.state);
         let done = |s: Option<bool>| s == Some(true);
-        if done(raid.map(|r| matches!(r, RaidState::Hit | RaidState::Repelled)))
-            && done(ins.map(|i| matches!(i, InsertionState::Captured | InsertionState::Failed)))
+        if done(
+            raid.map(|r| matches!(r, RaidState::Hit | RaidState::Repelled | RaidState::CalledOff)),
+        ) && done(ins.map(|i| matches!(i, InsertionState::Captured | InsertionState::Failed)))
         {
             return;
         }

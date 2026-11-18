@@ -1714,6 +1714,31 @@ fn a_player_insertion_takes_the_place_by_landing() {
     assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ObjectiveAchieved { player: P0, .. })));
 }
 
+/// Troops landed among the place's garrison take nothing: the insertion fails and the place
+/// stays the enemy's.
+#[test]
+fn a_garrison_holds_its_place_against_an_insertion() {
+    let mut c = campaign("central_europe", 3);
+    let (id, target, _) = fly_insertion(&mut c);
+    let place = c.insertion(id).unwrap().place;
+    let t = c.site(target).unwrap().clone();
+    let p = c.places[place as usize].clone();
+    let gun = GroundView {
+        x: p.x + 0x40,
+        y: p.y,
+        side: Side::Red,
+        alive: true,
+        vehicle: None,
+        convoy: 0,
+    };
+    let view = |landed| WorldView { units: vec![gun], ..heli_at(t.x + 0x20, t.y, landed) };
+    for _ in 0..3 {
+        c.tick(10.0, &view(true), &[]);
+    }
+    assert_eq!(c.places[place as usize].owner, Side::Red);
+    assert_eq!(c.insertion(id).unwrap().state, InsertionState::Failed);
+}
+
 #[test]
 fn a_player_insertion_goes_on_without_the_wingmen_and_fails_with_him() {
     let mut c = campaign("central_europe", 3);

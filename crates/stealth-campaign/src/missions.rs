@@ -568,9 +568,12 @@ impl CampaignState {
         }
         for id in captures {
             if let Some(k) = self.insertions.iter().position(|i| i.id == id) {
-                let name = self.places[self.insertions[k].place as usize].name.clone();
-                ev.push(CampaignEvent::Message(text!("cl-troops-out", place = name)));
-                self.capture(k, ev);
+                let place = self.insertions[k].place;
+                if !self.garrison_holds(place, view) {
+                    let name = self.places[place as usize].name.clone();
+                    ev.push(CampaignEvent::Message(text!("cl-troops-out", place = name)));
+                }
+                self.capture(k, view, ev);
             }
         }
         for downed in boarded {
