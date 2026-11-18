@@ -185,3 +185,11 @@ weapon-role-25 = Misil de ataque terrestre a distancia: vuela hasta su objetivo 
 employment-25 =
     Se programa en la página SLAM: altitud de crucero, distancia del buscador, objetivo principal o secundario
     Alcance: hasta 250 km, cuatro en vuelo a la vez
+weapon-role-26 = Bomba planeadora: planea hasta el punto designado; su alcance crece con la altura y la velocidad de lanzamiento
+employment-26 =
+    Apunta al punto del pod o al blanco fijado en tierra, si no al objetivo principal
+    Alcance: unos 20 km a baja cota, hasta 130 km desde gran altura; la defensa aérea puede derribarla
+weapon-role-27 = Señuelo lanzado desde el aire: muestra la firma de un avión a la defensa aérea y atrae sus misiles
+employment-27 =
+    Vuela hasta el punto designado y luego sigue recto hasta 10 minutos
+    Inofensivo para los objetivos

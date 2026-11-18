@@ -34,6 +34,7 @@ pub mod relief;
 pub mod score;
 pub mod sfw;
 pub mod slam;
+pub mod standoff;
 pub mod station;
 pub mod supply;
 mod targeting;

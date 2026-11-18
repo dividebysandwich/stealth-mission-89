@@ -185,3 +185,11 @@ weapon-role-25 = Izstrelek za napad na kopenske cilje z razdalje: poleti do cilj
 employment-25 =
     Programira se na strani SLAM: potovalna višina, razdalja vklopa iskalnika, glavni ali drugotni cilj
     Doseg: do 250 km, štirje hkrati v zraku
+weapon-role-26 = Jadralna bomba: jadra do določene točke; doseg raste z višino in hitrostjo odmeta
+employment-26 =
+    Meri na točko vsebnika ali zemeljsko zaklepanje, sicer na glavni cilj
+    Doseg: okoli 20 km nizko, do 130 km z višine; zračna obramba jo lahko sestreli
+weapon-role-27 = Vaba, izstreljena iz zraka: z letalskim podpisom prileti v zračno obrambo in nase pritegne njene rakete
+employment-27 =
+    Leti do določene točke, nato naravnost do 10 minut
+    Za cilje neškodljiva

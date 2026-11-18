@@ -356,7 +356,7 @@ fn release_stores(
             if state.0[MOTOR_SLOT] != v {
                 state.0[MOTOR_SLOT] = v;
             }
-            let wings = (m.slam.is_some() && m.drop == 0) as i16;
+            let wings = ((m.slam.is_some() || m.glide.is_some()) && m.drop == 0) as i16;
             if state.0[WINGS_SLOT] != wings {
                 state.0[WINGS_SLOT] = wings;
             }

@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xc35b6051a0988827,
-        0x13ae23af2d37fb61,
-        0xa2714c3ceb3dc200,
-        0x9f47a2bb4715d033,
-        0xe68010f113ccf3d5,
-        0x6924caf80191b2d5,
-        0xbb48dbc4f0f9e975,
-        0xac973c5bc477ac74,
-        0x191c2f22b7bfbf2e,
-        0x25330a2483783006,
-        0x00ac421172229568,
-        0x0a1a5de81ccfb162,
-        0x66fa204f93565f4d,
-        0xe5e9dcaa0afa2834,
-        0xf3670d1c66c50c33,
-        0x26c80c7b22bfc260,
-        0x276b7dbbda5156c9,
-        0x4d4d1438968b6c6e,
+        0x6dafb6acb15b268a,
+        0x6264166471e6b2a0,
+        0x8f0db8c8b1056595,
+        0xad01d11f0db24b7c,
+        0xbf97331e8417ba18,
+        0x2a7b23eca2640130,
+        0x7d509c44a092e9a4,
+        0xed957107e55d8ba5,
+        0x1772d0c5451ff635,
+        0x17f07797d72a20b1,
+        0xb760da4813db2fcd,
+        0xec10e9cf861e3a5f,
+        0x886380160afb88c8,
+        0x825cfe1bf8d23a23,
+        0xed37a1f18add51b4,
+        0x89333123f2da7f7b,
+        0x92a274bcbe9225b0,
+        0xbccdb8394e36a5d9,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -3791,3 +3791,151 @@ fn slam_er_four_channels_at_most() {
     assert!(events.iter().any(|e| is_msg(e, "All SLAM-ER channels in use")));
 }
 
+/// A stand-off weapon run: the jet `alt` ft up heading north at 450 kt in a sandbox, the
+/// mission's primary target moved `north` map units ahead, `rounds` of `weapon` on a pylon and
+/// an SA-2 site at index 3 `site` map units north of the jet (None: no site). Returns the
+/// simulation, the input, the target's map point and the events of the launch press.
+fn standoff_run(
+    weapon: i32,
+    north: i32,
+    alt: u16,
+    site: Option<i32>,
+) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
+    standoff_run_after(weapon, north, alt, site, 4)
+}
+
+/// `standoff_run`, released after `warm` frames (a different roll of the dice).
+fn standoff_run_after(
+    weapon: i32,
+    north: i32,
+    alt: u16,
+    site: Option<i32>,
+    warm: usize,
+) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
+    let d = data();
+    let (m, mut sim) =
+        aaa_mission_with(d, SimOptions { external_stores: true, ..Default::default() });
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(weapon, 2)]);
+    sim.units_mut().clear();
+    if let Some(n) = site {
+        place_site(&mut sim, 3, 1, mx + 4, my - n);
+    }
+    let target = (mx + 10, my - north);
+    let k = sim.target_slots()[0].object as usize;
+    {
+        let o = &mut sim.objects_mut()[k];
+        o.x = target.0;
+        o.y = target.1;
+    }
+    let mut p = player_at(mx, my, alt, 0, 450);
+    p.hud_mode = HudMode::Gnd;
+    let mut events = Vec::new();
+    for _ in 0..warm {
+        events.extend(sim.step(&p, 15));
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    events.extend(sim.step(&p, 15));
+    p.cmd = Commands::default();
+    (sim, p, target, events)
+}
+
+/// Released high within its reach, the JSOW glides (no motor: it only slows and sinks), dives
+/// onto the primary target and hits it.
+#[test]
+fn jsow_glides_onto_its_target() {
+    let (mut sim, p, target, _) = standoff_run(JSOW_WEAPON, 2500, 25000, None);
+    assert_eq!(sim.standoff_rounds().len(), 1, "released");
+    let (lo, hi) = sim.launch_zone().map(|z| z.zone.unwrap()).unwrap_or((0, 0));
+    assert!(hi == 0 || hi > 2400, "zone {lo}..{hi}");
+    let fine = ROUND_FINE as f64;
+    let mut hit = None;
+    let mut top = f64::MAX;
+    for _ in 0..15 * 600 {
+        let ev = sim.step(&p, 15);
+        let Some((_, m)) = sim.standoff_rounds().into_iter().next() else {
+            hit = ev.iter().find_map(|e| match *e {
+                SimEvent::Explosion { x, y, kind: 0x10, .. } => Some((x, y)),
+                _ => None,
+            });
+            break;
+        };
+        // Never gains energy (height and speed): it has no motor.
+        let f = m.flight.unwrap();
+        let v = [f.vx, f.vy, f.vz].map(|c| c as f64 / fine);
+        let speed2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+        let energy = f.alt as f64 / fine + speed2 / (2.0 * 32.174);
+        assert!(energy <= top + 5.0, "energy {energy} up from {top}");
+        top = energy;
+    }
+    let (x, y) = hit.expect("hit the ground with a blast");
+    assert!((x - target.0).abs() <= 3 && (y - target.1).abs() <= 3, "{x},{y} vs {target:?}");
+}
+
+/// Too far for its glide from low down, the JSOW stays on its pylon.
+#[test]
+fn jsow_out_of_reach_stays_on_its_pylon() {
+    let (sim, _, _, ev) = standoff_run(JSOW_WEAPON, 3000, 1500, None);
+    assert!(sim.standoff_rounds().is_empty());
+    assert!(ev.iter().any(|e| is_msg(e, "JSOW: target out of range")), "{ev:?}");
+}
+
+/// A MALD flown over an SA-2 site draws its missiles: the site fires at it (not at the jet far
+/// behind) and in time knocks it down.
+#[test]
+fn sites_fire_at_a_mald_and_shoot_it_down() {
+    let (mut sim, mut p, _, _) = standoff_run(MALD_WEAPON, 6000, 20000, Some(1600));
+    assert_eq!(sim.standoff_rounds().len(), 1, "released");
+    // The jet turns back south, away from the site.
+    p.heading = 0x8000;
+    let mut at_mald = 0;
+    let mut down = false;
+    for _ in 0..15 * 400 {
+        for e in sim.step(&p, 15) {
+            match e {
+                SimEvent::MissileLaunched { slot, launcher: Launcher::Site(3), .. } => {
+                    assert!(sim.projectiles()[slot].intercept.is_some(), "fired at the jet");
+                    at_mald += 1;
+                }
+                SimEvent::WeaponShotDown { spec, .. } => {
+                    assert_eq!(spec, MALD_SPEC);
+                    down = true;
+                }
+                _ => {}
+            }
+        }
+        if down {
+            break;
+        }
+    }
+    assert!(at_mald > 0, "the site never fired at the MALD");
+    assert!(down, "{at_mald} missiles, MALD still flying");
+}
+
+/// A JSOW gliding past an SA-2 site close in is fired at and can be shot down.
+#[test]
+fn sites_shoot_down_some_jsows() {
+    let mut downed = 0;
+    let mut fired = 0;
+    for k in 0..8 {
+        let (mut sim, mut p, _, _) =
+            standoff_run_after(JSOW_WEAPON, 2400, 25000, Some(1700 + k as i32 * 60), 4 + k * 7);
+        p.heading = 0x8000;
+        for _ in 0..15 * 300 {
+            for e in sim.step(&p, 15) {
+                match e {
+                    SimEvent::MissileLaunched { launcher: Launcher::Site(3), .. } => fired += 1,
+                    SimEvent::WeaponShotDown { .. } => downed += 1,
+                    _ => {}
+                }
+            }
+            if sim.standoff_rounds().is_empty() {
+                break;
+            }
+        }
+    }
+    println!("{fired} missiles at JSOWs, {downed} of 8 shot down");
+    assert!(fired > 0 && downed > 0, "{fired} fired, {downed} down");
+}

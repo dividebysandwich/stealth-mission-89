@@ -185,3 +185,11 @@ weapon-role-25 = Rachetă de atac la sol de la distanță: zboară până la ți
 employment-25 =
     Programată pe pagina SLAM: altitudinea de croazieră, distanța capului de căutare, ținta principală sau secundară
     Bătaie: până la 250 km, patru în zbor în același timp
+weapon-role-26 = Bombă planantă: planează până la punctul desemnat; raza crește cu înălțimea și viteza de lansare
+employment-26 =
+    Țintește punctul containerului sau fixarea la sol, altfel ținta principală
+    Rază: circa 20 km la joasă înălțime, până la 130 km de sus; apărarea antiaeriană o poate doborî
+weapon-role-27 = Momeală lansată din aer: zboară cu semnătura unui avion în apărarea antiaeriană și îi atrage rachetele
+employment-27 =
+    Zboară până la punctul desemnat, apoi drept înainte până la 10 minute
+    Inofensivă pentru ținte

@@ -185,3 +185,11 @@ weapon-role-25 = Távolról indítható földi célok elleni rakéta: a célig r
 employment-25 =
     A SLAM oldalon programozható: utazómagasság, a keresőfej bekapcsolási távolsága, elsődleges vagy másodlagos cél
     Hatótáv: legfeljebb 250 km, egyszerre négy lehet a levegőben
+weapon-role-26 = Siklóbomba: a kijelölt pontig siklik; hatótávja a kioldási magassággal és sebességgel nő
+employment-26 =
+    A konténer pontjára vagy a földi rávezetésre céloz, különben az elsődleges célra
+    Hatótáv: alacsonyan kb. 20 km, magasról akár 130 km; a légvédelem lelőheti
+weapon-role-27 = Levegőből indított csali: repülőgép jelével repül a légvédelembe, és magára vonja a rakétáit
+employment-27 =
+    A kijelölt pontig repül, majd egyenesen tovább legfeljebb 10 percig
+    A célokra ártalmatlan

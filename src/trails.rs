@@ -401,9 +401,13 @@ struct Trails {
     materials: Vec<((u8, u32), Handle<TrailMaterial>)>,
 }
 
-/// Missiles trail smoke; bombs (28..30, the CBU-105) and dropped equipment (38) do not.
+/// Missiles trail smoke; bombs (28..30, the CBU-105, the JSOW), the MALD's small jet and
+/// dropped equipment (38) do not.
 pub fn is_missile(spec: i32) -> bool {
-    !matches!(spec, 28..=30 | 38 | stealth_sim::CBU105_SPEC)
+    !matches!(
+        spec,
+        28..=30 | 38 | stealth_sim::CBU105_SPEC | stealth_sim::JSOW_SPEC | stealth_sim::MALD_SPEC
+    )
 }
 
 fn cleanup(mut commands: Commands, mut trails: ResMut<Trails>) {

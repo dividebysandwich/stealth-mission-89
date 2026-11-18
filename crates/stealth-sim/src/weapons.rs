@@ -451,6 +451,8 @@ impl Sim {
                     self.release_sfw(ps);
                 } else if self.selected_spec() == SLAMER_SPEC {
                     self.release_slam(ps);
+                } else if matches!(self.selected_spec(), JSOW_SPEC | MALD_SPEC) {
+                    self.release_standoff(ps);
                 } else {
                     self.fire_missile();
                 }
@@ -796,6 +798,8 @@ impl Sim {
             cm_rolled: 0,
             cm_fooled: 0,
             slam: None,
+            glide: None,
+            intercept: None,
         };
         if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {
             pr.speed >>= 1;

@@ -185,3 +185,11 @@ weapon-role-25 = Kaugrünnaku rakett maapealsete sihtmärkide vastu: lendab siht
 employment-25 =
     Programmeeritakse SLAM-lehel: lennukõrgus, otsija sisselülitamise kaugus, esmane või teisene sihtmärk
     Laskekaugus: kuni 250 km, neli korraga õhus
+weapon-role-26 = Liugpomm: liugleb määratud punkti; ulatus kasvab heitekõrguse ja kiirusega
+employment-26 =
+    Sihitakse kaabi punktile või maalukustusele, muidu põhisihtmärgile
+    Ulatus: umbes 20 km madalalt, kuni 130 km kõrgelt; õhutõrje võib selle alla tulistada
+weapon-role-27 = Õhust lastav peibutis: lendab lennuki signatuuriga õhutõrjesse ja tõmbab endale selle raketid
+employment-27 =
+    Lendab määratud punkti ja siis otse edasi kuni 10 minutit
+    Sihtmärkidele kahjutu

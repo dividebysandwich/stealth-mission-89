@@ -185,3 +185,11 @@ weapon-role-25 = Abstandsflugkörper gegen Landziele: fliegt zum Ziel, dann lenk
 employment-25 =
     Programmiert auf der SLAM-Seite: Reiseflughöhe, Suchkopfentfernung, primäres oder sekundäres Ziel
     Reichweite: bis 250 km, vier gleichzeitig in der Luft
+weapon-role-26 = Gleitbombe: gleitet zum bezeichneten Punkt, Reichweite wächst mit Abwurfhöhe und Geschwindigkeit
+employment-26 =
+    Ziel: Punkt des Pods oder Bodenaufschaltung, sonst das Primärziel
+    Reichweite: etwa 20 km tief, bis 130 km aus großer Höhe; die Luftabwehr kann sie abschießen
+weapon-role-27 = Luftgestützter Täuschkörper: fliegt mit der Signatur eines Flugzeugs in die Luftabwehr und zieht ihre Flugkörper auf sich
+employment-27 =
+    Fliegt zum bezeichneten Punkt, dann geradeaus weiter, bis zu 10 Minuten
+    Für Ziele harmlos

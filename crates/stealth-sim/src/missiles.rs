@@ -215,6 +215,14 @@ impl Sim {
             self.slam_frame(s);
             return;
         }
+        if self.proj[s].glide.is_some() {
+            self.glide_frame(s);
+            return;
+        }
+        if s < ENEMY_SLOTS && self.proj[s].intercept.is_some() {
+            self.intercept_frame(s);
+            return;
+        }
         let spec = self.proj[s].spec;
         let mt = self.missile(spec).clone();
         let cls = mt.class as i32;

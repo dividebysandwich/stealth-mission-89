@@ -185,3 +185,11 @@ weapon-role-25 = Strela proti pozemným cieľom z odstupu: doletí k cieľu a pi
 employment-25 =
     Programuje sa na stránke SLAM: cestovná výška, vzdialenosť zapnutia hľadača, hlavný alebo vedľajší cieľ
     Dosah: až 250 km, štyri vo vzduchu naraz
+weapon-role-26 = Kĺzavá bomba: kĺže k určenému bodu; dolet rastie s výškou a rýchlosťou zhodenia
+employment-26 =
+    Mieri na bod kontajnera alebo pozemné zameranie, inak na hlavný cieľ
+    Dolet: asi 20 km nízko, až 130 km z výšky; protivzdušná obrana ju môže zostreliť
+weapon-role-27 = Klamný cieľ vypúšťaný zo vzduchu: vletí do protivzdušnej obrany so signatúrou lietadla a odláka jej strely
+employment-27 =
+    Letí k určenému bodu, potom rovno až 10 minút
+    Pre ciele neškodný

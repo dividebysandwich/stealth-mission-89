@@ -185,3 +185,11 @@ weapon-role-25 = Projektil za napad na kopnene ciljeve s udaljenosti: leti do ci
 employment-25 =
     Programira se na stranici SLAM: visina krstarenja, udaljenost uključivanja tražila, glavni ili sporedni cilj
     Domet: do 250 km, četiri istodobno u zraku
+weapon-role-26 = Klizna bomba: klizi do označene točke; domet raste s visinom i brzinom odbacivanja
+employment-26 =
+    Cilja točku kontejnera ili zemaljsko zaključavanje, inače primarni cilj
+    Domet: oko 20 km nisko, do 130 km s visine; protuzračna obrana može je oboriti
+weapon-role-27 = Mamac lansiran iz zraka: s potpisom zrakoplova uleti u protuzračnu obranu i privuče njene projektile
+employment-27 =
+    Leti do označene točke, zatim ravno do 10 minuta
+    Bezopasan za ciljeve

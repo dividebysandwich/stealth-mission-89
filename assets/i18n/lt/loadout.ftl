@@ -185,3 +185,11 @@ weapon-role-25 = Tolimo nuotolio raketa prieš antžeminius taikinius: skrenda i
 employment-25 =
     Programuojama SLAM puslapyje: skrydžio aukštis, ieškiklio įjungimo nuotolis, pagrindinis ar atsarginis taikinys
     Nuotolis: iki 250 km, keturios ore vienu metu
+weapon-role-26 = Sklandanti bomba: sklendžia į nurodytą tašką; nuotolis auga su numetimo aukščiu ir greičiu
+employment-26 =
+    Taikoma į konteinerio tašką arba žemės užrakinimą, kitaip į pagrindinį taikinį
+    Nuotolis: apie 20 km žemai, iki 130 km iš aukštai; oro gynyba gali ją numušti
+weapon-role-27 = Iš oro paleidžiamas masalas: skrenda su lėktuvo signatūra į oro gynybą ir pritraukia jos raketas
+employment-27 =
+    Skrenda į nurodytą tašką, tada tiesiai iki 10 minučių
+    Taikiniams nepavojingas

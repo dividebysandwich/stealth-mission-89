@@ -185,3 +185,11 @@ weapon-role-25 = Stand-off-raket tegen gronddoelen: vliegt naar het doel, daarna
 employment-25 =
     Geprogrammeerd op de SLAM-pagina: kruishoogte, zoekerafstand, primair of secundair doel
     Bereik: tot 250 km, vier tegelijk in de lucht
+weapon-role-26 = Glijbom: glijdt naar het aangewezen punt; het bereik groeit met afwerphoogte en snelheid
+employment-26 =
+    Gericht op het punt van de pod of de grondvergrendeling, anders op het primaire doel
+    Bereik: zo'n 20 km laag, tot 130 km van grote hoogte; de luchtverdediging kan hem neerschieten
+weapon-role-27 = Lokdoel vanuit de lucht: vliegt met de signatuur van een vliegtuig de luchtverdediging in en trekt haar raketten aan
+employment-27 =
+    Vliegt naar het aangewezen punt en dan rechtdoor, tot 10 minuten
+    Onschadelijk voor doelen

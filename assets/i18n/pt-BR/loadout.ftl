@@ -185,3 +185,11 @@ weapon-role-25 = Míssil de ataque ao solo a distância: voa até o alvo e entã
 employment-25 =
     Programado na página SLAM: altitude de cruzeiro, distância do buscador, alvo primário ou secundário
     Alcance: até 250 km, quatro em voo ao mesmo tempo
+weapon-role-26 = Bomba planadora: plana até o ponto designado; o alcance cresce com a altura e a velocidade de lançamento
+employment-26 =
+    Mira o ponto do pod ou o travamento no solo, senão o alvo primário
+    Alcance: cerca de 20 km em baixa altitude, até 130 km do alto; a defesa aérea pode abatê-la
+weapon-role-27 = Chamariz lançado do ar: mostra a assinatura de uma aeronave à defesa aérea e atrai seus mísseis
+employment-27 =
+    Voa até o ponto designado e segue reto por até 10 minutos
+    Inofensivo para os alvos

@@ -433,6 +433,8 @@ impl Sim {
                     self.site_pilot[i] = k as u8;
                     self.activate(k);
                 }
+                // Stand-off weapons first: a MALD draws the site's missile before the pilot can.
+                self.standoff_sweep(i);
                 if self.pl.sweep_anim < 0 {
                     self.site_sweep(i);
                     self.objects[i].flags |= oflags::SWEPT;
@@ -603,6 +605,8 @@ impl Sim {
             cm_rolled: 0,
             cm_fooled: 0,
             slam: None,
+            glide: None,
+            intercept: None,
         };
         if self.guided(spec) {
             let tgt = self.player_target().p;
@@ -735,6 +739,8 @@ impl Sim {
             cm_rolled: 0,
             cm_fooled: 0,
             slam: None,
+            glide: None,
+            intercept: None,
         };
         if self.guided(u.missile) {
             let pos = [u.wx as f64, u.wy as f64, (u.alt - 25) as f64];

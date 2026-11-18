@@ -185,3 +185,11 @@ weapon-role-25 = Pocisk do atakowania celów naziemnych z dystansu: leci do celu
 employment-25 =
     Programowany na stronie SLAM: wysokość przelotowa, odległość włączenia głowicy, cel główny lub zapasowy
     Zasięg: do 250 km, cztery w locie jednocześnie
+weapon-role-26 = Bomba szybująca: szybuje do wskazanego punktu; zasięg rośnie z wysokością i prędkością zrzutu
+employment-26 =
+    Celuje w punkt zasobnika lub namiar naziemny, inaczej w cel główny
+    Zasięg: ok. 20 km nisko, do 130 km z dużej wysokości; obrona przeciwlotnicza może ją zestrzelić
+weapon-role-27 = Wabik zrzucany z powietrza: wlatuje w obronę przeciwlotniczą z sygnaturą samolotu i ściąga jej pociski
+employment-27 =
+    Leci do wskazanego punktu, potem prosto do 10 minut
+    Nieszkodliwy dla celów

@@ -185,3 +185,11 @@ weapon-role-25 = Missila ta' attakk fuq l-art mill-bogħod: ittir sal-mira, imba
 employment-25 =
     Ipprogrammata fil-paġna SLAM: altitudni tal-kruċiera, distanza tas-sensor, mira primarja jew sekondarja
     Firxa: sa 250 km, erbgħa fl-ajru f'daqqa
+weapon-role-26 = Bomba li tiżżerżaq: tiżżerżaq sal-punt magħżul; il-firxa tikber mal-għoli u l-veloċità tar-rilaxx
+employment-26 =
+    Immirata lejn il-punt tal-pod jew is-sakkatura fl-art, inkella l-mira primarja
+    Firxa: madwar 20 km baxx, sa 130 km minn għoli; id-difiża tal-ajru tista' twaqqagħha
+weapon-role-27 = Lixka mniedja mill-ajru: ittir bil-firma ta' ajruplan fid-difiża tal-ajru u tiġbed il-missili tagħha
+employment-27 =
+    Ittir sal-punt magħżul, imbagħad dritt sa 10 minuti
+    Ma tagħmel l-ebda ħsara lill-miri

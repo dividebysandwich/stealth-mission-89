@@ -185,3 +185,11 @@ weapon-role-25 = Missile da attacco al suolo a distanza: vola fino al bersaglio,
 employment-25 =
     Programmato sulla pagina SLAM: quota di crociera, distanza del sensore, bersaglio primario o secondario
     Portata: fino a 250 km, quattro in volo alla volta
+weapon-role-26 = Bomba planante: plana fino al punto designato, la gittata cresce con quota e velocità di sgancio
+employment-26 =
+    Puntata sul punto del pod o sull'aggancio a terra, altrimenti sul bersaglio primario
+    Gittata: circa 20 km a bassa quota, fino a 130 km da alta quota; la difesa aerea può abbatterla
+weapon-role-27 = Esca aviolanciata: mostra alla difesa aerea la firma di un aereo e ne attira i missili
+employment-27 =
+    Vola fino al punto designato, poi dritto per al massimo 10 minuti
+    Innocua per i bersagli

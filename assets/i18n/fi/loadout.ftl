@@ -185,3 +185,11 @@ weapon-role-25 = Kaukoase maamaaleja vastaan: lentää maalille, minkä jälkeen
 employment-25 =
     Ohjelmoidaan SLAM-sivulla: matkalentokorkeus, hakupään kytkentäetäisyys, ensisijainen tai toissijainen maali
     Kantama: enintään 250 km, neljä ilmassa kerralla
+weapon-role-26 = Liitopommi: liitää osoitettuun pisteeseen; kantama kasvaa pudotuskorkeuden ja nopeuden mukaan
+employment-26 =
+    Suunnataan podin pisteeseen tai maalukitukseen, muuten päämaaliin
+    Kantama: noin 20 km matalalta, jopa 130 km korkealta; ilmatorjunta voi ampua sen alas
+weapon-role-27 = Ilmasta laukaistava harhamaali: lentää koneen tunnisteella ilmatorjuntaan ja houkuttelee sen ohjukset
+employment-27 =
+    Lentää osoitettuun pisteeseen ja sitten suoraan jopa 10 minuuttia
+    Vaaraton maaleille

@@ -185,3 +185,11 @@ weapon-role-25 = Stand-off-missil mod landmål: flyver til målet, hvorefter pil
 employment-25 =
     Programmeres på SLAM-siden: marchhøjde, søgerafstand, primært eller sekundært mål
     Rækkevidde: op til 250 km, fire i luften ad gangen
+weapon-role-26 = Glidebombe: glider til det udpegede punkt; rækkevidden vokser med udløsningshøjde og fart
+employment-26 =
+    Rettet mod podens punkt eller jordlåsningen, ellers det primære mål
+    Rækkevidde: omkring 20 km lavt, op til 130 km fra stor højde; luftforsvaret kan skyde den ned
+weapon-role-27 = Luftaffyret lokkemiddel: flyver med et flys signatur ind i luftforsvaret og trækker dets missiler til sig
+employment-27 =
+    Flyver til det udpegede punkt og derefter ligeud i op til 10 minutter
+    Ufarlig for mål

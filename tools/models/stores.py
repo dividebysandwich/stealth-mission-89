@@ -19,6 +19,8 @@ Dimensions (m: length, body diameter, span):
     AGM-114 Hellfire 1.63 x 0.178, wings 0.33
     CBU-105 (SUU-66/B with the WCMD tail kit) 2.34 x 0.40, folded fins 0.62
     AGM-84H SLAM-ER 4.37 x 0.343, wings 2.2 (folded under the body on the pylon), fins 0.91
+    AGM-154C JSOW 4.06 x 0.33 (square body), wings 2.69 (folded flat on top on the pylon)
+    ADM-160B MALD 2.84 x 0.30, wings 1.71 (folded under the body on the pylon)
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -28,7 +30,7 @@ import re
 
 from mathutils import Matrix, Vector
 
-from mklib import Geo, Ramp, block, frustum, hexa, wing
+from mklib import Geo, Ramp, block, frustum, hexa, loft, wing
 
 WHITE = Ramp(224, 229)
 MISSILE = Ramp(224, 231)
@@ -300,6 +302,64 @@ def slamer():
                                           (WINGS_SLOT, 1, hang(open_, 0.0, r))])
 
 
+def jsow():
+    """AGM-154C JSOW: the long square-sectioned glide body with rounded edges, the faceted nose
+    with the dark IIR seeker window, the six small tail fins, the yellow band (live warhead);
+    the wing pair lies folded flat along the top on the pylon and swings out across it in
+    flight (span 2.69 m)."""
+    L, r = 4.06, 0.165
+    n, t = L / 2, -L / 2
+    g = loft([(n, -0.03, 0.035, 0.03), (n - 0.30, -0.01, 0.12, 0.12), (n - 0.70, 0.0, r, r),
+              (t + 0.25, 0.0, r, r), (t, 0.0, 0.12, 0.12)], GREY, n=16, power=6.0)
+    g.add(frustum((0, t + 0.001, 0), (0, t, 0), 0.12, 0.12, GREY, 16))
+    g.add(block(-0.025, 0.025, n - 0.012, n + 0.004, -0.055, -0.005, DARK))
+    g.add(block(-r - 0.002, r + 0.002, n - 1.00, n - 1.08, -r - 0.002, r - 0.02, YELLOW))
+    fins(g, t + 0.40, t + 0.04, 0.13, 0.12, GREY, n=6, rot=30.0, tip=(t + 0.14, t + 0.04))
+    # The lugs stand on the folded wing pack (its top is the store's top at the pylon).
+    top = r + 0.025
+    lugs(g, 0.0, top - 0.004, spacing=0.762)
+    # The wing's pivot fairing on top, ahead of the lugs.
+    g.add(block(-0.06, 0.06, 0.45, 0.70, r - 0.01, top, GREY))
+    folded = Geo()
+    for sx in (-1, 1):
+        folded.add(block(sx * 0.03, sx * 0.13, -1.55, 0.62, r + 0.002, r + 0.022, GREY))
+    open_ = Geo()
+    open_.add(wing((0.06, 0.64, r + 0.015), 0.40, (1.345, 0.40, r + 0.015), 0.26, GREY, t=0.05))
+    return Store(hang(g, 0.0, top), groups=[(WINGS_SLOT, 0, hang(folded, 0.0, top)),
+                                            (WINGS_SLOT, 1, hang(open_, 0.0, top))])
+
+
+def mald():
+    """ADM-160B MALD: the slim decoy body with its rounded nose, the turbojet's flush inlet
+    under the tail, the twin tail fins canted out on top and the small fin below; the wings
+    lie folded under the body on the pylon and open swept back in flight (span 1.71 m)."""
+    L, r = 2.84, 0.15
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.05, 0.07), (n - 0.20, 0.12), (n - 0.40, r), (t + 0.30, r),
+              (t, 0.08)], WHITE, bands=[(n - 0.62, n - 0.68, YELLOW)])
+    # The engine's inlet under the rear body, and its exhaust.
+    g.add(hexa([(-0.07, t + 0.95, -r + 0.02), (0.07, t + 0.95, -r + 0.02),
+                (0.07, t + 0.35, -r + 0.02), (-0.07, t + 0.35, -r + 0.02),
+                (-0.06, t + 0.90, -r - 0.06), (0.06, t + 0.90, -r - 0.06),
+                (0.07, t + 0.35, -r - 0.07), (-0.07, t + 0.35, -r - 0.07)], WHITE))
+    g.add(block(-0.055, 0.055, t + 0.90, t + 0.91, -r - 0.055, -r + 0.01, BLACK))
+    g.add(frustum((0, t + 0.001, 0), (0, t - 0.015, 0), 0.06, 0.05, BLACK, 10))
+    fins(g, t + 0.42, t + 0.05, 0.10, 0.24, GREY, n=2, rot=50.0, tip=(t + 0.18, t + 0.05))
+    fins(g, t + 0.38, t + 0.08, 0.10, 0.12, GREY, n=1, rot=270.0, tip=(t + 0.16, t + 0.08))
+    lugs(g, 0.0, r)
+    open_ = Geo()
+    open_.add(wing((0.12, 0.30, -r + 0.03), 0.32, (0.855, -0.15, -r + 0.03), 0.16, GREY, t=0.05))
+    folded = Geo()
+    for sx in (-1, 1):
+        z0, z1 = -r - 0.035, -r - 0.015
+        folded.add(hexa([(sx * 0.02, 0.30, z0), (sx * 0.12, 0.30, z0),
+                         (sx * 0.09, -0.55, z0), (sx * 0.02, -0.55, z0),
+                         (sx * 0.02, 0.30, z1), (sx * 0.12, 0.30, z1),
+                         (sx * 0.09, -0.55, z1), (sx * 0.02, -0.55, z1)], GREY))
+    return Store(hang(g, 0.0, r), groups=[(WINGS_SLOT, 0, hang(folded, 0.0, r)),
+                                          (WINGS_SLOT, 1, hang(open_, 0.0, r))])
+
+
 def maverick():
     """AGM-65: the glass seeker dome, the stubby body, the long-chord delta wings and the
     control fins behind them."""
@@ -510,12 +570,12 @@ WEAPON_MODELS = {
     11: (61, lambda: rockeye(BROWN)), 12: (62, fireye), 13: (63, lambda: dispenser(YELLOW, BROWN)),
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
-    25: (80, slamer),
+    25: (80, slamer), 26: (82, jsow), 27: (83, mald),
 }
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089, 23: 0.20, 25: 0.1715}
+          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -628,7 +688,7 @@ def _loadout_text():
 
 
 def _u8_lists(text):
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] =\s*\[([^\]]*)\];", text, re.M):
         out[name] = [named[v] if v in named else int(v) for v in (x.strip() for x in body.split(",")) if v]
@@ -659,7 +719,7 @@ def exclusive_stations(table):
 
 def _qty_lists(text):
     """The `[(u8, u8); n]` constants: weapon type -> rounds."""
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
         pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)

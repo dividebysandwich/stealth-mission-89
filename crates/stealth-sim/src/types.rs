@@ -182,6 +182,12 @@ pub struct Projectile {
     /// A SLAM-ER: its channel, program and terminal guidance (`crate::slam`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slam: Option<crate::slam::SlamGuide>,
+    /// A JSOW or a MALD: its flight (`crate::standoff`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glide: Option<crate::standoff::Glide>,
+    /// An enemy missile fired at one of its pilot's stand-off weapons: that weapon's slot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intercept: Option<u8>,
 }
 
 fn no_burst(b: &u16) -> bool {
@@ -623,6 +629,11 @@ pub const HARM_WEAPON: i32 = 2;
 /// The SLAM-ER's missile table entry and weapon type (`crate::slam`).
 pub const SLAMER_SPEC: i32 = 52;
 pub const SLAMER_WEAPON: i32 = 25;
+/// The JSOW's and the MALD's missile table entries and weapon types (`crate::standoff`).
+pub const JSOW_SPEC: i32 = 53;
+pub const JSOW_WEAPON: i32 = 26;
+pub const MALD_SPEC: i32 = 54;
+pub const MALD_WEAPON: i32 = 27;
 /// The AIM-9's and the air-launched Stinger's missile table entries.
 pub const AIM9_SPEC: i32 = 23;
 pub const STINGER_SPEC: i32 = 48;
@@ -1027,6 +1038,14 @@ pub enum SimEvent {
     SignalFlare {
         x: i32,
         y: i32,
+    },
+    /// The air defences shot down one of the active pilot's stand-off weapons (JSOW, MALD) at
+    /// map position x, y and altitude alt (viewZ).
+    WeaponShotDown {
+        spec: i32,
+        x: i32,
+        y: i32,
+        alt: i32,
     },
     /// An attack drone reached its target (map position).
     DroneImpact {

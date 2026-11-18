@@ -185,3 +185,11 @@ weapon-role-25 = Diúracán ionsaithe talún ó achar: eitlíonn sé go dtí an 
 employment-25 =
     Ríomhchláraithe ar an leathanach SLAM: airde chúrsála, raon an bhrathadóra, príomhsprioc nó sprioc thánaisteach
     Raon: suas le 250 km, ceithre cinn san aer ag an am céanna
+weapon-role-26 = Buama faoileála: faoileálann go dtí an pointe ainmnithe; méadaíonn a raon le hairde agus luas scaoilte
+employment-26 =
+    Dírithe ar phointe an phoid nó ar an nglas talún, nó ar an bpríomhsprioc
+    Raon: thart ar 20 km íseal, suas le 130 km ó airde; is féidir leis an aerchosaint é a scaoileadh anuas
+weapon-role-27 = Mealladh aerscaoilte: eitlíonn le síniú aerárthaigh isteach san aerchosaint agus tarraingíonn sé a diúracáin
+employment-27 =
+    Eitlíonn go dtí an pointe ainmnithe, ansin díreach ar aghaidh suas le 10 nóiméad
+    Neamhdhíobhálach do spriocanna

@@ -185,3 +185,11 @@ weapon-role-25 = Missile d'attaque au sol à distance de sécurité : vole jusqu
 employment-25 =
     Programmé sur la page SLAM : altitude de croisière, distance d'activation de l'autodirecteur, cible principale ou secondaire
     Portée : jusqu'à 250 km, quatre en vol à la fois
+weapon-role-26 = Bombe planante : plane jusqu'au point désigné, sa portée croît avec l'altitude et la vitesse de largage
+employment-26 =
+    Visée sur le point de la nacelle ou l'accrochage sol, sinon l'objectif principal
+    Portée : environ 20 km à basse altitude, jusqu'à 130 km de haut ; la défense aérienne peut l'abattre
+weapon-role-27 = Leurre aéroporté : présente la signature d'un avion à la défense aérienne et attire ses missiles
+employment-27 =
+    Vole jusqu'au point désigné, puis tout droit jusqu'à 10 minutes
+    Inoffensif pour les cibles

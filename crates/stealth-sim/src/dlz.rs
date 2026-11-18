@@ -100,8 +100,20 @@ impl Sim {
         let spec = self.selected_spec();
         let mt = self.missile(spec);
         let cls = mt.class as i32;
-        if count <= 0 || !matches!(cls, 4..=6) {
+        if count <= 0 || !matches!(cls, 4..=6) || spec == MALD_SPEC {
             return None;
+        }
+        // The JSOW glides to its aim point from its glide reach down to its shortest release.
+        if spec == JSOW_SPEC {
+            let (range, reach) = self.jsow_reach()?;
+            let reach = (reach / 32.0) as i32;
+            return Some(LaunchZone {
+                range: (range / 32.0) as i32,
+                lock_max: reach,
+                zone: Some(((crate::standoff::MIN_RANGE / 32.0) as i32, reach)),
+                no_escape: None,
+                at_lock: true,
+            });
         }
         let lock = usize::try_from(self.pl.gnd_lock).ok().filter(|&g| g < self.objects.len());
         // The pod's ground point, unless it rests on the lock.

@@ -185,3 +185,11 @@ weapon-role-25 = Rudal serang darat jarak jauh: terbang ke sasarannya, lalu pilo
 employment-25 =
     Diprogram di halaman SLAM: ketinggian jelajah, jarak pencari aktif, sasaran utama atau sekunder
     Jangkauan: hingga 250 km, empat di udara sekaligus
+weapon-role-26 = Bom luncur: meluncur ke titik yang ditentukan; jangkauannya bertambah dengan ketinggian dan kecepatan pelepasan
+employment-26 =
+    Diarahkan ke titik pod atau kuncian darat, jika tidak ke sasaran utama
+    Jangkauan: sekitar 20 km rendah, hingga 130 km dari ketinggian; pertahanan udara bisa menembaknya jatuh
+weapon-role-27 = Umpan yang diluncurkan dari udara: terbang dengan jejak pesawat ke pertahanan udara dan menarik rudalnya
+employment-27 =
+    Terbang ke titik yang ditentukan, lalu lurus hingga 10 menit
+    Tidak berbahaya bagi sasaran

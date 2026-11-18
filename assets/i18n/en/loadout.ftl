@@ -185,3 +185,11 @@ weapon-role-25 = Stand-off land attack missile: cruises to its target, then the 
 employment-25 =
     Programmed on the SLAM page: cruise altitude, seeker range, primary or secondary target
     Range: up to 250 km, four in flight at once
+weapon-role-26 = Glide bomb: glides to the designated point, its reach growing with release height and speed
+employment-26 =
+    Aimed at the pod's point or the ground lock, else the primary target
+    Range: some 20 km low, up to 130 km from high; air defences can shoot it down
+weapon-role-27 = Air-launched decoy: flies an aircraft's signature into the air defences and draws their missiles
+employment-27 =
+    Flies to the designated point, then straight on for up to 10 minutes
+    Harmless to targets

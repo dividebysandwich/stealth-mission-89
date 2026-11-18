@@ -185,3 +185,11 @@ weapon-role-25 = Tālas darbības raķete pret sauszemes mērķiem: lido līdz m
 employment-25 =
     Programmē SLAM lapā: lidojuma augstums, meklētāja ieslēgšanas attālums, galvenais vai rezerves mērķis
     Darbības attālums: līdz 250 km, četras gaisā vienlaikus
+weapon-role-26 = Planējošā bumba: planē uz norādīto punktu; tāluma pieaug ar nomešanas augstumu un ātrumu
+employment-26 =
+    Tēmēta uz konteinera punktu vai zemes fiksāciju, citādi uz galveno mērķi
+    Tālums: ap 20 km zemu, līdz 130 km no liela augstuma; pretgaisa aizsardzība var to notriekt
+weapon-role-27 = No gaisa palaižams mānekļis: ielido pretgaisa aizsardzībā ar lidmašīnas signatūru un pievilina tās raķetes
+employment-27 =
+    Lido uz norādīto punktu, tad taisni līdz 10 minūtēm
+    Mērķiem nekaitīgs

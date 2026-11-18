@@ -2629,6 +2629,10 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
                 combat.kills.push(Kill { x, y, vehicle: true });
             }
         }
+        // A JSOW or a MALD shot down: a kill's fireball where it was hit.
+        SimEvent::WeaponShotDown { x, y, alt, .. } => {
+            combat.explosions.push((x, y, alt, 0x10));
+        }
         // An S-60 shell burst: a black puff where it went off (true altitude, ft).
         SimEvent::Flak { x, y, alt } => {
             combat.explosions.push((x, y, alt, crate::explosions::FLAK));

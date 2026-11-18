@@ -160,6 +160,12 @@
         // The SLAM-ER: cruises to its programmed target, then the pilot steers it by its
         // seeker's picture (slam.rs flies it).
         (id: "slamer", name: "SLAM-ER", family: Ground, range_km: 250, mach: 0.8, g: 6, seeker: Optical, model: 15),
+        // The JSOW: an unpowered glide bomb flown by standoff.rs to the point it was released
+        // at; its range comes from the release height and speed. Air defences can shoot it down.
+        (id: "jsow", name: "JSOW", family: Ground, range_km: 120, mach: 0.8, g: 3, seeker: Optical, model: 12),
+        // The MALD: a small jet decoy that flies a fighter's signature into the air defences
+        // (standoff.rs) and draws their missiles.
+        (id: "mald", name: "MALD", family: Ground, range_km: 900, mach: 0.8, g: 4, seeker: Optical, model: 15),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -226,6 +232,12 @@
         (id: "slamer", short: "AGM-84H", long: "SLAM-ER", missile: "slamer", picture: 12, bay: 1,
             effect: {"shelter": 6, "aircraft": 7, "building": 7, "bridge": 6, "bunker": 6, "depot": 7, "launcher": 7,
                      "radar": 8, "rig": 7, "industry": 7, "pen": 3, "small_ship": 8, "large_ship": 6, "armour": 6}),
+        // The AGM-154C JSOW: glides to the point it was released at, unitary penetrating warhead.
+        (id: "jsow", short: "AGM-154C", long: "JSOW", missile: "jsow", picture: 1, bay: 1,
+            effect: {"shelter": 7, "aircraft": 6, "building": 7, "bridge": 6, "bunker": 7, "depot": 7, "launcher": 6,
+                     "radar": 7, "rig": 6, "industry": 7, "pen": 5, "small_ship": 5, "large_ship": 3, "armour": 4}),
+        // The ADM-160 MALD decoy: harmless, it draws the air defences' missiles.
+        (id: "mald", short: "ADM-160", long: "MALD", missile: "mald", picture: 12, bay: 1),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

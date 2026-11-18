@@ -150,7 +150,7 @@ fn turn_toward(d: V3, want: V3, rate: f64) -> V3 {
 
 impl Sim {
     /// The ground (altitude units) at a point in wu (east, south): the mountains and the hills.
-    fn slam_ground(&self, x: f64, y: f64) -> f64 {
+    pub(crate) fn slam_ground(&self, x: f64, y: f64) -> f64 {
         let (mx, my) = ((x / 32.0).floor() as i32, (y / 32.0).floor() as i32);
         let hills = self.hill_alt(mx, my);
         let relief = self.tiles.as_ref().map_or(0, |t| t.relief.ground(mx, my));
@@ -169,7 +169,7 @@ impl Sim {
     }
 
     /// The target point of target slot `k` (wu: east, south), if the mission has one there.
-    fn slam_target(&self, k: usize) -> Option<(i32, i32)> {
+    pub(crate) fn slam_target(&self, k: usize) -> Option<(i32, i32)> {
         let t = self.pl.targets.get(k)?;
         let o = self.objects.get(usize::try_from(t.object).ok()?)?;
         Some((o.x * 32 + 16, o.y * 32 + 16))
@@ -371,7 +371,7 @@ impl Sim {
 
     /// The SLAM-ER in slot `s` hits the ground at `p` (wu): the world object there may be
     /// destroyed (as the weapon's effect against it allows), the blast kills ground units near.
-    fn slam_impact(&mut self, s: usize, p: V3) {
+    pub(crate) fn slam_impact(&mut self, s: usize, p: V3) {
         let m = self.proj[s];
         self.proj[s].ttl = 0;
         let (ex, ey) = (((p[0] / 32.0) as i32) & 0xFFFF, ((p[1] / 32.0) as i32) & 0xFFFF);

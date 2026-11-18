@@ -185,3 +185,11 @@ weapon-role-25 = Avståndsrobot mot markmål: flyger till målet, sedan styr pil
 employment-25 =
     Programmeras på SLAM-sidan: marschhöjd, målsökaravstånd, primärt eller sekundärt mål
     Räckvidd: upp till 250 km, fyra i luften samtidigt
+weapon-role-26 = Glidbomb: glider till den utpekade punkten; räckvidden växer med fällhöjd och fart
+employment-26 =
+    Riktas mot kapselns punkt eller marklåsningen, annars primärmålet
+    Räckvidd: cirka 20 km lågt, upp till 130 km från hög höjd; luftvärnet kan skjuta ned den
+weapon-role-27 = Luftburet skenmål: flyger med ett flygplans signatur in i luftvärnet och drar till sig dess robotar
+employment-27 =
+    Flyger till den utpekade punkten och sedan rakt fram i upp till 10 minuter
+    Ofarlig för mål
