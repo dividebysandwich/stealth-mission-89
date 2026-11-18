@@ -1075,7 +1075,13 @@ static EA18G: AircraftSpec = AircraftSpec {
     vtol: false,
     ground_radar: true,
     asw: false,
-    gunner_seat: None,
+    // The electronic warfare officer's (rear) seat under the two-seat canopy (`EA18G_CANOPY`, s
+    // 5.70..8.00, top 1.57 m), behind the pilot's (tools/models/build_cockpit_ea18g_ewo.py).
+    gunner_seat: Some(CrewSeat {
+        style: PanelStyle::Ea18gEwo,
+        model: "cockpit_ea18g_ewo",
+        eye: fa18e_point(0.0, 6.95, 1.18),
+    }),
     console: None,
     flight: FlightConstants::fa18e,
 };
@@ -1505,6 +1511,14 @@ mod tests {
                 eye.cmpgt(lo).all() && eye.cmplt(hi).all(),
                 "{kind:?} eye {eye} outside the canopy {lo}..{hi}"
             );
+            // The back seat's (the EA-18G's electronic warfare officer's) too.
+            if let Some(g) = &spec.gunner_seat {
+                let eye = (g.eye - Vec3::Y * spec.model_lift) / s;
+                assert!(
+                    eye.cmpgt(lo).all() && eye.cmplt(hi).all(),
+                    "{kind:?} back seat's eye {eye} outside the canopy {lo}..{hi}"
+                );
+            }
         }
     }
 

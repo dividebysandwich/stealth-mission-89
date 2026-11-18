@@ -893,6 +893,7 @@ mod tests {
             (PanelStyle::Rah66Cpg, "cockpit_rah66_cpg", "build_cockpit_rah66"),
             (PanelStyle::Mh60r, "cockpit_mh60r", "build_cockpit_mh60r"),
             (PanelStyle::Fa18e, "cockpit_fa18e", "build_cockpit_fa18e"),
+            (PanelStyle::Ea18gEwo, "cockpit_ea18g_ewo", "build_cockpit_ea18g_ewo"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -932,6 +933,7 @@ mod tests {
             ("cockpit_rah66_cpg", PanelStyle::Rah66Cpg),
             ("cockpit_mh60r", PanelStyle::Mh60r),
             ("cockpit_fa18e", PanelStyle::Fa18e),
+            ("cockpit_ea18g_ewo", PanelStyle::Ea18gEwo),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -943,11 +945,19 @@ mod tests {
                 .filter_map(|m| m["name"].as_str())
                 .collect();
             let mut required = vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"];
-            // The helicopters have no approach indexer.
+            // The helicopters and the EA-18G's back seat have no approach indexer.
             let approach = materials.contains(&"approach");
-            assert_eq!(approach, !style.helicopter(), "{name}: approach indexer");
-            // The OH-58D and the RAH-66's gunner have no HUD (their helmet displays only).
-            if !matches!(style, PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Rah66Cpg) {
+            let indexer = !style.helicopter() && style != PanelStyle::Ea18gEwo;
+            assert_eq!(approach, indexer, "{name}: approach indexer");
+            // The OH-58D, the RAH-66's gunner and the EA-18G's back seat have no HUD (the
+            // helicopters' helmet displays only).
+            if !matches!(
+                style,
+                PanelStyle::Oh58
+                    | PanelStyle::Oh58Cpg
+                    | PanelStyle::Rah66Cpg
+                    | PanelStyle::Ea18gEwo
+            ) {
                 required.push("hud_glass");
             }
             // The generated cockpits' MENU buttons are caps of their up-front controls (atlas
@@ -1006,7 +1016,7 @@ mod tests {
                     "label_NEAR",
                 ],
                 PanelStyle::C130 => vec!["screen_lmpd", "ded", "trackcam_left", "label_NEAR"],
-                PanelStyle::Ah64Cpg => {
+                PanelStyle::Ah64Cpg | PanelStyle::Ea18gEwo => {
                     vec!["screen_third", "ded", "trackcam_left", "trackcam_third", "label_NEAR"]
                 }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],

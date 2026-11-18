@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py` and `build_cockpit_fa18e.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py`, `build_cockpit_fa18e.py` and `build_cockpit_ea18g_ewo.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -72,6 +72,10 @@ pub enum PanelStyle {
     /// touchscreen) under the HUD, the large centre display under it with the engine and fuel
     /// display lower left of it and the standby instruments right; a centre stick.
     Fa18e,
+    /// The EA-18G's electronic warfare officer's (rear) cockpit: the up-front controller's
+    /// touchscreen high on the centre line, the large centre display (the third MFD) under it,
+    /// the two DDIs lower either side of it; no HUD, a centre stick and throttles (unused).
+    Ea18gEwo,
 }
 
 /// A rectangle in panel pixels.
@@ -358,7 +362,10 @@ impl PanelStyle {
             | PanelStyle::Oh58Cpg
             | PanelStyle::Mh60r
             | PanelStyle::Fa18e => 4,
-            PanelStyle::Modern | PanelStyle::Tornado | PanelStyle::Ah64Cpg => 3,
+            PanelStyle::Modern
+            | PanelStyle::Tornado
+            | PanelStyle::Ah64Cpg
+            | PanelStyle::Ea18gEwo => 3,
             _ => 2,
         }
     }
@@ -387,6 +394,7 @@ impl PanelLayout {
             PanelStyle::Ah64Cpg => Self::ah64_cpg(),
             PanelStyle::Mh60r => Self::mh60r(),
             PanelStyle::Fa18e => Self::fa18e(),
+            PanelStyle::Ea18gEwo => Self::ea18g_ewo(),
         }
     }
 
@@ -2072,6 +2080,105 @@ impl PanelLayout {
         }
     }
 
+    /// The EA-18G's electronic warfare officer's (rear) panel (millimetres, x right and y down,
+    /// life size; `tools/models/build_cockpit_ea18g_ewo.py`), after the Growler's rear cockpit,
+    /// under a hood:
+    /// - High on the centre line, in its own housing standing off the panel (|x| <= 90,
+    ///   y < -134): the up-front controller's glass touchscreen, the scratchpad (the `ded`) over
+    ///   the keypad's soft keys (not wired), MENU and VOL right of the scratchpad.
+    /// - Under it the large centre display (the third MFD, the jammers' page best); the left and
+    ///   right DDIs (the left and right MFDs) lower either side of its lower half.
+    /// - Beside the controller over the DDIs: left the master caution with the threat lights,
+    ///   right the jammers' keys and lights with the EMV gauge.
+    /// - Along the foot: the countermeasures (release caps, counts, released lights) and fuel
+    ///   left of the standby attitude indicator, the caution lights and the clock right of it
+    ///   (the target buttons modelled under the left ones).
+    pub fn ea18g_ewo() -> Self {
+        use Effect as E;
+        use LampId::*;
+        let mut items = Vec::new();
+        let mut put = |elem: Elem, rect: PxRect, cap: Option<Effect>, round: bool| {
+            items.push(Placed { elem, rect, cap, round })
+        };
+        let soft = |label| Elem::SoftKey(label);
+        // The up-front controller's glass: the scratchpad, MENU and VOL beside it, the keypad.
+        let ded = rect(-74.0, -236.0, 100.0, 100.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32);
+        put(soft("MENU"), rect(32.0, -236.0, 42.0, 19.0), Some(E::Action(Action::Menu)), false);
+        put(soft("VOL"), rect(32.0, -214.0, 42.0, 19.0), Some(E::Action(Action::Volume)), false);
+        for (k, label) in
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "CLR", "0", "ENT"].into_iter().enumerate()
+        {
+            let r = rect(-74.0 + 25.0 * (k % 6) as f32, -187.0 + 21.0 * (k / 6) as f32, 23.0, 18.0);
+            put(soft(label), r, None, false);
+        }
+        // Left of the controller: the master caution and the threat lights.
+        let mc = Some(E::Action(Action::MasterCaution));
+        put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-250.0, -222.0, 44.0, 18.0), mc, false);
+        put(Elem::Lamp(Rad, Some("LAUNCH")), rect(-200.0, -222.0, 44.0, 18.0), None, false);
+        put(Elem::Lamp(Trak, Some("TRACK")), rect(-250.0, -200.0, 44.0, 18.0), None, false);
+        put(Elem::Lamp(Ir, None), rect(-200.0, -200.0, 44.0, 18.0), None, false);
+        put(Elem::Lamp(Lock, None), rect(-250.0, -178.0, 44.0, 18.0), None, false);
+        put(Elem::Lamp(Stall, None), rect(-200.0, -178.0, 44.0, 18.0), None, false);
+        // Right of it: the jammers' keys and lights, the EMV gauge.
+        for (k, (id, action)) in
+            [(Ecm, Action::Ecm), (Irj, Action::IrJammer)].into_iter().enumerate()
+        {
+            let r = rect(156.0 + 50.0 * k as f32, -222.0, 44.0, 18.0);
+            put(Elem::Lamp(id, None), r, Some(E::Action(action)), false);
+        }
+        put(Elem::Lamp(Jam, None), rect(156.0, -200.0, 44.0, 18.0), None, false);
+        put(Elem::Lamp(EmvWarn, None), rect(206.0, -200.0, 44.0, 18.0), None, false);
+        put(Elem::Label("EGR\nEAR", 47, 33), rect(156.0, -176.0, 22.0, 13.0), None, false);
+        put(Elem::Gauge, rect(180.0, -176.0, 70.0, 13.0), None, false);
+        put(Elem::Label("EMV", 47, 33), rect(156.0, -159.0, 22.0, 13.0), None, false);
+        // Along the foot, left: the countermeasures, fuel.
+        for (k, (label, action, led, act)) in [
+            ("CHAFF", Action::Chaff, LedId::Chaff, ChaffAct),
+            ("FLARE", Action::Flare, LedId::Flares, FlareAct),
+            ("DECOY", Action::Decoy, LedId::Decoys, DecoyAct),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let x = -250.0 + 70.0 * k as f32;
+            let cap = Some(E::Action(action));
+            put(Elem::Label(label, 47, 38), rect(x, 110.0, 30.0, 13.0), cap, false);
+            put(Elem::Led(led), rect(x + 32.0, 110.0, 18.0, 13.0), None, false);
+            put(Elem::Lamp(act, None), rect(x + 52.0, 110.0, 14.0, 13.0), None, false);
+        }
+        put(Elem::Led(LedId::Fuel), rect(-250.0, 128.0, 40.0, 13.0), None, false);
+        put(Elem::Label("FUEL", 47, 79), rect(-208.0, 128.0, 30.0, 13.0), None, false);
+        put(Elem::Lamp(LowFuel, Some("BINGO")), rect(-176.0, 128.0, 34.0, 13.0), None, false);
+        // Right: the caution lights, the clock.
+        for (k, id) in [Av, Bd, Fc, Eng, Fuel, Fire].into_iter().enumerate() {
+            let r = rect(44.0 + 48.0 * (k % 3) as f32, 110.0 + 18.0 * (k / 3) as f32, 44.0, 14.0);
+            put(Elem::Lamp(id, None), r, None, false);
+        }
+        put(Elem::Dial(Dial::Clock), rect(200.0, 104.0, 44.0, 44.0), None, true);
+
+        // The HIRES canvas' shape: the centre display 220 mm wide under the controller, the
+        // DDIs 140 either side of its lower half.
+        let hires = crate::mfd::HIRES.1 as f32 / crate::mfd::HIRES.0 as f32;
+        let (cw, dw) = (220.0, 140.0);
+        let unit = |side, screen| MfdUnit { side, screen, osbs: true };
+        Self {
+            style: PanelStyle::Ea18gEwo,
+            items,
+            adi: rect(-30.0, 98.0, 60.0, 60.0),
+            mfds: vec![
+                unit(MfdSide::Left, rect(-148.0 - dw, -40.0, dw, dw * hires)),
+                unit(MfdSide::Right, rect(148.0, -40.0, dw, dw * hires)),
+                unit(MfdSide::Third, rect(-cw / 2.0, -112.0, cw, cw * hires)),
+            ],
+            rwr: None,
+            hsi: None,
+            tfr: None,
+            ded: Some(ded),
+            lmpd: None,
+            rmpd: None,
+        }
+    }
+
     /// The C-5M's flight deck (millimetres, x right and y down, life size;
     /// `tools/models/build_cockpit_c5.py`), after the C-5M's: one wide main panel across both
     /// seats under a deep glare shield, its origin in front of the pilot (in the left seat; the
@@ -3120,7 +3227,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 19] {
+    fn all() -> [PanelLayout; 20] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -3141,6 +3248,7 @@ mod tests {
             PanelLayout::rah66_cpg(),
             PanelLayout::mh60r(),
             PanelLayout::fa18e(),
+            PanelLayout::ea18g_ewo(),
         ]
     }
 
@@ -3234,6 +3342,7 @@ mod tests {
             PanelLayout::rah66_cpg(),
             PanelLayout::mh60r(),
             PanelLayout::fa18e(),
+            PanelLayout::ea18g_ewo(),
         ] {
             bezel_buttons_of(&l);
         }

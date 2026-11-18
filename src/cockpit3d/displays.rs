@@ -311,7 +311,8 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::Oh58Cpg
         | PanelStyle::Rah66Cpg
         | PanelStyle::Mh60r
-        | PanelStyle::Fa18e => MM_TEXELS,
+        | PanelStyle::Fa18e
+        | PanelStyle::Ea18gEwo => MM_TEXELS,
     }
 }
 
@@ -848,6 +849,7 @@ mod tests {
             PanelStyle::Rah66Cpg,
             PanelStyle::Mh60r,
             PanelStyle::Fa18e,
+            PanelStyle::Ea18gEwo,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

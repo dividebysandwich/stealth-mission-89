@@ -1000,8 +1000,10 @@ impl PanelParams<'_, '_> {
     pub fn draw_ded(&self, c: &mut Canvas, fonts: &Fonts) {
         use crate::cockpit3d::layout::{DED_COLS, DED_SCALE};
         const AMBER: u8 = 18;
-        // The F/A-18E's scratchpad is on the up-front controller's green touchscreen.
-        let ink = if self.settings.cockpit().0 == PanelStyle::Fa18e { GREEN.on.0 } else { AMBER };
+        // The F/A-18E's scratchpad (and the EA-18G's back seat's) is on the up-front
+        // controller's green touchscreen.
+        let green = matches!(self.settings.cockpit().0, PanelStyle::Fa18e | PanelStyle::Ea18gEwo);
+        let ink = if green { GREEN.on.0 } else { AMBER };
         c.clear(5);
         let a = self.aircraft.single().ok();
         let t = self.clock.start_seconds
