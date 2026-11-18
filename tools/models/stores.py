@@ -18,7 +18,7 @@ Dimensions (m: length, body diameter, span):
     CBU-72, Mk 35, ISCB-1 (SUU-30 / SUU-49 class) 2.35 x 0.40, fins 0.60
     AGM-114 Hellfire 1.63 x 0.178, wings 0.33
     CBU-105 (SUU-66/B with the WCMD tail kit) 2.34 x 0.40, folded fins 0.62
-    AGM-84H SLAM-ER 4.37 x 0.343, wings 2.43 (folded under the body on the pylon), fins 0.91
+    AGM-84H SLAM-ER 4.37 x 0.343, wings 2.2 (folded under the body on the pylon), fins 0.91
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -191,44 +191,111 @@ def harpoon():
 WINGS_SLOT = 15
 
 
+# The SLAM-ER's nose: from the full body this far (m) to the prow's tip.
+SLAM_NOSE = 0.40
+
+
+def slam_nose(n, r, segments=32):
+    """The SLAM-ER's nose (the user's reference views): seen from above it tapers to the prow,
+    where the two flat dark seeker windows meet; seen from the side the prow leans back from
+    its top at the tip, so the windows look forward and down; seen from ahead they are wide
+    at the top and narrower at their flat bottom, with a divider down the prow. Above them
+    the top rounds back into the body, below them the chin."""
+    g = Geo()
+    y0 = n - SLAM_NOSE
+    # The prow's top (the tip) and foot on the centreline, the windows' top corners outboard
+    # and back, their bottom corners on the windows' planes.
+    T = Vector((0.0, n, 0.49 * r))
+    P = Vector((0.0, n - 0.10, -0.78 * r))
+    windows = []
+    for s in (1, -1):
+        C = Vector((s * 0.65 * r, n - 0.07, 0.45 * r))
+        nrm = (C - T).cross(P - T)
+        D = Vector((s * 0.36 * r, 0.0, -0.78 * r))
+        D.y = T.y - (nrm.x * (D.x - T.x) + nrm.z * (D.z - T.z)) / nrm.y
+        windows.append((C, D))
+    (CR, DR), (CL, DL) = windows
+    # The windows' outline seen from ahead (x, z), round the axis.
+    outline = [T, CR, DR, P, DL, CL]
+
+    def on_outline(a):
+        """Where a ray from the axis at angle `a` (from +x, z up) meets the outline."""
+        d = (math.cos(a), math.sin(a))
+        for p, q in zip(outline, outline[1:] + outline[:1]):
+            ex, ez = q.x - p.x, q.z - p.z
+            det = d[0] * (-ez) - d[1] * (-ex)
+            if abs(det) < 1e-12:
+                continue
+            u = (p.x * (-ez) - p.z * (-ex)) / det
+            v = (d[0] * p.z - d[1] * p.x) / det
+            if u > 0 and -1e-9 <= v <= 1 + 1e-9:
+                return p + (q - p) * v
+        raise ValueError(a)
+
+    rings = []
+    for k in range(segments):
+        a = 2 * math.pi * k / segments
+        o = on_outline(a)
+        ring = Vector((r * math.cos(a), y0, r * math.sin(a)))
+        ro = math.hypot(o.x, o.z)
+        mids = []
+        for f, w in ((0.30, 0.80), (0.65, 0.96)):
+            rad = ro + (r - ro) * w
+            mids.append(Vector((rad * math.cos(a), o.y + (y0 - o.y) * f, rad * math.sin(a))))
+        rings.append([o] + mids + [ring])
+    for k in range(segments):
+        a, b = rings[k], rings[(k + 1) % segments]
+        for i in range(len(a) - 1):
+            g.face2([a[i], a[i + 1], b[i + 1], b[i]], WHITE)
+    for C, D in windows:
+        g.face2([T, C, D, P], DARK)
+    side = Vector((0.006, 0.0, 0.0))
+    fwd = Vector((0.0, 0.004, 0.0))
+    g.add(hexa([P - side, P + side, T + side, T - side,
+                P - side + fwd, P + side + fwd, T + side + fwd, T - side + fwd], GREY))
+    return g
+
+
 def slamer():
-    """AGM-84H SLAM-ER (from the user's three-view, 85 px/m, nose at px 5): the blunt nose
-    with its dark seeker window below the tip, the warhead's thin dark band and the motor's
-    yellow and brown bands, the swept wings that open in flight from under the body (folded
-    flat beneath it on the pylon), the X tail fins, the Harpoon's intake scoop and the black
-    exhaust in the tapered tail."""
+    """AGM-84H SLAM-ER (the user's reference views: side 225 px/m, plan 209 px/m): the nose with
+    its two flat seeker windows (`slam_nose`), the yellow band ahead of the wing and the dark
+    red one by the tail, the raised strip along the top, the wing glove under the middle that
+    the swept wings open from in flight (folded back flat under the body on the pylon), the X
+    tail fins and the black exhaust in the tapered tail."""
     L, r = 4.37, 0.1715
     n, t = L / 2, -L / 2
 
-    def at(px):
-        return n - (px - 5) / 85.0
+    def back(m):
+        """A station `m` metres behind the nose's tip."""
+        return n - m
 
-    g = body([(n, 0.0), (n - 0.03, 0.07), (n - 0.10, 0.12), (n - 0.22, 0.155), (n - 0.36, r),
-              (at(360), r), (t + 0.06, 0.15), (t, 0.13)], WHITE,
-             bands=[(at(77), at(79), BROWN), (at(122), at(125), YELLOW), (at(126), at(129), BROWN)])
-    # The seeker window: dark facets on the nose, low.
-    g.add(body([(n + 0.004, 0.0), (n - 0.03, 0.072), (n - 0.10, 0.122)], NAVY, n=10)
-          .transformed(lambda p: Vector((p.x, p.y, p.z - 0.004))))
+    y0 = n - SLAM_NOSE
+    g = body([(y0, r), (back(4.20), r), (t + 0.06, 0.15), (t, 0.13)], WHITE,
+             bands=[(back(1.40), back(1.45), YELLOW), (back(3.98), back(4.03), Ramp(212, 215))])
+    g.add(slam_nose(n, r))
     # The exhaust.
     g.add(frustum((0, t + 0.001, 0), (0, t - 0.02, 0), 0.10, 0.09, BLACK, 10))
-    # The GPS / data link antennas' panel on top, ahead of the wing.
-    g.add(block(-0.06, 0.06, at(130), at(95), r - 0.01, r + 0.006, GREY))
-    fins(g, at(335), at(372), r, 0.29, GREY, tip=(at(358), at(372)))
-    # The intake's scoop under the rear body.
-    g.add(block(-0.09, 0.09, at(290), at(335), -r - 0.06, -r + 0.02, DARK, taper_y=0.0))
+    # The raised strip along the top behind the lugs.
+    g.add(block(-0.05, 0.05, back(2.90), back(2.10), r - 0.01, r + 0.003, WHITE))
+    fins(g, back(4.02), back(4.35), r, 0.29, GREY, tip=(back(4.22), back(4.35)))
+    # The wing glove under the middle: a shallow fairing, its front tapered.
+    g.add(hexa([(-0.15, back(1.72), -r + 0.06), (0.15, back(1.72), -r + 0.06),
+                (0.17, back(2.40), -r + 0.06), (-0.17, back(2.40), -r + 0.06),
+                (-0.10, back(1.80), -r - 0.06), (0.10, back(1.80), -r - 0.06),
+                (0.15, back(2.38), -r - 0.07), (-0.15, back(2.38), -r - 0.07)], WHITE))
     lugs(g, 0.0, r, spacing=0.762)
-    # The wings: open, swept back from the lower body (root chord px 150..210, tips px 237..250,
-    # 1.215 m out); folded, two flat panels under the body, swept back along it.
-    root = at(150)
+    # The wings: open, swept back from the glove (root chord 1.82..2.35 m, the tips 1.10 m
+    # out at 2.73..2.92 m); folded, two flat blades from the glove back under the body.
     open_ = Geo()
-    open_.add(wing((0.10, root, -0.09), at(150) - at(210), (1.215, at(237), -0.11), at(237) - at(250),
+    open_.add(wing((0.14, back(1.82), -r - 0.03), 0.53, (1.10, back(2.73), -r - 0.01), 0.19,
                    GREY, t=0.05))
     folded = Geo()
     for s in (-1, 1):
-        folded.add(hexa([(s * 0.02, root, -r - 0.005), (s * 0.15, root - 0.10, -r - 0.005),
-                         (s * 0.15, at(330), -r - 0.005), (s * 0.02, at(330), -r - 0.005),
-                         (s * 0.02, root, -r - 0.03), (s * 0.15, root - 0.10, -r - 0.03),
-                         (s * 0.15, at(330), -r - 0.03), (s * 0.02, at(330), -r - 0.03)], GREY))
+        z0, z1 = -r - 0.075, -r - 0.055
+        folded.add(hexa([(s * 0.02, back(2.38), z0), (s * 0.14, back(2.38), z0),
+                         (s * 0.10, back(3.05), z0), (s * 0.02, back(3.05), z0),
+                         (s * 0.02, back(2.38), z1), (s * 0.14, back(2.38), z1),
+                         (s * 0.10, back(3.05), z1), (s * 0.02, back(3.05), z1)], GREY))
     return Store(hang(g, 0.0, r), groups=[(WINGS_SLOT, 0, hang(folded, 0.0, r)),
                                           (WINGS_SLOT, 1, hang(open_, 0.0, r))])
 
