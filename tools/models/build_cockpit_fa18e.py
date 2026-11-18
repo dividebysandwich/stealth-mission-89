@@ -87,11 +87,15 @@ CONSOLE_TOP = -0.74
 WING = 384.0
 BEVEL = 40.0
 BOTTOM = 192.0
-# The up-front controller (|x| <= UFC_HALF, y < UFC_LINE) standing UFC_RAISE m off the panel; its
-# glass (layout mm) GLASS_T m thick on it.
+# The upper tier (|x| <= TIER_HALF, y < UFC_LINE: the two DDIs and the up-front controller
+# between them) stands TIER_RAISE m off the panel, the controller UFC_RAISE (|x| <= UFC_HALF);
+# the centre display, the engine display and the standby instruments are set back under it.
+# The controller's glass (layout mm) GLASS_T m thick on it.
+TIER_HALF = 282.0
+TIER_RAISE = 0.075
 UFC_HALF = 94.0
 UFC_LINE = -10.0
-UFC_RAISE = 0.025
+UFC_RAISE = 0.100
 UFC_GLASS = (-87.0, -179.0, 174.0, 164.0)
 GLASS_T = 0.003
 # The glare shield: from the panel's top forward to COAMING_BACK in the middle (narrowing to
@@ -137,11 +141,19 @@ def in_ufc(u, v):
     return abs(u) <= UFC_HALF and v < UFC_LINE
 
 
+def raised(u, v):
+    """How far the panel's face stands out at (u, v): the controller, the upper tier, else 0."""
+    if in_ufc(u, v):
+        return UFC_RAISE
+    if abs(u) <= TIER_HALF and v < UFC_LINE:
+        return TIER_RAISE
+    return 0.0
+
+
 def point(u, v, offset=0.0):
     """A panel point: layout millimetres (u right, v down), raised `offset` m off its surface
-    (the controller's face UFC_RAISE off the panel)."""
-    if in_ufc(u, v):
-        offset += UFC_RAISE
+    (the upper tier's and the controller's faces `raised` off the panel)."""
+    offset += raised(u, v)
     return PANEL_CENTRE + RIGHT * (u / 1000) - UP * (v / 1000) + NORMAL * offset
 
 
@@ -438,7 +450,7 @@ def plate(name, mat, pieces, depth):
     me = bpy.data.meshes.new(name)
     bm = bmesh.new()
     for loop in pieces:
-        front = [bm.verts.new(point(u, v) if not in_ufc(u, v) else point(u, v) - NORMAL * UFC_RAISE) for u, v in loop]
+        front = [bm.verts.new(point(u, v) - NORMAL * raised(u, v)) for u, v in loop]
         back = [bm.verts.new(f.co - NORMAL * depth) for f in front]
         bm.faces.new(front)
         bm.faces.new(back[::-1])
@@ -510,7 +522,7 @@ def rod(name, a, b, radius, mat, parent=root, n=KNOB):
 # --- glare shield: from the panel's top edge forward, narrowing along the windscreen's sides,
 # dropping towards the windscreen; a lip over the panel's face
 THICK = 0.016
-LIP = 0.010
+LIP = UFC_RAISE + 0.010
 edge = [(-WING, PANEL_TOP + BEVEL), (-(WING - BEVEL), PANEL_TOP), (WING - BEVEL, PANEL_TOP), (WING, PANEL_TOP + BEVEL)]
 front = [point(u, v) + UP * THICK + NORMAL * LIP for u, v in edge]
 # The controller's raised strip: the lip comes out over it.
@@ -560,8 +572,10 @@ plate("panel_grey", "panel_grey", [[
     (-(WING - BEVEL), PANEL_TOP), (WING - BEVEL, PANEL_TOP), (WING, PANEL_TOP + BEVEL),
     (WING, BOTTOM), (-WING, BOTTOM), (-WING, PANEL_TOP + BEVEL),
 ]], 0.03)
-box("dark", "dark", PANEL_CENTRE - UP * ((PANEL_TOP + UFC_LINE) / 2000) + NORMAL * (UFC_RAISE / 2),
-    (2 * UFC_HALF / 1000, UFC_RAISE, (UFC_LINE - PANEL_TOP) / 1000), rotation())
+box("dark", "dark", PANEL_CENTRE - UP * ((PANEL_TOP + UFC_LINE) / 2000) + NORMAL * (TIER_RAISE / 2),
+    (2 * TIER_HALF / 1000, TIER_RAISE, (UFC_LINE - PANEL_TOP) / 1000), rotation())
+box("dark", "dark", PANEL_CENTRE - UP * ((PANEL_TOP + UFC_LINE) / 2000) + NORMAL * ((TIER_RAISE + UFC_RAISE) / 2),
+    (2 * UFC_HALF / 1000, UFC_RAISE - TIER_RAISE, (UFC_LINE - PANEL_TOP) / 1000), rotation())
 # Dark recesses out to the walls beside the panel, under the glare shield's cheeks (their top
 # under the canopy's sills).
 RECESS_TOP = -95.0
@@ -650,9 +664,10 @@ for key in ("left", "right", "third", "fourth"):
     x, y, w, h = scr[key]
     outer = (x - 16.0, y - 20.0, w + 32.0, h + 50.0)
     hole = (x - 3.0, y - 3.0, w + 6.0, h + 6.0)
-    frame("dark", outer, hole, -0.002, BEZEL - 0.002)
-    frame("black", (outer[0] + 1.5, outer[1] + 1.5, outer[2] - 3.0, outer[3] - 3.0), hole, BEZEL - 0.002, BEZEL)
-    frame("black", hole, (x - 0.5, y - 0.5, w + 1.0, h + 1.0), -0.006, BEZEL - 0.001)
+    d = raised(*centre(scr[key]))  # (the DDIs on the upper tier)
+    frame("dark", outer, hole, d - 0.002, d + BEZEL - 0.002)
+    frame("black", (outer[0] + 1.5, outer[1] + 1.5, outer[2] - 3.0, outer[3] - 3.0), hole, d + BEZEL - 0.002, d + BEZEL)
+    frame("black", hole, (x - 0.5, y - 0.5, w + 1.0, h + 1.0), d - 0.006, d + BEZEL - 0.001)
     for k in range(1, 5):
         for by in (y - 6.5, y + h + 6.5):
             panel_box("black", "black", (x + w * k / 5 - 1.0, by - 4.0, 2.0, 8.0), 0.003, 0.0, BEZEL)
