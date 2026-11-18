@@ -297,6 +297,7 @@ options-atc = Controllo del traffico aereo
     .facts =
         Chiamate radio di torre, avvicinamento e GCA negli aeroporti amici
         Autorizzazione al decollo, break in sovrappasso e un talkdown con nuvole basse o scarsa visibilità
+        L'ufficiale di appontaggio della portaerei: chiamata della palla, correzioni e wave-off
 options-pixel-block = Dimensione dei blocchi della pixelizzazione
     .facts = Il lato di un blocco, in pixel dello schermo (2: fine, 5: grossolano)
 effect-pixelize = Pixelizzazione

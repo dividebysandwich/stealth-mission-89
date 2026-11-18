@@ -4,9 +4,9 @@
 //! The tracks are measured on the ship's painted deck (tools/models/nimitz.py's nimitz.blend,
 //! metres, bow +y, starboard +x, the ship's middle at 0): 1 and 2 on the bow (starboard and
 //! port), 3 and 4 in the waist on the angled deck (tools/models/carrier.py paints those two).
-//! The ship is drawn at the game's carrier size: 480 model units for its 304 m, at the tile
-//! level's 4 world units each; its middle is its tile object (`PIVOTS`), the bow north where the
-//! theater's take-off runway points north (`Sim::ns`).
+//! The ship is drawn at the game's carrier size, about 1.5 times its real one: 256 model units
+//! for its 304 m, at the tile level's 4 world units each; its middle is its tile object
+//! (`PIVOTS`), the bow north where the theater's take-off runway points north (`Sim::ns`).
 
 use crate::Sim;
 use crate::types::{fflags, oflags};
@@ -14,8 +14,75 @@ use crate::types::{fflags, oflags};
 /// Catapults per carrier.
 pub const CATAPULTS: usize = 4;
 
-/// World units per metre of nimitz.blend.
-pub const WU_PER_M: f64 = 480.0 / 304.0 * 4.0;
+/// World units per metre of nimitz.blend (tools/models/carrier.py `LENGTH_UNITS`).
+pub const WU_PER_M: f64 = 256.0 / 304.0 * 4.0;
+
+/// The flight deck's height above the sea (wu; carrier.py's `DECK` 17 model units, the sim's
+/// altitude units alike), and where an AI aircraft rolls on it (`DECK_ALT` + 12, as on a runway).
+pub const DECK_WU: f64 = 68.0;
+pub const DECK_ALT: i32 = 68;
+pub const AI_DECK_ALT: i32 = stealth_mission::CARRIER_AI_ALT as i32;
+
+/// The landing box (map units, half breadth and half length round the carrier's world object):
+/// the ship's deck, and what the easy landing mode adds to it. The sim's `objectives` and the
+/// client's `flight::landing_corridor` judge the same box.
+pub const LANDING_BOX: (f64, f64) = (4.5, 16.0);
+pub const LANDING_BOX_EASY: (f64, f64) = (2.0, 4.0);
+/// A deck under a point (the client's deck motion, catapult starts): a little beyond the
+/// landing box.
+pub const DECK_BOX: (f64, f64) = (6.5, 20.0);
+
+/// Deck spots (m, nimitz.blend): where a helicopter or a Harrier starts (forward, starboard),
+/// and where the two parked aircraft of the base traffic stand (aft, starboard).
+pub const DECK_START: (f64, f64) = (15.0, 61.0);
+pub const PARKING: [(f64, f64); 2] = [(20.0, -51.0), (20.0, -76.0)];
+
+/// The landing area (m, nimitz.blend): the angled deck's centre line (stern end, forward end;
+/// tools/models/carrier.py `LANDING_AXIS`), the touchdown point this far up it (the target
+/// wire; the source paints no wires), and the landing lens (the "meatball") on the port deck
+/// edge abeam the wires, and the glide slope it shows (degrees).
+pub const LANDING_LINE: ((f64, f64), (f64, f64)) = ((4.5, -148.0), (-27.0, 55.0));
+pub const TOUCHDOWN_ALONG_M: f64 = 72.0;
+pub const LENS: (f64, f64) = (-36.5, -60.0);
+pub const GLIDE_DEG: f64 = 3.5;
+
+/// A carrier's landing: the touchdown point (wu east, north) and the landing heading along
+/// the angled deck (rad, clockwise from north).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LandingPose {
+    pub east: f64,
+    pub north: f64,
+    pub heading: f64,
+}
+
+impl LandingPose {
+    /// A point (wu east, north): how far short of the touchdown point along the approach (wu,
+    /// positive behind the ship), and how far right of the centre line (wu).
+    pub fn out_and_right(&self, east: f64, north: f64) -> (f64, f64) {
+        let (de, dn) = (east - self.east, north - self.north);
+        let (s, c) = self.heading.sin_cos();
+        (-(de * s + dn * c), de * c - dn * s)
+    }
+}
+
+/// The landing of the carrier whose world object is at (map) `obj`, its bow north for `ns` 1.
+pub fn landing(obj: (i32, i32), ns: i32) -> LandingPose {
+    let ((ax, ay), (fx, fy)) = LANDING_LINE;
+    let len = (fx - ax).hypot(fy - ay);
+    let (ux, uy) = ((fx - ax) / len, (fy - ay) / len);
+    let t = TOUCHDOWN_ALONG_M;
+    let (east, north) = deck_point(obj, ns, (ax + ux * t, ay + uy * t));
+    let s = if ns < 0 { -1.0 } else { 1.0 };
+    LandingPose { east, north, heading: (ux * s).atan2(uy * s) }
+}
+
+/// A point on the deck of the carrier whose world object is at (map) `obj`, its bow north for
+/// `ns` 1 (south for -1): `p` nimitz.blend metres to wu (east, north).
+pub fn deck_point(obj: (i32, i32), ns: i32, p: (f64, f64)) -> (f64, f64) {
+    let s = if ns < 0 { -1.0 } else { 1.0 };
+    let (pe, pn) = pivot(obj.0, obj.1);
+    (pe + p.0 * s * WU_PER_M, pn + p.1 * s * WU_PER_M)
+}
 
 /// The tracks (m, nimitz.blend): the shuttle's start, and the track's forward end. In the order
 /// they are taken: the bow's two first, which leave the landing deck free; the waist's two, in
@@ -215,6 +282,12 @@ impl Sim {
         pilots + units
     }
 
+    /// Someone (other than pilot `except`) is on catapult `cat` of carrier `b`, or queued for
+    /// it.
+    pub fn catapult_in_use(&self, b: usize, cat: usize, except: Option<u8>) -> bool {
+        self.catapult_users(b, cat, except, None) > 0
+    }
+
     /// Where pilot `id` starts on carrier `b`: (x east, y north wu, heading BAM, the launch
     /// as his report carries it). On the first free catapult, else queued behind the least
     /// busy one (his flight model taxies him up when it is free).
@@ -347,6 +420,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn lands_along_the_angled_deck() {
+        for ns in [1, -1] {
+            let l = landing((0x4000, 0x4000), ns);
+            let deg = l.heading.to_degrees();
+            let bow = if ns == 1 { 0.0 } else { 180.0 };
+            let off = (deg - bow + 540.0).rem_euclid(360.0) - 180.0;
+            assert!((-10.0..-8.0).contains(&off), "{ns} {deg}");
+            // Behind and to the right of it.
+            let (e, n) = (l.east - l.heading.sin() * 100.0, l.north - l.heading.cos() * 100.0);
+            let (s, c) = l.heading.sin_cos();
+            let (out, right) = l.out_and_right(e + c * 5.0, n - s * 5.0);
+            assert!((out - 100.0).abs() < 1e-6 && (right - 5.0).abs() < 1e-6, "{out} {right}");
+            // On the deck, in the landing box.
+            let (pe, pn) = pivot(0x4000, 0x4000);
+            assert!((l.east - pe).abs() < LANDING_BOX.0 * 32.0);
+            assert!((l.north - pn).abs() < LANDING_BOX.1 * 32.0);
+        }
+    }
+
+    #[test]
+    fn ai_rolls_just_above_the_deck() {
+        assert_eq!(AI_DECK_ALT, DECK_ALT + 12);
+        assert_eq!(DECK_WU, DECK_ALT as f64);
+    }
+
+    #[test]
     fn mirrors_with_the_bow() {
         for c in 0..CATAPULTS {
             let n = pose((0x4000, 0x4000), 1, c);
@@ -355,10 +454,11 @@ mod tests {
             assert!(((n.east - pe) + (s.east - pe)).abs() < 1e-6);
             assert!(((n.north - pn) + (s.north - pn)).abs() < 1e-6);
             assert_eq!(n.heading.wrapping_add(0x8000), s.heading);
-            // On the deck (the landing box's 8 x 30 map units half sizes), the track too.
+            // On the deck (the landing box), the track too.
             for p in [(n.east, n.north), n.along(n.length)] {
                 assert!(
-                    (p.0 - pe).abs() < 8.0 * 32.0 && (p.1 - pn).abs() < 30.0 * 32.0,
+                    (p.0 - pe).abs() < LANDING_BOX.0 * 32.0
+                        && (p.1 - pn).abs() < LANDING_BOX.1 * 32.0,
                     "{c} {p:?}"
                 );
             }

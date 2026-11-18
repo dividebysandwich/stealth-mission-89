@@ -687,7 +687,8 @@ fn place_player(s: &mut Session, st: &PlayerState, base: usize) {
     let carrier = s.combat.sim.objects().get(base).is_some_and(|o| o.flags & oflags::CARRIER != 0);
     let fuel = s.constants.fuel;
     let Ok((mut a, mut pos)) = s.player.single_mut() else { return };
-    let p = wu_to_bevy(st.x as f64, st.y as f64, if carrier { 128.0 } else { 0.0 });
+    let deck = if carrier { crate::sea::DECK_WU as f64 } else { 0.0 };
+    let p = wu_to_bevy(st.x as f64, st.y as f64, deck);
     *a = Aircraft::new_on_runway(fuel);
     a.altitude = (p.y / crate::world::WU) as f32;
     a.orientation = Aircraft::from_euler(bam(st.heading as f32), 0.0, 0.0);

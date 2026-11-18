@@ -297,6 +297,7 @@ options-atc = Luchtverkeersleiding
     .facts =
         Radio-oproepen van toren, nadering en GCA op de eigen vliegvelden
         Startvergunning, overhead break en een talkdown bij lage wolken of slecht zicht
+        De landingsofficier van het vliegdekschip: ball-call, correcties en wave-off
 options-pixel-block = Blokgrootte van het pixeleren
     .facts = De zijde van een blok, in schermpixels (2: fijn, 5: grof)
 effect-pixelize = Pixeleren

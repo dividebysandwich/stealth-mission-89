@@ -811,7 +811,8 @@ off short from the deck.
 
 **Vertical landing.** Slow down with the nozzles at the braking stop if you are fast, arrive over the
 spot below 50 kt, nozzles at the hover stop, and settle with the throttle. Under 50 kt any flat spot
-counts as a landing, like a helicopter's: a road, a field, a carrier deck without a wire.
+counts as a landing, like a helicopter's: a road, a field, a carrier deck (the wires are for the
+other jets, not the Harrier).
 
 **Weapons.** Nine stations: Sidewinders on the rails (1, 9); Sidewinders, Mavericks, Paveways and
 bombs (no Durandal) outboard (2, 8); Mavericks, every bomb and fuel tanks on the intermediate pylons
@@ -2561,6 +2562,24 @@ Low level is where the strike aircraft live, and where most of them die. A few r
 
 Helicopters and the Harrier land anywhere flat and friendly: arrive slow, settle onto the ground,
 and you're down.
+
+**On a carrier.** The jets land on the angled deck, which points about 9° left of the ship's bow:
+line up with its centre line, not with the ship. The glide slope is 3.5°, steeper than a runway's.
+On the left edge of the deck, beside the wires, stands the landing lens, the **meatball**: a row of
+green lights each side and an amber ball between them. Ball level with the green lights: on the
+glide slope. Ball above them: high. Below them: low, and a red ball is dangerously low. Fly the ball
+to the touchdown, gear and flaps down, on speed. You don't need to flare or throttle back: whatever
+the throttle, the wire catches you as soon as the wheels touch the deck and stops you well before
+its end.
+
+The landing signal officer, **Paddles**, talks you down on the radio. Three quarters of a mile out
+with the gear down he tells you to call the ball, and you report it with your fuel. Then he calls
+what you need: "power" or "you're low", "you're high", "right for lineup" or "come left", "you're
+fast" or "you're slow". He stays quiet while you are on the glide slope and centre line. **"Wave
+off, wave off"**, with the red lights flashing on the lens, means go around: full power and climb
+away. He waves you off with the gear up, with a jet on a waist catapult in the landing area ("foul
+deck"), too low close in, or too far off the centre line. Come round for another pass and he calls
+the ball again. Paddles is part of *Air traffic control* and speaks with the controllers' voice.
 
 **Air traffic control.** The friendly airfields talk to you on the radio, on the panel next to the
 HUD with a click of the squelch. You don't key anything: your own calls go out by themselves

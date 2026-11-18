@@ -297,6 +297,7 @@ options-atc = Oro eismo valdymas
     .facts =
         Bokšto, artėjimo ir GCA radijo iškvietimai draugiškuose aerodromuose
         Leidimas kilti, overhead break ir talkdown esant žemiems debesims ar blogam matomumui
+        Lėktuvnešio nusileidimo signalų karininkas: „ball“ iškvietimas, pataisos ir wave-off
 options-pixel-block = Pikselizacijos bloko dydis
     .facts = Bloko kraštinė ekrano pikseliais (2: smulkus, 5: stambus)
 effect-pixelize = Pikselizacija

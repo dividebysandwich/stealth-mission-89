@@ -260,6 +260,7 @@ options-atc = Air traffic control
     .facts =
         Tower, approach and GCA radio calls at the friendly airfields
         Takeoff clearance, overhead break, and a talkdown in low cloud or poor visibility
+        The carrier's landing signal officer: ball call, corrections and wave-offs
 options-pixel-block = Pixelize block size
     .facts = The side of a block, in screen pixels (2: fine, 5: coarse)
 effect-pixelize = Pixelize

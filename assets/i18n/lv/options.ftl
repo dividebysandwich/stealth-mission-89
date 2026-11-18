@@ -297,6 +297,7 @@ options-atc = Gaisa satiksmes vadība
     .facts =
         Torņa, tuvošanās un GCA radio izsaukumi draudzīgajos lidlaukos
         Pacelšanās atļauja, overhead break un talkdown zemos mākoņos vai sliktā redzamībā
+        Aviobāzes kuģa nolaišanās signālu virsnieks: “ball” izsaukums, labojumi un wave-off
 options-pixel-block = Pikselizācijas bloka izmērs
     .facts = Bloka mala ekrāna pikseļos (2: smalks, 5: rupjš)
 effect-pixelize = Pikselizācija

@@ -741,6 +741,11 @@ impl Sim {
         self.start_state_at(b)
     }
 
+    /// Which way the theater's runways and carriers point: 1 north, -1 south.
+    pub fn ns(&self) -> i32 {
+        self.ns
+    }
+
     /// The start state on the runway (or carrier deck) of base object `b`.
     pub fn start_state_at(&self, b: usize) -> PlayerState {
         let o = self.objects.get(b).copied().unwrap_or_default();
@@ -759,7 +764,7 @@ impl Sim {
         PlayerState {
             x,
             y,
-            altitude: if carrier { 0x80 } else { 0 },
+            altitude: if carrier { catapult::DECK_ALT as u16 } else { 0 },
             heading: heading as u16,
             catapult,
             on_ground: true,

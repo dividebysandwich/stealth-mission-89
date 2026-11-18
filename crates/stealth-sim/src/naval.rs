@@ -57,7 +57,7 @@ const TRACER_EVERY: i32 = 2;
 /// Mounts on the carrier (nimitz.blend metres: starboard aft sponson, port bow sponson), the
 /// height their sponsons stand at (ft: some 2 m under the flight deck), and on an escort.
 const CARRIER_MOUNTS: [(f64, f64); 2] = [(42.0, -122.0), (-40.0, 112.0)];
-const CARRIER_MOUNT_ALT: f64 = 119.0;
+const CARRIER_MOUNT_ALT: f64 = crate::catapult::DECK_WU - 7.0;
 const ESCORT_MOUNT_ALT: f64 = 30.0;
 
 /// The fleet's blasts go off this high (viewZ): above where a blast hurts the ground units round

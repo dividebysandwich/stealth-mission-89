@@ -67,9 +67,10 @@ fn spawn_player(
         })
         .or_else(|| theater.world.objects.iter().find(|o| o.target_flags & 0x100 != 0));
     let (pos, heading) = match setup.start {
-        // Carrier take-offs start on the deck (altitude 0x80).
+        // Carrier take-offs start on the deck.
         Some(s) => {
-            (wu_to_bevy(s.east_wu, s.north_wu, if s.carrier { 128.0 } else { 0.0 }), s.heading)
+            let deck = if s.carrier { crate::sea::DECK_WU as f64 } else { 0.0 };
+            (wu_to_bevy(s.east_wu, s.north_wu, deck), s.heading)
         }
         None => {
             let (east, north) = base.map(|o| map_to_wu(o.x, o.y)).unwrap_or((524_288.0, 524_288.0));
@@ -89,12 +90,29 @@ fn spawn_player(
     }
     if let Some((km, alt, kts)) = start_final() {
         // Test aid (`--start-final km[,ft[,kts]]`): on final approach to the take-off runway,
-        // gear and flaps down, `km` before the runway start.
+        // gear and flaps down, `km` before the runway start. On a carrier: `km` before the
+        // touchdown point on the angled deck, `ft` above the deck.
         let (e, n, _) = bevy_to_wu(pos);
+        let deck = setup
+            .start
+            .filter(|s| s.carrier)
+            .and_then(|_| crate::flight::catapult::carrier_at(&theater.world, e, n))
+            .map(|c| {
+                let o = &theater.world.objects[c];
+                // The bow catapults point (nearly) along the bow.
+                let ns = if heading.cos() >= 0.0 { 1 } else { -1 };
+                stealth_sim::catapult::landing((o.x as i32, o.y as i32), ns)
+            });
+        let (e, n, heading, alt) = match deck {
+            Some(l) => (l.east, l.north, l.heading as f32, alt + crate::sea::DECK_WU),
+            None => (e, n, heading, alt),
+        };
         let d = km as f64 * 1000.0 / crate::world::WU;
         let (e, n) = (e - heading.sin() as f64 * d, n - heading.cos() as f64 * d);
         pos = wu_to_bevy(e, n, crate::flight::view_z(alt) as f64);
         let a = &mut aircraft_state;
+        a.orientation = Aircraft::from_euler(heading, 0.0, 0.0);
+        a.catapult = None;
         a.altitude = alt;
         a.on_ground = false;
         a.has_flown = true;

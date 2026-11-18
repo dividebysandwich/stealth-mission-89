@@ -428,7 +428,7 @@ impl<'a> Gen<'a> {
         f.y = (o.y as i32 - 12) as i16;
         f.xp = ((f.x as u16 as u32) << 5) as i32;
         f.yp = ((f.y as u16 as u32) << 5) as i32;
-        f.alt = if o.flags & F::CARRIER != 0 { 140 } else { 12 };
+        f.alt = if o.flags & F::CARRIER != 0 { crate::CARRIER_AI_ALT } else { 12 };
         f.speed = p.speed;
         f.heading = 0xFC00u16 as i16;
         f.pitch = 0;

@@ -297,6 +297,7 @@ options-atc = Légiforgalmi irányítás
     .facts =
         Torony-, megközelítési és GCA rádióhívások a baráti repülőtereken
         Felszállási engedély, overhead break és talkdown alacsony felhőzetnél vagy rossz látásnál
+        A repülőgép-hordozó leszállásirányító tisztje: ball-hívás, korrekciók és wave-off
 options-pixel-block = A pixelesítés blokkmérete
     .facts = Egy blokk oldala képernyőpixelben (2: finom, 5: durva)
 effect-pixelize = Pixelesítés

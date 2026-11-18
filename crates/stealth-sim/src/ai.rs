@@ -142,7 +142,11 @@ impl Sim {
                 let campaign = self.campaign_flight(i).is_some();
                 tx = if campaign { b.x } else { s16(b.x - 2 * s16(u.x - b.x)) };
                 ty = b.y;
-                let glide = if (abs16(u.x - b.x) + b.flags) & 0x200 != 0 { 140 } else { 12 };
+                let glide = if (abs16(u.x - b.x) + b.flags) & 0x200 != 0 {
+                    crate::catapult::AI_DECK_ALT
+                } else {
+                    12
+                };
                 // It keeps clear of the hills ahead on the way in, down to the runway's flat
                 // ground.
                 tz = if campaign && approx(s16(u.x - b.x), s16(u.y - b.y)) > FINAL_FLAT {
@@ -416,8 +420,11 @@ impl Sim {
             u.bank = 0;
             u.pitch = 0;
             u.heading = if self.ns == 1 { 0 } else { s16(0x8000) };
-            u.alt =
-                if self.obj(self.pl.nearest_base).flags & oflags::CARRIER != 0 { 140 } else { 12 };
+            u.alt = if self.obj(self.pl.nearest_base).flags & oflags::CARRIER != 0 {
+                crate::catapult::AI_DECK_ALT
+            } else {
+                12
+            };
             if u.speed > 0 {
                 u.speed -= cdiv(60, fs);
             } else {
@@ -643,9 +650,12 @@ impl Sim {
         let u = &mut self.flights[i];
         u.heading = if ns == 1 { 0 } else { s16(0x8000) };
         if o.flags & oflags::CARRIER != 0 {
-            u.x = o.x + 3 * ns;
-            u.y = o.y - 12 * ns;
-            u.alt = 140;
+            let (e, n) = crate::catapult::deck_point((o.x, o.y), ns, crate::catapult::DECK_START);
+            u.wx = e.round() as i32;
+            u.wy = (0x8000 as f64 * 32.0 - n).round() as i32;
+            u.x = (u.wx >> 5) & 0xFFFF;
+            u.y = (u.wy >> 5) & 0xFFFF;
+            u.alt = crate::catapult::AI_DECK_ALT;
             u.speed = 100;
             u.heading = s16(u.heading - 0x400);
         } else {
@@ -653,9 +663,9 @@ impl Sim {
             u.y = o.y + 30 * ns;
             u.alt = 12;
             u.speed = 10;
+            u.wx = u.x << 5;
+            u.wy = u.y << 5;
         }
-        u.wx = u.x << 5;
-        u.wy = u.y << 5;
         u.pitch = 0;
         u.bank = 0;
         u.flags |= 0x403;
@@ -739,7 +749,7 @@ impl Sim {
             u.flags = fflags::EXISTS | fflags::AIRBORNE;
             u.speed = 0;
             u.wp = b;
-            u.alt = if carrier { 140 } else { 12 };
+            u.alt = if carrier { crate::catapult::AI_DECK_ALT } else { 12 };
             if let Some(&(wx, wy, heading)) = spots.get(n).filter(|_| !carrier) {
                 u.x = wx >> 5;
                 u.y = wy >> 5;
@@ -753,12 +763,14 @@ impl Sim {
                 u.flags = 0;
                 continue;
             } else if carrier {
-                // Aft on the deck's far side from the player's start (4 units to the near
-                // side, see `start_state_at`), clear of it and of each other.
-                u.x = o.x + 4 * self.ns;
-                u.y = o.y + self.ns * (10 + 5 * n as i32);
-                u.wx = u.x << 5;
-                u.wy = u.y << 5;
+                // Aft on the deck's starboard side, clear of the landing area, the catapults
+                // and each other.
+                let (e, no) =
+                    crate::catapult::deck_point((o.x, o.y), self.ns, crate::catapult::PARKING[n]);
+                u.wx = e.round() as i32;
+                u.wy = (0x8000 as f64 * 32.0 - no).round() as i32;
+                u.x = (u.wx >> 5) & 0xFFFF;
+                u.y = (u.wy >> 5) & 0xFFFF;
                 u.heading = if self.ns == 1 { 0 } else { s16(0x8000) };
             } else {
                 u.x = o.x + 2 + 2 * n as i32;

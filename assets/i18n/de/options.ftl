@@ -297,6 +297,7 @@ options-atc = Flugverkehrskontrolle
     .facts =
         Funkrufe von Turm, Anflug und GCA auf den eigenen Flugplätzen
         Starterlaubnis, Overhead-Break und ein Talkdown bei tiefen Wolken oder schlechter Sicht
+        Der Landesignaloffizier des Flugzeugträgers: Ball-Ruf, Korrekturen und Wave-off
 options-pixel-block = Blockgröße der Pixelierung
     .facts = Die Seitenlänge eines Blocks in Bildschirmpixeln (2: fein, 5: grob)
 effect-pixelize = Pixelierung

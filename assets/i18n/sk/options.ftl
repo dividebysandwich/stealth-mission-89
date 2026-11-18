@@ -297,6 +297,7 @@ options-atc = Riadenie letovej prevádzky
     .facts =
         Rádiové výzvy veže, priblíženia a GCA na spojeneckých letiskách
         Povolenie na vzlet, overhead break a talkdown pri nízkej oblačnosti alebo zlej viditeľnosti
+        Pristávací dôstojník lietadlovej lode: hlásenie „ball“, opravy a príkaz na prelet
 options-pixel-block = Veľkosť bloku pixelizácie
     .facts = Strana bloku v pixeloch obrazovky (2: jemný, 5: hrubý)
 effect-pixelize = Pixelizácia

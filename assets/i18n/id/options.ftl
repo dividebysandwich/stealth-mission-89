@@ -297,6 +297,7 @@ options-atc = Pengendalian lalu lintas udara
     .facts =
         Panggilan radio menara, pendekatan, dan GCA di lapangan terbang kawan
         Izin lepas landas, overhead break, dan talkdown saat awan rendah atau jarak pandang buruk
+        Perwira sinyal pendaratan kapal induk: panggilan ball, koreksi, dan wave-off
 options-pixel-block = Ukuran blok piksel-isasi
     .facts = Sisi sebuah blok, dalam piksel layar (2: halus, 5: kasar)
 effect-pixelize = Piksel-isasi

@@ -297,6 +297,7 @@ options-atc = Flygledning
     .facts =
         Radioanrop från tornet, inflygningen och GCA på de vänliga flygfälten
         Starttillstånd, overhead break och en talkdown vid låga moln eller dålig sikt
+        Hangarfartygets landningssignalofficer: ball-anrop, rättelser och wave-off
 options-pixel-block = Blockstorlek för pixelering
     .facts = Ett blocks sida, i skärmpixlar (2: fin, 5: grov)
 effect-pixelize = Pixelering

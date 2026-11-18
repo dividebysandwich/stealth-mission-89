@@ -297,6 +297,7 @@ options-atc = Kontroll tat-traffiku tal-ajru
     .facts =
         Telefonati tar-radju tat-torri, tal-approċċ u tal-GCA fl-ajrudromi alleati
         Awtorizzazzjoni tat-tlugħ, overhead break u talkdown f'sħab baxx jew viżibilità ħażina
+        L-uffiċjal tas-sinjali tal-inżul tal-ġarrier: sejħa tal-ball, korrezzjonijiet u wave-off
 options-pixel-block = Daqs tal-blokka tal-pixelizzazzjoni
     .facts = Il-ġenb ta' blokka, f'pixels tal-iskrin (2: fin, 5: oħxon)
 effect-pixelize = Pixelizzazzjoni

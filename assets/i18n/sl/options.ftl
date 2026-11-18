@@ -297,6 +297,7 @@ options-atc = Kontrola zračnega prometa
     .facts =
         Radijski klici stolpa, približevanja in GCA na zavezniških letališčih
         Dovoljenje za vzlet, overhead break in talkdown pri nizki oblačnosti ali slabi vidljivosti
+        Častnik za pristajanje na letalonosilki: klic »ball«, popravki in wave-off
 options-pixel-block = Velikost bloka pikselizacije
     .facts = Stranica bloka v slikovnih pikah zaslona (2: fino, 5: grobo)
 effect-pixelize = Pikselizacija

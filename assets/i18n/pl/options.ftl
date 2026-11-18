@@ -297,6 +297,7 @@ options-atc = Kontrola ruchu lotniczego
     .facts =
         Komunikaty radiowe wieży, podejścia i GCA na lotniskach sojuszniczych
         Zgoda na start, overhead break i talkdown przy niskich chmurach lub słabej widoczności
+        Oficer sygnalizacji lądowania lotniskowca: wywołanie „ball”, poprawki i odejście na drugi krąg
 options-pixel-block = Rozmiar bloku pikselizacji
     .facts = Bok bloku w pikselach ekranu (2: drobny, 5: gruby)
 effect-pixelize = Pikselizacja

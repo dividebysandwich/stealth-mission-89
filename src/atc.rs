@@ -1056,7 +1056,7 @@ fn control(
 pub const RADIO_TEMPO: f32 = 1.15;
 
 /// Says a call in the controllers' or the pilot's voice; false without one.
-fn speak(tts: &mut crate::tts::Tts, s: &crate::settings::Settings, c: &Call) -> bool {
+pub(crate) fn speak(tts: &mut crate::tts::Tts, s: &crate::settings::Settings, c: &Call) -> bool {
     let atc = |station: &str| {
         let speakers = tts.speakers(&s.atc_voice);
         if s.atc_vary_station && speakers > 1 {

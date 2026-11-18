@@ -15,6 +15,8 @@ mod android_keyboard;
 mod app6;
 mod asset_path;
 mod atc;
+mod lso;
+mod meatball;
 mod autoshot;
 mod avionics;
 mod barrage;
@@ -386,6 +388,8 @@ pub fn run() {
             multiplayer_menu::MultiplayerMenuPlugin,
             savegame::SaveGamePlugin,
             atc::AtcPlugin,
+            lso::LsoPlugin,
+            meatball::MeatballPlugin,
             voice::VoicePlugin,
         ))
         .add_plugins(tts::TtsPlugin);

@@ -297,6 +297,7 @@ options-atc = Ilmaliikenteen ohjaus
     .facts =
         Tornin, lähestymisen ja GCA:n radiokutsut ystävällisillä lentokentillä
         Lentoonlähtölupa, overhead break ja talkdown matalassa pilvessä tai huonossa näkyvyydessä
+        Lentotukialuksen laskeutumisupseeri: ball-kutsu, korjaukset ja wave-off
 options-pixel-block = Pikselöinnin lohkon koko
     .facts = Lohkon sivu näytön pikseleinä (2: hieno, 5: karkea)
 effect-pixelize = Pikselöinti

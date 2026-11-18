@@ -297,6 +297,7 @@ options-atc = Flyveledelse
     .facts =
         Radioopkald fra tårnet, indflyvningen og GCA på de venlige flyvepladser
         Starttilladelse, overhead break og en talkdown ved lave skyer eller dårlig sigt
+        Hangarskibets landingsofficer: ball-kald, rettelser og wave-off
 options-pixel-block = Blokstørrelse for pixelering
     .facts = Et bloks side, i skærmpixel (2: fin, 5: grov)
 effect-pixelize = Pixelering

@@ -295,6 +295,7 @@ options-atc = 空中交通管制
     .facts =
         友军机场的塔台、进近和 GCA 无线电呼叫
         起飞许可、盘旋进场，以及低云或能见度差时的 GCA 引导
+        航母着舰信号官：报告看到光球、修正指令和复飞指令
 options-pixel-block = 像素化块大小
     .facts = 方块边长，以屏幕像素计（2：细，5：粗）
 effect-pixelize = 像素化

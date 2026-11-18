@@ -15,6 +15,10 @@ pub mod world;
 
 use std::path::Path;
 
+/// The altitude an AI aircraft flies at over a carrier's flight deck (sim units: the deck's 68
+/// plus 12, as over a runway; stealth_sim::catapult `AI_DECK_ALT`).
+pub const CARRIER_AI_ALT: i16 = 80;
+
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use stealth_formats::ALL_THEATERS;

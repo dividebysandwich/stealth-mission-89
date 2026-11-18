@@ -297,6 +297,7 @@ options-atc = Rialú tráchta aeir
     .facts =
         Glaonna raidió an túir, na gcóngaracha agus GCA ag aerpháirceanna cairdiúla
         Cead éirí de thalamh, overhead break agus talkdown i scamall íseal nó drochfheiceálacht
+        Oifigeach comharthaí tuirlingthe an iompróra: glao ball, ceartúcháin agus wave-off
 options-pixel-block = Méid bloic an phixealaithe
     .facts = Taobh bloic, i bpixil scáileáin (2: mín, 5: garbh)
 effect-pixelize = Pixealú

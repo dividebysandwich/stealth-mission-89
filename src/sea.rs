@@ -49,7 +49,7 @@ impl Plugin for SeaPlugin {
 /// A carrier's length (metres): its motion is worked out for this hull.
 pub const CARRIER_LEN_M: f32 = 330.0;
 /// Deck height of a carrier (world units; the flight model's and the simulation's).
-pub const DECK_WU: f32 = 128.0;
+pub const DECK_WU: f32 = stealth_sim::catapult::DECK_WU as f32;
 /// A ship this close to a carrier's world object (map units) is that carrier.
 const CARRIER_MATCH: f64 = 64.0;
 /// An aircraft resting on a sinking deck stays on it while it is this close above it (wu).
@@ -242,10 +242,10 @@ fn rotation(m: &ShipMotion) -> Quat {
 /// index.
 pub fn deck_at(decks: &[Deck], east: f64, north: f64) -> Option<(usize, &Deck)> {
     let (mx, my) = (east / 32.0, 32768.0 - north / 32.0);
-    decks
-        .iter()
-        .enumerate()
-        .find(|(_, d)| (mx - d.x as f64).abs() <= 12.0 && (my - d.y as f64).abs() <= 38.0)
+    decks.iter().enumerate().find(|(_, d)| {
+        let (bx, by) = stealth_sim::catapult::DECK_BOX;
+        (mx - d.x as f64).abs() <= bx && (my - d.y as f64).abs() <= by
+    })
 }
 
 /// An aircraft's pitch and roll (rad) standing on a deck tilted (pitch northwards, roll

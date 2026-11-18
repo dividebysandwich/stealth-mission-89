@@ -12,11 +12,11 @@ the theater builder's output would be lost):
 The ship is "USS Nimitz class aircraft carrier" by Larcenie Grant (CC BY 4.0,
 https://skfb.ly/pvWrZ), reduced to assets-src/blend/nimitz.blend by tools/models/nimitz.py:
 the hull, flight deck, island and masts, the deck's painted lines and the light fixtures. It is
-drawn at the game's carrier size, not its real one: 480 model units bow to stern with the
-flight deck 32 up, which is what landing on it, its deck altitude and the take-off spawn expect
-(src/flight.rs `landing_corridor`, src/sea.rs `DECK_WU`, src/mission.rs `start_pose`). Lengths
-and breadths scale alike (`U` units per metre); heights scale by `H` up to the flight deck (its
-height above the water fixed at 32) and by `U` above it, so the island keeps its proportions.
+drawn at the game's carrier size, about 1.5 times its real one: 256 model units bow to stern
+with the flight deck 17 up, which is what landing on it, its deck altitude and the take-off
+spawn expect (stealth_sim::catapult `WU_PER_M`, `DECK_WU` and `LANDING_BOX`). Lengths and
+breadths scale alike (`U` units per metre); heights scale by `H` up to the flight deck (its
+height above the water fixed at 17) and by `U` above it, so the island keeps its proportions.
 
 Each carrier node keeps its name, its root's `attr` and the way it faces (bow along +y or -y),
 and gets one detail level drawn at every distance (the ship and a dark hangar inside it). Children of the detail level: the wake behind
@@ -56,8 +56,8 @@ CARRIERS = {
     "korea": ["korea_075", "korea_090"],
 }
 
-LENGTH_UNITS = 480.0
-DECK = 32.0  # flight deck height (model units)
+LENGTH_UNITS = 256.0
+DECK = 17.0  # flight deck height (model units)
 DECK_M = 17.17  # its height above the waterline in nimitz.blend (m)
 MAX_DIST = 32769
 
@@ -193,10 +193,12 @@ def deck_lights(frame, marks):
 
 
 def wake(stern):
+    """The wake behind the stern (drawn for a 480 unit ship, scaled to this one)."""
+    k = LENGTH_UNITS / 480.0
     g = Geo()
     for sx in (-1, 1):
-        g.line((sx * 17, stern, 0.0), (sx * 49, stern - 270, 0.0), WAKE)
-        g.line((sx * 9, stern, 0.0), (sx * 20, stern - 215, 0.0), WAKE)
+        g.line((sx * 17 * k, stern, 0.0), (sx * 49 * k, stern - 270 * k, 0.0), WAKE)
+        g.line((sx * 9 * k, stern, 0.0), (sx * 20 * k, stern - 215 * k, 0.0), WAKE)
     return g
 
 
@@ -227,12 +229,13 @@ def planes(geo, flip):
 
 
 def orientation(lod):
-    """+1 if the old model's bow points along +y (its wake trails to -y), else -1."""
+    """+1 if the old model's bow points along +y (its wake trails to -y, reaching farther from
+    the middle than the bow), else -1."""
     ys = []
     for ob in [lod] + list(lod.children_recursive):
         if ob.type == "MESH":
             ys += [(ob.matrix_world @ v.co).y for v in ob.data.vertices]
-    return 1 if min(ys) < -300 else -1
+    return 1 if -min(ys) > max(ys) else -1
 
 
 def group(lod, name, conds):

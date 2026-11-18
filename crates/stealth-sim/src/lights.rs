@@ -23,7 +23,7 @@ pub fn near_home_airfield(objects: &[GroundObject], x: i32, y: i32, friendly: bo
 }
 
 /// Altitude (ft) a departing aircraft raises its gear at: clear of the runway (12) and of a
-/// carrier's deck (140).
+/// carrier's deck (`catapult::AI_DECK_ALT`).
 pub const GEAR_UP_ALT: i32 = 300;
 
 /// Whether flight unit `u` has its gear down: on the ground (the sim holds it 12 ft up) or

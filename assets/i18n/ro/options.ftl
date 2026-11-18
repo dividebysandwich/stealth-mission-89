@@ -297,6 +297,7 @@ options-atc = Controlul traficului aerian
     .facts =
         Apeluri radio ale turnului, apropierii și GCA pe aerodromurile aliate
         Autorizare de decolare, overhead break și talkdown pe nori joși sau vizibilitate slabă
+        Ofițerul de semnalizare a apuntării de pe portavion: apelul „ball”, corecții și wave-off
 options-pixel-block = Dimensiunea blocului de pixelare
     .facts = Latura unui bloc, în pixeli de ecran (2: fin, 5: grosier)
 effect-pixelize = Pixelare

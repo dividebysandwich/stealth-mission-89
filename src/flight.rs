@@ -17,6 +17,7 @@ use crate::input::{Action, ActionEvent, FlightControls};
 use crate::settings::{Settings, SetupSet};
 use crate::world::{Theater, WU, WorldPos, bevy_to_wu, wu_to_bevy};
 
+pub mod arrest;
 pub mod catapult;
 pub mod heli;
 pub mod modern;
@@ -441,6 +442,9 @@ pub struct Aircraft {
     /// On a carrier's catapult, held for the launch or thrown off by it (`catapult`).
     #[serde(default)]
     pub catapult: Option<catapult::CatLaunch>,
+    /// Landed on a carrier: caught by a wire, pulled to a stop (`arrest`).
+    #[serde(default)]
+    pub trap: Option<arrest::Trap>,
     /// wu per second along the flight path.
     pub climb_rate: f32,
     /// 1/16 g
@@ -560,6 +564,7 @@ impl Aircraft {
             ground_slope: (0.0, 0.0),
             over_deck: false,
             catapult: None,
+            trap: None,
             climb_rate: 0.0,
             gees: 16.0,
             stall_speed: 0.0,
@@ -678,6 +683,14 @@ impl Aircraft {
     /// The autopilot follows the terrain (the terrain following radar has a command).
     pub fn terrain_following(&self) -> bool {
         self.autopilot() && self.tf_gamma.is_some()
+    }
+
+    /// The angle of attack (deg) in the modern flight model (None in the classic one, whose
+    /// flight path is the nose lowered by its trim).
+    pub fn angle_of_attack(&self) -> Option<f32> {
+        self.modern.velocity()?;
+        let body = self.orientation.inverse() * self.path_dir();
+        Some((-body.y).atan2(-body.z).to_degrees())
     }
 
     /// Direction of flight (Bevy frame, unit vector): the modern model's velocity, or for the
@@ -1131,6 +1144,10 @@ fn step_one(
         if let Some(v) = launch {
             a.velocity = v;
         }
+        // Landed on one: the wire pulls it to a stop.
+        if let Some(v) = a.wire_speed(dt) {
+            a.velocity = v;
+        }
 
         // --- rotation
         let mut yaw = (roll.sin() * a.gees * 16.0 * 128.0) / ((a.velocity / 256.0).floor() + 32.0)
@@ -1366,6 +1383,18 @@ fn ground_contact(
         a.climb_rate -= deck_rate;
         touchdown(a, roll, k.landing as f32, vertical);
         a.climb_rate = climb;
+        // On a carrier's deck a wire catches every landing (not a V/STOL type's).
+        if a.over_deck && a.ended.is_none() && a.trap.is_none() && k.aero.vtol.is_none() {
+            let carrier = theater.and_then(|t| catapult::carrier_at(&t.world, east, north));
+            if let Some(o) = carrier.and_then(|i| theater.map(|t| &t.world.objects[i])) {
+                let track = (a.ground_vel.x as f64).atan2(-a.ground_vel.z as f64);
+                let speed = a.ground_knots() * 27.0;
+                let t = arrest::Trap::catch(speed, east, north, track, (o.x as i32, o.y as i32));
+                let stop_m = t.stop as f64 * WU;
+                info!("trap: caught at {:.0} kt, stopping in {stop_m:.0} m", a.ground_knots());
+                a.trap = Some(t);
+            }
+        }
     }
     if on_ground_now {
         a.climb_rate = 0.0;
@@ -1406,7 +1435,8 @@ fn touchdown(a: &mut Aircraft, roll: f32, l: f32, anywhere: bool) {
 }
 
 /// (in corridor, ground altitude): runway box around friendly bases (flags 0x500, not 0x800):
-/// |dx| <= 5, |dy| <= 64 map units (+4/+8 on easy); carriers 8 x 30 at deck height 128 (the
+/// |dx| <= 5, |dy| <= 64 map units (+4/+8 on easy); carriers `catapult::LANDING_BOX` at
+/// `catapult::DECK_WU` (the
 /// deck's motion on the sea, a few feet, is `sea::Deck`'s; the simulation's objectives judge
 /// the flat deck, well within their tolerances). A
 /// helicopter's is the whole airfield, |dx| <= 16 (the sim's `objectives`, keep in step).
@@ -1419,15 +1449,17 @@ fn landing_corridor(t: &Theater, east: f64, north: f64, landing: u8, heli: bool)
             continue;
         }
         let carrier = flags & 0x200 != 0;
+        let (ex, ey) =
+            if carrier && landing == 1 { stealth_sim::catapult::LANDING_BOX_EASY } else { (ex, ey) };
         let (bx, by) = if carrier {
-            (8.0, 30.0)
+            stealth_sim::catapult::LANDING_BOX
         } else if heli {
             (HELI_BASE_HALF_WIDTH, 64.0)
         } else {
             (5.0, 64.0)
         };
         if (mx - o.x as f64).abs() <= bx + ex && (my - o.y as f64).abs() <= by + ey {
-            return (true, if carrier { 128.0 } else { 0.0 });
+            return (true, if carrier { crate::sea::DECK_WU } else { 0.0 });
         }
     }
     (false, 0.0)

@@ -63,10 +63,11 @@ pub fn launch_from(report: u8, carrier: usize, k: &FlightConstants) -> Option<Ca
 /// The carrier world object nearest a point (wu east, north) within its landing box, if any.
 pub fn carrier_at(world: &stealth_formats::wld::World, east: f64, north: f64) -> Option<usize> {
     let (mx, my) = (east / 32.0, 32768.0 - north / 32.0);
+    let (bx, by) = stealth_sim::catapult::DECK_BOX;
     world.objects.iter().position(|o| {
         o.target_flags as u16 & 0x200 != 0
-            && (mx - o.x as f64).abs() <= 12.0
-            && (my - o.y as f64).abs() <= 38.0
+            && (mx - o.x as f64).abs() <= bx
+            && (my - o.y as f64).abs() <= by
     })
 }
 

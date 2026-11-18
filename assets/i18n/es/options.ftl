@@ -297,6 +297,7 @@ options-atc = Control de tráfico aéreo
     .facts =
         Llamadas de radio de torre, aproximación y GCA en los aeródromos amigos
         Autorización de despegue, break de llegada y una guía GCA con nubes bajas o poca visibilidad
+        El oficial de señales de aterrizaje del portaaviones: llamada de la bola, correcciones y wave-off
 options-pixel-block = Tamaño de bloque del pixelado
     .facts = El lado de un bloque, en píxeles de pantalla (2: fino, 5: grueso)
 effect-pixelize = Pixelado

@@ -297,6 +297,7 @@ options-atc = Lennuliikluse juhtimine
     .facts =
         Torni, lähenemise ja GCA raadiokutsed sõbralikel lennuväljadel
         Stardiluba, overhead break ja talkdown madala pilvisuse või halva nähtavuse korral
+        Lennukikandja maandumisohvitser: ball-kutse, parandused ja wave-off
 options-pixel-block = Pikseldamise ploki suurus
     .facts = Ploki külg ekraanipikslites (2: peen, 5: jäme)
 effect-pixelize = Pikseldamine

@@ -303,6 +303,7 @@ options-atc = Contrôle aérien
     .facts =
         Appels radio de la tour, de l'approche et du GCA sur les aérodromes amis
         Autorisation de décollage, break et guidage GCA par nuages bas ou mauvaise visibilité
+        L'officier d'appontage du porte-avions : appel « ball », corrections et remises des gaz
 options-pixel-block = Taille des blocs de la pixelisation
     .facts = Le côté d'un bloc, en pixels d'écran (2 : fin, 5 : grossier)
 effect-pixelize = Pixelisation

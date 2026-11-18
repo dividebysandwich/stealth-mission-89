@@ -210,7 +210,8 @@ impl Sim {
         if self.pl.nearest_base >= 0 && (self.pl.nearest_base_dist < 0x200 || self.pl.on_ground) {
             let carrier = b.flags & oflags::CARRIER != 0;
             let (mut hw, mut hl) = if carrier {
-                (0x100, 0x3C0)
+                let (w, l) = crate::catapult::LANDING_BOX;
+                ((w * 32.0) as i32, (l * 32.0) as i32)
             } else {
                 // A slow Harrier lands vertically: as a helicopter does.
                 let vertical = self.pl.harrier && ps.velocity <= VTOL_LANDING_KNOTS * 27;
@@ -218,11 +219,17 @@ impl Sim {
                 (hw, if b.flags & oflags::DISABLED != 0 { 0x400 } else { 0x800 })
             };
             if carrier {
-                ground_alt = 0x80;
+                ground_alt = crate::catapult::DECK_ALT;
             }
             if self.opts.landing == LandingMode::Easy {
-                hw += 0x80;
-                hl += 0x100;
+                let (w, l) = if carrier {
+                    let (w, l) = crate::catapult::LANDING_BOX_EASY;
+                    ((w * 32.0) as i32, (l * 32.0) as i32)
+                } else {
+                    (0x80, 0x100)
+                };
+                hw += w;
+                hl += l;
             }
             self.pl.corridor = s16(self.pl.p.mx - b.x).abs() <= hw >> 5
                 && s16(self.pl.p.my - b.y).abs() <= hl >> 5;
