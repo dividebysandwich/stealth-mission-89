@@ -95,6 +95,8 @@
         (id: "x12", name: "X-12", nato: "X-12", kmh: 700, radius_km: 63, agility: 4, radar: "none", model: 106, kind: Drone),
         // The F/A-18E Super Hornet, a player's aircraft (appended).
         (id: "fa18e", name: "F/A-18E", nato: "Super Hornet", mach: 1.6, radius_km: 720, agility: 5, radar: "friendly", model: 79),
+        // The EA-18G Growler: the F/A-18E's electronic attack two-seater (jamming.rs).
+        (id: "ea18g", name: "EA-18G", nato: "Growler", mach: 1.6, radius_km: 720, agility: 5, radar: "friendly", model: 81),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,
@@ -242,6 +244,9 @@
         (id: "mald", short: "ADM-160", long: "MALD", missile: "mald", picture: 12, bay: 1),
         // Paratroopers: a stick a round, out of the C-5's or the CH-47's rear (paradrop.rs).
         (id: "para", short: "PARA", long: "Paratroopers", missile: "none", picture: 5, bay: 1),
+        // The EA-18G's AN/ALQ-99 tactical jamming pod: it jams the radars the pods are set on
+        // (jamming.rs) and is never released.
+        (id: "alq99", short: "ALQ-99", long: "Jammer pod", missile: "none", picture: 15, bay: 1),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

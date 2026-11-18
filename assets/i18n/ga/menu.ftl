@@ -211,6 +211,11 @@ aircraft-fa18e =
         Trodaire il-róil, ó na hiompróirí
         Mach 1.6, 7.5 g
         Cockpit gloine, UFC tadhaill
+aircraft-ea18g =
+    .facts =
+        Ionsaí leictreonach, ó na hiompróirí
+        Cuireann sé isteach ar radair an namhad don ruathar
+        Dhá shuíochán: píolóta agus oifigeach cogaíochta leictreonaí
 aircraft-tornado =
     .facts =
         Aerárthach ionsaithe ísealairde

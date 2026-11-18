@@ -75,6 +75,9 @@ pub struct RemotePilot {
     pub seahawk: bool,
     /// The F/A-18E.
     pub hornet: bool,
+    /// The EA-18G Growler (with `hornet`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub growler: bool,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -158,7 +161,8 @@ impl From<RemotePilot> for RemoteWire {
                 | (p.spectre as u8) << 2
                 | (p.apache as u8) << 3
                 | (p.seahawk as u8) << 4
-                | (p.hornet as u8) << 5,
+                | (p.hornet as u8) << 5
+                | (p.growler as u8) << 6,
             p.catapult,
         )
     }
@@ -232,6 +236,7 @@ impl From<RemoteWire> for RemotePilot {
             apache: kinds & 8 != 0,
             seahawk: kinds & 16 != 0,
             hornet: kinds & 32 != 0,
+            growler: kinds & 64 != 0,
             gun_aim,
             catapult,
             chute,
@@ -453,6 +458,7 @@ impl Sim {
                     apache: p.apache,
                     seahawk: p.seahawk,
                     hornet: p.hornet,
+                    growler: p.growler,
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

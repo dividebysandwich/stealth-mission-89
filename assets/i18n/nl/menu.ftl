@@ -211,6 +211,11 @@ aircraft-fa18e =
         Multirole-jager, vanaf de vliegdekschepen
         Mach 1,6 – 7,5 g
         Glazen cockpit, touchscreen-UFC
+aircraft-ea18g =
+    .facts =
+        Elektronische aanval, vanaf de vliegdekschepen
+        Stoort de vijandelijke radars voor de aanval
+        Twee zitplaatsen: piloot en officier elektronische oorlogvoering
 aircraft-tornado =
     .facts =
         Aanvalsvliegtuig voor lage hoogte

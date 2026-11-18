@@ -198,3 +198,7 @@ weapon-role-28 = Parachutisten: een stick soldaten om af te werpen boven een pla
 employment-28 =
     Uit de deuren van de C-5 (twee sticks) of over de laadklep van de CH-47 (één stick) boven de dropzone
     Springen tussen 500 en 1500 ft boven de grond, onder 150 kt; het grootste deel van een stick moet in de zone landen
+weapon-role-29 = Tactische stoorpod: brengt de gestoorde radars terug tot hun doorbrandafstand
+employment-29 =
+    Ingesteld op de JAM-pagina: per pod een radar of sector, aan of uit
+    Storen maakt je van verder weg zichtbaar

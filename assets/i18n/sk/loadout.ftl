@@ -198,3 +198,7 @@ weapon-role-28 = Výsadkári: skupina vojakov na výsadok nad miestom, ktoré ob
 employment-28 =
     Dverami C-5 (dve skupiny) alebo po rampe CH-47 (jedna skupina) nad výsadkovou zónou
     Zoskok medzi 500 a 1500 ft nad zemou, pod 150 kt; väčšina skupiny musí pristáť v zóne
+weapon-role-29 = Taktický rušiaci kontajner: skráti rušené rádiolokátory na ich vzdialenosť prerazenia
+employment-29 =
+    Nastavuje sa na stránke JAM: pre každý kontajner rádiolokátor alebo sektor, zapnuté či vypnuté
+    Rušenie ťa robí viditeľným z väčšej diaľky

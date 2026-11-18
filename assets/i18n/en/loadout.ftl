@@ -198,3 +198,7 @@ weapon-role-28 = Paratroopers: a stick of soldiers to drop on a place they take
 employment-28 =
     Out of the C-5's doors (two sticks) or the CH-47's ramp (one stick) over the drop zone
     Jump between 500 and 1500 ft over the ground, below 150 kt; most of a stick must land in the zone
+weapon-role-29 = Tactical jamming pod: cuts the radars it is set on down to their burn-through range
+employment-29 =
+    Set on the JAM page: a radar or a sector each pod, on or off
+    Jamming makes you seen from further off

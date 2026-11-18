@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 29] = [
+pub const WEAPONS: [(&str, &str); 30] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -45,6 +45,7 @@ pub const WEAPONS: [(&str, &str); 29] = [
     ("AGM-154C JSOW", "weapon-role-26"),
     ("ADM-160 MALD", "weapon-role-27"),
     ("Paratroopers", "weapon-role-28"),
+    ("AN/ALQ-99 jammer pod", "weapon-role-29"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -57,7 +58,7 @@ pub const WEAPONS: [(&str, &str); 29] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 29] = [
+const EMPLOYMENT: [&str; 30] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -87,6 +88,7 @@ const EMPLOYMENT: [&str; 29] = [
     "employment-26",
     "employment-27",
     "employment-28",
+    "employment-29",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -103,12 +105,12 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 29] =
-    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1];
+const BAY_QTY: [u8; 30] =
+    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 29] =
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1];
+const PYLON_QTY: [u8; 30] =
+    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
@@ -123,6 +125,8 @@ pub const JSOW: u8 = 26;
 pub const MALD: u8 = 27;
 /// The paratroopers' weapon type: a stick a round (`stealth_sim::paradrop`).
 pub const PARA: u8 = 28;
+/// The EA-18G's ALQ-99 jammer pod's weapon type (`stealth_sim::jamming`).
+pub const ALQ99: u8 = 29;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -1201,6 +1205,26 @@ static FA18E_STATIONS: [Hardpoint; 11] = [
     pylon("hardpoint-fa18e-10-right-outer-wing", "10", 4.60, 11.75, Some(1), &FA18E_OUTER),
     pylon("hardpoint-fa18e-11-right-wingtip", "11", 6.78, 11.80, Some(0), &SIDEWINDER),
 ];
+/// The EA-18G's stations 2 to 10 (its wingtips hold the ALQ-218 receivers): the ALQ-99 pods on
+/// the centreline and the middle wing pylons, HARMs and MALDs outboard, AMRAAMs on the
+/// nacelles, tanks inboard.
+const EA18G_OUTER: [u8; 4] = [0, 1, 2, MALD];
+const EA18G_WING: [u8; 6] = [1, 2, 17, JSOW, MALD, ALQ99];
+const EA18G_INNER: [u8; 5] = [1, 2, 17, MALD, ALQ99];
+const EA18G_CENTRE: [u8; 2] = [17, ALQ99];
+static EA18G_STATIONS: [Hardpoint; 9] = [
+    pylon("hardpoint-station-2-left-outer-wing", "2", -4.60, 11.75, Some(8), &EA18G_OUTER),
+    pylon("hardpoint-station-3-left-wing", "3", -3.45, 11.40, Some(7), &EA18G_WING),
+    pylon("hardpoint-station-4-left-inner-wing", "4", -2.30, 11.10, Some(6), &EA18G_INNER),
+    pylon("hardpoint-a10-5-left-fuselage", "5", -0.85, 9.90, Some(5), &FA18E_NACELLE),
+    pylon("hardpoint-a10-6-centreline", "6", 0.00, 10.60, None, &EA18G_CENTRE),
+    pylon("hardpoint-a10-7-right-fuselage", "7", 0.85, 9.90, Some(3), &FA18E_NACELLE),
+    pylon("hardpoint-fa18e-8-right-inner-wing", "8", 2.30, 11.10, Some(2), &EA18G_INNER),
+    pylon("hardpoint-a10-9-right-wing", "9", 3.45, 11.40, Some(1), &EA18G_WING),
+    pylon("hardpoint-fa18e-10-right-outer-wing", "10", 4.60, 11.75, Some(0), &EA18G_OUTER),
+];
+static EA18G_LAYOUT: Layout =
+    Layout { outline: FA18E_OUTLINE, half_span: 6.80, length: 18.14, hardpoints: &EA18G_STATIONS };
 static F22_LAYOUT: Layout =
     Layout { outline: F22_OUTLINE, half_span: 6.76, length: 18.62, hardpoints: &F22_STATIONS };
 static TORNADO_LAYOUT: Layout = Layout {
@@ -1624,6 +1648,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::AV8B => &AV8B_LAYOUT,
         AircraftKind::F22 => &F22_LAYOUT,
         AircraftKind::FA18E => &FA18E_LAYOUT,
+        AircraftKind::EA18G => &EA18G_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::MH60R => &MH60R_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
@@ -1706,6 +1731,13 @@ impl PlannedLoadout {
             | AircraftKind::MH60R => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
+                }
+            }
+            // Whatever the briefing: three jammer pods, HARMs outboard, AMRAAMs on the
+            // nacelles, tanks inboard.
+            AircraftKind::EA18G => {
+                for (i, w) in [(0, 2), (1, ALQ99), (2, 17), (3, 1), (4, ALQ99), (5, 1), (6, 17), (7, ALQ99), (8, 2)] {
+                    stores[i] = Some(w);
                 }
             }
             AircraftKind::F16

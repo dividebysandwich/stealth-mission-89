@@ -211,6 +211,11 @@ aircraft-fa18e =
         Pesawat tempur multiperan, dari kapal induk
         Mach 1,6 – 7,5 g
         Kokpit kaca, UFC layar sentuh
+aircraft-ea18g =
+    .facts =
+        Serangan elektronik, dari kapal induk
+        Mengacau radar musuh untuk serangan
+        Dua kursi: pilot dan perwira peperangan elektronik
 aircraft-tornado =
     .facts =
         Pesawat serang terbang rendah

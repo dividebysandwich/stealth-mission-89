@@ -198,3 +198,7 @@ weapon-role-28 = Fallschirmjäger: ein Trupp Soldaten zum Absetzen über einem O
 employment-28 =
     Aus den Türen der C-5 (zwei Trupps) oder über die Rampe der CH-47 (ein Trupp) über der Absetzzone
     Absprung zwischen 500 und 1500 ft über Grund, unter 150 kt; der Großteil eines Trupps muss in der Zone landen
+weapon-role-29 = Taktischer Störbehälter: drückt die gestörten Radare auf ihre Durchbrennreichweite herunter
+employment-29 =
+    Eingestellt auf der JAM-Seite: je Behälter ein Radar oder ein Sektor, ein oder aus
+    Stören macht dich aus größerer Entfernung sichtbar

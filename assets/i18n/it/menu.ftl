@@ -211,6 +211,11 @@ aircraft-fa18e =
         Caccia multiruolo, dalle portaerei
         Mach 1,6 – 7,5 g
         Cabina glass cockpit, UFC touchscreen
+aircraft-ea18g =
+    .facts =
+        Attacco elettronico, dalle portaerei
+        Disturba i radar nemici per l'attacco
+        Due posti: pilota e ufficiale di guerra elettronica
 aircraft-tornado =
     .facts =
         Aereo d'attacco a bassa quota

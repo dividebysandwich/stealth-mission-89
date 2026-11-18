@@ -211,6 +211,11 @@ aircraft-fa18e =
         Avion de vânătoare multirol, de pe portavioane
         Mach 1,6 – 7,5 g
         Cockpit digital, UFC cu ecran tactil
+aircraft-ea18g =
+    .facts =
+        Atac electronic, de pe portavioane
+        Bruiază radarele inamice pentru lovitură
+        Două locuri: pilot și ofițer de război electronic
 aircraft-tornado =
     .facts =
         Aeronavă de lovitură la joasă înălțime

@@ -198,3 +198,7 @@ weapon-role-28 = Spadochroniarze: grupa żołnierzy zrzucana nad miejscem, któr
 employment-28 =
     Przez drzwi C-5 (dwie grupy) lub rampę CH-47 (jedna grupa) nad strefą zrzutu
     Skok od 500 do 1500 ft nad ziemią, poniżej 150 kt; większość grupy musi wylądować w strefie
+weapon-role-29 = Taktyczny zasobnik zakłóceń: ogranicza zakłócane radary do ich zasięgu przebicia
+employment-29 =
+    Ustawiany na stronie JAM: radar lub sektor dla każdego zasobnika, wł. lub wył.
+    Zakłócanie sprawia, że widać cię z większej odległości

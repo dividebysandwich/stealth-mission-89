@@ -211,6 +211,11 @@ aircraft-fa18e =
         Wielozadaniowy myśliwiec, z lotniskowców
         Mach 1,6 – 7,5 g
         Szklany kokpit, dotykowy UFC
+aircraft-ea18g =
+    .facts =
+        Atak elektroniczny, z lotniskowców
+        Zakłóca wrogie radary przed uderzeniem
+        Dwa miejsca: pilot i oficer walki elektronicznej
 aircraft-tornado =
     .facts =
         Samolot uderzeniowy do lotów na małej wysokości

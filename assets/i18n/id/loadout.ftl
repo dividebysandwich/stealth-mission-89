@@ -198,3 +198,7 @@ weapon-role-28 = Pasukan payung: satu regu prajurit yang diterjunkan di atas tem
 employment-28 =
     Dari pintu C-5 (dua regu) atau rampa CH-47 (satu regu) di atas zona penerjunan
     Terjun antara 500 dan 1500 ft di atas tanah, di bawah 150 kt; sebagian besar regu harus mendarat di zona
+weapon-role-29 = Pod pengacau taktis: memangkas radar yang dikacau hingga jarak tembus-bakarnya
+employment-29 =
+    Diatur di halaman JAM: satu radar atau sektor per pod, nyala atau mati
+    Mengacau membuatmu terlihat dari lebih jauh

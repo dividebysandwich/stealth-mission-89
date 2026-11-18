@@ -211,6 +211,11 @@ aircraft-fa18e =
         Višenamjenski lovac, s nosača zrakoplova
         Mach 1,6 – 7,5 g
         Stakleni kokpit, UFC na dodir
+aircraft-ea18g =
+    .facts =
+        Elektronički napad, s nosača
+        Ometa neprijateljske radare za napad
+        Dva sjedala: pilot i časnik elektroničkog ratovanja
 aircraft-tornado =
     .facts =
         Jurišni zrakoplov za niske visine

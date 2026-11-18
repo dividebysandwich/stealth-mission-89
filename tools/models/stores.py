@@ -21,6 +21,7 @@ Dimensions (m: length, body diameter, span):
     AGM-84H SLAM-ER 4.37 x 0.343, wings 2.2 (folded under the body on the pylon), fins 0.91
     AGM-154C JSOW 4.06 x 0.33 (square body), wings 2.69 (folded flat on top on the pylon)
     ADM-160B MALD 2.84 x 0.30, wings 1.71 (folded under the body on the pylon)
+    AN/ALQ-99 jammer pod 4.75 x 0.68, its ram-air turbine's propeller 0.75 across
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -360,6 +361,33 @@ def mald():
                                           (WINGS_SLOT, 1, hang(open_, 0.0, r))])
 
 
+def alq99():
+    """AN/ALQ-99 tactical jamming pod: the fat round pod, the ram-air turbine's hub and its
+    two-bladed propeller at the nose, the antenna radomes under it fore and aft, the cooling
+    scoops along its sides."""
+    L, r = 4.75, 0.34
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.12), (n - 0.25, 0.28), (n - 0.55, r), (t + 0.40, r), (t, 0.20)], WHITE,
+             bands=[(n - 0.60, n - 0.66, GREY)])
+    g.add(frustum((0, n + 0.12, 0), (0, n - 0.02, 0), 0.04, 0.12, DARK, n=8))
+    for a in (0.0, math.pi):
+        ca, sa = math.cos(a), math.sin(a)
+        g.add(hexa([(ca * 0.04 - sa * 0.03, n + 0.06, sa * 0.04 + ca * 0.03),
+                    (ca * 0.37 - sa * 0.05, n + 0.06, sa * 0.37 + ca * 0.05),
+                    (ca * 0.37 + sa * 0.05, n + 0.06, sa * 0.37 - ca * 0.05),
+                    (ca * 0.04 + sa * 0.03, n + 0.06, sa * 0.04 - ca * 0.03),
+                    (ca * 0.04 - sa * 0.03, n + 0.09, sa * 0.04 + ca * 0.03),
+                    (ca * 0.37 - sa * 0.05, n + 0.09, sa * 0.37 + ca * 0.05),
+                    (ca * 0.37 + sa * 0.05, n + 0.09, sa * 0.37 - ca * 0.05),
+                    (ca * 0.04 + sa * 0.03, n + 0.09, sa * 0.04 - ca * 0.03)], DARK))
+    for y0, y1 in ((n - 1.2, n - 0.7), (t + 0.6, t + 1.2)):
+        g.add(block(-0.16, 0.16, y0, y1, -r - 0.10, -r + 0.05, GREY, taper=0.05))
+    for sx in (-1, 1):
+        g.add(block(sx * r - 0.03, sx * r + 0.03, -0.6, 0.4, -0.08, 0.08, GREY))
+    lugs(g, 0.0, r, spacing=0.762)
+    return Store(hang(g, 0.0, r))
+
+
 def maverick():
     """AGM-65: the glass seeker dome, the stubby body, the long-chord delta wings and the
     control fins behind them."""
@@ -570,12 +598,12 @@ WEAPON_MODELS = {
     11: (61, lambda: rockeye(BROWN)), 12: (62, fireye), 13: (63, lambda: dispenser(YELLOW, BROWN)),
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
-    25: (80, slamer), 26: (82, jsow), 27: (83, mald),
+    25: (80, slamer), 26: (82, jsow), 27: (83, mald), 29: (84, alq99),
 }
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15}
+          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -688,7 +716,7 @@ def _loadout_text():
 
 
 def _u8_lists(text):
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28, "ALQ99": 29}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] =\s*\[([^\]]*)\];", text, re.M):
         out[name] = [named[v] if v in named else int(v) for v in (x.strip() for x in body.split(",")) if v]
@@ -719,7 +747,7 @@ def exclusive_stations(table):
 
 def _qty_lists(text):
     """The `[(u8, u8); n]` constants: weapon type -> rounds."""
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28, "ALQ99": 29}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
         pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)

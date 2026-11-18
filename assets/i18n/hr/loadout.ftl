@@ -198,3 +198,7 @@ weapon-role-28 = Padobranci: skupina vojnika za desant nad mjestom koje zauzimaj
 employment-28 =
     Kroz vrata C-5 (dvije skupine) ili rampu CH-47 (jedna skupina) iznad zone desanta
     Skok između 500 i 1500 ft iznad tla, ispod 150 kt; većina skupine mora sletjeti u zonu
+weapon-role-29 = Taktički kontejner za ometanje: svodi ometane radare na njihov domet probijanja
+employment-29 =
+    Postavlja se na stranici JAM: za svaki kontejner radar ili sektor, uključeno ili isključeno
+    Ometanje te čini vidljivim s veće udaljenosti

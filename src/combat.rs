@@ -327,7 +327,11 @@ fn start_combat(
     let spectre = settings.aircraft.spectre();
     let apache = settings.aircraft.apache();
     let seahawk = settings.aircraft.seahawk();
-    let hornet = settings.aircraft == crate::aircraft::AircraftKind::FA18E;
+    let hornet = matches!(
+        settings.aircraft,
+        crate::aircraft::AircraftKind::FA18E | crate::aircraft::AircraftKind::EA18G
+    );
+    let growler = settings.aircraft == crate::aircraft::AircraftKind::EA18G;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -346,6 +350,7 @@ fn start_combat(
             apache,
             seahawk,
             hornet,
+            growler,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -366,6 +371,7 @@ fn start_combat(
             apache,
             seahawk,
             hornet,
+            growler,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -1195,6 +1201,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "AV-8B"
     } else if p.raptor {
         "F-22A"
+    } else if p.growler {
+        "EA-18G"
     } else if p.hornet {
         "F/A-18E"
     } else if p.galaxy {

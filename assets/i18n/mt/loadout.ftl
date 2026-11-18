@@ -198,3 +198,7 @@ weapon-role-28 = Paraxutisti: grupp ta' suldati li jinżlu fuq post li jieħdu
 employment-28 =
     Mill-bibien tas-C-5 (żewġ gruppi) jew mir-rampa tas-CH-47 (grupp wieħed) fuq iż-żona tal-qabża
     Aqbeż bejn 500 u 1500 ft fuq l-art, taħt 150 kt; il-biċċa l-kbira tal-grupp trid tinżel fiż-żona
+weapon-role-29 = Pod tattiku tal-ixkil: inaqqas ir-radars ixxekklin sal-firxa tal-ħruq tagħhom
+employment-29 =
+    Issettjat fil-paġna JAM: radar jew settur għal kull pod, mixgħul jew mitfi
+    L-ixkil jagħmlek viżibbli minn aktar 'il bogħod

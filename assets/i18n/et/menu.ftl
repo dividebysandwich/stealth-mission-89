@@ -211,6 +211,11 @@ aircraft-fa18e =
         Mitmeotstarbeline hävitaja, lennukikandjatelt
         Mach 1,6 – 7,5 g
         Klaaskokpit, puutetundlik UFC
+aircraft-ea18g =
+    .facts =
+        Elektrooniline rünnak, lennukikandjatelt
+        Segab rünnaku eel vaenlase radareid
+        Kaks istet: piloot ja elektroonilise sõjapidamise ohvitser
 aircraft-tornado =
     .facts =
         Madallennu ründelennuk

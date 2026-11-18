@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 54;
+pub const PROTOCOL: u16 = 55;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -524,6 +524,7 @@ mod tests {
             apache: false,
             seahawk: false,
             hornet: false,
+            growler: false,
             gun_firing: true,
             gun_aim: Some((0x4000, -0x800)),
             catapult: 0,

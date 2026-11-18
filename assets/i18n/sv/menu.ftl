@@ -211,6 +211,11 @@ aircraft-fa18e =
         Mångsidigt jaktflygplan, från hangarfartygen
         Mach 1,6 – 7,5 g
         Glascockpit, pekskärms-UFC
+aircraft-ea18g =
+    .facts =
+        Elektronisk attack, från hangarfartygen
+        Stör fiendens radar inför anfallet
+        Två säten: pilot och telekrigsofficer
 aircraft-tornado =
     .facts =
         Attackflygplan för låg höjd

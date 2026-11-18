@@ -211,6 +211,11 @@ aircraft-fa18e =
         Caza polivalente, desde los portaaviones
         Mach 1,6 – 7,5 g
         Cabina de cristal, UFC táctil
+aircraft-ea18g =
+    .facts =
+        Ataque electrónico, desde los portaaviones
+        Perturba los radares enemigos para el ataque
+        Dos plazas: piloto y oficial de guerra electrónica
 aircraft-tornado =
     .facts =
         Avión de ataque a baja cota

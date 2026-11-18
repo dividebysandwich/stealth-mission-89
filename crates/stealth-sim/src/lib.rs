@@ -37,6 +37,7 @@ pub mod slam;
 pub mod standoff;
 pub mod naval;
 pub mod paradrop;
+pub mod jamming;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -429,6 +430,7 @@ impl Sim {
         let apache = opts.apache;
         let seahawk = opts.seahawk;
         let hornet = opts.hornet;
+        let growler = opts.growler;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -482,6 +484,7 @@ impl Sim {
                 apache,
                 seahawk,
                 hornet,
+                growler,
                 side_guns: Default::default(),
                 cargo_tag: None,
                 unload: [0; 2],
@@ -1289,9 +1292,10 @@ impl Sim {
 
     /// Weapon type `w` is fired as the cannon (a machine gun pod), not from its station.
     pub fn gun_pod(&self, w: i32) -> bool {
-        // (The paratroopers fire nothing either: they are not a gun.)
+        // (The paratroopers and the jammer pods fire nothing either: they are not guns.)
         w >= 0
             && w != paradrop::PARA_WEAPON
+            && w != jamming::ALQ99_WEAPON
             && self.weapon_types.get(w as usize).is_some_and(|t| t.spec == 0)
     }
 

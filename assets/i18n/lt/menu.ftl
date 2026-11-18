@@ -211,6 +211,11 @@ aircraft-fa18e =
         Daugiafunkcis naikintuvas, iš lėktuvnešių
         Mach 1,6 – 7,5 g
         Stiklinė kabina, jutiklinis UFC
+aircraft-ea18g =
+    .facts =
+        Elektroninė ataka, iš lėktuvnešių
+        Trukdo priešo radarams prieš smūgį
+        Dvi vietos: pilotas ir elektroninės kovos karininkas
 aircraft-tornado =
     .facts =
         Žemo aukščio smūgio orlaivis

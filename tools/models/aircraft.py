@@ -1489,6 +1489,14 @@ FA18E_TIP_X = 6.78
 FA18E_STATIONS = [Station(0.0), Station(0.30, chord=1.5), Station(0.42, chord=1.8), Station(0.42, chord=1.9),
                   Station(0.07, chord=1.3, w=0.05)]
 FA18E_STATIONS = FA18E_STATIONS + [Station(0.14, chord=1.6)] + FA18E_STATIONS[::-1]
+# The EA-18G Growler's: the same without the wingtips (its ALQ-218 receivers' pods are there).
+EA18G_STATIONS = FA18E_STATIONS[1:-1]
+# The Growler's two-seat canopy (the F model's): the front cockpit's glass as the E's to s 5.30,
+# then on over the electronic warfare officer's seat to s 8.00, the spine from there with the
+# glass' last section, rejoining the E's at s 10.50.
+EA18G_CANOPY = FA18E_CANOPY[:6] + [(5.70, 1.00, 0.45, 1.57), (6.20, 1.00, 0.45, 1.57), (6.70, 0.99, 0.45, 1.56),
+                                   (7.20, 0.97, 0.45, 1.51), (7.70, 0.95, 0.46, 1.43), (8.00, 0.94, 0.46, 1.37)]
+EA18G_SPINE = [(8.00, 0.94, 0.46, 1.37), (8.50, 0.92, 0.46, 1.31), (9.00, 0.89, 0.45, 1.25)] + FA18E_SPINE[5:]
 
 
 def fa18e_p(x, s, z):
@@ -1534,18 +1542,24 @@ def fa18e_mouth_at(z):
     return s0 + (zt - z) / (zt - zb) * (s1 - s0)
 
 
-def fa18e():
+def fa18e(growler=False):
+    """The F/A-18E Super Hornet; `growler`: the EA-18G, the two-seat F's canopy and the ALQ-218
+    receivers' pods on the wingtips instead of the Sidewinder rails."""
+    canopy, spine = (EA18G_CANOPY, EA18G_SPINE) if growler else (FA18E_CANOPY, FA18E_SPINE)
     rings = [fa18e_ring(s, *spec) if spec[0] == "round" else fa18e_ring(s, spec[0]) for s, *spec in FA18E_BODY]
     g = Geo().add(tube(rings, FA18E_GREY, cap1=False, wound=True))
     g.face(rings[-1], DARK, fa18e_p(0, 15.0, 0.2))
-    g.add(tube([fa18e_glass(*r) for r in FA18E_CANOPY], CANOPY, cap1=False))
-    # The windscreen's bow and the canopy's frame along the sills.
-    bow = [p + Vector((0, 0, 0.012)) for p in fa18e_glass(4.44, 0.97, 0.47, 1.50)]
-    g.add(tube([bow, [p - Vector((0, 0.06, 0)) for p in bow]], DARK, cap0=False, cap1=False))
-    g.add(tube([fa18e_glass(*r) for r in FA18E_SPINE], FA18E_GREY, cap0=False))
+    g.add(tube([fa18e_glass(*r) for r in canopy], CANOPY, cap1=False))
+    # The windscreen's bow and the canopy's frame along the sills (the two-seater's bow between
+    # its cockpits too).
+    bows = [(4.44, 0.97, 0.47, 1.50)] + ([(6.45, 1.00, 0.46, 1.58)] if growler else [])
+    for b in bows:
+        bow = [p + Vector((0, 0, 0.012)) for p in fa18e_glass(*b)]
+        g.add(tube([bow, [p - Vector((0, 0.06, 0)) for p in bow]], DARK, cap0=False, cap1=False))
+    g.add(tube([fa18e_glass(*r) for r in spine], FA18E_GREY, cap0=False))
     # The glass and the spine stand open-bottomed on the deck a centimetre or two above it in
     # places: a grey skirt from their sills down into the fuselage closes the slit.
-    sills = FA18E_CANOPY + FA18E_SPINE[1:]
+    sills = canopy + spine[1:]
     for sx in (-1, 1):
         edge = [(fa18e_p(sx * hw, s, sill), fa18e_p(sx * hw, s, sill - 0.10)) for s, sill, hw, _ in sills]
         for (a, b), (c, d) in zip(edge, edge[1:]):
@@ -1574,14 +1588,34 @@ def fa18e():
     g.add(wing(tuple(fa18e_p(0.98, 12.76, 0.70)), 2.78, tuple(fa18e_p(1.90, 14.83, 3.13)), 1.24, FA18E_GREY,
                t=0.05, vertical=True))
     # The wingtip launchers: a fairing off the tip's edge, the rail outboard of it so the
-    # Sidewinder's fins clear the tip (its axis at x `FA18E_TIP_X`).
+    # Sidewinder's fins clear the tip (its axis at x `FA18E_TIP_X`). The Growler's: the ALQ-218
+    # pods, long round pods with dark radomes fore and aft.
     for sx in (-1, 1):
         def box(xa, xb, s0, s1, z0, z1, paint):
             x0, x1 = sorted((sx * xa, sx * xb))
             g.add(block(x0, x1, FA18E_NOSE - s1, FA18E_NOSE - s0, z0, z1, paint))
         box(6.50, FA18E_TIP_X, 11.40, 13.21, 0.35, 0.41, FA18E_GREY)
-        box(FA18E_TIP_X - 0.05, FA18E_TIP_X + 0.05, 10.27, 13.21, 0.20, 0.41, FA18E_GREY)
-        box(FA18E_TIP_X - 0.022, FA18E_TIP_X + 0.022, 10.42, 13.21, 0.18, 0.20, DARK)
+        if growler:
+            x = sx * (FA18E_TIP_X - 0.02)
+            # A round body with blunt ends: each slopes in a little to a flat cap (the user's
+            # reference photo), two small blades on top.
+            g.add(frustum(tuple(fa18e_p(x, 9.95, 0.36)), tuple(fa18e_p(x, 13.65, 0.36)), 0.17, 0.17,
+                          FA18E_GREY, n=12, caps=False))
+            g.add(frustum(tuple(fa18e_p(x, 9.80, 0.36)), tuple(fa18e_p(x, 9.95, 0.36)), 0.115, 0.17,
+                          FA18E_GREY, n=12))
+            g.add(frustum(tuple(fa18e_p(x, 13.65, 0.36)), tuple(fa18e_p(x, 13.80, 0.36)), 0.17, 0.115,
+                          FA18E_GREY, n=12))
+            for s_ in (10.55, 12.85):
+                g.add(block(x - 0.012, x + 0.012, FA18E_NOSE - s_ - 0.22, FA18E_NOSE - s_, 0.52, 0.64,
+                            FA18E_GREY, taper_y=0.12))
+        else:
+            box(FA18E_TIP_X - 0.05, FA18E_TIP_X + 0.05, 10.27, 13.21, 0.20, 0.41, FA18E_GREY)
+            box(FA18E_TIP_X - 0.022, FA18E_TIP_X + 0.022, 10.42, 13.21, 0.18, 0.20, DARK)
+    if growler:
+        # The blade antennas along the spine and under the nose.
+        for s_, z in ((9.6, 1.24), (11.2, 1.13)):
+            g.add(block(-0.015, 0.015, FA18E_NOSE - s_ - 0.35, FA18E_NOSE - s_, z, z + 0.28, FA18E_GREY,
+                        taper_y=0.25))
     # The nozzles: petals round the hot exit.
     for sx in (-1, 1):
         g.add(frustum(tuple(fa18e_p(sx * 0.55, 16.20, 0.24)), tuple(fa18e_p(sx * 0.55, 17.30, 0.24)), 0.44, 0.39, DARK,
@@ -1593,8 +1627,11 @@ def fa18e():
         fl.add(flame(sx * 0.55, FA18E_NOSE - 17.4, 0.24, 0.38, 3.2))
     tip = lambda sx: (sx * (FA18E_TIP_X + 0.05), FA18E_NOSE - 12.6, 0.36)
     fin = lambda sx: (sx * 1.90, FA18E_NOSE - 15.9, 3.13)
-    return Craft(g, tip(-1), tip(1), [fin(-1), fin(1)], fl, gear=fa18e_gear(),
-                 stations=("FA18E_STATIONS", FA18E_STATIONS, FA18E_GREY))
+    stations = ("EA18G_STATIONS", EA18G_STATIONS, FA18E_GREY) if growler else (
+        "FA18E_STATIONS", FA18E_STATIONS, FA18E_GREY)
+    if growler:
+        tip = lambda sx: (sx * (FA18E_TIP_X - 0.02), FA18E_NOSE - 11.5, 0.55)
+    return Craft(g, tip(-1), tip(1), [fin(-1), fin(1)], fl, gear=fa18e_gear(), stations=stations)
 
 
 def fa18e_gear():
@@ -2271,6 +2308,7 @@ BUILDERS = {
     75: f22,
     76: c130,
     79: fa18e,
+    81: lambda: fa18e(growler=True),
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
 # Models no part of the game draws.

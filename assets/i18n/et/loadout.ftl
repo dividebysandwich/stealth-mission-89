@@ -198,3 +198,7 @@ weapon-role-28 = Langevarjurid: rühm sõdureid, kes hüppavad paiga kohale ja v
 employment-28 =
     C-5 ustest (kaks rühma) või CH-47 rambilt (üks rühm) hüppeala kohal
     Hüpe 500–1500 ft maapinnast, alla 150 kt; suurem osa rühmast peab maanduma alale
+weapon-role-29 = Taktikaline segajakonteiner: lühendab segatud radarite ulatuse läbipõlemiskauguseni
+employment-29 =
+    Seatakse JAM-lehel: iga konteineri jaoks radar või sektor, sees või väljas
+    Segamine teeb sind kaugemalt nähtavaks

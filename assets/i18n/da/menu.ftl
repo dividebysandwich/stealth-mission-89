@@ -211,6 +211,11 @@ aircraft-fa18e =
         Multirolle-jager, fra hangarskibene
         Mach 1,6 – 7,5 g
         Glascockpit, berøringsskærm-UFC
+aircraft-ea18g =
+    .facts =
+        Elektronisk angreb, fra hangarskibene
+        Forstyrrer fjendens radarer for angrebet
+        To sæder: pilot og officer for elektronisk krigsførelse
 aircraft-tornado =
     .facts =
         Angrebsfly til lav højde

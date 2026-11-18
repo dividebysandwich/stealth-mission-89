@@ -198,3 +198,7 @@ weapon-role-28 = Parašiutininkai: karių grupė, išmetama virš vietovės, kur
 employment-28 =
     Pro C-5 duris (dvi grupės) arba CH-47 rampą (viena grupė) virš išmetimo zonos
     Šuolis 500–1500 ft virš žemės, lėčiau nei 150 kt; dauguma grupės turi nusileisti zonoje
+weapon-role-29 = Taktinis trukdžių konteineris: sumažina trukdomų radarų nuotolį iki prasiveržimo nuotolio
+employment-29 =
+    Nustatomas JAM puslapyje: kiekvienam konteineriui radaras ar sektorius, įjungta ar išjungta
+    Trukdymas daro tave matomą iš toliau

@@ -198,3 +198,7 @@ weapon-role-28 = Paraquedistas: um grupo de soldados para lançar sobre um local
 employment-28 =
     Pelas portas do C-5 (dois grupos) ou pela rampa do CH-47 (um grupo) sobre a zona de lançamento
     Salto entre 500 e 1500 ft acima do solo, abaixo de 150 kt; a maior parte do grupo deve pousar na zona
+weapon-role-29 = Pod de interferência tática: reduz os radares interferidos ao seu alcance de penetração
+employment-29 =
+    Ajustado na página JAM: um radar ou setor por pod, ligado ou desligado
+    Interferir faz você ser visto de mais longe

@@ -211,6 +211,11 @@ aircraft-fa18e =
         Viacúčelová stíhačka, z lietadlových lodí
         Mach 1,6 – 7,5 g
         Sklenený kokpit, dotykový UFC
+aircraft-ea18g =
+    .facts =
+        Elektronický útok, z lietadlových lodí
+        Ruší nepriateľské rádiolokátory pre úder
+        Dve sedadlá: pilot a dôstojník elektronického boja
 aircraft-tornado =
     .facts =
         Útočné lietadlo pre lety v malej výške

@@ -711,6 +711,10 @@ pub struct Airframe {
     /// The F/A-18E Super Hornet (external stores, as the F-16).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hornet: bool,
+    /// The EA-18G Growler (with `hornet`): its ALQ-99 pods jam the enemy's radars
+    /// ([`crate::jamming`]), an electronic warfare officer's seat behind the pilot.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub growler: bool,
 }
 
 /// Landing option.
@@ -788,6 +792,9 @@ pub struct SimOptions {
     /// The aircraft is the F/A-18E Super Hornet: seen as one by the other pilots.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hornet: bool,
+    /// The aircraft is the EA-18G Growler (with `hornet`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub growler: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -843,6 +850,7 @@ impl Default for SimOptions {
             apache: false,
             seahawk: false,
             hornet: false,
+            growler: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

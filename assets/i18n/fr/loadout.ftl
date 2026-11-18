@@ -198,3 +198,7 @@ weapon-role-28 = Parachutistes : un stick de soldats à larguer sur un lieu qu'i
 employment-28 =
     Par les portes du C-5 (deux sticks) ou la rampe du CH-47 (un stick) au-dessus de la zone de saut
     Saut entre 500 et 1500 ft sol, sous 150 kt ; la plupart d'un stick doit atterrir dans la zone
+weapon-role-29 = Nacelle de brouillage tactique : réduit les radars visés à leur portée de percée
+employment-29 =
+    Réglée sur la page JAM : un radar ou un secteur par nacelle, marche ou arrêt
+    Brouiller vous rend visible de plus loin

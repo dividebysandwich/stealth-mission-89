@@ -198,3 +198,7 @@ weapon-role-28 = Padalci: skupina vojakov za odmet nad krajem, ki ga zavzamejo
 employment-28 =
     Skozi vrata C-5 (dve skupini) ali po rampi CH-47 (ena skupina) nad območjem odmeta
     Skok med 500 in 1500 ft nad tlemi, pod 150 kt; večina skupine mora pristati v območju
+weapon-role-29 = Taktični motilni vsebnik: skrči motene radarje na njihov doseg preboja
+employment-29 =
+    Nastavi se na strani JAM: za vsak vsebnik radar ali sektor, vklop ali izklop
+    Motenje te naredi vidnega z večje razdalje

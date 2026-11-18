@@ -274,8 +274,12 @@ impl Sim {
         // Entries: the first station of each weapon, then the cannon (index n).
         let n = self.pl.bays.len();
         // Gun pods are the cannon's entry, not stations of their own.
+        // The jammer pods are not selected: they are worked on the JAM page.
         let first_of = |b: &[(i32, i32)], i: usize| {
-            b[i].0 >= 0 && !self.gun_pod(b[i].0) && !b[..i].iter().any(|o| o.0 == b[i].0)
+            b[i].0 >= 0
+                && !self.gun_pod(b[i].0)
+                && b[i].0 != crate::jamming::ALQ99_WEAPON
+                && !b[..i].iter().any(|o| o.0 == b[i].0)
         };
         let cur = if self.pl.gun_selected { n } else { self.pl.cur_bay };
         let cur_w =

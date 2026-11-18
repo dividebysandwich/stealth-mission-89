@@ -198,3 +198,7 @@ weapon-role-28 = Paracadutisti: uno stick di soldati da lanciare su un luogo che
 employment-28 =
     Dalle porte del C-5 (due stick) o dalla rampa del CH-47 (uno stick) sopra la zona di lancio
     Lancio tra 500 e 1500 ft dal suolo, sotto 150 kt; la maggior parte dello stick deve atterrare nella zona
+weapon-role-29 = Pod di disturbo tattico: riduce i radar disturbati alla loro portata di bruciatura
+employment-29 =
+    Impostato sulla pagina JAM: un radar o un settore per pod, acceso o spento
+    Disturbare ti rende visibile da più lontano

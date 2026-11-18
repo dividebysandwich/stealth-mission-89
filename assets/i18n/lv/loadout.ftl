@@ -198,3 +198,7 @@ weapon-role-28 = Desantnieki: karavīru grupa, ko izmet virs vietas, kuru tie ie
 employment-28 =
     Pa C-5 durvīm (divas grupas) vai CH-47 rampu (viena grupa) virs izsēdināšanas zonas
     Lēciens 500–1500 ft virs zemes, lēnāk par 150 kt; lielākajai daļai grupas jānolaižas zonā
+weapon-role-29 = Taktiskais traucēšanas konteiners: samazina traucēto radaru tālumu līdz to caursišanas attālumam
+employment-29 =
+    Iestata JAM lapā: katram konteineram radars vai sektors, ieslēgts vai izslēgts
+    Traucēšana padara tevi redzamu no tālākas distances

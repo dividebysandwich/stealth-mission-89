@@ -198,3 +198,7 @@ weapon-role-28 = Parașutiști: o grupă de soldați lansați deasupra unui loc 
 employment-28 =
     Prin ușile C-5 (două grupe) sau pe rampa CH-47 (o grupă) deasupra zonei de lansare
     Salt între 500 și 1500 ft deasupra solului, sub 150 kt; majoritatea grupei trebuie să aterizeze în zonă
+weapon-role-29 = Container de bruiaj tactic: reduce radarele bruiate la raza lor de străpungere
+employment-29 =
+    Setat pe pagina JAM: un radar sau un sector pentru fiecare container, pornit sau oprit
+    Bruiajul te face vizibil de mai departe

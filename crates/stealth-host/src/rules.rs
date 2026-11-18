@@ -99,6 +99,12 @@ impl Rules {
             Aircraft::FA18E => {
                 Airframe { external_stores: true, hornet: true, ..Airframe::default() }
             }
+            Aircraft::EA18G => Airframe {
+                external_stores: true,
+                hornet: true,
+                growler: true,
+                ..Airframe::default()
+            },
             // Weapons in bays as the F-117A's, a cannon, a lower radar return.
             Aircraft::F22 => Airframe { raptor: true, ..Airframe::default() },
             // No weapons, no cannon; cargo inside, dropped over the ramp (its "bay").

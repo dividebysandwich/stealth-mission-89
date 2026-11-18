@@ -211,6 +211,11 @@ aircraft-fa18e =
         Ġellied multirole, mill-ġarrieri tal-ajruplani
         Mach 1.6, 7.5 g
         Cockpit tal-ħġieġ, UFC bil-mess
+aircraft-ea18g =
+    .facts =
+        Attakk elettroniku, mill-ġarriera
+        Jxekkel ir-radars tal-għadu għall-attakk
+        Żewġ sedili: pilota u uffiċjal tal-gwerra elettronika
 aircraft-tornado =
     .facts =
         Ajruplan ta' strike f'altitudni baxxa

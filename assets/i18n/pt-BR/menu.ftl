@@ -211,6 +211,11 @@ aircraft-fa18e =
         Caça multifunção, a partir dos porta-aviões
         Mach 1,6 – 7,5 g
         Cabine digital, UFC sensível ao toque
+aircraft-ea18g =
+    .facts =
+        Ataque eletrônico, dos porta-aviões
+        Interfere nos radares inimigos para o ataque
+        Dois assentos: piloto e oficial de guerra eletrônica
 aircraft-tornado =
     .facts =
         Aeronave de ataque em baixa altitude

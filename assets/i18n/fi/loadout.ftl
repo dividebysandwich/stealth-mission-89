@@ -198,3 +198,7 @@ weapon-role-28 = Laskuvarjojääkärit: ryhmä sotilaita pudotettavaksi paikkaan
 employment-28 =
     C-5:n ovista (kaksi ryhmää) tai CH-47:n rampilta (yksi ryhmä) pudotusalueen yllä
     Hyppy 500–1500 ft maanpinnasta, alle 150 kt; suurimman osan ryhmästä on laskeuduttava alueelle
+weapon-role-29 = Taktinen häirintäpodi: lyhentää häirityt tutkat niiden läpipolttoetäisyyteen
+employment-29 =
+    Asetetaan JAM-sivulla: jokaiselle podille tutka tai sektori, päälle tai pois
+    Häirintä näkyy kauempaa

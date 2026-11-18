@@ -211,6 +211,11 @@ aircraft-fa18e =
         Mehrzweckjäger, von den Flugzeugträgern
         Mach 1,6 – 7,5 g
         Glascockpit, Touchscreen-UFC
+aircraft-ea18g =
+    .facts =
+        Elektronischer Kampf, von den Trägern
+        Stört die feindlichen Radare für den Angriff
+        Zwei Sitze: Pilot und Waffensystemoffizier für elektronische Kampfführung
 aircraft-tornado =
     .facts =
         Angriffsflugzeug für den Tiefflug

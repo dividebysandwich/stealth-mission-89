@@ -198,3 +198,7 @@ weapon-role-28 = Fallskärmsjägare: en grupp soldater att släppa över en plat
 employment-28 =
     Ut genom C-5:ans dörrar (två grupper) eller CH-47:ans ramp (en grupp) över hoppzonen
     Hopp mellan 500 och 1500 ft över marken, under 150 kt; större delen av gruppen måste landa i zonen
+weapon-role-29 = Taktisk störkapsel: kortar de störda radarstationerna till deras genombränningsavstånd
+employment-29 =
+    Ställs in på JAM-sidan: en radar eller sektor per kapsel, på eller av
+    Störning gör dig synlig på längre håll

@@ -198,3 +198,7 @@ weapon-role-28 = Ejtőernyősök: katonák egy csoportja, akiket egy elfoglaland
 employment-28 =
     A C-5 ajtain (két csoport) vagy a CH-47 rámpáján (egy csoport) az ugrózóna fölött
     Ugrás 500 és 1500 ft között a föld fölött, 150 kt alatt; a csoport nagyobb részének a zónában kell földet érnie
+weapon-role-29 = Taktikai zavarókonténer: a zavart radarokat az átégési távolságukra szűkíti
+employment-29 =
+    A JAM oldalon állítható: konténerenként egy radar vagy szektor, be vagy ki
+    A zavarás messzebbről láthatóvá tesz

@@ -211,6 +211,11 @@ aircraft-fa18e =
         다목적 전투기, 항공모함에서 출격
         마하 1.6, 7.5 g
         글라스 콕핏, 터치스크린 UFC
+aircraft-ea18g =
+    .facts =
+        전자공격기, 항공모함에서
+        공격을 위해 적 레이더를 재밍한다
+        복좌: 조종사와 전자전 장교
 aircraft-tornado =
     .facts =
         저고도 타격기

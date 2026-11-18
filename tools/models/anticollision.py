@@ -52,6 +52,7 @@ LIGHTS = {
     47: [(SINGLE, "fin")],  # AV-8B: strobe on the fin tip
     75: [(SINGLE, "fin")],  # F-22A: strobes on both fin tips
     79: [(SINGLE, "fin")],  # F/A-18E: strobes on both fin tips
+    81: [(SINGLE, "fin")],  # EA-18G: the same
     76: [(BEACON, "top", -32), (BEACON, "bottom", 0), (DOUBLE, "wingtips")],  # AC-130
 }
 

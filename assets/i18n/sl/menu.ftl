@@ -211,6 +211,11 @@ aircraft-fa18e =
         Večnamenski lovec, z letalonosilk
         Mach 1,6 – 7,5 g
         Stekleni kokpit, UFC na dotik
+aircraft-ea18g =
+    .facts =
+        Elektronski napad, z letalonosilk
+        Moti sovražne radarje za napad
+        Dva sedeža: pilot in častnik za elektronsko bojevanje
 aircraft-tornado =
     .facts =
         Jurišno letalo za nizko letenje

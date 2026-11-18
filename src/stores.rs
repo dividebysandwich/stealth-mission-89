@@ -435,6 +435,7 @@ mod tests {
         for kind in [
             AircraftKind::F16,
             AircraftKind::FA18E,
+            AircraftKind::EA18G,
             AircraftKind::Tornado,
             AircraftKind::A10,
             AircraftKind::AV8B,

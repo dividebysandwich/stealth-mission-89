@@ -198,3 +198,7 @@ weapon-role-28 = Paraitrooperí: buíon saighdiúirí le scaoileadh os cionn ái
 employment-28 =
     Trí dhoirse an C-5 (dhá bhuíon) nó rampa an CH-47 (buíon amháin) os cionn an chriosa titime
     Léim idir 500 agus 1500 ft os cionn na talún, faoi 150 kt; ní mór don chuid is mó den bhuíon tuirlingt sa chrios
+weapon-role-29 = Pod taicticiúil cur isteach: laghdaíonn sé na radair go dtí a raon dóite tríd
+employment-29 =
+    Socraithe ar an leathanach JAM: radar nó earnáil do gach pod, air nó as
+    Le cur isteach feictear thú ó níos faide

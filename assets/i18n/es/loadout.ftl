@@ -198,3 +198,7 @@ weapon-role-28 = Paracaidistas: un grupo de soldados para lanzar sobre un lugar 
 employment-28 =
     Por las puertas del C-5 (dos grupos) o la rampa del CH-47 (un grupo) sobre la zona de salto
     Salto entre 500 y 1500 ft sobre el suelo, por debajo de 150 kt; la mayor parte del grupo debe caer en la zona
+weapon-role-29 = Contenedor de perturbación táctica: reduce los radares perturbados a su alcance de penetración
+employment-29 =
+    Se ajusta en la página JAM: un radar o un sector por contenedor, encendido o apagado
+    Perturbar te hace visible desde más lejos

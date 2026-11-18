@@ -576,6 +576,7 @@ impl Sim {
             apache: self.pl.apache,
             seahawk: self.pl.seahawk,
             hornet: self.pl.hornet,
+            growler: self.pl.growler,
         };
         self.respawn_pilot(self.pl.id, base, objective, airframe)
     }
@@ -606,6 +607,7 @@ impl Sim {
             apache,
             seahawk,
             hornet,
+            growler,
         } = airframe;
         if !self.opts.campaign {
             return self.start_state();
@@ -634,6 +636,7 @@ impl Sim {
         self.pl.apache = apache;
         self.pl.seahawk = seahawk;
         self.pl.hornet = hornet;
+        self.pl.growler = growler;
         self.pl.cargo_tag = None;
         self.pl.unload = [0; 2];
         self.pl.damage = 0;

@@ -211,6 +211,11 @@ aircraft-fa18e =
         Multirole fighter, from the carriers
         Mach 1.6, 7.5 g
         Glass cockpit, touchscreen UFC
+aircraft-ea18g =
+    .facts =
+        Electronic attack, from the carriers
+        Jams the enemy's radars for the strike
+        Two seats: pilot and electronic warfare officer
 aircraft-tornado =
     .facts =
         Low-level strike aircraft

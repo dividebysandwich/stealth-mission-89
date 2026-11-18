@@ -211,6 +211,11 @@ aircraft-fa18e =
         Daudzfunkcionāls iznīcinātājs, no aviācijas bāzeskuģiem
         Mach 1,6 – 7,5 g
         Stikla kabīne, skārienjutīgs UFC
+aircraft-ea18g =
+    .facts =
+        Elektroniskais uzbrukums, no aviobāzes kuģiem
+        Traucē ienaidnieka radarus triecienam
+        Divas sēdekļi: pilots un elektroniskās karadarbības virsnieks
 aircraft-tornado =
     .facts =
         Zemlidojuma triecienlidmašīna

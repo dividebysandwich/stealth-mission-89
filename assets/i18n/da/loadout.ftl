@@ -198,3 +198,7 @@ weapon-role-28 = Faldskærmstropper: en stick soldater, der springer over et ste
 employment-28 =
     Ud af C-5'ens døre (to sticks) eller CH-47'ens rampe (én stick) over springzonen
     Spring mellem 500 og 1500 ft over jorden, under 150 kt; det meste af en stick skal lande i zonen
+weapon-role-29 = Taktisk støjsenderpod: skærer de forstyrrede radarer ned til deres gennembrændingsafstand
+employment-29 =
+    Indstilles på JAM-siden: én radar eller sektor pr. pod, tænd eller sluk
+    Støjsending gør dig synlig længere væk fra

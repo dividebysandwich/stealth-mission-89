@@ -30,7 +30,8 @@ import aircraft  # noqa: E402
 K = aircraft.K
 # The ground under the wheels (m below the origin), the Harrier's along its nose-up attitude.
 GROUND = {23: lambda y: aircraft.F16_GROUND, 32: lambda y: aircraft.A10_GROUND, 45: lambda y: aircraft.TORNADO_GROUND,
-          47: lambda y: aircraft.harrier_ground(y), 79: lambda y: aircraft.FA18E_GROUND}
+          47: lambda y: aircraft.harrier_ground(y), 79: lambda y: aircraft.FA18E_GROUND,
+          81: lambda y: aircraft.FA18E_GROUND}
 # Full aft sweep of the Tornado's outer wings (degrees from fully forward).
 SWEEP = 42.0
 # The least gap (m) between a store and the ground under the wheels.

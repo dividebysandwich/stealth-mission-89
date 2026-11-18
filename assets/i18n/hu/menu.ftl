@@ -211,6 +211,11 @@ aircraft-fa18e =
         Sokoldalú vadászgép, a repülőgép-hordozókról
         Mach 1,6 – 7,5 g
         Üvegpilótafülke, érintőképernyős UFC
+aircraft-ea18g =
+    .facts =
+        Elektronikus támadás, a repülőgép-hordozókról
+        Zavarja az ellenség radarjait a csapás előtt
+        Két ülés: pilóta és elektronikai hadviselési tiszt
 aircraft-tornado =
     .facts =
         Kis magasságú csapásmérő repülőgép

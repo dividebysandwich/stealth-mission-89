@@ -211,6 +211,11 @@ aircraft-fa18e =
         Monitoimihävittäjä, lentotukialuksilta
         Mach 1,6 – 7,5 g
         Lasiohjaamo, kosketusnäyttö-UFC
+aircraft-ea18g =
+    .facts =
+        Elektroninen hyökkäys, lentotukialuksilta
+        Häiritsee vihollisen tutkia iskun tieltä
+        Kaksi istuinta: lentäjä ja elektronisen sodankäynnin upseeri
 aircraft-tornado =
     .facts =
         Matalalento-iskukone

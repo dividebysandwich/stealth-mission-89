@@ -211,6 +211,11 @@ aircraft-fa18e =
         Chasseur multirôle, depuis les porte-avions
         Mach 1,6 – 7,5 g
         Cockpit tout écran, UFC tactile
+aircraft-ea18g =
+    .facts =
+        Attaque électronique, depuis les porte-avions
+        Brouille les radars ennemis pour le raid
+        Deux places : pilote et officier de guerre électronique
 aircraft-tornado =
     .facts =
         Avion d'attaque à basse altitude
