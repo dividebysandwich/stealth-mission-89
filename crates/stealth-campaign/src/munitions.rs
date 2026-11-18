@@ -47,9 +47,12 @@ pub enum Munition {
     /// The JSOW glide bomb and the MALD decoy.
     Jsow,
     Mald,
+    /// The F/A-18E's SLAM-ER and the Tornado's JP233 dispenser.
+    SlamEr,
+    Jp233,
 }
 
-const BLUE: [Munition; 16] = [
+const BLUE: [Munition; 18] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -66,6 +69,8 @@ const BLUE: [Munition; 16] = [
     Munition::GepardRounds,
     Munition::Jsow,
     Munition::Mald,
+    Munition::SlamEr,
+    Munition::Jp233,
 ];
 const RED: [Munition; 8] = [
     Munition::Aa10,
@@ -124,6 +129,8 @@ impl Munition {
             AaaRounds => "23/57 mm",
             Jsow => "AGM-154 JSOW",
             Mald => "ADM-160 MALD",
+            SlamEr => "AGM-84H SLAM-ER",
+            Jp233 => "JP233",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -160,6 +167,8 @@ impl Munition {
             AaaRounds => 20000.0,
             Jsow => 12.0,
             Mald => 12.0,
+            SlamEr => 8.0,
+            Jp233 => 8.0,
         }
     }
 
@@ -186,6 +195,8 @@ impl Munition {
             AaaRounds => 12000.0,
             Jsow => 4.0,
             Mald => 4.0,
+            SlamEr => 2.0,
+            Jp233 => 3.0,
         }
     }
 
@@ -199,6 +210,7 @@ impl Munition {
             Munition::Harpoon => Some(Munition::Penguin),
             Munition::Penguin | Munition::Cbu105 => Some(Munition::Agm65),
             Munition::Jsow => Some(Munition::Gbu12),
+            Munition::SlamEr => Some(Munition::Agm65),
             _ => None,
         }
     }
@@ -218,8 +230,10 @@ impl Munition {
             20 => Hellfire,
             21 => Stinger,
             23 => Cbu105,
+            25 => SlamEr,
             26 => Jsow,
             27 => Mald,
+            30 => Jp233,
             _ => return None,
         })
     }

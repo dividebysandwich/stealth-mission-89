@@ -3,7 +3,7 @@
 //! A JP233 stays on its pylon: the fire button with it selected sets it going, and for
 //! `DISPENSE_SECS` it throws its submunitions down out of its tubes as the aircraft flies on,
 //! laying them in a strip some 500 m long behind it. Each comes down on a small chute that
-//! takes its speed off; the empty dispenser is then let go (the station empties).
+//! takes its speed off; the empty dispenser stays on its pylon (the station has no round left).
 //!
 //! - The SG-357 runway cratering bomblets, along the middle of the strip, go off as they hit:
 //!   a runway they crater often enough is put out of action, and anything they land by
@@ -302,7 +302,7 @@ impl Sim {
             run.craters -= out[0].1.min(run.craters);
             run.mines -= out[1].1.min(run.mines);
         }
-        // Empty dispensers are let go.
+        // Empty dispensers are done (they stay on their pylons, no round left).
         let mut k = 0;
         while k < self.jp233.runs.len() {
             let r = self.jp233.runs[k];

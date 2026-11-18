@@ -3493,6 +3493,17 @@ fn the_war_starts_with_every_airfield_stocked_and_a_production_base_in_the_rear(
     let b = other_base(&c, Side::Blue);
     assert_eq!(c.available(b, Munition::of_weapon(1).unwrap()), 32);
     assert!(Munition::of_weapon(0).is_none() && Munition::of_weapon(9).is_none());
+    // The SLAM-ER, the JSOW, the MALD and the JP233 come out of the stock.
+    for (w, m, n) in [
+        (25, Munition::SlamEr, 8),
+        (26, Munition::Jsow, 12),
+        (27, Munition::Mald, 12),
+        (30, Munition::Jp233, 8),
+    ] {
+        assert_eq!(Munition::of_weapon(w), Some(m));
+        assert!(Munition::of_side(Side::Blue).contains(&m));
+        assert_eq!(c.available(b, m), n, "{m:?}");
+    }
     assert!(
         Munition::of_spec(17, Side::Red).is_none() && Munition::of_spec(23, Side::Blue).is_none()
     );

@@ -2363,7 +2363,7 @@ release free-fall bombs low and slow.
 **JP233.** The Tornado's airfield attack dispenser, a 6.5 m container on a forward shoulder
 pylon (it covers the aft one on its side too: loading one empties the other). It is not
 dropped: press fire over the target and for two seconds it throws its load down out of its
-tubes as you fly on, then the empty container falls away. Each press starts one dispenser,
+tubes as you fly on; the empty container stays on its pylon. Each press starts one dispenser,
 so a second press at once lays both together. Its 30 SG-357 cratering bomblets and 60 HB-876
 mines come down on small chutes in a strip some 500 m long behind you, the bomblets along the
 middle and the mines spread wider. Fly straight and level, low, along the runway or over the
@@ -3253,8 +3253,8 @@ refilling (RLD).</li>
 
 Every airbase keeps a stock of munitions. AIM-9 Sidewinders (the enemy's AA-8s), unguided bombs,
 guns, flares and fuel never run out; everything else does: AIM-120, AIM-7, HARM, Maverick, GBU-12,
-Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Penguin, Harpoon, the Patriots' PAC-3s and the
-Gepards' 35 mm rounds (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
+Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Penguin, Harpoon, JSOW, MALD, SLAM-ER, JP233, the
+Patriots' PAC-3s and the Gepards' 35 mm rounds (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
 the stock of the base you take off from: the briefing's loadout shows how many each base has
 left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
 stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it
