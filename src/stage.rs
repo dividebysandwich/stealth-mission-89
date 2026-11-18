@@ -9,7 +9,8 @@
 //!   (behind the drone on its own heading and above it, looking at it; the drone a town's
 //!   searchlight follows rather than drone `k` while there is one), `fleet` (from behind
 //!   the first Phalanx mount of the fleet, looking at the nearest threat at sea: a
-//!   sea-skimmer, an attack boat, else out from the ship).
+//!   sea-skimmer, an attack boat, else out from the ship); a negative distance looks back at
+//!   the mount from out over the water.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -126,8 +127,15 @@ fn stage_camera(
         let ax = (threat - at).with_y(0.0).try_normalize().unwrap_or(DVec3::NEG_Z);
         let (d, h) = (dist as f64, height as f64);
         let side = ax.cross(DVec3::Y);
-        let eye = at - ax * d + side * (d * 0.6) + DVec3::Y * h;
-        let look = at.lerp(threat, 0.5_f64.min(60.0 / threat.distance(at).max(1.0)));
+        let (eye, look) = if d < 0.0 {
+            // From outboard over the water, looking back at the mount on the ship's side.
+            let out = DVec3::new(mount.out.sin() as f64, 0.0, -mount.out.cos() as f64);
+            let along = out.cross(DVec3::Y);
+            (at - out * d + along * (d * 0.5) + DVec3::Y * h, at)
+        } else {
+            let eye = at - ax * d + side * (d * 0.6) + DVec3::Y * h;
+            (eye, at.lerp(threat, 0.5_f64.min(60.0 / threat.distance(at).max(1.0))))
+        };
         let world_rot =
             Transform::from_translation(eye.as_vec3()).looking_at(look.as_vec3(), Vec3::Y).rotation;
         let local = a.orientation.inverse();

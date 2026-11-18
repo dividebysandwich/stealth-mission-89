@@ -844,10 +844,10 @@ fn sync_aaa(
             .get(m.ship as usize)
             .is_none_or(|o| o.flags & stealth_sim::oflags::DESTROYED != 0);
         pos.0 = aaa_point(m.at);
-        tf.rotation = Quat::IDENTITY;
+        tf.rotation = Quat::from_rotation_y(-m.out);
         vis.set_if_neq(if gone { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
-            s.0[AAA_TURRET_SLOT] = bam16(m.az);
+            s.0[AAA_TURRET_SLOT] = bam16(m.az - m.out);
             s.0[AAA_GUN_SLOT] = bam16(-m.el);
         }
     }

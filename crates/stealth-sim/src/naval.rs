@@ -55,9 +55,9 @@ const TRACER_SECS: f64 = 1.6;
 /// A tracer every this many frames a mount fires.
 const TRACER_EVERY: i32 = 2;
 /// Mounts on the carrier (nimitz.blend metres: starboard aft sponson, port bow sponson), the
-/// height they stand at (ft: a little under the flight deck), and on an escort.
-const CARRIER_MOUNTS: [(f64, f64); 2] = [(37.0, -122.0), (-35.0, 112.0)];
-const CARRIER_MOUNT_ALT: f64 = 118.0;
+/// height their sponsons stand at (ft: some 2 m under the flight deck), and on an escort.
+const CARRIER_MOUNTS: [(f64, f64); 2] = [(42.0, -122.0), (-40.0, 112.0)];
+const CARRIER_MOUNT_ALT: f64 = 119.0;
 const ESCORT_MOUNT_ALT: f64 = 30.0;
 
 /// The fleet's blasts go off this high (viewZ): above where a blast hurts the ground units round
@@ -100,6 +100,9 @@ pub struct Ciws {
     pub rounds: i32,
     pub reload: f32,
     pub target: Option<Threat>,
+    /// The way its sponson points out from the ship's side (rad clockwise from north).
+    #[serde(default)]
+    pub out: f32,
 }
 
 /// The fleet's defence.
@@ -172,10 +175,11 @@ impl Sim {
         let s = if self.ns < 0 { -1.0 } else { 1.0 };
         for o in self.fleet() {
             let g = self.objects[o];
-            let mut put = |at: [f64; 3]| {
+            let mut put = |at: [f64; 3], out: f64| {
                 self.naval.mounts.push(Ciws {
                     ship: o as u16,
                     at,
+                    out: out as f32,
                     az: 0.0,
                     el: 0.0,
                     firing: false,
@@ -188,11 +192,13 @@ impl Sim {
                 let (pe, pn) = crate::catapult::pivot(g.x, g.y);
                 for (x, y) in CARRIER_MOUNTS {
                     let k = crate::catapult::WU_PER_M * s;
-                    put([(pe + x * k) * WU_M, (pn + y * k) * WU_M, CARRIER_MOUNT_ALT * FT_M]);
+                    // Out from the side it stands on (the bow north for `s` 1, south for -1).
+                    let out = std::f64::consts::FRAC_PI_2 * x.signum() * s;
+                    put([(pe + x * k) * WU_M, (pn + y * k) * WU_M, CARRIER_MOUNT_ALT * FT_M], out);
                 }
             } else {
                 let [e, n] = crate::asw::object_metres(&g);
-                put([e, n, ESCORT_MOUNT_ALT * FT_M]);
+                put([e, n, ESCORT_MOUNT_ALT * FT_M], 0.0);
             }
         }
     }

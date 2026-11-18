@@ -1390,19 +1390,34 @@ def shooter():
 
 HAZE = Ramp(0xE3, 0xE8)
 HAZE_LIGHT = Ramp(0xE3, 0xE5)
+HAZE_DARK = Ramp(0xE6, 0xEA)
 HULL_BLACK = Ramp(0xEC, 0xEF)
 
 
-def phalanx_base(paint=HAZE):
-    """The Mk 15 mount's pedestal and the round training base on it (pivot at its top), on
-    its sponson: a platform with a rail round it, braced down to the ship's side."""
+def phalanx_base(paint=HAZE, under=HAZE_DARK):
+    """The Mk 15 mount's pedestal and training base (pivot at its top) on its sponson: a deck
+    jutting out from the ship's side (+y out, its inboard edge at y -2.2 against the hull),
+    rounded at its outer end, with a rail round it, on a round column down the hull."""
     g = Geo()
-    g.add(block(-1.8, 1.8, -1.8, 1.8, -0.25, 0.0, paint))
-    for x0, x1, y0, y1 in ((-1.8, 1.8, 1.75, 1.8), (-1.8, 1.8, -1.8, -1.75), (-1.8, -1.75, -1.8, 1.8),
-                           (1.75, 1.8, -1.8, 1.8)):
-        g.add(block(x0, x1, y0, y1, 0.0, 1.0, paint))
-    g.add(mklib.hexa([(-1.2, -1.6, -0.25), (1.2, -1.6, -0.25), (1.2, 1.6, -0.25), (-1.2, 1.6, -0.25),
-                      (-0.3, -0.4, -2.6), (0.3, -0.4, -2.6), (0.3, 0.4, -2.6), (-0.3, 0.4, -2.6)], paint))
+    # The platform: a slab, half round out board.
+    n = 14
+    outline = [(-2.6, -2.2), (2.6, -2.2)]
+    outline += [(2.6 * math.cos(math.pi * k / n), 2.6 * math.sin(math.pi * k / n)) for k in range(n + 1)]
+    outline = outline[:2] + outline[3:-1] + [(-2.6, 0.0)]
+    top = [(x, y, 0.0) for x, y in outline]
+    bottom = [(x, y, -0.35) for x, y in outline]
+    g.face2(top, paint)
+    g.face2(bottom, under)
+    for a, b in zip(outline, outline[1:] + outline[:1]):
+        g.face2([(a[0], a[1], -0.35), (b[0], b[1], -0.35), (b[0], b[1], 0.0), (a[0], a[1], 0.0)], paint)
+    # A low coaming round the outer edge.
+    for k in range(n):
+        a0, a1 = math.pi * k / n, math.pi * (k + 1) / n
+        p0 = (2.55 * math.cos(a0), 2.55 * math.sin(a0))
+        p1 = (2.55 * math.cos(a1), 2.55 * math.sin(a1))
+        g.face2([(p0[0], p0[1], 0.0), (p1[0], p1[1], 0.0), (p1[0], p1[1], 0.5), (p0[0], p0[1], 0.5)], paint)
+    # The column under it, down the hull's side.
+    g.add(frustum((0, -0.4, -0.35), (0, -0.4, -4.5), 1.6, 1.6, under, n=14))
     g.add(frustum((0, 0, 0), (0, 0, 0.9), 0.75, 0.7, paint, n=12))
     g.add(frustum((0, 0, 0.9), (0, 0, 1.15), 0.95, 0.95, paint, n=12))
     return g
