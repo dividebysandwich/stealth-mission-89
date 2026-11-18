@@ -1412,6 +1412,210 @@ def f22_gear():
     return g
 
 
+
+# The F/A-18E Super Hornet from its three-view (18.31 m long, 13.62 m span over the wingtip
+# rails, 4.88 m high; the plan view 37.47 px/m, the side 39.65, the front 48.5): points as (x,
+# s m aft of the nose, z), z 0 the nose tip's height (1.80 m above the ground).
+# Round-nosed, its LEXes running from the windscreen out to the wings' leading edges, the raked
+# intakes under them, the trapezoid wings with their dogtooth, the canted fins on the nacelles.
+FA18E_NOSE = 9.155
+FA18E_GREY = Ramp(230, 236)
+FA18E_GROUND = -1.80
+# Fuselage rings, right half from the spine round to the keel: (s, nine (x, z) points: the top,
+# the canopy's sill or the deck's edge, the shoulder, the chine or the LEX's edge, back in under
+# the LEX, the flank, the lower flank, the bottom corner, the keel). Under the LEX the flank is
+# narrow as far as the intake trunks; from s 9.65 it is the trunks' outer wall.
+FA18E_BODY = [
+    (0.00, [(0.0, 0.0)] * 9),
+    (0.25, "round", 0.13, -0.17, 0.15, -0.02),
+    (0.60, "round", 0.29, -0.25, 0.29, 0.00),
+    (1.10, "round", 0.44, -0.30, 0.38, 0.02),
+    (1.70, "round", 0.60, -0.33, 0.44, 0.06),
+    (2.40, "round", 0.76, -0.36, 0.47, 0.12),
+    (3.00, [(0.0, 0.88), (0.30, 0.85), (0.45, 0.70), (0.49, 0.42), (0.49, 0.32), (0.48, 0.05), (0.45, -0.20),
+            (0.33, -0.36), (0.0, -0.39)]),
+    (3.50, [(0.0, 0.94), (0.46, 0.95), (0.50, 0.76), (0.51, 0.52), (0.51, 0.44), (0.50, 0.10), (0.47, -0.21),
+            (0.35, -0.38), (0.0, -0.41)]),
+    (4.35, [(0.0, 0.95), (0.47, 0.96), (0.52, 0.82), (0.55, 0.64), (0.53, 0.58), (0.52, 0.15), (0.49, -0.22),
+            (0.36, -0.40), (0.0, -0.43)]),
+    (4.90, [(0.0, 0.96), (0.47, 0.97), (0.60, 0.85), (0.81, 0.69), (0.56, 0.61), (0.54, 0.15), (0.51, -0.23),
+            (0.38, -0.42), (0.0, -0.45)]),
+    (5.95, [(0.0, 0.97), (0.47, 0.98), (0.75, 0.87), (1.35, 0.73), (0.60, 0.65), (0.58, 0.15), (0.55, -0.26),
+            (0.40, -0.46), (0.0, -0.48)]),
+    (7.02, [(0.0, 0.97), (0.47, 0.96), (0.85, 0.86), (1.64, 0.70), (0.63, 0.64), (0.60, 0.20), (0.58, -0.30),
+            (0.42, -0.52), (0.0, -0.54)]),
+    (8.09, [(0.0, 0.95), (0.47, 0.94), (0.95, 0.85), (1.88, 0.62), (0.66, 0.60), (0.62, 0.25), (0.60, -0.35),
+            (0.45, -0.56), (0.0, -0.57)]),
+    (8.60, [(0.0, 0.94), (0.47, 0.93), (1.00, 0.84), (1.93, 0.56), (0.85, 0.56), (0.80, 0.30), (0.60, -0.38),
+            (0.46, -0.58), (0.0, -0.58)]),
+    (9.07, [(0.0, 0.93), (0.47, 0.92), (1.05, 0.84), (1.96, 0.50), (1.05, 0.52), (1.00, 0.32), (0.60, -0.40),
+            (0.46, -0.58), (0.0, -0.59)]),
+    (9.60, [(0.0, 0.92), (0.47, 0.91), (1.05, 0.84), (1.60, 0.52), (1.38, 0.47), (1.30, 0.33), (0.60, -0.42),
+            (0.47, -0.60), (0.0, -0.61)]),
+    (9.65, [(0.0, 0.92), (0.47, 0.91), (1.05, 0.84), (1.42, 0.62), (1.42, 0.45), (1.36, 0.32), (1.22, -0.55),
+            (0.75, -0.62), (0.0, -0.62)]),
+    (11.00, [(0.0, 0.90), (0.47, 0.89), (1.05, 0.84), (1.42, 0.66), (1.42, 0.48), (1.38, 0.30), (1.25, -0.55),
+             (0.78, -0.63), (0.0, -0.63)]),
+    (12.50, [(0.0, 0.86), (0.45, 0.86), (1.03, 0.83), (1.38, 0.68), (1.40, 0.50), (1.36, 0.28), (1.22, -0.52),
+             (0.76, -0.61), (0.0, -0.61)]),
+    (13.45, [(0.0, 0.84), (0.45, 0.84), (1.00, 0.82), (1.25, 0.70), (1.30, 0.50), (1.28, 0.25), (1.15, -0.45),
+             (0.72, -0.58), (0.0, -0.59)]),
+    (14.60, [(0.0, 0.80), (0.40, 0.80), (0.88, 0.79), (1.02, 0.70), (1.05, 0.52), (1.04, 0.25), (0.95, -0.30),
+             (0.62, -0.52), (0.0, -0.54)]),
+    (15.60, [(0.0, 0.74), (0.35, 0.74), (0.85, 0.74), (0.98, 0.66), (1.01, 0.45), (1.00, 0.24), (0.92, -0.15),
+             (0.62, -0.38), (0.0, -0.36)]),
+    (16.40, [(0.0, 0.62), (0.35, 0.68), (0.62, 0.69), (0.85, 0.58), (0.97, 0.40), (0.99, 0.24), (0.90, -0.04),
+             (0.58, -0.20), (0.0, -0.12)]),
+]
+# The canopy: (s, sill z, half width at the sill, top), the windscreen's bow at s 4.44; the spine
+# behind it (s, foot z, half width, top) running back between the fins.
+FA18E_CANOPY = [(3.20, 0.93, 0.28, 0.95), (3.60, 0.95, 0.41, 1.12), (4.00, 0.96, 0.45, 1.30), (4.44, 0.97, 0.46, 1.49),
+                (4.90, 0.98, 0.46, 1.59), (5.30, 0.99, 0.45, 1.57), (5.70, 1.00, 0.44, 1.53), (6.10, 1.00, 0.43, 1.47),
+                (6.40, 1.00, 0.43, 1.42)]
+FA18E_GLASS = [(0.0, 1.0), (0.25, 0.99), (0.45, 0.95), (0.62, 0.86), (0.76, 0.74), (0.87, 0.58), (0.95, 0.35), (1.0, 0.0)]
+# The spine starts on the glass' last ring with the glass' section, so the canopy flows into it.
+FA18E_SPINE = [(6.40, 1.00, 0.43, 1.42), (6.80, 0.98, 0.45, 1.34), (7.30, 0.95, 0.46, 1.30), (7.70, 0.93, 0.47, 1.29),
+               (9.00, 0.89, 0.45, 1.25), (10.50, 0.87, 0.40, 1.19), (11.80, 0.85, 0.36, 1.10), (12.80, 0.83, 0.33, 1.03),
+               (14.00, 0.79, 0.28, 0.90), (15.00, 0.73, 0.22, 0.80), (15.90, 0.70, 0.10, 0.73)]
+# The intakes' mouths, raked back from the top lip (s 8.2) to the bottom lip (s 9.5): corners
+# (x, z) top inner, top outer, bottom outer, bottom inner; the trunk behind them to s 9.65.
+FA18E_MOUTH = [(0.58, 0.30), (1.36, 0.33), (1.22, -0.58), (0.50, -0.60)]
+FA18E_LIP_S = (8.20, 9.50)
+FA18E_TRUNK_S = 9.65
+FA18E_TIP_X = 6.78
+# The F/A-18E's stations 1 to 11 (src/loadout.rs `FA18E_STATIONS`): the wingtip rails, the
+# deep wing pylons, the outer ones shorter, the nacelle stations' launchers under the intake
+# trunks, the centreline pylon.
+FA18E_STATIONS = [Station(0.0), Station(0.30, chord=1.5), Station(0.42, chord=1.8), Station(0.42, chord=1.9),
+                  Station(0.07, chord=1.3, w=0.05)]
+FA18E_STATIONS = FA18E_STATIONS + [Station(0.14, chord=1.6)] + FA18E_STATIONS[::-1]
+
+
+def fa18e_p(x, s, z):
+    return Vector((x, FA18E_NOSE - s, z))
+
+
+def fa18e_ring(s, *spec):
+    if spec[0] == "round":
+        top, bottom, hw, zc = spec[1:]
+        right = []
+        for a in (90, 66, 42, 14, 0, -24, -48, -70, -90):
+            r = math.radians(a)
+            c, sn = math.cos(r), math.sin(r)
+            h = top - zc if sn > 0 else zc - bottom
+            right.append((hw * abs(c) ** (2 / 2.3), zc + math.copysign(abs(sn) ** (2 / 2.3), sn) * h))
+    else:
+        right = spec[0]
+    left = [(-x, z) for x, z in reversed(right[1:-1])]
+    return [fa18e_p(x, s, z) for x, z in right + left]
+
+
+def fa18e_glass(s, sill, hw, top):
+    right = [(hw * w, sill + (top - sill) * t) for t, w in FA18E_GLASS]
+    left = [(-x, z) for x, z in reversed(right[:-1])]
+    return [fa18e_p(x, s, z) for x, z in right + left]
+
+
+def fa18e_panel(sections, paint):
+    """A wing from streamwise sections (x, s of the leading edge, s of the trailing edge, z,
+    thickness), its ridge at 35% of the chord."""
+    rings = []
+    for x, le, te, z, t in sections:
+        mid = le + 0.35 * (te - le)
+        d = Vector((0, 0, t / 2))
+        rings.append([fa18e_p(x, le, z), fa18e_p(x, mid, z) + d, fa18e_p(x, te, z), fa18e_p(x, mid, z) - d])
+    return tube(rings, paint)
+
+
+def fa18e_mouth_at(z):
+    """s of the raked mouth at height z."""
+    (_, zt), (_, zb) = FA18E_MOUTH[1], FA18E_MOUTH[2]
+    s0, s1 = FA18E_LIP_S
+    return s0 + (zt - z) / (zt - zb) * (s1 - s0)
+
+
+def fa18e():
+    rings = [fa18e_ring(s, *spec) if spec[0] == "round" else fa18e_ring(s, spec[0]) for s, *spec in FA18E_BODY]
+    g = Geo().add(tube(rings, FA18E_GREY, cap1=False))
+    g.face(rings[-1], DARK, fa18e_p(0, 15.0, 0.2))
+    g.add(tube([fa18e_glass(*r) for r in FA18E_CANOPY], CANOPY, cap1=False))
+    # The windscreen's bow and the canopy's frame along the sills.
+    bow = [p + Vector((0, 0, 0.012)) for p in fa18e_glass(4.44, 0.97, 0.47, 1.50)]
+    g.add(tube([bow, [p - Vector((0, 0.06, 0)) for p in bow]], DARK, cap0=False, cap1=False))
+    g.add(tube([fa18e_glass(*r) for r in FA18E_SPINE], FA18E_GREY, cap0=False))
+    # The intakes: the trunks' walls from the raked lips back into the fuselage's wide rings,
+    # grey outside, dark inside, the mouth a black plane just inside the lips.
+    for sx in (-1, 1):
+        def corner(k, s=None):
+            x, z = FA18E_MOUTH[k]
+            return fa18e_p(sx * x, fa18e_mouth_at(z) if s is None else s, z)
+        lip = [corner(k) for k in range(4)]
+        aft = [corner(k, FA18E_TRUNK_S) for k in range(4)]
+        inside = fa18e_p(sx * 0.93, 9.3, -0.12)
+        for a, b in ((0, 1), (1, 2), (2, 3), (3, 0)):
+            wall = [lip[a], lip[b], aft[b], aft[a]]
+            g.face(wall, FA18E_GREY if (a, b) != (3, 0) else DARK, inside)
+            g.face(wall, DARK, sum(wall, Vector()) / 2 - inside)
+        back = Vector((0, -0.05, 0))
+        g.face([p + back for p in lip], BLACK, inside - Vector((0, 3.0, 0)))
+    # Wings (a dogtooth at the fold), stabilators, the fins canted out 20 degrees.
+    g.add(mirror(fa18e_panel([(1.00, 9.30, 13.46, 0.47, 0.26), (1.96, 9.07, 13.42, 0.45, 0.24),
+                              (4.86, 10.47, 13.31, 0.42, 0.13), (4.87, 10.39, 13.31, 0.42, 0.13),
+                              (6.55, 11.29, 13.21, 0.38, 0.06)], FA18E_GREY)))
+    g.add(mirror(fa18e_panel([(0.80, 13.86, 16.92, 0.20, 0.14), (3.21, 16.36, 18.17, 0.20, 0.06),
+                              (3.72, 16.87, 17.96, 0.20, 0.03)], FA18E_GREY)))
+    g.add(wing(tuple(fa18e_p(0.98, 12.76, 0.70)), 2.78, tuple(fa18e_p(1.90, 14.83, 3.13)), 1.24, FA18E_GREY,
+               t=0.05, vertical=True))
+    # The wingtip launchers: a fairing off the tip's edge, the rail outboard of it so the
+    # Sidewinder's fins clear the tip (its axis at x `FA18E_TIP_X`).
+    for sx in (-1, 1):
+        def box(xa, xb, s0, s1, z0, z1, paint):
+            x0, x1 = sorted((sx * xa, sx * xb))
+            g.add(block(x0, x1, FA18E_NOSE - s1, FA18E_NOSE - s0, z0, z1, paint))
+        box(6.50, FA18E_TIP_X, 11.40, 13.21, 0.35, 0.41, FA18E_GREY)
+        box(FA18E_TIP_X - 0.05, FA18E_TIP_X + 0.05, 10.27, 13.21, 0.20, 0.41, FA18E_GREY)
+        box(FA18E_TIP_X - 0.022, FA18E_TIP_X + 0.022, 10.42, 13.21, 0.18, 0.20, DARK)
+    # The nozzles: petals round the hot exit.
+    for sx in (-1, 1):
+        g.add(frustum(tuple(fa18e_p(sx * 0.55, 16.20, 0.24)), tuple(fa18e_p(sx * 0.55, 17.30, 0.24)), 0.44, 0.39, DARK,
+                      n=12, caps=False))
+        g.face([fa18e_p(sx * 0.55 + 0.33 * math.cos(a), 17.15, 0.24 + 0.33 * math.sin(a))
+                for a in (2 * math.pi * k / 12 for k in range(12))], FLAME, fa18e_p(sx * 0.55, 15.0, 0.24))
+    fl = Geo()
+    for sx in (-1, 1):
+        fl.add(flame(sx * 0.55, FA18E_NOSE - 17.4, 0.24, 0.38, 3.2))
+    tip = lambda sx: (sx * (FA18E_TIP_X + 0.05), FA18E_NOSE - 12.6, 0.36)
+    fin = lambda sx: (sx * 1.90, FA18E_NOSE - 15.9, 3.13)
+    return Craft(g, tip(-1), tip(1), [fin(-1), fin(1)], fl, gear=fa18e_gear(),
+                 stations=("FA18E_STATIONS", FA18E_STATIONS, FA18E_GREY))
+
+
+def fa18e_gear():
+    """The gear down: the nose leg with its twin wheels and launch bar, the main legs from the
+    trunks' sides out to the wheels, their doors."""
+    g = Geo()
+    r = 0.28
+    axle = fa18e_p(0, 5.52, FA18E_GROUND + r)
+    for x in (-0.14, 0.14):
+        g.add(mklib.wheel((x, axle.y, axle.z), r, 0.15, BLACK, n=8))
+    g.add(frustum(tuple(fa18e_p(0, 5.75, -0.43)), tuple(axle + Vector((0, 0, 0.08))), 0.08, 0.07, GREY_L, n=5))
+    g.add(frustum(tuple(fa18e_p(0, 6.30, -0.45)), tuple(fa18e_p(0, 5.70, -1.05)), 0.04, 0.04, GREY_L, n=4))
+    g.add(frustum(tuple(axle + Vector((0, 0.05, 0.12))), tuple(fa18e_p(0, 4.90, -1.62)), 0.03, 0.03, GREY_L, n=4))
+    for sx in (-1, 1):
+        g.face2([fa18e_p(sx * 0.30, 4.70, -0.44), fa18e_p(sx * 0.30, 5.90, -0.45), fa18e_p(sx * 0.32, 5.90, -0.85),
+                 fa18e_p(sx * 0.32, 4.70, -0.84)], FA18E_GREY)
+    r = 0.34
+    for sx in (-1, 1):
+        axle = fa18e_p(sx * 1.62, 11.25, FA18E_GROUND + r)
+        g.add(mklib.wheel(tuple(axle), r, 0.24, BLACK, n=8))
+        g.add(frustum(tuple(fa18e_p(sx * 1.25, 11.0, -0.40)), tuple(axle + Vector((-sx * 0.15, 0, 0.12))), 0.09, 0.08,
+                      GREY_L, n=5))
+        g.add(frustum(tuple(fa18e_p(sx * 1.10, 10.3, -0.55)), tuple(axle + Vector((-sx * 0.15, 0, 0.35))), 0.045, 0.045,
+                      GREY_L, n=4))
+        g.face2([fa18e_p(sx * 1.32, 10.4, -0.45), fa18e_p(sx * 1.32, 11.8, -0.45), fa18e_p(sx * 1.40, 11.8, -1.05),
+                 fa18e_p(sx * 1.40, 10.4, -1.05)], FA18E_GREY)
+    return g
+
 # ---------------------------------------------------------------------------------------------
 # Transports, bombers, helicopter
 
@@ -2059,6 +2263,7 @@ BUILDERS = {
     47: harrier,
     75: f22,
     76: c130,
+    79: fa18e,
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
 # Models no part of the game draws.
