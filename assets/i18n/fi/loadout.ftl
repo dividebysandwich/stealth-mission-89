@@ -202,3 +202,7 @@ weapon-role-29 = Taktinen häirintäpodi: lyhentää häirityt tutkat niiden lä
 employment-29 =
     Asetetaan JAM-sivulla: jokaiselle podille tutka tai sektori, päälle tai pois
     Häirintä näkyy kauempaa
+weapon-role-30 = Lentokentän rynnäkkösäiliö: levittää laskuvarjoilla kraateripommeja ja panssarimiinoja 500 m kaistalle
+employment-30 =
+    Pysyy ripustimessa ja pudottaa kahden sekunnin ajan; lennä vaakalennossa ja matalalla maalin yli
+    Enintään 1000 ft maanpinnasta; kolme kraateria sulkee kiitotien, miinat odottavat ajoneuvoja

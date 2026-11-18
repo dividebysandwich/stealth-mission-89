@@ -202,3 +202,7 @@ weapon-role-29 = Pod pengacau taktis: memangkas radar yang dikacau hingga jarak 
 employment-29 =
     Diatur di halaman JAM: satu radar atau sektor per pod, nyala atau mati
     Mengacau membuatmu terlihat dari lebih jauh
+weapon-role-30 = Dispenser serang lapangan udara: menebar bom kecil pembuat kawah dan ranjau antitank berparasut di jalur 500 m
+employment-30 =
+    Tetap di pylon dan menebar selama dua detik; terbang datar dan rendah di atas sasaran
+    Dari ketinggian paling tinggi 1000 ft di atas tanah; tiga kawah menutup landasan, ranjau menunggu kendaraan

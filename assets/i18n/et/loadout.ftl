@@ -202,3 +202,7 @@ weapon-role-29 = Taktikaline segajakonteiner: lühendab segatud radarite ulatuse
 employment-29 =
     Seatakse JAM-lehel: iga konteineri jaoks radar või sektor, sees või väljas
     Segamine teeb sind kaugemalt nähtavaks
+weapon-role-30 = Lennuvälja ründekonteiner: külvab langevarjudel kraatripommikesi ja tankitõrjemiine 500 m ribale
+employment-30 =
+    Jääb pülooni külge ja heidab kaks sekundit; lenda horisontaalselt ja madalalt üle sihtmärgi
+    Kõige rohkem 1000 ft kõrguselt maapinnast; kolm kraatrit sulgevad raja, miinid ootavad sõidukeid

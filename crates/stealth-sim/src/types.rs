@@ -1156,6 +1156,13 @@ pub enum SimEvent {
         y: i32,
         alt: i32,
     },
+    /// A JP233 submunition went off (fine units like [`BombFall`]: x east, y south, ft up):
+    /// a cratering bomblet (`crater`) or a mine; `kill`: it destroyed something.
+    Jp233Burst {
+        at: (i32, i32, i32),
+        crater: bool,
+        kill: bool,
+    },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {
         unit: usize,

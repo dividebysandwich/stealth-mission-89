@@ -202,3 +202,7 @@ weapon-role-29 = Contenedor de perturbación táctica: reduce los radares pertur
 employment-29 =
     Se ajusta en la página JAM: un radar o un sector por contenedor, encendido o apagado
     Perturbar te hace visible desde más lejos
+weapon-role-30 = Dispensador de ataque a aeródromos: siembra bombetas de cráter y minas anticarro con paracaídas en una franja de 500 m
+employment-30 =
+    Se queda en el pilón y lanza durante dos segundos; vuela nivelado y bajo sobre el objetivo
+    Desde no más de 1000 ft sobre el suelo; tres cráteres cierran una pista, las minas esperan a los vehículos

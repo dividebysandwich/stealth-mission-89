@@ -202,3 +202,7 @@ weapon-role-29 = Pod tattiku tal-ixkil: inaqqas ir-radars ixxekklin sal-firxa ta
 employment-29 =
     Issettjat fil-paġna JAM: radar jew settur għal kull pod, mixgħul jew mitfi
     L-ixkil jagħmlek viżibbli minn aktar 'il bogħod
+weapon-role-30 = Dispenser għall-attakk fuq ajruporti: iqiegħed bombi żgħar tal-krater u mini kontra l-armatura b'paraxut tul strixxa ta' 500 m
+employment-30 =
+    Jibqa' fuq il-pilun u jitfa' għal żewġ sekondi; tir livell u baxx fuq il-mira
+    Minn mhux aktar minn 1000 ft 'il fuq mill-art; tliet krateri jagħlqu runway, il-mini jistennew il-vetturi

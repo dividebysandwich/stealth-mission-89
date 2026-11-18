@@ -202,3 +202,7 @@ weapon-role-29 = Taktiskais traucēšanas konteiners: samazina traucēto radaru 
 employment-29 =
     Iestata JAM lapā: katram konteineram radars vai sektors, ieslēgts vai izslēgts
     Traucēšana padara tevi redzamu no tālākas distances
+weapon-role-30 = Lidlauku uzbrukuma konteiners: ar izpletņiem izkaisa krāterus veidojošas bumbiņas un prettanku mīnas 500 m joslā
+employment-30 =
+    Paliek uz pilona un kaisa divas sekundes; lidojiet horizontāli un zemu virs mērķa
+    No ne vairāk kā 1000 ft virs zemes; trīs krāteri slēdz skrejceļu, mīnas gaida transportlīdzekļus

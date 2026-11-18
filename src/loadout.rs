@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 30] = [
+pub const WEAPONS: [(&str, &str); 31] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -46,6 +46,7 @@ pub const WEAPONS: [(&str, &str); 30] = [
     ("ADM-160 MALD", "weapon-role-27"),
     ("Paratroopers", "weapon-role-28"),
     ("AN/ALQ-99 jammer pod", "weapon-role-29"),
+    ("JP233", "weapon-role-30"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -58,7 +59,7 @@ pub const WEAPONS: [(&str, &str); 30] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 30] = [
+const EMPLOYMENT: [&str; 31] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -89,6 +90,7 @@ const EMPLOYMENT: [&str; 30] = [
     "employment-27",
     "employment-28",
     "employment-29",
+    "employment-30",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -105,12 +107,12 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 30] =
-    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1];
+const BAY_QTY: [u8; 31] =
+    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1, 1];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers).
-const PYLON_QTY: [u8; 30] =
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1];
+const PYLON_QTY: [u8; 31] =
+    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
@@ -127,6 +129,8 @@ pub const MALD: u8 = 27;
 pub const PARA: u8 = 28;
 /// The EA-18G's ALQ-99 jammer pod's weapon type (`stealth_sim::jamming`).
 pub const ALQ99: u8 = 29;
+/// The Tornado's JP233 dispenser's weapon type (`stealth_sim::jp233`).
+pub const JP233: u8 = 30;
 
 /// A bay or a pylon.
 pub struct Hardpoint {
@@ -146,6 +150,9 @@ pub struct Hardpoint {
     pub qty: &'static [(u8, u8)],
     /// Stations whose stores would hit this one's: loading one empties the other.
     pub excludes: &'static [usize],
+    /// Stations a weapon here takes too (weapon, station): its long store reaches them, so
+    /// loading it empties them and loading them empties it (the Tornado's JP233).
+    pub takes: &'static [(u8, usize)],
 }
 
 impl Hardpoint {
@@ -155,6 +162,15 @@ impl Hardpoint {
 
     const fn carrying(self, qty: &'static [(u8, u8)]) -> Self {
         Hardpoint { qty, ..self }
+    }
+
+    const fn taking(self, takes: &'static [(u8, usize)]) -> Self {
+        Hardpoint { takes, ..self }
+    }
+
+    /// The stations store `w` here takes besides its own.
+    pub fn taken_by(&self, w: u8) -> impl Iterator<Item = usize> + '_ {
+        self.takes.iter().filter(move |t| t.0 == w).map(|t| t.1)
     }
 
     pub fn rounds(&self, w: u8) -> u8 {
@@ -1004,6 +1020,7 @@ const fn bay(
         loads,
         qty: &[],
         excludes: &[],
+        takes: &[],
     }
 }
 
@@ -1025,6 +1042,7 @@ const fn pylon(
         loads,
         qty: &[],
         excludes: &[],
+        takes: &[],
     }
 }
 
@@ -1074,25 +1092,28 @@ static F16_STATIONS: [Hardpoint; 9] = [
 /// forward shoulder pylons the heavy stores and the camera; its Sidewinders go on the wing
 /// pylons' rails.
 const TORNADO_WING: [u8; 17] = [2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 0, CBU105, JSOW];
-const TORNADO_BELLY: [u8; 18] =
-    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, CBU105, JSOW];
+const TORNADO_BELLY: [u8; 19] =
+    [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, CBU105, JSOW, JP233];
 /// The Tornado IDS's stations: the Sidewinder rails and pylons under the outer wings, and the
 /// fuselage's shoulder pylons fore and aft. The rail is drawn further out than its pylon's
 /// side, where it is apart from the pylon.
-/// Two Snakeyes forward (a full rack's retarders reach the gear), one Fireye aft.
+/// Two Snakeyes forward (a full rack's retarders reach the gear), one Fireye aft. A JP233
+/// on a forward station reaches back over the aft one on its side.
 const TORNADO_FORWARD_QTY: [(u8, u8); 1] = [(10, 2)];
 const TORNADO_AFT_QTY: [(u8, u8); 1] = [(12, 1)];
 static TORNADO_STATIONS: [Hardpoint; 8] = [
     pylon("hardpoint-tornado-left-wing-rail", "1", -5.20, 10.70, Some(7), &TIP),
     pylon("hardpoint-tornado-left-wing-pylon", "2", -3.60, 10.20, Some(6), &TORNADO_WING),
     pylon("hardpoint-tornado-left-shoulder-forward", "3", -0.80, 7.15, Some(5), &TORNADO_BELLY)
-        .carrying(&TORNADO_FORWARD_QTY),
+        .carrying(&TORNADO_FORWARD_QTY)
+        .taking(&[(JP233, 3)]),
     pylon("hardpoint-tornado-left-shoulder-aft", "4", -0.80, 11.50, Some(4), &WING_INNER)
         .carrying(&TORNADO_AFT_QTY),
     pylon("hardpoint-tornado-right-shoulder-aft", "5", 0.80, 11.50, Some(3), &WING_INNER)
         .carrying(&TORNADO_AFT_QTY),
     pylon("hardpoint-tornado-right-shoulder-forward", "6", 0.80, 7.15, Some(2), &TORNADO_BELLY)
-        .carrying(&TORNADO_FORWARD_QTY),
+        .carrying(&TORNADO_FORWARD_QTY)
+        .taking(&[(JP233, 4)]),
     pylon("hardpoint-tornado-right-wing-pylon", "7", 3.60, 10.20, Some(1), &TORNADO_WING),
     pylon("hardpoint-tornado-right-wing-rail", "8", 5.20, 10.70, Some(0), &TIP),
 ];
@@ -1519,6 +1540,7 @@ const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) ->
         loads: &[HELLFIRE, STINGER],
         qty: &[(HELLFIRE, 3), (STINGER, 6)],
         excludes: &[],
+        takes: &[],
     }
 }
 
@@ -1537,6 +1559,7 @@ static OH58_STATIONS: [Hardpoint; 2] = [
         loads: &OH58_LOADS,
         qty: &[(HELLFIRE, 2), (STINGER, 2), (GUN_POD, 1)],
         excludes: &[],
+        takes: &[],
     },
     Hardpoint {
         name: "hardpoint-oh58-right-pylon",
@@ -1548,6 +1571,7 @@ static OH58_STATIONS: [Hardpoint; 2] = [
         loads: &OH58_LOADS,
         qty: &[(HELLFIRE, 2), (STINGER, 2), (GUN_POD, 1)],
         excludes: &[],
+        takes: &[],
     },
 ];
 const OH58_LOADS: [u8; 3] = [HELLFIRE, STINGER, GUN_POD];
@@ -1569,6 +1593,7 @@ static MH60R_STATIONS: [Hardpoint; 3] = [
         loads: &[HELLFIRE],
         qty: &[(HELLFIRE, 4)],
         excludes: &[],
+        takes: &[],
     },
     Hardpoint {
         name: "hardpoint-mh60r-left-inner",
@@ -1580,6 +1605,7 @@ static MH60R_STATIONS: [Hardpoint; 3] = [
         loads: &[MK54],
         qty: &[(MK54, 1)],
         excludes: &[],
+        takes: &[],
     },
     Hardpoint {
         name: "hardpoint-mh60r-right-inner",
@@ -1591,6 +1617,7 @@ static MH60R_STATIONS: [Hardpoint; 3] = [
         loads: &[MK54],
         qty: &[(MK54, 1)],
         excludes: &[],
+        takes: &[],
     },
 ];
 static MH60R_LAYOUT: Layout =
@@ -1609,6 +1636,7 @@ static CH47_STATIONS: [Hardpoint; 1] = [Hardpoint {
     loads: &[PARA],
     qty: &[(PARA, 1)],
     excludes: &[],
+    takes: &[],
 }];
 static CH47_LAYOUT: Layout =
     Layout { outline: CH47_OUTLINE, half_span: 1.94, length: 15.84, hardpoints: &CH47_STATIONS };
@@ -1624,6 +1652,7 @@ static C5_STATIONS: [Hardpoint; 1] = [Hardpoint {
     loads: &[18, PARA],
     qty: &[(18, 4), (PARA, 2)],
     excludes: &[],
+    takes: &[],
 }];
 static C5_LAYOUT: Layout =
     Layout { outline: C5_OUTLINE, half_span: 33.98, length: 75.36, hardpoints: &C5_STATIONS };
@@ -1788,7 +1817,14 @@ impl PlannedLoadout {
                     }
                     let free = |i: usize| {
                         let h = &lay.hardpoints[i];
-                        stores[i].is_none() && h.excludes.iter().all(|&j| stores[j].is_none())
+                        stores[i].is_none()
+                            && h.excludes.iter().all(|&j| stores[j].is_none())
+                            && h.taken_by(w).all(|j| stores[j].is_none())
+                            && !lay
+                                .hardpoints
+                                .iter()
+                                .zip(&stores)
+                                .any(|(o, s)| s.is_some_and(|s| o.taken_by(s).any(|j| j == i)))
                     };
                     if let Some(&i) = order.iter().find(|&&i| {
                         free(i)
@@ -1823,9 +1859,18 @@ impl PlannedLoadout {
         let lay = self.layout();
         let mut put = |i: usize| {
             self.stores[i] = store;
-            if store.is_some() {
+            if let Some(w) = store {
                 for &j in lay.hardpoints[i].excludes {
                     self.stores[j] = None;
+                }
+                for j in lay.hardpoints[i].taken_by(w) {
+                    self.stores[j] = None;
+                }
+                // A long store elsewhere that reaches this station goes.
+                for (k, h) in lay.hardpoints.iter().enumerate() {
+                    if k != i && self.stores[k].is_some_and(|o| h.taken_by(o).any(|j| j == i)) {
+                        self.stores[k] = None;
+                    }
                 }
             }
         };
@@ -2035,8 +2080,14 @@ pub fn editor(
                     &[&t!("loadout-mirror.facts", station = other)],
                 );
             }
-            if !hp.excludes.is_empty() {
-                let names: Vec<_> = hp.excludes.iter().map(|&j| lay.hardpoints[j].label).collect();
+            let emptied: Vec<usize> = hp
+                .excludes
+                .iter()
+                .copied()
+                .chain(pick.into_iter().flat_map(|w| hp.taken_by(w)))
+                .collect();
+            if !emptied.is_empty() {
+                let names: Vec<_> = emptied.iter().map(|&j| lay.hardpoints[j].label).collect();
                 let text = match names[..] {
                     [a, b] => t!("loadout-empties-two", first = a, second = b),
                     _ => t!("loadout-empties", stations = names.join(", ")),
@@ -2221,8 +2272,14 @@ pub fn editor_large(
                         ui.label(egui::RichText::new(text).color(AMBER));
                     });
             };
-            if !hp.excludes.is_empty() {
-                let names: Vec<_> = hp.excludes.iter().map(|&j| lay.hardpoints[j].label).collect();
+            let emptied: Vec<usize> = hp
+                .excludes
+                .iter()
+                .copied()
+                .chain(pick.into_iter().flat_map(|w| hp.taken_by(w)))
+                .collect();
+            if !emptied.is_empty() {
+                let names: Vec<_> = emptied.iter().map(|&j| lay.hardpoints[j].label).collect();
                 let text = match names[..] {
                     [a, b] => t!("loadout-empties-two", first = a, second = b),
                     _ => t!("loadout-empties", stations = names.join(", ")),

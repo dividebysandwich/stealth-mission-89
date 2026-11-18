@@ -202,3 +202,7 @@ weapon-role-29 = Taktyczny zasobnik zakłóceń: ogranicza zakłócane radary do
 employment-29 =
     Ustawiany na stronie JAM: radar lub sektor dla każdego zasobnika, wł. lub wył.
     Zakłócanie sprawia, że widać cię z większej odległości
+weapon-role-30 = Zasobnik do ataku na lotniska: rozrzuca na spadochronikach bombki kraterujące i miny przeciwpancerne w pasie 500 m
+employment-30 =
+    Zostaje na pylonie i wyrzuca przez dwie sekundy; leć poziomo i nisko nad celem
+    Z wysokości nie większej niż 1000 ft nad ziemią; trzy kratery zamykają pas, miny czekają na pojazdy

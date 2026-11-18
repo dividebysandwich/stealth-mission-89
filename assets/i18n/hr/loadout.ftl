@@ -202,3 +202,7 @@ weapon-role-29 = Taktički kontejner za ometanje: svodi ometane radare na njihov
 employment-29 =
     Postavlja se na stranici JAM: za svaki kontejner radar ili sektor, uključeno ili isključeno
     Ometanje te čini vidljivim s veće udaljenosti
+weapon-role-30 = Spremnik za napad na aerodrome: polaže bombice za kratere i protuoklopne mine na padobranima duž pojasa od 500 m
+employment-30 =
+    Ostaje na nosaču i izbacuje dvije sekunde; letite vodoravno i nisko iznad cilja
+    S najviše 1000 ft iznad tla; tri kratera zatvaraju stazu, mine čekaju vozila

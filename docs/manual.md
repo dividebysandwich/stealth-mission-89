@@ -2257,6 +2257,7 @@ farther head-on.
 | Mk 20 Rockeye, Mk 35 | Ground | 1.1-1.6 km short | 300-1,000 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | Mk 82 Snakeye, ISCB-1 mines | Ground | 0.9-1.3 km short | 200-500 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | BLU-107 Durandal | Runways | 0.9-1.3 km short of the runway | 200-500 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
+| JP233 | Runways, vehicles, parked aircraft | A 500 m strip behind you, from overhead | 1,000 ft or lower | Tornado (forward shoulder pylons) |
 | IR/optical camera | Recon target | Photos from 2-8 km | Any | F-117A, F-16C, Tornado, A-10C, AV-8B (centreline) |
 | 20 mm gun | Air and ground | Up to 2 km (ground: 4 km) | Any | All but the real F-117A and the UH-60, OH-58D and CH-47 (510 rounds) |
 | M3P .50 cal pod | Air and ground | Up to 2 km (ground: 4 km) | Any | OH-58D (500 rounds per pod, along the nose) |
@@ -2358,6 +2359,26 @@ CCIP pipper always shows where it would land.
 **Durandal** and the **ISCB-1** mines are for runways: release on the runway's line, 0.9-1.3 km
 short, from 200-500 ft. A bomb that goes off close under you damages your own aircraft: don't
 release free-fall bombs low and slow.
+
+**JP233.** The Tornado's airfield attack dispenser, a 6.5 m container on a forward shoulder
+pylon (it covers the aft one on its side too: loading one empties the other). It is not
+dropped: press fire over the target and for two seconds it throws its load down out of its
+tubes as you fly on, then the empty container falls away. Each press starts one dispenser,
+so a second press at once lays both together. Its 30 SG-357 cratering bomblets and 60 HB-876
+mines come down on small chutes in a strip some 500 m long behind you, the bomblets along the
+middle and the mines spread wider. Fly straight and level, low, along the runway or over the
+column: it refuses above 1,000 ft over the ground.
+
+- **Runways**: three cratering bomblets on a runway put it out of action. Run along the runway's
+  line, not across it, and start the dispenser just short of the threshold or the point you want.
+- **Vehicles and parked aircraft**: a bomblet landing by a vehicle (18 m) or a parked aircraft,
+  launcher or radar is likely to destroy it.
+- **Mines**: those that come down by a vehicle fire at once; the rest lie for a minute or two and
+  fire at the first enemy vehicle that drives up, then blow themselves up. Columns caught on the
+  move drive into them.
+
+Low and level over an airfield is where its guns are: an attack with the JP233 is an attack
+the defences have to be down for, or that comes in under them fast.
 
 ## 6.8 Camera, fuel tank and cargo
 

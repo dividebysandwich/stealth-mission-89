@@ -202,3 +202,7 @@ weapon-role-29 = Taktischer Störbehälter: drückt die gestörten Radare auf ih
 employment-29 =
     Eingestellt auf der JAM-Seite: je Behälter ein Radar oder ein Sektor, ein oder aus
     Stören macht dich aus größerer Entfernung sichtbar
+weapon-role-30 = Flugplatz-Angriffsbehälter: legt Krater-Bomblets und Panzerabwehrminen an Fallschirmen auf einen 500 m langen Streifen
+employment-30 =
+    Bleibt am Pylon und wirft zwei Sekunden lang ab; tief und im Horizontalflug über das Ziel fliegen
+    Aus höchstens 1000 ft über Grund; drei Krater sperren eine Piste, die Minen warten auf Fahrzeuge

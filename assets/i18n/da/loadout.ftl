@@ -202,3 +202,7 @@ weapon-role-29 = Taktisk støjsenderpod: skærer de forstyrrede radarer ned til 
 employment-29 =
     Indstilles på JAM-siden: én radar eller sektor pr. pod, tænd eller sluk
     Støjsending gør dig synlig længere væk fra
+weapon-role-30 = Beholder til angreb på flyvepladser: lægger kraterbomber og panserminer i faldskærme langs en 500 m stribe
+employment-30 =
+    Bliver på pylonen og kaster i to sekunder; flyv vandret og lavt over målet
+    Fra højst 1000 ft over jorden; tre kratere lukker en bane, minerne venter på køretøjer

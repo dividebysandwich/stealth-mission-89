@@ -202,3 +202,7 @@ weapon-role-29 = Pod di disturbo tattico: riduce i radar disturbati alla loro po
 employment-29 =
     Impostato sulla pagina JAM: un radar o un settore per pod, acceso o spento
     Disturbare ti rende visibile da più lontano
+weapon-role-30 = Dispenser d'attacco agli aeroporti: semina bombette da cratere e mine anticarro con paracadute su una striscia di 500 m
+employment-30 =
+    Resta sul pilone e rilascia per due secondi; vola livellato e basso sull'obiettivo
+    Da non più di 1000 ft dal suolo; tre crateri chiudono una pista, le mine aspettano i veicoli

@@ -202,3 +202,7 @@ weapon-role-29 = Taktický rušicí kontejner: zkrátí rušené radiolokátory 
 employment-29 =
     Nastavuje se na stránce JAM: pro každý kontejner radar nebo sektor, zapnuto či vypnuto
     Rušení tě dělá viditelným z větší dálky
+weapon-role-30 = Kontejner k napadení letišť: klade kráterové pumičky a protitankové miny na padáčcích v pásu 500 m
+employment-30 =
+    Zůstává na závěsníku a vyhazuje dvě sekundy; leťte vodorovně a nízko nad cílem
+    Z výšky nejvýše 1000 ft nad zemí; tři krátery uzavřou dráhu, miny čekají na vozidla

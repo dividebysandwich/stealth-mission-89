@@ -202,3 +202,7 @@ weapon-role-29 = Container de bruiaj tactic: reduce radarele bruiate la raza lor
 employment-29 =
     Setat pe pagina JAM: un radar sau un sector pentru fiecare container, pornit sau oprit
     Bruiajul te face vizibil de mai departe
+weapon-role-30 = Dispenser de atac al aerodromurilor: împrăștie bombițe de craterizare și mine antitanc cu parașute pe o fâșie de 500 m
+employment-30 =
+    Rămâne pe pilon și lansează timp de două secunde; zboară orizontal și jos deasupra țintei
+    De la cel mult 1000 ft deasupra solului; trei cratere închid o pistă, minele așteaptă vehiculele

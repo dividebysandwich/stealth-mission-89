@@ -202,3 +202,7 @@ weapon-role-29 = Tactical jamming pod: cuts the radars it is set on down to thei
 employment-29 =
     Set on the JAM page: a radar or a sector each pod, on or off
     Jamming makes you seen from further off
+weapon-role-30 = Airfield attack dispenser: lays cratering bomblets and anti-armour mines on chutes along a 500 m strip
+employment-30 =
+    Stays on the pylon and dispenses for two seconds; fly level and low over the target
+    From no higher than 1000 ft over the ground; three craters close a runway, the mines wait for vehicles

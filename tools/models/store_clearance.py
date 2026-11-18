@@ -6,7 +6,8 @@ aircraft.py) clear the airframe, each other and the ground:
 For every jet, every station and every load it takes (its rack and all its rounds), the posed
 meshes must not cut into the airframe (its body, parts and pylons; the Tornado's at full forward
 and full aft sweep), nor into the gear when down, nor reach below the ground under the wheels,
-no two stations' loads may cut into each other (but those never loaded together), nor the rounds
+no two stations' loads may cut into each other (but those never loaded together, nor a long
+store and the station it takes too), nor the rounds
 of one load (the racks') into each other. Prints each failure and exits
 non-zero if there are any.
 """
@@ -160,6 +161,10 @@ def check(table):
                 if b["station"] in a["excludes"] or abs(wa.x - wb.x) > 1.6 * K:
                     continue
                 for wa, wb in itertools.product(a["loads"], b["loads"]):
+                    # A long store taking the other station too: never loaded together.
+                    if (b["station"] in a.get("takes", {}).get(wa, [])
+                            or a["station"] in b.get("takes", {}).get(wb, [])):
+                        continue
                     ta = tree(load_tris(table, jet, frames, a["station"], int(wa)))
                     tb = tree(load_tris(table, jet, frames, b["station"], int(wb)))
                     if ta.overlap(tb):

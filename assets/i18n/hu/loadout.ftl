@@ -202,3 +202,7 @@ weapon-role-29 = Taktikai zavarókonténer: a zavart radarokat az átégési tá
 employment-29 =
     A JAM oldalon állítható: konténerenként egy radar vagy szektor, be vagy ki
     A zavarás messzebbről láthatóvá tesz
+weapon-role-30 = Repülőtér-támadó konténer: ejtőernyős kráterező bombácskákat és páncéltörő aknákat szór egy 500 m-es sávba
+employment-30 =
+    A függesztőn marad és két másodpercig szór; repülj vízszintesen és alacsonyan a cél fölött
+    Legfeljebb 1000 ft-ről a talaj fölött; három kráter lezár egy kifutót, az aknák járművekre várnak

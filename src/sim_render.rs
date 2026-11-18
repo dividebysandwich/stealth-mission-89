@@ -32,6 +32,7 @@ impl Plugin for SimRenderPlugin {
             .init_resource::<DrawnUnits>()
             .init_resource::<crate::ground_fire::GroundRounds>()
             .init_resource::<crate::sfw::SfwVisuals>()
+            .init_resource::<crate::jp233::Jp233Visuals>()
             .init_resource::<RemoteVisuals>()
             .init_resource::<crate::pallet_chute::PalletChutes>()
             .add_systems(OnExit(AppState::Flight), cleanup)
@@ -44,6 +45,7 @@ impl Plugin for SimRenderPlugin {
                         .after(sync_aaa)
                         .run_if(resource_exists::<Combat>),
                     crate::sfw::sync_sfw.run_if(resource_exists::<Combat>),
+                    crate::jp233::sync_jp233.run_if(resource_exists::<Combat>),
                     sync_remote_pilots.run_if(resource_exists::<Combat>),
                     crate::pallet_chute::sync_pallet_chutes
                         .after(sync_objects)
@@ -287,12 +289,14 @@ fn cleanup(
     mut remote: ResMut<RemoteVisuals>,
     mut rounds: ResMut<crate::ground_fire::GroundRounds>,
     mut sfw: ResMut<crate::sfw::SfwVisuals>,
+    mut jp233: ResMut<crate::jp233::Jp233Visuals>,
     mut chutes: ResMut<crate::pallet_chute::PalletChutes>,
 ) {
     *aaa = AaaVisuals::default();
     *chutes = Default::default();
     *rounds = Default::default();
     *sfw = Default::default();
+    *jp233 = Default::default();
     *remote = RemoteVisuals::default();
     for e in &q {
         commands.entity(e).try_despawn();
@@ -594,7 +598,7 @@ pub fn metres_point(p: [f64; 3]) -> DVec3 {
 }
 
 /// Bevy world position of a point in the air defences' metres (east, north, up).
-fn aaa_point(p: [f64; 3]) -> DVec3 {
+pub(crate) fn aaa_point(p: [f64; 3]) -> DVec3 {
     let wu = crate::world::WU;
     wu_to_bevy(p[0] / wu, p[1] / wu, p[2] / 0.3048)
 }

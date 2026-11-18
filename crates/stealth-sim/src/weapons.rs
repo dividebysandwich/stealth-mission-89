@@ -213,6 +213,9 @@ impl Sim {
         if w == crate::SPECIAL_EQUIPMENT {
             return None;
         }
+        if w == crate::jp233::JP233_WEAPON {
+            return Some(HudMode::Gnd);
+        }
         let spec = self.weapon_types.get(usize::try_from(w).ok()?)?.spec as i32;
         if spec <= 0 {
             return None;
@@ -450,6 +453,9 @@ impl Sim {
                 self.pl.fire_cooldown = 4;
             } else if !ccrp && self.selected_weapon().0 == crate::paradrop::PARA_WEAPON {
                 self.release_stick();
+                self.pl.fire_cooldown = 4;
+            } else if self.selected_weapon().0 == crate::jp233::JP233_WEAPON {
+                self.release_jp233();
                 self.pl.fire_cooldown = 4;
             } else if !ccrp {
                 if bomb {
@@ -881,7 +887,7 @@ impl Sim {
     }
 
     /// Where station `bay`'s stores hang now (wu: east, south, true altitude), if known.
-    fn station_point(&self, bay: usize) -> Option<[f64; 3]> {
+    pub(crate) fn station_point(&self, bay: usize) -> Option<[f64; 3]> {
         let o = self.pl.hardpoints.get(bay)?.map(|m| m as f64 / WU_METRES);
         let p = &self.pl.p;
         let d = body_to_world(p.heading, p.pitch, p.roll, o);

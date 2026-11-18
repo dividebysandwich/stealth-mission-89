@@ -202,3 +202,7 @@ weapon-role-29 = Tactische stoorpod: brengt de gestoorde radars terug tot hun do
 employment-29 =
     Ingesteld op de JAM-pagina: per pod een radar of sector, aan of uit
     Storen maakt je van verder weg zichtbaar
+weapon-role-30 = Vliegveldaanvalscontainer: legt kraterbommetjes en antitankmijnen aan parachutes over een strook van 500 m
+employment-30 =
+    Blijft aan de pyloon en werpt twee seconden lang af; vlieg horizontaal en laag over het doel
+    Vanaf hooguit 1000 ft boven de grond; drie kraters sluiten een baan, de mijnen wachten op voertuigen

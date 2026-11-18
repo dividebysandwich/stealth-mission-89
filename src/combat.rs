@@ -140,6 +140,8 @@ pub struct Combat {
     pub ground_shots: Vec<GroundShotFx>,
     /// The CBU-105s' events this frame (drawn by `sfw`).
     pub sfw_fx: Vec<SimEvent>,
+    /// The JP233s' submunitions going off this frame (drawn by `jp233`).
+    pub jp233_fx: Vec<SimEvent>,
     /// The AC-130s' guns firing and their shells landing this frame (drawn by `side_guns`).
     pub side_gun_fx: Vec<SimEvent>,
     /// The submarine hunt's splashes this frame (`asw::effects`).
@@ -467,6 +469,7 @@ fn start_combat(
         round_impacts: Vec::new(),
         ground_shots: Vec::new(),
         sfw_fx: Vec::new(),
+        jp233_fx: Vec::new(),
         side_gun_fx: Vec::new(),
         asw_fx: Vec::new(),
         signal_flares: Vec::new(),
@@ -820,6 +823,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.round_impacts.clear();
     combat.ground_shots.clear();
     combat.sfw_fx.clear();
+    combat.jp233_fx.clear();
     combat.side_gun_fx.clear();
     combat.asw_fx.clear();
     combat.signal_flares.clear();
@@ -2710,6 +2714,14 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
                     .write(crate::sound::PlaySound { id: crate::sound::AIRBURST, priority: 1 });
             }
             combat.sfw_fx.push(e);
+        }
+        // A JP233 submunition going off: drawn and heard by `jp233`; a kill burns.
+        SimEvent::Jp233Burst { at, kill, .. } => {
+            if kill {
+                let fine = 32 * stealth_sim::ROUND_FINE;
+                combat.kills.push(Kill { x: at.0 / fine, y: at.1 / fine, vehicle: true });
+            }
+            combat.jp233_fx.push(e);
         }
         SimEvent::SkeetFire { to, kill, .. } => {
             if kill {

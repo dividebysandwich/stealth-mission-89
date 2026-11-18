@@ -2477,8 +2477,12 @@ def write_stores_table(path):
                     rounds.append([round(p.x, 3), round(p.y, 3), round(p.z, 3), roll + r])
                 loads[str(w)] = {"rack": stores.RACKS[rack][0] if rack else None, "rounds": rounds}
             excludes = sorted(j for p in stores.exclusive_stations(table) if i in p for j in p if j != i)
-            jet.append({"station": i, "parent": parent, "at": [round(c, 3) for c in at], "roll": roll,
-                        "kind": kind, "excludes": excludes, "loads": loads})
+            entry = {"station": i, "parent": parent, "at": [round(c, 3) for c in at], "roll": roll,
+                     "kind": kind, "excludes": excludes, "loads": loads}
+            takes = stores.taken_stations(table)[i]
+            if takes:
+                entry["takes"] = {str(w): js for w, js in sorted(takes.items())}
+            jet.append(entry)
         out["jets"][str(index)] = jet
     with open(path, "w") as f:
         json.dump(out, f, indent=1)

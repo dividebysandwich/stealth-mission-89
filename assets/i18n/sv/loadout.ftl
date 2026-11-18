@@ -202,3 +202,7 @@ weapon-role-29 = Taktisk störkapsel: kortar de störda radarstationerna till de
 employment-29 =
     Ställs in på JAM-sidan: en radar eller sektor per kapsel, på eller av
     Störning gör dig synlig på längre håll
+weapon-role-30 = Behållare för attack mot flygfält: lägger kraterbomber och pansarminor i fallskärmar längs en 500 m remsa
+employment-30 =
+    Sitter kvar på pylonen och fäller i två sekunder; flyg plant och lågt över målet
+    Från högst 1000 ft över marken; tre kratrar stänger en bana, minorna väntar på fordon

@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xaf595ed869321921,
-        0xbacbccd0ef63960b,
-        0x3ecb59dc57bbccd6,
-        0x0a7a0b37a372e089,
-        0xb289c984d302cf2b,
-        0x34477514c8dcbce7,
-        0x9f358d782f392bc7,
-        0xc09952ffa882c6d6,
-        0xdae0e4f5f1466ca8,
-        0x4c43886557331058,
-        0x9e869082d96fea02,
-        0x43193c8ab27d0178,
-        0x14f40a52c29b5d0f,
-        0xaaeb333d1f21f1ce,
-        0x6c56d3dd45863591,
-        0x76c36ebbc7ac9a4a,
-        0x2d148cb9e09ed94f,
-        0xd3b423a73be34bf4,
+        0x23ad25e4721aad19,
+        0x333776db42585ef3,
+        0xdb6cbef4c1f451de,
+        0x82c640c0247123c1,
+        0xad19a8cf448a37e3,
+        0x74d784052636992f,
+        0x4e6841dd799694ff,
+        0x100c9aab57b25f0e,
+        0x17074ddebee17930,
+        0x61f79795ab8eb390,
+        0xaf9420f197c2776a,
+        0x26d3461f942f7560,
+        0x2d14771d69f89cf7,
+        0x5ac205b60aafe296,
+        0x12472e6e60550e49,
+        0x928a39019b3094b2,
+        0xb1a99ad817686d77,
+        0x0a0cdf228306cb6c,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -4068,4 +4068,183 @@ fn a_growler_jamming_a_site_keeps_it_blind() {
     assert!(open, "the site never fired at the Growler with its pods off");
     assert!(on && !jammed, "the jammed site fired");
     assert!(loud_emv > quiet_emv, "emv {quiet_emv} -> {loud_emv}");
+}
+
+/// One step of a JP233 run: the aircraft flies on north at its speed (the test's input does
+/// not move it by itself).
+fn jp233_step(sim: &mut Sim, p: &mut PlayerState) -> Vec<SimEvent> {
+    let ev = sim.step(p, 15);
+    p.y += (p.velocity as i32 / 16) / 15;
+    ev
+}
+
+/// A JP233 run: the Tornado `alt` ft up at 450 kt heading north over a sandbox, both
+/// dispensers loaded, `units` placed ahead (map offsets from the aircraft), the fire button
+/// pressed `presses` times. Returns the simulation, the input and the events of the presses.
+fn jp233_run(
+    alt: u16,
+    units: &[(aaa::GroundKind, i32, i32)],
+    presses: usize,
+) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(jp233::JP233_WEAPON, 1), (jp233::JP233_WEAPON, 1)]);
+    *sim.units_mut() = units
+        .iter()
+        .map(|&(kind, dx, dy)| aaa::GroundUnit {
+            kind,
+            x: mx + dx,
+            y: my + dy,
+            ..Default::default()
+        })
+        .collect();
+    let mut p = player_at(mx, my, alt, 0, 450);
+    p.hud_mode = HudMode::Gnd;
+    jp233_step(&mut sim, &mut p);
+    let mut events = Vec::new();
+    for _ in 0..presses {
+        p.cmd.fire = true;
+        events.extend(jp233_step(&mut sim, &mut p));
+        p.cmd = Commands::default();
+        for _ in 0..5 {
+            events.extend(jp233_step(&mut sim, &mut p));
+        }
+    }
+    (sim, p, (mx, my), events)
+}
+
+/// Low over a column of vehicles: both dispensers lay their bomblets and mines along the
+/// strip behind the aircraft, the vehicles under it are destroyed, mines are left lying, and
+/// the empty dispensers are let go.
+#[test]
+fn jp233_lays_its_strip_over_a_column() {
+    use aaa::GroundKind;
+    // A column along the track some 200 to 700 m ahead (a map unit is 15.6 m).
+    let column: Vec<_> = (0..8)
+        .map(|k| (if k % 2 == 0 { GroundKind::Bmp2 } else { GroundKind::T90 }, 0, -13 - 4 * k))
+        .collect();
+    let (mut sim, mut p, _, ev) = jp233_run(200, &column, 2);
+    assert!(ev.iter().any(|e| is_msg(e, "JP233 dispensing")), "{ev:?}");
+    assert_eq!(sim.jp233().runs.len(), 2, "both dispensers at work");
+    let mut most = 0;
+    let mut craters = 0;
+    let mut mine_bursts = 0;
+    for _ in 0..15 * 20 {
+        for e in jp233_step(&mut sim, &mut p) {
+            if let SimEvent::Jp233Burst { crater, .. } = e {
+                if crater { craters += 1 } else { mine_bursts += 1 }
+            }
+        }
+        most = most.max(sim.jp233().bomblets.len());
+    }
+    assert!(sim.jp233().runs.is_empty());
+    assert!(sim.jp233().bomblets.is_empty(), "all down");
+    assert!(most > 100, "{most} in the air at once");
+    assert_eq!(craters, 2 * jp233::CRATERING as usize);
+    assert!(
+        sim.jp233().mines.len() + mine_bursts >= 2 * jp233::MINES as usize - 2,
+        "{} lying, {mine_bursts} gone off",
+        sim.jp233().mines.len()
+    );
+    assert!(sim.bays().0.iter().all(|b| b.1 == 0), "dispensers let go: {:?}", sim.bays().0);
+    let dead = sim.units().iter().filter(|u| u.destroyed).count();
+    assert!(dead >= 4, "{dead} of 8 destroyed");
+}
+
+/// The mines wait: a vehicle driving into the minefield later sets one off.
+#[test]
+fn jp233_mines_wait_for_vehicles() {
+    use aaa::GroundKind;
+    let (mut sim, p, (mx, my), _) = jp233_run(200, &[], 1);
+    for _ in 0..15 * 10 {
+        sim.step(&p, 15);
+    }
+    let lying = sim.jp233().mines.len();
+    assert!(lying > 20, "{lying} mines lying");
+    // A truck parked on a mine.
+    let m = sim.jp233().mines[lying / 2];
+    let (e, n) = (m.p[0] as f64, m.p[1] as f64);
+    let at = ((e / aaa::M_PER_MAP).round() as i32, 0x8000 - (n / aaa::M_PER_MAP).round() as i32);
+    assert!((at.0 - mx).abs() < 20 && (my - at.1) > 0, "mine at {at:?} from {:?}", (mx, my));
+    sim.units_mut().push(aaa::GroundUnit {
+        kind: GroundKind::Bmp2,
+        x: at.0,
+        y: at.1,
+        fine: Some(aaa::Fine { e: m.p[0] + 3.0, n: m.p[1], heading: 0.0 }),
+        ..Default::default()
+    });
+    let mut went_off = false;
+    for _ in 0..15 {
+        for e in sim.step(&p, 15) {
+            went_off |= matches!(e, SimEvent::Jp233Burst { crater: false, .. });
+        }
+    }
+    assert!(went_off, "no mine went off under the vehicle");
+    assert!(sim.jp233().mines.len() < lying);
+}
+
+/// Too high over the ground: it refuses.
+#[test]
+fn jp233_refuses_from_too_high() {
+    let (sim, _, _, ev) = jp233_run(3000, &[], 1);
+    assert!(
+        ev.iter().any(|e| is_msg(e, "JP233: too high (above 1000 ft over the ground)")
+            || is_msg(e, "JP233: too high (above 1,000 ft over the ground)")),
+        "{ev:?}"
+    );
+    assert!(sim.jp233().runs.is_empty() && sim.jp233().bomblets.is_empty());
+    assert!(sim.bays().0.iter().all(|b| b.1 == 1));
+}
+
+/// Along a runway: its craters put it out of action.
+#[test]
+fn jp233_craters_close_a_runway() {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(jp233::JP233_WEAPON, 1)]);
+    sim.units_mut().clear();
+    let metres = |o: &GroundObject| {
+        [(o.x as f64 + 0.5) * aaa::M_PER_MAP, ((0x8000 - o.y) as f64 - 0.5) * aaa::M_PER_MAP]
+    };
+    // A runway with its runway object.
+    let (r, k) = sim
+        .runways()
+        .iter()
+        .find_map(|r| {
+            let k = (1..sim.objects().len()).find(|&k| {
+                let at = metres(&sim.objects()[k]);
+                sim.object_category(k) == 1 && (at[0] - r.c.0).hypot(at[1] - r.c.1) < r.half_len
+            })?;
+            Some((*r, k))
+        })
+        .expect("a runway with its object");
+    // In along it from 600 m short of its middle, 200 ft up.
+    let start = [r.c.0 - r.axis.0 * 600.0, r.c.1 - r.axis.1 * 600.0];
+    let wu = |m: f64| (m / (aaa::M_PER_MAP / 32.0)).round() as i32;
+    let h = r.axis.0.atan2(r.axis.1);
+    let mut p = player_at(0, 0, 200, (h / std::f64::consts::TAU * 65536.0) as i32 as u16, 450);
+    (p.x, p.y) = (wu(start[0]), wu(start[1]));
+    p.hud_mode = HudMode::Gnd;
+    let step = |sim: &mut Sim, p: &mut PlayerState| {
+        let ev = sim.step(p, 15);
+        let d = (p.velocity as f64 / 16.0) / 15.0;
+        p.x += (h.sin() * d).round() as i32;
+        p.y += (h.cos() * d).round() as i32;
+        ev
+    };
+    step(&mut sim, &mut p);
+    p.cmd.fire = true;
+    step(&mut sim, &mut p);
+    p.cmd = Commands::default();
+    let mut destroyed = false;
+    for _ in 0..15 * 20 {
+        for e in step(&mut sim, &mut p) {
+            destroyed |= matches!(e, SimEvent::GroundDestroyed { object, .. } if object == k);
+        }
+    }
+    assert!(destroyed, "runway {k} not cratered");
 }

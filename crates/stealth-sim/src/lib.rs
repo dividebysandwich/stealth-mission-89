@@ -38,6 +38,7 @@ pub mod standoff;
 pub mod naval;
 pub mod paradrop;
 pub mod jamming;
+pub mod jp233;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -271,6 +272,9 @@ pub struct Sim {
     /// Paratroopers in the air and on the ground ([`paradrop`]).
     #[serde(default, skip_serializing_if = "paradrop::Paradrop::is_empty")]
     pub(crate) paradrop: paradrop::Paradrop,
+    /// The JP233s at work, their submunitions and mines ([`jp233`]).
+    #[serde(default, skip_serializing_if = "jp233::Jp233::is_empty")]
+    pub(crate) jp233: jp233::Jp233,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -646,6 +650,7 @@ impl Sim {
             asw: asw::Asw::default(),
             naval: naval::Naval::default(),
             paradrop: paradrop::Paradrop::default(),
+            jp233: jp233::Jp233::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,
@@ -852,6 +857,11 @@ impl Sim {
         self.shape_class.get((o.shape & 0x7F) as usize).map_or(0, |&b| (b & 0xF) as i32)
     }
 
+    /// Weapon category of object `i` (assets/sim/units.ron's target classes: 1 a runway).
+    pub fn object_category(&self, i: usize) -> i32 {
+        self.category(i as i32)
+    }
+
     /// Effectiveness of weapon `w` against object `obj`.
     pub(crate) fn compat(&self, w: i32, obj: i32) -> i32 {
         let cat = self.category(obj);
@@ -1038,6 +1048,7 @@ impl Sim {
         self.update_asw(&present);
         self.update_naval();
         self.update_paradrop(&present);
+        self.update_jp233(&present);
         for &k in &present {
             self.activate(k);
             self.update_cm_timers();
@@ -1295,6 +1306,7 @@ impl Sim {
         // (The paratroopers and the jammer pods fire nothing either: they are not guns.)
         w >= 0
             && w != paradrop::PARA_WEAPON
+            && w != jp233::JP233_WEAPON
             && w != jamming::ALQ99_WEAPON
             && self.weapon_types.get(w as usize).is_some_and(|t| t.spec == 0)
     }

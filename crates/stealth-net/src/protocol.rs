@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 56;
+pub const PROTOCOL: u16 = 57;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -469,6 +469,31 @@ mod tests {
         assert_eq!(chat_text("  Hi\nthere\t "), "Hithere");
         assert_eq!(chat_text(&"x".repeat(500)).len(), MAX_CHAT);
         assert_eq!(chat_text(" \r "), "");
+    }
+
+    #[test]
+    fn jp233_dispensers_submunitions_and_mines_reach_the_others() {
+        use stealth_sim::jp233::{Bomblet, Jp233, Kind, Mine, Run};
+        let jp = Jp233 {
+            runs: vec![Run { owner: 1, station: 2, craters: 10, mines: 20, t: 1.25 }],
+            bomblets: vec![Bomblet {
+                id: 4,
+                kind: Kind::Mine,
+                p: [100.0, 200.0, 50.5],
+                v: [80.0, -2.0, -18.0],
+                t: 0.5,
+                owner: 1,
+            }],
+            mines: vec![Mine { id: 7, p: [1.0, 2.0, 3.0], owner: 1, left: 42.0 }],
+            cratered: Vec::new(),
+            next_id: 7,
+        };
+        let w = WorldFast { jp233: jp.clone(), ..Default::default() };
+        assert_eq!(decode::<WorldFast>(&encode(&w)).unwrap().jp233, jp);
+        assert_eq!(
+            encode(&WorldFast::default()),
+            encode(&WorldFast { jp233: Jp233::default(), ..Default::default() })
+        );
     }
 
     #[test]

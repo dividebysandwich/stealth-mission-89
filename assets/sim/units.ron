@@ -247,6 +247,11 @@
         // The EA-18G's AN/ALQ-99 tactical jamming pod: it jams the radars the pods are set on
         // (jamming.rs) and is never released.
         (id: "alq99", short: "ALQ-99", long: "Jammer pod", missile: "none", picture: 15, bay: 1),
+        // The Tornado's JP233 airfield attack dispenser: stays on the pylon throwing out its
+        // runway cratering bomblets and area denial mines on chutes along a strip (jp233.rs).
+        (id: "jp233", short: "JP233", long: "JP233", missile: "none", picture: 6, bay: 1,
+            effect: {"shelter": 1, "runway": 8, "aircraft": 7, "building": 2, "depot": 4, "launcher": 6,
+                     "radar": 5, "industry": 1, "small_ship": 1, "armour": 6}),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

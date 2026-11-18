@@ -202,3 +202,7 @@ weapon-role-29 = Nacelle de brouillage tactique : réduit les radars visés à l
 employment-29 =
     Réglée sur la page JAM : un radar ou un secteur par nacelle, marche ou arrêt
     Brouiller vous rend visible de plus loin
+weapon-role-30 = Dispenseur d'attaque d'aérodrome : sème des bombettes de cratérisation et des mines antichars sous parachute sur une bande de 500 m
+employment-30 =
+    Reste sur le pylône et largue pendant deux secondes ; volez en palier et bas au-dessus de l'objectif
+    Depuis 1000 ft sol au plus ; trois cratères ferment une piste, les mines attendent les véhicules

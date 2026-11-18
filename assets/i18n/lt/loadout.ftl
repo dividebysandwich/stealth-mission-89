@@ -202,3 +202,7 @@ weapon-role-29 = Taktinis trukdžių konteineris: sumažina trukdomų radarų nu
 employment-29 =
     Nustatomas JAM puslapyje: kiekvienam konteineriui radaras ar sektorius, įjungta ar išjungta
     Trukdymas daro tave matomą iš toliau
+weapon-role-30 = Aerodromų atakos konteineris: parašiutais išbarsto kraterius darančias bombeles ir prieštankines minas 500 m juosta
+employment-30 =
+    Lieka ant pilono ir barsto dvi sekundes; skriskite horizontaliai ir žemai virš taikinio
+    Ne aukščiau kaip 1000 ft virš žemės; trys krateriai uždaro taką, minos laukia transporto priemonių

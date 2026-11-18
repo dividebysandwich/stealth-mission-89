@@ -202,3 +202,7 @@ weapon-role-29 = Pod taicticiúil cur isteach: laghdaíonn sé na radair go dtí
 employment-29 =
     Socraithe ar an leathanach JAM: radar nó earnáil do gach pod, air nó as
     Le cur isteach feictear thú ó níos faide
+weapon-role-30 = Dáileoir ionsaithe aerpháirce: leagann sé buamaí beaga crátair agus mianaigh frith-armúir ar pharaisiúit feadh stráice 500 m
+employment-30 =
+    Fanann sé ar an bpíolón agus dáileann sé ar feadh dhá shoicind; eitil go cothrom agus íseal os cionn na sprice
+    Ó 1000 ft ar a mhéad os cionn na talún; dúnann trí chráitéar rúidbhealach, fanann na mianaigh le feithiclí

@@ -202,3 +202,7 @@ weapon-role-29 = Pod de interferência tática: reduz os radares interferidos ao
 employment-29 =
     Ajustado na página JAM: um radar ou setor por pod, ligado ou desligado
     Interferir faz você ser visto de mais longe
+weapon-role-30 = Dispensador de ataque a aeródromos: espalha bombetas de cratera e minas anticarro com paraquedas numa faixa de 500 m
+employment-30 =
+    Fica no pilone e lança por dois segundos; voe nivelado e baixo sobre o alvo
+    De no máximo 1000 ft acima do solo; três crateras fecham uma pista, as minas esperam os veículos

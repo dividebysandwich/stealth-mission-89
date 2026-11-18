@@ -286,6 +286,9 @@ pub struct WorldFast {
     /// The paratroopers in the air and on the ground.
     #[serde(default, skip_serializing_if = "crate::paradrop::Paradrop::is_empty")]
     pub paradrop: crate::paradrop::Paradrop,
+    /// The JP233s at work, their submunitions in the air and mines on the ground.
+    #[serde(default, skip_serializing_if = "crate::jp233::Jp233::is_empty")]
+    pub jp233: crate::jp233::Jp233,
     pub pilots: Vec<RemotePilot>,
     /// Every pilot in the world; those not in `pilots` this time are as they were.
     #[serde(default)]
@@ -406,6 +409,7 @@ impl Sim {
             asw: self.asw.for_clients(),
             naval: self.naval.clone(),
             paradrop: self.paradrop.clone(),
+            jp233: self.jp233.for_clients(),
             pilots: self.remote_pilots(),
             present: Vec::new(),
         }
@@ -698,6 +702,7 @@ impl Sim {
         self.asw = w.asw.clone();
         self.naval = w.naval.clone();
         self.paradrop = w.paradrop.clone();
+        self.jp233 = w.jp233.clone();
         for a in &mut self.ai_flight {
             a.cms = Default::default();
         }

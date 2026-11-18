@@ -22,6 +22,7 @@ Dimensions (m: length, body diameter, span):
     AGM-154C JSOW 4.06 x 0.33 (square body), wings 2.69 (folded flat on top on the pylon)
     ADM-160B MALD 2.84 x 0.30, wings 1.71 (folded under the body on the pylon)
     AN/ALQ-99 jammer pod 4.75 x 0.68, its ram-air turbine's propeller 0.75 across
+    JP233 dispenser 6.55 x 0.56 x 0.52 (rounded box section), hung well forward of its middle
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -388,6 +389,44 @@ def alq99():
     return Store(hang(g, 0.0, r))
 
 
+def jp233():
+    """JP233 airfield attack dispenser: the long box-sectioned container with rounded edges,
+    its blunt faired nose and short tail cone; the forward section with the HB-876 mines'
+    many small ejection ports underneath, the aft one with the SG-357 bomblets' two rows of
+    larger tubes, the joint between them and the yellow live bands. Hung from its lugs well
+    forward of its middle: on the Tornado's forward shoulder pylon it reaches back over the aft
+    one."""
+    hw, hh = 0.28, 0.26
+    n, t = 1.40, -5.15
+    g = loft([(n, 0.0, 0.10, 0.09), (n - 0.15, 0.0, 0.20, 0.19), (n - 0.45, 0.0, hw, hh),
+              (t + 0.35, 0.0, hw, hh), (t + 0.05, 0.0, 0.22, 0.20), (t, 0.0, 0.18, 0.16)],
+             OLIVE, n=16, power=5.0)
+    g.add(frustum((0, n + 0.001, 0), (0, n, 0), 0.10, 0.10, OLIVE, 16, r0b=0.09, r1b=0.09))
+    g.add(frustum((0, t + 0.001, 0), (0, t, 0), 0.18, 0.18, DARK, 16, r0b=0.16, r1b=0.16))
+    # The joint of the mine and the bomblet sections, the yellow bands fore and aft of it.
+    joint = -1.55
+    for y0, y1, c in ((joint + 0.02, joint - 0.02, DARK), (n - 0.55, n - 0.65, YELLOW),
+                      (joint - 0.20, joint - 0.30, YELLOW)):
+        g.add(block(-hw - 0.003, hw + 0.003, y1, y0, -hh - 0.003, hh + 0.003, c))
+    # The mines' ports: four rows of small ones under the forward section.
+    for row in range(4):
+        x = -0.18 + row * 0.12
+        y = n - 0.80
+        while y > joint + 0.15:
+            g.add(block(x - 0.035, x + 0.035, y - 0.07, y, -hh - 0.006, -hh + 0.01, BLACK))
+            y -= 0.12
+    # The bomblets' tubes: two rows of larger round ports under the aft section.
+    for x in (-0.12, 0.12):
+        y = joint - 0.45
+        while y > t + 0.45:
+            g.add(block(x - 0.07, x + 0.07, y - 0.14, y, -hh - 0.006, -hh + 0.01, BLACK))
+            y -= 0.22
+    # The strongback along the top the lugs sit in.
+    g.add(block(-0.08, 0.08, -0.60, 0.60, hh - 0.01, hh + 0.03, OLIVE))
+    lugs(g, 0.0, hh + 0.03, spacing=0.762)
+    return Store(hang(g, 0.0, hh + 0.03))
+
+
 def maverick():
     """AGM-65: the glass seeker dome, the stubby body, the long-chord delta wings and the
     control fins behind them."""
@@ -598,12 +637,12 @@ WEAPON_MODELS = {
     11: (61, lambda: rockeye(BROWN)), 12: (62, fireye), 13: (63, lambda: dispenser(YELLOW, BROWN)),
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
-    25: (80, slamer), 26: (82, jsow), 27: (83, mald), 29: (84, alq99),
+    25: (80, slamer), 26: (82, jsow), 27: (83, mald), 29: (84, alq99), 30: (85, jp233),
 }
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34}
+          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -711,15 +750,19 @@ def posed(geo, at, roll):
 LOADOUT_RS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src", "loadout.rs")
 
 
+# The weapon type constants of src/loadout.rs.
+NAMED = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26,
+         "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30}
+
+
 def _loadout_text():
     return open(LOADOUT_RS).read()
 
 
 def _u8_lists(text):
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28, "ALQ99": 29}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] =\s*\[([^\]]*)\];", text, re.M):
-        out[name] = [named[v] if v in named else int(v) for v in (x.strip() for x in body.split(",")) if v]
+        out[name] = [NAMED[v] if v in NAMED else int(v) for v in (x.strip() for x in body.split(",")) if v]
     return out
 
 
@@ -737,21 +780,26 @@ def station_rounds(table):
     """Rounds of each weapon type on each hardpoint of `table`: `PYLON_QTY` but where the
     station carries another number (`Hardpoint::carrying`)."""
     qty = pylon_rounds()
-    return [{w: own.get(w, qty[w]) for w in loads} for _, _, loads, _, own in _hardpoints(table)]
+    return [{w: own.get(w, qty[w]) for w in loads} for _, _, loads, _, own, _ in _hardpoints(table)]
 
 
 def exclusive_stations(table):
     """Pairs of stations of `table` that are never loaded together (`Hardpoint::excludes`)."""
-    return {(min(i, j), max(i, j)) for i, (*_, ex, _) in enumerate(_hardpoints(table)) for j in ex}
+    return {(min(i, j), max(i, j)) for i, (*_, ex, _, _) in enumerate(_hardpoints(table)) for j in ex}
+
+
+def taken_stations(table):
+    """The stations each load of `table` takes besides its own (`Hardpoint::taking`): per
+    station, weapon type -> stations."""
+    return [takes for *_, takes in _hardpoints(table)]
 
 
 def _qty_lists(text):
     """The `[(u8, u8); n]` constants: weapon type -> rounds."""
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26, "MALD": 27, "PARA": 28, "ALQ99": 29}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
         pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)
-        out[name] = {named[w] if w in named else int(w): int(n) for w, n in pairs}
+        out[name] = {NAMED[w] if w in NAMED else int(w): int(n) for w, n in pairs}
     return out
 
 
@@ -764,11 +812,15 @@ def _hardpoints(table):
     out = []
     for x, aft, loads, tail in re.findall(
             r"pylon\(\s*\"[^\"]*\",\s*\"[^\"]*\",\s*(-?[\d.]+),\s*(-?[\d.]+),\s*(?:Some\(\d+\)|None),\s*&([A-Z0-9_]+),?\s*\)"
-            r"((?:\s*\.(?:excluding\(&\[[\d, ]*\]\)|carrying\(&[A-Z0-9_]+\)))*)",
+            r"((?:\s*\.(?:excluding\(&\[[\d, ]*\]\)|carrying\(&[A-Z0-9_]+\)|taking\(&\[[^\]]*\]\)))*)",
             body):
         ex = re.search(r"excluding\(&\[([\d, ]*)\]\)", tail)
         own = re.search(r"carrying\(&([A-Z0-9_]+)\)", tail)
+        took = re.search(r"taking\(&\[([^\]]*)\]\)", tail)
+        takes = {}
+        for w, j in re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", took.group(1) if took else ""):
+            takes.setdefault(NAMED[w] if w in NAMED else int(w), []).append(int(j))
         out.append((float(x), float(aft), lists[loads],
                     [int(v) for v in ex.group(1).split(",") if v.strip()] if ex else [],
-                    qtys[own.group(1)] if own else {}))
+                    qtys[own.group(1)] if own else {}, takes))
     return out

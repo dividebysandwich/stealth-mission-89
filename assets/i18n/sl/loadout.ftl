@@ -202,3 +202,7 @@ weapon-role-29 = Taktični motilni vsebnik: skrči motene radarje na njihov dose
 employment-29 =
     Nastavi se na strani JAM: za vsak vsebnik radar ali sektor, vklop ali izklop
     Motenje te naredi vidnega z večje razdalje
+weapon-role-30 = Vsebnik za napad na letališča: polaga bombice za kraterje in protioklepne mine na padalih vzdolž 500 m pasu
+employment-30 =
+    Ostane na nosilcu in odmetava dve sekundi; letite vodoravno in nizko nad ciljem
+    Z največ 1000 ft nad tlemi; trije kraterji zaprejo stezo, mine čakajo na vozila
