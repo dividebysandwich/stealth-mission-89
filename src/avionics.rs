@@ -293,6 +293,10 @@ pub struct AvionicsState {
     pub rcs: bool,
     /// The aircraft is the cargo jet (the CGO format).
     pub cargo: bool,
+    /// HARMs and SLAM-ERs are among the stores loaded (fired or not): their formats are offered
+    /// only then (`offered`).
+    pub harm_loaded: bool,
+    pub slam_loaded: bool,
     /// The aircraft flown: its own engine instruments on the ENG format (`eng_page`).
     pub aircraft: crate::aircraft::AircraftKind,
     /// The SLAM-ER page's channels (`crate::slam_page`).
@@ -640,6 +644,8 @@ impl Default for AvionicsState {
             radar: false,
             rcs: false,
             cargo: false,
+            harm_loaded: true,
+            slam_loaded: false,
             slam: default(),
             mad_gain: 1,
             mad_out: false,
@@ -745,7 +751,7 @@ impl AvionicsState {
         self.rows[index(side)].unwrap_or_else(|| {
             let mut row = formats(side, self.radar, self.cargo);
             // The F/A-18E's right DDI: the SLAM-ER page instead of the map.
-            if side == MfdSide::Right && self.has(Format::Slam) {
+            if side == MfdSide::Right && self.offered(Format::Slam) {
                 row[3] = Format::Slam;
             }
             row
@@ -753,9 +759,26 @@ impl AvionicsState {
     }
 
     /// The formats the format menu offers: all of them, the radar's with the radar only, the
-    /// RCS page on the stealth types only.
+    /// RCS page on the stealth types only, the weapons' pages with those weapons loaded.
     pub fn available(&self) -> impl Iterator<Item = Format> + '_ {
-        ALL_FORMATS.into_iter().filter(|&f| self.has(f))
+        ALL_FORMATS.into_iter().filter(|&f| self.offered(f))
+    }
+
+    /// The aircraft has format `f` and it applies to the stores loaded: the HARM display with
+    /// HARMs, the SLAM page with SLAM-ERs. A bottom button with a format not offered is blank.
+    pub fn offered(&self, f: Format) -> bool {
+        self.has(f)
+            && (f != Format::Harm || self.harm_loaded)
+            && (f != Format::Slam || self.slam_loaded)
+    }
+
+    /// The stores loaded changed (a new flight, a rearm): the weapons' formats come and go as
+    /// with `set_radar`, the rows keeping their buttons (blank while not offered).
+    pub fn set_stores(&mut self, harm: bool, slam: bool) {
+        let old = self.clone();
+        self.harm_loaded = harm;
+        self.slam_loaded = slam;
+        self.refit(&old);
     }
 
     /// The aircraft has format `f`.
@@ -776,6 +799,7 @@ impl AvionicsState {
         let at = row.iter().position(|&f| f == now).unwrap_or(row.len() - 1);
         (1..=row.len()).map(|k| row[(at + k) % row.len()]).find(|&f| {
             matches!(f, Format::Hsd | Format::Map | Format::Harm | Format::Gm | Format::Fcr)
+                && self.offered(f)
                 && f != now
                 && self.shown(f).is_none_or(|s| s == MfdSide::Left)
         })
@@ -856,11 +880,11 @@ impl AvionicsState {
     fn refit(&mut self, old: &AvionicsState) {
         self.keep_rows(old);
         for &side in self.sides() {
-            if !self.has(self.format(side)) {
+            if !self.offered(self.format(side)) {
                 let g = std::iter::once(Format::Harm)
                     .chain(self.formats(side))
                     .chain(self.available())
-                    .find(|&g| self.shown(g).is_none())
+                    .find(|&g| self.offered(g) && self.shown(g).is_none())
                     .unwrap_or(Format::Map);
                 self.formats[index(side)] = g;
             }
@@ -951,7 +975,7 @@ impl AvionicsState {
                 .formats(side)
                 .into_iter()
                 .chain(self.available())
-                .find(|f| !shown[..i].contains(f))
+                .find(|f| self.offered(*f) && !shown[..i].contains(f))
                 .unwrap_or(Format::Map);
             self.formats[i] = f;
         }
@@ -1012,6 +1036,9 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         // (pressed on the menu, back to the format).
         MfdCmd::Row(side, k) => {
             let f = av.formats(side)[k as usize];
+            if !av.offered(f) {
+                return;
+            }
             match av.menu(side) {
                 Some(m) if m == k => av.menu[index(side)] = None,
                 None if av.format(side) == f => av.menu[index(side)] = Some(k),
@@ -1198,6 +1225,11 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         let k = slot - 5;
         let g = av.formats(side)[k as usize];
         let lit = menu.map_or(f == g, |m| m == k);
+        // A format not offered (a weapon's page without that weapon): a blank button, but
+        // still the one to open the format menu from while it is open.
+        if !av.offered(g) && menu != Some(k) {
+            return None;
+        }
         return Some((g.label(), Cmd(MfdCmd::Row(side, k)), lit));
     }
     // The format menu: every format down the sides (the one on the button it came from lit).
@@ -3715,6 +3747,39 @@ mod tests {
         assert!(av.available().any(|f| f == Format::Cgo));
         av.set_cargo(false);
         assert!(order.iter().all(|&s| av.format(s) != Format::Cgo));
+    }
+
+    /// The HARM display and the SLAM page are offered only with their weapons loaded: their
+    /// bottom buttons go blank, the menu leaves them out and an MFD showing one moves off it.
+    #[test]
+    fn weapon_pages_only_with_their_weapons() {
+        let label = |av: &AvionicsState, side, k: u8| {
+            let s = MfdState { av: av.clone(), ..Default::default() };
+            osb(side, 5 + k, &s).map(|o| o.0)
+        };
+        let mut av = AvionicsState::default();
+        av.select(MfdSide::Right, Format::Harm);
+        assert_eq!(label(&av, MfdSide::Left, 1), Some("HARM"));
+        av.set_stores(false, false);
+        assert_ne!(av.format(MfdSide::Right), Format::Harm);
+        assert_eq!(label(&av, MfdSide::Left, 1), None);
+        assert!(av.available().all(|f| f != Format::Harm));
+        assert_ne!(av.next_left_format(), Some(Format::Harm));
+        av.set_stores(true, false);
+        assert!(av.available().any(|f| f == Format::Harm));
+
+        // The F/A-18E: the SLAM page on the right DDI's row with SLAM-ERs, else the map.
+        let mut av = AvionicsState { aircraft: crate::aircraft::AircraftKind::FA18E, ..default() };
+        av.set_stores(true, false);
+        assert_eq!(av.formats(MfdSide::Right)[3], Format::Map);
+        assert!(av.available().all(|f| f != Format::Slam));
+        av.set_stores(true, true);
+        assert_eq!(av.formats(MfdSide::Right)[3], Format::Slam);
+        assert!(av.available().any(|f| f == Format::Slam));
+        // Not on another aircraft, loaded or not.
+        let mut av = AvionicsState::default();
+        av.set_stores(true, true);
+        assert!(!av.offered(Format::Slam));
     }
 
     /// The RCS page is in the stealth types' format menus (with or without a radar: the menu's

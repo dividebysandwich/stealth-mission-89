@@ -618,6 +618,8 @@ pub const CBU105_SPEC: i32 = 49;
 pub const CBU105_WEAPON: i32 = 23;
 /// The CBU-105's burst altitude unless the SMS page sets another (ft above the ground).
 pub const SFW_DEFAULT_BURST_FT: u16 = 1500;
+/// The HARM's weapon type.
+pub const HARM_WEAPON: i32 = 2;
 /// The SLAM-ER's missile table entry and weapon type (`crate::slam`).
 pub const SLAMER_SPEC: i32 = 52;
 pub const SLAMER_WEAPON: i32 = 25;

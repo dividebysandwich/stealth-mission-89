@@ -240,7 +240,7 @@ pub fn update(
     mut state: ResMut<MfdState>,
 ) {
     let Some(combat) = combat else { return };
-    if !state.modern || !state.av.has(Format::Slam) {
+    if !state.modern || !state.av.offered(Format::Slam) {
         return;
     }
     let sim = &combat.sim;

@@ -1488,6 +1488,7 @@ fn publish(
                     0.0
                 },
                 sfw: wt.spec as i32 == stealth_sim::CBU105_SPEC,
+                weapon: w,
             }
         })
         .collect();
@@ -1507,7 +1508,11 @@ fn publish(
         || stores.gun_slave != gun_slave
         || stores.gun_rounds != gun
         || stores.bays.len() != new_bays.len()
-        || stores.bays.iter().zip(&new_bays).any(|(a, b)| a.count != b.count || a.name != b.name)
+        || stores
+            .bays
+            .iter()
+            .zip(&new_bays)
+            .any(|(a, b)| a.count != b.count || a.name != b.name || a.weapon != b.weapon)
     {
         stores.bays = new_bays;
         stores.selected = cur;

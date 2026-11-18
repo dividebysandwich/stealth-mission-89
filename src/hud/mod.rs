@@ -130,6 +130,8 @@ pub struct Bay {
     pub range_km: f32,
     /// The CBU-105 (the SMS page sets its burst altitude).
     pub sfw: bool,
+    /// Weapon type (`units.ron` weapons index; -1 unknown).
+    pub weapon: i32,
 }
 
 /// Weapon stores (mirrored from the combat simulation every frame; defaults to a typical load).
@@ -158,6 +160,7 @@ impl Default for Stores {
             air_to_air,
             range_km: 0.0,
             sfw: false,
+            weapon: -1,
         };
         Self {
             bays: vec![

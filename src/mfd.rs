@@ -210,7 +210,7 @@ impl MfdState {
 
     /// The SLAM-ER page's report to the simulation (the F/A-18E with the modern avionics).
     pub fn slam_input(&self) -> Option<stealth_sim::slam::SlamInput> {
-        (self.modern && self.av.has(crate::avionics::Format::Slam)).then(|| self.av.slam.input())
+        (self.modern && self.av.offered(crate::avionics::Format::Slam)).then(|| self.av.slam.input())
     }
 
     /// The moving map is up (classic: the left MFD's map; modern: the MAP format).
@@ -889,6 +889,12 @@ fn mfd_keys(
     let cargo = settings.aircraft.airlifter();
     if state.av.cargo != cargo {
         state.av.set_cargo(cargo);
+    }
+    // The weapons' pages come with those weapons loaded (fired or not).
+    let loaded = |w| stores.bays.iter().any(|b| b.weapon == w);
+    let (harm, slam) = (loaded(stealth_sim::HARM_WEAPON), loaded(stealth_sim::SLAMER_WEAPON));
+    if (state.av.harm_loaded, state.av.slam_loaded) != (harm, slam) {
+        state.av.set_stores(harm, slam);
     }
     if state.av.aircraft != settings.aircraft {
         state.av.aircraft = settings.aircraft;
