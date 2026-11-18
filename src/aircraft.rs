@@ -1047,7 +1047,8 @@ static EA18G: AircraftSpec = AircraftSpec {
     eye: fa18e_point(0.0, 5.00, 1.25),
     cockpit_view: Some(CockpitView {
         canopy_colours: &[144, 145],
-        cut: (Vec3::new(-0.45, -1.10, -1.05), Vec3::new(0.45, 0.40, 0.70)),
+        // Over both cockpits: the back seat's 1.95 m behind the front one.
+        cut: (Vec3::new(-0.45, -1.10, -1.05), Vec3::new(0.45, 0.40, 2.60)),
         two_sided: false,
         parts: false,
     }),

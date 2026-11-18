@@ -765,9 +765,12 @@ impl AvionicsState {
             if side == MfdSide::Right && self.offered(Format::Slam) {
                 row[3] = Format::Slam;
             }
-            // The EA-18G's: the JAM page there.
+            // The EA-18G's: the JAM page there, and first on the big centre display.
             if side == MfdSide::Right && self.offered(Format::Jam) {
                 row[3] = Format::Jam;
+            }
+            if side == MfdSide::Third && self.offered(Format::Jam) {
+                row[0] = Format::Jam;
             }
             row
         })
@@ -796,6 +799,10 @@ impl AvionicsState {
         self.slam_loaded = slam;
         self.jam_loaded = jam;
         self.refit(&old);
+        // The jammer pods aboard: the JAM page up on the centre display.
+        if jam && !old.jam_loaded && self.mfds > 2 && self.shown(Format::Jam).is_none() {
+            self.formats[index(MfdSide::Third)] = Format::Jam;
+        }
     }
 
     /// The aircraft has format `f`.
