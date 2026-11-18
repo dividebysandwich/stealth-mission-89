@@ -18,6 +18,7 @@ Dimensions (m: length, body diameter, span):
     CBU-72, Mk 35, ISCB-1 (SUU-30 / SUU-49 class) 2.35 x 0.40, fins 0.60
     AGM-114 Hellfire 1.63 x 0.178, wings 0.33
     CBU-105 (SUU-66/B with the WCMD tail kit) 2.34 x 0.40, folded fins 0.62
+    AGM-84H SLAM-ER 4.37 x 0.343, wings 2.43 (folded under the body on the pylon), fins 0.91
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
 """
 
@@ -27,7 +28,7 @@ import re
 
 from mathutils import Matrix, Vector
 
-from mklib import Geo, Ramp, block, frustum, hexa
+from mklib import Geo, Ramp, block, frustum, hexa, wing
 
 WHITE = Ramp(224, 229)
 MISSILE = Ramp(224, 231)
@@ -46,8 +47,10 @@ FLAME = 13
 
 
 class Store:
-    def __init__(self, body, flame=None):
-        self.body, self.flame = body, flame
+    def __init__(self, body, flame=None, groups=()):
+        # `groups`: (slot, value, geo) parts drawn while the model's state slot has that value
+        # (the SLAM-ER's wings folded on the pylon, open in flight).
+        self.body, self.flame, self.groups = body, flame, list(groups)
 
 
 def body(stations, paint, n=10, bands=()):
@@ -182,6 +185,52 @@ def harpoon():
     g.add(block(-0.10, 0.10, -0.55, -1.15, -r - 0.07, -r + 0.02, DARK, taper_y=0.0))
     lugs(g, 0.0, r, spacing=0.76)
     return Store(hang(g, 0.0, r), hang(motor_flame(t, 0.12, 1.1), 0.0, r))
+
+
+# The SLAM-ER's wing state slot (`src/stores.rs` WINGS_SLOT): 0 folded, 1 open.
+WINGS_SLOT = 15
+
+
+def slamer():
+    """AGM-84H SLAM-ER (from the user's three-view, 85 px/m, nose at px 5): the blunt nose
+    with its dark seeker window below the tip, the warhead's thin dark band and the motor's
+    yellow and brown bands, the swept wings that open in flight from under the body (folded
+    flat beneath it on the pylon), the X tail fins, the Harpoon's intake scoop and the black
+    exhaust in the tapered tail."""
+    L, r = 4.37, 0.1715
+    n, t = L / 2, -L / 2
+
+    def at(px):
+        return n - (px - 5) / 85.0
+
+    g = body([(n, 0.0), (n - 0.03, 0.07), (n - 0.10, 0.12), (n - 0.22, 0.155), (n - 0.36, r),
+              (at(360), r), (t + 0.06, 0.15), (t, 0.13)], WHITE,
+             bands=[(at(77), at(79), BROWN), (at(122), at(125), YELLOW), (at(126), at(129), BROWN)])
+    # The seeker window: dark facets on the nose, low.
+    g.add(body([(n + 0.004, 0.0), (n - 0.03, 0.072), (n - 0.10, 0.122)], NAVY, n=10)
+          .transformed(lambda p: Vector((p.x, p.y, p.z - 0.004))))
+    # The exhaust.
+    g.add(frustum((0, t + 0.001, 0), (0, t - 0.02, 0), 0.10, 0.09, BLACK, 10))
+    # The GPS / data link antennas' panel on top, ahead of the wing.
+    g.add(block(-0.06, 0.06, at(130), at(95), r - 0.01, r + 0.006, GREY))
+    fins(g, at(335), at(372), r, 0.29, GREY, tip=(at(358), at(372)))
+    # The intake's scoop under the rear body.
+    g.add(block(-0.09, 0.09, at(290), at(335), -r - 0.06, -r + 0.02, DARK, taper_y=0.0))
+    lugs(g, 0.0, r, spacing=0.762)
+    # The wings: open, swept back from the lower body (root chord px 150..210, tips px 237..250,
+    # 1.215 m out); folded, two flat panels under the body, swept back along it.
+    root = at(150)
+    open_ = Geo()
+    open_.add(wing((0.10, root, -0.09), at(150) - at(210), (1.215, at(237), -0.11), at(237) - at(250),
+                   GREY, t=0.05))
+    folded = Geo()
+    for s in (-1, 1):
+        folded.add(hexa([(s * 0.02, root, -r - 0.005), (s * 0.15, root - 0.10, -r - 0.005),
+                         (s * 0.15, at(330), -r - 0.005), (s * 0.02, at(330), -r - 0.005),
+                         (s * 0.02, root, -r - 0.03), (s * 0.15, root - 0.10, -r - 0.03),
+                         (s * 0.15, at(330), -r - 0.03), (s * 0.02, at(330), -r - 0.03)], GREY))
+    return Store(hang(g, 0.0, r), groups=[(WINGS_SLOT, 0, hang(folded, 0.0, r)),
+                                          (WINGS_SLOT, 1, hang(open_, 0.0, r))])
 
 
 def maverick():
@@ -394,11 +443,12 @@ WEAPON_MODELS = {
     11: (61, lambda: rockeye(BROWN)), 12: (62, fireye), 13: (63, lambda: dispenser(YELLOW, BROWN)),
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
+    25: (80, slamer),
 }
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089, 23: 0.20}
+          20: 0.089, 23: 0.20, 25: 0.1715}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -511,7 +561,7 @@ def _loadout_text():
 
 
 def _u8_lists(text):
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[u8; \d+\] =\s*\[([^\]]*)\];", text, re.M):
         out[name] = [named[v] if v in named else int(v) for v in (x.strip() for x in body.split(",")) if v]
@@ -542,7 +592,7 @@ def exclusive_stations(table):
 
 def _qty_lists(text):
     """The `[(u8, u8); n]` constants: weapon type -> rounds."""
-    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23}
+    named = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25}
     out = {}
     for name, body in re.findall(r"^const ([A-Z0-9_]+): \[\(u8, u8\); \d+\] = \[([^\]]*)\];", text, re.M):
         pairs = re.findall(r"\(\s*([A-Z0-9_]+)\s*,\s*(\d+)\s*\)", body)

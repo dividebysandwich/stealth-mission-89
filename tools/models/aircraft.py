@@ -2377,6 +2377,13 @@ def build_store(index, store):
             col.objects.link(group)
         group.parent = lod
         mklib.link_child(group, f"{group.name}_body", mklib.faces_mesh(f"{group.name}_body", store.flame.scaled(K)))
+    for slot, value, geo in getattr(store, "groups", ()):
+        group = bpy.data.objects.new(f"{lod.name}_s{slot}v{value}", None)
+        group["conds"] = [[slot, value]]
+        for col in lod.users_collection:
+            col.objects.link(group)
+        group.parent = lod
+        mklib.link_child(group, f"{group.name}_body", mklib.faces_mesh(f"{group.name}_body", geo.scaled(K)))
     return lod
 
 
