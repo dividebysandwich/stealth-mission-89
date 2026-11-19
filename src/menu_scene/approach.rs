@@ -1,7 +1,8 @@
 //! An aircraft on final approach, followed by a chase plane: to a field's runway
 //! (`Shot::Approach`) and to a carrier's angled deck (`Shot::CarrierApproach`). The chase plane
-//! holds station off its wing and drifts smoothly about it; a narrow lens shows the gear, the
-//! flaps and the landing light close.
+//! holds a station of the scene's pick (off either wing, low behind, high above, ahead off the
+//! nose) and drifts smoothly about it; a narrow lens shows the gear, the flaps and the landing
+//! light close.
 
 use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
@@ -34,6 +35,31 @@ const TO_TOUCHDOWN: f32 = 5.6;
 const TO_TRAP: f32 = 6.4;
 /// The chase plane's lens (degrees high).
 const LENS: f32 = 13.0;
+
+/// The chase plane's stations for an 18 m aircraft (m: to the right, behind, above).
+const STATIONS: [(f32, f32, f32); 6] = [
+    // Off the right wing, a little above.
+    (44.0, 52.0, 5.0),
+    // Off the left wing, level.
+    (-46.0, 40.0, 1.0),
+    // Low behind, looking up at the gear.
+    (10.0, 70.0, -9.0),
+    // High above its right quarter.
+    (26.0, 46.0, 30.0),
+    // Ahead of its left wing, the nose and the light towards the camera.
+    (-38.0, -48.0, 4.0),
+    // Ahead of its right wing, a little below.
+    (40.0, -40.0, -4.0),
+];
+
+/// At the carrier: clear of the island (on the deck's right), further behind.
+const DECK_STATIONS: [(f32, f32, f32); 5] = [
+    (-30.0, 62.0, 5.0),
+    (-44.0, 46.0, 1.0),
+    (-8.0, 80.0, -2.0),
+    (-22.0, 56.0, 30.0),
+    (-38.0, -46.0, 4.0),
+];
 
 /// The approach: the touchdown point (Bevy metres), the landing heading (rad), the glide
 /// slope (rad), the speed (m/s) and the nose's angle over the path (rad); the aircraft and
@@ -149,15 +175,17 @@ fn approach<const CARRIER: bool>(
     for mut v in &mut lamps {
         v.set_if_neq(Visibility::Inherited);
     }
-    // The chase plane: off the right wing (the nose and its light towards the free side of
-    // the screen; at the carrier off the left one, clear of the island, further behind), a
-    // little above, drifting slowly about its station (each axis its own slow swing).
+    // The chase plane at the scene's station, drifting slowly about it (each axis its own slow
+    // swing).
     let k = f.length / 18.0;
-    let (side, behind) = if CARRIER { (-30.0, 62.0) } else { (44.0, 52.0) };
+    let stations: &[(f32, f32, f32)] = if CARRIER { &DECK_STATIONS } else { &STATIONS };
+    let (side, behind, up) = stations[(stage.director.roll >> 8) as usize % stations.len()];
     let side = (side + 7.0 * (t * 0.45).sin()) * k;
     let behind = (behind + 9.0 * (t * 0.31 + 1.7).sin()) * k;
-    let up = (5.0 + 3.0 * (t * 0.53 + 0.6).sin()) * k;
+    let up = (up + 3.0 * (t * 0.53 + 0.6).sin()) * k;
     let eye = stage::behind(p, f.heading, behind, side, up);
+    // Never under the ground (low behind it, close to touchdown).
+    let eye = eye.with_y(eye.y.max(stage.ground(eye) + 2.0));
     // On its middle: the whole aircraft, its nose and the light's beam ahead in the picture.
     stage::look(&mut cam, eye, p);
     fov.0 = LENS.to_radians();
