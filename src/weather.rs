@@ -48,6 +48,15 @@ impl Plugin for WeatherPlugin {
         .insert_resource(lod_policy())
         .add_systems(OnEnter(AppState::Flight), setup_weather.in_set(SetupSet::Spawn))
         .add_systems(OnExit(AppState::Flight), (teardown_weather, billboard::reset))
+        // The menu's scenes show a weather of theirs (`SceneWeather`).
+        .add_systems(OnExit(AppState::Menu), (teardown_weather, billboard::reset))
+        .add_systems(
+            Update,
+            scene_weather
+                .run_if(resource_exists::<SceneWeather>)
+                .run_if(resource_exists::<Palette>)
+                .run_if(in_state(AppState::Menu)),
+        )
         .add_systems(
             Update,
             turbulence
@@ -71,7 +80,7 @@ impl Plugin for WeatherPlugin {
                 .chain()
                 .after(bevy::transform::TransformSystems::Propagate)
                 .before(crate::lighting::LightingSystems)
-                .run_if(in_state(AppState::Flight)),
+                .run_if(crate::settings::world_shown),
         )
         .add_systems(
             PostUpdate,
@@ -79,7 +88,7 @@ impl Plugin for WeatherPlugin {
                 .chain()
                 .after(crate::lighting::LightingSystems)
                 .before(CloudSystems)
-                .run_if(in_state(AppState::Flight)),
+                .run_if(crate::settings::world_shown),
         );
     }
 }
@@ -443,9 +452,54 @@ fn setup_weather(
     mut state: ResMut<WeatherState>,
 ) {
     let weather = mission.as_ref().map(|m| m.0.weather).unwrap_or_default();
-    let mut forecast = campaign.as_ref().and_then(|c| Forecast::new(&c.state().setup));
+    let wind = mission.as_ref().map(|m| m.0.wind).unwrap_or_default();
+    let assets = (&mut *meshes, &mut *materials);
+    start(&mut commands, weather, wind, campaign.as_deref(), &palette, assets, &settings, &mut state);
+}
+
+/// The weather shown behind the menu (`menu_scene`): set it to change the clouds.
+#[derive(Resource, Clone, Copy, PartialEq)]
+pub struct SceneWeather(pub Weather);
+
+/// The menu scene's weather, laid out again when it changes.
+#[allow(clippy::too_many_arguments)]
+fn scene_weather(
+    mut commands: Commands,
+    want: Res<SceneWeather>,
+    palette: Res<Palette>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<PaletteMaterial>>,
+    settings: Res<crate::settings::Settings>,
+    mut state: ResMut<WeatherState>,
+    clouds: Query<Entity, With<CloudEntity>>,
+    mut billboards: ResMut<billboard::Billboards>,
+) {
+    if !want.is_changed() && !palette.is_changed() {
+        return;
+    }
+    for e in &clouds {
+        commands.entity(e).try_despawn();
+    }
+    *billboards = billboard::Billboards::default();
+    let assets = (&mut *meshes, &mut *materials);
+    let calm = stealth_mission::Wind::default();
+    start(&mut commands, want.0, calm, None, &palette, assets, &settings, &mut state);
+}
+
+/// Lays out a weather's clouds (a campaign's changing one from its forecast).
+#[allow(clippy::too_many_arguments)]
+fn start(
+    commands: &mut Commands,
+    weather: Weather,
+    mission_wind: stealth_mission::Wind,
+    campaign: Option<&crate::campaign::ActiveCampaign>,
+    palette: &Palette,
+    (meshes, materials): (&mut Assets<Mesh>, &mut Assets<PaletteMaterial>),
+    settings: &crate::settings::Settings,
+    state: &mut WeatherState,
+) {
+    let mut forecast = campaign.and_then(|c| Forecast::new(&c.state().setup));
     // A campaign under a clear sky has a steady wind; the changing weather's comes with it.
-    let mission_wind = mission.as_ref().map(|m| m.0.wind).unwrap_or_default();
     let (wind, sea) = match (&campaign, forecast.as_mut()) {
         (Some(c), Some(f)) => {
             let now = f.at(c.state().clock);

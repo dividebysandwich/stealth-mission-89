@@ -231,6 +231,7 @@ fn apply_look(
         commands.entity(sphere).insert((SceneEntity, SceneBackground));
     }
     commands.insert_resource(palette);
+    commands.insert_resource(crate::weather::SceneWeather(look.weather));
     // The world is drawn from now on (it needs the palette).
     commands.insert_resource(MenuScene);
 }
@@ -329,5 +330,6 @@ fn despawn_scene(
     commands.remove_resource::<MenuScene>();
     commands.remove_resource::<Director>();
     commands.remove_resource::<Palette>();
+    commands.remove_resource::<crate::weather::SceneWeather>();
     apron::cleanup(&mut commands);
 }
