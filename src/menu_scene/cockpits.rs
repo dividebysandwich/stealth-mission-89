@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::director::{Shot, shot_on};
-use super::stage::{Camera, Stage, Weave};
+use super::stage::{Camera, Stage};
 use super::{SceneFov, ShotEntity, ShotSet};
 use crate::aircraft::AircraftKind;
 use crate::cockpit3d::scene::{SceneCockpits, SceneScreens, Screen, Seat};
@@ -116,7 +116,7 @@ fn forward_view(
         Res<crate::settings::Settings>,
     ),
     mut cabins: Query<(&Cabin, &mut WorldPos, &mut Transform), Without<super::SceneCamera>>,
-    mut weave: Local<Option<Weave>>,
+    mut flight: Local<Option<super::stage::Maneuver>>,
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
 ) {
@@ -125,19 +125,21 @@ fn forward_view(
     if stage.begin(&[]) {
         let start = stage.land() + DVec3::Y * if heli { 60.0 } else { 300.0 };
         let heading = (stage.director.roll % 628) as f32 * 0.01;
-        *weave = Some(Weave {
+        let speed = if heli { 60.0 } else { 220.0 };
+        let agile = !heli && kind != AircraftKind::F117;
+        let long = super::director::SHOT_SECONDS + 1.0;
+        *flight = Some(super::stage::Maneuver::random(
+            stage.director.roll,
             start,
             heading,
-            speed: if heli { 60.0 } else { 220.0 },
-            amp: Weave::amp_for(7.0, if heli { 25.0 } else { 50.0 }),
-            period: 7.0,
-            phase: -0.6,
-            climb: if heli { 0.0 } else { 15.0 },
-        });
+            speed,
+            agile,
+            long,
+        ));
         spawn_cabin(&mut stage, Cabin::new(Seat::Cockpit(kind), None));
         return;
     }
-    let Some(w) = *weave else { return };
+    let Some(w) = flight.as_ref() else { return };
     let (mut p, rot, vel) = w.at(stage.director.t);
     // Over the hills, never into them.
     p.y = p.y.max(stage.ground(p) + if heli { 40.0 } else { 150.0 });

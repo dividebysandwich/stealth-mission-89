@@ -323,3 +323,96 @@ pub fn cruise(kind: AircraftKind) -> f32 {
         _ => 190.0,
     }
 }
+
+/// A pilot's maneuvering: level flight, rolling into a bank of a random side and depth,
+/// holding the turn while pulling, now and then reversing into the other bank, rolling out
+/// and flying level again. The bank follows its targets at the roll rate the aircraft has,
+/// eased in and out; the heading turns as the bank makes it, the nose comes up with the pull.
+#[derive(Clone, Debug)]
+pub struct Maneuver {
+    pub start: DVec3,
+    pub heading: f32,
+    pub speed: f32,
+    /// The bank wanted from each time on (s, rad, right wing down positive).
+    plan: Vec<(f32, f32)>,
+    /// The fastest roll (rad/s).
+    roll_rate: f32,
+}
+
+impl Maneuver {
+    /// A random sequence `seed`'s, `long` seconds or more; `agile`: a fighter's banks and roll
+    /// rate, else a heavier aircraft's or a helicopter's.
+    pub fn random(
+        seed: u32,
+        start: DVec3,
+        heading: f32,
+        speed: f32,
+        agile: bool,
+        long: f32,
+    ) -> Self {
+        let mut h = seed as u64 | 1;
+        let mut next = || {
+            h = h.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            ((h >> 33) as f32) / (1u64 << 31) as f32
+        };
+        let range = |r: &mut dyn FnMut() -> f32, a: f32, b: f32| a + (b - a) * r();
+        let (deep, roll_rate) = if agile { (75f32, 100f32) } else { (40f32, 35f32) };
+        let mut plan = Vec::new();
+        let mut t = 0.0;
+        // Sometimes already in a turn at the start.
+        let mut bank = if next() < 0.3 { range(&mut next, -0.5, 0.5) } else { 0.0 };
+        plan.push((0.0, bank));
+        t += range(&mut next, 0.4, 1.4);
+        while t < long {
+            let level = bank.abs() > 0.1;
+            let r = next();
+            bank = if level && r < 0.55 {
+                // Roll out.
+                0.0
+            } else if level && r < 0.8 {
+                // Reverse into the other side.
+                -bank.signum() * range(&mut next, 25.0, deep).to_radians()
+            } else {
+                // Into a bank (or deeper in this one).
+                let side = if next() < 0.5 { -1.0 } else { 1.0 };
+                side * range(&mut next, 25.0, deep).to_radians()
+            };
+            plan.push((t, bank));
+            t += if bank == 0.0 { range(&mut next, 0.6, 1.5) } else { range(&mut next, 1.0, 2.2) };
+        }
+        Maneuver { start, heading, speed, plan, roll_rate: roll_rate.to_radians() }
+    }
+
+    /// The bank wanted at `t`.
+    fn wanted(&self, t: f32) -> f32 {
+        self.plan.iter().rev().find(|(at, _)| *at <= t).map_or(0.0, |p| p.1)
+    }
+
+    /// Where it is `t` seconds in (Bevy metres), its attitude and velocity: flown from the
+    /// start in small steps.
+    pub fn at(&self, t: f32) -> (DVec3, Quat, Vec3) {
+        const DT: f32 = 1.0 / 120.0;
+        let (mut pos, mut heading) = (self.start, self.heading);
+        let mut bank = self.wanted(0.0);
+        let mut rate = 0.0f32;
+        let mut s = 0.0;
+        while s < t {
+            let dt = DT.min(t - s);
+            // The roll rate eases towards what closes on the bank wanted, no faster than the
+            // aircraft rolls, as a pilot's stick.
+            let want = ((self.wanted(s) - bank) * 3.0).clamp(-self.roll_rate, self.roll_rate);
+            rate += (want - rate) * (dt * 6.0).min(1.0);
+            bank += rate * dt;
+            heading += 9.81 * bank.tan() / self.speed.max(1.0) * dt;
+            let f = forward(heading) * self.speed * dt;
+            pos += enu(f.x as f64, 0.0, f.y as f64);
+            s += dt;
+        }
+        // The pull holding the turn level lifts the nose a little; a touch of buffet.
+        let g = 1.0 / bank.cos().max(0.25);
+        let pitch = (0.03 + 0.015 * (g - 1.0)) + (t * 7.0).sin() * 0.002 * (g - 1.0);
+        let f = forward(heading) * self.speed;
+        // The model's bank is left wing down positive (`attitude`).
+        (pos, attitude(heading, pitch, -bank), Vec3::new(f.x, 0.0, -f.y))
+    }
+}
