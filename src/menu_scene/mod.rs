@@ -54,7 +54,9 @@ impl Plugin for MenuScenePlugin {
             )
             .add_systems(
                 Update,
-                (director::direct, apply_look, |mut f: ResMut<SceneFov>| f.1 = false)
+                (director::direct, apply_look, director::prefetch, |mut f: ResMut<SceneFov>| {
+                    f.1 = false
+                })
                     .chain()
                     .in_set(DirectorSet),
             )
@@ -335,5 +337,6 @@ fn despawn_scene(
     commands.remove_resource::<Director>();
     commands.remove_resource::<Palette>();
     commands.remove_resource::<crate::weather::SceneWeather>();
+    commands.remove_resource::<crate::scenery::SceneryPrefetch>();
     apron::cleanup(&mut commands);
 }

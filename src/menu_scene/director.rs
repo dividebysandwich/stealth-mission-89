@@ -220,6 +220,8 @@ pub struct Director {
     pub look_changed: bool,
     order: Vec<Shot>,
     next: usize,
+    /// The next scene and its look, decided ahead (`next_scene`).
+    ahead: Option<(Shot, Option<(Look, bool)>)>,
     /// Scene changes so far, and the looks rolled.
     changes: usize,
     pub looks: usize,
@@ -245,6 +247,7 @@ impl Director {
             look_changed: true,
             order: Vec::new(),
             next: 1,
+            ahead: None,
             changes: 0,
             looks: 0,
             held: vr,
@@ -252,6 +255,7 @@ impl Director {
             stop: None,
         };
         d.order = cycle();
+        d.ahead = Some(d.next_scene());
         d
     }
 
@@ -288,12 +292,18 @@ impl Director {
             look_changed: true,
             order: vec![shot],
             next: 0,
+            ahead: None,
             changes: 0,
             looks: 0,
             held: true,
             from,
             stop,
         })
+    }
+
+    /// The scene's clock back to its start (`SM89_MENU_SHOT_AT`'s for a held one).
+    pub fn restart(&mut self) {
+        self.t = self.from;
     }
 
     /// The scene `shot` is on.
@@ -332,24 +342,48 @@ impl Director {
         self.t = 0.0;
         self.spawned = false;
         self.roll = rand::random();
+        let (shot, look) = self.ahead.take().unwrap_or_else(|| self.next_scene());
+        self.shot = shot;
+        self.next += 1;
+        self.changes += 1;
+        if let Some((look, new)) = look {
+            self.look = look;
+            self.looks += new as usize;
+            self.look_changed = true;
+        }
+        self.ahead = Some(self.next_scene());
+        true
+    }
+
+    /// The scene after this one and, if it changes, its look (and whether it is a new one,
+    /// not only another theater): decided a scene ahead, so its theater's scenery can be made
+    /// meanwhile.
+    fn next_scene(&mut self) -> (Shot, Option<(Look, bool)>) {
         if self.next >= self.order.len() {
             self.order = cycle();
             self.next = 0;
         }
-        self.shot = self.order[self.next];
-        self.next += 1;
-        self.changes += 1;
-        let place = self.shot.place();
-        if self.changes.is_multiple_of(LOOK_EVERY) {
-            self.look = Look::roll(theater_for(place), None, None);
-            self.looks += 1;
-            self.look_changed = true;
+        let shot = self.order[self.next];
+        let place = shot.place();
+        let look = if (self.changes + 1).is_multiple_of(LOOK_EVERY) {
+            Some((Look::roll(theater_for(place), None, None), true))
         } else if !fits(place, self.look.theater) {
-            self.look.theater = theater_for(place);
-            self.look.classic = false;
-            self.look_changed = true;
+            let mut l = self.look.clone();
+            l.theater = theater_for(place);
+            l.classic = false;
+            Some((l, false))
+        } else {
+            None
+        };
+        (shot, look)
+    }
+
+    /// The theater the next scene will be on.
+    pub fn upcoming_theater(&self) -> &'static str {
+        match &self.ahead {
+            Some((_, Some((l, _)))) => l.theater,
+            _ => self.look.theater,
         }
-        true
     }
 }
 
@@ -473,5 +507,17 @@ pub fn snap(
         commands
             .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
             .observe(bevy::render::view::screenshot::save_to_disk(file));
+    }
+}
+
+/// The next scene's theater's scenery is made ahead.
+pub fn prefetch(
+    mut commands: Commands,
+    director: Res<Director>,
+    want: Option<Res<crate::scenery::SceneryPrefetch>>,
+) {
+    let next = director.upcoming_theater();
+    if want.is_none_or(|w| w.0 != next) {
+        commands.insert_resource(crate::scenery::SceneryPrefetch(next.to_string()));
     }
 }

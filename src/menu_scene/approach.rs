@@ -88,21 +88,24 @@ fn approach<const CARRIER: bool>(
             let at = DVec3::new(l.east * WU, catapult::DECK_WU * WU, -l.north * WU);
             (at, l.heading as f32, (catapult::GLIDE_DEG as f32).to_radians())
         } else {
-            // The field's strip: north and south, the aim points 300 m in from its ends
-            // (the ATC's when the scenery's runways aren't there), landed on from the
-            // scene's side.
-            let n = places.airfields.len().max(1);
-            let field = places
-                .airfields
-                .get(stage.director.pick(n))
-                .copied()
-                .unwrap_or(DVec2::splat(256_000.0));
-            let s = if (stage.director.roll >> 4) & 1 == 0 { 1.0 } else { -1.0 };
-            let aim = field + DVec2::new(0.0, s * 700.0);
+            // One of the scenery's runway ends, else a field's strip: north and south, the
+            // aim points 300 m in from its ends (the ATC's when the scenery's runways aren't
+            // there), landed on from the scene's side.
+            let ends = stage.runway_ends();
+            let (aim, toward) = match ends.get(stage.director.pick(ends.len().max(1))) {
+                Some(&e) => e,
+                None => {
+                    let n = places.airfields.len().max(1);
+                    let field = places.airfields.get(stage.director.pick(n)).copied();
+                    let field = field.unwrap_or(DVec2::splat(256_000.0));
+                    let s = if (stage.director.roll >> 4) & 1 == 0 { 1.0 } else { -1.0 };
+                    (field + DVec2::new(0.0, s * 700.0), DVec2::new(0.0, s))
+                }
+            };
             let at = enu(aim.x, 0.0, aim.y);
             let at = DVec3::new(at.x, stage.ground(at), at.z);
-            // Landing towards -toward: from the north (s 1) heading south.
-            let heading = if s > 0.0 { std::f32::consts::PI } else { 0.0 };
+            // Landing the other way from the side the aircraft comes from.
+            let heading = (-toward.x as f32).atan2(-toward.y as f32);
             (at, heading, 3f32.to_radians())
         };
         let spec = kind.spec();

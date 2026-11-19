@@ -63,6 +63,14 @@ impl Plugin for SceneryPlugin {
             .init_resource::<PapiSites>()
             .init_resource::<skin::Skin>()
             .add_systems(OnExit(AppState::Flight), (cleanup, skin::cleanup))
+            // The menu's scenes have the scenery of their theaters (its own when it changes).
+            .add_systems(OnExit(AppState::Menu), (cleanup, skin::cleanup))
+            .add_systems(
+                Update,
+                (switch_theater, prefetch_scene_layout)
+                    .before(build_scenery)
+                    .run_if(in_state(AppState::Menu)),
+            )
             .add_systems(
                 Update,
                 (
@@ -88,7 +96,7 @@ impl Plugin for SceneryPlugin {
                         .run_if(resource_exists::<Scenery>),
                 )
                     .chain()
-                    .run_if(in_state(AppState::Flight)),
+                    .run_if(crate::settings::world_shown),
             );
         // (In the browser the layout is made on the main thread: there it waits for the flight.)
         app.add_systems(
@@ -96,7 +104,7 @@ impl Plugin for SceneryPlugin {
             skin::measure_flat_ground
                 .after(bevy::transform::TransformSystems::Propagate)
                 .after(bevy::camera::visibility::VisibilitySystems::CalculateBounds)
-                .run_if(in_state(AppState::Flight)),
+                .run_if(crate::settings::world_shown),
         );
         if !cfg!(target_arch = "wasm32") {
             app.add_systems(Update, prefetch_layout.run_if(in_state(AppState::Menu)));
@@ -401,7 +409,7 @@ fn build_scenery(
     }
     let key = &layout_key(&theater.id);
     cache.collect();
-    let done = cache.done.as_ref().filter(|(k, _)| k == key).map(|(_, l)| l.clone());
+    let done = cache.get(key);
     let Some(Layout { ground, net, airfields: fields, hills }) = done else {
         if !cache.making(&theater.id) {
             let source = LayoutSource::gather(
@@ -411,7 +419,7 @@ fn build_scenery(
                 &library.files,
                 &assets.palette.theater.day,
             );
-            cache.making = Some((key.clone(), make_layout(source)));
+            cache.making.push((key.clone(), make_layout(source)));
         }
         return;
     };
@@ -595,9 +603,14 @@ impl LayoutSource {
 /// `TileOverrides`, which the layout doesn't read.)
 #[derive(Resource, Default)]
 pub struct LayoutCache {
-    done: Option<(String, Layout)>,
-    making: Option<(String, Task<Layout>)>,
+    /// The layouts kept, the latest last (the menu's scenes visit several theaters, the
+    /// mission's is made ahead of the flight).
+    done: Vec<(String, Layout)>,
+    making: Vec<(String, Task<Layout>)>,
 }
+
+/// Layouts kept at most.
+const LAYOUTS_KEPT: usize = 3;
 
 /// Makes a layout on another thread.
 fn make_layout(source: LayoutSource) -> Task<Layout> {
@@ -633,24 +646,78 @@ fn prefetch_layout(
         Some(m) if !window.open => m.theater_code.to_ascii_lowercase(),
         _ => crate::menu::THEATERS[state.theater.min(crate::menu::THEATERS.len() - 1)].0.into(),
     };
-    let key = layout_key(&id);
+    request(&id, &mut cache, &mut library, &server, &assets, &mut theater);
+}
+
+/// The layout of theater `id` made ahead (unless it is kept or on its way), once its models
+/// are loaded (`theater`: the theater loaded for it meanwhile).
+fn request(
+    id: &str,
+    cache: &mut LayoutCache,
+    library: &mut ModelLibrary,
+    server: &AssetServer,
+    assets: &ModelAssets,
+    theater: &mut Option<(String, Theater)>,
+) {
+    let key = layout_key(id);
     cache.collect();
-    let known = |k: Option<&String>| k == Some(&key);
-    if known(cache.done.as_ref().map(|d| &d.0)) || known(cache.making.as_ref().map(|m| &m.0)) {
+    if cache.has(id) {
         return;
     }
     if theater.as_ref().is_none_or(|(k, _)| *k != key) {
-        *theater = Some((key.clone(), Theater::load(&id)));
+        *theater = Some((key.clone(), Theater::load(id)));
     }
-    let loaded = [id.as_str(), "special_targets"]
-        .map(|f| library.load(&server, f))
+    let loaded = [id, "special_targets"]
+        .map(|f| library.load(server, f))
         .iter()
         .all(|h| assets.gltfs.get(h).is_some());
     let Some((_, t)) = theater.as_ref().filter(|_| loaded) else { return };
-    let day = crate::palette::load_theater_palettes(&id).day;
-    let source = LayoutSource::gather(t, &ShapeHandles::for_map(t), &assets, &library.files, &day);
-    cache.making = Some((key, make_layout(source)));
+    let day = crate::palette::load_theater_palettes(id).day;
+    let source = LayoutSource::gather(t, &ShapeHandles::for_map(t), assets, &library.files, &day);
+    cache.making.push((key, make_layout(source)));
     *theater = None;
+}
+
+/// The theater whose scenery a menu scene will want next (`menu_scene`): its layout is made
+/// ahead.
+#[derive(Resource, Clone, PartialEq, Eq)]
+pub struct SceneryPrefetch(pub String);
+
+fn prefetch_scene_layout(
+    want: Option<Res<SceneryPrefetch>>,
+    mut cache: ResMut<LayoutCache>,
+    mut library: ResMut<ModelLibrary>,
+    server: Res<AssetServer>,
+    assets: ModelAssets,
+    mut theater: Local<Option<(String, Theater)>>,
+) {
+    let Some(want) = want else { return };
+    request(&want.0, &mut cache, &mut library, &server, &assets, &mut theater);
+}
+
+/// The menu's scenes moved to another theater: the last one's scenery goes (`build_scenery`
+/// lays out the new one's).
+#[allow(clippy::too_many_arguments)]
+fn switch_theater(
+    mut commands: Commands,
+    theater: Option<Res<Theater>>,
+    mut last: Local<Option<String>>,
+    (blocks, airfields, backlog, skin): (
+        ResMut<Blocks>,
+        ResMut<Airfields>,
+        ResMut<SceneryBacklog>,
+        ResMut<skin::Skin>,
+    ),
+) {
+    let id = theater.map(|t| t.id.clone());
+    if *last == id {
+        return;
+    }
+    if last.is_some() {
+        cleanup(commands.reborrow(), blocks, airfields, backlog);
+        skin::cleanup(commands, skin);
+    }
+    *last = id;
 }
 
 /// The layout cache's key of a theater: the classic flat terrain's layout (its towns and roads
@@ -660,29 +727,56 @@ fn layout_key(id: &str) -> String {
 }
 
 impl LayoutCache {
-    /// Keeps the layout being made once it's there.
+    /// Keeps the layouts being made once they are there.
     fn collect(&mut self) {
-        if let Some((k, task)) = &mut self.making
-            && let Some(layout) = bevy::tasks::futures::check_ready(task)
-        {
-            self.done = Some((std::mem::take(k), layout));
-            self.making = None;
+        let mut i = 0;
+        while i < self.making.len() {
+            if let Some(layout) = bevy::tasks::futures::check_ready(&mut self.making[i].1) {
+                let (k, _) = self.making.swap_remove(i);
+                self.keep(k, layout);
+            } else {
+                i += 1;
+            }
         }
+    }
+
+    /// Keeps a layout (the oldest one goes past `LAYOUTS_KEPT`).
+    fn keep(&mut self, key: String, layout: Layout) {
+        self.done.retain(|(k, _)| *k != key);
+        self.done.push((key, layout));
+        if self.done.len() > LAYOUTS_KEPT {
+            self.done.remove(0);
+        }
+    }
+
+    /// A kept layout (now the latest).
+    fn get(&mut self, key: &str) -> Option<Layout> {
+        let i = self.done.iter().position(|(k, _)| k == key)?;
+        let entry = self.done.remove(i);
+        let l = entry.1.clone();
+        self.done.push(entry);
+        Some(l)
     }
 
     /// The layout of this theater is being made.
     pub fn making(&self, id: &str) -> bool {
         let key = layout_key(id);
-        self.making.as_ref().is_some_and(|(k, _)| *k == key)
+        self.making.iter().any(|(k, _)| *k == key)
+    }
+
+    /// The layout of this theater is kept or being made.
+    pub fn has(&self, id: &str) -> bool {
+        let key = layout_key(id);
+        self.making(id) || self.done.iter().any(|(k, _)| *k == key)
     }
 
     /// The layout of a theater: the kept one, or made now.
     fn get_or_make(&mut self, key: &str, source: impl FnOnce() -> LayoutSource) -> Layout {
-        match &self.done {
-            Some((k, l)) if k == key => l.clone(),
-            _ => {
+        match self.get(key) {
+            Some(l) => l,
+            None => {
                 let l = source().build();
-                self.done = Some((key.to_string(), l.clone()));
+                self.keep(key.to_string(), l.clone());
                 l
             }
         }

@@ -32,12 +32,21 @@ pub struct Stage<'w, 's> {
     assets: ModelAssets<'w>,
     pub theater: Option<Res<'w, Theater>>,
     pub director: ResMut<'w, Director>,
+    scenery: Option<Res<'w, crate::scenery::Scenery>>,
+    papi: Option<Res<'w, crate::scenery::PapiSites>>,
 }
+
+/// A scene waits this long (s) for its theater's scenery (the ground its things stand on)
+/// before it starts without it.
+const SCENERY_WAIT: f32 = 1.5;
+/// The clearing a scene on the ground wants round its place (m).
+const CLEARING: f64 = 70.0;
 
 impl Stage<'_, '_> {
     /// The model files are loaded (and the theater): the scene can be spawned at once.
     pub fn ready(&mut self, files: &[&str]) -> bool {
         self.theater.is_some()
+            && (self.scenery.is_some() || self.director.t > SCENERY_WAIT)
             && files.iter().all(|f| {
                 let h = self.library.load(&self.server, f);
                 self.assets.gltfs.get(&h).is_some()
@@ -51,6 +60,8 @@ impl Stage<'_, '_> {
             return false;
         }
         self.director.spawned = true;
+        // Its clock from the start (it may have waited for the ground).
+        self.director.restart();
         true
     }
 
@@ -101,6 +112,12 @@ impl Stage<'_, '_> {
         self.theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64)
     }
 
+    /// The runway ends of the scenery's airfields (aim point, unit direction towards the
+    /// approaching aircraft; metres east, north).
+    pub fn runway_ends(&self) -> Vec<(DVec2, DVec2)> {
+        self.papi.as_ref().map_or(Vec::new(), |p| p.0.iter().map(|s| (s.aim, s.toward)).collect())
+    }
+
     /// The look's theater's places.
     pub fn places(&self) -> Places {
         self.theater.as_deref().map(Places::of).unwrap_or_default()
@@ -124,11 +141,17 @@ impl Stage<'_, '_> {
         let a = next() * std::f64::consts::TAU;
         let mut found = first + DVec2::new(a.sin(), a.cos()) * 4000.0;
         if let Some(t) = &self.theater {
-            for i in 0..64 {
-                let b = if i < 32 { first } else { base((next() * n as f64) as usize) };
+            // With the scenery there: a clearing (no water, buildings or trees round it).
+            let flat = t.hills.is_flat();
+            let good = |p: DVec2| {
+                let open = flat || t.hills.mask(p.x, p.y) > 0.3;
+                open && self.scenery.as_ref().is_none_or(|s| s.unit_clear(p, CLEARING))
+            };
+            for i in 0..160 {
+                let b = if i < 80 { first } else { base((next() * n as f64) as usize) };
                 let (a, d) = (next() * std::f64::consts::TAU, 3000.0 + next() * 9000.0);
                 let p = b + DVec2::new(a.sin(), a.cos()) * d;
-                if t.hills.mask(p.x, p.y) > 0.3 {
+                if good(p) {
                     found = p;
                     break;
                 }
