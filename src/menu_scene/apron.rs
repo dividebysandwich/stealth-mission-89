@@ -1,55 +1,98 @@
-//! The scene behind the main menu: an F-117A on the apron at Tabor on one side of the screen,
-//! the control tower behind it on the other, the menu between them, on a clear full-moon night in
-//! the classic palette with the moon over the field, casting shadows, an RAH-66 hovering on the
-//! menu's right and two aircraft circling in the distance; now and then a C-5 takes off from the
-//! runway, an airliner-high one draws its contrails past the moon or a helicopter crosses in
-//! the distance (`passes`). In VR the player stands on the apron, life size, with the menu's panel between
-//! the tower and the aircraft.
+//! The first scene: an F-117A on the apron at Tabor, the control tower behind it, on a clear
+//! full-moon night in the classic palette with the moon over the field, casting shadows, an
+//! RAH-66 hovering beside the tower and two aircraft circling in the distance; now and then a
+//! C-5 takes off from the runway, an airliner-high one draws its contrails past the moon or a
+//! helicopter crosses in the distance (`passes`). In VR the player stands on the apron, life
+//! size, with the menu's panel between the tower and the aircraft.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use bevy::render::storage::ShaderBuffer;
 
+use super::director::{Shot, shot_on};
+use super::{SceneCamera, SceneEntity, ShotEntity, ShotSet};
 use crate::models::{ModelAssets, ModelLibrary, ModelState};
-use crate::palette::{Palette, TimeOfDay};
-use crate::palette_material::{LEVEL_AIRCRAFT, PaletteMaterial};
-use crate::settings::{AppState, Settings};
+use crate::palette::Palette;
+use crate::palette_material::LEVEL_AIRCRAFT;
+use crate::settings::Settings;
 use crate::world::{WU, WorldAnchor, WorldPos};
 
-pub struct MenuScenePlugin;
+pub(super) fn build(app: &mut App) {
+    app.add_systems(
+        Update,
+        (
+            place_camera,
+            spawn_aircraft,
+            spawn_heli,
+            hover_heli,
+            spawn_traffic,
+            fly_traffic,
+            schedule_passes.run_if(resource_exists::<Passes>),
+            fly_passes,
+            aircraft_lights,
+        )
+            .in_set(ShotSet)
+            .run_if(shot_on(Shot::Apron)),
+    );
+    #[cfg(feature = "xr")]
+    app.add_systems(Update, face_panel.run_if(resource_exists::<super::MenuScene>));
+}
 
-impl Plugin for MenuScenePlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Menu), spawn_scene)
-            .add_systems(OnExit(AppState::Menu), (despawn_scene, crate::world::unload_theater))
-            .add_systems(
-                Update,
-                (
-                    spawn_aircraft,
-                    spawn_heli,
-                    hover_heli,
-                    spawn_traffic,
-                    fly_traffic,
-                    schedule_passes,
-                    fly_passes,
-                    aircraft_lights,
-                    fit_view,
-                    match_overlay_msaa,
-                )
-                    .run_if(resource_exists::<MenuScene>),
-            );
-        #[cfg(feature = "xr")]
-        app.add_systems(Update, face_panel.run_if(resource_exists::<MenuScene>));
+/// VR: the player's standing point on the apron, the tracking root under it (`face_panel` turns
+/// and moves it once the panel is placed).
+pub(super) fn spawn_standing_point(commands: &mut Commands, root: Option<Entity>) {
+    let stand = commands
+        .spawn((
+            StandingPoint,
+            SceneEntity,
+            WorldAnchor,
+            WorldPos(at_tower(VR_STAND[0], 0.0, VR_STAND[1])),
+            Transform::from_rotation(Quat::from_rotation_y(-CAMERA[3].to_radians())),
+            Visibility::default(),
+        ))
+        .id();
+    if let Some(r) = root {
+        commands.entity(r).insert((crate::camera::EyeCamera, Transform::IDENTITY));
+        commands.entity(stand).add_child(r);
     }
 }
 
-/// The scene is drawn behind the menu.
-#[derive(Resource)]
-pub struct MenuScene;
+/// The full moon of the classic night: the sun stands opposite, below the horizon. As in the
+/// continuous time of day the moon lights the field (and casts the shadows); the palette stays
+/// the classic one.
+pub(super) fn classic_sky(sky: &mut crate::sky::Sky, vr: bool) {
+    let moon = if vr { VR_MOON } else { MOON };
+    *sky = crate::sky::Sky::default();
+    let m = direction(moon[0], moon[1]);
+    (sky.on, sky.moon, sky.sun, sky.moonlight, sky.stars) = (true, m, -m, 1.0, 0.4);
+}
 
-/// Everything spawned for the scene.
-#[derive(Component)]
-struct SceneEntity;
+/// The passes' schedule goes with the menu.
+pub(super) fn cleanup(commands: &mut Commands) {
+    commands.remove_resource::<Passes>();
+}
+
+/// The desktop camera on the apron, at eye height, the aircraft and the tower in view right of
+/// the menu.
+fn place_camera(
+    mut commands: Commands,
+    passes: Option<Res<Passes>>,
+    mut cams: Query<(&mut WorldPos, &mut Transform), With<SceneCamera>>,
+    mut fov: ResMut<super::SceneFov>,
+    mut viewpoint: ResMut<crate::palette::Viewpoint>,
+) {
+    if passes.is_none() {
+        commands.insert_resource(Passes::new());
+    }
+    *fov = super::SceneFov::default();
+    let Ok((mut pos, mut tf)) = cams.single_mut() else {
+        // The headset: the eye over the apron.
+        viewpoint.altitude_wu = (VR_EYE as f64 / WU) as f32;
+        return;
+    };
+    let cam = CAMERA;
+    pos.0 = at_tower(cam[0], cam[1], cam[2]);
+    tf.rotation = Quat::from_euler(EulerRot::YXZ, -cam[3].to_radians(), cam[4].to_radians(), 0.0);
+}
 
 /// The aircraft on the apron (its model is spawned once the models are loaded).
 #[derive(Component)]
@@ -63,14 +106,11 @@ struct SceneHeli;
 #[derive(Component)]
 struct Traffic(usize);
 
-#[derive(Component)]
-pub(crate) struct SceneCamera;
-
 /// VR: where the player stands, the XR tracking root under it.
 #[derive(Component)]
 struct StandingPoint;
 
-const THEATER: &str = "central_europe";
+const THEATER: &str = super::director::TABOR_THEATER;
 /// The airbase whose control tower the scene is laid out from (the tower nearest it); the
 /// runway runs north and south 265 m east of the tower, its middle 150 m north of it; the
 /// parallel taxiway some 80 m east of the tower. The tower and the aircraft stand on the apron
@@ -119,11 +159,7 @@ const TRAFFIC: [(i32, [f32; 6]); 2] = [
 const VR_EYE: f32 = 1.75;
 /// The classic night palette's seed (`TimeOfDay::seed`): a few steps from dusk towards night,
 /// the purple horizon under a dark blue sky.
-const TOD_SEED: u8 = 3;
-/// The narrowest horizontal field of view (degrees), so the tower and the aircraft stay on the
-/// screen in narrow windows.
-const MIN_WIDTH_FOV: f32 = 72.0;
-
+pub(super) const TOD_SEED: u8 = 3;
 /// The scene's control tower (world units east, north), found once in the theater file.
 fn tower() -> (f64, f64) {
     static TOWER: std::sync::OnceLock<(f64, f64)> = std::sync::OnceLock::new();
@@ -152,103 +188,6 @@ fn at_tower(east: f32, up: f32, north: f32) -> DVec3 {
 fn direction(az: f32, el: f32) -> Vec3 {
     let (az, el) = (az.to_radians(), el.to_radians());
     Vec3::new(az.sin() * el.cos(), el.sin(), -az.cos() * el.cos())
-}
-
-#[allow(clippy::too_many_arguments)]
-fn spawn_scene(
-    mut commands: Commands,
-    settings: Res<Settings>,
-    mut streamed: ResMut<crate::world::StreamedCells>,
-    mut overrides: ResMut<crate::world::TileOverrides>,
-    mut materials: ResMut<Assets<PaletteMaterial>>,
-    mut buffers: ResMut<Assets<ShaderBuffer>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut tod: ResMut<TimeOfDay>,
-    mut sky: ResMut<crate::sky::Sky>,
-    mut viewpoint: ResMut<crate::palette::Viewpoint>,
-    root: Option<Res<crate::camera::XrRoot>>,
-) {
-    let (cam, moon) = (CAMERA, if settings.vr { VR_MOON } else { MOON });
-    commands.insert_resource(MenuScene);
-    commands.insert_resource(Passes::new());
-    crate::world::insert_theater(&mut commands, THEATER, None, &mut streamed, &mut overrides);
-    // A night in the classic palette, held still.
-    *tod = TimeOfDay::default();
-    tod.night_mission = true;
-    tod.seed = TOD_SEED;
-    tod.frozen = true;
-    let palette = Palette::new(THEATER, &tod, &mut materials, &mut buffers);
-    // The full moon: the sun stands opposite, below the horizon. As in the continuous time of
-    // day the moon lights the field (and casts the shadows); the palette stays the classic one
-    // (`sky::update_sky` runs only in flight).
-    *sky = crate::sky::Sky::default();
-    let m = direction(moon[0], moon[1]);
-    (sky.on, sky.moon, sky.sun, sky.moonlight, sky.stars) = (true, m, -m, 1.0, 0.4);
-    crate::lighting::spawn_lights(&mut commands, &settings);
-    if settings.vr {
-        viewpoint.altitude_wu = (VR_EYE as f64 / WU) as f32;
-        // `face_panel` turns and moves it once the panel is placed.
-        let stand = commands
-            .spawn((
-                StandingPoint,
-                SceneEntity,
-                WorldAnchor,
-                WorldPos(at_tower(VR_STAND[0], 0.0, VR_STAND[1])),
-                Transform::from_rotation(Quat::from_rotation_y(-cam[3].to_radians())),
-                Visibility::default(),
-            ))
-            .id();
-        if let Some(r) = root.and_then(|r| r.0) {
-            commands.entity(r).insert((crate::camera::EyeCamera, Transform::IDENTITY));
-            let sphere = crate::camera::spawn_background(
-                &mut commands,
-                r,
-                &mut meshes,
-                &palette,
-                crate::camera::MAIN_BACKGROUND_LAYER,
-            );
-            commands.entity(sphere).insert(SceneEntity);
-            commands.entity(stand).add_child(r);
-        }
-        commands.insert_resource(palette);
-        return;
-    }
-    viewpoint.altitude_wu = (cam[1] as f64 / WU) as f32;
-    let camera = commands
-        .spawn((
-            Camera3d::default(),
-            Camera { order: 0, ..default() },
-            bevy::core_pipeline::tonemapping::Tonemapping::None,
-            Projection::Perspective(PerspectiveProjection {
-                near: 0.5,
-                far: 600_000.0,
-                ..default()
-            }),
-            SceneCamera,
-            SceneEntity,
-            WorldAnchor,
-            WorldPos(at_tower(cam[0], cam[1], cam[2])),
-            Transform::from_rotation(Quat::from_euler(
-                EulerRot::YXZ,
-                -cam[3].to_radians(),
-                cam[4].to_radians(),
-                0.0,
-            )),
-            bevy::camera::visibility::RenderLayers::from_layers(&[
-                0,
-                crate::camera::MAIN_BACKGROUND_LAYER,
-                crate::camera::MAIN_LOD_LAYER,
-            ]),
-        ))
-        .id();
-    crate::camera::spawn_background(
-        &mut commands,
-        camera,
-        &mut meshes,
-        &palette,
-        crate::camera::MAIN_BACKGROUND_LAYER,
-    );
-    commands.insert_resource(palette);
 }
 
 /// The F-117A on the apron, once its model file is loaded.
@@ -286,7 +225,7 @@ fn spawn_aircraft(
     commands
         .spawn((
             SceneAircraft,
-            SceneEntity,
+            ShotEntity,
             WorldPos(at_tower(plane[0], 0.0, plane[1])),
             Transform::from_rotation(Quat::from_rotation_y(-plane[2].to_radians())),
             Visibility::default(),
@@ -322,7 +261,7 @@ fn spawn_heli(
     commands
         .spawn((
             SceneHeli,
-            SceneEntity,
+            ShotEntity,
             WorldPos::default(),
             Transform::default(),
             Visibility::default(),
@@ -386,7 +325,7 @@ fn spawn_traffic(
         let scale = crate::player::AIRCRAFT_MODEL_SCALE as f32;
         commands.entity(e).insert((
             Traffic(i),
-            SceneEntity,
+            ShotEntity,
             WorldPos::default(),
             Transform::from_scale(Vec3::splat(scale)),
             state,
@@ -452,38 +391,6 @@ fn aircraft_lights(
     }
 }
 
-/// A narrow window widens the view (Bevy keeps the vertical field of view).
-fn fit_view(
-    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
-    mut cams: Query<&mut Projection, With<SceneCamera>>,
-) {
-    let Ok(w) = windows.single() else { return };
-    let aspect = w.width() / w.height().max(1.0);
-    let half = (MIN_WIDTH_FOV.to_radians() / 2.0).tan();
-    let fov = std::f32::consts::FRAC_PI_4.max(2.0 * (half / aspect).atan());
-    for mut p in &mut cams {
-        if let Projection::Perspective(p) = &mut *p
-            && (p.fov - fov).abs() > 1e-4
-        {
-            p.fov = fov;
-        }
-    }
-}
-
-/// The menu's egui camera draws over the scene: its MSAA has to be the scene camera's (else
-/// it gets a picture of its own that nothing clears).
-fn match_overlay_msaa(
-    scene: Query<&Msaa, (With<SceneCamera>, Without<crate::menu::MenuCamera>)>,
-    mut overlay: Query<&mut Msaa, With<crate::menu::MenuCamera>>,
-) {
-    let Ok(&want) = scene.single() else { return };
-    for mut m in &mut overlay {
-        if *m != want {
-            *m = want;
-        }
-    }
-}
-
 /// VR: the panel goes up in front of the player wherever they face in the tracking space; the
 /// standing point turns so the panel faces the scene's way, and moves so the head is at the
 /// standing place at eye height.
@@ -506,26 +413,6 @@ fn face_panel(
     let place = at_tower(VR_STAND[0], VR_EYE - head.y, VR_STAND[1]);
     pos.0 = place - (rot * Vec3::new(head.x, 0.0, head.z)).as_dvec3();
     tf.rotation = rot;
-}
-
-fn despawn_scene(
-    mut commands: Commands,
-    q: Query<Entity, With<SceneEntity>>,
-    root: Option<Res<crate::camera::XrRoot>>,
-) {
-    // VR: the tracking root leaves the standing point before it goes.
-    if let Some(r) = root.and_then(|r| r.0) {
-        commands
-            .entity(r)
-            .remove::<(ChildOf, crate::camera::EyeCamera)>()
-            .insert(Transform::IDENTITY);
-    }
-    for e in &q {
-        commands.entity(e).despawn();
-    }
-    commands.remove_resource::<MenuScene>();
-    commands.remove_resource::<Passes>();
-    commands.remove_resource::<Palette>();
 }
 
 // --- Passes: the occasional aircraft crossing the scene -----------------------------------------
@@ -722,7 +609,7 @@ fn schedule_passes(
         // Where it starts (the contrails begin there).
         let (at, rotation) = place(&p, bank, spec.model_lift, theater.as_deref());
         commands.entity(e).insert((
-            SceneEntity,
+            ShotEntity,
             WorldPos(at),
             Transform::from_scale(Vec3::splat(scale)).with_rotation(rotation),
             state,

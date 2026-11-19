@@ -103,12 +103,19 @@ impl ShapeHandles {
 }
 
 pub(crate) fn unload_theater(mut commands: Commands, mut streamed: ResMut<StreamedCells>) {
-    for (_, (_, entities)) in streamed.cells.drain() {
-        for e in entities {
-            commands.entity(e).try_despawn();
+    streamed.despawn_all(&mut commands);
+    commands.remove_resource::<Theater>();
+}
+
+impl StreamedCells {
+    /// Every streamed cell's objects go.
+    pub(crate) fn despawn_all(&mut self, commands: &mut Commands) {
+        for (_, (_, entities)) in self.cells.drain() {
+            for e in entities {
+                commands.entity(e).try_despawn();
+            }
         }
     }
-    commands.remove_resource::<Theater>();
 }
 
 /// A ship among the theater's tile objects.

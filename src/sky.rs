@@ -351,6 +351,42 @@ fn reset_sky(
 }
 
 impl Sky {
+    /// The sky `hours` local time into the mission date with the moon at `phase`, `shade` (0..1)
+    /// of the moonlight hidden by the clouds; the palette (if given) set for the sun's height.
+    pub fn at(&mut self, hours: f64, phase: f64, shade: f64, palette: Option<&mut Palette>) {
+        let sun = sun_dir(hours, self.lat);
+        let moon = moon_dir(hours, self.lat, phase);
+        let elev = (sun.y as f64).asin().to_degrees();
+        let lit = illumination(phase);
+        let moonlight = lit * smoothstep(0.0, 0.25, moon.y as f64);
+        // Under a full overcast no moonlight reaches the ground: a dark night.
+        let ground_moon = moonlight * (1.0 - shade);
+        let day = smoothstep(-12.0, 6.0, elev);
+        *self = Sky {
+            on: true,
+            sun,
+            moon,
+            moonlight: moonlight as f32,
+            stars: ((1.0 - smoothstep(-14.0, -4.0, elev)) * (1.0 - 0.6 * moonlight)) as f32,
+            star_frame: self.star_frame_at(hours),
+            day: day as f32,
+            dark: darkness(elev, ground_moon) as f32,
+            glow: horizon_glow(elev, self.lat, self.summer) as f32,
+            ..self.clone()
+        };
+        if let Some(palette) = palette {
+            let look = Look::of(self.days, hours.rem_euclid(24.0) >= 12.0);
+            if self.golden.as_ref().is_none_or(|(l, _)| *l != look) {
+                self.golden = Some((look, golden(&palette.theater, &look)));
+            }
+            let Some((_, gold)) = &self.golden else { return };
+            let p = blend(&palette.theater, gold, elev, ground_moon);
+            if p.colors != palette.active.colors {
+                palette.active = p;
+            }
+        }
+    }
+
     /// The sky of a mission on theater `theater` (its date and latitude), before the clock runs.
     pub fn of(theater: &str, mission: Option<&stealth_mission::Mission>) -> Self {
         let (lon0, lat0) = crate::world::geo_origin(theater);
@@ -418,40 +454,10 @@ fn update_sky(
     // Test aids: `--sky-hours <h>` sets the local time, `--sky-phase <0..1>` the moon's phase.
     let hours = test_hours().unwrap_or(seconds / 3600.0);
     let phase = test_phase().unwrap_or_else(|| sky.phase_at(hours));
-    let sun = sun_dir(hours, sky.lat);
-    let moon = moon_dir(hours, sky.lat, phase);
-    let elev = (sun.y as f64).asin().to_degrees();
-    let lit = illumination(phase);
-    let moonlight = lit * smoothstep(0.0, 0.25, moon.y as f64);
-    // Under a full overcast no moonlight reaches the ground: a dark night.
-    let ground_moon = moonlight * (1.0 - weather.map_or(0.0, |w| w.world_shade) as f64);
-    let day = smoothstep(-12.0, 6.0, elev);
-    *sky = Sky {
-        on,
-        sun,
-        moon,
-        moonlight: moonlight as f32,
-        stars: ((1.0 - smoothstep(-14.0, -4.0, elev)) * (1.0 - 0.6 * moonlight)) as f32,
-        star_frame: sky.star_frame_at(hours),
-        day: day as f32,
-        dark: darkness(elev, ground_moon) as f32,
-        glow: horizon_glow(elev, sky.lat, sky.summer) as f32,
-        ..sky.clone()
-    };
+    let shade = weather.map_or(0.0, |w| w.world_shade) as f64;
     // Alt-N's jump to the target palette wins.
-    if let Some(mut palette) = palette
-        && !tod.frozen
-    {
-        let look = Look::of(sky.days, hours.rem_euclid(24.0) >= 12.0);
-        if sky.golden.as_ref().is_none_or(|(l, _)| *l != look) {
-            sky.golden = Some((look, golden(&palette.theater, &look)));
-        }
-        let Some((_, gold)) = &sky.golden else { return };
-        let p = blend(&palette.theater, gold, elev, ground_moon);
-        if p.colors != palette.active.colors {
-            palette.active = p;
-        }
-    }
+    let palette = palette.filter(|_| !tod.frozen);
+    sky.at(hours, phase, shade, palette.map(|p| p.into_inner()));
     if let Some(mut c) = combat.filter(|c| c.sim.campaign().is_none()) {
         let light = sky.visual_light();
         c.sim.set_visual_light(Some(light));

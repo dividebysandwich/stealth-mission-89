@@ -1592,6 +1592,7 @@ pub(crate) fn wide_width(ctx: &egui::Context) -> f32 {
 }
 
 /// The top level: what to play.
+#[allow(clippy::too_many_arguments)]
 fn main_screen(
     ctx: &egui::Context,
     state: &mut MenuState,
