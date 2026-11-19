@@ -157,8 +157,9 @@ fn tornado(
     fov.0 = 30f32.to_radians();
 }
 
-/// An interceptor quadcopter (0.6 m long), nose down and racing, closing on a Geran ahead of
-/// it; the camera rides beside and behind it.
+/// An interceptor closing on a Geran ahead of it, the camera riding beside and behind it:
+/// the quadcopter (0.6 m long) on a Geran-2, or the X-12 jet (2.4 m) on a jet Geran-3. Both
+/// fly level along their way.
 fn interceptor(
     mut stage: Stage,
     flyers: Query<(Entity, &Flyer)>,
@@ -166,15 +167,18 @@ fn interceptor(
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
 ) {
-    const SPEED: f32 = 60.0;
-    const GERAN_SPEED: f32 = 51.0;
+    // Interceptor model, its speed and length, the Geran's model and speed (m/s, m).
+    const QUAD: (&str, f32, f32, &str, f32) = ("drones_105", 60.0, 0.6, "drones_100", 51.0);
+    const X12: (&str, f32, f32, &str, f32) = ("drones_106", 140.0, 2.4, "drones_101", 122.0);
+    let (model, speed, len, quarry, quarry_speed) =
+        if (stage.director.roll >> 9) & 1 == 0 { QUAD } else { X12 };
     if stage.begin(&[stage::DRONES]) {
         let start = stage.land() + DVec3::Y * 350.0;
         let heading = (stage.director.roll % 360) as f32 * 0.0175;
-        let quad = Weave {
+        let own = Weave {
             start,
             heading,
-            speed: SPEED,
+            speed,
             amp: Weave::amp_for(5.0, 20.0),
             period: 5.0,
             phase: 0.0,
@@ -183,28 +187,29 @@ fn interceptor(
         let f = stage::forward(heading) * 70.0;
         let geran = Weave {
             start: start + enu(f.x as f64, 6.0, f.y as f64),
-            speed: GERAN_SPEED,
+            speed: quarry_speed,
             amp: Weave::amp_for(7.0, 10.0),
             period: 7.0,
-            ..quad
+            ..own
         };
-        if let Some(e) = stage.model(stage::DRONES, "drones_105", 0.0, stage::flying()) {
-            stage.commands.entity(e).insert(Flyer::lead(quad, None));
+        if let Some(e) = stage.model(stage::DRONES, model, 0.0, stage::flying()) {
+            stage.commands.entity(e).insert(Flyer::lead(own, None));
         }
-        if let Some(e) = stage.model(stage::DRONES, "drones_100", 0.0, stage::flying()) {
+        if let Some(e) = stage.model(stage::DRONES, quarry, 0.0, stage::flying()) {
             stage.commands.entity(e).insert(Flyer::other(geran, None));
         }
         return;
     }
     let t = stage.director.t;
-    let Some((e, p, r, v)) = fly(&stage, &flyers, &mut q) else { return };
-    // The quad flies nose down (its thrust tilted forward).
+    let Some((_, p, _, v)) = fly(&stage, &flyers, &mut q) else { return };
     let heading = v.x.atan2(-v.z);
-    stage::put(&mut q, e, p, r * Quat::from_rotation_x(-0.45));
-    // Behind and beside it, swinging out a little; the Geran beyond it.
-    let side = 1.2 + 0.2 * t;
-    let eye = stage::behind(p, heading, 2.4 - 0.2 * t, side, 0.6);
-    let ahead = stage::forward(heading) * 1.0;
+    // Behind and beside it, swinging out a little (as far as its size wants); the Geran
+    // beyond it.
+    let k = len / 0.6;
+    let side = (1.2 + 0.2 * t) * k.sqrt() * 1.6f32.min(k);
+    let eye =
+        stage::behind(p, heading, (2.4 - 0.2 * t) * k.sqrt() * 1.4f32.min(k), side, 0.6 * k.sqrt());
+    let ahead = stage::forward(heading) * len * 1.6;
     stage::look(&mut cam, eye, p + enu(ahead.x as f64, 0.3, ahead.y as f64));
     fov.0 = 50f32.to_radians();
 }
