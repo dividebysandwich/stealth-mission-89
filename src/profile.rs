@@ -19,6 +19,8 @@
 //!
 //! `SM89_SPIKE=<ms>` (with `SM89_PROFILE`): each frame slower than that logs its top spans
 //! (hitches: loading, switching views).
+//!
+//! The browser build takes them from its page's URL: `?profile=cpu,5s&spike=50`.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock};
@@ -47,7 +49,7 @@ pub struct ProfileConfig {
 pub fn config() -> Option<ProfileConfig> {
     static CONFIG: OnceLock<Option<ProfileConfig>> = OnceLock::new();
     *CONFIG.get_or_init(|| {
-        let v = std::env::var("SM89_PROFILE").ok()?;
+        let v = setting("SM89_PROFILE", "profile")?;
         let v = v.trim();
         if v.is_empty() || v == "0" || v.eq_ignore_ascii_case("off") {
             return None;
@@ -102,6 +104,68 @@ impl Plugin for ProfilePlugin {
             }
         }
         app.insert_resource(Report::new(c)).add_systems(Last, report);
+        // With `SM89_SPIKE`: each pipeline as it is created (shader compiles are hitches).
+        if spike_ms().is_some()
+            && let Some(render) = app.get_sub_app_mut(bevy::render::RenderApp)
+        {
+            render.add_systems(
+                bevy::render::Render,
+                log_new_pipelines.in_set(bevy::render::RenderSystems::Cleanup),
+            );
+        }
+    }
+}
+
+/// Logs the pipelines created since the last frame: label and shaders.
+fn log_new_pipelines(
+    cache: Res<bevy::render::render_resource::PipelineCache>,
+    mut seen: Local<Vec<bool>>,
+) {
+    use bevy::render::render_resource::{CachedPipelineState, PipelineDescriptor};
+    for (i, p) in cache.pipelines().enumerate() {
+        if seen.len() <= i {
+            seen.push(false);
+        }
+        if seen[i] || !matches!(p.state, CachedPipelineState::Ok(_)) {
+            continue;
+        }
+        seen[i] = true;
+        let path = |h: &Handle<bevy::shader::Shader>| {
+            h.path().map_or_else(|| format!("{:?}", h.id()), |p| p.to_string())
+        };
+        let (label, shaders) = match &p.descriptor {
+            PipelineDescriptor::RenderPipelineDescriptor(d) => (
+                d.label.clone(),
+                format!(
+                    "{} / {}; {:?} msaa {} {:?} defs {:?}",
+                    path(&d.vertex.shader),
+                    d.fragment.as_ref().map_or_else(|| "-".to_string(), |f| path(&f.shader)),
+                    d.primitive.topology,
+                    d.multisample.count,
+                    d.fragment
+                        .as_ref()
+                        .and_then(|f| f.targets.first().cloned().flatten())
+                        .map(|t| t.format),
+                    d.fragment.as_ref().map(|f| {
+                        f.shader_defs
+                            .iter()
+                            .filter_map(|d| match d {
+                                bevy::shader::ShaderDefVal::Bool(n, true) => Some(n.clone()),
+                                _ => None,
+                            })
+                            .filter(|n| {
+                                n.starts_with("PALETTE")
+                                    || n.contains("DOT")
+                                    || n.contains("VERTEX")
+                                    || n.contains("OCEAN")
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                ),
+            ),
+            PipelineDescriptor::ComputePipelineDescriptor(d) => (d.label.clone(), path(&d.shader)),
+        };
+        info!("pipeline {i} ready: {} ({shaders})", label.as_deref().unwrap_or("-"));
     }
 }
 
@@ -152,7 +216,22 @@ static FRAME: LazyLock<Mutex<HashMap<Arc<str>, Duration>>> = LazyLock::new(Defau
 /// `SM89_SPIKE=<ms>`: frames slower than this log their top spans.
 fn spike_ms() -> Option<f32> {
     static MS: OnceLock<Option<f32>> = OnceLock::new();
-    *MS.get_or_init(|| std::env::var("SM89_SPIKE").ok()?.parse().ok())
+    *MS.get_or_init(|| setting("SM89_SPIKE", "spike")?.parse().ok())
+}
+
+/// The environment variable `var`; in the browser the page's URL parameter `param`
+/// (`?profile=cpu,5s&spike=50`), its log in the browser's console.
+fn setting(var: &str, param: &str) -> Option<String> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = var;
+        crate::multiplayer_menu::page_parameter(param)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let _ = param;
+        std::env::var(var).ok()
+    }
 }
 
 /// Per span: its report label and when it was entered.

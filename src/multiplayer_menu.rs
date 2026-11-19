@@ -118,7 +118,7 @@ pub fn master_url() -> String {
 
 /// A parameter in the page's URL ("?master=...&relay=...").
 #[cfg(target_arch = "wasm32")]
-fn page_parameter(name: &str) -> Option<String> {
+pub(crate) fn page_parameter(name: &str) -> Option<String> {
     let search = web_sys::window().and_then(|w| w.location().search().ok())?;
     let prefix = format!("{name}=");
     search

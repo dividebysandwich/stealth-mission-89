@@ -6,6 +6,10 @@
 //! stops if the player changes the graphics meanwhile or leaves the menu (then it runs again on
 //! the next visit).
 //!
+//! In the browser it runs behind the loading screen (web_loading.rs), which waits for it: each
+//! step down builds the scene's pipelines again (new shader variants), seconds of stalls that
+//! are better hidden. It settles only once no pipeline is being built (`PipelinesQuiet`).
+//!
 //! `--detail-benchmark` runs it on the desktop too (tests; with `--novsync` and
 //! `SM89_DETAIL_BENCHMARK_FPS=<fps>` to make a fast machine step down).
 
@@ -59,8 +63,20 @@ impl Plugin for DetailBenchmarkPlugin {
     }
 }
 
+/// Whether no pipeline is being built (kept by the browser's loading screen; none: quiet).
+#[derive(Resource)]
+pub struct PipelinesQuiet(pub bool);
+
+/// The browser's loading screen covers the game: the notice waits.
+#[derive(Resource)]
+pub struct Covered;
+
+/// The benchmark gives up after this long (s; the scene up and measuring).
+const MAX_TIME: f32 = 30.0;
+
+/// Running while present (the browser's loading screen waits for it).
 #[derive(Resource, Default)]
-struct Bench {
+pub struct Bench {
     target: f32,
     /// Steps taken (`STEPS`).
     step: usize,
@@ -68,9 +84,12 @@ struct Bench {
     /// began.
     since: f32,
     settle_frames: usize,
+    measuring: bool,
     frames: Vec<f32>,
     /// The graphics as last set: anything else means the player changed them.
     set: Option<Graphics>,
+    /// Seconds since the scene was up.
+    total: f32,
 }
 
 /// The settings the benchmark changes.
@@ -187,6 +206,7 @@ fn measure(
     mut settings: ResMut<Settings>,
     director: Option<Res<crate::menu_scene::director::Director>>,
     time: Res<Time<Real>>,
+    quiet: Option<Res<PipelinesQuiet>>,
 ) {
     let Some(mut bench) = bench else { return };
     // Measured behind the menu's scene, once it is up.
@@ -204,25 +224,17 @@ fn measure(
         return;
     }
     let dt = time.delta_secs();
-    bench.since += dt;
-    if bench.settle_frames < SETTLE_FRAMES || bench.since < SETTLE {
-        bench.settle_frames += 1;
-        if bench.settle_frames >= SETTLE_FRAMES && bench.since >= SETTLE {
-            bench.since = 0.0;
-        }
-        return;
+    bench.total += dt;
+    if bench.total > MAX_TIME {
+        info!("detail benchmark: out of time at step {}", bench.step);
+        return finish(&mut commands, &bench, true);
     }
-    bench.frames.push(dt);
-    let enough = bench.since >= MEASURE && bench.frames.len() >= MEASURE_FRAMES;
-    if !enough && bench.since < MEASURE_MAX {
-        return;
-    }
-    let m = median(&mut bench.frames);
+    let Some((m, frames)) = bench.tick(dt, quiet.is_none_or(|q| q.0)) else { return };
     let n = steps_for(m, bench.target);
     info!(
         "detail benchmark: step {}, {} frames, median {:.1} ms ({:.0} fps)",
         bench.step,
-        bench.frames.len(),
+        frames,
         m * 1000.0,
         1.0 / m
     );
@@ -241,10 +253,41 @@ fn measure(
 }
 
 impl Bench {
+    /// One frame of `dt` seconds: settling (while the pipelines are being built, then
+    /// `SETTLE` seconds and `SETTLE_FRAMES` frames), then measuring; once measured, the median
+    /// frame time and the frames measured.
+    fn tick(&mut self, dt: f32, pipelines_quiet: bool) -> Option<(f32, usize)> {
+        if !self.measuring {
+            // Settled once the pipelines are built (a stall of seconds each in the browser).
+            if !pipelines_quiet {
+                self.restart();
+                return None;
+            }
+            self.since += dt;
+            self.settle_frames += 1;
+            if self.settle_frames >= SETTLE_FRAMES && self.since >= SETTLE {
+                // Measured from the next frame.
+                self.measuring = true;
+                self.since = 0.0;
+            }
+            return None;
+        }
+        self.since += dt;
+        self.frames.push(dt);
+        let n = self.frames.len();
+        if (self.since < MEASURE || n < MEASURE_FRAMES) && self.since < MEASURE_MAX {
+            return None;
+        }
+        let m = median(&mut self.frames);
+        self.restart();
+        Some((m, n))
+    }
+
     /// Settles and measures again.
     fn restart(&mut self) {
         self.since = 0.0;
         self.settle_frames = 0;
+        self.measuring = false;
         self.frames.clear();
     }
 }
@@ -285,8 +328,12 @@ fn notice(
     mut contexts: EguiContexts,
     mut shown: ResMut<Notice>,
     time: Res<Time<Real>>,
+    covered: Option<Res<Covered>>,
 ) -> Result {
     use crate::menu::{BRIGHT, big_button, menu_window};
+    if covered.is_some() {
+        return Ok(());
+    }
     shown.shown_for += time.delta_secs();
     let ctx = contexts.ctx_mut()?;
     let mut close = shown.shown_for > NOTICE_TIME;
@@ -309,6 +356,36 @@ fn notice(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Frames of `dt` until a measurement comes: the measured frames and the seconds taken.
+    fn run(bench: &mut Bench, dt: f32) -> (usize, f32) {
+        let mut t = 0.0;
+        loop {
+            t += dt;
+            if let Some((_, n)) = bench.tick(dt, true) {
+                return (n, t);
+            }
+        }
+    }
+
+    #[test]
+    fn measures_after_settling() {
+        // 60 fps: 2 s settling, 2.5 s measured.
+        let (n, t) = run(&mut Bench::default(), 1.0 / 60.0);
+        assert!((149..=151).contains(&n), "{n}");
+        assert!((t - (SETTLE + MEASURE)).abs() < 0.05, "{t}");
+        // 4 fps: the frame counts hold it longer, up to `MEASURE_MAX`.
+        let (n, t) = run(&mut Bench::default(), 0.25);
+        assert!(n == MEASURE_FRAMES && t > SETTLE + MEASURE, "{n} {t}");
+        let (n, _) = run(&mut Bench::default(), 1.0);
+        assert!(n < MEASURE_FRAMES && n as f32 >= MEASURE_MAX - 1.0, "{n}");
+        // Pipelines being built: settling starts again.
+        let mut b = Bench::default();
+        for _ in 0..200 {
+            assert!(b.tick(1.0 / 60.0, false).is_none());
+        }
+        assert_eq!((b.settle_frames, b.measuring), (0, false));
+    }
 
     #[test]
     fn steps_follow_the_frame_rate() {
