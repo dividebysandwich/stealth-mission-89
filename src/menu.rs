@@ -1580,6 +1580,9 @@ const SUMMARY_LEAST: f32 = 300.0;
 const MISSION_BUTTONS: f32 = 560.0;
 const FLY_BUTTONS: f32 = 430.0;
 
+/// The main menu's distance from the screen's left edge.
+const MAIN_MARGIN: f32 = 40.0;
+
 /// What the main menu has beside its scrolling buttons: the header, QUIT and the version.
 const MAIN_RESERVED: f32 = 150.0;
 
@@ -1597,6 +1600,7 @@ fn main_screen(
     campaign: &mut crate::campaign::CampaignWindow,
     multiplayer: &mut crate::multiplayer_menu::MultiplayerWindow,
     exit: &mut MessageWriter<AppExit>,
+    vr: bool,
 ) {
     // Every button as wide as the longest label needs, its icon and label at the left.
     let mut labels = vec![
@@ -1617,7 +1621,13 @@ fn main_screen(
     let wide = |text: &str| big_button(text).left().min_size(egui::vec2(width, 50.0));
     let panel = Panel::new(t!("menu-title"));
     let window_width = (width + 60.0).max(panel.min_width(ctx));
-    panel.window(menu_window(ctx, "Stealth Mission 89", window_width), ctx, |ui| {
+    // At the left, leaving the scene behind it (menu_scene.rs) in view; centred on the
+    // headset's panel.
+    let mut window = menu_window(ctx, "Stealth Mission 89", window_width);
+    if !vr {
+        window = window.anchor(egui::Align2::LEFT_CENTER, egui::vec2(MAIN_MARGIN, 0.0));
+    }
+    panel.window(window, ctx, |ui| {
         // The buttons scroll where the screen is lower than they are; QUIT and the version stay.
         crate::layout::fit_scroll(ui, "main menu", MAIN_RESERVED, |ui| {
             ui.vertical_centered(|ui| {
@@ -1735,11 +1745,7 @@ pub(crate) fn menu_ui(
     mut settings: ResMut<crate::settings::Settings>,
     mut next: ResMut<NextState<AppState>>,
     mut exit: MessageWriter<AppExit>,
-    (vr, head, walking): (
-        Res<VrAvailable>,
-        Res<crate::headtrack::HeadTrack>,
-        Option<Res<crate::menu_scene::MenuLook>>,
-    ),
+    (vr, head): (Res<VrAvailable>, Res<crate::headtrack::HeadTrack>),
     mut dialog: ResMut<crate::input_dialog::InputDialog>,
     mut input_config: ResMut<crate::hotas::InputConfig>,
     hotas: Res<crate::hotas::Hotas>,
@@ -1858,9 +1864,7 @@ pub(crate) fn menu_ui(
     let realistic_before = state.realistic(settings.aircraft);
     // One window at a time: the open dialog replaces the screen it was opened from.
     let dialogs = dialog.open || options.open || career.open || campaign.open || multiplayer.open;
-    // The main menu steps aside while the player walks the apron behind it (menu_scene.rs).
-    let walking = walking.is_some_and(|w| w.hides_menu());
-    if !state.mission_screen && !dialogs && !walking {
+    if !state.mission_screen && !dialogs {
         main_screen(
             ctx,
             &mut state,
@@ -1869,6 +1873,7 @@ pub(crate) fn menu_ui(
             &mut campaign,
             &mut multiplayer,
             &mut exit,
+            settings.vr,
         );
     }
     if state.mission_screen && !dialogs && !planner.open && !loadout.open && !saves.open {

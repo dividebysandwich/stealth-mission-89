@@ -6,12 +6,9 @@
 //! the distance (`passes`). In VR the player stands on the apron, life size, with the menu's panel between
 //! the tower and the aircraft.
 
-use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::render::storage::ShaderBuffer;
-use bevy::window::{CursorGrabMode, CursorOptions};
-use bevy_egui::input::EguiWantsInput;
 
 use crate::models::{ModelAssets, ModelLibrary, ModelState};
 use crate::palette::{Palette, TimeOfDay};
@@ -36,8 +33,6 @@ impl Plugin for MenuScenePlugin {
                     schedule_passes,
                     fly_passes,
                     aircraft_lights,
-                    mouse_look,
-                    walk,
                     fit_view,
                     match_overlay_msaa,
                 )
@@ -70,48 +65,6 @@ struct Traffic(usize);
 
 #[derive(Component)]
 pub(crate) struct SceneCamera;
-
-/// Where the camera looks, turned by the mouse as in flight: radians of yaw (anticlockwise from
-/// above, as `Transform`'s) and pitch (up).
-#[derive(Resource)]
-pub(crate) struct MenuLook {
-    yaw: f32,
-    pitch: f32,
-    /// The right button went down on the scene, not on a menu window (the planner's map and the
-    /// campaign's designation use the right click): the view turns until it is released.
-    turning: bool,
-    /// On foot: the height of the jump over the standing eye (metres) and its vertical speed
-    /// (m/s).
-    lift: f32,
-    climb: f32,
-    /// Seconds since a walking key was last held.
-    idle: f32,
-    /// The joysticks' axes have been seen at rest since the bindings last changed: until then
-    /// they don't walk or turn, so that an axis resting off centre (a worn stick, a throttle
-    /// bound as pitch) doesn't walk on for ever and keep the main menu away.
-    sticks_rested: bool,
-}
-
-impl MenuLook {
-    /// The main menu is hidden while the player walks, and for `MENU_RETURN` seconds after.
-    pub(crate) fn hides_menu(&self) -> bool {
-        self.idle < MENU_RETURN
-    }
-}
-
-impl Default for MenuLook {
-    fn default() -> Self {
-        Self {
-            yaw: -CAMERA[3].to_radians(),
-            pitch: CAMERA[4].to_radians(),
-            turning: false,
-            lift: 0.0,
-            climb: 0.0,
-            idle: MENU_RETURN,
-            sticks_rested: false,
-        }
-    }
-}
 
 /// VR: where the player stands, the XR tracking root under it.
 #[derive(Component)]
@@ -162,23 +115,8 @@ const TRAFFIC: [(i32, [f32; 6]); 2] = [
     (23, [500.0, -650.0, 500.0, 130.0, 90.0, 0.0]),
     (24, [1080.0, -1450.0, 900.0, 250.0, -85.0, 0.4]),
 ];
-/// VR: the player's eye height over the apron (metres); also the standing eye height on the
-/// desktop, where the player walks the apron.
+/// VR: the player's eye height over the apron (metres); also the desktop camera's height.
 const VR_EYE: f32 = 1.75;
-/// On foot: walking and running speeds (m/s), the height of a jump (metres: a standing jump of
-/// a man of 1.80 m lifts him some half a metre), gravity (m/s^2) and the turn rate of a stick
-/// pushed over (radians per second: on the desktop, in the headset, up and down).
-const WALK: f32 = 5.0;
-const RUN: f32 = 12.0;
-const JUMP: f32 = 0.5;
-const GRAVITY: f32 = 9.81;
-const TURN: f32 = 2.0;
-const TURN_VR: f32 = 1.0;
-const LOOK: f32 = 1.5;
-/// How long the player stands still (seconds) before the main menu comes back.
-const MENU_RETURN: f32 = 0.5;
-/// The joysticks' dead zone on foot (their own, set for flying, may be none).
-const STICK_DEAD: f32 = 0.15;
 /// The classic night palette's seed (`TimeOfDay::seed`): a few steps from dusk towards night,
 /// the purple horizon under a dark blue sky.
 const TOD_SEED: u8 = 3;
@@ -232,7 +170,6 @@ fn spawn_scene(
 ) {
     let (cam, moon) = (CAMERA, if settings.vr { VR_MOON } else { MOON });
     commands.insert_resource(MenuScene);
-    commands.insert_resource(MenuLook::default());
     commands.insert_resource(Passes::new());
     crate::world::insert_theater(&mut commands, THEATER, None, &mut streamed, &mut overrides);
     // A night in the classic palette, held still.
@@ -515,244 +452,6 @@ fn aircraft_lights(
     }
 }
 
-/// Desktop mouse look, as in flight: hold the right button (`Action::MouseLook`) on the scene and move the mouse to turn
-/// the view round the camera, which stays where it is.
-fn mouse_look(
-    pointer: Res<crate::input::FlightControls>,
-    motion: Res<AccumulatedMouseMotion>,
-    egui: Res<EguiWantsInput>,
-    mut look: ResMut<MenuLook>,
-    mut cams: Query<&mut Transform, With<SceneCamera>>,
-    mut cursor: Query<&mut CursorOptions>,
-) {
-    // No scene camera in the headset.
-    if cams.is_empty() {
-        return;
-    }
-    if pointer.mouse_look_pressed {
-        look.turning = !egui.wants_any_pointer_input();
-    }
-    let held = look.turning && pointer.mouse_look;
-    if !held {
-        look.turning = false;
-    }
-    if let Ok(mut c) = cursor.single_mut() {
-        let (grab, visible) =
-            if held { (CursorGrabMode::Locked, false) } else { (CursorGrabMode::None, true) };
-        if c.grab_mode != grab {
-            c.grab_mode = grab;
-            c.visible = visible;
-        }
-    }
-    if !held || motion.delta == Vec2::ZERO {
-        return;
-    }
-    const K: f32 = 0.004;
-    look.yaw -= motion.delta.x * K;
-    look.pitch = (look.pitch - motion.delta.y * K).clamp(-1.55, 1.55);
-    for mut tf in &mut cams {
-        tf.rotation = Quat::from_euler(EulerRot::YXZ, look.yaw, look.pitch, 0.0);
-    }
-}
-
-/// What the player's hands ask for on foot, from the keyboard or the controllers.
-#[derive(Default)]
-struct Steps {
-    /// Walking: x to the right, y forward (-1..1).
-    go: Vec2,
-    /// Turning to the right and looking up (-1..1).
-    turn: f32,
-    look: f32,
-    run: bool,
-    jump: bool,
-    /// A walking key is held or a stick is pushed (the main menu steps aside).
-    moving: bool,
-    /// The joysticks' axes alone (walk x and y, turn, look), past `STICK_DEAD`.
-    stick: Vec4,
-}
-
-/// The gamepads' and the joysticks' inputs: the stick (a gamepad's left one) walks, the rudder, the
-/// slew's X or the gamepad's right stick turns, the slew's Y (the right stick's) looks up and
-/// down, the fire button (a gamepad's A) jumps and the gun trigger (a gamepad's shoulder
-/// triggers and left stick click) runs. The joysticks' are the ones the flight mapping binds.
-fn read_devices(
-    gamepads: &Query<&Gamepad>,
-    config: &crate::hotas::InputConfig,
-    hotas: &crate::hotas::Hotas,
-) -> Steps {
-    use crate::hotas::{AxisControl, ButtonTarget};
-    let mut s = Steps::default();
-    let more = crate::input::stronger;
-    if config.gamepad_defaults {
-        for pad in gamepads {
-            let axis =
-                |a: GamepadAxis, dead: f32| pad.get(a).filter(|v| v.abs() > dead).unwrap_or(0.0);
-            s.go.x = more(s.go.x, axis(GamepadAxis::LeftStickX, 0.1));
-            s.go.y = more(s.go.y, axis(GamepadAxis::LeftStickY, 0.1));
-            s.turn = more(s.turn, axis(GamepadAxis::RightStickX, 0.15));
-            s.look = more(s.look, axis(GamepadAxis::RightStickY, 0.15));
-            s.run |= [
-                GamepadButton::RightTrigger,
-                GamepadButton::RightTrigger2,
-                GamepadButton::LeftThumb,
-            ]
-            .into_iter()
-            .any(|b| pad.pressed(b));
-            s.jump |= pad.just_pressed(GamepadButton::South);
-        }
-    }
-    for m in hotas.axes(config) {
-        let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
-        let v = m.output(raw);
-        let v = if v.abs() > STICK_DEAD { v } else { 0.0 };
-        let stick = &mut s.stick;
-        match m.control {
-            AxisControl::Roll => stick.x = more(stick.x, v),
-            // Pushing the stick forward is a negative pitch.
-            AxisControl::Pitch => stick.y = more(stick.y, -v),
-            AxisControl::Yaw | AxisControl::SlewX => stick.z = more(stick.z, v),
-            AxisControl::SlewY => stick.w = more(stick.w, v),
-            _ => {}
-        }
-    }
-    for m in hotas.buttons(config) {
-        match m.target {
-            ButtonTarget::Gun => s.run |= hotas.active(&m.device, m.source, false),
-            ButtonTarget::Action(crate::input::Action::FireWeapon) => {
-                s.jump |= hotas.just_pressed(&m.device, m.source)
-            }
-            _ => {}
-        }
-    }
-    s
-}
-
-/// Adds the joysticks' axes to the steps once they have been seen at rest (`sticks_rested`),
-/// none while the bindings dialog is open (binding an axis moves it); then whether the player
-/// is walking.
-fn add_sticks(s: &mut Steps, rested: &mut bool, binding: bool) {
-    if binding {
-        *rested = false;
-        *s = Steps::default();
-        return;
-    }
-    *rested |= s.stick == Vec4::ZERO;
-    if *rested {
-        let more = crate::input::stronger;
-        s.go = Vec2::new(more(s.go.x, s.stick.x), more(s.go.y, s.stick.y));
-        s.turn = more(s.turn, s.stick.z);
-        s.look = more(s.look, s.stick.w);
-    }
-    s.moving = s.go != Vec2::ZERO;
-}
-
-/// Walking, as a pilot on foot over the apron: W A S D (the keys at those places, Z Q S D on an
-/// AZERTY keyboard) or a gamepad's or a joystick's stick (`read_devices`) move over the ground,
-/// Shift or the run button runs, Space or the jump button jumps as a man of 1.80 m does. The
-/// camera follows the hills. In the headset the standing point walks the way the head faces, and
-/// the rudder turns it round the head.
-#[allow(clippy::type_complexity, clippy::too_many_arguments)]
-fn walk(
-    keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    (egui, dialog): (Res<EguiWantsInput>, Res<crate::input_dialog::InputDialog>),
-    devices: (Query<&Gamepad>, Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
-    theater: Option<Res<crate::world::Theater>>,
-    heads: Res<crate::camera::HeadPoses>,
-    mut look: ResMut<MenuLook>,
-    mut cams: Query<(&mut WorldPos, &mut Transform), (With<SceneCamera>, Without<StandingPoint>)>,
-    mut stands: Query<(&mut WorldPos, &mut Transform), (With<StandingPoint>, Without<SceneCamera>)>,
-    mut viewpoint: ResMut<crate::palette::Viewpoint>,
-) {
-    // The desktop camera, or the headset once it is tracked.
-    if cams.is_empty() && (stands.is_empty() || heads.0.is_empty()) {
-        return;
-    }
-    let dt = time.delta_secs().min(0.1);
-    let (gamepads, config, hotas) = devices;
-    // A text field or a shortcut (Ctrl, Alt) is using the keys.
-    // The bindings dialog takes keys, buttons and axes to bind.
-    let free = !dialog.open
-        && !egui.wants_any_keyboard_input()
-        && !keys.any_pressed([
-            KeyCode::ControlLeft,
-            KeyCode::ControlRight,
-            KeyCode::AltLeft,
-            KeyCode::AltRight,
-        ]);
-    let mut s = read_devices(&gamepads, &config, &hotas);
-    // Esc brings the menu back from a stick that won't rest.
-    if keys.just_pressed(KeyCode::Escape) {
-        look.sticks_rested = false;
-    }
-    add_sticks(&mut s, &mut look.sticks_rested, dialog.open);
-    if free {
-        let mut dir = Vec2::ZERO;
-        for (key, d) in [
-            (KeyCode::KeyW, Vec2::Y),
-            (KeyCode::KeyS, Vec2::NEG_Y),
-            (KeyCode::KeyA, Vec2::NEG_X),
-            (KeyCode::KeyD, Vec2::X),
-        ] {
-            if keys.pressed(key) {
-                dir += d;
-                s.moving = true;
-            }
-        }
-        if dir != Vec2::ZERO {
-            s.go = dir.normalize();
-        }
-        s.run |= keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
-        s.jump |= keys.just_pressed(KeyCode::Space);
-    }
-    look.idle = if s.moving { 0.0 } else { (look.idle + dt).min(MENU_RETURN) };
-    let pace = s.go.clamp_length_max(1.0) * if s.run { RUN } else { WALK };
-    // The jump: up at the speed that takes a man's height, then back down under gravity.
-    let was = look.lift;
-    if s.jump && was <= 0.0 {
-        look.climb = (2.0 * GRAVITY * JUMP).sqrt();
-    }
-    if look.climb != 0.0 || look.lift > 0.0 {
-        look.lift += look.climb * dt;
-        look.climb -= GRAVITY * dt;
-        if look.lift <= 0.0 {
-            (look.lift, look.climb) = (0.0, 0.0);
-        }
-    }
-    let rise = (look.lift - was) as f64;
-    let ground = |p: DVec3| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64);
-    if let Ok((mut pos, mut tf)) = cams.single_mut() {
-        look.yaw -= s.turn * TURN * dt;
-        look.pitch = (look.pitch + s.look * LOOK * dt).clamp(-1.55, 1.55);
-        if s.turn != 0.0 || s.look != 0.0 {
-            tf.rotation = Quat::from_euler(EulerRot::YXZ, look.yaw, look.pitch, 0.0);
-        }
-        // Along the view's heading (not its pitch).
-        let step = Mat2::from_angle(-look.yaw) * Vec2::new(pace.x, -pace.y) * dt;
-        let before = ground(pos.0);
-        pos.0 += DVec3::new(step.x as f64, 0.0, step.y as f64);
-        pos.0.y += ground(pos.0) - before + rise;
-        viewpoint.altitude_wu = (pos.0.y / WU) as f32;
-    } else if let Ok((mut pos, mut tf)) = stands.single_mut() {
-        // The headset: forward is where the head faces in the tracking space.
-        let head = heads.0[0];
-        let face = head.forward().as_vec3();
-        let face = Vec3::new(face.x, 0.0, face.z).normalize_or(Vec3::NEG_Z);
-        let step = tf.rotation
-            * Quat::from_rotation_arc(Vec3::NEG_Z, face)
-            * Vec3::new(pace.x, 0.0, -pace.y)
-            * dt;
-        // Turning swings the standing point round the head.
-        let turned = Quat::from_rotation_y(-s.turn * TURN_VR * dt) * tf.rotation;
-        let at_head = Vec3::new(head.translation.x, 0.0, head.translation.z);
-        let before = ground(pos.0);
-        pos.0 += (tf.rotation * at_head - turned * at_head + step).as_dvec3();
-        tf.rotation = turned.normalize();
-        pos.0.y += ground(pos.0) - before + rise;
-        viewpoint.altitude_wu = ((pos.0.y + head.translation.y as f64) / WU) as f32;
-    }
-}
-
 /// A narrow window widens the view (Bevy keeps the vertical field of view).
 fn fit_view(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
@@ -813,16 +512,7 @@ fn despawn_scene(
     mut commands: Commands,
     q: Query<Entity, With<SceneEntity>>,
     root: Option<Res<crate::camera::XrRoot>>,
-    look: Option<Res<MenuLook>>,
-    mut cursor: Query<&mut CursorOptions>,
 ) {
-    // The menu closed with the view still turning: free the cursor.
-    if look.is_some_and(|l| l.turning)
-        && let Ok(mut c) = cursor.single_mut()
-    {
-        c.grab_mode = CursorGrabMode::None;
-        c.visible = true;
-    }
     // VR: the tracking root leaves the standing point before it goes.
     if let Some(r) = root.and_then(|r| r.0) {
         commands
@@ -834,41 +524,8 @@ fn despawn_scene(
         commands.entity(e).despawn();
     }
     commands.remove_resource::<MenuScene>();
-    commands.remove_resource::<MenuLook>();
     commands.remove_resource::<Passes>();
     commands.remove_resource::<Palette>();
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn pushed(stick: Vec4) -> Steps {
-        Steps { stick, ..default() }
-    }
-
-    #[test]
-    fn a_stick_resting_off_centre_never_walks() {
-        let mut rested = false;
-        for _ in 0..100 {
-            let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
-            add_sticks(&mut s, &mut rested, false);
-            assert!(!s.moving);
-        }
-        // Once centred, it walks.
-        let mut s = pushed(Vec4::ZERO);
-        add_sticks(&mut s, &mut rested, false);
-        let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
-        add_sticks(&mut s, &mut rested, false);
-        assert!(s.moving);
-        // Binding in the dialog stops it, and it must rest again after.
-        let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
-        add_sticks(&mut s, &mut rested, true);
-        assert!(!s.moving && !rested);
-        let mut s = pushed(Vec4::new(0.0, 0.4, 0.0, 0.0));
-        add_sticks(&mut s, &mut rested, false);
-        assert!(!s.moving);
-    }
 }
 
 // --- Passes: the occasional aircraft crossing the scene -----------------------------------------
