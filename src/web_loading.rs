@@ -39,7 +39,7 @@ struct Loading {
 }
 
 /// The music starts this long after the game is up (s): the first seconds still stutter.
-const MUSIC_DELAY: f32 = 5.0;
+const MUSIC_DELAY: f32 = 3.0;
 
 fn finish(
     mut loading: ResMut<Loading>,
