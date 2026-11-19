@@ -430,7 +430,7 @@ fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
 
 /// The ladders: the speed (knots) on the left, the height (m) on the right, the value boxed at
 /// the middle.
-fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
+pub(super) fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let (top, bottom) = (30.0, h - 30.0);
     let mid = (top + bottom) / 2.0;
@@ -488,7 +488,7 @@ fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
 
 /// The throttle beside the speed tape: a bar filled to it, the percent under it (yellow flown
 /// by hand), an interceptor's hover throttle ticked.
-fn throttle_gauge(cv: &mut Canvas, u: &Uav, thr: f32, col: u8) {
+pub(super) fn throttle_gauge(cv: &mut Canvas, u: &Uav, thr: f32, col: u8) {
     let h = FEED_CANVAS.1 as f32;
     let (x0, x1, top, bottom) = (50.0, 62.0, 60.0, h - 60.0);
     let col = if u.mode == UavMode::Manual { YELLOW } else { col };
@@ -517,7 +517,7 @@ fn to_waypoint(u: &Uav) -> Option<(f32, f64)> {
 
 /// The heading tape across the top: ticks every 5 degrees, numbers every 10 (the cardinal
 /// points by letter), the heading boxed at the middle, the next waypoint's bearing marked.
-fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
+pub(super) fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
     let w = FEED_CANVAS.0 as f32;
     let (y, half, per_deg) = (40.0, 80.0, 2.0);
     let c = w / 2.0;
@@ -557,7 +557,7 @@ fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
 }
 
 /// The next waypoint at the bottom: its number and kind, bearing and distance.
-fn waypoint_line(cv: &mut Canvas, u: &Uav) {
+pub(super) fn waypoint_line(cv: &mut Canvas, u: &Uav) {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let (Some(wp), Some((brg, km))) = (u.target(), to_waypoint(u)) else { return };
     let deg = brg.to_degrees().rem_euclid(360.0);
@@ -567,7 +567,7 @@ fn waypoint_line(cv: &mut Canvas, u: &Uav) {
 
 /// The HSI at the bottom: the compass rose turning with the heading, the lubber line, the
 /// course to the next waypoint and its distance.
-fn hsi(cv: &mut Canvas, u: &Uav, col: u8) {
+pub(super) fn hsi(cv: &mut Canvas, u: &Uav, col: u8) {
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let r = 26.0;
     let c = Vec2::new(w / 2.0, h - r - 6.0);
@@ -678,7 +678,7 @@ fn way(u: &Uav) -> Vec3 {
 }
 
 /// Corner brackets round a point.
-fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
+pub(super) fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
     for sx in [-1.0, 1.0] {
         for sy in [-1.0, 1.0] {
             let c = p + Vec2::new(sx * s, sy * s);

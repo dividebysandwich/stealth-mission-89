@@ -25,6 +25,7 @@
 mod feed;
 mod list;
 mod map;
+pub(crate) mod scene;
 
 use bevy::math::DVec2;
 use bevy::prelude::*;

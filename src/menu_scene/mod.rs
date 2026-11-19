@@ -19,6 +19,7 @@ mod cockpits;
 mod comanche;
 mod consoles;
 pub mod director;
+mod drones;
 mod flyers;
 mod fx;
 mod gunship;
@@ -73,6 +74,7 @@ impl Plugin for MenuScenePlugin {
         cockpits::build(app);
         comanche::build(app);
         consoles::build(app);
+        drones::build(app);
         fx::build(app);
         gunship::build(app);
         helmet::build(app);

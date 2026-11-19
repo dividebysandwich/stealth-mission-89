@@ -724,7 +724,7 @@ fn waypoint(cv: &mut Canvas, ui: &DroneUi, q: Vec2, w: &UavWp, kind: UavKind, co
 
 /// A drone: an arrowhead along its heading (a surveillance drone's open, an attack drone's
 /// filled, an interceptor's a slim dart with a cross bar, an X-12's a slim delta with a tail).
-fn drone(cv: &mut Canvas, p: Vec2, heading: f32, kind: UavKind, col: u8) {
+pub(super) fn drone(cv: &mut Canvas, p: Vec2, heading: f32, kind: UavKind, col: u8) {
     let f = Vec2::new(heading.sin(), -heading.cos());
     let r = Vec2::new(-f.y, f.x);
     let (a, b, c) = (p + f * 7.0, p - f * 4.0 + r * 4.5, p - f * 4.0 - r * 4.5);

@@ -21,7 +21,7 @@
 //! server's on a client); what the console shows comes from the simulation's state.
 
 mod board;
-mod drone;
+pub(crate) mod drone;
 mod eo;
 mod info;
 pub(crate) mod scope;
