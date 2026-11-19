@@ -71,7 +71,7 @@ impl Waterfall {
     }
 
     /// A row from a report (at `now` on the console's clock): signal strength over bearing.
-    fn push(&mut self, s: &Sample, now: f32) {
+    pub fn push(&mut self, s: &Sample, now: f32) {
         let mut row = [0f32; BINS];
         let base = 25.0 + s.noise.saturating_sub(40) as f32 * 3.0;
         for v in row.iter_mut() {
@@ -82,7 +82,8 @@ impl Waterfall {
         // direction, everywhere at first.
         if s.heard {
             self.reverb = 1.0;
-            self.reverb_at = s.lines.iter().find(|l| l.ping).and_then(|l| l.bearing.map(|b| b as f32));
+            self.reverb_at =
+                s.lines.iter().find(|l| l.ping).and_then(|l| l.bearing.map(|b| b as f32));
         } else {
             self.reverb *= (-1.0 / (stealth_sim::asw::SENSE_HZ as f32 * REVERB_TAU)).exp();
         }
@@ -151,8 +152,13 @@ impl Waterfall {
 
 /// The sensors of the crew shown, in order: its buoys (id, kind, its report), then the
 /// dipping sonar (0) while it is in the water.
-pub fn sensors(asw: &stealth_sim::asw::Asw, crew: &AswCrew, owner: u8) -> Vec<(u16, Option<BuoyKind>)> {
-    let mut v: Vec<(u16, Option<BuoyKind>)> = asw.buoys_of(owner).map(|b| (b.id, Some(b.kind))).collect();
+pub fn sensors(
+    asw: &stealth_sim::asw::Asw,
+    crew: &AswCrew,
+    owner: u8,
+) -> Vec<(u16, Option<BuoyKind>)> {
+    let mut v: Vec<(u16, Option<BuoyKind>)> =
+        asw.buoys_of(owner).map(|b| (b.id, Some(b.kind))).collect();
     v.sort_by_key(|s| s.0);
     if crew.dip.wet() {
         v.push((0, None));
@@ -168,7 +174,9 @@ pub fn record(
     mut ui: ResMut<AswUi>,
 ) {
     let Some(combat) = combat else { return };
-    let Some((owner, _)) = super::crew_owner(manning.as_deref(), &combat, &settings) else { return };
+    let Some((owner, _)) = super::crew_owner(manning.as_deref(), &combat, &settings) else {
+        return;
+    };
     let asw = combat.sim.asw();
     let crew = asw.crew(owner).cloned().unwrap_or_default();
     let ui = &mut *ui;
@@ -176,7 +184,10 @@ pub fn record(
     let mut live = Vec::new();
     for b in asw.buoys_of(owner).filter(|b| b.fall <= 0.0) {
         live.push(b.id);
-        let w = ui.falls.entry(b.id).or_insert_with(|| Waterfall { rng: 0x9E37_79B9 ^ b.id as u32, ..Default::default() });
+        let w = ui
+            .falls
+            .entry(b.id)
+            .or_insert_with(|| Waterfall { rng: 0x9E37_79B9 ^ b.id as u32, ..Default::default() });
         if w.seq != b.sample.seq {
             w.push(&b.sample, now);
             marks::follow(&mut ui.marks, b.id, &b.sample, now);
@@ -184,7 +195,10 @@ pub fn record(
     }
     if crew.dip.wet() {
         live.push(0);
-        let w = ui.falls.entry(0).or_insert_with(|| Waterfall { rng: 0x1234_5679, ..Default::default() });
+        let w = ui
+            .falls
+            .entry(0)
+            .or_insert_with(|| Waterfall { rng: 0x1234_5679, ..Default::default() });
         if w.seq != crew.dip.sample.seq {
             w.push(&crew.dip.sample, now);
             marks::follow(&mut ui.marks, 0, &crew.dip.sample, now);
@@ -237,7 +251,14 @@ fn inside(r: [f32; 4], p: Vec2) -> bool {
 }
 
 /// A touch on the page.
-pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
+pub fn click(
+    ui: &mut AswUi,
+    p: Vec2,
+    phase: crate::cockpit3d::DragPhase,
+    crew: &AswCrew,
+    sim: &stealth_sim::Sim,
+    owner: u8,
+) {
     use crate::cockpit3d::DragPhase;
     // On a waterfall (pressed or dragged): its listening cursor there, the sensor in the
     // headset.
@@ -245,7 +266,12 @@ pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: 
     for (k, &(id, kind)) in list.iter().enumerate() {
         let (top, h) = row_band(k, list.len());
         let (x0, x1) = (LEFT + HEADER, RIGHT - 2.0);
-        if kind != Some(BuoyKind::Bt) && p.y >= top && p.y < top + h - 12.0 && p.x >= x0 && p.x <= x1 {
+        if kind != Some(BuoyKind::Bt)
+            && p.y >= top
+            && p.y < top + h - 12.0
+            && p.x >= x0
+            && p.x <= x1
+        {
             let brg = (p.x - x0) / (x1 - x0) * 360.0;
             // One cursor: the headset hears this sensor alone, in that direction.
             ui.cursor.clear();
@@ -278,7 +304,9 @@ pub fn click(ui: &mut AswUi, p: Vec2, phase: crate::cockpit3d::DragPhase, crew: 
         for (b, r) in row_buttons(top, h, kind) {
             if inside(r, p) {
                 match (b, kind) {
-                    (RowButton::Mode, None) => ui.outbox.push(AswCmd::DipMode { active: !crew.dip.active }),
+                    (RowButton::Mode, None) => {
+                        ui.outbox.push(AswCmd::DipMode { active: !crew.dip.active })
+                    }
                     (RowButton::Mode, Some(_)) => {
                         let active = sim.asw().buoys.iter().any(|b| b.id == id && b.active);
                         ui.outbox.push(AswCmd::BuoyMode { id, active: !active });
@@ -302,50 +330,126 @@ pub fn draw(
     owner: u8,
     prev: Option<Arc<Picture>>,
 ) -> Option<Arc<Picture>> {
-    cv.reset_clip();
-    cv.clear(BLACK);
     let asw = sim.asw();
     let here = owner_at(sim, owner).map(|p| p.0);
+    let rows = sensors(asw, crew, owner)
+        .into_iter()
+        .map(|(id, kind)| {
+            let b = asw.buoys.iter().find(|b| b.id == id);
+            SensorRow {
+                id,
+                kind,
+                depth: b.map_or(crew.dip.depth, |b| b.depth),
+                active: b.map_or(crew.dip.active, |b| b.active),
+                pings: b.map_or(0, |b| b.pings),
+                km: b
+                    .zip(here)
+                    .map(|(b, h)| ((b.at[0] - h[0]).hypot(b.at[1] - h[1]) / 1000.0) as f32),
+            }
+        })
+        .collect();
+    let view = SonarView {
+        layer: crew.layer,
+        hover: crew.hover_req,
+        buoys: asw.buoys_of(owner).count(),
+        rows,
+    };
+    paint(cv, ui, &view, prev)
+}
+
+/// A sensor's row on the page: its id and kind (None: the dipping sonar), the hydrophone's
+/// depth (m), pinging, the pings left, its distance from the aircraft (km).
+pub struct SensorRow {
+    pub id: u16,
+    pub kind: Option<BuoyKind>,
+    pub depth: f32,
+    pub active: bool,
+    pub pings: u8,
+    pub km: Option<f32>,
+}
+
+/// What the page shows besides the waterfalls (`AswUi::falls`): the layer's depth, the hover
+/// asked for, the buoys in the water, the sensors' rows.
+pub struct SonarView {
+    pub layer: Option<u16>,
+    pub hover: bool,
+    pub buoys: usize,
+    pub rows: Vec<SensorRow>,
+}
+
+/// Draws the page from `v`; returns the waterfalls' picture for under it.
+pub fn paint(
+    cv: &mut Canvas,
+    ui: &mut AswUi,
+    v: &SonarView,
+    prev: Option<Arc<Picture>>,
+) -> Option<Arc<Picture>> {
+    cv.reset_clip();
+    cv.clear(BLACK);
     // The title bar: the layer, the hydrophone setting for the next buoys.
     stroke_text_at(cv, 8.0, 13.0, "SONAR", 10.0, 1.5, YELLOW, Align::Left);
-    let layer = crew.layer.map_or("LAYER ?".to_string(), |l| format!("LAYER {l} M"));
+    let layer = v.layer.map_or("LAYER ?".to_string(), |l| format!("LAYER {l} M"));
     stroke_text_at(cv, 110.0, 13.0, &layer, 8.0, 1.2, CYAN, Align::Left);
-    stroke_text_at(
-        cv,
-        250.0,
-        13.0,
-        &format!("BUOYS {}/4", asw.buoys_of(owner).count()),
-        8.0,
-        1.2,
-        GREEN,
-        Align::Left,
-    );
+    stroke_text_at(cv, 250.0, 13.0, &format!("BUOYS {}/4", v.buoys), 8.0, 1.2, GREEN, Align::Left);
     let r = DEPTH_BUTTON;
     cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, GREY);
     let hyd = if ui.deep { "HYD DEEP 120M" } else { "HYD SHAL 27M" };
-    stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, hyd, 7.0, 1.1, WHITE, Align::Centre);
-    hover_button(cv, HOVER_BUTTON, crew.hover_req);
+    stroke_text_at(
+        cv,
+        r[0] + r[2] / 2.0,
+        r[1] + r[3] / 2.0 + 1.0,
+        hyd,
+        7.0,
+        1.1,
+        WHITE,
+        Align::Centre,
+    );
+    hover_button(cv, HOVER_BUTTON, v.hover);
     let r = MARK_BUTTON;
     cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, CYAN);
     let t = format!("MARK ID {}", marks::letter(ui.mark_id));
-    stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, &t, 7.0, 1.1, CYAN, Align::Centre);
-    let list = sensors(asw, crew, owner);
+    stroke_text_at(
+        cv,
+        r[0] + r[2] / 2.0,
+        r[1] + r[3] / 2.0 + 1.0,
+        &t,
+        7.0,
+        1.1,
+        CYAN,
+        Align::Centre,
+    );
+    let list: Vec<(u16, Option<BuoyKind>)> = v.rows.iter().map(|r| (r.id, r.kind)).collect();
     if list.is_empty() {
         stroke_text_at(cv, 320.0, 220.0, "NO SENSORS IN THE WATER", 10.0, 1.4, GREY, Align::Centre);
-        stroke_text_at(cv, 320.0, 246.0, "DROP A BUOY OR DIP THE SONAR", 8.0, 1.2, DARK, Align::Centre);
+        stroke_text_at(
+            cv,
+            320.0,
+            246.0,
+            "DROP A BUOY OR DIP THE SONAR",
+            8.0,
+            1.2,
+            DARK,
+            Align::Centre,
+        );
         return None;
     }
     // The picture under the canvas: the waterfalls (the rest black).
     let (pw, ph, s) = (cv.pw(), cv.ph(), cv.scale as f32);
-    let mut pic = prev.filter(|p| p.w == pw && p.h == ph).unwrap_or_else(|| {
-        Arc::new(Picture { w: pw, h: ph, rgba: vec![0; pw * ph * 4] })
-    });
+    let mut pic = prev
+        .filter(|p| p.w == pw && p.h == ph)
+        .unwrap_or_else(|| Arc::new(Picture { w: pw, h: ph, rgba: vec![0; pw * ph * 4] }));
     let px = MakeMut::make_mut_or_new(&mut pic, pw, ph);
     px.rgba.iter_mut().enumerate().for_each(|(i, v)| *v = if i % 4 == 3 { 255 } else { 0 });
     for (k, &(id, kind)) in list.iter().enumerate() {
         let (top, h) = row_band(k, list.len());
         let selected = ui.sensor == Some(id);
-        cv.rect(LEFT as i32, top as i32 + 1, (RIGHT - LEFT) as i32, h as i32 - 2, if selected { YELLOW } else { DARK });
+        cv.rect(
+            LEFT as i32,
+            top as i32 + 1,
+            (RIGHT - LEFT) as i32,
+            h as i32 - 2,
+            if selected { YELLOW } else { DARK },
+        );
         let falls = ui.falls.get(&id);
         // The waterfall: transparent on the canvas, drawn into the picture.
         let (x0, x1) = (LEFT + HEADER, RIGHT - 2.0);
@@ -353,7 +457,7 @@ pub fn draw(
         cv.fill_rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, 0);
         if kind == Some(BuoyKind::Bt) {
             cv.fill_rect(x0 as i32, y0 as i32, (x1 - x0) as i32, (y1 - y0) as i32, BLACK);
-            profile(cv, crew.layer, x0, y0, x1, y1);
+            profile(cv, v.layer, x0, y0, x1, y1);
         } else if let Some(w) = falls {
             // A row a texel: four reports a second.
             let rows = (((y1 - y0) * s) as usize).min(w.rows.len());
@@ -378,7 +482,10 @@ pub fn draw(
             let x = x0 + (x1 - x0) * brg / 360.0;
             cv.stroke(Vec2::new(x, y0), Vec2::new(x, y1), 1.2, YELLOW);
             let near = falls.and_then(|w| {
-                w.last.lines.iter().find(|l| l.bearing.is_some_and(|b| bearing_off(b as f32, brg).abs() <= 8.0))
+                w.last
+                    .lines
+                    .iter()
+                    .find(|l| l.bearing.is_some_and(|b| bearing_off(b as f32, brg).abs() <= 8.0))
             });
             let t = match near {
                 Some(l) => format!("{brg:03.0} {:+}", l.snr),
@@ -393,14 +500,27 @@ pub fn draw(
             for m in ui.marks.iter().filter(|m| m.sensor == id) {
                 let x = x0 + (x1 - x0) * m.bearing / 360.0;
                 let col = if m.lost(ui.t) { GREY } else { CYAN };
-                cv.triangle([Vec2::new(x - 4.0, y0), Vec2::new(x + 4.0, y0), Vec2::new(x, y0 + 6.0)], col);
+                cv.triangle(
+                    [Vec2::new(x - 4.0, y0), Vec2::new(x + 4.0, y0), Vec2::new(x, y0 + 6.0)],
+                    col,
+                );
                 cv.dashed(Vec2::new(x, y0 + 6.0), Vec2::new(x, y1), 3.0, 5.0, 0.8, col);
-                stroke_text_at(cv, x + 5.0, y0 + 14.0, &m.letter().to_string(), 7.0, 1.2, col, Align::Left);
+                stroke_text_at(
+                    cv,
+                    x + 5.0,
+                    y0 + 14.0,
+                    &m.letter().to_string(),
+                    7.0,
+                    1.2,
+                    col,
+                    Align::Left,
+                );
             }
         }
         // The bearing scale under it (true).
         if kind != Some(BuoyKind::Bt) {
-            for (deg, label) in [(0, "000"), (90, "090"), (180, "180"), (270, "270"), (360, "360")] {
+            for (deg, label) in [(0, "000"), (90, "090"), (180, "180"), (270, "270"), (360, "360")]
+            {
                 let x = x0 + (x1 - x0) * deg as f32 / 360.0;
                 cv.line(x as i32, y1 as i32, x as i32, y1 as i32 + 3, GREY);
                 let align = match deg {
@@ -412,21 +532,41 @@ pub fn draw(
             }
         }
         // The header.
-        let b = asw.buoys.iter().find(|b| b.id == id);
+        let row = &v.rows[k];
         let name = match kind {
             Some(k) => format!("B{} {}", id, k.name()),
             None => "DIP AQS-13F".into(),
         };
-        let depth = b.map_or(crew.dip.depth, |b| b.depth);
-        stroke_text_at(cv, LEFT + 6.0, top + 12.0, &name, 8.0, 1.3, if selected { YELLOW } else { GREEN }, Align::Left);
-        let active = b.map_or(crew.dip.active, |b| b.active);
+        let depth = row.depth;
+        stroke_text_at(
+            cv,
+            LEFT + 6.0,
+            top + 12.0,
+            &name,
+            8.0,
+            1.3,
+            if selected { YELLOW } else { GREEN },
+            Align::Left,
+        );
+        let active = row.active;
         let mode = match kind {
             Some(BuoyKind::Difar) => "PAS DIR".to_string(),
             Some(BuoyKind::Bt) => "BATHY".to_string(),
-            Some(BuoyKind::Dicass) => format!("{} {}P", if active { "ACT" } else { "PAS" }, b.map_or(0, |b| b.pings)),
+            Some(BuoyKind::Dicass) => {
+                format!("{} {}P", if active { "ACT" } else { "PAS" }, row.pings)
+            }
             None => (if active { "ACT" } else { "PAS" }).to_string(),
         };
-        stroke_text_at(cv, LEFT + 6.0, top + 26.0, &format!("{depth:.0}M {mode}"), 7.0, 1.1, GREEN, Align::Left);
+        stroke_text_at(
+            cv,
+            LEFT + 6.0,
+            top + 26.0,
+            &format!("{depth:.0}M {mode}"),
+            7.0,
+            1.1,
+            GREEN,
+            Align::Left,
+        );
         if let Some(w) = falls
             && let Some(l) = w.last.lines.first()
         {
@@ -443,12 +583,29 @@ pub fn draw(
             stroke_text_at(cv, LEFT + 6.0, top + 40.0, "NO CONTACT", 7.0, 1.1, DARK, Align::Left);
         }
         // Its range from the aircraft.
-        if let (Some(b), Some(here)) = (b, here) {
-            let d = (b.at[0] - here[0]).hypot(b.at[1] - here[1]);
-            stroke_text_at(cv, LEFT + HEADER - 8.0, top + 12.0, &format!("{:.1}KM", d / 1000.0), 6.0, 1.0, GREY, Align::Right);
+        if let Some(km) = row.km {
+            stroke_text_at(
+                cv,
+                LEFT + HEADER - 8.0,
+                top + 12.0,
+                &format!("{km:.1}KM"),
+                6.0,
+                1.0,
+                GREY,
+                Align::Right,
+            );
         }
         if ui.audio == Some(id) {
-            stroke_text_at(cv, LEFT + HEADER - 8.0, top + 26.0, "AUD", 6.0, 1.0, CYAN, Align::Right);
+            stroke_text_at(
+                cv,
+                LEFT + HEADER - 8.0,
+                top + 26.0,
+                "AUD",
+                6.0,
+                1.0,
+                CYAN,
+                Align::Right,
+            );
         }
         if h >= 60.0 {
             for (btn, r) in row_buttons(top, h, kind) {
@@ -458,7 +615,16 @@ pub fn draw(
                     RowButton::Mode => "PING",
                     RowButton::Scuttle => "SCUTTLE",
                 };
-                stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, label, 6.0, 1.0, WHITE, Align::Centre);
+                stroke_text_at(
+                    cv,
+                    r[0] + r[2] / 2.0,
+                    r[1] + r[3] / 2.0 + 1.0,
+                    label,
+                    6.0,
+                    1.0,
+                    WHITE,
+                    Align::Centre,
+                );
             }
         }
     }
@@ -473,14 +639,32 @@ pub fn hover_button(cv: &mut Canvas, r: [f32; 4], on: bool) {
     }
     cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, if on { YELLOW } else { GREY });
     let col = if on { BLACK } else { WHITE };
-    stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, "HOVER", 7.0, 1.1, col, Align::Centre);
+    stroke_text_at(
+        cv,
+        r[0] + r[2] / 2.0,
+        r[1] + r[3] / 2.0 + 1.0,
+        "HOVER",
+        7.0,
+        1.1,
+        col,
+        Align::Centre,
+    );
 }
 
 /// A BT buoy's temperature profile: warm and steady down to the layer, colder under it.
 fn profile(cv: &mut Canvas, layer: Option<u16>, x0: f32, y0: f32, x1: f32, y1: f32) {
     stroke_text_at(cv, x0 + 6.0, y0 + 8.0, "TEMP", 6.0, 1.0, GREY, Align::Left);
     let Some(layer) = layer else {
-        stroke_text_at(cv, (x0 + x1) / 2.0, (y0 + y1) / 2.0, "PROBE SINKING", 8.0, 1.2, GREY, Align::Centre);
+        stroke_text_at(
+            cv,
+            (x0 + x1) / 2.0,
+            (y0 + y1) / 2.0,
+            "PROBE SINKING",
+            8.0,
+            1.2,
+            GREY,
+            Align::Centre,
+        );
         return;
     };
     let max_depth = 400.0;
@@ -494,7 +678,16 @@ fn profile(cv: &mut Canvas, layer: Option<u16>, x0: f32, y0: f32, x1: f32, y1: f
         .collect();
     cv.polyline(&pts, 1.5, CYAN);
     cv.dashed(Vec2::new(x0 + 30.0, y(l)), Vec2::new(x1 - 10.0, y(l)), 6.0, 4.0, 1.0, YELLOW);
-    stroke_text_at(cv, x1 - 12.0, y(l) - 6.0, &format!("LAYER {layer}M"), 6.0, 1.0, YELLOW, Align::Right);
+    stroke_text_at(
+        cv,
+        x1 - 12.0,
+        y(l) - 6.0,
+        &format!("LAYER {layer}M"),
+        6.0,
+        1.0,
+        YELLOW,
+        Align::Right,
+    );
 }
 
 /// `Arc::get_mut`, or a fresh picture when it is shared.

@@ -22,6 +22,7 @@ pub mod effects;
 pub mod mad;
 pub mod map;
 pub mod marks;
+pub(crate) mod scene;
 pub mod sonar;
 pub mod wpn;
 

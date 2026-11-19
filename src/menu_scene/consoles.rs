@@ -23,6 +23,7 @@ pub(super) fn build(app: &mut App) {
         (
             air_defence::<false>.run_if(shot_on(Shot::Patriot)),
             air_defence::<true>.run_if(shot_on(Shot::Gepard)),
+            sonar.run_if(shot_on(Shot::Sonar)),
         )
             .in_set(ShotSet),
     );
@@ -277,4 +278,52 @@ fn air_defence<const GEPARD: bool>(
     // The operator's view of the console, a little down and to its middle.
     super::cockpits::eye_camera(&mut cam, cabin, wp.0, tf.rotation, Vec2::new(-0.05, -0.12));
     fov.0 = 58f32.to_radians();
+}
+
+/// The MH-60R's sensor operator's console in its cabin, close on the sonar page: the buoys'
+/// and the dip's waterfalls full of traces, filling on.
+#[allow(clippy::too_many_arguments)]
+fn sonar(
+    mut stage: Stage,
+    mut screens: SceneScreens,
+    mut cabins: Query<(&Cabin, &mut WorldPos, &mut Transform), Without<SceneCamera>>,
+    mut page: Local<Option<crate::asw::scene::SonarScene>>,
+    mut colours: Local<Option<std::sync::Arc<[u32; 256]>>>,
+    palette: Res<crate::palette::Palette>,
+    time: Res<Time>,
+    mut cam: Camera,
+    mut fov: ResMut<SceneFov>,
+) {
+    if stage.begin(&[]) {
+        let places = stage.places();
+        let deck = places.decks.first().copied();
+        let at = deck.map_or_else(|| stage.land(), |d| enu(d.x + 3000.0, 0.0, d.y));
+        let model = crate::aircraft::AircraftKind::MH60R
+            .spec()
+            .console
+            .as_ref()
+            .map_or("cockpit_asw", |c| c.model);
+        let cabin = spawn_cabin(&mut stage, Cabin::new(Seat::Console(model), None));
+        stage.commands.entity(cabin).insert((WorldPos(at + DVec3::Y * 30.0), Transform::default()));
+        *page = Some(crate::asw::scene::SonarScene::new(stage.director.roll));
+        *colours = Some(crate::asw::mad::console_colours(&palette));
+        return;
+    }
+    let Ok((cabin, wp, tf)) = cabins.single_mut() else { return };
+    let Some(page) = page.as_mut() else { return };
+    page.step(time.delta_secs().min(0.1));
+    if cabin.fitted.is_some()
+        && let Some(mut tex) = screens
+            .canvas(crate::cockpit3d::scene::Screen::Console(crate::cockpit3d::ConsoleScreen::Asw))
+        && let Some(c) = colours.clone()
+    {
+        page.draw(&mut tex, c);
+    }
+    // The operator looking at the screen, close.
+    let look = screens
+        .find(crate::cockpit3d::scene::Screen::Console(crate::cockpit3d::ConsoleScreen::Asw))
+        .map(|_| Vec2::new(0.0, -0.18))
+        .unwrap_or(Vec2::new(0.0, -0.18));
+    super::cockpits::eye_camera(&mut cam, cabin, wp.0, tf.rotation, look);
+    fov.0 = 42f32.to_radians();
 }
