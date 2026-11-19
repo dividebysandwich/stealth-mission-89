@@ -123,6 +123,11 @@ impl Default for SceneFov {
     }
 }
 
+/// A scene's camera picture shown in FLIR (a console's): its size (pixels), set each frame
+/// (`palette` draws the picture of that size so).
+#[derive(Resource, Default)]
+pub(crate) struct SceneFlir(pub Option<(u32, u32)>);
+
 /// The narrowest horizontal field of view (degrees), so the scene stays on the screen in
 /// narrow windows.
 const MIN_WIDTH_FOV: f32 = 72.0;
@@ -144,6 +149,7 @@ fn spawn_scene(
     ));
     commands.insert_resource(director);
     commands.insert_resource(SceneFov::default());
+    commands.insert_resource(SceneFlir::default());
     crate::lighting::spawn_lights(&mut commands, &settings);
     if settings.vr {
         apron::spawn_standing_point(&mut commands, root.and_then(|r| r.0));
@@ -357,6 +363,7 @@ fn despawn_scene(
     }
     commands.remove_resource::<MenuScene>();
     commands.remove_resource::<Director>();
+    commands.remove_resource::<SceneFlir>();
     commands.remove_resource::<Palette>();
     commands.remove_resource::<crate::weather::SceneWeather>();
     commands.remove_resource::<crate::scenery::SceneryPrefetch>();

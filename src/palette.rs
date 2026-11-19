@@ -500,11 +500,12 @@ fn update_globals(
     origin: Res<crate::world::FloatingOrigin>,
     hud: Option<Res<crate::hud::HudState>>,
     mfd: Option<Res<crate::mfd::MfdState>>,
-    (trackcam, wide, console, unit_view): (
+    (trackcam, wide, console, unit_view, scene_flir): (
         Option<Res<crate::trackcam::TrackCamImage>>,
         Option<Res<crate::trackcam::TrackCamWide>>,
         Option<Res<crate::station::ConsoleEo>>,
         Option<Res<crate::campaign::UnitView>>,
+        Option<Res<crate::menu_scene::SceneFlir>>,
     ),
     images: Res<Assets<Image>>,
     time: Res<Time>,
@@ -568,6 +569,11 @@ fn update_globals(
         g.params.z = 1.0;
         (g.dots.z, g.dots.w) =
             (crate::campaign::unit_view::W as f32, crate::campaign::unit_view::H as f32);
+    }
+    // A menu scene's console camera in FLIR (`menu_scene`).
+    if let Some((w, h)) = scene_flir.and_then(|f| f.0) {
+        g.params.z = 1.0;
+        (g.dots.z, g.dots.w) = (w as f32, h as f32);
     }
     for (i, (p, c)) in lighting.lights.iter().enumerate() {
         g.local_lights[2 * i] = *p;

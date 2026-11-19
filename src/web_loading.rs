@@ -34,7 +34,12 @@ struct Loading {
     last: Option<(&'static str, usize, usize)>,
     scenery_frames: u32,
     done: bool,
+    /// Seconds since the game was up (the music waits `MUSIC_DELAY` more).
+    up_for: f32,
 }
+
+/// The music starts this long after the game is up (s): the first seconds still stutter.
+const MUSIC_DELAY: f32 = 5.0;
 
 fn finish(
     mut loading: ResMut<Loading>,
@@ -68,8 +73,13 @@ fn report(
     scenery: Option<Res<crate::scenery::Scenery>>,
     director: Option<Res<crate::menu_scene::director::Director>>,
     mut music: ResMut<crate::sound::MusicHold>,
+    time: Res<Time<Real>>,
 ) {
     if loading.done {
+        loading.up_for += time.delta_secs();
+        if music.0 && loading.up_for >= MUSIC_DELAY {
+            music.0 = false;
+        }
         return;
     }
     // The models: the scenes' files, the theater's, the cockpits'.
@@ -97,8 +107,6 @@ fn report(
         hold.0 = false;
         if director.is_some_and(|d| d.spawned) {
             loading.done = true;
-            // Running smoothly now: the music may start.
-            music.0 = false;
             call("SM89_READY", &[]);
         }
         return;

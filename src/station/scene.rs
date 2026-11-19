@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::ConsoleUi;
-use super::scope::{GREEN, RED, Snapshot, Track, WHITE, YELLOW};
+use super::scope::{RED, Snapshot, Track, WHITE, YELLOW};
 use crate::canvas::Canvas;
 use crate::cockpit3d::scene::{SceneScreens, Screen};
 use crate::cockpit3d::{ConsoleScreen, EO_CANVAS};
@@ -124,12 +124,13 @@ fn eo_overlay(cv: &mut Canvas, p: &AirPicture, lock: Option<usize>) {
     cv.reset_clip();
     cv.clear(crate::canvas::TRANSPARENT);
     let (w, h) = (EO_CANVAS.0 as f32, EO_CANVAS.1 as f32);
-    let col = GREEN;
+    // The camera in FLIR, white hot (as `eo.rs` with FLIR on).
+    let col = WHITE;
     let o = Vec2::new(w / 2.0, h / 2.0);
     for d in [Vec2::X, Vec2::NEG_X, Vec2::Y, Vec2::NEG_Y] {
         cv.stroke(o + d * 8.0, o + d * 28.0, 1.2, col);
     }
-    stroke_text_at(cv, 8.0, 10.0, "TV", 7.0, 1.0, col, Align::Left);
+    stroke_text_at(cv, 8.0, 10.0, "FLIR WHOT", 7.0, 1.0, col, Align::Left);
     stroke_text_at(cv, w - 8.0, 10.0, p.zoom, 7.0, 1.0, col, Align::Right);
     let bottom = h - 10.0;
     let Some((range, brg, elv)) = p.camera else {

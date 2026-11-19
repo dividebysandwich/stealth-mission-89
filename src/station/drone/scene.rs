@@ -64,8 +64,9 @@ pub fn feed(cv: &mut Canvas, u: &Uav, lock: Option<&str>, quarry: Option<Vec2>) 
     cv.reset_clip();
     cv.clear(TRANSPARENT);
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
-    let col = GREEN;
-    stroke_text_at(cv, 46.0, 9.0, &format!("{} FWD TV", u.label()), 6.0, 0.9, col, Align::Left);
+    // The camera in FLIR, white hot (as `feed.rs` with FLIR on).
+    let col = WHITE;
+    stroke_text_at(cv, 46.0, 9.0, &format!("{} FWD FLIR", u.label()), 6.0, 0.9, col, Align::Left);
     stroke_text_at(cv, w - 46.0, 9.0, u.mode.name(), 6.0, 0.9, col, Align::Right);
     let tank = if u.kind.jet() { "FUEL" } else { "BAT" };
     let battery = format!("{tank} {:.0}%", u.battery * 100.0);

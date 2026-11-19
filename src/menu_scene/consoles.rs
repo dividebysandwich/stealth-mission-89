@@ -31,6 +31,9 @@ pub(super) fn build(app: &mut App) {
     );
 }
 
+/// The console camera's picture (pixels).
+const POD: (u32, u32) = (616, 480);
+
 /// The target's track number (flight unit) and the others'.
 const TARGET: usize = 4;
 /// The battery's missile: off the rail (s) and its speed (m/s).
@@ -78,6 +81,7 @@ fn air_defence<const GEPARD: bool, const CLOSE: bool>(
     things: Query<&WorldPos, (Without<Cabin>, Without<SceneCamera>, Without<PodCamera>)>,
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
+    mut flir: ResMut<super::SceneFlir>,
     (mut ex, mut materials, palette): (
         ResMut<Explosions>,
         ResMut<Assets<crate::palette_material::PaletteMaterial>>,
@@ -121,7 +125,7 @@ fn air_defence<const GEPARD: bool, const CLOSE: bool>(
         let cabin = spawn_cabin(&mut stage, Cabin::new(seat, None));
         // A lens that shows the target a fair size at its range.
         let lens = if GEPARD { 0.9f32 } else { 0.6 };
-        stage.commands.entity(cabin).insert(pod::WantsPod((616, 480), lens.to_radians()));
+        stage.commands.entity(cabin).insert(pod::WantsPod(POD, lens.to_radians()));
         stage.commands.spawn((
             ShotEntity,
             Site { at, gun, start, vel, target, missile: None, fired: 0, killed: false },
@@ -279,6 +283,8 @@ fn air_defence<const GEPARD: bool, const CLOSE: bool>(
             },
         };
         console::draw_air_defence(&mut screens, &p);
+        // Its camera in FLIR.
+        flir.0 = Some(POD);
         screens.all_pictures();
     }
     // The operator's view of the console, a little down and to its middle.

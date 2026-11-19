@@ -70,6 +70,7 @@ fn drones<const DIVE: bool>(
     mut pods: pod::Pods,
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
+    mut flir: ResMut<super::SceneFlir>,
     mut ex: ResMut<Explosions>,
 ) {
     if stage.begin(&[stage::DRONES, stage::AAA]) {
@@ -172,6 +173,8 @@ fn drones<const DIVE: bool>(
     let box_at = (z > 1.0)
         .then(|| Vec2::new(fw / 2.0 + rel.dot(right) / z * f, fh / 2.0 - rel.dot(up) / z * f));
     if cabin.fitted.is_some() {
+        // The drone's camera in FLIR.
+        flir.0 = Some(PICTURE);
         let flat_at = |p: DVec3| Vec2::new((p.x - h.centre.x) as f32, (h.centre.z - p.z) as f32);
         let kind = if DIVE { UavKind::Fp2 } else { UavKind::Interceptor };
         let mode = if DIVE { UavMode::Dive } else { UavMode::Auto };
