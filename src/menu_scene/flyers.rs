@@ -1,6 +1,7 @@
 //! Scenes of aircraft in flight seen from outside: a random one with the camera orbiting close
 //! (`Shot::Orbit`), the Tornado low over the ground roaring past (`Shot::Tornado`) and an
-//! interceptor drone closing on a Geran (`Shot::Interceptor`).
+//! interceptor drone closing on a Geran (`Shot::Interceptor`), a helicopter low over the land
+//! (`Shot::Nap`).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -18,6 +19,7 @@ pub(super) fn build(app: &mut App) {
             orbit.run_if(shot_on(Shot::Orbit)),
             tornado.run_if(shot_on(Shot::Tornado)),
             interceptor.run_if(shot_on(Shot::Interceptor)),
+            nap.run_if(shot_on(Shot::Nap)),
         )
             .in_set(ShotSet),
     );
@@ -212,4 +214,83 @@ fn interceptor(
     let ahead = stage::forward(heading) * len * 1.6;
     stage::look(&mut cam, eye, p + enu(ahead.x as f64, 0.3, ahead.y as f64));
     fov.0 = 50f32.to_radians();
+}
+
+/// The helicopters that fly low: their height over the ground (m, over the trees) and speed
+/// (m/s).
+const NAP: [(AircraftKind, f32, f32); 3] = [
+    (AircraftKind::OH58, 22.0, 45.0),
+    (AircraftKind::AH64, 25.0, 55.0),
+    (AircraftKind::CH47, 30.0, 60.0),
+];
+
+/// A Kiowa, an Apache or a Chinook low over the land, nose down, flying straight along the
+/// ground's rise and fall; the camera, the scene's pick, rides behind it beside its track, flies along
+/// abeam, or stands on the ground ahead and turns as it passes.
+fn nap(
+    mut stage: Stage,
+    flyers: Query<(Entity, &Flyer)>,
+    mut q: Query<(&mut WorldPos, &mut Transform), Without<SceneCamera>>,
+    mut cam: Camera,
+    mut fov: ResMut<SceneFov>,
+    mut post: Local<DVec3>,
+) {
+    let (kind, agl, speed) = NAP[stage.director.pick(NAP.len())];
+    let view = (stage.director.roll >> 4) % 3;
+    let side = if (stage.director.roll >> 6) & 1 == 0 { 1.0 } else { -1.0 };
+    if stage.begin(&[stage::AIRCRAFT]) {
+        let mid = stage.land();
+        let heading = (stage.director.roll % 360) as f32 * 0.0175;
+        // Past the scene's middle half way through.
+        let f = stage::forward(heading) * speed * super::director::SHOT_SECONDS * 0.5;
+        let start = mid - enu(f.x as f64, 0.0, f.y as f64);
+        let weave = Weave { start, heading, speed, amp: 0.0, period: 7.0, phase: 0.0, climb: 0.0 };
+        let spec = kind.spec();
+        if let Some(e) = stage.aircraft(kind) {
+            stage.commands.entity(e).insert(Flyer::lead(weave, Some(agl)));
+            // Nose down in fast forward flight.
+            let scale = crate::player::AIRCRAFT_MODEL_SCALE as f32;
+            let tilt = Transform::from_xyz(0.0, spec.model_lift, 0.0)
+                .with_rotation(Quat::from_rotation_x(-0.09))
+                .with_scale(Vec3::splat(scale));
+            stage.commands.queue(move |w: &mut World| {
+                if let Some(m) = w.get::<stage::Model>(e).map(|m| m.0) {
+                    w.entity_mut(m).insert(tilt);
+                }
+            });
+        }
+        // The post: beside the track, ahead of where it passes, a little under its height (the
+        // land and the horizon behind it).
+        let r = stage::right(heading) * 60.0 * side;
+        let at = mid + enu(r.x as f64, 0.0, r.y as f64);
+        *post = DVec3::new(at.x, stage.ground(at).max(stage.ground(mid)) + agl as f64 * 0.6, at.z);
+        return;
+    }
+    let t = stage.director.t;
+    let Some((_, p, _, v)) = fly(&stage, &flyers, &mut q) else { return };
+    let heading = v.x.atan2(-v.z);
+    let len = stage::length(kind);
+    match view {
+        0 => {
+            // Chasing, behind and to the side, a little above.
+            let eye = stage::behind(p, heading, len * 2.2, len * 0.9 * side, len * 0.35);
+            let eye = eye.with_y(eye.y.max(stage.ground(eye) + 4.0));
+            let ahead = stage::forward(heading) * len;
+            stage::look(&mut cam, eye, p + enu(ahead.x as f64, 0.0, ahead.y as f64));
+            fov.0 = 45f32.to_radians();
+        }
+        1 => {
+            // Abeam, drifting from its quarter to its nose.
+            let back = len * (1.0 - 0.35 * t);
+            let eye = stage::behind(p, heading, back, len * 2.4 * side, len * 0.1);
+            let eye = eye.with_y(eye.y.max(stage.ground(eye) + 4.0));
+            stage::look(&mut cam, eye, p);
+            fov.0 = 40f32.to_radians();
+        }
+        _ => {
+            // From the ground as it goes by.
+            stage::look(&mut cam, *post, p);
+            fov.0 = 35f32.to_radians();
+        }
+    }
 }
