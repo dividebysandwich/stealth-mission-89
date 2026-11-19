@@ -86,6 +86,14 @@ use crate::font::Fonts;
 #[derive(Resource)]
 pub struct CockpitModels(pub std::collections::HashMap<&'static str, Handle<Gltf>>);
 
+impl CockpitModels {
+    /// The model files' handles (how far their loading is).
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    pub fn handles(&self) -> Vec<UntypedHandle> {
+        self.0.values().map(|h| h.clone().untyped()).collect()
+    }
+}
+
 pub(super) fn load_models(mut commands: Commands, server: Res<AssetServer>) {
     let mut files = crate::aircraft::cockpit_files();
     files.push(super::CONSOLE_MODEL);

@@ -49,6 +49,10 @@ pub use displays::{
     SCOPE_CANVAS,
 };
 pub use layout::ConsoleKey;
+/// The cockpit and console models (loaded at the start; the browser's loading screen counts
+/// them).
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+pub type CockpitModelsPub = model::CockpitModels;
 pub use pick::Solid;
 pub use tooltips::Tip;
 

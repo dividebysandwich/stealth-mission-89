@@ -61,6 +61,7 @@ impl Plugin for SceneryPlugin {
             .init_resource::<Airfields>()
             .init_resource::<LayoutCache>()
             .init_resource::<PapiSites>()
+            .init_resource::<LayoutHold>()
             .init_resource::<skin::Skin>()
             .add_systems(OnExit(AppState::Flight), (cleanup, skin::cleanup))
             // The menu's scenes have the scenery of their theaters (its own when it changes).
@@ -400,6 +401,7 @@ fn build_scenery(
     assets: ModelAssets,
     mut cache: ResMut<LayoutCache>,
     mut exit: MessageWriter<AppExit>,
+    hold: Res<LayoutHold>,
 ) {
     // Wait until the tile streaming has loaded the theater's models.
     let loaded = assets.terrain.ready(&theater.id)
@@ -411,7 +413,7 @@ fn build_scenery(
     cache.collect();
     let done = cache.get(key);
     let Some(Layout { ground, net, airfields: fields, hills }) = done else {
-        if !cache.making(&theater.id) {
+        if !cache.making(&theater.id) && !hold.0 {
             let source = LayoutSource::gather(
                 &theater,
                 &handles,
@@ -678,12 +680,18 @@ fn request(
     *theater = None;
 }
 
+/// No layout is begun while this holds (the browser's loading screen shows what comes before
+/// it blocks the page, `web_loading`).
+#[derive(Resource, Default)]
+pub struct LayoutHold(pub bool);
+
 /// The theater whose scenery a menu scene will want next (`menu_scene`): its layout is made
 /// ahead.
 #[derive(Resource, Clone, PartialEq, Eq)]
 pub struct SceneryPrefetch(pub String);
 
 fn prefetch_scene_layout(
+    hold: Res<LayoutHold>,
     want: Option<Res<SceneryPrefetch>>,
     mut cache: ResMut<LayoutCache>,
     mut library: ResMut<ModelLibrary>,
@@ -691,7 +699,7 @@ fn prefetch_scene_layout(
     assets: ModelAssets,
     mut theater: Local<Option<(String, Theater)>>,
 ) {
-    let Some(want) = want else { return };
+    let Some(want) = want.filter(|_| !hold.0) else { return };
     request(&want.0, &mut cache, &mut library, &server, &assets, &mut theater);
 }
 

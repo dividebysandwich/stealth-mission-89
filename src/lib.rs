@@ -140,6 +140,8 @@ mod voice_dialog;
 #[cfg(feature = "xr")]
 mod vr_menu;
 mod weather;
+#[cfg(target_arch = "wasm32")]
+mod web_loading;
 #[cfg(windows)]
 mod win_console;
 mod wind;
@@ -287,6 +289,9 @@ pub fn run() {
         app.add_plugins(plugins);
     }
     app.add_plugins(crash_log::CrashLogPlugin);
+    // The browser's loading screen until the menu's first scene is up.
+    #[cfg(target_arch = "wasm32")]
+    app.add_plugins(web_loading::WebLoadingPlugin);
     app.insert_state(settings.initial_state)
         .insert_resource(settings.clone())
         .insert_resource(menu_state)

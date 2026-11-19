@@ -78,6 +78,8 @@ use crate::world::{FloatingOrigin, WorldPos, wu_to_bevy};
 mod ambient;
 pub(crate) mod muffle;
 mod music;
+#[cfg_attr(not(target_arch = "wasm32"), allow(unused_imports))]
+pub use music::MusicHold;
 
 use muffle::{Muffler, Pitch};
 
@@ -96,6 +98,7 @@ impl Plugin for SoundPlugin {
             .init_resource::<ambient::Ambience>()
             .add_audio_source::<muffle::Muffled>()
             .add_systems(Startup, (load_bank, ambient::load))
+            .init_resource::<music::MusicHold>()
             .add_systems(Update, (muffle::preload, music::follow))
             .add_systems(Update, music::start.run_if(in_state(AppState::Menu)))
             .add_systems(OnExit(AppState::Menu), music::leave)

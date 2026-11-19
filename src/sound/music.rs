@@ -11,6 +11,11 @@ const TRACK: &str = "music/menu01.ogg";
 /// The fade-out (s).
 const FADE: f32 = 3.0;
 
+/// The music waits while this holds: in the browser until the game has loaded (its stalls
+/// starve the audio, which then plays sped up), `web_loading`.
+#[derive(Resource, Default)]
+pub struct MusicHold(pub bool);
+
 /// The menu music playing: its fade (1 until the menu is left, then down to 0).
 #[derive(Component)]
 pub(super) struct MenuMusic {
@@ -24,8 +29,9 @@ pub(super) fn start(
     server: Res<AssetServer>,
     settings: Res<Settings>,
     playing: Query<(Entity, &MenuMusic)>,
+    hold: Res<MusicHold>,
 ) {
-    if playing.iter().any(|(_, m)| !m.fading) {
+    if hold.0 || playing.iter().any(|(_, m)| !m.fading) {
         return;
     }
     for (e, _) in &playing {
