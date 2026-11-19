@@ -17,6 +17,7 @@ mod apron;
 pub mod director;
 mod flyers;
 mod fx;
+mod gunship;
 mod stage;
 mod strike;
 
@@ -55,6 +56,7 @@ impl Plugin for MenuScenePlugin {
         apron::build(app);
         flyers::build(app);
         fx::build(app);
+        gunship::build(app);
         strike::build(app);
     }
 }
