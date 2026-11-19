@@ -182,6 +182,7 @@ fn apply_look(
     mut director: ResMut<Director>,
     settings: Res<Settings>,
     theater: Option<Res<crate::world::Theater>>,
+    existing: Option<ResMut<Palette>>,
     (mut streamed, mut overrides): (
         ResMut<crate::world::StreamedCells>,
         ResMut<crate::world::TileOverrides>,
@@ -201,7 +202,8 @@ fn apply_look(
     }
     director.look_changed = false;
     let look = director.look.clone();
-    if theater.is_none_or(|t| t.id != look.theater) {
+    let new_theater = theater.is_none_or(|t| t.id != look.theater);
+    if new_theater {
         let started = bevy::platform::time::Instant::now();
         streamed.despawn_all(&mut commands);
         crate::world::insert_theater(
@@ -215,19 +217,26 @@ fn apply_look(
     }
     *tod = TimeOfDay::default();
     tod.frozen = true;
-    let mut palette;
+    // The palette: on the same theater the one in use, its colours changed (everything drawn
+    // keeps its materials and their globals, which only the palette in use updates: a new one
+    // would leave them as they were, the goggles' green on some); a new one for a new theater.
+    let mut fresh = None;
+    let palette: &mut Palette = match existing.filter(|_| !new_theater) {
+        Some(p) => p.into_inner(),
+        None => fresh.insert(Palette::new(look.theater, &tod, &mut materials, &mut buffers)),
+    };
     if look.classic {
         // A night in the classic palette, held still, the moon over the field.
         tod.night_mission = true;
         tod.seed = apron::TOD_SEED;
-        palette = Palette::new(look.theater, &tod, &mut materials, &mut buffers);
+        palette.active = tod.initial(&palette.theater);
         apron::classic_sky(&mut sky, settings.vr);
     } else {
         tod.night_mission = !(6.0..18.0).contains(&look.hours);
-        palette = Palette::new(look.theater, &tod, &mut materials, &mut buffers);
+        palette.active = tod.initial(&palette.theater);
         *sky = crate::sky::Sky::of(look.theater, None);
         let shade = if look.weather.stratus.cover >= 90 { 0.8 } else { 0.0 };
-        sky.at(look.hours, look.phase, shade, Some(&mut palette));
+        sky.at(look.hours, look.phase, shade, Some(&mut *palette));
     }
     for e in &backgrounds {
         commands.entity(e).despawn();
@@ -238,12 +247,14 @@ fn apply_look(
             &mut commands,
             eye,
             &mut meshes,
-            &palette,
+            palette,
             crate::camera::MAIN_BACKGROUND_LAYER,
         );
         commands.entity(sphere).insert((SceneEntity, SceneBackground));
     }
-    commands.insert_resource(palette);
+    if let Some(p) = fresh {
+        commands.insert_resource(p);
+    }
     commands.insert_resource(crate::weather::SceneWeather(look.weather));
     // A moonless night through the goggles.
     hud.nvg = look.dark();
