@@ -31,6 +31,7 @@ mod sam;
 mod slam;
 mod stage;
 mod strike;
+mod weapons;
 
 use director::Director;
 
@@ -84,6 +85,7 @@ impl Plugin for MenuScenePlugin {
         helmet::build(app);
         lift::build(app);
         strike::build(app);
+        weapons::build(app);
         sam::build(app);
         slam::build(app);
     }

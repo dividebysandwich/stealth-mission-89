@@ -69,10 +69,16 @@ pub enum Shot {
     Approach,
     /// A Super Hornet on final to the carrier, followed by a chase plane.
     CarrierApproach,
+    /// A Tornado laying the JP233's bomblets along a runway.
+    Jp233,
+    /// A SLAM-ER or a JSOW in flight, the camera round its nose.
+    Standoff,
+    /// A carrier launch seen from behind the catapult officer.
+    Launch,
 }
 
 /// Every scene, the apron first.
-pub const SHOTS: [Shot; 23] = [
+pub const SHOTS: [Shot; 26] = [
     Shot::Apron,
     Shot::Carrier,
     Shot::SamSite,
@@ -96,6 +102,9 @@ pub const SHOTS: [Shot; 23] = [
     Shot::Orbit,
     Shot::Approach,
     Shot::CarrierApproach,
+    Shot::Jp233,
+    Shot::Standoff,
+    Shot::Launch,
 ];
 
 /// Where a scene has to be: on Tabor's apron, at sea by the carrier, anywhere.
@@ -132,13 +141,16 @@ impl Shot {
             Shot::Orbit => "orbit",
             Shot::Approach => "approach",
             Shot::CarrierApproach => "trap",
+            Shot::Jp233 => "jp233",
+            Shot::Standoff => "standoff",
+            Shot::Launch => "launch",
         }
     }
 
     pub fn place(self) -> Place {
         match self {
             Shot::Apron => Place::Tabor,
-            Shot::Carrier | Shot::Dip | Shot::CarrierApproach => Place::Sea,
+            Shot::Carrier | Shot::Dip | Shot::CarrierApproach | Shot::Launch => Place::Sea,
             _ => Place::Any,
         }
     }
