@@ -150,7 +150,10 @@ fn forward_view(
     fov.0 = 50f32.to_radians();
     if cabin.fitted.is_some() {
         let t = stage.director.t;
-        draw_mfds(&mut screens, kind, t);
+        let f = rot * Vec3::NEG_Z;
+        let flight =
+            super::pages::Flight { heading: f.x.atan2(-f.z), speed: vel.length(), kind, t };
+        draw_pages(&mut screens, &fonts, &flight, stage.director.roll);
         let alt = (p.y - stage.ground(p)) as f32;
         let mode = crate::hud::HudMode::Nav;
         draw_hud(&mut screens, &art, &fonts, &settings, kind, rot, vel, alt, mode, None, t);
@@ -185,23 +188,21 @@ pub fn cruise_engines(kind: AircraftKind, t: f32) -> crate::eng_page::Eng {
     e
 }
 
-/// The forward view's MFDs: the engines on the right, on the left the signature page of a
-/// stealthy type, else the engines too.
-fn draw_mfds(screens: &mut SceneScreens, kind: AircraftKind, t: f32) {
-    let eng = cruise_engines(kind, t);
-    if let Some(mut tex) = screens.canvas(Screen::Right) {
-        tex.canvas.clear(0);
-        crate::eng_page::draw(&mut tex.canvas, kind, &eng);
-        tex.dirty = true;
-    }
-    if let Some(mut tex) = screens.canvas(Screen::Left) {
-        tex.canvas.clear(0);
-        if kind.rcs_page() {
-            draw_rcs(&mut tex.canvas, t);
-        } else {
-            crate::eng_page::draw(&mut tex.canvas, kind, &eng);
+/// The MFDs, each a different page, the scene's pick.
+pub fn draw_pages(
+    screens: &mut SceneScreens,
+    fonts: &crate::font::Fonts,
+    flight: &super::pages::Flight,
+    seed: u32,
+) {
+    let sides = [Screen::Left, Screen::Right, Screen::Third, Screen::Fourth];
+    let pages = super::pages::pick(flight.kind, sides.len(), seed);
+    for (side, page) in sides.into_iter().zip(pages) {
+        if let Some(mut tex) = screens.canvas(side) {
+            super::pages::draw(&mut tex.canvas, fonts, page, flight);
+            tex.transparent = false;
+            tex.dirty = true;
         }
-        tex.dirty = true;
     }
 }
 

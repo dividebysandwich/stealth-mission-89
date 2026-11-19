@@ -19,6 +19,9 @@ use crate::settings::Settings;
 pub enum Screen {
     Left,
     Right,
+    /// The F-117A's and the Tornado's third MFD, the F-22A's fourth.
+    Third,
+    Fourth,
     Hud,
     Console(displays::ConsoleScreen),
 }
@@ -28,6 +31,8 @@ impl Screen {
         match self {
             Screen::Left => CanvasRole::Left,
             Screen::Right => CanvasRole::Right,
+            Screen::Third => CanvasRole::Third,
+            Screen::Fourth => CanvasRole::Fourth,
             Screen::Hud => CanvasRole::Hud,
             Screen::Console(s) => CanvasRole::Console(s),
         }

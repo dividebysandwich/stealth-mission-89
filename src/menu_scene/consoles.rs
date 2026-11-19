@@ -12,6 +12,7 @@ use super::fx::{self, Aim, Airborne, Missile, Shell};
 use super::pod::{self, PodCamera};
 use super::stage::{self, Camera, Stage, enu};
 use super::{SceneCamera, SceneFov, ShotEntity, ShotSet};
+use crate::cockpit3d::ConsoleScreen;
 use crate::cockpit3d::scene::{SceneScreens, Seat};
 use crate::explosions::{Blast, Calibre, Explosions};
 use crate::station::scene::{self as console, AirPicture, Kind, Side};
@@ -21,8 +22,9 @@ pub(super) fn build(app: &mut App) {
     app.add_systems(
         Update,
         (
-            air_defence::<false>.run_if(shot_on(Shot::Patriot)),
-            air_defence::<true>.run_if(shot_on(Shot::Gepard)),
+            air_defence::<false, false>.run_if(shot_on(Shot::Patriot)),
+            air_defence::<true, false>.run_if(shot_on(Shot::Gepard)),
+            air_defence::<false, true>.run_if(shot_on(Shot::Signal)),
             sonar.run_if(shot_on(Shot::Sonar)),
         )
             .in_set(ShotSet),
@@ -63,12 +65,13 @@ const OTHERS: [Other; 3] = [
 ];
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-fn air_defence<const GEPARD: bool>(
+/// `CLOSE`: the view close on the battery's radar signal screen as its missile flies.
+fn air_defence<const GEPARD: bool, const CLOSE: bool>(
     mut stage: Stage,
     mut screens: SceneScreens,
     mut site: Query<&mut Site>,
     mut cabins: Query<
-        (&Cabin, &mut WorldPos, &mut Transform),
+        (&Cabin, &mut WorldPos, &mut Transform, &GlobalTransform),
         (Without<SceneCamera>, Without<PodCamera>),
     >,
     mut pods: pod::Pods,
@@ -126,7 +129,8 @@ fn air_defence<const GEPARD: bool>(
         return;
     }
     let t = stage.director.t;
-    let (Ok(mut s), Ok((cabin, mut wp, mut tf))) = (site.single_mut(), cabins.single_mut()) else {
+    let (Ok(mut s), Ok((cabin, mut wp, mut tf, gt))) = (site.single_mut(), cabins.single_mut())
+    else {
         return;
     };
     // The console's room under the site.
@@ -266,6 +270,8 @@ fn air_defence<const GEPARD: bool>(
             range_km: if GEPARD { 10.0 } else { 40.0 },
             camera,
             zoom: "8X",
+            // The signal's noise flickers a dozen times a second.
+            seed: (t * 12.0) as u32 ^ stage.director.roll,
             firing: if GEPARD {
                 (BURST.0..BURST.1).contains(&t)
             } else {
@@ -278,6 +284,12 @@ fn air_defence<const GEPARD: bool>(
     // The operator's view of the console, a little down and to its middle.
     // Turned right: the camera's picture, the target data's monitor, the scope and the board
     // all right of the menu.
+    if CLOSE {
+        let screen = crate::cockpit3d::scene::Screen::Console(ConsoleScreen::Info);
+        let (p, rot) = (wp.0, tf.rotation);
+        super::comanche::close_on(&mut cam, &mut fov, &screens, cabin, gt, p, rot, screen, 15.0);
+        return;
+    }
     super::cockpits::eye_camera(&mut cam, cabin, wp.0, tf.rotation, Vec2::new(-0.42, -0.12));
     fov.0 = 66f32.to_radians();
 }

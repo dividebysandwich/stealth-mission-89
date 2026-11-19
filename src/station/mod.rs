@@ -26,7 +26,7 @@ mod eo;
 mod info;
 pub(crate) mod scope;
 pub(crate) mod scene;
-mod signal;
+pub(crate) mod signal;
 mod sound;
 
 use bevy::math::DVec3;

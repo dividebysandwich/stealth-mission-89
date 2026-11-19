@@ -26,6 +26,7 @@ mod fx;
 mod gunship;
 mod helmet;
 mod lift;
+mod pages;
 mod pod;
 mod sam;
 mod slam;

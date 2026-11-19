@@ -31,6 +31,8 @@ pub struct AirPicture<'a> {
     pub zoom: &'a str,
     /// The gun or a launcher firing now.
     pub firing: bool,
+    /// The signal screen's noise (a battery's), new each redraw.
+    pub seed: u32,
 }
 
 /// Draws the console's screens from `p`.
@@ -63,7 +65,40 @@ pub fn draw_air_defence(screens: &mut SceneScreens, p: &AirPicture) {
         tex.dirty = true;
     }
     let track = p.lock.and_then(|l| ui.snapshots.front()?.track(l));
-    if let Some(mut tex) = screens.canvas(Screen::Console(ConsoleScreen::Info)) {
+    // A battery's radar signal; the Gepard's target data.
+    if !p.gepard
+        && let Some(mut tex) = screens.canvas(Screen::Console(ConsoleScreen::Info))
+    {
+        let snap = ui.snapshots.front();
+        let echoes = snap.map_or(Vec::new(), |s| {
+            s.tracks
+                .iter()
+                .map(|t| {
+                    let rcs = match t.kind {
+                        Kind::Missile => 0.08,
+                        Kind::Rotary => 8.0,
+                        Kind::Fixed => 4.0,
+                    };
+                    let pos = [t.east as f64, t.north as f64, t.alt as f64];
+                    let vel = [t.ve as f64, t.vn as f64, 0.0];
+                    super::signal::Echo::of(t.unit, [0.0; 3], pos, vel, rcs, t.kind == Kind::Rotary)
+                })
+                .collect()
+        });
+        let missiles =
+            snap.map_or(0, |s| s.tracks.iter().filter(|t| t.kind == Kind::Missile).count());
+        let view = super::signal::SignalView {
+            off: false,
+            echoes,
+            lock: p.lock,
+            range_m: p.range_km as f64 * 1000.0,
+            in_reach: true,
+            semi: false,
+            missiles,
+        };
+        super::signal::paint(&mut tex.canvas, &view, p.seed);
+        tex.dirty = true;
+    } else if let Some(mut tex) = screens.canvas(Screen::Console(ConsoleScreen::Info)) {
         let view = super::info::InfoView {
             lock: p.lock,
             track,

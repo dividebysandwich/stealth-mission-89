@@ -72,19 +72,45 @@ pub(super) fn draw(
     };
     tex.dirty = true;
     *seed = seed.wrapping_add(0x9E37_79B9);
-    let mut noise = Noise(*seed | 1);
-    let cv = &mut tex.canvas;
-    cv.reset_clip();
-    cv.clear(BLACK);
     let sim = &combat.sim;
     let Some(radar) = sim.units().get(m.unit).copied() else { return };
-    let site = radar.metres();
     let st = sim.station_of(c.me.0);
     let lock = st.and_then(|s| s.lock).map(|l| l as usize);
+    let view = SignalView {
+        off: radar.destroyed,
+        echoes: echoes(sim, radar.metres()),
+        lock,
+        range_m: ui.range_km as f64 * 1000.0,
+        in_reach: lock.is_some_and(|j| sim.in_reach(m.unit, j)),
+        semi: st.is_some_and(|s| s.mode == Guidance::SemiActive),
+        missiles: sim.ai_missiles().iter().filter(|a| a.station == Some(m.unit as u16)).count(),
+    };
+    paint(&mut tex.canvas, &view, *seed);
+}
+
+/// What the signal screen shows: the radar off, the echoes, the lock (flight unit), the
+/// range shown (m), the lock within the missiles' reach, semi-active guidance, the battery's
+/// missiles in the air.
+pub(crate) struct SignalView {
+    pub off: bool,
+    pub echoes: Vec<Echo>,
+    pub lock: Option<usize>,
+    pub range_m: f64,
+    pub in_reach: bool,
+    pub semi: bool,
+    pub missiles: usize,
+}
+
+/// Draws the signal screen (`seed`: the noise's, a new one each redraw).
+pub(crate) fn paint(cv: &mut Canvas, v: &SignalView, seed: u32) {
+    let mut noise = Noise(seed | 1);
+    cv.reset_clip();
+    cv.clear(BLACK);
+    let lock = v.lock;
     let (w, h) = (INFO_CANVAS.0 as f32, INFO_CANVAS.1 as f32);
     cv.frame(Vec2::new(1.0, 1.0), Vec2::new(w - 2.0, h - 2.0), 1.0, GREEN);
     stroke_text_at(cv, 8.0, 12.0, "RADAR SIGNAL", 7.0, 1.1, WHITE, Align::Left);
-    let mode = if radar.destroyed {
+    let mode = if v.off {
         ("OFF", RED)
     } else if lock.is_some() {
         ("TRACK", GREEN)
@@ -92,20 +118,19 @@ pub(super) fn draw(
         ("SEARCH", YELLOW)
     };
     stroke_text_at(cv, w - 8.0, 12.0, mode.0, 7.0, 1.1, mode.1, Align::Right);
-    if radar.destroyed {
+    if v.off {
         stroke_text_at(cv, w / 2.0, h / 2.0, "NO SIGNAL", 9.0, 1.4, RED, Align::Centre);
         return;
     }
-
-    let echoes = echoes(sim, site);
-    let range_m = ui.range_km as f64 * 1000.0;
+    let echoes = &v.echoes;
+    let range_m = v.range_m;
     let target = lock.and_then(|l| echoes.iter().find(|e| e.unit == Some(l)));
-    ascope(cv, &echoes, target, range_m, &mut noise);
+    ascope(cv, echoes, target, range_m, &mut noise);
     match target {
         Some(t) => {
             spectrum(cv, t, &mut noise);
             monopulse(cv, t, &mut noise);
-            numbers(cv, t, sim, m.unit, st.map(|s| s.mode));
+            numbers(cv, t, v.in_reach, v.semi);
         }
         None => {
             let (l, t, r, b) = SPECTRUM;
@@ -115,11 +140,8 @@ pub(super) fn draw(
             stroke_text_at(cv, (l + r) / 2.0, (t + b) / 2.0, text, 7.0, 1.0, col, Align::Centre);
         }
     }
-    let missiles = sim.ai_missiles().iter().filter(|a| a.station == Some(m.unit as u16)).count();
-    let illum = match st.map(|s| s.mode) {
-        Some(Guidance::SemiActive) => "ILLUM CW",
-        _ => "TVM UPLINK",
-    };
+    let missiles = v.missiles;
+    let illum = if v.semi { "ILLUM CW" } else { "TVM UPLINK" };
     stroke_text_at(cv, 8.0, BOTTOM_Y, illum, TEXT, PEN, CYAN, Align::Left);
     stroke_text_at(
         cv,
@@ -162,7 +184,7 @@ impl Noise {
 
 /// An echo: the flight unit (None: a missile), slant range (m), strength (dB over the noise),
 /// radial velocity (m/s, positive opening), its height (m) and kind.
-struct Echo {
+pub(crate) struct Echo {
     unit: Option<usize>,
     range: f64,
     db: f64,
@@ -176,13 +198,26 @@ fn strength(rcs: f64, range: f64) -> f64 {
     ONE_SQM_AT_KM + 10.0 * rcs.log10() - 40.0 * (range / 1000.0).max(0.2).log10()
 }
 
-fn echoes(sim: &Sim, site: [f64; 3]) -> Vec<Echo> {
-    let echo = |unit, pos: [f64; 3], vel: [f64; 3], rcs: f64, rotary| {
+impl Echo {
+    /// The echo off a thing at `pos` flying `vel` (m: east, north, up) of `rcs` m², seen from
+    /// the radar at `site`.
+    pub(crate) fn of(
+        unit: Option<usize>,
+        site: [f64; 3],
+        pos: [f64; 3],
+        vel: [f64; 3],
+        rcs: f64,
+        rotary: bool,
+    ) -> Self {
         let d = [pos[0] - site[0], pos[1] - site[1], pos[2] - site[2]];
         let range = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt().max(1.0);
         let radial = (d[0] * vel[0] + d[1] * vel[1] + d[2] * vel[2]) / range;
         Echo { unit, range, db: strength(rcs, range), radial, alt: pos[2], rotary }
-    };
+    }
+}
+
+fn echoes(sim: &Sim, site: [f64; 3]) -> Vec<Echo> {
+    let echo = |unit, pos, vel, rcs, rotary| Echo::of(unit, site, pos, vel, rcs, rotary);
     let mut out: Vec<Echo> = (0..sim.flights().len())
         .filter_map(|i| {
             let (pos, vel) = sim.track_alive(i)?;
@@ -324,9 +359,8 @@ fn monopulse(cv: &mut Canvas, e: &Echo, noise: &mut Noise) {
 }
 
 /// The lock's signal in numbers.
-fn numbers(cv: &mut Canvas, e: &Echo, sim: &Sim, radar: usize, mode: Option<Guidance>) {
+fn numbers(cv: &mut Canvas, e: &Echo, in_reach: bool, semi: bool) {
     let fd = -2.0 * e.radial / WAVELENGTH / 1000.0;
-    let in_reach = e.unit.is_some_and(|j| sim.in_reach(radar, j));
     let rows = [
         ("SNR", format!("{:.0} DB", e.db), if e.db >= 13.0 { GREEN } else { YELLOW }),
         ("RNG", format!("{:.1} KM", e.range / 1000.0), if in_reach { GREEN } else { RED }),
@@ -336,11 +370,7 @@ fn numbers(cv: &mut Canvas, e: &Echo, sim: &Sim, radar: usize, mode: Option<Guid
             WHITE,
         ),
         ("FD", format!("{fd:+.1} KHZ"), WHITE),
-        (
-            "MODE",
-            if mode == Some(Guidance::SemiActive) { "SEMI" } else { "GUID" }.to_string(),
-            CYAN,
-        ),
+        ("MODE", if semi { "SEMI" } else { "GUID" }.to_string(), CYAN),
     ];
     for (i, (label, value, col)) in rows.into_iter().enumerate() {
         let y = ERROR_BOX.1 + 3.0 + i as f32 * 16.0;
