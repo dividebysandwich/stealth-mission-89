@@ -12,7 +12,8 @@ use crate::font::{Align, stroke_text_at};
 
 /// The sensors: id (0 the dip), kind, depth (m), the submarine's and the ship's bearing from it
 /// (degrees) and how they drift (degrees a second), its distance (km).
-const SENSORS: [(u16, Option<BuoyKind>, f32, [f32; 4], f32); 5] = [
+type Sensor = (u16, Option<BuoyKind>, f32, [f32; 4], f32);
+const SENSORS: [Sensor; 5] = [
     (3, Some(BuoyKind::Difar), 120.0, [62.0, 0.06, 214.0, -0.15], 2.1),
     (4, Some(BuoyKind::Difar), 120.0, [118.0, -0.05, 251.0, -0.1], 3.4),
     (5, Some(BuoyKind::Dicass), 120.0, [88.0, 0.03, 236.0, -0.12], 2.8),
