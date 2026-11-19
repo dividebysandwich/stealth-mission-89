@@ -90,8 +90,23 @@ struct Pallet {
     canopy: Entity,
 }
 
+/// The camera's stations behind the C-5 (m: behind, to the right, above), the point it looks
+/// at (the aircraft's frame, m) and its lens (degrees high).
+const DROP_VIEWS: [(f32, f32, f32, Vec3, f32); 5] = [
+    // Behind its left side, a little below.
+    (95.0, -60.0, -12.0, Vec3::new(0.0, -8.0, 30.0), 50.0),
+    // Behind its right side, a little below.
+    (90.0, 65.0, -8.0, Vec3::new(0.0, -8.0, 30.0), 50.0),
+    // High behind, looking down on the pallets falling away.
+    (120.0, 30.0, 45.0, Vec3::new(0.0, -20.0, 50.0), 55.0),
+    // Low behind, the chutes opening over the camera.
+    (150.0, -20.0, -55.0, Vec3::new(0.0, -15.0, 40.0), 55.0),
+    // Straight behind, on a long lens: the ramp and the pallets leaving it.
+    (180.0, 6.0, -6.0, Vec3::new(0.0, -4.0, 25.0), 28.0),
+];
+
 /// The C-5, its ramp open, pallets going out one after another and their chutes opening
-/// behind it; the camera beside and behind it, a little below.
+/// behind it; the camera behind it at the scene's station, drifting slowly.
 #[allow(clippy::too_many_arguments)]
 fn airdrop(
     mut stage: Stage,
@@ -169,9 +184,14 @@ fn airdrop(
         cv.set_if_neq(if open > 0.0 { Visibility::Inherited } else { Visibility::Hidden });
     }
     let heading = v.x.atan2(-v.z);
-    let eye = stage::behind(p, heading, 95.0, -60.0, -12.0);
-    stage::look(&mut cam, eye, p + (rot * Vec3::new(0.0, -8.0, 30.0)).as_dvec3());
-    fov.0 = 50f32.to_radians();
+    let (back, side, up, at, lens) =
+        DROP_VIEWS[(stage.director.roll >> 8) as usize % DROP_VIEWS.len()];
+    let back = back + 8.0 * (t * 0.37).sin();
+    let side = side + 6.0 * (t * 0.29 + 1.1).sin();
+    let up = up + 4.0 * (t * 0.43 + 0.4).sin();
+    let eye = stage::behind(p, heading, back, side, up);
+    stage::look(&mut cam, eye, p + (rot * at).as_dvec3());
+    fov.0 = lens.to_radians();
 }
 
 /// The sling load: the crate (its root), the rope and how it swings once hooked.
