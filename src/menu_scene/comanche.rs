@@ -65,6 +65,7 @@ pub(super) fn close_on(
 fn rcs(
     mut stage: Stage,
     mut screens: SceneScreens,
+    hud: super::cockpits::HudKit,
     run: Query<&Run>,
     mut cabins: Query<
         (&Cabin, &mut WorldPos, &mut Transform, &GlobalTransform),
@@ -121,6 +122,9 @@ fn rcs(
         );
         tex.dirty = true;
     }
+    let v = (rot * Vec3::NEG_Z) * r.weave.speed;
+    let alt = (p.y - stage.ground(p)) as f32;
+    hud.draw(&mut screens, AircraftKind::RAH66, rot, v, alt, crate::hud::HudMode::Nav, None, t);
     close_on(&mut cam, &mut fov, &screens, cabin, gt, p, rot, Screen::Left, 34.0);
 }
 
@@ -134,6 +138,7 @@ const BURST: (f32, f32) = (1.6, 3.4);
 fn pod_gun(
     mut stage: Stage,
     mut screens: SceneScreens,
+    hud: super::cockpits::HudKit,
     mut run: Query<&mut Run>,
     mut cabins: Query<
         (&Cabin, &mut WorldPos, &mut Transform, &GlobalTransform),
@@ -264,5 +269,8 @@ fn pod_gun(
         );
         tex.dirty = true;
     }
+    let mode = crate::hud::HudMode::Gnd;
+    let gun = Some((500u32.saturating_sub(r.fired as u32 * 5), "GUN"));
+    hud.draw(&mut screens, AircraftKind::RAH66, rot, Vec3::ZERO, 25.0, mode, gun, t);
     close_on(&mut cam, &mut fov, &screens, cabin, gt, p, rot, Screen::Left, 30.0);
 }

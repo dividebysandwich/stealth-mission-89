@@ -110,6 +110,11 @@ const FORWARD: [AircraftKind; 9] = [
 fn forward_view(
     mut stage: Stage,
     mut screens: SceneScreens,
+    (art, fonts, settings): (
+        Res<crate::cockpit::CockpitArt>,
+        Res<crate::font::Fonts>,
+        Res<crate::settings::Settings>,
+    ),
     mut cabins: Query<(&Cabin, &mut WorldPos, &mut Transform), Without<super::SceneCamera>>,
     mut weave: Local<Option<Weave>>,
     mut cam: Camera,
@@ -133,14 +138,20 @@ fn forward_view(
         return;
     }
     let Some(w) = *weave else { return };
-    let (p, rot, _) = w.at(stage.director.t);
+    let (mut p, rot, vel) = w.at(stage.director.t);
+    // Over the hills, never into them.
+    p.y = p.y.max(stage.ground(p) + if heli { 40.0 } else { 150.0 });
     let Ok((cabin, mut wp, mut tf)) = cabins.single_mut() else { return };
     wp.0 = p;
     tf.rotation = rot;
     eye_camera(&mut cam, cabin, p, rot, Vec2::new(0.0, -0.02));
     fov.0 = 50f32.to_radians();
     if cabin.fitted.is_some() {
-        draw_mfds(&mut screens, kind, stage.director.t);
+        let t = stage.director.t;
+        draw_mfds(&mut screens, kind, t);
+        let alt = (p.y - stage.ground(p)) as f32;
+        let mode = crate::hud::HudMode::Nav;
+        draw_hud(&mut screens, &art, &fonts, &settings, kind, rot, vel, alt, mode, None, t);
     }
 }
 
@@ -206,4 +217,85 @@ pub fn draw_rcs(c: &mut crate::canvas::Canvas, t: f32) {
         roll: (t * 1.2).sin() * 0.5,
     };
     crate::avionics::draw_rcs(c, &th, 1, (t * 2.0) as i32 % 2 == 0);
+}
+
+/// What drawing a scene's HUD takes.
+#[derive(bevy::ecs::system::SystemParam)]
+pub struct HudKit<'w> {
+    art: Res<'w, crate::cockpit::CockpitArt>,
+    fonts: Res<'w, crate::font::Fonts>,
+    settings: Res<'w, crate::settings::Settings>,
+}
+
+impl HudKit<'_> {
+    /// Draws the HUD (`draw_hud`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(
+        &self,
+        screens: &mut SceneScreens,
+        kind: AircraftKind,
+        rot: Quat,
+        vel: Vec3,
+        alt: f32,
+        mode: crate::hud::HudMode,
+        weapon: Option<(u32, &str)>,
+        t: f32,
+    ) {
+        let (art, fonts, settings) = (&*self.art, &*self.fonts, &*self.settings);
+        draw_hud(screens, art, fonts, settings, kind, rot, vel, alt, mode, weapon, t);
+    }
+}
+
+/// The HUD of a scene's cockpit: flying `rot` at `vel` (Bevy m/s), `alt` metres up, in the
+/// HUD's `mode` (its weapon `weapon`), drawn as the cockpit's own (classic or modern).
+#[allow(clippy::too_many_arguments)]
+pub fn draw_hud(
+    screens: &mut SceneScreens,
+    art: &crate::cockpit::CockpitArt,
+    fonts: &crate::font::Fonts,
+    settings: &crate::settings::Settings,
+    kind: AircraftKind,
+    rot: Quat,
+    vel: Vec3,
+    alt: f32,
+    mode: crate::hud::HudMode,
+    weapon: Option<(u32, &str)>,
+    t: f32,
+) {
+    let Some(mut tex) = screens.canvas(Screen::Hud) else { return };
+    let bam = |a: f32| (a / std::f32::consts::TAU * 65536.0).round() as i32;
+    let f = rot * Vec3::NEG_Z;
+    let r = rot * Vec3::X;
+    let heading = f.x.atan2(-f.z).rem_euclid(std::f32::consts::TAU);
+    let pitch = f.y.clamp(-1.0, 1.0).asin();
+    let roll = (-r.y).clamp(-1.0, 1.0).asin();
+    let s = crate::settings::Settings { aircraft: kind, ..settings.clone() };
+    let speed = vel.length();
+    let frame = crate::hud::HudFrame {
+        scale: s.hud_scale(),
+        state: crate::hud::HudState { mode, ..Default::default() },
+        knots: (speed * 1.944) as i32,
+        alt: (alt * 3.281) as i32,
+        heading: bam(heading) as u16,
+        pitch: bam(pitch) as i16,
+        roll: bam(roll) as i16,
+        gees: (16.0 / roll.cos().max(0.3)) as i32,
+        stall_knots: 120,
+        blink: (t * 2.0) as i32 % 2 == 0,
+        weapon: weapon.map(|(n, w)| (n, w.to_string())),
+        weapon_air_to_air: mode == crate::hud::HudMode::Air,
+        orientation: rot,
+        path_dir: vel.normalize_or(f),
+        mach: speed / 340.0,
+        aoa: 4.0,
+        radar_alt: alt * 3.281,
+        ..Default::default()
+    };
+    tex.canvas.px.fill(0);
+    if tex.canvas.w == 320 {
+        crate::hud::draw(&mut tex.canvas, art, fonts, &frame);
+    } else {
+        crate::hud::modern::draw(&mut tex.canvas, &frame);
+    }
+    tex.dirty = true;
 }

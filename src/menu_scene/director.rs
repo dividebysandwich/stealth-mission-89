@@ -386,6 +386,14 @@ pub fn direct(
     mut blasts: ResMut<crate::explosions::Explosions>,
 ) {
     if director.step(time.delta_secs().min(0.1)) {
+        let l = &director.look;
+        debug!(
+            "menu scene: {} on {} at {:.1} h, {:?}",
+            director.shot.name(),
+            l.theater,
+            l.hours,
+            l.weather.sky
+        );
         for e in &things {
             commands.entity(e).despawn();
         }

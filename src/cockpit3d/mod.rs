@@ -123,7 +123,16 @@ impl Plugin for Cockpit3dPlugin {
                 .before(TransformSystems::Propagate)
                 .run_if(in_state(AppState::Flight)),
         )
-        .add_systems(OnExit(AppState::Flight), release_cursor);
+        .add_systems(OnExit(AppState::Flight), release_cursor)
+        // The menu's scene cockpits: their lamps, buttons and labels (the scenes draw their
+        // screens over it after).
+        .add_systems(
+            Update,
+            displays::update_displays
+                .before(crate::menu_scene::ShotSet)
+                .run_if(resource_exists::<crate::menu_scene::MenuScene>)
+                .run_if(in_state(AppState::Menu)),
+        );
     }
 }
 

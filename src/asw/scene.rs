@@ -20,6 +20,8 @@ const SENSORS: [Sensor; 5] = [
     (6, Some(BuoyKind::Bt), 0.0, [0.0; 4], 4.0),
     (0, None, 90.0, [79.0, 0.04, 228.0, -0.13], 0.0),
 ];
+/// The waterfalls run this many times as fast as the sensors report.
+const SPEED_UP: f32 = 5.0;
 /// The pinging buoy pings every so many seconds.
 const PING_EVERY: f32 = 10.0;
 
@@ -27,6 +29,8 @@ const PING_EVERY: f32 = 10.0;
 pub struct SonarScene {
     pub ui: AswUi,
     t: f32,
+    /// The scene's clock (sped up), the reports catch up with it.
+    clock: f32,
     seq: u16,
 }
 
@@ -41,10 +45,11 @@ impl SonarScene {
                 ui.falls.insert(id, w);
             }
         }
-        let mut s = SonarScene { ui, t: -110.0, seq: 0 };
+        let mut s = SonarScene { ui, t: -110.0, clock: 0.0, seq: 0 };
         while s.t < 0.0 {
             s.report();
         }
+        s.clock = s.t;
         s.ui.cursor.insert(3, 64.0);
         s
     }
@@ -104,10 +109,11 @@ impl SonarScene {
         }
     }
 
-    /// The clock on `dt` seconds: new reports into the waterfalls.
+    /// The clock on `dt` seconds: new reports into the waterfalls, `SPEED_UP` times as fast as
+    /// the sensors report (the scene is short: the falls must be seen to fall).
     pub fn step(&mut self, dt: f32) {
-        let end = self.t + dt;
-        while self.t + 1.0 / SENSE_HZ as f32 <= end {
+        self.clock += dt * SPEED_UP;
+        while self.t + 1.0 / SENSE_HZ as f32 <= self.clock {
             self.report();
         }
         self.ui.t += dt;

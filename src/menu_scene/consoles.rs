@@ -276,8 +276,10 @@ fn air_defence<const GEPARD: bool>(
         screens.all_pictures();
     }
     // The operator's view of the console, a little down and to its middle.
-    super::cockpits::eye_camera(&mut cam, cabin, wp.0, tf.rotation, Vec2::new(-0.05, -0.12));
-    fov.0 = 58f32.to_radians();
+    // Turned right: the camera's picture, the target data's monitor, the scope and the board
+    // all right of the menu.
+    super::cockpits::eye_camera(&mut cam, cabin, wp.0, tf.rotation, Vec2::new(-0.42, -0.12));
+    fov.0 = 66f32.to_radians();
 }
 
 /// The MH-60R's sensor operator's console in its cabin, close on the sonar page: the buoys'

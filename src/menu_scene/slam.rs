@@ -39,6 +39,7 @@ struct Run {
 fn slam(
     mut stage: Stage,
     mut screens: SceneScreens,
+    hud: super::cockpits::HudKit,
     mut run: Query<&mut Run>,
     mut cabins: Query<
         (&Cabin, &mut WorldPos, &mut Transform, &GlobalTransform),
@@ -128,5 +129,9 @@ fn slam(
         crate::eng_page::draw(&mut tex.canvas, AircraftKind::FA18E, &eng);
         tex.dirty = true;
     }
+    let v = (rot * Vec3::NEG_Z) * r.weave.speed;
+    let alt = (p.y - stage.ground(p)) as f32;
+    let mode = crate::hud::HudMode::Gnd;
+    hud.draw(&mut screens, AircraftKind::FA18E, rot, v, alt, mode, Some((1, "SLAM")), t);
     close_on(&mut cam, &mut fov, &screens, cabin, gt, p, rot, Screen::Left, 26.0);
 }

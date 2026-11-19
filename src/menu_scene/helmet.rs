@@ -12,7 +12,6 @@ use super::fx::{self, Aim, Airborne, Missile};
 use super::stage::{self, Camera, Stage, Weave, enu};
 use super::{SceneCamera, SceneFov, ShotEntity, ShotSet};
 use crate::aircraft::AircraftKind;
-use crate::canvas::CanvasTexture;
 use crate::cockpit3d::scene::Seat;
 use crate::explosions::Blast;
 use crate::world::WorldPos;
@@ -66,11 +65,12 @@ fn fit_visor(
 #[allow(clippy::too_many_arguments)]
 fn helmet(
     mut stage: Stage,
+    mut screens: crate::cockpit3d::scene::SceneScreens,
+    hud: super::cockpits::HudKit,
     mut run: Query<&mut Run>,
     flyers: Query<(Entity, &Flyer)>,
     mut cabins: Query<(&Cabin, &mut WorldPos, &mut Transform), Without<SceneCamera>>,
     things: Query<&WorldPos, (Without<Cabin>, Without<SceneCamera>)>,
-    mut visors: Query<&mut CanvasTexture>,
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
     time: Res<Time>,
@@ -88,7 +88,8 @@ fn helmet(
             climb: 0.0,
         };
         // Off the right wing, a little ahead and higher, weaving its own way.
-        let side = if stage.director.roll & 1 == 0 { 1.0 } else { -1.0 };
+        // On the right: the head turns away from the menu.
+        let side = 1.0;
         let off = stage::right(heading) * 220.0 * side + stage::forward(heading) * 60.0;
         let mig = Weave {
             start: start + enu(off.x as f64, 45.0, off.y as f64),
@@ -135,6 +136,10 @@ fn helmet(
     };
     r.look = Some(look);
     super::cockpits::eye_camera(&mut cam, cabin, p, rot, look);
+    let mode = crate::hud::HudMode::Air;
+    let alt = 3000.0;
+    let aim9 = Some((if t < FIRE_AT { 2 } else { 1 }, "AIM-9"));
+    hud.draw(&mut screens, AircraftKind::F16, rot, v, alt, mode, aim9, t);
     // The visor's symbols ride the view: it isn't turned for the menu.
     *fov = SceneFov(50f32.to_radians(), true);
     // The Sidewinder off the wingtip.
@@ -143,8 +148,9 @@ fn helmet(
             vel: v,
             accel: 300.0,
             top: 850.0,
-            turn: 0.9,
-            straight: 0.25,
+            // An off-boresight shot: it pulls round hard off the rail.
+            turn: 4.5,
+            straight: 0.1,
             aim: Aim::Thing(r.mig),
             blast: Blast::Kill,
             age: 0.0,
@@ -157,7 +163,7 @@ fn helmet(
     }
     // The visor: the lock and the seeker on the MiG until the missile gets there.
     let alive = things.contains(r.mig);
-    let Some(mut tex) = r.visor.and_then(|v| visors.get_mut(v).ok()) else { return };
+    let Some(mut tex) = r.visor.and_then(|v| screens.canvas_of(v)) else { return };
     let head = rot * Quat::from_euler(EulerRot::YXZ, look.x, look.y, 0.0);
     let to_mig = mig_at.filter(|_| alive).map(|m| (m - eye).as_vec3().normalize_or(Vec3::NEG_Z));
     let line =

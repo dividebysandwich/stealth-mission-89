@@ -171,14 +171,18 @@ fn missiles(
     theater: Option<Res<crate::world::Theater>>,
     mut ex: ResMut<Explosions>,
     mut q: Query<(Entity, &mut Missile, &mut WorldPos, &mut Transform), Without<SceneCamera>>,
-    things: Query<&WorldPos, (Without<Missile>, Without<SceneCamera>)>,
+    things: Query<(&WorldPos, Option<&Airborne>), (Without<Missile>, Without<SceneCamera>)>,
 ) {
     let dt = time.delta_secs().min(0.1);
     for (e, mut m, mut pos, mut tf) in &mut q {
         m.age += dt;
         let target = match m.aim {
             Aim::Point(p) => p,
-            Aim::Thing(t) => things.get(t).map_or(pos.0, |p| p.0),
+            // Led: where an aircraft will be when the missile gets there.
+            Aim::Thing(t) => things.get(t).map_or(pos.0, |(p, air)| {
+                let go = (p.0 - pos.0).length() / (m.vel.length() as f64).max(200.0);
+                p.0 + air.map_or(DVec3::ZERO, |a| a.0.as_dvec3() * go)
+            }),
         };
         let to = (target - pos.0).as_vec3();
         let speed = (m.vel.length() + m.accel * dt).min(m.top);
@@ -198,7 +202,10 @@ fn missiles(
         }
         m.vel = dir * speed;
         let step = (m.vel * dt).as_dvec3();
-        let hit = to.length() <= step.length() as f32 * 1.5 + 2.0;
+        // It passes the target this frame (the closest point of its step to it), or is on it.
+        let along = (to.as_dvec3().dot(step) / step.length_squared().max(1e-9)).clamp(0.0, 1.0);
+        let miss = (to.as_dvec3() - step * along).length();
+        let hit = miss <= 9.0;
         pos.0 += step;
         tf.rotation = Transform::IDENTITY.looking_to(dir, Vec3::Y).rotation;
         let ground_y = ground(&theater, pos.0);

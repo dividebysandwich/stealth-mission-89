@@ -176,6 +176,11 @@ impl SceneScreens<'_, '_> {
         self.canvases.get_mut(e).ok()
     }
 
+    /// Another canvas of the scene's (a visor's), to draw.
+    pub fn canvas_of(&mut self, e: Entity) -> Option<Mut<'_, CanvasTexture>> {
+        self.canvases.get_mut(e).ok()
+    }
+
     /// Shows every camera picture (a console's).
     pub fn all_pictures(&mut self) {
         for (_, mut v) in &mut self.pictures {
