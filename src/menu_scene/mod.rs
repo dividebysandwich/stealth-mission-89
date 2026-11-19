@@ -16,12 +16,15 @@ use crate::world::{WU, WorldAnchor, WorldPos};
 mod apron;
 mod carrier;
 mod cockpits;
+mod comanche;
 pub mod director;
 mod flyers;
 mod fx;
 mod gunship;
 mod lift;
+mod pod;
 mod sam;
+mod slam;
 mod stage;
 mod strike;
 
@@ -61,11 +64,13 @@ impl Plugin for MenuScenePlugin {
         flyers::build(app);
         carrier::build(app);
         cockpits::build(app);
+        comanche::build(app);
         fx::build(app);
         gunship::build(app);
         lift::build(app);
         strike::build(app);
         sam::build(app);
+        slam::build(app);
     }
 }
 

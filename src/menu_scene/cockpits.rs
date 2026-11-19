@@ -16,7 +16,10 @@ pub(super) fn build(app: &mut App) {
     app.add_systems(
         Update,
         (
-            fit_cockpits.after(ShotSet).run_if(resource_exists::<super::director::Director>),
+            (super::pod::fit_pods, fit_cockpits)
+                .chain()
+                .after(ShotSet)
+                .run_if(resource_exists::<super::director::Director>),
             forward_view.in_set(ShotSet).run_if(shot_on(Shot::Cockpit)),
         ),
     );
@@ -59,11 +62,20 @@ pub fn spawn_cabin(stage: &mut Stage, cabin: Cabin) -> Entity {
 fn fit_cockpits(
     mut commands: Commands,
     mut kit: SceneCockpits,
-    mut cabins: Query<(Entity, &mut Cabin)>,
+    mut cabins: Query<(
+        Entity,
+        &mut Cabin,
+        Option<&super::pod::WantsPod>,
+        Option<&super::pod::PodImage>,
+    )>,
 ) {
-    for (e, mut c) in &mut cabins {
-        if c.fitted.is_some() {
+    for (e, mut c, wants, pod) in &mut cabins {
+        // Its camera picture first, if it shows one.
+        if c.fitted.is_some() || (wants.is_some() && pod.is_none()) {
             continue;
+        }
+        if let Some(p) = pod {
+            c.pod = Some(p.0.clone());
         }
         c.eye = kit.eye(c.seat);
         c.fitted = kit.spawn(&mut commands, e, c.seat, c.pod.clone());
