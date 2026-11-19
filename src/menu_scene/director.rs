@@ -6,6 +6,8 @@
 //!
 //! `SM89_MENU_SHOT=<name>[,<hours>[,<sky>[,<theater>]]]` holds one scene (screenshots; the
 //! names are `Shot::name`'s, the sky one of clear, scattered, broken, overcast, storm);
+//! `SM89_MENU_SNAP=<seconds>,...` with `SM89_MENU_SNAP_PNG=<path>` saves `<path>_N.png` at those
+//! times of the held scene's first run, then quits. `SM89_MENU_ROLL=<n>` fixes its random choices (its aircraft, weapon, place);
 //! `SM89_MENU_SHOT_AT=<start>[,<stop>]` starts it that far in and stops its clock at `stop`
 //! (else it plays again from the start at its end).
 
@@ -267,11 +269,13 @@ impl Director {
         let mut at = at.split(',').map(|t| t.trim().parse::<f32>().ok());
         let from = at.next().flatten().unwrap_or(0.0);
         let stop = at.next().flatten();
+        // `SM89_MENU_ROLL=<n>`: the scene's random choices.
+        let roll = std::env::var("SM89_MENU_ROLL").ok().and_then(|r| r.parse().ok());
         Some(Director {
             shot,
             t: from,
             spawned: false,
-            roll: rand::random(),
+            roll: roll.unwrap_or_else(rand::random),
             look,
             look_changed: true,
             order: vec![shot],
@@ -312,6 +316,9 @@ impl Director {
             // Again from the start.
             self.t = self.from;
             self.spawned = false;
+            if std::env::var("SM89_MENU_ROLL").is_err() {
+                self.roll = rand::random();
+            }
             return true;
         }
         self.t = 0.0;
@@ -375,11 +382,15 @@ pub fn direct(
     time: Res<Time>,
     mut director: ResMut<Director>,
     things: Query<Entity, With<super::ShotEntity>>,
+    mut trails: ResMut<crate::trails::Trails>,
+    mut blasts: ResMut<crate::explosions::Explosions>,
 ) {
     if director.step(time.delta_secs().min(0.1)) {
         for e in &things {
             commands.entity(e).despawn();
         }
+        trails.clear(&mut commands);
+        blasts.clear = true;
     }
 }
 
@@ -414,5 +425,37 @@ mod tests {
             assert_eq!(d.looks - looks, (n % LOOK_EVERY == 0) as usize, "scene {n}");
             assert!(fits(d.shot.place(), d.look.theater), "{:?} on {}", d.shot, d.look.theater);
         }
+    }
+}
+
+/// The test aid's screenshots (`SM89_MENU_SNAP`): the times left and the next number.
+pub fn snap(
+    mut commands: Commands,
+    director: Res<Director>,
+    mut left: Local<Option<(Vec<f32>, usize, f32)>>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    let (times, n, wait) = left.get_or_insert_with(|| {
+        let v = std::env::var("SM89_MENU_SNAP").unwrap_or_default();
+        (v.split(',').filter_map(|t| t.trim().parse().ok()).collect(), 0, 0.0)
+    });
+    let Ok(path) = std::env::var("SM89_MENU_SNAP_PNG") else { return };
+    if times.is_empty() {
+        // A moment for the last one to be written.
+        if *n > 0 {
+            *wait += 1.0;
+            if *wait > 30.0 {
+                exit.write(AppExit::Success);
+            }
+        }
+        return;
+    }
+    if director.t >= times[0] {
+        times.remove(0);
+        *n += 1;
+        let file = format!("{}_{:02}.png", path.trim_end_matches(".png"), *n);
+        commands
+            .spawn(bevy::render::view::screenshot::Screenshot::primary_window())
+            .observe(bevy::render::view::screenshot::save_to_disk(file));
     }
 }

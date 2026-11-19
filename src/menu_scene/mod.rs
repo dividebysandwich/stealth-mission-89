@@ -16,7 +16,9 @@ use crate::world::{WU, WorldAnchor, WorldPos};
 mod apron;
 pub mod director;
 mod flyers;
+mod fx;
 mod stage;
+mod strike;
 
 use director::Director;
 
@@ -41,12 +43,19 @@ impl Plugin for MenuScenePlugin {
             .add_systems(Update, (director::direct, apply_look).chain().in_set(DirectorSet))
             .add_systems(
                 Update,
-                ((fit_view, offset_view).chain(), track_viewpoint, match_overlay_msaa)
+                (
+                    (fit_view, offset_view).chain(),
+                    track_viewpoint,
+                    match_overlay_msaa,
+                    director::snap.run_if(|| std::env::var_os("SM89_MENU_SNAP").is_some()),
+                )
                     .after(ShotSet)
                     .run_if(resource_exists::<MenuScene>),
             );
         apron::build(app);
         flyers::build(app);
+        fx::build(app);
+        strike::build(app);
     }
 }
 
@@ -273,6 +282,7 @@ fn match_overlay_msaa(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn despawn_scene(
     mut commands: Commands,
     q: Query<Entity, Or<(With<SceneEntity>, With<ShotEntity>)>>,

@@ -113,7 +113,9 @@ impl Stage<'_, '_> {
         let base =
             |i: usize| places.airfields.get(i % n).copied().unwrap_or(DVec2::splat(256_000.0));
         let first = base(self.director.pick(n));
-        let mut found = first;
+        // Open ground near the airfield, if nothing better.
+        let a = next() * std::f64::consts::TAU;
+        let mut found = first + DVec2::new(a.sin(), a.cos()) * 4000.0;
         if let Some(t) = &self.theater {
             for i in 0..64 {
                 let b = if i < 32 { first } else { base((next() * n as f64) as usize) };

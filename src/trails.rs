@@ -257,6 +257,11 @@ enum Source {
 #[derive(Component)]
 pub struct Contrails(pub Vec<Vec3>);
 
+/// A menu scene's missile or rocket: smoke from these points (model frame, m), as a missile's
+/// in flight.
+#[derive(Component)]
+pub struct SceneSmoke(pub Vec<Vec3>);
+
 /// The menu scene's contrails: wider than in flight, as they are only ever seen from far below,
 /// and lasting longer.
 const SCENE_CONTRAIL: Style = Style {
@@ -282,7 +287,10 @@ fn scene_contrails(
     mut materials: ResMut<Assets<TrailMaterial>>,
     mut visibility: Query<&mut Visibility>,
     aircraft: Query<(Entity, &WorldPos, &Transform, &Contrails)>,
+    smoke: Query<(Entity, &WorldPos, &Transform, &SceneSmoke)>,
 ) {
+    // A scene's smoke keys after its contrails (`SMOKE_KEYS` on).
+    const SMOKE_KEYS: usize = 64;
     let emitters = aircraft
         .iter()
         .flat_map(|(e, pos, tf, c)| {
@@ -290,6 +298,11 @@ fn scene_contrails(
                 (Source::Scene(e, k), &SCENE_CONTRAIL, pos.0 + (tf.rotation * o).as_dvec3())
             })
         })
+        .chain(smoke.iter().flat_map(|(e, pos, tf, c)| {
+            c.0.iter().enumerate().map(move |(k, &o)| {
+                (Source::Scene(e, SMOKE_KEYS + k), &SMOKE, pos.0 + (tf.rotation * o).as_dvec3())
+            })
+        }))
         .collect();
     let mut ctx = Ribbons {
         commands: &mut commands,
@@ -392,7 +405,7 @@ impl Trail {
 }
 
 #[derive(Resource, Default)]
-struct Trails {
+pub struct Trails {
     /// Trails with a live emitter.
     active: HashMap<Source, Trail>,
     /// Trails left behind, fading out.
@@ -411,10 +424,17 @@ pub fn is_missile(spec: i32) -> bool {
 }
 
 fn cleanup(mut commands: Commands, mut trails: ResMut<Trails>) {
-    for t in trails.active.values().chain(&trails.detached) {
-        commands.entity(t.entity).try_despawn();
+    trails.clear(&mut commands);
+}
+
+impl Trails {
+    /// Every trail goes (a menu scene's at its end).
+    pub fn clear(&mut self, commands: &mut Commands) {
+        for t in self.active.values().chain(&self.detached) {
+            commands.entity(t.entity).try_despawn();
+        }
+        *self = Trails::default();
     }
-    *trails = Trails::default();
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -62,6 +62,15 @@ impl Plugin for ExplosionsPlugin {
         .init_resource::<Particles>()
         .init_resource::<VehicleDust>()
         .add_systems(OnExit(AppState::Flight), cleanup)
+        .add_systems(OnExit(AppState::Menu), cleanup)
+        .add_systems(
+            Update,
+            (scene_blasts, simulate)
+                .chain()
+                .after(crate::menu_scene::ShotSet)
+                .run_if(resource_exists::<crate::menu_scene::MenuScene>)
+                .run_if(in_state(AppState::Menu)),
+        )
         .add_systems(
             Update,
             (
@@ -207,6 +216,8 @@ impl Blast {
 pub struct Explosions {
     pub pending: Vec<(DVec3, Blast)>,
     pub breakups: Vec<Breakup>,
+    /// A menu scene ended: its puffs, sparks and flashes go (`scene_blasts`).
+    pub clear: bool,
 }
 
 /// An aircraft shot down in the air coming apart: pieces thrown off with its velocity
@@ -455,7 +466,53 @@ fn gradient(stops: &[(f32, Vec3)], t: f32) -> Vec3 {
     stops[stops.len() - 1].1
 }
 
+/// The menu scenes' blasts (`Explosions::pending`, on the ground where they ask; no scorch
+/// marks), and at a scene's end the particles cleared.
+#[allow(clippy::too_many_arguments)]
+fn scene_blasts(
+    mut commands: Commands,
+    mut ex: ResMut<Explosions>,
+    mut p: ResMut<Particles>,
+    time: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<PaletteMaterial>>,
+    palette: Res<crate::palette::Palette>,
+    theater: Option<Res<crate::world::Theater>>,
+) {
+    // The new scene's blasts stay.
+    let pending = std::mem::take(&mut ex.pending);
+    if std::mem::take(&mut ex.clear) {
+        clear(&mut commands, &mut p, &mut ex);
+    }
+    let p = &mut *p;
+    if p.rng == 0 {
+        p.rng = 0x9E37_79B9 ^ (time.elapsed_secs() * 1000.0) as u32;
+    }
+    if p.meshes.is_none() {
+        let spark = meshes.add(Cuboid::new(0.12, 0.12, 1.0));
+        let debris = meshes.add(Tetrahedron::default());
+        p.meshes = Some((spark, debris));
+    }
+    let hill = |q: DVec3| theater.as_ref().map_or(0.0, |t| t.hills.ground_m(q.x, -q.z) as f64);
+    for b in std::mem::take(&mut ex.breakups) {
+        breakup(&mut commands, p, &mut materials, &palette.globals, b);
+    }
+    for (pos, blast) in pending {
+        let ground = pos.y <= hill(pos) + GROUND_BLAST_M;
+        if let Blast::Strike(calibre) = blast {
+            let surface = crate::scenery::Surface::Land;
+            strike(&mut commands, p, &mut materials, &palette.globals, pos, calibre, surface);
+            continue;
+        }
+        spawn_blast(&mut commands, p, &mut materials, &palette.globals, pos, blast, ground);
+    }
+}
+
 fn cleanup(mut commands: Commands, mut p: ResMut<Particles>, mut ex: ResMut<Explosions>) {
+    clear(&mut commands, &mut p, &mut ex);
+}
+
+fn clear(commands: &mut Commands, p: &mut Particles, ex: &mut Explosions) {
     for c in &p.chunks {
         commands.entity(c.entity).try_despawn();
     }
