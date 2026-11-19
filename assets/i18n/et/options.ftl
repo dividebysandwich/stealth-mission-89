@@ -262,6 +262,7 @@ language-offer-question = Brauseri keel: { $language }. Kas mängida selles keel
 language-offer-yes = Jah
 language-offer-no = Ei
 language-offer-never = Ära küsi enam
+detail-benchmark-lowered = Graafika detailsust vähendati selle brauseri kaadrisageduse järgi. SEADED > GRAAFIKA kaudu saab seda uuesti tõsta.
 effect-sunbeams = Päikesekiired
     .facts = Päikesevalguse kiired rebenenud pilvkatte pragudest
 options-msaa-forced = Väljas, kuni pikseldamine (retro) on sees

@@ -262,6 +262,7 @@ language-offer-question = Мова браузера: { $language }. Грати �
 language-offer-yes = Так
 language-offer-no = Ні
 language-offer-never = Більше не питати
+detail-benchmark-lowered = Деталізацію графіки знижено відповідно до частоти кадрів цього браузера. Підвищити її знову можна в ПАРАМЕТРИ > ГРАФІКА.
 effect-sunbeams = Сонячні промені
     .facts = Стовпи сонячного світла в просвітах розірваної хмарності
 options-msaa-forced = Вимкнено, поки ввімкнена пікселізація (ретро)

@@ -262,6 +262,7 @@ language-offer-question = Browsersprache: { $language }. Das Spiel in dieser Spr
 language-offer-yes = Ja
 language-offer-no = Nein
 language-offer-never = Nicht mehr fragen
+detail-benchmark-lowered = Grafikdetails wurden an die Bildrate dieses Browsers angepasst und verringert. Unter OPTIONEN > GRAFIK lassen sie sich wieder erhöhen.
 effect-sunbeams = Sonnenstrahlen
     .facts = Lichtbündel der Sonne durch die Lücken einer aufgelockerten Wolkendecke
 options-msaa-forced = Aus, solange Pixelierung (Retro) an ist

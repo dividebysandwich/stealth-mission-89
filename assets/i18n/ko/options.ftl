@@ -262,6 +262,7 @@ language-offer-question = 브라우저 언어: { $language }. 이 언어로 플�
 language-offer-yes = 예
 language-offer-no = 아니요
 language-offer-never = 다시 묻지 않기
+detail-benchmark-lowered = 이 브라우저의 프레임 속도에 맞게 그래픽 세부 수준을 낮췄습니다. 옵션 > 그래픽에서 다시 높일 수 있습니다.
 effect-sunbeams = 햇살
     .facts = 찢어진 구름 틈 사이로 쏟아지는 햇살 다발
 options-msaa-forced = 픽셀화(레트로)가 켜져 있는 동안은 꺼짐

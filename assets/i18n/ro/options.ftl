@@ -262,6 +262,7 @@ language-offer-question = Limba browserului: { $language }. Doriți să jucați 
 language-offer-yes = Da
 language-offer-no = Nu
 language-offer-never = Nu mai întreba
+detail-benchmark-lowered = Detaliile grafice au fost reduse pentru a se potrivi cu rata de cadre a acestui browser. OPȚIUNI > GRAFICĂ le poate crește din nou.
 effect-sunbeams = Raze de soare
     .facts = Fascicule de lumină solară prin golurile unui înnorat fragmentat
 options-msaa-forced = Dezactivat cât timp pixelarea (retro) este activă

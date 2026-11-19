@@ -267,6 +267,7 @@ language-offer-question = Langue du navigateur : { $language }. Jouer dans cette
 language-offer-yes = Oui
 language-offer-no = Non
 language-offer-never = Ne plus me demander
+detail-benchmark-lowered = Le niveau de détail graphique a été réduit pour s'adapter à la fréquence d'images de ce navigateur. OPTIONS > GRAPHISMES permet de le relever.
 effect-sunbeams = Rayons de soleil
     .facts =
         Des rayons de soleil passent entre les trouées d'une couverture nuageuse fragmentée

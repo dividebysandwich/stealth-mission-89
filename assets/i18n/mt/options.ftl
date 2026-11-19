@@ -262,6 +262,7 @@ language-offer-question = Il-lingwa tal-browser: { $language }. Tixtieq tilgħab
 language-offer-yes = Iva
 language-offer-no = Le
 language-offer-never = Tistaqsinix aktar
+detail-benchmark-lowered = Id-dettall tal-grafika tnaqqas biex jaqbel mar-rata tal-frames ta' dan il-browser. OPZJONIJIET > GRAFIKA jistgħu jerġgħu jgħolluh.
 effect-sunbeams = Raġġi tax-xemx
     .facts = Raġġi tad-dawl tax-xemx mill-ftuħ ta' sħab maqsum
 options-msaa-forced = Mitfi sakemm il-pixelizzazzjoni (retro) tkun mixgħula

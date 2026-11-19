@@ -262,6 +262,7 @@ language-offer-question = Pārlūka valoda: { $language }. Vai spēlēt šajā v
 language-offer-yes = Jā
 language-offer-no = Nē
 language-offer-never = Vairs nejautāt
+detail-benchmark-lowered = Grafikas detalizācija samazināta atbilstoši šīs pārlūkprogrammas kadru ātrumam. OPCIJAS > GRAFIKA to var atkal palielināt.
 effect-sunbeams = Saules stari
     .facts = Saules gaismas kūļi cauri plīsuša mākoņu segas spraugām
 options-msaa-forced = Izslēgts, kamēr pikselizācija (retro) ir ieslēgta

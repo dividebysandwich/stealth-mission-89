@@ -262,6 +262,7 @@ language-offer-question = Bahasa peramban: { $language }. Mainkan game dalam bah
 language-offer-yes = Ya
 language-offer-no = Tidak
 language-offer-never = Jangan tanya lagi
+detail-benchmark-lowered = Detail grafis diturunkan agar sesuai dengan laju bingkai browser ini. OPSI > GRAFIS dapat menaikkannya lagi.
 effect-sunbeams = Sinar matahari
     .facts = Berkas sinar matahari melalui celah awan yang terbelah
 options-msaa-forced = Mati selama piksel-isasi (retro) aktif

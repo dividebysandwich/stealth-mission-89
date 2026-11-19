@@ -262,6 +262,7 @@ language-offer-question = Език на браузъра: { $language }. Иск�
 language-offer-yes = Да
 language-offer-no = Не
 language-offer-never = Не питай отново
+detail-benchmark-lowered = Детайлността на графиката е намалена според кадровата честота на този браузър. ОПЦИИ > ГРАФИКА може да я увеличи отново.
 effect-sunbeams = Слънчеви лъчи
     .facts = Снопове слънчева светлина през пролуките на разкъсана облачност
 options-msaa-forced = Изключено, докато пикселизацията (ретро) е включена

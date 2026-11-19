@@ -262,6 +262,7 @@ language-offer-question = Selaimen kieli: { $language }. Pelataanko peliä täll
 language-offer-yes = Kyllä
 language-offer-no = Ei
 language-offer-never = Älä kysy uudelleen
+detail-benchmark-lowered = Grafiikan yksityiskohtia vähennettiin tämän selaimen kuvataajuuden mukaan. ASETUKSET > GRAFIIKKA voi nostaa niitä taas.
 effect-sunbeams = Auringonsäteet
     .facts = Auringonvalon kajot rikkonaisen pilvipeitteen raoista
 options-msaa-forced = Pois, kun pikselöinti (retro) on päällä

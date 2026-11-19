@@ -260,6 +260,7 @@ language-offer-question = 浏览器语言：{ $language }。要使用该语言�
 language-offer-yes = 是
 language-offer-no = 否
 language-offer-never = 不再询问
+detail-benchmark-lowered = 已根据此浏览器的帧率降低图形细节。可在“选项 > 图形”中重新调高。
 effect-sunbeams = 阳光
     .facts = 穿过破碎云层缝隙的束状阳光
 options-msaa-forced = 像素化（复古）开启时关闭

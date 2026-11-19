@@ -262,6 +262,7 @@ language-offer-question = Język przeglądarki: { $language }. Grać w tym języ
 language-offer-yes = Tak
 language-offer-no = Nie
 language-offer-never = Nie pytaj ponownie
+detail-benchmark-lowered = Szczegółowość grafiki została obniżona do liczby klatek tej przeglądarki. W OPCJE > GRAFIKA można ją ponownie zwiększyć.
 effect-sunbeams = Promienie słońca
     .facts = Smugi światła słonecznego przez szczeliny w przerywanym zachmurzeniu
 options-msaa-forced = Wyłączone, gdy pikselizacja (retro) jest włączona

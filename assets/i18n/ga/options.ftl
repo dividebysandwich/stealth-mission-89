@@ -262,6 +262,7 @@ language-offer-question = Teanga an bhrabhsálaí: { $language }. An bhfuil tú 
 language-offer-yes = Tá
 language-offer-no = Níl
 language-offer-never = Ná fiafraigh arís
+detail-benchmark-lowered = Laghdaíodh mionsonraí na ngrafaicí chun ráta frámaí an bhrabhsálaí seo a oiriúnú. Is féidir iad a ardú arís i ROGHANNA > GRAFAICÍ.
 effect-sunbeams = Gathanna gréine
     .facts = Bíoga solais gréine trí bhearnaí scamallachta briste
 options-msaa-forced = As cé go bhfuil an pixealú (retro) air

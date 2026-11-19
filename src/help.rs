@@ -89,6 +89,8 @@ Cockpit and graphics
   --seat-height <cm>           eye higher (or lower) in the cockpit
   --window-size <WxH>          window size
   --novsync                    uncapped frame rate
+  --detail-benchmark           lower the graphics detail to the menu's frame rate (the
+                               browser build does this on its first visit)
   --ui-zoom <f>                interface scale (default: fit the window)
 
 Tacview

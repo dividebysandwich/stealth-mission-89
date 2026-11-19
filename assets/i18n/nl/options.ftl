@@ -262,6 +262,7 @@ language-offer-question = Taal van de browser: { $language }. Het spel in deze t
 language-offer-yes = Ja
 language-offer-no = Nee
 language-offer-never = Niet meer vragen
+detail-benchmark-lowered = Grafische details zijn verlaagd om bij de framerate van deze browser te passen. Via OPTIES > GRAFISCH kun je ze weer verhogen.
 effect-sunbeams = Zonnestralen
     .facts = Bundels zonlicht door de gaten van een gebroken bewolking
 options-msaa-forced = Uit zolang pixeleren (retro) aan staat

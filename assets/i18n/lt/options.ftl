@@ -262,6 +262,7 @@ language-offer-question = Naršyklės kalba: { $language }. Ar žaisti šia kalb
 language-offer-yes = Taip
 language-offer-no = Ne
 language-offer-never = Daugiau nebeklausti
+detail-benchmark-lowered = Grafikos detalumas sumažintas pagal šios naršyklės kadrų dažnį. NUSTATYMAI > GRAFIKA galima jį vėl padidinti.
 effect-sunbeams = Saulės spinduliai
     .facts = Saulės šviesos pluoštai pro suplyšusio debesuotumo properšas
 options-msaa-forced = Išjungta, kol pikselizacija (retro) įjungta

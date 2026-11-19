@@ -262,6 +262,7 @@ language-offer-question = Jazyk prohlížeče: { $language }. Chcete hrát v tom
 language-offer-yes = Ano
 language-offer-no = Ne
 language-offer-never = Znovu se neptat
+detail-benchmark-lowered = Detaily grafiky byly sníženy podle snímkové frekvence tohoto prohlížeče. V nabídce NASTAVENÍ > GRAFIKA je lze opět zvýšit.
 effect-sunbeams = Sluneční paprsky
     .facts = Svazky slunečního světla skrz mezery v rozbité oblačnosti
 options-msaa-forced = Vypnuto, dokud je pixelizace (retro) zapnutá

@@ -262,6 +262,7 @@ language-offer-question = ブラウザの言語：{ $language }。この言語�
 language-offer-yes = はい
 language-offer-no = いいえ
 language-offer-never = 今後は確認しない
+detail-benchmark-lowered = このブラウザのフレームレートに合わせてグラフィックの詳細を下げました。オプション > グラフィックで再び上げられます。
 effect-sunbeams = 太陽光線
     .facts = まばらな曇りの切れ間から差す日の光の筋
 options-msaa-forced = ピクセル化 (レトロ) がオンの間はオフ

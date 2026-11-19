@@ -262,6 +262,7 @@ language-offer-question = A böngésző nyelve: { $language }. Ezen a nyelven sz
 language-offer-yes = Igen
 language-offer-no = Nem
 language-offer-never = Ne kérdezd újra
+detail-benchmark-lowered = A grafikai részletesség csökkent, hogy illeszkedjen a böngésző képfrissítéséhez. A BEÁLLÍTÁSOK > GRAFIKA menüben újra növelhető.
 effect-sunbeams = Napsugarak
     .facts = Napfénynyalábok egy szakadozott felhőzet résein át
 options-msaa-forced = Kikapcsolva, amíg a pixelesítés (retro) be van kapcsolva

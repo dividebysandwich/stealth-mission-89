@@ -262,6 +262,7 @@ language-offer-question = Webbläsarens språk: { $language }. Vill du spela på
 language-offer-yes = Ja
 language-offer-no = Nej
 language-offer-never = Fråga inte igen
+detail-benchmark-lowered = Grafikdetaljerna har sänkts för att passa den här webbläsarens bildfrekvens. ALTERNATIV > GRAFIK kan höja dem igen.
 effect-sunbeams = Solstrålar
     .facts = Solljusstrålar genom luckorna i ett brutet molntäcke
 options-msaa-forced = Av så länge pixelering (retro) är på

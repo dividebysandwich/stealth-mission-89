@@ -262,6 +262,7 @@ language-offer-question = Lingua del browser: { $language }. Giocare in questa l
 language-offer-yes = Sì
 language-offer-no = No
 language-offer-never = Non chiedere più
+detail-benchmark-lowered = Il dettaglio grafico è stato ridotto per adattarsi al frame rate di questo browser. OPZIONI > GRAFICA consente di aumentarlo di nuovo.
 effect-sunbeams = Raggi di sole
     .facts = Fasci di luce solare tra i varchi di una copertura nuvolosa frammentata
 options-msaa-forced = Disattivata finché la pixelizzazione (retro) è attiva

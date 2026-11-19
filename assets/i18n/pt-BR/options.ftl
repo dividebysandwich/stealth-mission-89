@@ -262,6 +262,7 @@ language-offer-question = Idioma do navegador: { $language }. Jogar neste idioma
 language-offer-yes = Sim
 language-offer-no = Não
 language-offer-never = Não perguntar novamente
+detail-benchmark-lowered = O detalhe gráfico foi reduzido para se ajustar à taxa de quadros deste navegador. OPÇÕES > GRÁFICOS permite aumentá-lo novamente.
 effect-sunbeams = Raios de sol
     .facts = Feixes de luz do sol pelas frestas de uma cobertura de nuvens quebrada
 options-msaa-forced = Desligado enquanto a pixelização (retrô) estiver ativa

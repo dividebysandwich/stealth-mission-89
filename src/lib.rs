@@ -34,6 +34,7 @@ mod combat;
 mod crash_log;
 mod csar_view;
 mod debrief;
+mod detail_benchmark;
 #[cfg(not(target_arch = "wasm32"))]
 mod dedicated;
 mod dots;
@@ -397,7 +398,9 @@ pub fn run() {
             meatball::MeatballPlugin,
             voice::VoicePlugin,
         ))
-        .add_plugins(tts::TtsPlugin);
+        .add_plugins(tts::TtsPlugin)
+        // The browser's first visit: graphics detail for its frame rate.
+        .add_plugins(detail_benchmark::DetailBenchmarkPlugin);
     #[cfg(not(target_arch = "wasm32"))]
     app.add_plugins(voice_dialog::VoiceDialogPlugin);
     if touch::enabled(&settings) {

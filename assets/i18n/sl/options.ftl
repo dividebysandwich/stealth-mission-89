@@ -262,6 +262,7 @@ language-offer-question = Jezik brskalnika: { $language }. Želite igrati v tem 
 language-offer-yes = Da
 language-offer-no = Ne
 language-offer-never = Ne sprašuj več
+detail-benchmark-lowered = Podrobnosti grafike so bile zmanjšane glede na hitrost sličic tega brskalnika. V MOŽNOSTI > GRAFIKA jih lahko znova povečate.
 effect-sunbeams = Sončni žarki
     .facts = Snopi sončne svetlobe skozi vrzeli razdrte oblačnosti
 options-msaa-forced = Izklopljeno, dokler je pikselizacija (retro) vklopljena

@@ -262,6 +262,7 @@ language-offer-question = Jezik preglednika: { $language }. Želite li igrati na
 language-offer-yes = Da
 language-offer-no = Ne
 language-offer-never = Ne pitaj ponovno
+detail-benchmark-lowered = Razina grafičkih detalja smanjena je prema broju sličica u sekundi ovog preglednika. U OPCIJE > GRAFIKA može se ponovno povećati.
 effect-sunbeams = Sunčeve zrake
     .facts = Snopovi sunčeve svjetlosti kroz procjepe razderane naoblake
 options-msaa-forced = Isključeno dok je pikselizacija (retro) uključena

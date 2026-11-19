@@ -319,6 +319,7 @@ language-offer-question = Browser language: { $language }. Play the game in this
 language-offer-yes = Yes
 language-offer-no = No
 language-offer-never = Do not ask again
+detail-benchmark-lowered = Graphics detail lowered to suit this browser's frame rate. OPTIONS > GRAPHICS can raise it again.
 effect-sunbeams = Sunbeams
     .facts =
         Shafts of sunlight through the gaps of a broken overcast
