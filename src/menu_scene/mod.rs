@@ -13,6 +13,7 @@ use crate::palette_material::PaletteMaterial;
 use crate::settings::{AppState, Settings};
 use crate::world::{WU, WorldAnchor, WorldPos};
 
+mod approach;
 mod apron;
 mod carrier;
 mod cockpits;
@@ -69,6 +70,7 @@ impl Plugin for MenuScenePlugin {
                     .run_if(resource_exists::<MenuScene>),
             );
         apron::build(app);
+        approach::build(app);
         flyers::build(app);
         carrier::build(app);
         cockpits::build(app);

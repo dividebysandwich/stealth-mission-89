@@ -65,10 +65,14 @@ pub enum Shot {
     Cockpit,
     /// A random aircraft flying, the camera orbiting close.
     Orbit,
+    /// An aircraft on final to a runway, followed by a chase plane.
+    Approach,
+    /// A Super Hornet on final to the carrier, followed by a chase plane.
+    CarrierApproach,
 }
 
 /// Every scene, the apron first.
-pub const SHOTS: [Shot; 21] = [
+pub const SHOTS: [Shot; 23] = [
     Shot::Apron,
     Shot::Carrier,
     Shot::SamSite,
@@ -90,6 +94,8 @@ pub const SHOTS: [Shot; 21] = [
     Shot::Rcs,
     Shot::Cockpit,
     Shot::Orbit,
+    Shot::Approach,
+    Shot::CarrierApproach,
 ];
 
 /// Where a scene has to be: on Tabor's apron, at sea by the carrier, anywhere.
@@ -124,13 +130,15 @@ impl Shot {
             Shot::Rcs => "rcs",
             Shot::Cockpit => "cockpit",
             Shot::Orbit => "orbit",
+            Shot::Approach => "approach",
+            Shot::CarrierApproach => "trap",
         }
     }
 
     pub fn place(self) -> Place {
         match self {
             Shot::Apron => Place::Tabor,
-            Shot::Carrier | Shot::Dip => Place::Sea,
+            Shot::Carrier | Shot::Dip | Shot::CarrierApproach => Place::Sea,
             _ => Place::Any,
         }
     }
