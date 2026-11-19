@@ -75,6 +75,7 @@ pub(super) fn cleanup(commands: &mut Commands) {
 /// the menu.
 fn place_camera(
     mut commands: Commands,
+    mut director: ResMut<super::director::Director>,
     passes: Option<Res<Passes>>,
     mut cams: Query<(&mut WorldPos, &mut Transform), With<SceneCamera>>,
     mut fov: ResMut<super::SceneFov>,
@@ -83,6 +84,8 @@ fn place_camera(
     if passes.is_none() {
         commands.insert_resource(Passes::new());
     }
+    // Its things spawn as their models load (the director need not wait for them).
+    director.spawned = true;
     // Framed for the menu on the left: not turned again.
     *fov = super::SceneFov(LENS.to_radians(), true);
     let Ok((mut pos, mut tf)) = cams.single_mut() else {
@@ -659,10 +662,8 @@ fn place(
     theater: Option<&crate::world::Theater>,
 ) -> (DVec3, Quat) {
     let mut world = at_tower(p.pos.x, p.pos.y + lift, p.pos.z);
-    if p.kind == PassKind::Heli
-        && let Some(t) = theater
-    {
-        world.y += t.hills.ground_m(world.x, -world.z) as f64;
+    if p.kind == PassKind::Heli {
+        world.y += super::stage::ground_at(theater, world);
     }
     let rotation = Quat::from_rotation_y(-p.heading)
         * Quat::from_rotation_x(p.pitch)

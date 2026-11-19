@@ -202,7 +202,7 @@ fn apply_look(
     director.look_changed = false;
     let look = director.look.clone();
     if theater.is_none_or(|t| t.id != look.theater) {
-        let started = std::time::Instant::now();
+        let started = bevy::platform::time::Instant::now();
         streamed.despawn_all(&mut commands);
         crate::world::insert_theater(
             &mut commands,

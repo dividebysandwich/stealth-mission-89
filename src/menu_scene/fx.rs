@@ -160,7 +160,7 @@ pub fn tracer_material(
 
 /// The ground's height under a point.
 fn ground(theater: &Option<Res<crate::world::Theater>>, p: DVec3) -> f64 {
-    theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64)
+    super::stage::ground_at(theater.as_deref(), p)
 }
 
 #[allow(clippy::type_complexity)]

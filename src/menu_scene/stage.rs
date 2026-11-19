@@ -39,6 +39,12 @@ pub struct Stage<'w, 's> {
 /// A scene waits this long (s) for its theater's scenery (the ground its things stand on)
 /// before it starts without it.
 const SCENERY_WAIT: f32 = 1.5;
+
+/// How long a scene waits for the scenery: on one theater (the browser's) longer, its layout
+/// is made once, slowly, and every scene after has it.
+fn scenery_wait() -> f32 {
+    if super::director::one_theater().is_some() { 12.0 } else { SCENERY_WAIT }
+}
 /// The clearing a scene on the ground wants round its place (m).
 const CLEARING: f64 = 70.0;
 
@@ -46,7 +52,7 @@ impl Stage<'_, '_> {
     /// The model files are loaded (and the theater): the scene can be spawned at once.
     pub fn ready(&mut self, files: &[&str]) -> bool {
         self.theater.is_some()
-            && (self.scenery.is_some() || self.director.t > SCENERY_WAIT)
+            && (self.scenery.is_some() || self.director.t > scenery_wait())
             && files.iter().all(|f| {
                 let h = self.library.load(&self.server, f);
                 self.assets.gltfs.get(&h).is_some()
@@ -109,7 +115,7 @@ impl Stage<'_, '_> {
 
     /// The ground's height (m) under a point (Bevy metres).
     pub fn ground(&self, p: DVec3) -> f64 {
-        self.theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64)
+        ground_at(self.theater.as_deref(), p)
     }
 
     /// The runway ends of the scenery's airfields (aim point, unit direction towards the
@@ -415,4 +421,10 @@ impl Maneuver {
         // The model's bank is left wing down positive (`attitude`).
         (pos, attitude(heading, pitch, -bank), Vec3::new(f.x, 0.0, -f.y))
     }
+}
+
+/// The ground's height (m) under a point (Bevy metres): the hills' (the scenery's skin draws
+/// them).
+pub fn ground_at(theater: Option<&Theater>, p: DVec3) -> f64 {
+    theater.map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64)
 }

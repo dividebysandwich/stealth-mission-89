@@ -96,7 +96,7 @@ impl Plugin for SceneryPlugin {
                         .run_if(resource_exists::<Scenery>),
                 )
                     .chain()
-                    .run_if(crate::settings::world_shown),
+                    .run_if(scenery_shown),
             );
         // (In the browser the layout is made on the main thread: there it waits for the flight.)
         app.add_systems(
@@ -104,7 +104,7 @@ impl Plugin for SceneryPlugin {
             skin::measure_flat_ground
                 .after(bevy::transform::TransformSystems::Propagate)
                 .after(bevy::camera::visibility::VisibilitySystems::CalculateBounds)
-                .run_if(crate::settings::world_shown),
+                .run_if(scenery_shown),
         );
         if !cfg!(target_arch = "wasm32") {
             app.add_systems(Update, prefetch_layout.run_if(in_state(AppState::Menu)));
@@ -693,6 +693,15 @@ fn prefetch_scene_layout(
 ) {
     let Some(want) = want else { return };
     request(&want.0, &mut cache, &mut library, &server, &assets, &mut theater);
+}
+
+/// The scenery is drawn: in flight, and behind the menu (in the browser, where a layout is
+/// made on the main thread, the menu's scenes keep to one theater).
+fn scenery_shown(
+    state: Res<State<AppState>>,
+    scene: Option<Res<crate::menu_scene::MenuScene>>,
+) -> bool {
+    *state.get() == AppState::Flight || scene.is_some()
 }
 
 /// The menu's scenes moved to another theater: the last one's scenery goes (`build_scenery`

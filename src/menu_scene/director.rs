@@ -16,6 +16,8 @@ use stealth_mission::weather::Sky as SkyKind;
 
 /// How long each scene is shown (seconds).
 pub const SHOT_SECONDS: f32 = 5.0;
+/// A scene waits this long at most for its things to be spawned (its theater's scenery).
+const MAX_WAIT: f32 = 15.0;
 /// The weather, the time of day and the theater change every so many scenes.
 pub const LOOK_EVERY: usize = 4;
 
@@ -293,6 +295,12 @@ impl Director {
             stop: None,
         };
         d.order = cycle();
+        // On one theater the apron isn't there: the cycle's first scene, under a look of its
+        // own.
+        if let Some(t) = one_theater() {
+            d.shot = d.order[0];
+            d.look = Look::roll(t, None, None, None);
+        }
         d.ahead = Some(d.next_scene());
         d
     }
@@ -362,7 +370,9 @@ impl Director {
         if let Some(stop) = self.stop {
             self.t = self.t.min(stop);
         }
-        if self.t < SHOT_SECONDS {
+        // A scene waiting for its ground (`Stage::ready`) gets its time once it is there.
+        let waiting = !self.spawned && self.t < MAX_WAIT;
+        if self.t < SHOT_SECONDS || waiting {
             return false;
         }
         if self.held && self.shot == Shot::Apron {
@@ -426,13 +436,33 @@ impl Director {
     }
 }
 
-/// One turn of every scene: the apron first, the others shuffled.
+/// One turn of every scene: the apron first, the others shuffled; on one theater
+/// (`one_theater`) those that can be there, all shuffled.
 fn cycle() -> Vec<Shot> {
+    if let Some(t) = one_theater() {
+        let mut order: Vec<Shot> = SHOTS.into_iter().filter(|s| fits(s.place(), t)).collect();
+        for i in (1..order.len()).rev() {
+            order.swap(i, rand::random_range(0..=i));
+        }
+        return order;
+    }
     let mut order: Vec<Shot> = SHOTS.to_vec();
     for i in (2..order.len()).rev() {
         order.swap(i, rand::random_range(1..=i));
     }
     order
+}
+
+/// In the browser the scenes stay on one theater, a carrier's picked at random: its scenery
+/// is laid out once (on the main thread there, which takes seconds). `SM89_MENU_ONE_THEATER=1`
+/// does the same elsewhere.
+pub fn one_theater() -> Option<&'static str> {
+    static ONE: std::sync::OnceLock<Option<&'static str>> = std::sync::OnceLock::new();
+    *ONE.get_or_init(|| {
+        let one =
+            cfg!(target_arch = "wasm32") || std::env::var_os("SM89_MENU_ONE_THEATER").is_some();
+        one.then(|| SEA_THEATERS[rand::random_range(0..SEA_THEATERS.len())])
+    })
 }
 
 /// A scene `place`d so can be shown on `theater`.
@@ -447,6 +477,9 @@ fn fits(place: Place, theater: &str) -> bool {
 /// A theater for a scene: Tabor's for the apron, one with a carrier for a scene at sea, else
 /// any.
 fn theater_for(place: Place) -> &'static str {
+    if let Some(t) = one_theater() {
+        return t;
+    }
     match place {
         Place::Tabor => TABOR_THEATER,
         Place::Sea => SEA_THEATERS[rand::random_range(0..SEA_THEATERS.len())],
@@ -505,11 +538,24 @@ mod tests {
     }
 
     #[test]
+    fn a_scene_waits_for_its_things_but_not_for_ever() {
+        let mut d = Director::new(false);
+        d.held = false;
+        let first = d.shot;
+        assert!(!d.step(SHOT_SECONDS));
+        assert_eq!(d.shot, first);
+        assert!(d.step(MAX_WAIT));
+        assert_ne!(d.shot, first);
+    }
+
+    #[test]
     fn the_weather_changes_every_four_scenes_and_each_scene_is_in_its_place() {
         let mut d = Director::new(false);
         d.held = false;
         for n in 1..=100 {
             let looks = d.looks;
+            // The scene's things are there (else it waits for them).
+            d.spawned = true;
             assert!(d.step(SHOT_SECONDS));
             assert_eq!(d.looks - looks, (n % LOOK_EVERY == 0) as usize, "scene {n}");
             assert!(fits(d.shot.place(), d.look.theater), "{:?} on {}", d.shot, d.look.theater);
