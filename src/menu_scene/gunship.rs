@@ -61,12 +61,7 @@ fn gunship(
         ResMut<Assets<crate::palette_material::PaletteMaterial>>,
         Res<crate::palette::Palette>,
     ),
-    mut tracer: Local<
-        Option<(
-            Handle<crate::palette_material::PaletteMaterial>,
-            AssetId<bevy::render::storage::ShaderBuffer>,
-        )>,
-    >,
+    mut tracer: Local<fx::TracerCache>,
 ) {
     if stage.begin(&[stage::AIRCRAFT, stage::AAA]) {
         let centre = stage.land();

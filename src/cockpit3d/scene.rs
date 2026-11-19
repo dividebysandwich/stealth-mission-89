@@ -176,6 +176,13 @@ impl SceneScreens<'_, '_> {
         self.canvases.get_mut(e).ok()
     }
 
+    /// Shows every camera picture (a console's).
+    pub fn all_pictures(&mut self) {
+        for (_, mut v) in &mut self.pictures {
+            v.set_if_neq(Visibility::Inherited);
+        }
+    }
+
     /// Shows or hides the camera picture behind an MFD.
     pub fn picture(&mut self, side: MfdSide, shown: bool) {
         for (screen, mut v) in &mut self.pictures {

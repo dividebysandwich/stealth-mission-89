@@ -35,7 +35,7 @@ struct Run {
     hit: bool,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn slam(
     mut stage: Stage,
     mut screens: SceneScreens,
@@ -44,7 +44,7 @@ fn slam(
         (&Cabin, &mut WorldPos, &mut Transform, &GlobalTransform),
         (Without<SceneCamera>, Without<PodCamera>),
     >,
-    mut pods: Query<(&mut WorldPos, &mut Transform), (With<PodCamera>, Without<SceneCamera>)>,
+    mut pods: pod::Pods,
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
     mut ex: ResMut<Explosions>,

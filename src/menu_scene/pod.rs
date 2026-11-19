@@ -86,12 +86,16 @@ pub fn spawn_pod(
     (cam, image)
 }
 
+/// The scenes' pod cameras, to aim.
+pub type Pods<'w, 's> = Query<
+    'w,
+    's,
+    (&'static mut WorldPos, &'static mut Transform),
+    (With<PodCamera>, Without<super::SceneCamera>),
+>;
+
 /// Points a pod camera from `from` at `at` (Bevy metres).
-pub fn aim_pod(
-    q: &mut Query<(&mut WorldPos, &mut Transform), (With<PodCamera>, Without<super::SceneCamera>)>,
-    from: DVec3,
-    at: DVec3,
-) {
+pub fn aim_pod(q: &mut Pods, from: DVec3, at: DVec3) {
     for (mut p, mut tf) in q.iter_mut() {
         p.0 = from;
         let dir = (at - from).as_vec3().normalize_or(Vec3::NEG_Z);

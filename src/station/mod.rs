@@ -25,6 +25,7 @@ mod drone;
 mod eo;
 mod info;
 pub(crate) mod scope;
+pub(crate) mod scene;
 mod signal;
 mod sound;
 

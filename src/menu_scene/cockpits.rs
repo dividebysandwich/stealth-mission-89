@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::director::{Shot, shot_on};
-use super::stage::{self, Camera, Stage, Weave};
+use super::stage::{Camera, Stage, Weave};
 use super::{SceneFov, ShotEntity, ShotSet};
 use crate::aircraft::AircraftKind;
 use crate::cockpit3d::scene::{SceneCockpits, SceneScreens, Screen, Seat};

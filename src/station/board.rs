@@ -90,7 +90,9 @@ pub(super) fn draw(
     ui: Res<ConsoleUi>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else { return };
+    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else {
+        return;
+    };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Board) else {
         return;
     };
@@ -99,19 +101,7 @@ pub(super) fn draw(
     cv.reset_clip();
     cv.clear(BLACK);
     let sim = &combat.sim;
-    let w = BOARD_CANVAS.0 as f32;
-    // The tabs.
-    for (i, (tab, label)) in [(Tab::Tracks, "TRACKS"), (Tab::Site, "SITE")].into_iter().enumerate()
-    {
-        let x0 = i as f32 * w / 2.0;
-        let on = ui.tab == tab;
-        if on {
-            cv.fill_rect(x0 as i32 + 2, 2, (w / 2.0) as i32 - 4, TABS_H as i32 - 4, DARK);
-        }
-        let col = if on { WHITE } else { GREY };
-        stroke_text_at(cv, x0 + w / 4.0, TABS_H / 2.0, label, 8.0, 1.1, col, Align::Centre);
-    }
-    cv.stroke(Vec2::new(0.0, TABS_H), Vec2::new(w, TABS_H), 1.0, GREEN);
+    tabs(cv, ui.tab);
     match ui.tab {
         Tab::Tracks => tracks(cv, &ui),
         Tab::Site if m.gepard() => gepard(cv, sim, m.unit),
@@ -122,24 +112,46 @@ pub(super) fn draw(
     }
     // The status line: mode, lock, the last refused command.
     let st = sim.station_of(c.me.0);
+    let semi = st.is_some_and(|s| s.mode == Guidance::SemiActive);
+    let lock = st.and_then(|s| s.lock).map(|l| l as usize);
+    status(cv, (!m.gepard()).then_some(semi), lock, ui.note.as_ref().map(|n| n.0.as_str()));
+}
+
+/// The tabs along the top, `on` lit.
+pub(crate) fn tabs(cv: &mut Canvas, on: Tab) {
+    let w = BOARD_CANVAS.0 as f32;
+    for (i, (tab, label)) in [(Tab::Tracks, "TRACKS"), (Tab::Site, "SITE")].into_iter().enumerate()
+    {
+        let x0 = i as f32 * w / 2.0;
+        let lit = on == tab;
+        if lit {
+            cv.fill_rect(x0 as i32 + 2, 2, (w / 2.0) as i32 - 4, TABS_H as i32 - 4, DARK);
+        }
+        let col = if lit { WHITE } else { GREY };
+        stroke_text_at(cv, x0 + w / 4.0, TABS_H / 2.0, label, 8.0, 1.1, col, Align::Centre);
+    }
+    cv.stroke(Vec2::new(0.0, TABS_H), Vec2::new(w, TABS_H), 1.0, GREEN);
+}
+
+/// The status line: the guidance (a battery's: semi-active or guided), the lock (flight
+/// unit), the last refused command.
+pub(crate) fn status(cv: &mut Canvas, semi: Option<bool>, lock: Option<usize>, note: Option<&str>) {
+    let w = BOARD_CANVAS.0 as f32;
     cv.stroke(Vec2::new(0.0, STATUS_TOP), Vec2::new(w, STATUS_TOP), 1.0, GREEN);
     let y = STATUS_TOP + 11.0;
-    if !m.gepard() {
-        let (mode, col) = match st.map(|s| s.mode) {
-            Some(Guidance::SemiActive) => ("SEMI-ACTIVE", YELLOW),
-            _ => ("GUIDED", CYAN),
-        };
+    if let Some(semi) = semi {
+        let (mode, col) = if semi { ("SEMI-ACTIVE", YELLOW) } else { ("GUIDED", CYAN) };
         stroke_text_at(cv, 6.0, y, mode, TEXT, PEN, col, Align::Left);
     }
-    let lock = st.and_then(|s| s.lock).map(|l| format!("LOCK {:04}", 1000 + l as usize));
+    let lock = lock.map(|l| format!("LOCK {:04}", 1000 + l));
     let (text, col) = lock.map_or(("NO LOCK".to_string(), GREY), |l| (l, WHITE));
     stroke_text_at(cv, w / 2.0, y, &text, TEXT, PEN, col, Align::Centre);
-    if let Some((note, _)) = &ui.note {
+    if let Some(note) = note {
         stroke_text_at(cv, w - 6.0, y, &note.to_ascii_uppercase(), 5.0, 0.8, RED, Align::Right);
     }
 }
 
-fn tracks(cv: &mut Canvas, ui: &ConsoleUi) {
+pub(crate) fn tracks(cv: &mut Canvas, ui: &ConsoleUi) {
     let cols: [(f32, &str); 8] = [
         (6.0, "TN"),
         (46.0, "IFF"),

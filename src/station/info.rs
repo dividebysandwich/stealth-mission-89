@@ -57,12 +57,39 @@ pub(super) fn draw(
         return;
     };
     tex.dirty = true;
-    let cv = &mut tex.canvas;
-    cv.reset_clip();
-    cv.clear(BLACK);
     let sim = &combat.sim;
     let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
     let track = lock.and_then(|l| ui.snapshots.front()?.track(l));
+    let u = sim.units().get(m.unit).copied();
+    let units: Vec<usize> = if m.gepard() { vec![m.unit] } else { sim.battery_launchers(m.unit) };
+    let view = InfoView {
+        lock,
+        track,
+        gepard: m.gepard(),
+        firing: u.is_some_and(|u| u.burst > 0),
+        ready: units.iter().any(|&k| sim.units()[k].rounds > 0),
+        reloading: units.iter().any(|&k| sim.refill_left(k) > 0.0),
+        reach: m.reach() as f32,
+    };
+    paint(&mut tex.canvas, &view);
+}
+
+/// What the target data show: the lock (flight unit) and its track, the console's (the
+/// Gepard's or a battery's), its gun firing, rounds ready, reloading, its reach (m).
+pub(crate) struct InfoView<'a> {
+    pub lock: Option<usize>,
+    pub track: Option<&'a super::scope::Track>,
+    pub gepard: bool,
+    pub firing: bool,
+    pub ready: bool,
+    pub reloading: bool,
+    pub reach: f32,
+}
+
+pub(crate) fn paint(cv: &mut Canvas, v: &InfoView) {
+    cv.reset_clip();
+    cv.clear(BLACK);
+    let (lock, track) = (v.lock, v.track);
     let (w, h) = (INFO_CANVAS.0 as i32, INFO_CANVAS.1 as i32);
     cv.rect(1, 1, w - 2, h - 2, YELLOW);
 
@@ -80,14 +107,12 @@ pub(super) fn draw(
     framed(cv, (PANEL_X + 36, TYPE.0 + 3, RIGHT - 60, TYPE.1 - 3), &name, false);
 
     // The state boxes.
-    let u = sim.units().get(m.unit).copied();
-    let units: Vec<usize> = if m.gepard() { vec![m.unit] } else { sim.battery_launchers(m.unit) };
     let states = [
         ("TRK", lock.is_some()),
-        ("MAN", m.gepard() && lock.is_none()),
-        ("FIRE", u.is_some_and(|u| u.burst > 0)),
-        ("RDY", units.iter().any(|&k| sim.units()[k].rounds > 0)),
-        ("RLD", units.iter().any(|&k| sim.refill_left(k) > 0.0)),
+        ("MAN", v.gepard && lock.is_none()),
+        ("FIRE", v.firing),
+        ("RDY", v.ready),
+        ("RLD", v.reloading),
     ];
     let step = (PANEL.1 - PANEL.0) / states.len() as i32;
     for (i, (label, on)) in states.into_iter().enumerate() {
@@ -104,8 +129,8 @@ pub(super) fn draw(
     let squares = [
         "BRG".to_string(),
         track.map_or(String::new(), |t| format!("{:03.0}", t.bearing())),
-        if m.gepard() { "TOF" } else { "HDG" }.to_string(),
-        if m.gepard() {
+        if v.gepard { "TOF" } else { "HDG" }.to_string(),
+        if v.gepard {
             slant.map_or(String::new(), |r| format!("{:.1}", r / GEPARD_V0 as f32))
         } else {
             track.map_or(String::new(), |t| format!("{:03.0}", t.heading()))
@@ -138,7 +163,7 @@ pub(super) fn draw(
     }
 
     // The bottom row: in reach or not, and the reach.
-    let reach = m.reach() as f32;
+    let reach = v.reach;
     let status = match (lock, slant) {
         (None, _) => "NO LOCK",
         (Some(_), None) => "NO TRACK DATA",

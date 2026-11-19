@@ -131,9 +131,13 @@ pub fn round(vel: DVec3, calibre: Calibre, streak: f64) -> Shell {
     Shell { vel, calibre, streak, glow: None, age: 0.0, fuse: None }
 }
 
+/// A system's tracer material, made for the palette in use (`tracer_material`).
+pub type TracerCache =
+    Option<(Handle<PaletteMaterial>, AssetId<bevy::render::storage::ShaderBuffer>)>;
+
 /// The tracers' material for the palette in use.
 pub fn tracer_material(
-    cache: &mut Option<(Handle<PaletteMaterial>, AssetId<bevy::render::storage::ShaderBuffer>)>,
+    cache: &mut TracerCache,
     materials: &mut Assets<PaletteMaterial>,
     palette: &Palette,
 ) -> Handle<PaletteMaterial> {

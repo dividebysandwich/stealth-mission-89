@@ -230,17 +230,64 @@ pub(super) fn draw(
     ui: Res<ConsoleUi>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else { return };
+    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else {
+        return;
+    };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Scope) else {
         return;
     };
     tex.dirty = true;
-    let cv = &mut tex.canvas;
+    let sim = &combat.sim;
+    let st = sim.station_of(c.me.0);
+    // The site's launchers (east, north of the site, m) and their colours.
+    let mut launchers = Vec::new();
+    if let Some(site) = sim.units().get(m.unit).map(|u| u.metres())
+        && !m.gepard()
+    {
+        for l in sim.battery_launchers(m.unit) {
+            let u = sim.units()[l];
+            let p = u.metres();
+            let col = if u.destroyed {
+                RED
+            } else if ui.launcher == Some(l) {
+                WHITE
+            } else {
+                GREY
+            };
+            launchers.push((Vec2::new((p[0] - site[0]) as f32, (p[1] - site[1]) as f32), col));
+        }
+    }
+    let reach =
+        if m.gepard() { stealth_sim::station::GEPARD_REACH as f32 } else { m.reach() as f32 };
+    let view = ScopeView {
+        title: m.title(),
+        radar_off: st.is_some_and(|s| s.radar_off),
+        lock: st.and_then(|s| s.lock).map(|l| l as usize),
+        launchers,
+        reach,
+        gepard: m.gepard(),
+    };
+    paint(&mut tex.canvas, &ui, &view);
+}
+
+/// What the air picture shows besides the tracks: the console's title, the radar off, the
+/// lock, the battery's launchers (east, north of the site, m; colour), the reach (m) and
+/// whether it is the Gepard's.
+pub(crate) struct ScopeView<'a> {
+    pub title: &'a str,
+    pub radar_off: bool,
+    pub lock: Option<usize>,
+    pub launchers: Vec<(Vec2, u8)>,
+    pub reach: f32,
+    pub gepard: bool,
+}
+
+/// The air picture: the rings, the site, the tracks of the radar's pictures (`ui.snapshots`).
+pub(crate) fn paint(cv: &mut Canvas, ui: &ConsoleUi, v: &ScopeView) {
     cv.reset_clip();
     cv.clear(BLACK);
-    let sim = &combat.sim;
-    let lock = sim.station_of(c.me.0).and_then(|s| s.lock).map(|l| l as usize);
-    let (centre, k) = frame(&ui);
+    let lock = v.lock;
+    let (centre, k) = frame(ui);
     let r = (ui.range_km * 1000.0) * k;
     // Range rings (the outer one solid), the cardinal ticks, the range.
     for i in 1..=4 {
@@ -266,43 +313,21 @@ pub(super) fn draw(
     }
     let w = SCOPE_CANVAS.0 as f32;
     stroke_text_at(cv, 6.0, 8.0, &format!("{:.0} KM", ui.range_km), 7.0, 1.0, GREEN, Align::Left);
-    let title = m.title();
-    stroke_text_at(cv, w - 6.0, 8.0, title, 7.0, 1.0, GREEN, Align::Right);
-    if sim.station_of(c.me.0).is_some_and(|s| s.radar_off) {
+    stroke_text_at(cv, w - 6.0, 8.0, v.title, 7.0, 1.0, GREEN, Align::Right);
+    if v.radar_off {
         let h = SCOPE_CANVAS.1 as f32;
         stroke_text_at(cv, w / 2.0, h - 8.0, "RADAR OFF", 7.0, 1.0, YELLOW, Align::Centre);
     }
     // The site and, for a battery, its launchers.
     cv.frame(centre - Vec2::splat(3.0), centre + Vec2::splat(3.0), 1.0, WHITE);
-    if let Some(site) = sim.units().get(m.unit).map(|u| u.metres()) {
-        if !m.gepard() {
-            for l in sim.battery_launchers(m.unit) {
-                let u = sim.units()[l];
-                let p = u.metres();
-                let s = to_screen(centre, k, (p[0] - site[0]) as f32, (p[1] - site[1]) as f32);
-                let col = if u.destroyed {
-                    RED
-                } else if ui.launcher == Some(l) {
-                    WHITE
-                } else {
-                    GREY
-                };
-                cv.stroke(s - Vec2::new(2.0, 0.0), s + Vec2::new(2.0, 0.0), 1.0, col);
-            }
-        }
-        // The battery's missile reach, the Gepard's.
-        if !m.gepard() {
-            let reach = m.reach() as f32 * k;
-            if reach <= r + 0.5 {
-                cv.ring(centre, reach, 0.6, GREY);
-            }
-        }
-        if m.gepard() {
-            let reach = stealth_sim::station::GEPARD_REACH as f32 * k;
-            if reach > 4.0 {
-                cv.ring(centre, reach, 0.6, GREY);
-            }
-        }
+    for &(p, col) in &v.launchers {
+        let s = to_screen(centre, k, p.x, p.y);
+        cv.stroke(s - Vec2::new(2.0, 0.0), s + Vec2::new(2.0, 0.0), 1.0, col);
+    }
+    // The battery's missile reach, the Gepard's.
+    let reach = v.reach * k;
+    if (!v.gepard && reach <= r + 0.5) || (v.gepard && reach > 4.0) {
+        cv.ring(centre, reach, 0.6, GREY);
     }
     let Some(snap) = ui.snapshots.front() else { return };
     cv.set_clip(0, 0, SCOPE_CANVAS.0 as i32 - 1, SCOPE_CANVAS.1 as i32 - 1);

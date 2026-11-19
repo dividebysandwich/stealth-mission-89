@@ -130,7 +130,7 @@ const BURST: (f32, f32) = (1.6, 3.4);
 
 /// The Comanche hovering low, its pod's picture on the left screen locked on a vehicle; the
 /// gun fires and the rounds burst round it in the picture.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn pod_gun(
     mut stage: Stage,
     mut screens: SceneScreens,
@@ -139,7 +139,7 @@ fn pod_gun(
         (&Cabin, &mut WorldPos, &mut Transform, &GlobalTransform),
         (Without<SceneCamera>, Without<PodCamera>),
     >,
-    mut pods: Query<(&mut WorldPos, &mut Transform), (With<PodCamera>, Without<SceneCamera>)>,
+    mut pods: pod::Pods,
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
     palette: Res<crate::palette::Palette>,
@@ -147,12 +147,7 @@ fn pod_gun(
         ResMut<Explosions>,
         ResMut<Assets<crate::palette_material::PaletteMaterial>>,
     ),
-    mut tracer: Local<
-        Option<(
-            Handle<crate::palette_material::PaletteMaterial>,
-            AssetId<bevy::render::storage::ShaderBuffer>,
-        )>,
-    >,
+    mut tracer: Local<fx::TracerCache>,
 ) {
     if stage.begin(&[stage::AAA]) {
         let ground = stage.land();

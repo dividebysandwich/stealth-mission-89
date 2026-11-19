@@ -17,6 +17,7 @@ mod apron;
 mod carrier;
 mod cockpits;
 mod comanche;
+mod consoles;
 pub mod director;
 mod flyers;
 mod fx;
@@ -71,6 +72,7 @@ impl Plugin for MenuScenePlugin {
         carrier::build(app);
         cockpits::build(app);
         comanche::build(app);
+        consoles::build(app);
         fx::build(app);
         gunship::build(app);
         helmet::build(app);
