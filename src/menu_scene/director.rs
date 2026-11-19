@@ -4,7 +4,7 @@
 //! apron, the sea by a carrier) moves to a theater of its own under the same sky. The scenes
 //! play without sound.
 //!
-//! `SM89_MENU_SHOT=<name>[,<hours>[,<sky>[,<theater>]]]` holds one scene (screenshots; the
+//! `SM89_MENU_SHOT=<name>[,<hours>[,<sky>[,<theater>[,<moon phase>]]]]` holds one scene (screenshots; the
 //! names are `Shot::name`'s, the sky one of clear, scattered, broken, overcast, storm);
 //! `SM89_MENU_SNAP=<seconds>,...` with `SM89_MENU_SNAP_PNG=<path>` saves `<path>_N.png` at those
 //! times of the held scene's first run, then quits. `SM89_MENU_ROLL=<n>` fixes its random choices (its aircraft, weapon, place);
@@ -174,6 +174,15 @@ pub const SEA_THEATERS: [&str; 8] = [
     "korea",
 ];
 
+impl Look {
+    /// A night without the moon, all but black: the scenes are seen through night vision
+    /// goggles.
+    pub fn dark(&self) -> bool {
+        let night = !(5.0..19.5).contains(&self.hours.rem_euclid(24.0));
+        !self.classic && night && crate::sky::illumination(self.phase) < 0.1
+    }
+}
+
 /// What a block of scenes shares: the theater, the local time and the moon's phase, the
 /// weather. `classic` is the original night on the apron (the classic palette, held still).
 #[derive(Clone, Debug)]
@@ -199,14 +208,27 @@ impl Look {
 
     /// A random time of day and weather on `theater`: mostly by day, now and then at dawn or
     /// dusk or by night (under a moon at least half full, so the scene shows).
-    fn roll(theater: &'static str, sky: Option<SkyKind>, hours: Option<f64>) -> Self {
+    fn roll(
+        theater: &'static str,
+        sky: Option<SkyKind>,
+        hours: Option<f64>,
+        phase: Option<f64>,
+    ) -> Self {
         let hours = hours.unwrap_or_else(|| match rand::random_range(0..10) {
             0..5 => rand::random_range(8.0..16.5),
             5 => rand::random_range(6.2..7.2),
             6 | 7 => rand::random_range(17.0..18.3),
             _ => rand::random_range(20.5..27.0) % 24.0,
         });
-        let phase = rand::random_range(0.3..0.7);
+        // A bright moon mostly; now and then a new moon's dark night (seen through the
+        // goggles, `dark`).
+        let phase = phase.unwrap_or_else(|| {
+            if rand::random_range(0..4) == 0 {
+                rand::random_range(-0.04..0.04f64).rem_euclid(1.0)
+            } else {
+                rand::random_range(0.3..0.7)
+            }
+        });
         let index = stealth_formats::ALL_THEATERS.iter().position(|&t| t == theater).unwrap_or(0);
         // The rolled weather, less often the storms and overcasts that hide the scene.
         let sky = sky.unwrap_or_else(|| {
@@ -287,11 +309,12 @@ impl Director {
         let theater = it
             .next()
             .and_then(|t| stealth_formats::ALL_THEATERS.into_iter().find(|&x| x == t.trim()));
+        let phase = it.next().and_then(|p| p.trim().parse().ok());
         let look = if shot == Shot::Apron && hours.is_none() {
             Look::classic()
         } else {
             let theater = theater.unwrap_or_else(|| theater_for(shot.place()));
-            Look::roll(theater, sky, hours)
+            Look::roll(theater, sky, hours, phase)
         };
         let at = std::env::var("SM89_MENU_SHOT_AT").unwrap_or_default();
         let mut at = at.split(',').map(|t| t.trim().parse::<f32>().ok());
@@ -382,7 +405,7 @@ impl Director {
         let shot = self.order[self.next];
         let place = shot.place();
         let look = if (self.changes + 1).is_multiple_of(LOOK_EVERY) {
-            Some((Look::roll(theater_for(place), None, None), true))
+            Some((Look::roll(theater_for(place), None, None, None), true))
         } else if !fits(place, self.look.theater) {
             let mut l = self.look.clone();
             l.theater = theater_for(place);

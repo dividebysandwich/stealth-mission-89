@@ -187,7 +187,11 @@ fn apply_look(
         ResMut<crate::world::TileOverrides>,
     ),
     (mut materials, mut buffers, mut meshes): PaletteAssets,
-    (mut tod, mut sky): (ResMut<TimeOfDay>, ResMut<crate::sky::Sky>),
+    (mut tod, mut sky, mut hud): (
+        ResMut<TimeOfDay>,
+        ResMut<crate::sky::Sky>,
+        ResMut<crate::hud::HudState>,
+    ),
     cameras: Query<Entity, With<SceneCamera>>,
     backgrounds: Query<Entity, With<SceneBackground>>,
     root: Option<Res<crate::camera::XrRoot>>,
@@ -241,6 +245,8 @@ fn apply_look(
     }
     commands.insert_resource(palette);
     commands.insert_resource(crate::weather::SceneWeather(look.weather));
+    // A moonless night through the goggles.
+    hud.nvg = look.dark();
     // The world is drawn from now on (it needs the palette).
     commands.insert_resource(MenuScene);
 }
@@ -325,7 +331,9 @@ fn despawn_scene(
     mut commands: Commands,
     q: Query<Entity, Or<(With<SceneEntity>, With<ShotEntity>)>>,
     root: Option<Res<crate::camera::XrRoot>>,
+    mut hud: ResMut<crate::hud::HudState>,
 ) {
+    hud.nvg = false;
     // VR: the tracking root leaves the standing point before it goes.
     if let Some(r) = root.and_then(|r| r.0) {
         commands
