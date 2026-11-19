@@ -159,7 +159,7 @@ fn spawn_scene(
         Camera3d::default(),
         Camera { order: 0, ..default() },
         bevy::core_pipeline::tonemapping::Tonemapping::None,
-        Projection::Perspective(PerspectiveProjection { near: 0.5, far: 600_000.0, ..default() }),
+        Projection::Perspective(PerspectiveProjection { near: 0.05, far: 600_000.0, ..default() }),
         SceneCamera,
         SceneEntity,
         WorldAnchor,
