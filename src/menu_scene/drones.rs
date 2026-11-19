@@ -41,6 +41,8 @@ const GAP: f64 = 65.0;
 const DIVE_SPEED: f64 = 62.0;
 const DIVE_SLOPE: f64 = 0.55;
 const DIVE_LENGTH: f64 = 265.0;
+/// The tank column (models), side by side across the drone's way 22 m apart.
+const COLUMN: [&str; 4] = ["aaa_117", "aaa_117", "aaa_120", "aaa_117"];
 
 /// The scene: the console's place, the drone's line (start, unit direction), the quarry's (a
 /// Geran's start and direction, or the column's lead vehicle), the end.
@@ -51,6 +53,8 @@ struct Hunt {
     dir: DVec3,
     quarry: Entity,
     quarry_at: DVec3,
+    /// The column's middle (the dive).
+    column_at: DVec3,
     hit: bool,
 }
 
@@ -75,13 +79,12 @@ fn drones<const DIVE: bool>(
         // A few kilometres out from the center.
         let out = centre + flat * 2500.0;
         let (start, dir, quarry, quarry_at) = if DIVE {
-            let target = DVec3::new(out.x, stage.ground(out), out.z);
-            let dir = (flat * DIVE_SLOPE.cos() - DVec3::Y * DIVE_SLOPE.sin()).normalize();
-            let start = target - dir * DIVE_LENGTH;
-            let mut lead = None;
-            for (i, name) in ["aaa_117", "aaa_117", "aaa_120", "aaa_117"].into_iter().enumerate() {
-                let side = DVec3::new(-flat.z, 0.0, flat.x);
-                let at = target + side * (i as f64 * 22.0 - 10.0) + flat * (i as f64 * 4.0);
+            // The column across the drone's way; it dives on one of its vehicles.
+            let pick = stage.director.pick(COLUMN.len());
+            let side = DVec3::new(-flat.z, 0.0, flat.x);
+            let mut target = (Entity::PLACEHOLDER, out);
+            for (i, name) in COLUMN.into_iter().enumerate() {
+                let at = out + side * (i as f64 * 22.0 - 33.0) + flat * (i as f64 * 4.0);
                 let at = DVec3::new(at.x, stage.ground(at), at.z);
                 if let Some(e) =
                     stage.model(stage::AAA, name, 0.0, crate::models::ModelState::default())
@@ -90,10 +93,14 @@ fn drones<const DIVE: bool>(
                         WorldPos(at),
                         Transform::from_rotation(Quat::from_rotation_y(-(heading as f32) + 1.5)),
                     ));
-                    lead.get_or_insert(e);
+                    if i == pick {
+                        target = (e, at);
+                    }
                 }
             }
-            (start, dir, lead.unwrap_or(Entity::PLACEHOLDER), target)
+            let dir = (flat * DIVE_SLOPE.cos() - DVec3::Y * DIVE_SLOPE.sin()).normalize();
+            let start = target.1 - dir * DIVE_LENGTH;
+            (start, dir, target.0, target.1)
         } else {
             let alt = stage.ground(out) + 400.0;
             let start = DVec3::new(out.x, alt, out.z);
@@ -118,9 +125,10 @@ fn drones<const DIVE: bool>(
             WorldPos(centre + DVec3::Y * 2.0),
             Transform::from_rotation(stage::attitude(heading as f32, 0.0, 0.0)),
         ));
-        stage
-            .commands
-            .spawn((ShotEntity, Hunt { centre, start, dir, quarry, quarry_at, hit: false }));
+        stage.commands.spawn((
+            ShotEntity,
+            Hunt { centre, start, dir, quarry, quarry_at, column_at: out, hit: false },
+        ));
         return;
     }
     let t = stage.director.t as f64;
@@ -221,9 +229,9 @@ fn drones<const DIVE: bool>(
                 });
             }
             if DIVE {
-                for i in 0..4 {
+                for i in 0..COLUMN.len() {
                     let p =
-                        flat_at(h.quarry_at) + Vec2::new(i as f32 * 22.0 - 10.0, i as f32 * 6.0);
+                        flat_at(h.column_at) + Vec2::new(i as f32 * 22.0 - 33.0, i as f32 * 6.0);
                     marks.push(Mark {
                         at: p,
                         heading: 0.0,
