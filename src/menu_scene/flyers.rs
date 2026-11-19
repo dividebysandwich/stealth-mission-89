@@ -44,10 +44,10 @@ impl Flyer {
 
 /// Flies the scene's flyers to their place `t` seconds in; the lead's entity, place,
 /// attitude and velocity.
-pub(super) fn fly(
+pub(super) fn fly<F: bevy::ecs::query::QueryFilter>(
     stage: &Stage,
     flyers: &Query<(Entity, &Flyer)>,
-    q: &mut Query<(&mut WorldPos, &mut Transform), Without<SceneCamera>>,
+    q: &mut Query<(&mut WorldPos, &mut Transform), F>,
 ) -> Option<(Entity, DVec3, Quat, Vec3)> {
     let t = stage.director.t;
     let mut lead = None;

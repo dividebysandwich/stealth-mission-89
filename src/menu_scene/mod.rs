@@ -19,6 +19,7 @@ pub mod director;
 mod flyers;
 mod fx;
 mod gunship;
+mod lift;
 mod sam;
 mod stage;
 mod strike;
@@ -60,6 +61,7 @@ impl Plugin for MenuScenePlugin {
         carrier::build(app);
         fx::build(app);
         gunship::build(app);
+        lift::build(app);
         strike::build(app);
         sam::build(app);
     }

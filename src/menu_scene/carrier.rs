@@ -34,8 +34,7 @@ const HELI_TURN: f32 = 0.25;
 /// What flies off and onto the deck, and where.
 #[derive(Component)]
 struct Deck {
-    /// The ship's middle and its deck's height (Bevy metres).
-    middle: DVec3,
+    /// The deck's height (Bevy metres).
     deck_y: f64,
     launch: catapult::CatPose,
     landing: catapult::LandingPose,
@@ -71,7 +70,6 @@ fn carrier(
         };
         let index = stage.theater.as_ref().map_or(0, |t| t.index);
         let ns = tables.start_dir.get(index).copied().unwrap_or(1) as i32;
-        let (pe, pn) = catapult::pivot(obj.0, obj.1);
         let deck_y = catapult::DECK_WU * WU;
         let launch = catapult::pose(obj, ns, 0);
         let landing = catapult::landing(obj, ns);
@@ -91,16 +89,7 @@ fn carrier(
         let (Some(a), Some(b), Some(c)) = (a, b, c) else { return };
         stage.commands.spawn((
             ShotEntity,
-            Deck {
-                middle: wu_point(pe, pn, 0.0),
-                deck_y,
-                launch,
-                landing,
-                spot,
-                bow,
-                jets: [a, b],
-                heli: c,
-            },
+            Deck { deck_y, launch, landing, spot, bow, jets: [a, b], heli: c },
         ));
         return;
     }

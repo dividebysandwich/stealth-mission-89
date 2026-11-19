@@ -83,6 +83,13 @@ impl Stage<'_, '_> {
         Some(root)
     }
 
+    /// Spawns a cargo parachute's canopy (its origin at its load), hidden until it opens.
+    pub fn canopy(&mut self) -> Entity {
+        let e = crate::sim_render::spawn_canopy(&mut self.commands, &self.assets);
+        self.commands.entity(e).insert((ShotEntity, Transform::from_scale(Vec3::splat(0.01))));
+        e
+    }
+
     /// Spawns a flyable aircraft's model, lit, its gear up and its lights on.
     pub fn aircraft(&mut self, kind: AircraftKind) -> Option<Entity> {
         let spec = kind.spec();
@@ -236,8 +243,8 @@ impl Weave {
 }
 
 /// Puts a model's root at a place and attitude.
-pub fn put(
-    q: &mut Query<(&mut WorldPos, &mut Transform), Without<SceneCamera>>,
+pub fn put<F: bevy::ecs::query::QueryFilter>(
+    q: &mut Query<(&mut WorldPos, &mut Transform), F>,
     e: Entity,
     p: DVec3,
     r: Quat,
@@ -258,14 +265,6 @@ pub fn look(cam: &mut Camera, eye: DVec3, at: DVec3) {
         p.0 = eye;
         let dir = (at - eye).as_vec3().normalize_or(Vec3::NEG_Z);
         tf.rotation = Transform::IDENTITY.looking_to(dir, Vec3::Y).rotation;
-    }
-}
-
-/// The camera at `eye` turned `rot`.
-pub fn place(cam: &mut Camera, eye: DVec3, rot: Quat) {
-    if let Ok((mut p, mut tf)) = cam.single_mut() {
-        p.0 = eye;
-        tf.rotation = rot;
     }
 }
 
