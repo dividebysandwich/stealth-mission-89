@@ -146,8 +146,9 @@ pub struct Places {
     pub airfields: Vec<DVec2>,
     /// The enemy's SAM sites and their shapes.
     pub sams: Vec<(DVec2, usize)>,
-    /// The carriers' decks.
+    /// The carriers' decks, and their world objects (map units).
     pub decks: Vec<DVec2>,
+    pub deck_objects: Vec<(i32, i32)>,
 }
 
 impl Places {
@@ -170,6 +171,7 @@ impl Places {
             }
         }
         p.decks = t.decks.iter().map(|d| DVec2::new(d.east, d.north) * crate::world::WU).collect();
+        p.deck_objects = t.decks.iter().map(|d| (d.x, d.y)).collect();
         p
     }
 }

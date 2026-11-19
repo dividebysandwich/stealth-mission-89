@@ -14,10 +14,12 @@ use crate::settings::{AppState, Settings};
 use crate::world::{WU, WorldAnchor, WorldPos};
 
 mod apron;
+mod carrier;
 pub mod director;
 mod flyers;
 mod fx;
 mod gunship;
+mod sam;
 mod stage;
 mod strike;
 
@@ -55,9 +57,11 @@ impl Plugin for MenuScenePlugin {
             );
         apron::build(app);
         flyers::build(app);
+        carrier::build(app);
         fx::build(app);
         gunship::build(app);
         strike::build(app);
+        sam::build(app);
     }
 }
 
