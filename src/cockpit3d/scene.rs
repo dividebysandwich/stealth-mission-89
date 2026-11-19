@@ -19,12 +19,7 @@ use crate::settings::Settings;
 pub enum Screen {
     Left,
     Right,
-    Third,
-    Fourth,
     Hud,
-    /// The RAH-66's multipurpose displays.
-    Lmpd,
-    Rmpd,
     Console(displays::ConsoleScreen),
 }
 
@@ -33,11 +28,7 @@ impl Screen {
         match self {
             Screen::Left => CanvasRole::Left,
             Screen::Right => CanvasRole::Right,
-            Screen::Third => CanvasRole::Third,
-            Screen::Fourth => CanvasRole::Fourth,
             Screen::Hud => CanvasRole::Hud,
-            Screen::Lmpd => CanvasRole::Lmpd,
-            Screen::Rmpd => CanvasRole::Rmpd,
             Screen::Console(s) => CanvasRole::Console(s),
         }
     }

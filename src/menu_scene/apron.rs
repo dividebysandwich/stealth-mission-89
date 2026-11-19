@@ -83,7 +83,8 @@ fn place_camera(
     if passes.is_none() {
         commands.insert_resource(Passes::new());
     }
-    *fov = super::SceneFov::default();
+    // Framed for the menu on the left: not turned again.
+    *fov = super::SceneFov(LENS.to_radians(), true);
     let Ok((mut pos, mut tf)) = cams.single_mut() else {
         // The headset: the eye over the apron.
         viewpoint.altitude_wu = (VR_EYE as f64 / WU) as f32;
@@ -123,7 +124,9 @@ const TOWER_SHAPE: u8 = 39;
 const TOWER_FALLBACK: (f64, f64) = (567_552.0, 173_056.0);
 /// The camera (metres east, up and north of the tower's foot), its heading (degrees clockwise
 /// from north) and pitch.
-const CAMERA: [f32; 5] = [-40.0, VR_EYE, 215.0, 146.0, 7.0];
+const CAMERA: [f32; 5] = [-65.0, VR_EYE, 275.0, 149.0, 6.0];
+/// The camera's field of view (degrees high).
+const LENS: f32 = 40.0;
 /// The aircraft (metres east and north of the tower's foot) and its heading (degrees): turned
 /// some 50 degrees from facing the camera, its profile towards the menu.
 const AIRCRAFT: [f32; 3] = [30.0, 170.0, 250.0];

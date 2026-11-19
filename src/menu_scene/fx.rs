@@ -163,6 +163,7 @@ fn ground(theater: &Option<Res<crate::world::Theater>>, p: DVec3) -> f64 {
     theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64)
 }
 
+#[allow(clippy::type_complexity)]
 /// Flies the missiles: straight off the rail, then turning towards their aim, faster and
 /// faster; a blast where they reach it (or the ground).
 fn missiles(
