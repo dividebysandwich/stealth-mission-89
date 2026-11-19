@@ -21,6 +21,7 @@ pub mod director;
 mod flyers;
 mod fx;
 mod gunship;
+mod helmet;
 mod lift;
 mod pod;
 mod sam;
@@ -48,7 +49,12 @@ impl Plugin for MenuScenePlugin {
                 Update,
                 (DirectorSet, ShotSet.after(DirectorSet)).run_if(resource_exists::<Director>),
             )
-            .add_systems(Update, (director::direct, apply_look).chain().in_set(DirectorSet))
+            .add_systems(
+                Update,
+                (director::direct, apply_look, |mut f: ResMut<SceneFov>| f.1 = false)
+                    .chain()
+                    .in_set(DirectorSet),
+            )
             .add_systems(
                 Update,
                 (
@@ -67,6 +73,7 @@ impl Plugin for MenuScenePlugin {
         comanche::build(app);
         fx::build(app);
         gunship::build(app);
+        helmet::build(app);
         lift::build(app);
         strike::build(app);
         sam::build(app);
@@ -94,13 +101,14 @@ struct SceneBackground;
 pub(crate) struct SceneCamera;
 
 /// The scene camera's vertical field of view (radians) the scene asks for; narrow windows
-/// widen it (`fit_view`).
+/// widen it (`fit_view`). The view turns to frame its subject right of the menu unless the
+/// scene holds it still (`held`: a helmet's sight drawn on the view).
 #[derive(Resource)]
-pub(crate) struct SceneFov(pub f32);
+pub(crate) struct SceneFov(pub f32, pub bool);
 
 impl Default for SceneFov {
     fn default() -> Self {
-        Self(std::f32::consts::FRAC_PI_4)
+        Self(std::f32::consts::FRAC_PI_4, false)
     }
 }
 
@@ -267,13 +275,14 @@ const MENU_RIGHT: f32 = 460.0;
 /// the middle of what the main menu leaves free on its right.
 fn offset_view(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    fov: Res<SceneFov>,
     mut cams: Query<(&Projection, &mut Transform), With<SceneCamera>>,
     mut done: Local<Option<Quat>>,
 ) {
     let Ok(w) = windows.single() else { return };
     let Ok((Projection::Perspective(p), mut tf)) = cams.single_mut() else { return };
-    // Turned already (the scene hasn't aimed the camera again this frame).
-    if *done == Some(tf.rotation) {
+    // Turned already (the scene hasn't aimed the camera again this frame), or held.
+    if *done == Some(tf.rotation) || fov.1 {
         return;
     }
     // The free part's middle, in normalised device coordinates.

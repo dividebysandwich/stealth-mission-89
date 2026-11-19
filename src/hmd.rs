@@ -212,6 +212,73 @@ fn attach(
     commands.entity(head).add_child(visor);
 }
 
+/// The menu's scenes (`menu_scene`): a visor in front of a camera of theirs, drawn with
+/// `draw_scene`; its entity carries the canvas.
+pub(crate) fn spawn_scene_visor(
+    commands: &mut Commands,
+    head: Entity,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<HmdMaterial>,
+    images: &mut Assets<Image>,
+) -> Entity {
+    let tex = CanvasTexture::coverage(Canvas::new(WIDTH, HEIGHT), images);
+    let material = materials.add(HmdMaterial {
+        tint: Vec4::ZERO,
+        image: tex.image.clone(),
+        proj: Vec4::new(CX, CY, SCALE, SCALE),
+        style: Vec4::new(1.0, 1.0, 0.0, 0.0),
+        sharp: false,
+    });
+    let size = Vec2::new(WIDTH as f32, HEIGHT as f32) / SCALE * DISTANCE * 1.1;
+    let visor = commands
+        .spawn((
+            tex,
+            Mesh3d(meshes.add(Rectangle::from_size(size))),
+            MeshMaterial3d(material),
+            Transform::from_xyz(0.0, 0.0, -DISTANCE),
+            Visibility::Inherited,
+            RenderLayers::layer(crate::camera::MAIN_LOD_LAYER),
+            NoFrustumCulling,
+            NotShadowCaster,
+        ))
+        .id();
+    commands.entity(head).add_child(visor);
+    visor
+}
+
+/// A scene's visor: the head's and the aircraft's attitudes (world), the target locked
+/// (direction in the aircraft's frame), the Sidewinder seeker (world direction), the gun line's
+/// text, airspeed and altitude.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn draw_scene(
+    c: &mut Canvas,
+    head: Quat,
+    aircraft: Quat,
+    lock: Option<Vec3>,
+    seeker: Option<Vec3>,
+    line: Option<String>,
+    knots: f32,
+    alt: f32,
+    blink: bool,
+) {
+    let frame = Frame {
+        to_head: head.inverse(),
+        aircraft,
+        reticle: true,
+        sight: Some(head * Vec3::NEG_Z),
+        lock: lock.map(|l| (l, true)),
+        gun: None,
+        seeker,
+        pod: None,
+        waypoints: Vec::new(),
+        gun_line: line,
+        blink,
+        knots,
+        alt,
+    };
+    draw_visor(c, &frame);
+}
+
 fn despawn(mut commands: Commands, visors: Query<Entity, With<Visor>>) {
     for e in &visors {
         commands.entity(e).try_despawn();
