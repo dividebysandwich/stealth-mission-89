@@ -15,6 +15,7 @@ use crate::world::{WU, WorldAnchor, WorldPos};
 
 mod apron;
 mod carrier;
+mod cockpits;
 pub mod director;
 mod flyers;
 mod fx;
@@ -59,6 +60,7 @@ impl Plugin for MenuScenePlugin {
         apron::build(app);
         flyers::build(app);
         carrier::build(app);
+        cockpits::build(app);
         fx::build(app);
         gunship::build(app);
         lift::build(app);

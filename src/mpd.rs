@@ -656,8 +656,7 @@ fn bar_h(c: &mut Canvas, x: i32, y: i32, w: i32, h: i32, frac: f32, col: u8) {
 }
 
 /// Radars round the aircraft: a tracker whose pulse just saw it, one heard, one air radar
-/// launching, one quiet.
-#[cfg(test)]
+/// launching, one quiet (the tests', and the menu's scenes).
 pub(crate) fn threat_fixture() -> (Vec<EmitterView>, Emv, ThreatHistory) {
     let e = |source, b: f32, km, air, tracking, launch, heard| EmitterView {
         source,

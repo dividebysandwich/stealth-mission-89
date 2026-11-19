@@ -25,6 +25,7 @@ pub mod layout;
 pub mod levers;
 mod model;
 mod pick;
+pub mod scene;
 mod shading;
 pub mod tooltips;
 
