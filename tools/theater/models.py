@@ -30,6 +30,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools", "models"))
 
 import common  # noqa: E402
+import kerch  # noqa: E402
 
 geo = common.load(sys.argv[sys.argv.index("--") + 1])
 import mklib  # noqa: E402
@@ -124,10 +125,11 @@ def hull_planes(g):
     return [list(p) for p in sorted(planes)]
 
 
-def model(index, lods, attr, child_suffix="", hull=False):
+def model(index, lods, attr, child_suffix="", hull=False, wrecks=None):
     """A root `<theater>_NNN` with one node per detail level: [(geo, max_dist)]. With a suffix,
     the geometry hangs below each level in a child node of that name (`_s1v0`: a building,
-    `_forest`). With `hull`, each level collides with its convex hull (mountains)."""
+    `_forest`). With `hull`, each level collides with its convex hull (mountains). `wrecks`
+    (one geo per level) is the destroyed state, shown in a `_s1v1` node instead of `_s1v0`."""
     lods = [(no_floors(g), d) for g, d in lods]
     name = "%s_%03d" % (geo.ID, index)
     root = empty(name)
@@ -139,6 +141,8 @@ def model(index, lods, attr, child_suffix="", hull=False):
         if child_suffix:
             node = empty(ln, root)
             mesh_obj(ln + child_suffix, g, node)
+            if wrecks:
+                mesh_obj(ln + "_s1v1", no_floors(wrecks[k]), node)
         else:
             mesh_obj(ln, g, root)
         info["lods"].append({"name": ln, "max_dist": max_dist, "radius": int(math.ceil(radius))})
@@ -632,6 +636,388 @@ def terrikon(lod):
     return scaled(g, LEVEL_M[1])
 
 
+# ---------------------------------------------------------------------------------------------
+# The Crimean bridge over the Kerch Strait (layout in kerch.py), built in bridge coordinates:
+# s metres along, n metres to the left (north), z metres up from the sea
+
+
+STEEL = Ramp(0xE0, 0xE4)
+GIRDER = Ramp(0xE2, 0xE9)
+ASPHALT = 0xEC
+BALLAST = 0xE9
+MARKING = 0xE1
+RAILS = 0xEF
+SAND = Ramp(0xC1, 0xC5)
+SCRUB = Ramp(0x72, 0x76)
+GRAVEL = 0xE7
+
+
+class Raw:
+    """Faces and lines in bridge coordinates, mapped into a model's space at the end (the
+    wrecked arches tip their halves before that)."""
+
+    def __init__(self):
+        self.faces = []  # (points, paint, centre or None)
+        self.lines = []  # (a, b, colour)
+
+    def face(self, pts, paint, centre=None):
+        self.faces.append(([Vector(p) for p in pts], paint, Vector(centre) if centre is not None else None))
+
+    def line(self, a, b, c):
+        self.lines.append((Vector(a), Vector(b), c))
+
+    def prism(self, bottom, top, paint, top_paint=None, ends=True, caps=(True, True)):
+        """Solid between two 4-point rings (bottom, top; same winding); `caps` leaves out the
+        bottom or top face where nothing can see it."""
+        c = sum((Vector(p) for p in bottom + top), Vector()) / 8
+        if caps[1]:
+            self.face(top, top_paint if top_paint is not None else paint, c)
+        if caps[0]:
+            self.face(bottom, paint, c)
+        for k in range(4):
+            if not ends and k % 2 == 1:
+                continue
+            k1 = (k + 1) % 4
+            self.face([bottom[k], bottom[k1], top[k1], top[k]], paint, c)
+
+    def box(self, s0, s1, n0, n1, z0, z1, paint, top_paint=None, caps=(True, True)):
+        self.prism([(s0, n0, z0), (s1, n0, z0), (s1, n1, z0), (s0, n1, z0)],
+                   [(s0, n0, z1), (s1, n0, z1), (s1, n1, z1), (s0, n1, z1)], paint, top_paint, caps=caps)
+
+    def add(self, other):
+        self.faces += other.faces
+        self.lines += other.lines
+
+    def moved(self, fn):
+        out = Raw()
+        out.faces = [([fn(p) for p in pts], paint, fn(c) if c is not None else None) for pts, paint, c in self.faces]
+        out.lines = [(fn(a), fn(b), c) for a, b, c in self.lines]
+        return out
+
+    def geo(self, f, unit):
+        """The model geometry: `f` maps bridge coordinates to model metres, `unit` metres per
+        model unit."""
+        g = Geo()
+        m = lambda p: Vector(f(p.x, p.y, p.z)) / unit
+        for pts, paint, c in self.faces:
+            g.face([m(p) for p in pts], paint, m(c) if c is not None else None)
+        for a, b, c in self.lines:
+            g.line(m(a), m(b), c)
+        return g
+
+
+def clip_s(pts, s0, s1):
+    """A convex (or planar) polygon cut to s0 <= s <= s1 (Sutherland-Hodgman); [] if nothing
+    is left."""
+    pts = [Vector(p) for p in pts]
+    for bound, keep in ((s0, lambda p: p.x >= s0), (s1, lambda p: p.x <= s1)):
+        out = []
+        for i in range(len(pts)):
+            a, b = pts[i], pts[(i + 1) % len(pts)]
+            if keep(a):
+                out.append(a)
+            if keep(a) != keep(b):
+                out.append(a.lerp(b, (bound - a.x) / (b.x - a.x)))
+        pts = out
+        if len(pts) < 3:
+            return []
+    return pts
+
+
+def clip_line(a, b, s0, s1):
+    a, b = Vector(a), Vector(b)
+    if a.x > b.x:
+        a, b = b, a
+    if b.x < s0 or a.x > s1:
+        return None
+    lerp = lambda s: a.lerp(b, (s - a.x) / (b.x - a.x))
+    return (lerp(max(s0, a.x)), lerp(min(s1, b.x)))
+
+
+def girder(raw, br, sa, sb, nc, w, depth, top, lod, rail):
+    """One deck span between piers at sa and sb: a box girder, its deck, and (close up) the
+    parapets, the road's median, lane lines and lamps or the railway's tracks and masts."""
+    za, zb = br.deck(sa), br.deck(sb)
+    wb = w * 0.55
+    raw.prism([(sa, nc - wb / 2, za - depth), (sb, nc - wb / 2, zb - depth), (sb, nc + wb / 2, zb - depth),
+               (sa, nc + wb / 2, za - depth)],
+              [(sa, nc - w / 2, za), (sb, nc - w / 2, zb), (sb, nc + w / 2, zb), (sa, nc + w / 2, za)], GIRDER, top, ends=False)
+    if lod > 0:
+        return
+    # Parapets: a wall on each edge, seen from outside and from the deck.
+    for side in (-1, 1):
+        n = nc + side * w / 2
+        wall = [(sa, n, za), (sb, n, zb), (sb, n, zb + 1.2), (sa, n, za + 1.2)]
+        raw.face(wall, GREY, (sa, nc, za))
+        raw.face(wall, GREY, (sa, n + side * 10, za))
+    if not rail:
+        median = [(sa, nc, za), (sb, nc, zb), (sb, nc, zb + 0.9), (sa, nc, za + 0.9)]
+        raw.face(median, GREY, (sa, nc - 10, za))
+        raw.face(median, GREY, (sa, nc + 10, za))
+        for off in (-7.4, -3.7, 3.7, 7.4):
+            raw.line((sa, nc + off, za + 0.05), (sb, nc + off, zb + 0.05), MARKING)
+        # Lamp posts on the median, their arms over both carriageways.
+        raw.line((sa, nc, za + 0.9), (sa, nc, za + 11.0), 0xE5)
+        raw.line((sa, nc - 2.5, za + 11.5), (sa, nc + 2.5, za + 11.5), 0xE5)
+    else:
+        for track in (-2.3, 2.3):
+            for rail_n in (-0.76, 0.76):
+                raw.line((sa, nc + track + rail_n, za + 0.25), (sb, nc + track + rail_n, zb + 0.25), RAILS)
+        # Catenary masts at both edges with their cross span.
+        for side in (-1, 1):
+            raw.line((sa, nc + side * (w / 2 - 0.6), za), (sa, nc + side * (w / 2 - 0.6), za + 8.5), 0xE6)
+        raw.line((sa, nc - w / 2 + 0.6, za + 8.0), (sa, nc + w / 2 - 0.6, za + 8.0), 0xE6)
+        for track in (-2.3, 2.3):
+            raw.line((sa, nc + track, za + 6.2), (sb, nc + track, zb + 6.2), RAILS)
+
+
+def pier(raw, br, s, spec, rail, lod, main=False):
+    """A pier under one bridge at `s`: the road's twin columns, the railway's single one,
+    thicker the taller they stand, with a cap beam under the girder; `main`: an arch's."""
+    nc, w, depth = spec
+    top = br.deck(s) - depth
+    t = max(0.0, top) / kerch.ARCH_DECK
+    if main:
+        raw.box(s - 6.0, s + 6.0, nc - w / 2 - 2.0, nc + w / 2 + 2.0, -4.0, top, CONCRETE, caps=(False, True))
+        raw.box(s - 7.0, s + 7.0, nc - w / 2 - 3.0, nc + w / 2 + 3.0, -4.0, 1.5, CONCRETE, caps=(False, True))
+        return
+    cap = 1.6
+    if rail:
+        cs, cn = 1.4 * (1 + 0.5 * t), 2.3 * (1 + 0.4 * t)
+        raw.box(s - cs, s + cs, nc - cn, nc + cn, -4.0, top - cap, CONCRETE, caps=(False, False))
+        raw.box(s - 1.8, s + 1.8, nc - w / 2 + 1.0, nc + w / 2 - 1.0, top - cap, top, CONCRETE, caps=(True, False))
+    else:
+        cs, cn = 1.2 * (1 + 0.5 * t), 1.8 * (1 + 0.4 * t)
+        cols = (-6.0, 6.0) if lod == 0 else (0.0,)
+        for c in cols:
+            wide = cn if lod == 0 else 7.0
+            raw.box(s - cs, s + cs, nc + c - wide, nc + c + wide, -4.0, top - cap, CONCRETE, caps=(False, False))
+        raw.box(s - 1.6, s + 1.6, nc - w / 2 * 0.7, nc + w / 2 * 0.7, top - cap, top, CONCRETE, caps=(True, False))
+
+
+def abutment(raw, br, s):
+    """Where the bridges come ashore: one block under both decks, buried in the shore."""
+    top = br.deck(s) - 3.0
+    sign = 1 if s < 1 else -1
+    raw.box(min(s, s + sign * 25), max(s, s + sign * 25), kerch.RAIL[0] - 9, kerch.ROAD[0] + 13, -6.0, top, CONCRETE)
+
+
+def island_rings(br):
+    """Tuzla island's outline (bridge coordinates): the top ring above the sea and the beach's
+    foot below it, as matching convex rings."""
+    i0, i1 = br.island
+    sc, half = (i0 + i1) / 2, (i1 - i0) / 2
+    nc, hw = -10.0, 170.0
+    top, foot = [], []
+    n = 40
+    for k in range(n):
+        a = k * math.tau / n
+        ca, sa = math.cos(a), math.sin(a)
+        # A superellipse (power 4, still convex): long straight shores, rounded ends.
+        u = math.copysign(abs(ca) ** 0.5, ca)
+        v = math.copysign(abs(sa) ** 0.5, sa)
+        foot.append((sc + u * (half + 25), nc + v * (hw + 25), -2.0))
+        top.append((sc + u * (half - 25), nc + v * (hw - 25), 2.4))
+    return top, foot
+
+
+def dam_rings(br):
+    """The dam on the Tuzla spit, beside the road bridge from the island to the Taman shore."""
+    s0, s1 = br.island[1] - 150.0, br.length + 40.0
+    lo, hi = kerch.ROAD[0] + 26.0, kerch.ROAD[0] + 60.0
+    top = [(s0, lo + 8, 2.2), (s1, lo + 8, 2.2), (s1, hi - 8, 2.2), (s0, hi - 8, 2.2)]
+    foot = [(s0, lo, -2.0), (s1, lo, -2.0), (s1, hi, -2.0), (s0, hi, -2.0)]
+    return top, foot
+
+
+def ground_piece(raw, top, foot, s0, s1, top_paint, side_paint, lines=None):
+    """The part of an island (or dam) between s0 and s1: its top and the beach all round."""
+    face = clip_s(top, s0, s1)
+    if face:
+        raw.face(face, top_paint, (sum(p[0] for p in face) / len(face), sum(p[1] for p in face) / len(face), -50.0))
+    n = len(top)
+    # The beach faces away from a point under the middle.
+    mid = sum((Vector(p) for p in top), Vector()) / n
+    mid.z = 0.0
+    for k in range(n):
+        k1 = (k + 1) % n
+        for tri in ([foot[k], foot[k1], top[k1]], [foot[k], top[k1], top[k]]):
+            cut = clip_s(tri, s0, s1)
+            if cut:
+                raw.face(cut, side_paint, mid)
+    for a, b, c in lines or []:
+        cut = clip_line(a, b, s0, s1)
+        if cut:
+            raw.line(cut[0], cut[1], c)
+
+
+def viaduct(br, s0, s1, lod):
+    """A segment of both bridges between piers s0 and s1, with whatever island or dam lies
+    under it."""
+    raw = Raw()
+    a0, a1 = kerch.ARCH_S - kerch.ARCH_HALF, kerch.ARCH_S + kerch.ARCH_HALF
+    piers = [p for p in br.piers() if s0 - 1e-6 <= p <= s1 + 1e-6]
+    step = 1 if lod == 0 else 2
+    for spec, rail in ((kerch.ROAD, False), (kerch.RAIL, True)):
+        nc, w, depth = spec
+        top = BALLAST if rail else ASPHALT
+        for sa, sb in zip(piers, piers[1:]):
+            girder(raw, br, sa, sb, nc, w, depth, top, lod, rail)
+        for k, p in enumerate(piers):
+            if abs(p - a0) < 1e-6 or abs(p - a1) < 1e-6:
+                continue  # the arch's main pier
+            if p < 1e-6 or p > br.length - 1e-6:
+                continue
+            if lod > 0 and k % step:
+                continue
+            pier(raw, br, p, spec, rail, lod)
+    for end in (0.0, br.length):
+        if s0 - 1e-6 <= end <= s1 + 1e-6:
+            abutment(raw, br, end)
+    top, foot = island_rings(br)
+    if s1 > br.island[0] - 60 and s0 < br.island[1] + 60:
+        ground_piece(raw, top, foot, s0, s1, SCRUB, SAND)
+    top, foot = dam_rings(br)
+    if s1 > top[0][0]:
+        mid = kerch.ROAD[0] + 43.0
+        ground_piece(raw, top, foot, s0, s1, GRAVEL, SAND,
+                     [((top[0][0], mid, 2.25), (top[1][0], mid, 2.25), 0xEB)] if lod == 0 else None)
+    return raw
+
+
+def arch_half(spec, rail, lod, side):
+    """One half of an arch span (side -1 west, +1 east of the middle): deck slab, tie girders,
+    rib halves, bracing and hangers. The halves meet at the crown; a destroyed arch breaks
+    there."""
+    raw = Raw()
+    nc, w, depth = spec
+    sm, half, deck, rise = kerch.ARCH_S, kerch.ARCH_HALF, kerch.ARCH_DECK, kerch.ARCH_RISE
+    s_end = sm + side * half
+    sa, sb = min(sm, s_end), max(sm, s_end)
+    # Deck slab between the tie girders, with cross girders under it.
+    raw.box(sa, sb, nc - w / 2 + 1.0, nc + w / 2 - 1.0, deck - 1.2, deck, GIRDER, BALLAST if rail else ASPHALT)
+    for side_n in (-1, 1):
+        n0 = nc + side_n * (w / 2 - 1.0)
+        n1 = nc + side_n * (w / 2 + 0.6)
+        raw.box(sa, sb, min(n0, n1), max(n0, n1), deck - depth, deck + 1.6, STEEL)
+    if lod == 0:
+        if rail:
+            for track in (-2.3, 2.3):
+                for rn in (-0.76, 0.76):
+                    raw.line((sa, nc + track + rn, deck + 0.25), (sb, nc + track + rn, deck + 0.25), RAILS)
+                raw.line((sa, nc + track, deck + 6.2), (sb, nc + track, deck + 6.2), RAILS)
+        else:
+            raw.box(sa, sb, nc - 0.4, nc + 0.4, deck, deck + 0.9, GREY)
+            for off in (-7.4, -3.7, 3.7, 7.4):
+                raw.line((sa, nc + off, deck + 0.05), (sb, nc + off, deck + 0.05), MARKING)
+    # The ribs: a parabola rising `rise` over the deck at the crown, slender boxes leaning in
+    # a little towards each other.
+    stations = 12 if lod == 0 else 6
+    xs = [side * half * k / stations for k in range(stations + 1)]
+    xs.sort()
+    lean = 2.5
+    rib_n = w / 2 - 0.2
+
+    def rib(x, side_n):
+        t = 1 - (x / half) ** 2
+        zc = deck + 1.0 + rise * t
+        n = nc + side_n * (rib_n - lean * t)
+        return zc, n
+
+    for side_n in (-1, 1):
+        for xa, xb in zip(xs, xs[1:]):
+            za, na = rib(xa, side_n)
+            zb, nb = rib(xb, side_n)
+            d, h = 1.2, 1.7
+            raw.prism([(sm + xa, na - d, za - h), (sm + xb, nb - d, zb - h), (sm + xb, nb + d, zb - h), (sm + xa, na + d, za - h)],
+                      [(sm + xa, na - d, za + h), (sm + xb, nb - d, zb + h), (sm + xb, nb + d, zb + h), (sm + xa, na + d, za + h)],
+                      STEEL, ends=False)
+    # Bracing between the ribs where they stand high enough over the deck: struts, and
+    # diagonals between them close up.
+    braced = [x for x in xs if rib(x, 1)[0] > deck + 14]
+    for k, x in enumerate(braced):
+        if lod > 0 and k % 2:
+            continue
+        z, n = rib(x, 1)
+        _, n2 = rib(x, -1)
+        raw.box(sm + x - 0.6, sm + x + 0.6, n2, n, z - 0.6, z + 0.6, STEEL)
+        if lod == 0 and k + 1 < len(braced):
+            zb_, nb = rib(braced[k + 1], 1)
+            _, nb2 = rib(braced[k + 1], -1)
+            raw.line((sm + x, n2, z), (sm + braced[k + 1], nb, zb_), 0xE2)
+            raw.line((sm + x, n, z), (sm + braced[k + 1], nb2, zb_), 0xE2)
+    if lod == 0:
+        # Hangers from the ribs down to the tie girders.
+        count = 11
+        for k in range(1, count + 1):
+            x = side * half * (k - 0.5) / count
+            for side_n in (-1, 1):
+                z, n = rib(x, side_n)
+                raw.line((sm + x, n, z - 1.7), (sm + x, nc + side_n * (w / 2 - 0.2), deck + 1.6), 0xE2)
+    return raw
+
+
+def tipped(raw, hinge_s, hinge_z, angle):
+    """`raw` turned in the s-z plane about a hinge (positive: the side beyond the hinge in +s
+    drops)."""
+    c, s_ = math.cos(angle), math.sin(angle)
+
+    def fn(p):
+        ds, dz = p.x - hinge_s, p.z - hinge_z
+        return Vector((hinge_s + ds * c + dz * s_, p.y, hinge_z - ds * s_ + dz * c))
+
+    return raw.moved(fn)
+
+
+def arch(br, spec, rail, lod, wrecked):
+    """An arch span with its two main piers; wrecked, broken at the crown, each half hanging
+    from its pier into the water, some debris round the break."""
+    raw = Raw()
+    a0, a1 = kerch.ARCH_S - kerch.ARCH_HALF, kerch.ARCH_S + kerch.ARCH_HALF
+    for s in (a0, a1):
+        pier(raw, br, s, spec, rail, lod, main=True)
+    west, east = arch_half(spec, rail, lod, -1), arch_half(spec, rail, lod, 1)
+    if not wrecked:
+        raw.add(west)
+        raw.add(east)
+        return raw
+    hz = kerch.ARCH_DECK - spec[2]
+    # West half drops its crown end into the sea, the east one hangs at a steeper angle.
+    tip_w = math.asin((kerch.ARCH_DECK + 7.0) / (kerch.ARCH_HALF - 4.0))
+    tip_e = math.asin((kerch.ARCH_DECK + 2.0) / (kerch.ARCH_HALF - 4.0)) * 0.92
+    raw.add(tipped(west, a0 + 4.0, hz, tip_w))
+    raw.add(tipped(east, a1 - 4.0, hz, -tip_e))
+    rng = random.Random(8900 + int(spec[0]))
+    for _ in range(6 if lod == 0 else 2):
+        s = kerch.ARCH_S + rng.uniform(-25, 25)
+        n = spec[0] + rng.uniform(-spec[1], spec[1])
+        piece = Raw()
+        piece.box(-rng.uniform(4, 9), rng.uniform(4, 9), -rng.uniform(2, 5), rng.uniform(2, 5), -1.0, rng.uniform(1.0, 3.0),
+                  rng.choice([GIRDER, STEEL]))
+        a = rng.uniform(-0.5, 0.5)
+        ca, sa = math.cos(a), math.sin(a)
+        raw.add(piece.moved(lambda p: Vector((s + p.x * ca - p.y * sa, n + p.x * sa + p.y * ca, p.z))))
+    return raw
+
+
+def kerch_bridge():
+    """The bridge's models: both arches (targets with a wrecked state) and the viaduct
+    segments, each in metres around its snapped LOD2 origin."""
+    br = kerch.Bridge(geo)
+    unit = LEVEL_M[kerch.LEVEL]
+    for shape, s0, s1, origin in br.pieces():
+        f = br.local(origin)
+        if shape in (kerch.ROAD_ARCH, kerch.RAIL_ARCH):
+            rail = shape == kerch.RAIL_ARCH
+            spec = kerch.RAIL if rail else kerch.ROAD
+            lods = [(arch(br, spec, rail, k, False).geo(f, unit), d) for k, d in ((0, 900), (1, 32769))]
+            wrecks = [arch(br, spec, rail, k, True).geo(f, unit) for k in (0, 1)]
+            model(shape, lods, kerch.ARCH_ATTR, "_s1v0", wrecks=wrecks)
+        else:
+            lods = [(viaduct(br, s0, s1, k).geo(f, unit), d) for k, d in ((0, 700), (1, 32769))]
+            model(shape, lods, 6, "_s1v0")
+
+
 def main():
     out = sys.argv[sys.argv.index("--") + 2]
     mklib.load_palette(os.path.join(ROOT, "assets", "palettes", "tod_central_europe.ron"))
@@ -658,6 +1044,9 @@ def main():
     for k, (_, _, length, width, height, bearing) in enumerate(geo.MOUNTAINS):
         g = mountain(7100 + k, length * 1000.0, width * 1000.0, height, bearing)
         model(MOUNTAIN_BASE + k, [(scaled(g, LEVEL_M[4]), 32769)], 149, hull=True)
+    if "kerch_bridge" in extras:
+        assert MOUNTAIN_BASE + len(geo.MOUNTAINS) <= min(kerch.MODELS), "the bridge's model numbers"
+        kerch_bridge()
     shapes = water_cells(geo.Water())
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,

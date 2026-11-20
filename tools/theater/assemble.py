@@ -25,6 +25,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools", "models"))
 
 import common  # noqa: E402
+import kerch  # noqa: E402
 from glbio import append, read, subset, write  # noqa: E402
 
 geo = common.load(sys.argv[1])
@@ -255,6 +256,7 @@ class Layout:
         self.npps()
         self.towns()
         self.sites()
+        self.kerch_bridge()
         self.city_sams()
         self.launch_sites()
         self.objects()
@@ -429,6 +431,14 @@ class Layout:
                     self.ground_units.append((name, t, self.rng.choice(MOBILE_SAM_TYPES), 0))
                 if shape == OTH:
                     self.ground_units.append((name, t, OTH_TYPE, 0))
+
+    def kerch_bridge(self):
+        """The Crimean bridge's arches and viaduct segments (models.py), each at its snapped
+        LOD2 origin."""
+        if "kerch_bridge" not in geo.EXTRA_MODELS:
+            return
+        for shape, _, _, (x, y) in kerch.Bridge(geo).pieces():
+            self.put(kerch.LEVEL, x, y, shape)
 
     def launch_sites(self):
         for name, lon, lat in geo.LAUNCH_SITES:
@@ -649,6 +659,9 @@ def build_world(lay):
     fixed = {i: m["name"] for i, m in models.items()}
     # The names of the special target models standing in for a target.
     fixed.update({92: "Special Object 1", 93: "Special Object 2"})
+    # The Crimean bridge's arches are bridges to strike, like the library's (by role: their
+    # names would crowd towns out of the name table).
+    arches = [kerch.ROAD_ARCH, kerch.RAIL_ARCH] if "kerch_bridge" in geo.EXTRA_MODELS else []
     names = [""] * 128
     for i, n in fixed.items():
         names[i] = n
@@ -720,6 +733,8 @@ def build_world(lay):
     print("world: %d objects (%d ground units, world object count %d), names %d bytes" % (len(objects), guc, woc, size()))
     roles = [models[i]["role"] if i in models else None for i in range(128)]
     shape_class = [models[i]["class"] if i in models else 0 for i in range(128)]
+    for a in arches:
+        roles[a], shape_class[a] = "Bridge", kerch.ARCH_CLASS
     world = dict(land_rubble=geo.LAND_RUBBLE, water_rubble=LIBRARY["water_rubble"], ground_unit_count=guc,
                  world_object_count=woc, objects=objects, flights=flights(), shape_class=shape_class, roles=roles,
                  names=names)

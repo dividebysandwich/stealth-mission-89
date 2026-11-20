@@ -545,6 +545,74 @@ fn aim9_shot(d: &Data, weather: Weather) -> bool {
     killed
 }
 
+/// The Crimean bridge's arches (Ukraine models 114 road, 115 rail) are strike targets: the
+/// generator picks them as bridges, and a bomb on one wrecks that arch alone, drawn in its own
+/// wrecked state.
+#[test]
+fn kerch_bridge_arches_are_strike_targets() {
+    let d = data();
+    let arches = [114usize, 115];
+    let mut found = Vec::new();
+    for s in 1..3000u16 {
+        let m = mission(d, 9, s, 0);
+        let t = m.primary.object_index as usize;
+        let shape = m.world.objects[t].shape();
+        if m.primary.mission_type == 2
+            && arches.contains(&shape)
+            && !found.iter().any(|(f, _): &(Mission, u16)| {
+                f.world.objects[f.primary.object_index as usize].shape() == shape
+            })
+        {
+            found.push((m, s));
+            if found.len() == arches.len() {
+                break;
+            }
+        }
+    }
+    assert_eq!(found.len(), arches.len(), "no strikes on both of the Kerch bridge's arches");
+    // The remake theaters' tiles are not in the sim tables (the host adds them).
+    let ron = std::fs::read(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/theaters/ukraine.ron"),
+    );
+    let tiles = TheaterTiles::read_ron(&ron.expect("ukraine.ron")).expect("ukraine tiles");
+    let sd = d.sim.with_theater(9, || tiles);
+    for (m, seed) in found {
+        let t = m.primary.object_index as usize;
+        let shape = m.world.objects[t].shape() as i32;
+        let cat = (m.world.shape_class[shape as usize] & 0xF) as i32;
+        let w = [7, 8, 10, 14, 15]
+            .into_iter()
+            .find(|&w| d.sim.compat_cat(w, cat) > 0)
+            .expect("a weapon for bridges");
+        let mut sim = Sim::new(&sd, &m);
+        sim.set_training(true);
+        let o = sim.objects()[t];
+        sim.set_bay(0, w, 2);
+        sim.select_bay(0);
+        let mut p = player_at(o.x, o.y, 500, 0, 0);
+        p.cmd.toggle_bay = true;
+        for _ in 0..4 {
+            sim.step(&p, 15);
+            p.cmd = Commands::default();
+        }
+        p.cmd.fire = true;
+        let mut killed = false;
+        let mut wrecks = Vec::new();
+        for _ in 0..15 * 10 {
+            for e in sim.step(&p, 15) {
+                match e {
+                    SimEvent::GroundDestroyed { object, .. } if object == t => killed = true,
+                    SimEvent::TileDestroyed(rec) => wrecks.push(rec.shape),
+                    _ => {}
+                }
+            }
+            p.cmd = Commands::default();
+        }
+        assert!(killed && sim.objectives().primary_done, "seed {seed}: arch {shape} not destroyed");
+        assert_eq!(wrecks, [shape | 0x100], "seed {seed}: only the arch, in its own wreck state");
+    }
+}
+
 /// Retarded bomb dropped straight onto the primary: kill iff compat << 6 / (diff + 2) > distance.
 #[test]
 fn bomb_vs_target_uses_effectiveness_table() {

@@ -29,8 +29,9 @@ DATE = (10, 1, 2026)
 GRID = ("UM", 0, 0)
 SQUADRONS = 4
 
-# The theater's own models besides water, forests and mountains (see models.py).
-EXTRA_MODELS = ["npp", "ruins", "rubble", "terrikon"]
+# The theater's own models besides water, forests and mountains (see models.py); the Crimean
+# bridge's layout is in kerch.py.
+EXTRA_MODELS = ["npp", "ruins", "rubble", "terrikon", "kerch_bridge"]
 
 # Radar types (units.ron ids): the fixed SAM sites (SA-10, S-400, Buk-M2, Pantsir), the mobile
 # ones (Buk-M2, Tor-M2) and the patrol boats.
