@@ -101,6 +101,7 @@ kg-view-missile = Radharc diúracáin
 kg-view-tactical = Radharc tactúil
 kg-view-inverse-tactical = Radharc tactúil droim ar ais
 kg-view-free = Ceamara saor: W/S/A/D/Q/E, luch, ruideog
+kg-view-observe = Ceamara breathnóra: an t-aerárthach nó an fheithicil is gaire, arís don chéad cheann eile
 kg-zoom = Súmáil isteach / amach
 kg-wide-angle = Uillinn leathan
 kg-menu = Roghchlár socruithe, sos

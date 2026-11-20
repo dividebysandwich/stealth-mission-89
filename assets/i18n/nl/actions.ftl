@@ -58,6 +58,7 @@ action-view-missile = Raketaanzicht
 action-view-tactical = Tactisch aanzicht
 action-view-inverse-tactical = Omgekeerd tactisch aanzicht
 action-view-free = Vrij aanzicht
+action-view-observe = Waarnemersaanzicht
 action-zoom = Inzoomen
 action-unzoom = Uitzoomen
 action-map-zoom-in = Kaart inzoomen

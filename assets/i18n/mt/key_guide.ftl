@@ -102,6 +102,7 @@ kg-view-missile = Veduta tal-missila
 kg-view-tactical = Veduta tattika
 kg-view-inverse-tactical = Veduta tattika invertita
 kg-view-free = Kamera ħielsa: W/S/A/D/Q/E, maws, rotella
+kg-view-observe = Kamera ta' osservatur: l-eqreb ajruplan jew vettura, għal darb'oħra għal li jmiss
 kg-zoom = Zoom 'il ġewwa / 'il barra
 kg-wide-angle = Angolu wiesa'
 kg-menu = Menu tal-issettjar, pawża

@@ -101,6 +101,7 @@ kg-view-missile = ミサイル視点
 kg-view-tactical = 戦術視点
 kg-view-inverse-tactical = 逆戦術視点
 kg-view-free = フリーカメラ：W/S/A/D/Q/E、マウス、ホイール
+kg-view-observe = 観察カメラ：最も近い航空機または車両、もう一度で次へ
 kg-zoom = ズームイン / アウト
 kg-wide-angle = 広角
 kg-menu = 設定メニュー、一時停止

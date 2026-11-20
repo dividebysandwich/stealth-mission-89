@@ -58,6 +58,7 @@ action-view-missile = Visuale del missile
 action-view-tactical = Visuale tattica
 action-view-inverse-tactical = Visuale tattica inversa
 action-view-free = Visuale libera
+action-view-observe = Visuale osservatore
 action-zoom = Zoom avanti
 action-unzoom = Zoom indietro
 action-map-zoom-in = Zoom avanti della mappa

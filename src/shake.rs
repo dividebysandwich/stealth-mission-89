@@ -194,7 +194,7 @@ fn shake(
                 cam.rotation *= jolt(ANGLES * EXTERNAL);
             }
         }
-        View::Pilot | View::Weapon | View::Free => {}
+        View::Pilot | View::Weapon | View::Free | View::Observe => {}
     }
 }
 

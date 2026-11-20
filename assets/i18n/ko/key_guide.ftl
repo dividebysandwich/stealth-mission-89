@@ -101,6 +101,7 @@ kg-view-missile = 미사일 시점
 kg-view-tactical = 전술 시점
 kg-view-inverse-tactical = 역 전술 시점
 kg-view-free = 자유 카메라: W/S/A/D/Q/E, 마우스, 휠
+kg-view-observe = 관찰 카메라: 가장 가까운 항공기 또는 차량, 다시 누르면 다음
 kg-zoom = 확대 / 축소
 kg-wide-angle = 광각
 kg-menu = 설정 메뉴, 일시 정지

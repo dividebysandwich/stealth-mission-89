@@ -99,6 +99,7 @@ kg-view-missile = Vue du missile
 kg-view-tactical = Vue tactique
 kg-view-inverse-tactical = Vue tactique inversée
 kg-view-free = Caméra libre : W/S/A/D/Q/E, souris, molette
+kg-view-observe = Caméra observateur : l'aéronef ou le véhicule le plus proche, à nouveau pour le suivant
 kg-zoom = Zoom plus / moins
 kg-wide-angle = Grand angle
 kg-menu = Menu des réglages, pause

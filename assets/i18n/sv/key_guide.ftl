@@ -99,6 +99,7 @@ kg-view-missile = Robotvy
 kg-view-tactical = Taktisk vy
 kg-view-inverse-tactical = Omvänd taktisk vy
 kg-view-free = Fri kamera: W/S/A/D/Q/E, mus, hjul
+kg-view-observe = Observatörskamera: närmaste flygplan eller fordon, igen för nästa
 kg-zoom = Zooma in / ut
 kg-wide-angle = Vidvinkel
 kg-menu = Inställningsmeny, paus

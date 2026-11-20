@@ -59,6 +59,7 @@ action-view-missile = Raketi vaade
 action-view-tactical = Taktikaline vaade
 action-view-inverse-tactical = Pööratud taktikaline vaade
 action-view-free = Vabavaade
+action-view-observe = Vaatlejavaade
 action-zoom = Suumi sisse
 action-unzoom = Suumi välja
 action-map-zoom-in = Kaardi suum sisse

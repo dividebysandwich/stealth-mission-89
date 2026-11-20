@@ -58,6 +58,7 @@ action-view-missile = 导弹视角
 action-view-tactical = 战术视角
 action-view-inverse-tactical = 反向战术视角
 action-view-free = 自由视角
+action-view-observe = 观察视角
 action-zoom = 放大
 action-unzoom = 缩小
 action-map-zoom-in = 地图放大

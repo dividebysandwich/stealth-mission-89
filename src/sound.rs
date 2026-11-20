@@ -705,7 +705,10 @@ fn load_bank(mut commands: Commands, server: Res<AssetServer>) {
 /// The view is one of the external cameras (not the cockpit, nor the ejected pilot's eyes).
 fn external(view: Option<&ViewState>) -> bool {
     view.is_some_and(|v| {
-        matches!(v.view, View::Chase | View::Side | View::Tactical | View::Weapon | View::Free)
+        matches!(
+            v.view,
+            View::Chase | View::Side | View::Tactical | View::Weapon | View::Free | View::Observe
+        )
     })
 }
 

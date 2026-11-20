@@ -59,6 +59,7 @@ action-view-missile = Veduta missila
 action-view-tactical = Veduta tattika
 action-view-inverse-tactical = Veduta tattika invertita
 action-view-free = Veduta ħielsa
+action-view-observe = Veduta ta' osservatur
 action-zoom = Zoom in
 action-unzoom = Zoom out
 action-map-zoom-in = Zoom in tal-mappa

@@ -59,6 +59,7 @@ action-view-missile = Vedere din rachetă
 action-view-tactical = Vedere tactică
 action-view-inverse-tactical = Vedere tactică inversă
 action-view-free = Vedere liberă
+action-view-observe = Vedere observator
 action-zoom = Mărire
 action-unzoom = Micșorare
 action-map-zoom-in = Hartă mărire

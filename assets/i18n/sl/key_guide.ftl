@@ -101,6 +101,7 @@ kg-view-missile = Pogled izstrelka
 kg-view-tactical = Taktični pogled
 kg-view-inverse-tactical = Obrnjeni taktični pogled
 kg-view-free = Prosta kamera: W/S/A/D/Q/E, miška, kolešček
+kg-view-observe = Kamera opazovalca: najbližje letalo ali vozilo, ponovno za naslednje
 kg-zoom = Povečava + / -
 kg-wide-angle = Širok kot
 kg-menu = Meni nastavitev, pavza

@@ -58,6 +58,7 @@ action-view-missile = Pandangan rudal
 action-view-tactical = Pandangan taktis
 action-view-inverse-tactical = Pandangan taktis terbalik
 action-view-free = Pandangan bebas
+action-view-observe = Pandangan pengamat
 action-zoom = Zoom in
 action-unzoom = Zoom out
 action-map-zoom-in = Zoom in peta

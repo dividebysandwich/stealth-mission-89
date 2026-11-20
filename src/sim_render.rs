@@ -706,7 +706,8 @@ fn sync_aaa(
         for u in units {
             let model = unit_model(u.kind);
             let Some(e) = spawn_model(&mut commands, &assets, &file, model, false) else { break };
-            commands.entity(e).insert(crate::models::LodRange(AAA_LOD_RANGE));
+            let k = crate::camera::Observable::Unit(av.units.len());
+            commands.entity(e).insert((crate::models::LodRange(AAA_LOD_RANGE), k));
             av.units.push(e);
         }
         // Not loaded yet: again next frame.
@@ -1289,6 +1290,7 @@ pub(crate) fn sync_objects(
             let Some(e) = spawn_model(&mut commands, &assets, &file, model, friendly) else {
                 continue;
             };
+            commands.entity(e).insert(crate::camera::Observable::Flight(i));
             if friendly {
                 commands.entity(e).insert(crate::models::LodRange(FRIENDLY_LOD_RANGE));
             }
@@ -1970,6 +1972,7 @@ fn own_shadow(
     );
     // At an air defence console the aircraft waits unseen (`player::own_model_visibility`).
     let show = a.altitude < 1000.0
+            | crate::camera::View::Observe
         && !assets.palette.lights_on()
         && !(settings.shadows && external)
         && !manning.as_deref().is_some_and(|m| m.console());
@@ -2188,6 +2191,7 @@ pub(crate) fn sync_remote_pilots(
             vis.planes.insert(p.id, (e, spec.model, dot, muzzle, landing));
         }
         let look = if lights { SPOT_NIGHT } else { SPOT };
+            commands.entity(e).insert(crate::camera::Observable::Remote(p.id));
         let Some(v) = vis.planes.get_mut(&p.id) else { continue };
         spot_look(&mut commands, &mut v.2, look, |c| {
             solid_material(&mut vis.materials, &mut materials, &globals, c)

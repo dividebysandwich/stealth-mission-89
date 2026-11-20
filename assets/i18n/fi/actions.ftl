@@ -59,6 +59,7 @@ action-view-missile = Ohjusnäkymä
 action-view-tactical = Taktinen näkymä
 action-view-inverse-tactical = Käänteinen taktinen näkymä
 action-view-free = Vapaa näkymä
+action-view-observe = Tarkkailijanäkymä
 action-zoom = Lähennä
 action-unzoom = Loitonna
 action-map-zoom-in = Kartan lähennys

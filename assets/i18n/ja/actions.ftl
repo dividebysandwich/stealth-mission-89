@@ -59,6 +59,7 @@ action-view-missile = ミサイル視点
 action-view-tactical = 戦術視点
 action-view-inverse-tactical = 逆戦術視点
 action-view-free = フリー視点
+action-view-observe = 観察視点
 action-zoom = ズームイン
 action-unzoom = ズームアウト
 action-map-zoom-in = マップ拡大

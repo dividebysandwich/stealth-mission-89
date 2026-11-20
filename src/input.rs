@@ -139,6 +139,9 @@ pub enum Action {
     ViewInverseTactical,
     /// The free camera, moved with the keys and turned with the mouse (`camera::FreeView`).
     ViewFree,
+    /// The observer camera round the nearest aircraft, missile or vehicle, then the next
+    /// (`camera::ObserveCam`).
+    ViewObserve,
     Zoom,
     Unzoom,
     /// The main view's zoom (held, not a discrete action), as the mouse wheel with the right
@@ -498,6 +501,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Shift, K::F5, ViewTactical),
         (Shift, K::F6, ViewInverseTactical),
         (Shift, K::F7, ViewFree),
+        (Shift, K::F9, ViewObserve),
         (None, K::KeyZ, Zoom),
         (None, K::KeyX, Unzoom),
         (None, K::NumpadMultiply, ViewZoomIn),

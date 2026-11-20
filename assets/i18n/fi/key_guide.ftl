@@ -101,6 +101,7 @@ kg-view-missile = Ohjusnäkymä
 kg-view-tactical = Taktinen näkymä
 kg-view-inverse-tactical = Käänteinen taktinen näkymä
 kg-view-free = Vapaa kamera: W/S/A/D/Q/E, hiiri, rulla
+kg-view-observe = Tarkkailijakamera: lähin ilma-alus tai ajoneuvo, uudelleen seuraava
 kg-zoom = Lähennä / loitonna
 kg-wide-angle = Laajakulma
 kg-menu = Asetusvalikko, tauko

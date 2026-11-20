@@ -58,6 +58,7 @@ action-view-missile = Raketos vaizdas
 action-view-tactical = Taktinis vaizdas
 action-view-inverse-tactical = Atvirkštinis taktinis vaizdas
 action-view-free = Laisva kamera
+action-view-observe = Stebėtojo vaizdas
 action-zoom = Priartinti
 action-unzoom = Nutolinti
 action-map-zoom-in = Žemėlapio priartinimas

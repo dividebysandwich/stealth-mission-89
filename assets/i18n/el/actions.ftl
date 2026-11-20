@@ -58,6 +58,7 @@ action-view-missile = Προβολή πυραύλου
 action-view-tactical = Τακτική προβολή
 action-view-inverse-tactical = Αντίστροφη τακτική προβολή
 action-view-free = Ελεύθερη προβολή
+action-view-observe = Προβολή παρατηρητή
 action-zoom = Μεγέθυνση
 action-unzoom = Σμίκρυνση
 action-map-zoom-in = Μεγέθυνση χάρτη

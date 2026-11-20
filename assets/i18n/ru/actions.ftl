@@ -59,6 +59,7 @@ action-view-missile = Вид с ракеты
 action-view-tactical = Тактический вид
 action-view-inverse-tactical = Обратный тактический вид
 action-view-free = Свободный вид
+action-view-observe = Вид наблюдателя
 action-zoom = Приблизить
 action-unzoom = Отдалить
 action-map-zoom-in = Увеличить масштаб карты

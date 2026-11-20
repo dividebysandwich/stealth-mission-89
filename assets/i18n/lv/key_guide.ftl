@@ -99,6 +99,7 @@ kg-view-missile = Raķetes skats
 kg-view-tactical = Taktiskais skats
 kg-view-inverse-tactical = Apgrieztais taktiskais skats
 kg-view-free = Brīvā kamera: W/S/A/D/Q/E, pele, ritenītis
+kg-view-observe = Novērotāja kamera: tuvākā lidmašīna vai transportlīdzeklis, vēlreiz nākamais
 kg-zoom = Tuvināt / tālināt
 kg-wide-angle = Plaša leņķa skats
 kg-menu = Iestatījumu izvēlne, pauze

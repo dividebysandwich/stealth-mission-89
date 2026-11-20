@@ -5,7 +5,9 @@
 //! so the same rig carries both. External views move the camera off the aircraft instead.
 //! Cockpit views add a free look (`HeadLook`, mouse on the desktop), the tracked head pose
 //! (`headtrack`, desktop) and `RigOffset` (VR recentring) to the head. The free view
-//! (`FreeView`, desktop) leaves the aircraft: the keys move it, the mouse turns it.
+//! (`FreeView`, desktop) leaves the aircraft: the keys move it, the mouse turns it. The
+//! observer view (`ObserveCam`) orbits another entity (`Observable`: an AI aircraft or missile,
+//! a ground unit, another pilot's aircraft); its key picks the nearest, then the next.
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -27,10 +29,17 @@ impl Plugin for CameraPlugin {
             .init_resource::<MirrorRay>()
             .init_resource::<WeaponCam>()
             .init_resource::<FreeView>()
+            .init_resource::<ObserveCam>()
             // The weapon view after the combat step, on the weapon's pose drawn this frame.
             .add_systems(
                 Update,
-                (track_weapon, place_weapon_camera, place_free_camera)
+                (
+                    track_weapon,
+                    place_weapon_camera,
+                    place_free_camera,
+                    pick_observed,
+                    place_observe_camera,
+                )
                     .chain()
                     .after(RigSystems)
                     .after(crate::combat::CombatSystems)
@@ -72,7 +81,38 @@ pub enum View {
     Weapon,
     /// A camera flown about the world with the keys and turned with the mouse (`FreeView`).
     Free,
+    /// A camera orbiting another entity (`ObserveCam`), turned about it with the mouse.
+    Observe,
 }
+
+/// An entity the observer view can orbit (the simulation's index of what it draws).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Observable {
+    /// An AI aircraft or strike missile (flight unit).
+    Flight(usize),
+    /// A ground unit (`Sim::units`).
+    Unit(usize),
+    /// Another pilot's aircraft.
+    Remote(u8),
+}
+
+/// The observer view: the entity orbited, where it was last seen (Bevy world: the view stays
+/// there once it is gone) and the view to return to.
+#[derive(Resource, Default)]
+pub struct ObserveCam {
+    pub target: Option<Entity>,
+    last: Option<DVec3>,
+    back_to: View,
+    /// `--observe` resolved (or not given).
+    from_args: bool,
+}
+
+/// The observer view's distance (m, halved per zoom step) and the camera's height over the
+/// orbit's plane (rad) before the mouse turns it; the point it looks at over the entity's
+/// origin (m).
+const OBSERVE_DIST: f32 = 60.0;
+const OBSERVE_PITCH: f32 = 0.3;
+const OBSERVE_LOOK_UP: f64 = 2.0;
 
 /// The free view: keys (`FREE_KEYS`) move it along where it looks, Shift faster, Ctrl slower;
 /// the right mouse button held turns it; the mouse wheel zooms (`ViewState::magnify`). It
@@ -740,6 +780,134 @@ fn place_free_camera(
     *cam_tf = Transform::IDENTITY;
 }
 
+/// The observer view key: orbits the nearest observable entity to the view, or, already
+/// observing, the next nearest after the one observed (to the player's aircraft). Test aid:
+/// `--observe launcher|missile|unit:N|flight:N` observes that one as soon as it is drawn.
+#[allow(clippy::too_many_arguments)]
+fn pick_observed(
+    mut actions: MessageReader<ActionEvent>,
+    mut state: ResMut<ViewState>,
+    mut cam: ResMut<ObserveCam>,
+    weapon: Res<WeaponCam>,
+    free: Res<FreeView>,
+    settings: Res<crate::settings::Settings>,
+    observables: Query<(Entity, &Observable, &WorldPos, &Visibility)>,
+    aircraft: Query<&WorldPos, With<Player>>,
+    combat: Option<Res<crate::combat::Combat>>,
+) {
+    let Ok(me) = aircraft.single() else { return };
+    let pick = |state: &mut ViewState, cam: &mut ObserveCam, target: Entity| {
+        if state.view != View::Observe {
+            cam.back_to = match state.view {
+                View::Weapon => weapon.back_to,
+                View::Free => free.back_to,
+                v => v,
+            };
+        }
+        cam.target = Some(target);
+        cam.last = None;
+        state.view = View::Observe;
+        state.magnify = 1.0;
+    };
+    if !cam.from_args {
+        let args: Vec<String> = std::env::args().collect();
+        let Some(want) = args.iter().position(|a| a == "--observe").and_then(|i| args.get(i + 1))
+        else {
+            cam.from_args = true;
+            return;
+        };
+        let sim = combat.as_ref().map(|c| &c.sim);
+        let found = observables
+            .iter()
+            .filter(|(_, o, _, vis)| {
+                **vis != Visibility::Hidden
+                    && sim.is_some_and(|sim| match (want.as_str(), **o) {
+                        ("launcher", Observable::Unit(i)) => {
+                            sim.units().get(i).is_some_and(|u| u.kind.missile_launcher())
+                        }
+                        ("missile", Observable::Flight(i)) => {
+                            sim.ballistic_missile(i) || sim.cruise_missile(i)
+                        }
+                        (w, Observable::Unit(i)) => w.strip_prefix("unit:") == Some(&i.to_string()),
+                        (w, Observable::Flight(i)) => {
+                            w.strip_prefix("flight:") == Some(&i.to_string())
+                        }
+                        _ => false,
+                    })
+            })
+            .max_by_key(|(_, o, ..)| match o {
+                Observable::Flight(i) | Observable::Unit(i) => *i,
+                Observable::Remote(i) => *i as usize,
+            });
+        if let Some((e, ..)) = found {
+            cam.from_args = true;
+            pick(&mut state, &mut cam, e);
+        }
+    }
+    for ActionEvent(a) in actions.read() {
+        if *a != Action::ViewObserve || settings.vr {
+            continue;
+        }
+        let mut near: Vec<(Entity, f64)> = observables
+            .iter()
+            .filter(|(.., vis)| **vis != Visibility::Hidden)
+            .map(|(e, _, p, _)| (e, p.0.distance(me.0)))
+            .collect();
+        near.sort_by(|a, b| a.1.total_cmp(&b.1));
+        let current = cam.target.filter(|_| state.view == View::Observe);
+        let next = match current.and_then(|c| near.iter().position(|n| n.0 == c)) {
+            Some(k) => near.get(k + 1).or(near.first()),
+            None => near.first(),
+        };
+        if let Some(&(e, _)) = next {
+            pick(&mut state, &mut cam, e);
+        }
+    }
+}
+
+/// The observer view's camera: round the observed entity at the view's distance, turned about
+/// it by the mouse (`Orbit`), placed relative to the aircraft (the rig's parent) like the
+/// weapon view; at least 2 m over the ground.
+#[allow(clippy::too_many_arguments)]
+fn place_observe_camera(
+    state: Res<ViewState>,
+    mut cam: ResMut<ObserveCam>,
+    orbit: Res<Orbit>,
+    targets: Query<&WorldPos, With<Observable>>,
+    aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
+    mut head: Query<&mut Transform, (With<HeadAnchor>, Without<EyeCamera>)>,
+    mut eye_cam: Query<&mut Transform, With<EyeCamera>>,
+    mut viewpoint: ResMut<crate::palette::Viewpoint>,
+    theater: Option<Res<crate::world::Theater>>,
+) {
+    if state.view != View::Observe {
+        return;
+    }
+    let (Ok(mut head), Ok(mut cam_tf), Ok((a, pos))) =
+        (head.single_mut(), eye_cam.single_mut(), aircraft.single())
+    else {
+        return;
+    };
+    if let Some(p) = cam.target.and_then(|e| targets.get(e).ok()) {
+        cam.last = Some(p.0);
+    }
+    let Some(at) = cam.last else { return };
+    let target = at + DVec3::Y * OBSERVE_LOOK_UP;
+    let d = (OBSERVE_DIST * 2f32.powf(-state.external_zoom())) as f64;
+    let (yaw, pitch) = (orbit.yaw as f64, (OBSERVE_PITCH + orbit.pitch).clamp(-1.5, 1.5) as f64);
+    let mut eye =
+        target + DVec3::new(-yaw.sin() * pitch.cos(), pitch.sin(), yaw.cos() * pitch.cos()) * d;
+    let hill = theater.map_or(0.0, |t| t.hills.ground_m(eye.x, -eye.z) as f64);
+    let floor = crate::world::wu_to_bevy(0.0, 0.0, 0.0).y.max(hill) + 2.0;
+    eye.y = eye.y.max(floor);
+    viewpoint.altitude_wu = (eye.y / crate::world::WU) as f32;
+    let world_rot = Transform::IDENTITY.looking_to((target - eye).as_vec3(), Vec3::Y).rotation;
+    let local = a.orientation.inverse();
+    *head = Transform::from_translation(local * (eye - pos.0).as_vec3())
+        .with_rotation(local * world_rot);
+    *cam_tf = Transform::IDENTITY;
+}
+
 #[allow(clippy::too_many_arguments)]
 fn update_rig(
     state: Res<ViewState>,
@@ -837,8 +1005,8 @@ fn update_rig(
                 .with_rotation(local * world_rot);
             *cam_tf = offset.0;
         }
-        // Placed by `place_weapon_camera` and `place_free_camera`.
-        View::Weapon | View::Free => {}
+        // Placed by `place_weapon_camera`, `place_free_camera` and `place_observe_camera`.
+        View::Weapon | View::Free | View::Observe => {}
         View::Tactical => {
             // Above and behind in world-up terms: undo the aircraft's roll and pitch.
             let d = 120.0 * 2f32.powf(-state.external_zoom());

@@ -59,6 +59,7 @@ action-view-missile = Гледка: ракета
 action-view-tactical = Гледка: тактическа
 action-view-inverse-tactical = Гледка: обратна тактическа
 action-view-free = Гледка: свободна
+action-view-observe = Гледка: наблюдател
 action-zoom = Приближаване
 action-unzoom = Отдалечаване
 action-map-zoom-in = Приближаване на картата

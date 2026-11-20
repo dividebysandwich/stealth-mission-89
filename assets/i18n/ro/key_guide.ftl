@@ -101,6 +101,7 @@ kg-view-missile = Vedere din rachetă
 kg-view-tactical = Vedere tactică
 kg-view-inverse-tactical = Vedere tactică inversă
 kg-view-free = Cameră liberă: W/S/A/D/Q/E, mouse, rotiță
+kg-view-observe = Cameră observator: cea mai apropiată aeronavă sau vehicul, din nou pentru următorul
 kg-zoom = Mărire / micșorare
 kg-wide-angle = Unghi larg
 kg-menu = Meniul de setări, pauză

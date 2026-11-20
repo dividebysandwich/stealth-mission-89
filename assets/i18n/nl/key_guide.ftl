@@ -99,6 +99,7 @@ kg-view-missile = Raketaanzicht
 kg-view-tactical = Tactisch aanzicht
 kg-view-inverse-tactical = Omgekeerd tactisch aanzicht
 kg-view-free = Vrije camera: W/S/A/D/Q/E, muis, wiel
+kg-view-observe = Waarnemerscamera: het dichtstbijzijnde vliegtuig of voertuig, nogmaals voor het volgende
 kg-zoom = In- / uitzoomen
 kg-wide-angle = Groothoek
 kg-menu = Instellingenmenu, pauze

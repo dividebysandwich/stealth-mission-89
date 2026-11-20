@@ -101,6 +101,7 @@ kg-view-missile = Raketi vaade
 kg-view-tactical = Taktikaline vaade
 kg-view-inverse-tactical = Pööratud taktikaline vaade
 kg-view-free = Vabakaamera: W/S/A/D/Q/E, hiir, ratas
+kg-view-observe = Vaatlejakaamera: lähim lennuk või sõiduk, uuesti järgmine
 kg-zoom = Suum sisse / välja
 kg-wide-angle = Lainurk
 kg-menu = Seadete menüü, paus

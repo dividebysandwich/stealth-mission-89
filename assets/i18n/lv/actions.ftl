@@ -58,6 +58,7 @@ action-view-missile = Raķetes skats
 action-view-tactical = Taktiskais skats
 action-view-inverse-tactical = Apgrieztais taktiskais skats
 action-view-free = Brīvais skats
+action-view-observe = Novērotāja skats
 action-zoom = Tuvināt
 action-unzoom = Tālināt
 action-map-zoom-in = Kartes tuvināšana

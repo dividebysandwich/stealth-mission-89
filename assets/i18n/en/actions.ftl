@@ -59,6 +59,7 @@ action-view-missile = View missile
 action-view-tactical = View tactical
 action-view-inverse-tactical = View inverse tactical
 action-view-free = View free
+action-view-observe = View observer
 action-zoom = Zoom
 action-unzoom = Unzoom
 action-map-zoom-in = Map zoom in

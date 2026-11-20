@@ -101,6 +101,7 @@ kg-view-missile = Raketos vaizdas
 kg-view-tactical = Taktinis vaizdas
 kg-view-inverse-tactical = Atvirkštinis taktinis vaizdas
 kg-view-free = Laisva kamera: W/S/A/D/Q/E, pelė, ratukas
+kg-view-observe = Stebėtojo kamera: artimiausias orlaivis ar transporto priemonė, dar kartą kitas
 kg-zoom = Priartinti / nutolinti
 kg-wide-angle = Platus kampas
 kg-menu = Nustatymų meniu, pauzė

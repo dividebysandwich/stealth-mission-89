@@ -109,6 +109,7 @@ kg-view-missile = Missile view
 kg-view-tactical = Tactical view
 kg-view-inverse-tactical = Inverse tactical view
 kg-view-free = Free camera: W/S/A/D/Q/E, mouse, wheel
+kg-view-observe = Observer camera: the nearest aircraft or vehicle, again for the next
 kg-zoom = Zoom in / out
 kg-view-zoom = View zoom in / out (held), as the wheel
 kg-pan = Look around (held), as the mouse

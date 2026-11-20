@@ -99,6 +99,7 @@ kg-view-missile = Προβολή πυραύλου
 kg-view-tactical = Τακτική προβολή
 kg-view-inverse-tactical = Αντίστροφη τακτική προβολή
 kg-view-free = Ελεύθερη κάμερα: W/S/A/D/Q/E, ποντίκι, ροδέλα
+kg-view-observe = Κάμερα παρατηρητή: το πλησιέστερο αεροσκάφος ή όχημα, ξανά για το επόμενο
 kg-zoom = Ζουμ μέσα / έξω
 kg-wide-angle = Ευρεία γωνία
 kg-menu = Μενού ρυθμίσεων, παύση

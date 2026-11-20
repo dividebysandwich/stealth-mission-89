@@ -102,6 +102,7 @@ kg-view-missile = Rakéta-nézet
 kg-view-tactical = Taktikai nézet
 kg-view-inverse-tactical = Fordított taktikai nézet
 kg-view-free = Szabad kamera: W/S/A/D/Q/E, egér, görgő
+kg-view-observe = Megfigyelő kamera: a legközelebbi repülő vagy jármű, újra a következő
 kg-zoom = Nagyítás / kicsinyítés
 kg-wide-angle = Nagy látószög
 kg-menu = Beállítások menü, szünet

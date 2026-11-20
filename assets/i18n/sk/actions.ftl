@@ -59,6 +59,7 @@ action-view-missile = Pohľad z rakety
 action-view-tactical = Taktický pohľad
 action-view-inverse-tactical = Inverzný taktický pohľad
 action-view-free = Voľný pohľad
+action-view-observe = Pohľad pozorovateľa
 action-zoom = Priblížiť
 action-unzoom = Oddialiť
 action-map-zoom-in = Priblíženie mapy

@@ -58,6 +58,7 @@ action-view-missile = 미사일 시점
 action-view-tactical = 전술 시점
 action-view-inverse-tactical = 역 전술 시점
 action-view-free = 자유 시점
+action-view-observe = 관찰 시점
 action-zoom = 확대
 action-unzoom = 축소
 action-map-zoom-in = 지도 확대

@@ -59,6 +59,7 @@ action-view-missile = Missiludsigt
 action-view-tactical = Taktisk udsigt
 action-view-inverse-tactical = Omvendt taktisk udsigt
 action-view-free = Fri udsigt
+action-view-observe = Observatørudsigt
 action-zoom = Zoom ind
 action-unzoom = Zoom ud
 action-map-zoom-in = Kortzoom ind

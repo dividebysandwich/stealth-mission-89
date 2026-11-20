@@ -100,6 +100,7 @@ kg-view-missile = 导弹视角
 kg-view-tactical = 战术视角
 kg-view-inverse-tactical = 反向战术视角
 kg-view-free = 自由摄像机：W/S/A/D/Q/E、鼠标、滚轮
+kg-view-observe = 观察摄像机：最近的飞机或车辆，再按切换下一个
 kg-zoom = 放大 / 缩小
 kg-wide-angle = 广角
 kg-menu = 设置菜单、暂停

@@ -99,6 +99,7 @@ kg-view-missile = Вид: ракета
 kg-view-tactical = Вид: тактичний
 kg-view-inverse-tactical = Вид: зворотний тактичний
 kg-view-free = Вільна камера: W/S/A/D/Q/E, миша, колісчатко
+kg-view-observe = Камера спостерігача: найближчий літак або машина, ще раз — наступний
 kg-zoom = Збільшити / зменшити
 kg-wide-angle = Широкий кут
 kg-menu = Меню параметрів, пауза

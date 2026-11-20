@@ -58,6 +58,7 @@ action-view-missile = Radharc diúracáin
 action-view-tactical = Radharc tactúil
 action-view-inverse-tactical = Radharc tactúil droim ar ais
 action-view-free = Radharc saor
+action-view-observe = Radharc breathnóra
 action-zoom = Súmáil isteach
 action-unzoom = Súmáil amach
 action-map-zoom-in = Súmáil na léarscáile isteach

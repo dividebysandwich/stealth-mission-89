@@ -58,6 +58,7 @@ action-view-missile = Robotvy
 action-view-tactical = Taktisk vy
 action-view-inverse-tactical = Omvänd taktisk vy
 action-view-free = Fri vy
+action-view-observe = Observatörsvy
 action-zoom = Zooma in
 action-unzoom = Zooma ut
 action-map-zoom-in = Kartzoom in

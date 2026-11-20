@@ -59,6 +59,7 @@ action-view-missile = Rakéta-nézet
 action-view-tactical = Taktikai nézet
 action-view-inverse-tactical = Fordított taktikai nézet
 action-view-free = Szabad nézet
+action-view-observe = Megfigyelő nézet
 action-zoom = Nagyítás
 action-unzoom = Kicsinyítés
 action-map-zoom-in = Térkép nagyítása

@@ -139,6 +139,7 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[ViewTactical]), "kg-view-tactical"),
                 (Actions(&[ViewInverseTactical]), "kg-view-inverse-tactical"),
                 (Actions(&[ViewFree]), "kg-view-free"),
+                (Actions(&[ViewObserve]), "kg-view-observe"),
                 (Actions(&[Zoom, Unzoom]), "kg-zoom"),
                 (Actions(&[ViewZoomIn, ViewZoomOut]), "kg-view-zoom"),
                 (Actions(&[PanLeft, PanRight, PanUp, PanDown]), "kg-pan"),

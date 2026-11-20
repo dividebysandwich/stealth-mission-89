@@ -102,6 +102,7 @@ kg-view-missile = Pandangan rudal
 kg-view-tactical = Pandangan taktis
 kg-view-inverse-tactical = Pandangan taktis terbalik
 kg-view-free = Kamera bebas: W/S/A/D/Q/E, mouse, roda
+kg-view-observe = Kamera pengamat: pesawat atau kendaraan terdekat, sekali lagi untuk berikutnya
 kg-zoom = Perbesar / perkecil
 kg-wide-angle = Sudut lebar
 kg-menu = Menu pengaturan, jeda

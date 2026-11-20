@@ -101,6 +101,7 @@ kg-view-missile = Missiludsigt
 kg-view-tactical = Taktisk udsigt
 kg-view-inverse-tactical = Omvendt taktisk udsigt
 kg-view-free = Frit kamera: W/S/A/D/Q/E, mus, hjul
+kg-view-observe = Observatørkamera: nærmeste fly eller køretøj, igen for det næste
 kg-zoom = Zoom ind / ud
 kg-wide-angle = Vidvinkel
 kg-menu = Indstillingsmenu, pause
