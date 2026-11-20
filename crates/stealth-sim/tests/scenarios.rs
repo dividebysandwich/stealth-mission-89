@@ -766,24 +766,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0xd041d2e4c2f2a991,
-        0xb9e42c3f2d521cb4,
-        0xe6b89df189aeffe7,
-        0xf9f656e89ae7a7df,
-        0x0ea8b1480b57c076,
-        0xedd4b3169400f600,
-        0x4e6841dd799694ff,
-        0x100c9aab57b25f0e,
-        0x11eed3290271e1c6,
-        0xccf0be4e24de424b,
-        0xf7c70f9e41fc6f47,
-        0xdf01a0ba0ef4c044,
-        0xe64832c8f9c0f8a9,
-        0xe7174052ebbb1c7d,
-        0xf70c5bf66b6ccd93,
-        0x1ee01e9e8e4a381c,
-        0xab37c4e807c82100,
-        0xf13e9010324a43cb,
+        0x6c9e1a2e90dcc348,
+        0xa74be15c0d34e555,
+        0x6eee547ea4a72428,
+        0xd8b753c186175a16,
+        0xa1ffa53fdc1e8fa1,
+        0xbc199c73c432a5f7,
+        0x0f0380fa698d70fe,
+        0x8e8abae5a876faef,
+        0x1889b6706d79bef7,
+        0xf131e16b6d9a4a08,
+        0xfb1fad4129cea1b2,
+        0xe7f8105061021075,
+        0x8ef7cce09967fa04,
+        0x83951f85e5a21af0,
+        0x65c6809e4b0d4ce4,
+        0x65a3133fc90f3cc7,
+        0x3335807216bcfc7d,
+        0x2dda5c8ff63c9122,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -4247,4 +4247,119 @@ fn jp233_craters_close_a_runway() {
         }
     }
     assert!(destroyed, "runway {k} not cratered");
+}
+
+/// A rocket test: hovering `alt` ft up heading north over a sandbox with two pods of weapon
+/// `w`, `units` placed (map offsets from the aircraft). Returns the simulation, the input and
+/// the aircraft's map position.
+fn rocket_range(
+    w: i32,
+    alt: u16,
+    units: &[(aaa::GroundKind, i32, i32)],
+) -> (Sim, PlayerState, (i32, i32)) {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(w, 7), (w, 7)]);
+    *sim.units_mut() = units
+        .iter()
+        .map(|&(kind, dx, dy)| aaa::GroundUnit {
+            kind,
+            x: mx + dx,
+            y: my + dy,
+            ..Default::default()
+        })
+        .collect();
+    let mut p = player_at(mx, my, alt, 0, 0);
+    p.hud_mode = HudMode::Gnd;
+    sim.step(&p, 15);
+    (sim, p, (mx, my))
+}
+
+/// Steps until the rockets in flight are down: the bursts (m east, north) and the events.
+fn rockets_down(sim: &mut Sim, p: &mut PlayerState) -> (Vec<[f64; 2]>, Vec<SimEvent>) {
+    let mut bursts = Vec::new();
+    let mut events = Vec::new();
+    for _ in 0..15 * 30 {
+        for e in sim.step(p, 15) {
+            if let SimEvent::RocketBurst { at, .. } = e {
+                let f = stealth_sim::ROUND_FINE as f64 * 32.0;
+                let m = aaa::M_PER_MAP;
+                bursts.push([at.0 as f64 / f * m, (0x8000 as f64 - at.1 as f64 / f) * m]);
+            }
+            events.push(e);
+        }
+        if sim.rockets().is_empty() && !bursts.is_empty() {
+            break;
+        }
+    }
+    (bursts, events)
+}
+
+/// A press fires a pair of unguided rockets, one off each pod, and they come down by the CCIP
+/// reticle's point (in a 10 degree dive: at a grazing angle their scatter spreads far along).
+#[test]
+fn hydra_pair_lands_at_the_ccip_point() {
+    use stealth_sim::rockets;
+    let (mut sim, mut p, _) = rocket_range(rockets::HYDRA_WEAPON, 1000, &[]);
+    p.pitch = -0x0700;
+    sim.step(&p, 15);
+    let (ccip, tof) = sim.rocket_ccip().expect("a CCIP point");
+    assert!(tof > 1.0, "time of flight {tof}");
+    p.cmd.fire = true;
+    p.cmd.trigger = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    assert_eq!(sim.bays().0.iter().map(|b| b.1).collect::<Vec<_>>(), vec![6, 6], "a pair");
+    let (bursts, _) = rockets_down(&mut sim, &mut p);
+    assert_eq!(bursts.len(), 2);
+    for b in bursts {
+        let miss = (b[0] - ccip[0]).hypot(b[1] - ccip[1]);
+        assert!(miss < 60.0, "{miss:.0} m from the CCIP point {ccip:?}: {b:?}");
+    }
+}
+
+/// Holding the trigger ripples a pair every quarter second until it is let go.
+#[test]
+fn hydra_ripples_while_the_trigger_is_held() {
+    use stealth_sim::rockets;
+    let (mut sim, mut p, _) = rocket_range(rockets::HYDRA_WEAPON, 300, &[]);
+    p.cmd.fire = true;
+    p.cmd.trigger = true;
+    sim.step(&p, 15);
+    p.cmd.fire = false;
+    // Held for a second: three more pairs.
+    for _ in 0..15 {
+        sim.step(&p, 15);
+    }
+    p.cmd = Commands::default();
+    for _ in 0..15 {
+        sim.step(&p, 15);
+    }
+    let left: i32 = sim.bays().0.iter().map(|b| b.1).sum();
+    assert_eq!(left, 14 - 8, "{:?}", sim.bays().0);
+}
+
+/// An APKWS fired along the nose turns onto the targeting pod's laser spot on a vehicle off
+/// to the side and destroys it.
+#[test]
+fn apkws_homes_on_the_laser_spot() {
+    use aaa::GroundKind;
+    use stealth_sim::rockets;
+    // A vehicle 1 km ahead, 150 m to the right.
+    let (mut sim, mut p, (mx, my)) =
+        rocket_range(rockets::APKWS_WEAPON, 300, &[(GroundKind::Bmp2, 10, -64)]);
+    p.pod = Some(PodAim { heading: 0, pitch: 0, ground: Some((mx + 10, my - 64)) });
+    p.cmd.fire = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    let (bursts, events) = rockets_down(&mut sim, &mut p);
+    assert_eq!(bursts.len(), 2);
+    let [e, n] = stealth_sim::asw::map_metres((mx + 10, my - 64));
+    for b in &bursts {
+        let miss = (b[0] - e).hypot(b[1] - n);
+        assert!(miss < 6.0, "{miss:.1} m off the spot");
+    }
+    assert!(sim.units()[0].destroyed, "{events:?}");
 }

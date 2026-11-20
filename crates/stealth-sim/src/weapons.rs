@@ -445,6 +445,8 @@ impl Sim {
                 self.pl.ripple = Some(r);
             }
         }
+        // Rockets: the next pair while the trigger stays held.
+        self.ripple_rockets(ps.cmd.trigger);
         let rippling = self.pl.ripple.is_some();
         let in_mode = self.selection_in_mode(ps);
         if ps.cmd.fire && self.pl.fire_cooldown == 0 && self.pl.eject == 0 && !rippling {
@@ -456,6 +458,11 @@ impl Sim {
                 self.pl.fire_cooldown = 4;
             } else if self.selected_weapon().0 == crate::jp233::JP233_WEAPON {
                 self.release_jp233();
+                self.pl.fire_cooldown = 4;
+            } else if crate::rockets::rocket_weapon(self.selected_weapon().0) {
+                if self.pl.rocket_ripple == 0 {
+                    self.fire_rockets();
+                }
                 self.pl.fire_cooldown = 4;
             } else if !ccrp {
                 if bomb {

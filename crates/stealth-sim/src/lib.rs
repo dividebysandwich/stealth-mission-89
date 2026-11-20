@@ -39,6 +39,7 @@ pub mod naval;
 pub mod paradrop;
 pub mod jamming;
 pub mod jp233;
+pub mod rockets;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -275,6 +276,9 @@ pub struct Sim {
     /// The JP233s at work, their submunitions and mines ([`jp233`]).
     #[serde(default, skip_serializing_if = "jp233::Jp233::is_empty")]
     pub(crate) jp233: jp233::Jp233,
+    /// The 70 mm rockets in flight ([`rockets`]).
+    #[serde(default, skip_serializing_if = "rockets::Rockets::is_empty")]
+    pub(crate) rockets: rockets::Rockets,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -533,6 +537,7 @@ impl Sim {
                 prev_fire: false,
                 ccrp_last: None,
                 ripple: None,
+                rocket_ripple: 0,
                 prev_hud_mode: HudMode::Nav,
                 hud_mode: HudMode::Nav,
                 camera_mfd: false,
@@ -651,6 +656,7 @@ impl Sim {
             naval: naval::Naval::default(),
             paradrop: paradrop::Paradrop::default(),
             jp233: jp233::Jp233::default(),
+            rockets: rockets::Rockets::default(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,
@@ -1058,6 +1064,7 @@ impl Sim {
         self.update_naval();
         self.update_paradrop(&present);
         self.update_jp233(&present);
+        self.update_rockets(&present);
         for &k in &present {
             self.activate(k);
             self.update_cm_timers();

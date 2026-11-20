@@ -165,6 +165,9 @@ pub struct Pilot {
     /// frame (None: no CCRP solution).
     #[serde(default)]
     pub(crate) ccrp_last: Option<f64>,
+    /// Frames to the next pair of rockets while the trigger stays held (0: no ripple).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub(crate) rocket_ripple: i32,
     /// A ripple under way (or done with the button still held).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) ripple: Option<RippleRun>,

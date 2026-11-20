@@ -1163,6 +1163,16 @@ pub enum SimEvent {
         crater: bool,
         kill: bool,
     },
+    /// A 70 mm rocket left its tube (fine units like [`Jp233Burst`]); `guided`: an APKWS.
+    RocketFired {
+        at: (i32, i32, i32),
+        guided: bool,
+    },
+    /// A 70 mm rocket's warhead went off (fine units); `kill`: it destroyed something.
+    RocketBurst {
+        at: (i32, i32, i32),
+        kill: bool,
+    },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {
         unit: usize,

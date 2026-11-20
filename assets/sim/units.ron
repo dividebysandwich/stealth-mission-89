@@ -170,6 +170,10 @@
         (id: "mald", name: "MALD", family: Ground, range_km: 900, mach: 0.8, g: 4, seeker: Optical, model: 15),
         // The enemy submarines' sea-skimming anti-ship missile, flown by naval.rs.
         (id: "3m54", name: "3M-54", family: Ground, range_km: 60, mach: 0.8, g: 6, seeker: AntiShip, model: 15),
+        // The 70 mm rockets: the unguided Hydra 70 and the laser-guided APKWS, flown by
+        // rockets.rs (not by the missile code).
+        (id: "hydra70", name: "Hydra 70", family: Ground, range_km: 6, mach: 2.0, g: 1, seeker: Optical, model: 15),
+        (id: "apkws", name: "APKWS", family: Ground, range_km: 8, mach: 2.0, g: 20, seeker: Optical, model: 15),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -252,6 +256,14 @@
         (id: "jp233", short: "JP233", long: "JP233", missile: "none", picture: 6, bay: 1,
             effect: {"shelter": 1, "runway": 8, "aircraft": 7, "building": 2, "depot": 4, "launcher": 6,
                      "radar": 5, "industry": 1, "small_ship": 1, "armour": 6}),
+        // 70 mm rocket pods (rockets.rs): the unguided Hydra 70 and the laser-guided APKWS,
+        // M151 high explosive warheads; a round is a rocket.
+        (id: "hydra", short: "M151", long: "Hydra 70", missile: "hydra70", picture: 16, bay: 7,
+            effect: {"aircraft": 5, "building": 2, "depot": 3, "launcher": 5, "radar": 5, "small_ship": 3,
+                     "armour": 3}),
+        (id: "apkws", short: "APKWS", long: "APKWS", missile: "apkws", picture: 16, bay: 7,
+            effect: {"aircraft": 6, "building": 2, "depot": 3, "launcher": 6, "radar": 6, "small_ship": 4,
+                     "armour": 4}),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).
