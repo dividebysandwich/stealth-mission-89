@@ -536,3 +536,69 @@ fn report(
     r.frames.clear();
     r.passes.clear();
 }
+
+/// `SM89_ASSETS=<seconds>`: every so often the log gets the number of entities and of each
+/// kind of asset (memory that keeps growing: what piles up).
+pub fn assets_interval() -> Option<f32> {
+    setting("SM89_ASSETS", "assets")?.parse().ok().filter(|s: &f32| *s > 0.0)
+}
+
+pub struct AssetsLogPlugin(pub f32);
+
+impl Plugin for AssetsLogPlugin {
+    fn build(&self, app: &mut App) {
+        let every = self.0;
+        app.add_systems(Last, move |world: &mut World, mut last: Local<Option<f64>>| {
+            let now = world.resource::<Time<Real>>().elapsed_secs_f64();
+            if last.is_some_and(|l| now - l < every as f64) {
+                return;
+            }
+            *last = Some(now);
+            log_assets(world, now);
+        });
+    }
+}
+
+fn log_assets(world: &World, now: f64) {
+    use crate::cockpit3d::hud_glass::{HmdMaterial, HudGlassMaterial};
+    fn n<A: Asset>(world: &World) -> usize {
+        world.get_resource::<Assets<A>>().map_or(0, |a| a.len())
+    }
+    let image_bytes: usize = world
+        .get_resource::<Assets<Image>>()
+        .map_or(0, |a| a.iter().map(|(_, i)| i.data.as_ref().map_or(0, |d| d.len())).sum());
+    // glibc's heap (`dev` builds; the others use mimalloc): bytes in use (live allocations)
+    // against bytes held from the system.
+    #[cfg(all(feature = "dev", target_os = "linux", target_env = "gnu"))]
+    {
+        // SAFETY: mallinfo2 only reads the allocator's counters.
+        let m = unsafe { libc::mallinfo2() };
+        info!(
+            "heap at {now:.0} s: in use {} MB, held {} MB (mmapped {} MB), free in arenas {} MB",
+            (m.uordblks + m.hblkhd) >> 20,
+            (m.arena + m.hblkhd) >> 20,
+            m.hblkhd >> 20,
+            m.fordblks >> 20,
+        );
+    }
+    info!(
+        "assets at {now:.0} s: entities {}, meshes {}, images {} ({} MB in RAM), \
+         palette materials {}, cockpit materials {}, standard materials {}, particle {}, trail {}, \
+         rotor {}, HUD glass {}, HMD {}, shader buffers {}, gltf {}, audio {}",
+        world.entities().len(),
+        n::<Mesh>(world),
+        n::<Image>(world),
+        image_bytes / (1 << 20),
+        n::<crate::palette_material::PaletteMaterial>(world),
+        n::<crate::cockpit3d::CockpitMaterial>(world),
+        n::<StandardMaterial>(world),
+        n::<crate::explosions::ParticleMaterial>(world),
+        n::<crate::trails::TrailMaterial>(world),
+        n::<crate::rotor_blur::RotorMaterial>(world),
+        n::<HudGlassMaterial>(world),
+        n::<HmdMaterial>(world),
+        n::<bevy::render::storage::ShaderBuffer>(world),
+        n::<bevy::gltf::Gltf>(world),
+        n::<AudioSource>(world),
+    );
+}

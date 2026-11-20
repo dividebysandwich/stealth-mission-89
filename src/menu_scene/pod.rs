@@ -66,7 +66,7 @@ pub fn spawn_pod(
                 ..default()
             }),
             Tonemapping::None,
-            Msaa::Off,
+            // The main camera's MSAA (`palette::apply_msaa`).
             WorldPos::default(),
             Transform::default(),
             bevy::camera::visibility::RenderLayers::from_layers(&[

@@ -985,6 +985,13 @@ fn colour_material(
     globals: &Handle<ShaderBuffer>,
     idx: u8,
 ) -> Handle<PaletteMaterial> {
+    // Made with another palette (a new theater's): made again.
+    if p.colours
+        .first()
+        .is_some_and(|(_, m)| !crate::palette_material::current(materials, m, globals))
+    {
+        p.colours.clear();
+    }
     if let Some((_, m)) = p.colours.iter().find(|(c, _)| *c == idx) {
         return m.clone();
     }

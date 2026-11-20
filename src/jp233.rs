@@ -70,6 +70,13 @@ pub fn sync_jp233(
     mut q: Query<(&mut WorldPos, &mut Transform, &mut Visibility), With<SimObject>>,
 ) {
     let vis = &mut *vis;
+    if vis
+        .material
+        .as_ref()
+        .is_some_and(|m| !crate::palette_material::current(&materials, m, &assets.palette.globals))
+    {
+        vis.material = None;
+    }
     let body = vis
         .material
         .get_or_insert_with(|| {

@@ -565,6 +565,17 @@ const FX_DEFS: [(u32, &str); 13] = [
     (FX_OCEAN, "PALETTE_OCEAN"),
 ];
 
+/// Whether material `m` draws with the palette whose globals are `globals`. A new theater's
+/// palette has new globals: a material cached with the old ones keeps its colours frozen (and
+/// keeps the old palette's buffer alive), so caches drop it and make it again.
+pub fn current(
+    materials: &Assets<PaletteMaterial>,
+    m: &Handle<PaletteMaterial>,
+    globals: &Handle<ShaderBuffer>,
+) -> bool {
+    materials.get(m).is_some_and(|m| m.globals.id() == globals.id())
+}
+
 /// The background's variant for the sky now (`FX_STARS`, `FX_STRATUS`).
 pub fn sky_bits(sky: &crate::sky::Sky, weather: &crate::weather::WeatherState) -> u32 {
     let stars = (sky.on || sky.classic_bodies) && sky.stars > 0.0;

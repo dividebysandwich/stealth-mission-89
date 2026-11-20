@@ -34,6 +34,8 @@ mod combat;
 mod crash_log;
 mod csar_view;
 mod debrief;
+#[cfg(all(feature = "dev", target_os = "linux", target_env = "gnu"))]
+mod memory;
 mod detail_benchmark;
 #[cfg(not(target_arch = "wasm32"))]
 mod dedicated;
@@ -435,6 +437,11 @@ pub fn run() {
     // SM89_PROFILE: timings in the log (see profile.rs).
     if let Some(p) = profile::config() {
         app.add_plugins(profile::ProfilePlugin(p));
+    }
+    #[cfg(all(feature = "dev", target_os = "linux", target_env = "gnu"))]
+    app.add_plugins(memory::MemoryPlugin);
+    if let Some(every) = profile::assets_interval() {
+        app.add_plugins(profile::AssetsLogPlugin(every));
     }
     if let Some(shot) = autoshot::from_args() {
         app.add_plugins(shot);

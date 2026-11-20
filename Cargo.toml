@@ -101,6 +101,11 @@ sha2 = "0.10"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+# The desktop builds' allocator (src/main.rs): glibc's kept the memory freed by the menu scenes'
+# worker threads in its arenas (over 4 GB after ten minutes and climbing; mimalloc stays near 3).
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
+mimalloc = { version = "0.1", default-features = false }
+
 # The check for a GPU before Bevy starts, and the window that says there is none
 # (src/no_gpu.rs): on Linux Bevy's GL fallback can't present to a window, on Windows the
 # software renderer (WARP) loses its device within seconds.

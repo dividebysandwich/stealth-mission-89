@@ -121,6 +121,11 @@ fn dot_materials(
         };
         material.0 = twin;
     }
+    // A source gone (a new theater's palette, the old one's materials freed): its twin goes
+    // too, else they'd pile up with each palette (and keep its globals buffer).
+    let DotMaterials { twins, sources } = &mut *dots;
+    twins.retain(|source, _| materials.contains(*source));
+    sources.retain(|_, source| twins.contains_key(source));
     for (source, twin) in &dots.twins {
         let Some(word) = materials.get(*source).map(|m| m.params.word) else { continue };
         if let Some(mut m) = materials.get_mut(twin)

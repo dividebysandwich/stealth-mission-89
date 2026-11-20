@@ -462,11 +462,19 @@ fn msaa_override() -> Option<Msaa> {
     })
 }
 
+/// The cameras that take the MSAA option: the main views and the menu scenes' pod cameras.
+type MsaaCameras = (
+    With<Camera3d>,
+    Or<(Without<crate::camera::OffscreenCamera>, With<crate::menu_scene::pod::PodCamera>)>,
+);
+
 /// The MSAA option: 4x MSAA, 2x in VR (4x cost the Steam Frame 2 ms per frame, over its 72 Hz
-/// budget). None on WebGL2, nor with the pixelize look.
+/// budget). None on WebGL2, nor with the pixelize look. The menu scenes' pod cameras (their
+/// screens' pictures) follow it too: with the main camera's MSAA they draw with its pipelines,
+/// not a second set (each a stall the first time in the browser).
 fn apply_msaa(
     settings: Res<Settings>,
-    mut cams: Query<&mut Msaa, (With<Camera3d>, Without<crate::camera::OffscreenCamera>)>,
+    mut cams: Query<&mut Msaa, MsaaCameras>,
     added: Query<(), Added<Camera3d>>,
 ) {
     if !settings.is_changed() && added.is_empty() {

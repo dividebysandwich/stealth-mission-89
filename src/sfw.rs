@@ -102,6 +102,11 @@ pub fn sync_sfw(
     mut q: Query<(&mut WorldPos, &mut Transform, &mut Visibility), With<SimObject>>,
 ) {
     let vis = &mut *vis;
+    if vis.materials.as_ref().is_some_and(|(m, _)| {
+        !crate::palette_material::current(&materials, m, &assets.palette.globals)
+    }) {
+        vis.materials = None;
+    }
     let (body, flame) = vis
         .materials
         .get_or_insert_with(|| {

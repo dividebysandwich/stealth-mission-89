@@ -184,6 +184,13 @@ fn side_gun_fx(
         let (size, life) = GLOW[s.gun as usize];
         ex.pending.push((s.pos, Blast::Tracer { size, life }));
     }
+    if fx
+        .material
+        .as_ref()
+        .is_some_and(|m| !crate::palette_material::current(&materials, m, &palette.globals))
+    {
+        fx.material = None;
+    }
     let material = fx
         .material
         .get_or_insert_with(|| {

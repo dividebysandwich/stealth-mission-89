@@ -27,7 +27,7 @@ mod gunship;
 mod helmet;
 mod lift;
 mod pages;
-mod pod;
+pub(crate) mod pod;
 mod sam;
 mod slam;
 mod stage;

@@ -131,6 +131,13 @@ pub fn ground_fire(
         false
     });
 
+    if rounds
+        .materials
+        .as_ref()
+        .is_some_and(|(m, _)| !crate::palette_material::current(&materials, m, &palette.globals))
+    {
+        rounds.materials = None;
+    }
     let (blue, red) = rounds
         .materials
         .get_or_insert_with(|| {
