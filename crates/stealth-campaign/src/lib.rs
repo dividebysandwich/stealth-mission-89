@@ -32,6 +32,7 @@ mod flow;
 pub mod ground;
 mod missions;
 mod munitions;
+pub mod missile_strikes;
 mod record;
 mod resupply;
 pub mod rng;
@@ -191,6 +192,28 @@ pub enum Report {
     PlayerLanded {
         player: PlayerId,
         base: ObjectId,
+    },
+    /// Missile strike `strike`'s launcher is ground unit `unit`.
+    LauncherPlaced {
+        strike: u32,
+        unit: u32,
+    },
+    /// It is at its firing point.
+    LauncherArrived {
+        strike: u32,
+    },
+    /// It was destroyed before it fired.
+    LauncherLost {
+        strike: u32,
+    },
+    /// The missiles of the strike whose carrier tag is `tag` are away.
+    MissilesAway {
+        tag: u32,
+    },
+    /// A strike missile (its tag) came down on its target, destroying `kills` things.
+    MissileImpact {
+        tag: u32,
+        kills: u8,
     },
 }
 
@@ -379,6 +402,34 @@ pub enum CampaignEvent {
     Restocked {
         aaa: u32,
     },
+    /// A missile strike's launcher (strike `strike`): a TEL drives from `from` to `to` (map
+    /// units), a friendly launch site's launcher stands at `to` (`fixed`).
+    LauncherDeploy {
+        strike: u32,
+        missile: missile_strikes::StrikeMissile,
+        from: (i32, i32),
+        to: (i32, i32),
+        blue: bool,
+        fixed: bool,
+    },
+    /// Strike `strike`'s launcher fires at `aims` (map units, the object there): campaign tags
+    /// `tag` + 1 + k.
+    LauncherFire {
+        strike: u32,
+        missile: missile_strikes::StrikeMissile,
+        aims: Vec<((i32, i32), Option<ObjectId>)>,
+        tag: u32,
+    },
+    /// A bomber (campaign tag `tag`) takes off from `base` for its launch point, with
+    /// missiles for `aims` (tags `tag` + 1 + k).
+    CarrierLaunched {
+        strike: u32,
+        missile: missile_strikes::StrikeMissile,
+        base: ObjectId,
+        launch: (i32, i32),
+        aims: Vec<((i32, i32), Option<ObjectId>)>,
+        tag: u32,
+    },
     /// A cargo helicopter (tag) takes off from a base's helipad for the helipad of a new site
     /// (deployment `id`) at (x, y).
     CargoLaunched {
@@ -521,6 +572,8 @@ impl CampaignState {
         self.enemy_offensive(view, &mut ev);
         self.run_awacs(&mut ev);
         self.drone_waves(&mut ev);
+        self.missile_strikes_due(&mut ev);
+        self.run_missile_strikes(&mut ev);
         self.forward_batteries(view, &mut ev);
         self.run_resupply(view, &mut ev);
         self.run_deployments(view, &mut ev);
@@ -611,6 +664,7 @@ impl CampaignState {
             p.crew.clear();
         }
         self.ground_ai_missions();
+        self.ground_missile_strikes();
         self.ground_cargo();
         let players: Vec<PlayerId> =
             self.players.iter().filter(|p| p.sortie.is_some()).map(|p| p.id).collect();

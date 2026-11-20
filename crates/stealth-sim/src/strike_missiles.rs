@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Sim;
 use crate::aaa::{GroundKind, GroundUnit, M_PER_MAP};
-use crate::campaign::{CampaignFlight, Role};
+use crate::campaign::Role;
 use crate::math::{approx, s16};
 use crate::types::*;
 
@@ -547,9 +547,4 @@ impl Sim {
     pub fn launchers(&self) -> impl Iterator<Item = (usize, bool)> + '_ {
         self.launchers.iter().map(|l| (l.unit as usize, l.arrived))
     }
-}
-
-/// A campaign flight that is a missile (for `matches!` on roles elsewhere).
-pub(crate) fn is_missile(f: &CampaignFlight) -> bool {
-    f.role == Role::Missile
 }

@@ -97,7 +97,13 @@ impl CampaignState {
                 self.gun_lost(index, view);
             }
             Report::SamKill { aaa, side } => self.sam_kill(aaa, side, view, ev),
+            Report::LauncherPlaced { .. }
+            | Report::LauncherArrived { .. }
+            | Report::LauncherLost { .. }
+            | Report::MissilesAway { .. }
+            | Report::MissileImpact { .. } => self.missile_report(r, ev),
             Report::FlightDestroyed { tag, .. } if tag != 0 => {
+                self.missile_report(r, ev);
                 self.wingman_lost(tag, ev);
                 self.patrols.retain(|p| p.0 != tag);
                 self.cap_report(tag, true);
@@ -1702,6 +1708,10 @@ impl CampaignState {
         // Air defence units waiting for a new stockpile.
         for (title, objective, x, y) in self.supply_offers() {
             add(self, MissionKind::Resupply, title, objective, x, y, 0);
+        }
+        // The enemy's TELs out to fire.
+        for (title, objective, x, y) in self.tel_hunts() {
+            add(self, MissionKind::Cas, title, objective, x, y, 1);
         }
         // The cargo of the new air defence sites.
         for (title, objective, x, y) in self.logistics_offers() {

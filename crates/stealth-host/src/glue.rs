@@ -651,3 +651,30 @@ pub fn place_site(sim: &mut Sim, kind: stealth_campaign::DefenceKind, x: i32, y:
         DefenceKind::Nasams => sim.place_nasams(x, y),
     }
 }
+
+/// The simulation's missile of a campaign missile strike.
+pub fn sim_missile(
+    m: stealth_campaign::missile_strikes::StrikeMissile,
+) -> stealth_sim::strike_missiles::MissileKind {
+    use stealth_campaign::missile_strikes::StrikeMissile as C;
+    use stealth_sim::strike_missiles::MissileKind as S;
+    match m {
+        C::Iskander => S::Iskander,
+        C::Kh101 => S::Kh101,
+        C::Fp7 => S::Fp7,
+        C::Flamingo => S::Flamingo,
+    }
+}
+
+/// The launcher a missile strike's missiles leave from (a bomber's: none, the TEL's kind).
+pub fn launcher_kind(
+    m: stealth_campaign::missile_strikes::StrikeMissile,
+) -> stealth_sim::aaa::GroundKind {
+    use stealth_campaign::missile_strikes::StrikeMissile as C;
+    use stealth_sim::aaa::GroundKind as K;
+    match m {
+        C::Iskander | C::Kh101 => K::IskanderTel,
+        C::Fp7 => K::Fp7Launcher,
+        C::Flamingo => K::FlamingoLauncher,
+    }
+}

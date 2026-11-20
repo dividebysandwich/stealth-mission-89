@@ -1134,6 +1134,14 @@ pub struct CampaignState {
     /// When the last drone wave was ordered.
     #[serde(default)]
     pub drones_at: f64,
+    /// The missile strikes (`missile_strikes.rs`), and when the enemy last ordered an Iskander
+    /// and a Kh-101 strike.
+    #[serde(default)]
+    pub missile_strikes: Vec<crate::missile_strikes::MissileStrike>,
+    #[serde(default)]
+    pub iskander_at: f64,
+    #[serde(default)]
+    pub kh101_at: f64,
     /// The enemy's forward batteries, and when it last looked into pushing one forward.
     #[serde(default)]
     pub batteries: Vec<Battery>,
@@ -1712,6 +1720,9 @@ impl CampaignState {
             awacs_at: 0.0,
             awacs_down: Vec::new(),
             drones_at: 0.0,
+            missile_strikes: Vec::new(),
+            iskander_at: 0.0,
+            kh101_at: 0.0,
             batteries: Vec::new(),
             battery_at: f64::MIN,
             defence_stock: Vec::new(),

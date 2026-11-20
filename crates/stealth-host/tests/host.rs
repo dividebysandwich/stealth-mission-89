@@ -1017,3 +1017,80 @@ fn a_wingman_draws_its_stores_from_the_base() {
     assert_eq!(before - after, 4, "his two and the wingman's two");
     assert!(sim.wingman_pending(p.0));
 }
+
+/// An Iskander strike on Ukraine plays out: the TEL drives out, its hunt goes on the board
+/// while it prepares, it fires, and the missiles come down or are shot down.
+#[test]
+fn an_iskander_strike_plays_out() {
+    use stealth_campaign::missile_strikes::{StrikeMissile, StrikeState};
+    let s = setup("ukraine");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "ukraine").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.state.iskander_at = -1e7;
+    host.state.kh101_at = 1e9;
+    let (mut hunted, mut warned) = (false, false);
+    for _ in 0..15 * 60 * 60 {
+        let e = sim.step_pilots(&[], 15);
+        let mut e2 = host.take_sim_events(&mut sim);
+        e2.extend(e);
+        host.tick(&mut sim, 1.0 / 15.0, &e2);
+        hunted |= host.state.board.iter().any(|o| {
+            matches!(o.objective, stealth_campaign::Objective::Battery { battery, .. }
+                if host.state.missile_strike(battery).is_some())
+        });
+        warned |= host.state.log.iter().any(|l| format!("{:?}", l.text).contains("cl-tbm-launch"));
+        if host
+            .state
+            .missile_strikes
+            .iter()
+            .any(|s| s.missile == StrikeMissile::Iskander && s.state == StrikeState::Ended)
+        {
+            let s = &host.state.missile_strikes[0];
+            assert!(hunted, "no TEL hunt on the board");
+            assert!(warned || s.hits + s.down < s.count, "no launch warning");
+            return;
+        }
+    }
+    panic!("{:?}", host.state.missile_strikes);
+}
+
+/// A Kh-101 raid on Ukraine plays out: the Tu-95 flies to its launch point, the missiles are
+/// announced, and they come down or are shot down.
+#[test]
+fn a_kh101_strike_plays_out() {
+    use stealth_campaign::missile_strikes::{StrikeMissile, StrikeState};
+    let s = setup("ukraine");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "ukraine").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.state.iskander_at = 1e9;
+    host.state.kh101_at = -1e7;
+    let mut inbound = false;
+    for _ in 0..15 * 60 * 120 {
+        let e = sim.step_pilots(&[], 15);
+        let mut e2 = host.take_sim_events(&mut sim);
+        e2.extend(e);
+        host.tick(&mut sim, 1.0 / 15.0, &e2);
+        inbound |= host
+            .state
+            .missile_strikes
+            .iter()
+            .any(|s| matches!(s.state, StrikeState::Inbound { .. }));
+        if let Some(s) = host
+            .state
+            .missile_strikes
+            .iter()
+            .find(|s| s.missile == StrikeMissile::Kh101 && s.state == StrikeState::Ended)
+        {
+            assert!(inbound, "never fired: {s:?}");
+            assert_eq!(s.hits + s.down, s.count, "{s:?}");
+            return;
+        }
+    }
+    panic!("{:?}", host.state.missile_strikes);
+}

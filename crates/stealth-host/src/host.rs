@@ -98,6 +98,10 @@ pub struct Host {
     landed: Vec<(PlayerId, u16)>,
     /// The ground munition each AI strike aircraft (campaign tag) took off with.
     pub(crate) ground_loads: Vec<(u32, stealth_campaign::Munition)>,
+    /// The missile strikes' launchers in the simulation (strike id, ground unit).
+    launchers: Vec<(u32, usize)>,
+    /// Reports the host's own calls raised, handed to the campaign with the next tick's.
+    pending: Vec<Report>,
 }
 
 impl Host {
@@ -141,6 +145,8 @@ impl Host {
             magazine_timer: 0.0,
             landed: Vec::new(),
             ground_loads: Vec::new(),
+            launchers: Vec::new(),
+            pending: Vec::new(),
         }
     }
 
@@ -714,10 +720,30 @@ impl Host {
     /// last one.
     pub fn tick(&mut self, sim: &mut Sim, dt: f64, events: &[PilotEvent]) -> Vec<HostEvent> {
         let mut out = Vec::new();
-        let mut reports = Vec::new();
+        let mut reports = std::mem::take(&mut self.pending);
         let mut ended = Vec::new();
         for e in events {
             let player = PlayerId(e.pilot);
+            // The missile strikes' launchers and missiles.
+            match e.event {
+                SimEvent::LauncherArrived { unit } => {
+                    if let Some(&(strike, _)) = self.launchers.iter().find(|l| l.1 == unit) {
+                        reports.push(Report::LauncherArrived { strike });
+                    }
+                }
+                SimEvent::AaaDestroyed { unit, .. } => {
+                    if let Some(&(strike, _)) = self.launchers.iter().find(|l| l.1 == unit) {
+                        reports.push(Report::LauncherLost { strike });
+                    }
+                }
+                SimEvent::StrikeMissilesAway { tag, .. } => {
+                    reports.push(Report::MissilesAway { tag })
+                }
+                SimEvent::StrikeMissileImpact { tag, kills, .. } => {
+                    reports.push(Report::MissileImpact { tag, kills })
+                }
+                _ => {}
+            }
             match e.event {
                 SimEvent::GroundDestroyed { object, by, .. } if object > 2 => {
                     reports.push(Report::ObjectDestroyed {
@@ -849,6 +875,38 @@ impl Host {
         let mut out = Vec::new();
         for e in events {
             match &e {
+                CampaignEvent::LauncherDeploy { strike, missile, from, to, blue, fixed } => {
+                    let kind = glue::launcher_kind(*missile);
+                    let unit = sim.spawn_launcher(kind, *from, *to, *blue, *fixed);
+                    self.launchers.retain(|l| l.0 != *strike);
+                    self.launchers.push((*strike, unit));
+                    self.pending.push(Report::LauncherPlaced { strike: *strike, unit: unit as u32 });
+                }
+                CampaignEvent::LauncherFire { strike, missile, aims, tag } => {
+                    let aims: Vec<((i32, i32), Option<usize>)> =
+                        aims.iter().map(|&(p, o)| (p, o.map(usize::from))).collect();
+                    let unit = self.launchers.iter().find(|l| l.0 == *strike).map(|l| l.1);
+                    let fired = unit.map_or(0, |u| {
+                        sim.fire_launcher(u, glue::sim_missile(*missile), &aims, *tag)
+                    });
+                    if fired == 0 {
+                        self.pending.push(Report::LauncherLost { strike: *strike });
+                    }
+                }
+                CampaignEvent::CarrierLaunched { missile, base, launch, aims, tag, .. } => {
+                    let mut salvo = stealth_sim::strike_missiles::Salvo {
+                        kind: glue::sim_missile(*missile),
+                        count: aims.len().min(6) as u8,
+                        tag: *tag,
+                        ..Default::default()
+                    };
+                    for (k, &(p, o)) in aims.iter().take(6).enumerate() {
+                        salvo.aims[k] = p;
+                        salvo.objects[k] = o;
+                    }
+                    let blue = salvo.kind.blue();
+                    sim.spawn_missile_carrier(*base as usize, *launch, salvo, blue);
+                }
                 CampaignEvent::InsertionLaunched { from, target, tags, side, .. } => {
                     let blue = *side == Side::Blue;
                     for (n, &tag) in tags.iter().enumerate() {

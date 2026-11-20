@@ -411,3 +411,27 @@ pub const SAM_LONG_PER_SITE_HOUR: f64 = 1.5;
 pub const SAM_MEDIUM_PER_SITE_HOUR: f64 = 1.5;
 pub const SAM_SHORT_PER_SITE_HOUR: f64 = 2.0;
 pub const AAA_PER_GUN_HOUR: f64 = 300.0;
+
+// --- Missile strikes (missile_strikes.rs) ---
+
+/// Reach of the Iskander (450 km), the FP-7 (200 km) and the cruise missiles (1500 km), map
+/// units.
+pub const ISKANDER_RANGE: i32 = 28_800;
+pub const FP7_RANGE: i32 = 12_800;
+pub const CRUISE_RANGE: i32 = 96_000;
+/// Campaign seconds between the enemy's Iskander strikes and Kh-101 strikes, by its skill.
+pub const ISKANDER_EVERY: [f64; 4] = [5.0 * 3600.0, 4.0 * 3600.0, 3.0 * 3600.0, 2.5 * 3600.0];
+pub const KH101_EVERY: [f64; 4] = [7.0 * 3600.0, 5.5 * 3600.0, 4.5 * 3600.0, 3.5 * 3600.0];
+/// What a strike costs the enemy's operations.
+pub const MISSILE_STRIKE_COST: f64 = 15.0;
+/// A TEL drives this far out of its base (map units, 20 km) and sets up for this long (s); a
+/// friendly launch site gets ready for this long.
+pub const TEL_DRIVE: i32 = 1_280;
+pub const TEL_PREPARE: f64 = 12.0 * 60.0;
+pub const SITE_PREPARE: f64 = 15.0 * 60.0;
+/// Missiles a TEL fires, and a Tu-95 (which launches a quarter of the way from its base).
+pub const ISKANDER_SALVO: u8 = 2;
+pub const KH101_SALVO: u8 = 6;
+pub const KH101_LAUNCH_FRAC: f64 = 0.25;
+/// Ended strikes kept (for the log).
+pub const MISSILE_STRIKES_KEPT: usize = 20;
