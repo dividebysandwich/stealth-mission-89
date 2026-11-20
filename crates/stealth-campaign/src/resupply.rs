@@ -55,7 +55,8 @@ impl CampaignState {
                     DefenceKind::Patriot
                     | DefenceKind::Nasams
                     | DefenceKind::Fp7Site
-                    | DefenceKind::FlamingoSite => "cl-resupply-out-of-missiles",
+                    | DefenceKind::FlamingoSite
+                    | DefenceKind::IskanderSite => "cl-resupply-out-of-missiles",
                     DefenceKind::Drones => "cl-resupply-out-of-drones",
                 };
                 text!(id, unit = r.title())
@@ -88,8 +89,13 @@ impl CampaignState {
     /// The friendly airfield a resupply for (x, y) is flown from: the nearest intact one, else
     /// the nearest base.
     pub fn supply_base(&self, x: i32, y: i32) -> Option<ObjectId> {
+        self.supply_base_for(Side::Blue, x, y)
+    }
+
+    /// A side's airfield nearest a point (map units), else its nearest base.
+    pub fn supply_base_for(&self, side: Side, x: i32, y: i32) -> Option<ObjectId> {
         let near = |b: &ObjectId| self.site(*b).map_or(i32::MAX, |s| dist(s.x - x, s.y - y));
-        let bases = self.bases(Side::Blue);
+        let bases = self.bases(side);
         bases
             .iter()
             .copied()

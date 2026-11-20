@@ -75,6 +75,7 @@ pub(super) fn kind_label(kind: DefenceKind) -> &'static str {
         DefenceKind::Nasams => "NASAMS",
         DefenceKind::Fp7Site => "FP-7",
         DefenceKind::FlamingoSite => "FLAMINGO",
+        DefenceKind::IskanderSite => "ISKANDER",
     }
 }
 
@@ -85,7 +86,7 @@ fn fast_track_buttons(ui: &mut egui::Ui, c: &mut ActiveCampaign) {
     let waiting: Vec<(u32, String, f64)> = st
         .deployments
         .iter()
-        .filter(|d| !d.built)
+        .filter(|d| !d.built && d.side() == stealth_campaign::Side::Blue)
         .map(|d| {
             let what =
                 format!("{} {}/{} - {}", kind_label(d.kind), d.delivered.len(), d.loads, d.name);
@@ -213,7 +214,9 @@ pub(super) fn pointer(
             DefenceKind::Drones => "ds-new-drones",
             DefenceKind::Nasams => "ds-new-nasams",
             // (Launch sites are not designated by the players.)
-            DefenceKind::Fp7Site | DefenceKind::FlamingoSite => "ds-new-nasams",
+            DefenceKind::Fp7Site | DefenceKind::FlamingoSite | DefenceKind::IskanderSite => {
+                "ds-new-nasams"
+            }
         })
         .to_string()
     });
@@ -245,7 +248,12 @@ pub(super) fn test_aid(c: &mut ActiveCampaign, sim: &Sim, scenery: Option<&Scene
         None => (arg, false),
     };
     if built && !c.ui.test_fast_tracked {
-        let id = c.state().deployments.iter().find(|d| !d.built).map(|d| d.id);
+        let id = c
+            .state()
+            .deployments
+            .iter()
+            .find(|d| !d.built && d.side() == stealth_campaign::Side::Blue)
+            .map(|d| d.id);
         if let Some(id) = id {
             c.ui.test_fast_tracked = true;
             c.actions.push(Action::FastTrackSite { id });
@@ -288,7 +296,10 @@ fn pad(painter: &egui::Painter, p: egui::Pos2, col: egui::Color32) {
 pub(super) fn waiting(painter: &egui::Painter, view: &MapView, st: &CampaignState) {
     for d in st.deployments.iter().filter(|d| !d.built) {
         let p = view.to_screen(d.x as f32, d.y as f32);
-        pad(painter, p, FRIENDLY_BLUE);
+        // (The enemy's site going up, as intelligence reports it.)
+        let col =
+            if d.side() == stealth_campaign::Side::Blue { FRIENDLY_BLUE } else { MISSILE_RED };
+        pad(painter, p, col);
         let left = (d.expires - st.clock).max(0.0) as i32;
         let text = format!(
             "{} {}/{} {}:{:02}",
@@ -303,7 +314,7 @@ pub(super) fn waiting(painter: &egui::Painter, view: &MapView, st: &CampaignStat
             egui::Align2::LEFT_TOP,
             text,
             egui::FontId::monospace(11.0),
-            FRIENDLY_BLUE,
+            col,
         );
     }
 }

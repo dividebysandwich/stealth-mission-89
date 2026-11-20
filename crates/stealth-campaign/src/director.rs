@@ -1187,7 +1187,7 @@ impl CampaignState {
     /// A site the players built for an enemy raid: its unit standing, an enemy base in reach,
     /// no raid on it yet (the friendly place nearest it, the base, the unit).
     fn site_raid_target(&self, view: &WorldView) -> Option<(PlaceId, ObjectId, SamTarget)> {
-        self.deployments.iter().filter(|d| d.built).find_map(|d| {
+        self.deployments.iter().filter(|d| d.built && d.side() == Side::Blue).find_map(|d| {
             let (x, y) = d.unit_at();
             let aaa = view
                 .units

@@ -1,5 +1,6 @@
 //! The missile war of the drone theaters: the enemy's Iskander strikes (a TEL drives out from
-//! a red base to a firing point, prepares and fires two ballistic missiles) and Kh-101 strikes
+//! an Iskander site its logistics built to a firing point, prepares and fires two ballistic
+//! missiles drawn from the stock of the site's supply base) and Kh-101 strikes
 //! (a Tu-95 flies to a launch point over its own territory and lets its cruise missiles go) at
 //! the friendly side's airfields and cities; the friendly side's FP-7 and Flamingo strikes from
 //! the launch sites its logistics missions built (`blue_strikes`, phase 4).
@@ -164,12 +165,21 @@ impl CampaignState {
                 StrikeMissile::Iskander => (self.iskander_at, ISKANDER_EVERY[skill]),
                 _ => (self.kh101_at, KH101_EVERY[skill]),
             };
-            // The first one an interval into the war.
+            // The first one an interval into the war (the Iskanders' site goes up meanwhile).
             if at == 0.0 {
                 self.set_strike_at(missile, now);
+                if missile == StrikeMissile::Iskander {
+                    self.post_red_launch_site(ev);
+                }
                 continue;
             }
             if now - at < self.paced(every) {
+                continue;
+            }
+            // The TELs fire from a site the enemy's logistics built: a new one goes up when none
+            // is standing or being built, and the strike is due as soon as it stands.
+            if missile == StrikeMissile::Iskander && self.iskander_site().is_none() {
+                self.post_red_launch_site(ev);
                 continue;
             }
             self.set_strike_at(missile, now);
@@ -189,9 +199,12 @@ impl CampaignState {
 
     /// The friendly airfield or city a red missile strike goes for (its object, place, x, y),
     /// the red base it comes from: the nearest in reach, cities and airfields alike.
+    /// (An Iskander's TEL comes from its site at `origin`, map units: its base is the site's
+    /// supply base.)
     fn red_strike_target(
         &mut self,
         missile: StrikeMissile,
+        origin: Option<((i32, i32), ObjectId)>,
     ) -> Option<(ObjectId, PlaceId, ObjectId)> {
         let mut all: Vec<(ObjectId, PlaceId, ObjectId, i32)> = self
             .sites
@@ -199,9 +212,15 @@ impl CampaignState {
             .filter(|s| s.alive() && matches!(s.kind, SiteKind::City | SiteKind::Airfield))
             .filter(|s| self.owner(s.object) == Some(Side::Blue))
             .filter_map(|s| {
-                let from = self.nearest_base(Side::Red, s.x, s.y)?;
-                let b = self.site(from)?;
-                let d = dist(b.x - s.x, b.y - s.y);
+                let (at, from) = match origin {
+                    Some(o) => o,
+                    None => {
+                        let from = self.nearest_base(Side::Red, s.x, s.y)?;
+                        let b = self.site(from)?;
+                        ((b.x, b.y), from)
+                    }
+                };
+                let d = dist(at.0 - s.x, at.1 - s.y);
                 (d <= missile.range()).then_some((s.object, s.place?, from, d))
             })
             .collect();
@@ -229,22 +248,55 @@ impl CampaignState {
 
     /// The enemy orders a strike of `missile`.
     fn order_red_strike(&mut self, missile: StrikeMissile, ev: &mut Vec<CampaignEvent>) {
-        let Some((target, place, base)) = self.red_strike_target(missile) else { return };
-        if !self.pay(Side::Red, MISSILE_STRIKE_COST, Spend::Operations) {
-            return;
-        }
-        let (Some(t), Some(b)) = (self.site(target), self.site(base)) else { return };
-        let (tp, bp) = ((t.x, t.y), (b.x, b.y));
+        // An Iskander TEL leaves its site's helipad; its missiles come out of the stock of the
+        // site's supply base.
+        let site = match missile {
+            StrikeMissile::Iskander => {
+                let Some(d) = self.iskander_site() else { return };
+                let Some(base) = d.base.or_else(|| self.supply_base_for(Side::Red, d.x, d.y))
+                else {
+                    return;
+                };
+                Some(((d.x, d.y), base))
+            }
+            _ => None,
+        };
+        let Some((target, place, base)) = self.red_strike_target(missile, site) else { return };
+        let count = match site {
+            Some(_) if self.munitions_on() => {
+                let got = self.draw(base, crate::Munition::Iskander, ISKANDER_SALVO as u32);
+                if got == 0 {
+                    return;
+                }
+                got as u8
+            }
+            Some(_) => ISKANDER_SALVO,
+            None => {
+                if !self.pay(Side::Red, MISSILE_STRIKE_COST, Spend::Operations) {
+                    return;
+                }
+                KH101_SALVO
+            }
+        };
+        let Some(t) = self.site(target) else { return };
+        let tp = (t.x, t.y);
+        let bp = match site {
+            Some((at, _)) => at,
+            None => {
+                let Some(b) = self.site(base) else { return };
+                (b.x, b.y)
+            }
+        };
         let d = dist(tp.0 - bp.0, tp.1 - bp.1).max(1);
         let id = self.id();
         let (firing, count) = match missile {
-            // The TEL drives a little way out from its base towards the target.
+            // The TEL drives a little way out from its site towards the target.
             StrikeMissile::Iskander => {
                 let frac = (TEL_DRIVE as f64 / d as f64).min(0.3);
-                (self.on_land_towards(bp, tp, frac), ISKANDER_SALVO)
+                (self.on_land_towards(bp, tp, frac), count)
             }
             // The bomber launches well short of the front, over its own side.
-            _ => (self.on_land_towards(bp, tp, KH101_LAUNCH_FRAC), KH101_SALVO),
+            _ => (self.on_land_towards(bp, tp, KH101_LAUNCH_FRAC), count),
         };
         let strike = MissileStrike {
             id,
@@ -305,6 +357,10 @@ impl CampaignState {
             Report::LauncherPlaced { strike, unit } => {
                 for s in self.missile_strikes.iter_mut().filter(|s| s.launcher_id() == strike) {
                     s.unit = Some(unit);
+                }
+                // (An enemy Iskander site's parked TEL.)
+                for d in self.deployments.iter_mut().filter(|d| d.id == strike) {
+                    d.unit = Some(unit);
                 }
             }
             Report::LauncherArrived { strike } => {
@@ -485,8 +541,22 @@ impl CampaignState {
         }
     }
 
-    /// The board's TEL hunts: each enemy TEL out and not fired yet (its gun list its unit).
+    /// The board's TEL hunts: each enemy TEL out and not fired yet (its gun list its unit), and
+    /// each standing enemy Iskander site (its parked TEL).
     pub(crate) fn tel_hunts(&self) -> Vec<(Text, Objective, i32, i32)> {
+        let sites = self
+            .deployments
+            .iter()
+            .filter(|d| d.side() == Side::Red && d.built && d.seen)
+            .filter_map(|d| {
+                let (x, y) = d.unit_at();
+                Some((
+                    text!("cb-iskander-site", place = d.name.as_str()),
+                    Objective::Battery { battery: d.id, aaa: vec![d.unit?] },
+                    x,
+                    y,
+                ))
+            });
         self.missile_strikes
             .iter()
             .filter(|s| s.side == Side::Red && s.tel())
@@ -500,7 +570,55 @@ impl CampaignState {
                     s.firing.1,
                 ))
             })
+            .chain(sites)
             .collect()
+    }
+
+    /// The enemy's Iskander site standing (built, its TEL seen in the simulation).
+    pub(crate) fn iskander_site(&self) -> Option<&Deployment> {
+        self.deployments.iter().find(|d| d.kind == DefenceKind::IskanderSite && d.built && d.seen)
+    }
+
+    /// The enemy posts a new Iskander site, unless one stands or is being built: its loads go
+    /// by Mi-24 from its nearest airfield, one after the other.
+    fn post_red_launch_site(&mut self, ev: &mut Vec<CampaignEvent>) {
+        let kind = DefenceKind::IskanderSite;
+        if self.deployments.iter().any(|d| d.kind == kind) {
+            return;
+        }
+        let Some((x, y)) = self.launch_spot(kind) else { return };
+        let d = self.new_site(kind, x, y);
+        let text = text!("cl-red-launch-site-posted", place = d.name.as_str());
+        self.deployments.push(d);
+        self.note(text.clone());
+        ev.push(CampaignEvent::Message(text));
+        self.board_at = f64::MIN;
+    }
+
+    /// A launch site of `kind` posted at (x, y) for its side's logistics to build.
+    fn new_site(&mut self, kind: DefenceKind, x: i32, y: i32) -> Deployment {
+        let now = self.clock;
+        let loads = crate::deploy::loads(kind);
+        Deployment {
+            id: self.id(),
+            x,
+            y,
+            kind,
+            name: self.near_name(x, y),
+            by: None,
+            posted: now,
+            expires: now + DEPLOY_TIMEOUT,
+            loads,
+            delivered: Vec::new(),
+            ai: Vec::new(),
+            // (The enemy's first helicopter goes at once.)
+            open_since: if kind.side() == Side::Red { f64::MIN } else { now },
+            built: false,
+            seen: false,
+            base: self.supply_base_for(kind.side(), x, y),
+            crates: vec![CrateState::AtBase; loads as usize],
+            unit: None,
+        }
     }
 
     /// The friendly side's missile war of the drone theaters: a launch site of each kind
@@ -526,27 +644,7 @@ impl CampaignState {
                 continue;
             }
             let Some((x, y)) = self.launch_spot(kind) else { continue };
-            let name = self.near_name(x, y);
-            let id = self.id();
-            let loads = crate::deploy::loads(kind);
-            let d = Deployment {
-                id,
-                x,
-                y,
-                kind,
-                name,
-                by: None,
-                posted: now,
-                expires: now + DEPLOY_TIMEOUT,
-                loads,
-                delivered: Vec::new(),
-                ai: Vec::new(),
-                open_since: now,
-                built: false,
-                seen: false,
-                base: self.supply_base(x, y),
-                crates: vec![CrateState::AtBase; loads as usize],
-            };
+            let d = self.new_site(kind, x, y);
             let text = text!("cl-launch-site-posted", site = d.label());
             self.deployments.push(d);
             self.note(text.clone());
@@ -566,17 +664,28 @@ impl CampaignState {
             .collect()
     }
 
-    /// A spot for a new launch site of `kind` (map units): in friendly territory, on land, clear
-    /// of the towns and the airfields, behind the front within its missile's reach of an enemy
-    /// target.
+    /// The friendly cities and airfields (the site's object, where; never a SAM site).
+    fn blue_targets(&self) -> Vec<(ObjectId, i32, i32, bool)> {
+        self.sites
+            .iter()
+            .filter(|s| s.alive() && matches!(s.kind, SiteKind::City | SiteKind::Airfield))
+            .filter(|s| self.owner(s.object) == Some(Side::Blue))
+            .map(|s| (s.object, s.x, s.y, false))
+            .collect()
+    }
+
+    /// A spot for a new launch site of `kind` (map units): in its side's territory, on land,
+    /// clear of the towns and the airfields, behind the front within its missile's reach of an
+    /// enemy target (the enemy's: of a friendly city or airfield).
     pub fn launch_spot(&mut self, kind: DefenceKind) -> Option<(i32, i32)> {
         let missile = kind.launch_missile()?;
-        let targets = self.red_military();
+        let side = kind.side();
+        let targets = if side == Side::Blue { self.red_military() } else { self.blue_targets() };
         if targets.is_empty() {
             return None;
         }
         let ours: Vec<(i32, i32)> =
-            self.places.iter().filter(|p| p.owner == Side::Blue).map(|p| (p.x, p.y)).collect();
+            self.places.iter().filter(|p| p.owner == side).map(|p| (p.x, p.y)).collect();
         let airfields: Vec<(i32, i32)> = self
             .sites
             .iter()
@@ -612,7 +721,7 @@ impl CampaignState {
         let sites: Vec<(u32, DefenceKind, (i32, i32), Option<ObjectId>)> = self
             .deployments
             .iter()
-            .filter(|d| d.built && d.kind.launch_site())
+            .filter(|d| d.built && d.kind.launch_site() && d.side() == Side::Blue)
             .map(|d| (d.id, d.kind, d.unit_at(), d.base))
             .collect();
         let targets = self.red_military();

@@ -1224,6 +1224,8 @@ pub enum DefenceKind {
     Nasams,
     Fp7Site,
     FlamingoSite,
+    /// The enemy's Iskander brigade site: its TELs drive out from there to fire.
+    IskanderSite,
 }
 
 impl DefenceKind {
@@ -1236,6 +1238,7 @@ impl DefenceKind {
             DefenceKind::Nasams => "NASAMS battery",
             DefenceKind::Fp7Site => "FP-7 launch site",
             DefenceKind::FlamingoSite => "Flamingo launch site",
+            DefenceKind::IskanderSite => "Iskander site",
         }
     }
 
@@ -1248,12 +1251,18 @@ impl DefenceKind {
             DefenceKind::Nasams => "NASAMS",
             DefenceKind::Fp7Site => "FP-7",
             DefenceKind::FlamingoSite => "Flamingo",
+            DefenceKind::IskanderSite => "Iskander",
         }
     }
 
-    /// A missile launch site (it is not manned, it fires by itself).
+    /// A missile launch site (it is not manned, it fires by itself; the war builds it).
     pub fn launch_site(self) -> bool {
-        matches!(self, DefenceKind::Fp7Site | DefenceKind::FlamingoSite)
+        matches!(self, DefenceKind::Fp7Site | DefenceKind::FlamingoSite | DefenceKind::IskanderSite)
+    }
+
+    /// The side whose site it is (the enemy builds only its Iskander sites).
+    pub fn side(self) -> Side {
+        if self == DefenceKind::IskanderSite { Side::Red } else { Side::Blue }
     }
 
     /// The missile a launch site fires.
@@ -1262,6 +1271,7 @@ impl DefenceKind {
         match self {
             DefenceKind::Fp7Site => Some(StrikeMissile::Fp7),
             DefenceKind::FlamingoSite => Some(StrikeMissile::Flamingo),
+            DefenceKind::IskanderSite => Some(StrikeMissile::Iskander),
             _ => None,
         }
     }
@@ -1278,6 +1288,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Nasams,
             Fp7Site,
             FlamingoSite,
+            IskanderSite,
         }
         #[derive(Deserialize)]
         #[serde(untagged)]
@@ -1292,6 +1303,7 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Either::Kind(Named::Nasams) => DefenceKind::Nasams,
             Either::Kind(Named::Fp7Site) => DefenceKind::Fp7Site,
             Either::Kind(Named::FlamingoSite) => DefenceKind::FlamingoSite,
+            Either::Kind(Named::IskanderSite) => DefenceKind::IskanderSite,
         })
     }
 }
@@ -1364,6 +1376,7 @@ impl SupplyRequest {
             DefenceKind::Nasams => "cl-supply-nasams",
             DefenceKind::Fp7Site => "cl-supply-fp7",
             DefenceKind::FlamingoSite => "cl-supply-flamingo",
+            DefenceKind::IskanderSite => "cl-supply-iskander",
         };
         text!(id, place = self.name.as_str())
     }
@@ -1402,6 +1415,9 @@ pub struct Deployment {
     pub base: Option<ObjectId>,
     #[serde(default)]
     pub crates: Vec<CrateState>,
+    /// Its unit in the simulation once it stands (an enemy Iskander site's parked TEL).
+    #[serde(default)]
+    pub unit: Option<u32>,
 }
 
 /// Where a load of cargo for a new site is: in a crate beside the runway of its base, slung
@@ -1430,6 +1446,7 @@ impl Deployment {
             DefenceKind::Nasams => "NASAMS site",
             DefenceKind::Fp7Site => "FP-7 launch site",
             DefenceKind::FlamingoSite => "Flamingo launch site",
+            DefenceKind::IskanderSite => "Iskander site",
         };
         format!("{what} near {}", self.name)
     }
@@ -1443,8 +1460,14 @@ impl Deployment {
             DefenceKind::Nasams => "cl-supply-nasams",
             DefenceKind::Fp7Site => "cl-supply-fp7",
             DefenceKind::FlamingoSite => "cl-supply-flamingo",
+            DefenceKind::IskanderSite => "cl-supply-iskander",
         };
         text!(id, place = self.name.as_str())
+    }
+
+    /// The side building it.
+    pub fn side(&self) -> Side {
+        self.kind.side()
     }
 
     /// Where its unit stands (map units): beside the helipad.

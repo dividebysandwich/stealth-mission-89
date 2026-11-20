@@ -439,6 +439,8 @@ pub enum CampaignEvent {
         x: i32,
         y: i32,
         tag: u32,
+        /// The side building it (the enemy's helicopter is a Mi-24).
+        side: Side,
     },
     /// A new site (deployment `id`) has all its cargo: its unit stands at (x, y).
     SiteBuilt {
@@ -644,7 +646,7 @@ impl CampaignState {
         let bases: Vec<Option<ObjectId>> = self
             .deployments
             .iter()
-            .map(|d| d.base.or_else(|| self.supply_base(d.x, d.y)))
+            .map(|d| d.base.or_else(|| self.supply_base_for(d.side(), d.x, d.y)))
             .collect();
         for (d, base) in self.deployments.iter_mut().zip(bases) {
             d.ai.clear();

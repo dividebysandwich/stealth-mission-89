@@ -447,3 +447,7 @@ pub const LAUNCH_SITE_REST: f64 = 40.0 * 60.0;
 /// Missiles a friendly launch site fires in a salvo: FP-7s, Flamingos.
 pub const FP7_SALVO: u8 = 2;
 pub const FLAMINGO_SALVO: u8 = 1;
+/// The enemy's Iskander sites: the cargo loads one needs (each flown in by a Mi-24, this long
+/// after the last one left or was lost, campaign s).
+pub const DEPLOY_LOADS_ISKANDER_SITE: u8 = 3;
+pub const RED_CARGO_GAP: f64 = 10.0 * 60.0;

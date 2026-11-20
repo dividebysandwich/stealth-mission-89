@@ -3500,9 +3500,16 @@ command center's interceptors and X-12s (10.4) can meet them on the way.
 
 The drone theaters' campaigns have missile strikes too, both ways.
 
-**Iskander.** Every few hours (5 to 2.5, Green to Elite) the enemy sends an Iskander TEL out of one
-of its bases: it drives about 8 km towards the front, sets up for 12 minutes and fires two ballistic
-missiles at a friendly airfield or city up to 450 km away. While it drives and sets up, the board
+**Iskander.** The enemy's TELs work under the same logistics rules as your launch sites. First it
+builds an **Iskander launch site** behind its front: intelligence reports it in the log, and its
+helipad shows on the map in red. Three loads of equipment come in one by one by Mi-24 from the
+nearest enemy airfield; a helicopter shot down on the way means that load must be flown again, and
+a site not finished within a day is abandoned. Once built, a TEL parked at the site goes on the
+board as **DESTROY THE ISKANDER LAUNCH SITE**; destroy it and the enemy must build a new site
+before it can fire again. Every few hours (5 to 2.5, Green to Elite) a TEL leaves the site with two
+missiles from the stock of the site's supply base (the enemy's An-72s restock it like any other
+munition, so intercepting them counts too). It drives about 8 km towards the front, sets up for
+12 minutes and fires at a friendly airfield or city up to 450 km away. While it drives and sets up, the board
 carries a **DESTROY THE ISKANDER TEL** mission at its firing point (a CAS mission the AI flies too) and
 the log says when it can fire. The launch is announced with the time to impact (well under a
 minute at short range). Only a **Patriot** can intercept the missiles: they come down too high and

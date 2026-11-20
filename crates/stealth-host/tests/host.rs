@@ -1024,11 +1024,15 @@ fn a_wingman_draws_its_stores_from_the_base() {
     assert!(sim.wingman_pending(p.0));
 }
 
-/// An Iskander strike on Ukraine plays out: the TEL drives out, its hunt goes on the board
-/// while it prepares, it fires, and the missiles come down or are shot down.
+/// An Iskander strike on Ukraine plays out under the logistics rules: the enemy posts an
+/// Iskander site, Mi-24s fly its loads in from a red airfield, the built site's TEL is on the
+/// board; the next strike's TEL drives out from the site with missiles from the site's supply
+/// base, its hunt goes on the board while it prepares, it fires, and the missiles come down or
+/// are shot down.
 #[test]
 fn an_iskander_strike_plays_out() {
     use stealth_campaign::missile_strikes::{StrikeMissile, StrikeState};
+    use stealth_campaign::{DefenceKind, Munition, Objective, Side, dist};
     let s = setup("ukraine");
     let data = theater::game_data().unwrap();
     let sim_data = theater::sim_data(s.theater, "ukraine").unwrap();
@@ -1037,30 +1041,74 @@ fn an_iskander_strike_plays_out() {
     host.begin(&mut sim);
     host.state.iskander_at = -1e7;
     host.state.kh101_at = 1e9;
-    let (mut hunted, mut warned) = (false, false);
-    for _ in 0..15 * 60 * 60 {
+    host.tick(&mut sim, 0.1, &[]);
+    let site = host
+        .state
+        .deployments
+        .iter()
+        .find(|d| d.kind == DefenceKind::IskanderSite)
+        .cloned()
+        .expect("an Iskander site posted");
+    assert_eq!(site.side(), Side::Red);
+    assert!(host.state.missile_strikes.is_empty(), "a strike without a site");
+    let base = site.base.expect("a red supply base");
+    assert_eq!(host.state.owner(base), Some(Side::Red));
+    // Not the players' cargo to fly.
+    assert!(
+        !host
+            .state
+            .board
+            .iter()
+            .any(|o| matches!(o.objective, Objective::Logistics { site: id, .. } if id == site.id)),
+        "the enemy's cargo on the friendly board"
+    );
+    let stock = host.state.available(base, Munition::Iskander);
+    let (mut hinds, mut site_hunted, mut tel_hunted, mut warned) = (0, false, false, false);
+    let mut seen_tags = Vec::new();
+    for _ in 0..15 * 60 * 60 * 6 {
         let e = sim.step_pilots(&[], 15);
         let mut e2 = host.take_sim_events(&mut sim);
         e2.extend(e);
         host.tick(&mut sim, 1.0 / 15.0, &e2);
-        hunted |= host.state.board.iter().any(|o| {
-            matches!(o.objective, stealth_campaign::Objective::Battery { battery, .. }
+        for (i, u) in sim.flights().iter().enumerate() {
+            let Some(f) = sim.campaign_flight(i) else { continue };
+            if f.supply.is_some() && !f.blue && !seen_tags.contains(&f.tag) {
+                assert_eq!(u.spec, 16, "the enemy's cargo helicopter is a Mi-24");
+                seen_tags.push(f.tag);
+                hinds += 1;
+            }
+        }
+        let built = host.state.deployment(site.id).is_some_and(|d| d.built && d.seen);
+        if built && !site_hunted {
+            site_hunted = host.state.board.iter().any(
+                |o| matches!(o.objective, Objective::Battery { battery, .. } if battery == site.id),
+            );
+            // Its first strike is due.
+            host.state.iskander_at = -1e7;
+        }
+        tel_hunted |= host.state.board.iter().any(|o| {
+            matches!(o.objective, Objective::Battery { battery, .. }
                 if host.state.missile_strike(battery).is_some())
         });
         warned |= host.state.log.iter().any(|l| format!("{:?}", l.text).contains("cl-tbm-launch"));
-        if host
+        if let Some(s) = host
             .state
             .missile_strikes
             .iter()
-            .any(|s| s.missile == StrikeMissile::Iskander && s.state == StrikeState::Ended)
+            .find(|s| s.missile == StrikeMissile::Iskander && s.state == StrikeState::Ended)
         {
-            let s = &host.state.missile_strikes[0];
-            assert!(hunted, "no TEL hunt on the board");
+            assert!(hinds >= 1, "no Mi-24 flew the site's cargo");
+            assert!(site_hunted, "the built site not on the board");
+            assert!(tel_hunted, "no TEL hunt on the board");
             assert!(warned || s.hits + s.down < s.count, "no launch warning");
+            assert!(dist(s.from.0 - site.x, s.from.1 - site.y) == 0, "the TEL not from its site");
+            assert_eq!(s.base, base);
+            let left = host.state.available(base, Munition::Iskander);
+            assert!(left + s.count as u32 <= stock + 1, "missiles not drawn: {stock} -> {left}");
             return;
         }
     }
-    panic!("{:?}", host.state.missile_strikes);
+    panic!("{:?} {:?}", host.state.missile_strikes, host.state.deployment(site.id));
 }
 
 /// A Kh-101 raid on Ukraine plays out: the Tu-95 flies to its launch point, the missiles are

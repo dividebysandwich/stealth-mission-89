@@ -283,7 +283,10 @@ fn sling(
                     heading,
                 )),
             };
-            let waiting = matches!(cs, CrateState::AtBase) && d.crate_waiting(leg);
+            // (The enemy's crates are only flown by its own helicopters.)
+            let waiting = matches!(cs, CrateState::AtBase)
+                && d.crate_waiting(leg)
+                && d.side() == stealth_campaign::Side::Blue;
             if let Some(place) = place {
                 want.push((key, place, pad, waiting));
             }

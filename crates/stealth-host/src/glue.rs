@@ -640,6 +640,7 @@ pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::Gr
         DefenceKind::Nasams => GroundKind::NasamsRadar,
         DefenceKind::Fp7Site => GroundKind::Fp7Launcher,
         DefenceKind::FlamingoSite => GroundKind::FlamingoLauncher,
+        DefenceKind::IskanderSite => GroundKind::IskanderTel,
     }
 }
 
@@ -657,8 +658,10 @@ pub fn place_site(
         DefenceKind::Patriot => sim.place_patriot(x, y),
         DefenceKind::Drones => sim.place_drone_center(x, y),
         DefenceKind::Nasams => sim.place_nasams(x, y),
-        DefenceKind::Fp7Site | DefenceKind::FlamingoSite => {
-            return Some(sim.spawn_launcher(station_unit(kind), (x, y), (x, y), true, true));
+        // (The enemy's Iskander site: its TEL parked there.)
+        DefenceKind::Fp7Site | DefenceKind::FlamingoSite | DefenceKind::IskanderSite => {
+            let blue = kind.side() == stealth_campaign::Side::Blue;
+            return Some(sim.spawn_launcher(station_unit(kind), (x, y), (x, y), blue, true));
         }
     }
     None

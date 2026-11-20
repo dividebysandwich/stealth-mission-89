@@ -18,7 +18,7 @@ use crate::Sim;
 use crate::aaa::M_PER_MAP;
 use crate::ai_loadout::{AiLoadout, FighterTask};
 use crate::campaign::{CampaignFlight, Role};
-use crate::csar::BLACKHAWK;
+use crate::csar::{BLACKHAWK, HIND};
 use crate::math::{bearing, cdiv, clamp_q, s16};
 use crate::station::{initial_stock, initial_stock2, initial_stock3, initial_stock4, mannable};
 use crate::types::*;
@@ -116,7 +116,7 @@ impl Sim {
         let (dx, dy) = ((pad.0 - at.0) as f64, (pad.1 - at.1) as f64);
         let d = dx.hypot(dy).max(1.0);
         let drop = (at.0 + (dx / d * STANDOFF) as i32, at.1 + (dy / d * STANDOFF) as i32);
-        self.launch_supply(from, unit as u16, pickup, drop, tag)
+        self.launch_supply(from, unit as u16, pickup, drop, tag, true)
     }
 
     /// Campaign: a friendly UH-60 lifts off from the helipad of base `from` to sling the crate
@@ -130,7 +130,20 @@ impl Sim {
         drop: (i32, i32),
         tag: u32,
     ) -> usize {
-        self.launch_supply(from, NO_UNIT, pickup, drop, tag)
+        self.launch_supply(from, NO_UNIT, pickup, drop, tag, true)
+    }
+
+    /// Campaign: a cargo helicopter of a side (a UH-60, the enemy's Mi-24) for a new site's
+    /// helipad, as [`Sim::spawn_cargo`].
+    pub fn spawn_cargo_for(
+        &mut self,
+        from: usize,
+        pickup: Option<(i32, i32)>,
+        drop: (i32, i32),
+        tag: u32,
+        blue: bool,
+    ) -> usize {
+        self.launch_supply(from, NO_UNIT, pickup, drop, tag, blue)
     }
 
     /// A resupply or cargo helicopter off the pad of base `from`, by its crate at `pickup`,
@@ -142,18 +155,19 @@ impl Sim {
         pickup: Option<(i32, i32)>,
         drop: (i32, i32),
         tag: u32,
+        blue: bool,
     ) -> usize {
         let i = self.campaign_slot();
         let pad = self.helipad(from);
         let at = pickup.unwrap_or(drop);
         let mut u = FlightUnit {
-            spec: BLACKHAWK,
+            spec: if blue { BLACKHAWK } else { HIND },
             wp: from as i32,
             wx: pad.0,
             wy: pad.1,
             alt: 0,
             speed: 1,
-            heading: bearing(at.0 - pad.0, s16(pad.1 - at.1)),
+            heading: far_bearing(at.0 - pad.0, pad.1 - at.1),
             timer: 0x7FFF,
             ..Default::default()
         };
@@ -165,7 +179,7 @@ impl Sim {
         c.flights[i] = Some(CampaignFlight {
             tag,
             role: Role::Supply,
-            blue: true,
+            blue,
             goal: (drop.0 >> 5, drop.1 >> 5),
             target: None,
             cooldown: 0,
@@ -246,7 +260,7 @@ impl Sim {
             let acc = cdiv(max, 6 * fs).max(1);
             u.speed = (u.speed + clamp_q(want - u.speed, -acc, acc)).max(1);
             if d > THERE {
-                let brg = bearing(dx, s16(-dy));
+                let brg = far_bearing(dx, -dy);
                 let turn = clamp_q(s16(brg - u.heading), -cdiv(0x2000, fs), cdiv(0x2000, fs));
                 u.heading = s16(u.heading + turn);
             }
@@ -275,7 +289,7 @@ impl Sim {
         }
         // Nose down with speed, banked into turns (attitude only).
         u.pitch = -(u.speed * 0x600 / max.max(1));
-        u.bank = clamp_q(s16(bearing(dx, s16(-dy)) - u.heading) * 2, -0x1800, 0x1800)
+        u.bank = clamp_q(s16(far_bearing(dx, -dy) - u.heading) * 2, -0x1800, 0x1800)
             * (u.speed > 20) as i32;
         let unit = run.unit as usize;
         let height = u.alt - self.hill_alt(u.x, u.y);
@@ -394,4 +408,14 @@ impl Sim {
         d.stock3[k] = d.stock3[k].max(initial_stock3(kind));
         d.stock4[k] = d.stock4[k].max(initial_stock4(kind));
     }
+}
+
+/// The bearing of (`x` east, `y` north) world units however far (`bearing` takes 16 bits: a leg
+/// longer than 16 km wrapped round and the helicopter circled).
+fn far_bearing(mut x: i32, mut y: i32) -> i32 {
+    while x.abs() > 0x3FFF || y.abs() > 0x3FFF {
+        x /= 2;
+        y /= 2;
+    }
+    bearing(x, y)
 }

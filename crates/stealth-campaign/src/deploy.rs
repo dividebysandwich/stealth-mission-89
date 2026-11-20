@@ -17,7 +17,9 @@ pub fn footprint(kind: DefenceKind) -> i32 {
         DefenceKind::Patriot => DEPLOY_FOOTPRINT_PATRIOT,
         DefenceKind::Drones => DEPLOY_FOOTPRINT_DRONES,
         DefenceKind::Nasams => DEPLOY_FOOTPRINT_NASAMS,
-        DefenceKind::Fp7Site | DefenceKind::FlamingoSite => DEPLOY_FOOTPRINT_NASAMS,
+        DefenceKind::Fp7Site | DefenceKind::FlamingoSite | DefenceKind::IskanderSite => {
+            DEPLOY_FOOTPRINT_NASAMS
+        }
     }
 }
 
@@ -34,6 +36,7 @@ pub fn loads(kind: DefenceKind) -> u8 {
         DefenceKind::Drones => DEPLOY_LOADS_DRONES,
         DefenceKind::Nasams => DEPLOY_LOADS_NASAMS,
         DefenceKind::Fp7Site | DefenceKind::FlamingoSite => DEPLOY_LOADS_LAUNCH_SITE,
+        DefenceKind::IskanderSite => DEPLOY_LOADS_ISKANDER_SITE,
     }
 }
 
@@ -48,6 +51,7 @@ impl CampaignState {
         kind: DefenceKind,
         aaa: &[GroundView],
     ) -> Option<String> {
+        let side = kind.side();
         if self.outcome.is_some() {
             return Some("The war is over".into());
         }
@@ -73,7 +77,7 @@ impl CampaignState {
         }
         let near = |px: i32, py: i32, d: i32| dist(px - x, py - y) < d;
         let nearest = self.places.iter().min_by_key(|p| dist(p.x - x, p.y - y));
-        if nearest.is_none_or(|p| p.owner != Side::Blue) {
+        if nearest.is_none_or(|p| p.owner != side) {
             return Some("Not in friendly territory".into());
         }
         if let Some(p) = self.places.iter().find(|p| near(p.x, p.y, DEPLOY_PLACE_CLEAR + foot)) {
@@ -94,7 +98,7 @@ impl CampaignState {
         if self.deployments.iter().any(|d| near(d.x, d.y, footprint(d.kind) + foot)) {
             return Some("Too close to another new site".into());
         }
-        if self.supply_base(x, y).is_none() {
+        if self.supply_base_for(side, x, y).is_none() {
             return Some("No friendly airfield to fly the cargo from".into());
         }
         None
@@ -137,6 +141,7 @@ impl CampaignState {
             seen: false,
             base: self.supply_base(x, y),
             crates: vec![CrateState::AtBase; loads as usize],
+            unit: None,
         };
         let who = self.player_name(player).unwrap_or("A pilot");
         let loads = if d.loads == 1 { "1 load".to_string() } else { format!("{} loads", d.loads) };
@@ -158,7 +163,10 @@ impl CampaignState {
         if self.outcome.is_some() {
             return Err(text!("ce-war-over"));
         }
-        let d = self.deployment(id).filter(|d| !d.built).ok_or_else(|| text!("ce-site-gone"))?;
+        let d = self
+            .deployment(id)
+            .filter(|d| !d.built && d.side() == Side::Blue)
+            .ok_or_else(|| text!("ce-site-gone"))?;
         let cost = fast_track_cost(d);
         if !self.pay(Side::Blue, cost, Spend::Operations) {
             return Err(text!("ce-no-materiel"));
@@ -221,17 +229,23 @@ impl CampaignState {
         }
         for k in (0..self.deployments.len()).rev() {
             let d = &self.deployments[k];
+            let side = d.side();
             if d.built {
                 let (ux, uy) = d.unit_at();
                 let r = footprint(d.kind);
-                let up = self.guns_within(view, ux, uy, Side::Blue, r).next().is_some();
+                let up = self.guns_within(view, ux, uy, side, r).next().is_some();
                 if up && !d.seen {
                     self.deployments[k].seen = true;
                 } else if !up && d.seen {
                     let d = self.deployments.remove(k);
-                    let text = text!("cl-site-destroyed", site = d.label());
+                    let text = if side == Side::Blue {
+                        text!("cl-site-destroyed", site = d.label())
+                    } else {
+                        text!("cl-red-launch-site-destroyed", place = d.name.as_str())
+                    };
                     self.note(text.clone());
                     ev.push(CampaignEvent::Message(text));
+                    self.board_at = f64::MIN;
                 }
                 continue;
             }
@@ -242,12 +256,14 @@ impl CampaignState {
                     ev.push(CampaignEvent::Recall { tag });
                 }
                 self.board_at = f64::MIN;
-                let text = Text::raw(format!(
-                    "The {} was not supplied in time: helipad removed",
-                    d.title()
-                ));
-                self.note(text.clone());
-                ev.push(CampaignEvent::Message(text));
+                if side == Side::Blue {
+                    let text = Text::raw(format!(
+                        "The {} was not supplied in time: helipad removed",
+                        d.title()
+                    ));
+                    self.note(text.clone());
+                    ev.push(CampaignEvent::Message(text));
+                }
                 continue;
             }
             let id = d.id;
@@ -256,23 +272,27 @@ impl CampaignState {
                 self.deployments[k].open_since = now;
                 continue;
             };
-            if now - d.open_since < DEPLOY_AI_WAIT {
+            // The enemy's loads all go by helicopter, one after the other.
+            let wait = if side == Side::Blue { DEPLOY_AI_WAIT } else { RED_CARGO_GAP };
+            if now - d.open_since < wait {
                 continue;
             }
             let (x, y) = (d.x, d.y);
-            let Some(from) = self.supply_base(x, y) else { continue };
+            let Some(from) = d.base.or_else(|| self.supply_base_for(side, x, y)) else { continue };
             let tag = self.id();
             let d = &mut self.deployments[k];
             d.ai.push((leg, tag));
             d.open_since = now;
-            let title = d.title();
-            let base = self.site(from).map_or(String::new(), |s| s.name.clone());
-            let text =
-                Text::raw(format!("A UH-60 takes a load of cargo for the {title} from {base}"));
-            self.note(text.clone());
+            if side == Side::Blue {
+                let title = d.title();
+                let base = self.site(from).map_or(String::new(), |s| s.name.clone());
+                let text =
+                    Text::raw(format!("A UH-60 takes a load of cargo for the {title} from {base}"));
+                self.note(text.clone());
+                ev.push(CampaignEvent::Message(text));
+            }
             self.board_at = f64::MIN;
-            ev.push(CampaignEvent::Message(text));
-            ev.push(CampaignEvent::CargoLaunched { id, from, x, y, tag });
+            ev.push(CampaignEvent::CargoLaunched { id, from, x, y, tag, side });
         }
     }
 
@@ -297,6 +317,11 @@ impl CampaignState {
             return;
         }
         d.open_since = now;
+        // (The enemy sends the next one after a while.)
+        if d.side() == Side::Red {
+            self.board_at = f64::MIN;
+            return;
+        }
         let text =
             Text::raw(format!("Cargo helicopter for the {} lost - back on the board", d.title()));
         self.note(text.clone());
@@ -333,6 +358,10 @@ impl CampaignState {
         }
         d.ai.retain(|a| a.0 != leg);
         let (done, loads) = (d.delivered.len(), d.loads as usize);
+        let side = d.side();
+        if done < loads && side == Side::Red {
+            return;
+        }
         if done < loads {
             let text =
                 Text::raw(format!("Cargo {done} of {loads} for the {} delivered{who}", d.title()));
@@ -346,7 +375,11 @@ impl CampaignState {
         for (_, tag) in std::mem::take(&mut d.ai) {
             ev.push(CampaignEvent::Recall { tag });
         }
-        let text = Text::raw(format!("The {title} is supplied{who} and ready for action"));
+        let text = if side == Side::Blue {
+            Text::raw(format!("The {title} is supplied{who} and ready for action"))
+        } else {
+            text!("cl-red-launch-site-built", place = d.name.as_str())
+        };
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
         ev.push(CampaignEvent::SiteBuilt { id, x, y, kind });
@@ -362,7 +395,8 @@ impl CampaignState {
         leg: u8,
         view: &WorldView,
     ) -> Option<String> {
-        let Some(d) = self.deployment(id).filter(|d| leg < d.loads) else {
+        let Some(d) = self.deployment(id).filter(|d| leg < d.loads && d.side() == Side::Blue)
+        else {
             return Some("No such cargo".into());
         };
         if !d.crate_waiting(leg) {
@@ -395,7 +429,11 @@ impl CampaignState {
         id: u32,
         leg: u8,
     ) -> Result<Vec<CampaignEvent>, Text> {
-        let Some(d) = self.deployments.iter_mut().find(|d| d.id == id && leg < d.loads) else {
+        let Some(d) = self
+            .deployments
+            .iter_mut()
+            .find(|d| d.id == id && leg < d.loads && d.side() == Side::Blue)
+        else {
             return Err(Text::raw("No such cargo"));
         };
         if !d.crate_waiting(leg) {
@@ -444,7 +482,7 @@ impl CampaignState {
     pub(crate) fn logistics_offers(&self) -> Vec<(Text, Objective, i32, i32)> {
         self.deployments
             .iter()
-            .filter(|d| !d.built)
+            .filter(|d| !d.built && d.side() == Side::Blue)
             .flat_map(|d| {
                 d.open_legs().map(move |leg| {
                     (

@@ -56,6 +56,8 @@ pub enum Munition {
     /// The launch sites' FP-7 ballistic and Flamingo cruise missiles.
     Fp7,
     Flamingo,
+    /// The enemy's Iskander ballistic missiles (its TELs draw them from their site's base).
+    Iskander,
 }
 
 const BLUE: [Munition; 22] = [
@@ -82,7 +84,7 @@ const BLUE: [Munition; 22] = [
     Munition::Fp7,
     Munition::Flamingo,
 ];
-const RED: [Munition; 8] = [
+const RED: [Munition; 9] = [
     Munition::Aa10,
     Munition::Aa11,
     Munition::As11,
@@ -91,6 +93,7 @@ const RED: [Munition; 8] = [
     Munition::SamMedium,
     Munition::SamShort,
     Munition::AaaRounds,
+    Munition::Iskander,
 ];
 
 /// The simulation's missile specs (`assets/sim/units.ron`).
@@ -145,6 +148,7 @@ impl Munition {
             Apkws => "APKWS",
             Fp7 => "FP-7",
             Flamingo => "Flamingo",
+            Iskander => "Iskander",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -187,6 +191,7 @@ impl Munition {
             Apkws => 76.0,
             Fp7 => 6.0,
             Flamingo => 4.0,
+            Iskander => 4.0,
         }
     }
 
@@ -219,6 +224,7 @@ impl Munition {
             Apkws => 19.0,
             Fp7 => 1.0,
             Flamingo => 0.5,
+            Iskander => 0.5,
         }
     }
 

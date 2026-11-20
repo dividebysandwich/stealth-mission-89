@@ -212,6 +212,7 @@ impl Host {
             if let Some(unit) = glue::place_site(sim, kind, x, y) {
                 self.launchers.retain(|l| l.0 != id);
                 self.launchers.push((id, unit));
+                self.pending.push(Report::LauncherPlaced { strike: id, unit: unit as u32 });
             }
         }
         let stocks: Vec<SavedStock> = self
@@ -992,15 +993,18 @@ impl Host {
                     sim.spawn_supply(*from as usize, *aaa as usize, pickup, *tag);
                 }
                 CampaignEvent::Restocked { aaa } => self.restock_from_base(sim, *aaa as usize),
-                CampaignEvent::CargoLaunched { id, from, x, y, tag } => {
+                CampaignEvent::CargoLaunched { id, from, x, y, tag, side } => {
                     let (pickup, drop) =
                         crate::cargo::cargo_run(sim, &self.state, *id, *tag, *x, *y);
-                    sim.spawn_cargo(*from as usize, pickup, drop, *tag);
+                    let blue = *side == Side::Blue;
+                    sim.spawn_cargo_for(*from as usize, pickup, drop, *tag, blue);
                 }
                 CampaignEvent::SiteBuilt { id, x, y, kind } => {
                     if let Some(unit) = glue::place_site(sim, *kind, *x, *y) {
                         self.launchers.retain(|l| l.0 != *id);
                         self.launchers.push((*id, unit));
+                        self.pending
+                            .push(Report::LauncherPlaced { strike: *id, unit: unit as u32 });
                     }
                 }
                 CampaignEvent::BatteryDeployed { x, y, .. } => sim.place_battery(*x, *y),
