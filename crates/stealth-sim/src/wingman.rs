@@ -611,10 +611,7 @@ impl Sim {
     /// Pilot `lead`'s radio call to his wingman: it answers him ([`SimEvent::WingReply`]).
     pub fn wing_command(&mut self, lead: u8, cmd: WingCmd) -> WingReply {
         let reply = self.wing_order(lead, cmd);
-        let back = self.pl.id as usize;
-        self.activate(lead as usize);
-        self.emit(SimEvent::WingReply { reply });
-        self.activate(back);
+        self.wing_replies.push((lead, reply));
         reply
     }
 

@@ -41,6 +41,8 @@ impl Plugin for RadioMenuPlugin {
 #[derive(Resource, Default)]
 pub struct RadioMenu {
     open: Option<f64>,
+    /// A script's call (`radio=n`: the call on key n, the menu open or not).
+    pub script_pick: Option<u8>,
 }
 
 /// A call's message id (radio.ftl): the menu's line and what the pilot says.
@@ -90,10 +92,13 @@ fn radio_menu(
     if menu.open.is_some_and(|t| now - t > OPEN_SECS) {
         menu.open = None;
     }
+    let scripted =
+        menu.script_pick.take().and_then(|k| WingCmd::ALL.get((k as usize).checked_sub(1)?));
     let picked = menu
         .open
         .and_then(|_| RADIO_KEYS.iter().position(|&k| keys.just_pressed(k)))
-        .map(|k| WingCmd::ALL[k]);
+        .map(|k| WingCmd::ALL[k])
+        .or(scripted.copied());
     if let Some(cmd) = picked {
         menu.open = None;
         // The pilot's call over the radio, then the wingman's answer (`answers`).

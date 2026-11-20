@@ -73,6 +73,8 @@ enum Step {
     /// Sends a chat message (`say=`), opens the chat field with this text (`type=`).
     Say(String),
     Type(String),
+    /// Makes the radio menu's call on key n (`radio=1`: engage my target).
+    Radio(u8),
 }
 
 #[derive(Clone, Copy)]
@@ -111,6 +113,7 @@ struct Axes {
     talk: bool,
     lock_pilot: Option<u8>,
     osb: Option<(crate::mfd::MfdSide, u8)>,
+    radio: Option<u8>,
 }
 
 fn parse_step(what: &str) -> Option<Step> {
@@ -145,6 +148,8 @@ fn parse_step(what: &str) -> Option<Step> {
             _ => return None,
         };
         Step::Osb(side, x[1..].parse().ok()?)
+    } else if let Some(x) = what.strip_prefix("radio=") {
+        Step::Radio(x.parse().ok()?)
     } else if let Some(x) = what.strip_prefix("say=") {
         Step::Say(x.to_string())
     } else if let Some(x) = what.strip_prefix("type=") {
@@ -221,6 +226,7 @@ fn apply(
         Step::Talk(t) => axes.talk = *t,
         Step::LockPilot(k) => axes.lock_pilot = Some(*k),
         Step::Osb(side, slot) => axes.osb = Some((*side, *slot)),
+        Step::Radio(k) => axes.radio = Some(*k),
         Step::Say(text) => notices.outbox.push(text.clone()),
         Step::Type(text) => notices.typing = Some(text.clone()),
         Step::Press(name) => {
@@ -256,6 +262,7 @@ fn run_script(
     mut mfd_cmds: MessageWriter<crate::mfd::MfdCommand>,
     mut notices: ResMut<crate::player_notices::PlayerNotices>,
     mut menu: ResMut<crate::flight_menu::FlightMenu>,
+    mut radio: ResMut<crate::radio_menu::RadioMenu>,
 ) {
     if script.steps.is_empty() && script.conditional.is_empty() {
         return;
@@ -317,6 +324,9 @@ fn run_script(
             );
         }
     }
+    if let Some(k) = script.axes.radio.take() {
+        radio.script_pick = Some(k);
+    }
     if let Some(k) = script.axes.lock_pilot.take() {
         hud.mode = crate::hud::HudMode::Air;
         locks.write(crate::avionics::LockRequest(crate::mfd::ContactRef::Pilot(k)));
@@ -363,6 +373,7 @@ fn step_name(s: &Step) -> String {
         Step::LockPilot(k) => format!("lockpilot={k}"),
         Step::Osb(side, slot) => format!("osb={side:?} {slot}"),
         Step::Say(t) => format!("say={t}"),
+        Step::Radio(k) => format!("radio={k}"),
         Step::Type(t) => format!("type={t}"),
     }
 }
