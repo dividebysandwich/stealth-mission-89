@@ -485,16 +485,37 @@ def kh101():
     return Store(g)
 
 
+def flamingo_nacelle(y0, y1, r, z, paint):
+    """The Flamingo's turbofan nacelle along y from its intake (`y1`, front) back to its nozzle
+    (`y0`): rounded and tapered in at the intake, full over its middle, narrowing aft to a short
+    bare metal nozzle; its centre `z` up."""
+    L = y1 - y0
+    g = body([(y1, r * 0.55), (y1 - L * 0.04, r * 0.85), (y1 - L * 0.12, r), (y0 + L * 0.22, r),
+              (y0 + L * 0.08, r * 0.82), (y0 + L * 0.06, r * 0.72)], paint, n=14)
+    g.add(body([(y0 + L * 0.06, r * 0.66), (y0, r * 0.6)], ALUMINIUM, n=14))
+    # The dark intake face and exhaust.
+    g.add(frustum((0, y1 + 0.001, 0), (0, y1, 0), r * 0.45, r * 0.45, BLACK, 14))
+    g.add(frustum((0, y0, 0), (0, y0 - 0.001, 0), r * 0.5, r * 0.5, BLACK, 14))
+    return g.transformed(lambda p: Vector((p.x, p.y, p.z + z)))
+
+
 def flamingo_fp5():
-    """Flamingo (FP-5): 12.5 m, a long round fuselage, straight wings, the turbofan in a pod on
-    top of the tail, light grey."""
+    """Flamingo (FP-5): 12.5 m of round fuselage with a long tapered nose and a rounded tail cone,
+    straight wings a little ahead of its middle, the turbofan in a nacelle sitting on top of the
+    rear fuselage (on a fairing), two fins angled down under the tail; dark grey."""
     L, r = 12.5, 0.6
     n, t = L / 2, -L / 2
-    g = body([(n, 0.0), (n - 0.5, 0.35), (n - 1.5, r), (t + 0.5, r * 0.9), (t, r * 0.7)], JET_GREY, n=12)
-    g.add(wing((0, 0.3, 0.0), 1.0, (3.0, 0.0, 0.0), 0.7, JET_GREY, t=0.08))
-    g.add(frustum((0, t + 3.5, r + 0.5), (0, t + 0.4, r + 0.5), 0.45, 0.48, DARK, 12))
-    g.add(block(-0.12, 0.12, t + 1.0, t + 3.0, r - 0.1, r + 0.15, JET_GREY))
-    g.add(wing((0, t + 0.9, 0.0), 0.8, (1.4, t + 0.6, 0.2), 0.45, JET_GREY, t=0.06))
+    paint = DARK
+    g = body([(n, 0.0), (n - 0.35, 0.22), (n - 1.0, 0.45), (n - 1.9, r), (t + 1.4, r),
+              (t + 0.7, r * 0.82), (t + 0.25, r * 0.5), (t, 0.12)], paint, n=14)
+    g.add(wing((0, 1.2, 0.0), 1.1, (3.0, 0.95, 0.0), 0.8, paint, t=0.08))
+    # The nacelle over the rear third, its nozzle short of the tail cone, and its fairing.
+    ny0, ny1, nr = t + 0.6, t + 5.4, 0.5
+    g.add(flamingo_nacelle(ny0, ny1, nr, r + nr - 0.12, paint))
+    g.add(block(-0.32, 0.32, ny0 + 0.9, ny1 - 0.6, r * 0.6, r + 0.25, paint, taper=0.1))
+    # Two fins angled 45 degrees down either side under the tail.
+    for rot in (225.0, 315.0):
+        fins(g, t + 1.5, t + 0.35, r * 0.75, 0.75, paint, n=1, rot=rot, tip=(t + 0.9, t + 0.4), thick=0.05)
     return Store(g)
 
 

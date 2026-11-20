@@ -1621,16 +1621,25 @@ def fp7_launcher():
 
 
 def flamingo_missile(paint):
-    """The Flamingo (FP-5) along +y from its tail: the long round fuselage, the straight wings,
-    the turbofan in its pod on top of the tail, the tailplanes."""
+    """The Flamingo (FP-5) along +y from its tail: the round fuselage with its long tapered nose
+    and rounded tail cone, the straight wings, the turbofan nacelle on top of the rear fuselage
+    (tapered at its intake and to its nozzle), two fins angled down under the tail."""
     g = Geo()
     L, r = 12.5, 0.6
-    g.add(frustum((0, 0, 0), (0, L - 1.5, 0), r * 0.85, r, paint, n=10))
-    g.add(frustum((0, L - 1.5, 0), (0, L, 0), r, 0.08, paint, n=10, caps=False))
-    g.add(mklib.wing((0, L * 0.45, 0), 1.0, (3.0, L * 0.45 - 0.3, 0), 0.7, paint, t=0.08))
-    g.add(frustum((0, 0.4, r + 0.55), (0, 3.6, r + 0.55), 0.48, 0.5, OLIVE_DARK, n=10))
-    g.add(block(-0.12, 0.12, 1.2, 3.0, r - 0.1, r + 0.2, paint))
-    g.add(mklib.wing((0, 0.6, 0), 0.8, (1.4, 0.3, 0.2), 0.45, paint, t=0.06))
+    prof = [(0.0, 0.12), (0.25, r * 0.5), (0.7, r * 0.82), (1.4, r), (L - 1.9, r), (L - 1.0, 0.45),
+            (L - 0.35, 0.22), (L, 0.02)]
+    for (ya, ra), (yb, rb) in zip(prof, prof[1:]):
+        g.add(frustum((0, ya, 0), (0, yb, 0), ra, rb, paint, n=10, caps=False))
+    g.add(mklib.wing((0, L / 2 + 1.2, 0), 1.1, (3.0, L / 2 + 0.95, 0), 0.8, paint, t=0.08))
+    nz, nr = r + 0.38, 0.5
+    nac = [(0.6, nr * 0.6), (0.9, nr * 0.72), (1.6, nr), (4.8, nr), (5.4, nr * 0.55)]
+    for (ya, ra), (yb, rb) in zip(nac, nac[1:]):
+        g.add(frustum((0, ya, nz), (0, yb, nz), ra, rb, paint, n=10, caps=False))
+    g.add(frustum((0, 0.6, nz), (0, 0.59, nz), nr * 0.6, nr * 0.6, STEEL, n=10))
+    g.add(block(-0.32, 0.32, 1.5, 4.8, r * 0.6, r + 0.25, paint))
+    for sx in (-1, 1):
+        g.add(mklib.hexa([(sx * 0.3, 0.35, -0.3), (sx * 0.3, 1.5, -0.3), (sx * 0.85, 0.9, -0.85), (sx * 0.85, 0.4, -0.85),
+                          (sx * 0.34, 0.35, -0.26), (sx * 0.34, 1.5, -0.26), (sx * 0.89, 0.9, -0.81), (sx * 0.89, 0.4, -0.81)], paint))
     return g
 
 
