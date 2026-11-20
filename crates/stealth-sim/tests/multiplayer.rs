@@ -100,6 +100,19 @@ fn site_engages_pilot_one() -> (Sim, Vec<(u8, PlayerState)>, usize) {
     panic!("the SA-2 never fired");
 }
 
+/// A returning player with a high slot joins: the empty slots below his aren't in the world
+/// (they were drawn and labelled in a heap at the map's corner).
+#[test]
+fn a_high_slot_leaves_no_pilots_in_the_gap() {
+    let (mut sim, base) = two_pilots();
+    sim.add_pilot(5);
+    let ids: Vec<u8> = sim.remote_pilots().iter().map(|p| p.id).collect();
+    assert_eq!(ids, [0, 1]);
+    sim.respawn_pilot(5, base, None, Airframe::default());
+    let ids: Vec<u8> = sim.remote_pilots().iter().map(|p| p.id).collect();
+    assert_eq!(ids, [0, 1, 5]);
+}
+
 #[test]
 fn a_site_goes_for_the_pilot_it_sees() {
     let (sim, _, slot) = site_engages_pilot_one();

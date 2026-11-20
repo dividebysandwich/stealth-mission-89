@@ -372,8 +372,10 @@ impl Sim {
     /// A pilot already there (a returning player) stays as he is.
     pub fn add_pilot(&mut self, id: u8) {
         let id = id as usize;
+        // The slots in between (players who joined before, not back yet) are out of the world
+        // too: a default pilot is present, and would be drawn and labelled at the map's corner.
         if self.parked.len() <= id {
-            self.parked.resize_with(id + 1, Pilot::default);
+            self.parked.resize_with(id + 1, || Pilot { absent: true, ..Pilot::default() });
         }
         if id == self.pl.id as usize || self.parked[id].id as usize == id {
             return;
