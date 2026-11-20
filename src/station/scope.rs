@@ -29,6 +29,8 @@ pub const CYAN: u8 = 11;
 pub const RED: u8 = 13;
 pub const WHITE: u8 = 15;
 pub const YELLOW: u8 = 17;
+pub const BLUE: u8 = 9;
+pub const ORANGE: u8 = 91;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {

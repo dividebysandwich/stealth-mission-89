@@ -157,6 +157,8 @@ pub struct DroneUi {
     pub(super) fire: bool,
     /// A launch sent: the drones in the air then (the new one is selected once it is up).
     launching: Option<Vec<u16>>,
+    /// The selected drone was lost (the feed shows NO SIGNAL until another is selected).
+    pub lost: bool,
 }
 
 impl Default for DroneUi {
@@ -183,6 +185,7 @@ impl Default for DroneUi {
             test_picked: Vec::new(),
             fire: false,
             launching: None,
+            lost: false,
         }
     }
 }
@@ -400,6 +403,7 @@ fn input(
     // A drone gone: no longer selected, its camera and edits forgotten.
     if ui.selected.is_some() && selected(&ui, &uavs).is_none() {
         ui.selected = None;
+        ui.lost = true;
         if ui.plan.is_none() {
             ui.wp = None;
         }
@@ -596,6 +600,7 @@ fn select(ui: &mut DroneUi, uavs: &[Uav], id: u16, send: &mut impl FnMut(Station
         send(StationCmd::Manual { uav: u.id, on: false });
     }
     ui.selected = Some(id);
+    ui.lost = false;
     ui.wp = None;
     ui.edit = None;
 }
@@ -975,6 +980,7 @@ fn test_aid(
     {
         ui.test_picked.push(u.id);
         ui.selected = Some(u.id);
+        ui.lost = false;
         let (x, y) = u.map();
         ui.centre = DVec2::new(x as f64, y as f64);
         if std::env::args().any(|a| a == "--drone-manual" || a == "--drone-forward") {

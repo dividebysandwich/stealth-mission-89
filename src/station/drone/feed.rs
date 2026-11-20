@@ -13,16 +13,16 @@
 use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 use stealth_sim::aaa::M_PER_MAP;
-use stealth_sim::uav::{Uav, UavMode};
+use stealth_sim::uav::{Uav, UavKind, UavMode};
 use stealth_sim::{Sim, oflags};
 
 use super::super::eo::ConsoleEo;
-use super::super::scope::{BLACK, CYAN, GREEN, GREY, RED, WHITE, YELLOW};
+use super::super::scope::{BLACK, BLUE, CYAN, GREEN, GREY, ORANGE, RED, WHITE, YELLOW};
 use super::{DroneUi, center_uavs, selected};
 use crate::canvas::{Canvas, CanvasTexture, TRANSPARENT};
 use crate::cockpit3d::{ConsoleCanvas, ConsoleScreen, FEED_CANVAS};
 use crate::combat::{Combat, unit_position};
-use crate::font::{Align, stroke_text_at};
+use crate::font::{Align, stroke_text_at, stroke_width};
 use crate::station::Manning;
 use crate::world::wu_to_bevy;
 
@@ -193,15 +193,28 @@ fn seen(sim: &Sim, u: &Uav) -> Vec<(DVec3, String)> {
     out
 }
 
-/// The main screen: the camera's picture under its overlay (the TGP's, or the forward FLIR's
-/// horizon), the speed and height ladders either side and the HSI at the bottom while a drone
-/// is selected; without its picture here, NO FEED.
+/// What the overlay shows besides the drone: how long it has flown (s), its command center
+/// (m east, north), the wind (the bearing it blows to (rad), m/s).
+pub struct Osd {
+    pub flown: f64,
+    pub home: Option<DVec2>,
+    pub wind: Option<(f32, f32)>,
+}
+
+/// The main screen: the camera's picture under an FPV-style overlay (the TGP's crosshair or the
+/// forward camera's horizon; the speed and height tapes either side, the compass on top, the
+/// flight's figures in the corners) while a drone is selected; without its picture here, NO
+/// FEED; the selected drone gone (it hit, or was shot down), NO SIGNAL.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn draw(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
     ui: Res<DroneUi>,
     eo: Option<Res<ConsoleEo>>,
     mfd: Res<crate::mfd::MfdState>,
+    weather: Option<Res<crate::weather::WeatherState>>,
+    time: Res<Time>,
+    mut launched: Local<Vec<(u16, f64)>>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
     let (Some(m), Some(combat)) = (manning, combat) else { return };
@@ -216,17 +229,38 @@ pub(super) fn draw(
     cv.reset_clip();
     let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
     let uavs = center_uavs(&combat, &m);
+    // When each drone in the air was first seen (its flight time).
+    let now = time.elapsed_secs_f64();
+    launched.retain(|(id, _)| uavs.iter().any(|u| u.id == *id));
+    for u in &uavs {
+        if !launched.iter().any(|(id, _)| *id == u.id) {
+            launched.push((u.id, now));
+        }
+    }
     let smooth = selected(&ui, &uavs).map(|u| drawn(&combat, u));
     let Some(u) = smooth.as_ref() else {
         cv.clear(BLACK);
-        stroke_text_at(cv, w / 2.0, h / 2.0 - 8.0, "NO FEED", 9.0, 1.2, GREEN, Align::Centre);
+        if ui.lost {
+            stroke_text_at(
+                cv,
+                w / 2.0,
+                h / 2.0 - 8.0,
+                "NO SIGNAL",
+                12.0,
+                1.4,
+                WHITE,
+                Align::Centre,
+            );
+        } else {
+            stroke_text_at(cv, w / 2.0, h / 2.0 - 8.0, "NO FEED", 9.0, 1.2, GREEN, Align::Centre);
+        }
         let hint = "SELECT A DRONE ON THE MAP";
-        stroke_text_at(cv, w / 2.0, h / 2.0 + 10.0, hint, 6.0, 0.9, GREY, Align::Centre);
+        stroke_text_at(cv, w / 2.0, h / 2.0 + 12.0, hint, 6.0, 0.9, GREY, Align::Centre);
         return;
     };
     let cam = ui.cam(u.id);
     let forward = super::forward(&ui, u);
-    let col = if mfd.flir { WHITE } else { GREEN };
+    let col = GREEN;
     let picture = eo.is_some();
     if picture {
         cv.clear(TRANSPARENT);
@@ -234,40 +268,30 @@ pub(super) fn draw(
         cv.clear(BLACK);
         stroke_text_at(cv, w / 2.0, h / 2.0 - 10.0, "NO FEED", 9.0, 1.2, GREEN, Align::Centre);
     }
-    // The top line: the drone, the camera, the mode; the battery under it.
+    // The top line: the drone and the camera, the mode.
     let sensor = if mfd.flir { "FLIR" } else { "TV" };
-    let left = if forward {
-        format!("{} FWD {sensor}", u.label())
-    } else {
-        format!("{} TGP {sensor}", u.label())
-    };
-    stroke_text_at(cv, 46.0, 9.0, &left, 6.0, 0.9, col, Align::Left);
+    let left = format!("{} {} {sensor}", u.label(), if forward { "FWD" } else { "TGP" });
+    stroke_text_at(cv, 52.0, 9.0, &left, 6.0, 0.9, col, Align::Left);
     let mode = match (u.mode, forward) {
-        (UavMode::Manual, _) => format!("MANUAL THR {:.0}%", u.ctrl[2] * 100.0),
+        (UavMode::Manual, _) => "MANUAL".to_string(),
         (m, true) => m.name().to_string(),
         (m, false) => {
             format!("{} {}", if cam.track.is_some() { "TRACK" } else { "SLAVE" }, m.name())
         }
     };
     let mcol = if u.mode == UavMode::Manual { YELLOW } else { col };
-    stroke_text_at(cv, w - 46.0, 9.0, &mode, 6.0, 0.9, mcol, Align::Right);
-    let bat = (u.battery * 100.0).round() as i32;
-    let end = u.endurance() as i32;
-    let bcol = if bat < 20 { RED } else { col };
-    let tank = if u.kind.jet() { "FUEL" } else { "BAT" };
-    let battery = format!("{tank} {bat}% {}", super::map::duration(end));
-    stroke_text_at(cv, 46.0, 20.0, &battery, 5.0, 0.8, bcol, Align::Left);
+    stroke_text_at(cv, w - 52.0, 9.0, &mode, 6.0, 0.9, mcol, Align::Right);
     if u.mode == UavMode::Dive {
-        stroke_text_at(cv, w / 2.0, 32.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
+        stroke_text_at(cv, w / 2.0, 72.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
     } else if u.stalled() {
-        stroke_text_at(cv, w / 2.0, 32.0, "STALL", 7.0, 1.0, RED, Align::Centre);
+        stroke_text_at(cv, w / 2.0, 72.0, "STALL", 7.0, 1.0, RED, Align::Centre);
     }
     if let Some(j) = u.lock {
         let name = combat.sim.flights().get(j as usize).map(|f| combat.sim.aircraft_name(f.spec));
         let text = format!("LOCK {}", name.unwrap_or_default().to_uppercase());
-        stroke_text_at(cv, w / 2.0, 58.0, &text, 7.0, 1.0, RED, Align::Centre);
+        stroke_text_at(cv, w / 2.0, 84.0, &text, 7.0, 1.0, RED, Align::Centre);
         if u.mode == UavMode::Manual {
-            stroke_text_at(cv, w / 2.0, 70.0, "THROTTLE UP", 5.0, 0.8, RED, Align::Centre);
+            stroke_text_at(cv, w / 2.0, 96.0, "THROTTLE UP", 5.0, 0.8, RED, Align::Centre);
         }
     } else if u.kind.hunter() && u.mode != UavMode::Launch {
         stroke_text_at(cv, w / 2.0, h - 26.0, "FIRE TO LOCK", 5.0, 0.8, GREY, Align::Centre);
@@ -282,18 +306,17 @@ pub(super) fn draw(
             tgp(cv, &combat.sim, u, &eo, col);
         }
     }
-    ladders(cv, u, col);
+    let osd = Osd {
+        flown: launched.iter().find(|(id, _)| *id == u.id).map_or(0.0, |(_, t)| now - t),
+        home: combat.sim.units().get(m.unit).map(|a| {
+            let p = a.metres();
+            DVec2::new(p[0], p[1])
+        }),
+        wind: weather.map(|s| ((s.wind.from_deg + 180.0).to_radians(), s.wind.kt * 0.514)),
+    };
     // Flown by hand, the lever as the console holds it (the drone follows a moment later).
     let thr = if u.mode == UavMode::Manual { ui.throttle } else { u.throttle() as f32 };
-    throttle_gauge(cv, u, thr, col);
-    // Flying by the forward view: a heading tape on top and the waypoint at the bottom; else
-    // the HSI.
-    if forward {
-        heading_tape(cv, u, col);
-        waypoint_line(cv, u);
-    } else {
-        hsi(cv, u, col);
-    }
+    overlay(cv, u, &osd, thr, col);
 }
 
 /// The TGP's overlay: the crosshair, the zoom, the range to the ground point, brackets on the
@@ -306,8 +329,8 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
     }
     stroke_text_at(
         cv,
-        w - 46.0,
-        20.0,
+        w - 52.0,
+        84.0,
         crate::mfd::cam_zoom_label(Some(eo.zoom)),
         5.0,
         0.8,
@@ -330,12 +353,12 @@ fn tgp(cv: &mut Canvas, sim: &Sim, u: &Uav, eo: &ConsoleEo, col: u8) {
     }
 }
 
-/// How far the TGP looks left or right of the nose: a scale under the top lines (from 180
+/// How far the TGP looks left or right of the nose: a scale at the bottom (from 180
 /// left to 180 right, the nose in the middle), a caret at the camera's azimuth and its
 /// degrees beside the scale.
 fn gimbal_azimuth(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
-    let w = FEED_CANVAS.0 as f32;
-    let (cx, y, half) = (w / 2.0, 44.0, 72.0);
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
+    let (cx, y, half) = (w / 2.0, h - 12.0, 72.0);
     // The camera's bearing (Bevy world: x east, -z north) less the drone's heading.
     let bearing = eo.dir.x.atan2(-eo.dir.z) as f64;
     let rel = (bearing - u.heading + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
@@ -428,84 +451,232 @@ fn air(cv: &mut Canvas, combat: &Combat, u: &Uav, eo: &ConsoleEo) {
     }
 }
 
-/// The ladders: the speed (knots) on the left, the height (m) on the right, the value boxed at
-/// the middle.
-pub(super) fn ladders(cv: &mut Canvas, u: &Uav, col: u8) {
-    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
-    let (top, bottom) = (30.0, h - 30.0);
-    let mid = (top + bottom) / 2.0;
-    let half = (bottom - top) / 2.0;
-    let tape = |cv: &mut Canvas,
-                x0: f32,
-                x1: f32,
-                right: bool,
-                value: f32,
-                per_px: f32,
-                tick: f32,
-                label: f32| {
-        cv.stroke(
-            Vec2::new(if right { x0 } else { x1 }, top),
-            Vec2::new(if right { x0 } else { x1 }, bottom),
-            1.0,
-            col,
-        );
-        let lo = ((value - half * per_px) / tick).ceil() as i32;
-        let hi = ((value + half * per_px) / tick).floor() as i32;
-        for k in lo..=hi {
-            let v = k as f32 * tick;
-            let y = mid - (v - value) / per_px;
-            let major = (v / label).fract().abs() < 1e-3;
-            let len = if major { 6.0 } else { 3.0 };
-            let (a, b) = if right { (x0, x0 + len) } else { (x1 - len, x1) };
-            cv.stroke(Vec2::new(a, y), Vec2::new(b, y), 1.0, col);
-            if major && (y - mid).abs() > 8.0 && v >= 0.0 {
-                let (tx, al) =
-                    if right { (x0 + 8.0, Align::Left) } else { (x1 - 8.0, Align::Right) };
-                stroke_text_at(cv, tx, y, &format!("{v:.0}"), 5.0, 0.8, col, al);
-            }
-        }
-        // The value boxed at the middle.
-        let (bx0, bx1) = (x0 - 2.0, x1 + 2.0);
-        cv.fill_rect(bx0 as i32, mid as i32 - 6, (bx1 - bx0) as i32, 12, BLACK);
-        cv.frame(Vec2::new(bx0, mid - 6.0), Vec2::new(bx1, mid + 6.0), 1.0, col);
-        stroke_text_at(
-            cv,
-            (bx0 + bx1) / 2.0,
-            mid,
-            &format!("{value:.0}"),
-            6.0,
-            0.9,
-            col,
-            Align::Centre,
-        );
-    };
-    let kt = (u.speed / 0.514) as f32;
-    tape(cv, 4.0, 40.0, false, kt, 0.5, 5.0, 20.0);
-    stroke_text_at(cv, 22.0, bottom + 9.0, "KT", 5.0, 0.8, col, Align::Centre);
-    tape(cv, w - 40.0, w - 4.0, true, u.pos[2] as f32, 2.5, 25.0, 100.0);
-    stroke_text_at(cv, w - 22.0, bottom + 9.0, "M", 5.0, 0.8, col, Align::Centre);
+/// Height of the tapes' scale: pixels a unit (m/s, m), units between the numbers.
+const TAPE_PX: f32 = 8.0;
+const TAPE_STEP: i32 = 5;
+
+/// A battery's cells and capacity (mAh); none for a jet's fuel.
+fn battery_pack(kind: UavKind) -> Option<(f32, f32)> {
+    match kind {
+        _ if kind.jet() => None,
+        UavKind::Stork => Some((12.0, 30_000.0)),
+        UavKind::Interceptor => Some((6.0, 6_000.0)),
+        _ => Some((8.0, 22_000.0)),
+    }
 }
 
-/// The throttle beside the speed tape: a bar filled to it, the percent under it (yellow flown
-/// by hand), an interceptor's hover throttle ticked.
-pub(super) fn throttle_gauge(cv: &mut Canvas, u: &Uav, thr: f32, col: u8) {
+/// The FPV overlay: the airspeed tape on the left and the height's on the right, the compass on
+/// top (the home and the next waypoint marked, the wind under the heading); the time flown,
+/// ground speed and throttle top left, the distance home and the link top right; the battery
+/// (volts, mAh used), the next waypoint and the metres a mAh bottom left; the battery's (or
+/// tank's) charge, pitch and roll bottom right.
+pub(super) fn overlay(cv: &mut Canvas, u: &Uav, osd: &Osd, thr: f32, col: u8) {
+    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
+    tape(cv, 44.0, false, u.speed as f32, Some(u.kind.perf().max as f32), ["AIRSPD", "(M/S)"], col);
+    tape(cv, w - 44.0, true, u.pos[2] as f32, None, ["ALT", "(M)"], col);
+    compass(cv, u, osd, col);
+    // Top left.
+    let x = 52.0;
+    let t = osd.flown.max(0.0) as i64;
+    let time = format!("T : {:02}:{:02}:{:02}", t / 3600, t / 60 % 60, t % 60);
+    stroke_text_at(cv, x, 31.0, &time, 6.0, 0.9, col, Align::Left);
+    let gspd = format!("GSPD : {:.0} M/S", u.speed);
+    stroke_text_at(cv, x, 42.0, &gspd, 6.0, 0.9, col, Align::Left);
+    let tcol = if u.mode == UavMode::Manual { YELLOW } else { col };
+    let throttle = format!("THR : {:.0}%", thr.clamp(0.0, 1.0) * 100.0);
+    stroke_text_at(cv, x, 53.0, &throttle, 6.0, 0.9, tcol, Align::Left);
+    // Top right: home and the link (weaker the further it is).
+    let rx = w - 52.0;
+    if let Some(home) = osd.home {
+        let d = (DVec2::new(u.pos[0], u.pos[1]) - home).length();
+        stroke_text_at(cv, rx, 31.0, &format!("DST : {d:.0} M"), 6.0, 0.9, col, Align::Right);
+        let dbm = (-40.0 - 20.0 * (d.max(100.0) / 100.0).log10()) as f32;
+        link(cv, rx, 36.0, false, dbm);
+        link(cv, rx, 56.0, true, dbm - 3.0);
+    }
+    // Bottom left.
+    if let Some((cells, cap)) = battery_pack(u.kind) {
+        let b = u.battery.clamp(0.0, 1.0) as f32;
+        let volts = cells * (3.3 + 0.9 * b);
+        stroke_text_at(cv, x, h - 58.0, &format!("V : {volts:.1}"), 6.0, 0.9, RED, Align::Left);
+        let used = format!("MAH : {:.0}", cap * (1.0 - b));
+        stroke_text_at(cv, x, h - 47.0, &used, 6.0, 0.9, ORANGE, Align::Left);
+        // Metres flown a mAh, on a scale to 10.
+        let rate = cap * u.drain() as f32;
+        let per = if rate > 0.0 { u.speed as f32 / rate } else { 0.0 };
+        let (x0, x1, y) = (x, x + 176.0, h - 20.0);
+        cv.stroke(Vec2::new(x0, y), Vec2::new(x1, y), 1.0, col);
+        stroke_text_at(cv, x0, h - 9.0, "M/MAH", 5.0, 0.8, col, Align::Left);
+        for (k, l) in ["2.5", "5", "7.5", "10"].iter().enumerate() {
+            let tx = x0 + (x1 - x0) * (k + 1) as f32 / 4.0;
+            cv.stroke(Vec2::new(tx, y - 2.0), Vec2::new(tx, y + 2.0), 1.0, col);
+            stroke_text_at(cv, tx, h - 9.0, l, 5.0, 0.8, col, Align::Centre);
+        }
+        let dot = x0 + (x1 - x0) * (per / 10.0).clamp(0.0, 1.0);
+        cv.ring(Vec2::new(dot, y), 1.75, 3.5, BLUE);
+    }
+    if let (Some(wp), Some((_, km))) = (u.target(), to_waypoint(u)) {
+        let y = h - 36.0;
+        arrow(cv, Vec2::new(x, y), Vec2::new(x + 9.0, y), col);
+        let text = format!("WP{} {} {km:.1} KM", u.next + 1, wp.kind.name());
+        stroke_text_at(cv, x + 13.0, y, &text, 6.0, 0.9, col, Align::Left);
+    }
+    // Bottom right.
+    let bat = (u.battery * 100.0).round() as i32;
+    let tank = if u.kind.jet() { "FUEL" } else { "BAT" };
+    let charge = format!("{tank} : {bat}% {}", super::map::duration(u.endurance() as i32));
+    let bcol = if bat < 20 { RED } else { col };
+    stroke_text_at(cv, rx, h - 35.0, &charge, 6.0, 0.9, bcol, Align::Right);
+    let pitch = format!("P : {:.1}°", u.pitch.to_degrees());
+    stroke_text_at(cv, rx, h - 24.0, &pitch, 6.0, 0.9, col, Align::Right);
+    let roll = format!("R : {:.1}°", u.bank.to_degrees());
+    stroke_text_at(cv, rx, h - 13.0, &roll, 6.0, 0.9, col, Align::Right);
+}
+
+/// A tape down the side at `x`: its title on top, a number every `TAPE_STEP` outside the line
+/// (orange past `warn`), the value inside it at the middle behind a pointer, a line on from it
+/// towards the middle of the picture.
+fn tape(
+    cv: &mut Canvas,
+    x: f32,
+    right: bool,
+    value: f32,
+    warn: Option<f32>,
+    title: [&str; 2],
+    col: u8,
+) {
     let h = FEED_CANVAS.1 as f32;
-    let (x0, x1, top, bottom) = (50.0, 62.0, 60.0, h - 60.0);
-    let col = if u.mode == UavMode::Manual { YELLOW } else { col };
-    let y = |t: f32| bottom - (bottom - top) * t.clamp(0.0, 1.0);
-    cv.frame(Vec2::new(x0, top), Vec2::new(x1, bottom), 1.0, col);
-    let fill = y(thr);
-    if bottom - fill >= 1.0 {
-        let (x, w) = (x0 as i32 + 2, (x1 - x0) as i32 - 3);
-        cv.fill_rect(x, fill as i32, w, (bottom - fill) as i32, col);
+    let (top, bottom) = (26.0, h - 6.0);
+    let mid = (top + bottom) / 2.0;
+    // Outwards and inwards.
+    let (out, inw) = if right { (1.0, -1.0) } else { (-1.0, 1.0) };
+    let (al_out, al_in) =
+        if right { (Align::Left, Align::Right) } else { (Align::Right, Align::Left) };
+    let (tx, tal) = if right { (x + 40.0, Align::Right) } else { (x - 40.0, Align::Left) };
+    stroke_text_at(cv, tx, 8.0, title[0], 6.0, 0.9, col, tal);
+    stroke_text_at(cv, tx, 17.0, title[1], 6.0, 0.9, col, tal);
+    cv.stroke(Vec2::new(x, top), Vec2::new(x, bottom), 1.0, col);
+    let span = (mid - top) / TAPE_PX;
+    let half_step = TAPE_STEP as f32 / 2.0;
+    let lo = ((value - span) / half_step).ceil() as i32;
+    let hi = ((value + span) / half_step).floor() as i32;
+    for k in lo.max(0)..=hi {
+        let v = k as f32 * half_step;
+        let y = mid - (v - value) * TAPE_PX;
+        if k % 2 == 1 {
+            cv.stroke(Vec2::new(x, y), Vec2::new(x + out * 3.0, y), 1.0, col);
+            continue;
+        }
+        let c = if warn.is_some_and(|m| v > m) { ORANGE } else { col };
+        cv.stroke(Vec2::new(x, y), Vec2::new(x + out * 6.0, y), 1.0, c);
+        stroke_text_at(cv, x + out * 9.0, y, &format!("{v:.0}"), 7.0, 1.0, c, al_out);
     }
-    let hover = u.kind.perf().hover as f32;
-    if hover > 0.0 {
-        cv.stroke(Vec2::new(x1, y(hover)), Vec2::new(x1 + 4.0, y(hover)), 1.0, col);
+    let tip = Vec2::new(x + inw * 2.0, mid);
+    cv.polyline(
+        &[tip, tip + Vec2::new(inw * 6.0, -4.0), tip + Vec2::new(inw * 6.0, 4.0), tip],
+        1.0,
+        col,
+    );
+    let text = format!("{value:.0}");
+    let tx = x + inw * 11.0;
+    stroke_text_at(cv, tx, mid, &text, 9.0, 1.2, col, al_in);
+    let a = tx + inw * (stroke_width(&text, 9.0) + 5.0);
+    cv.stroke(Vec2::new(a, mid), Vec2::new(x + inw * 84.0, mid), 1.0, col);
+}
+
+/// The compass tape across the top: a tick every 15 degrees, the points of the compass by
+/// letter, the next waypoint (cyan) and home (a yellow H) at their bearings (at the tape's ends
+/// when off it); under it the heading and the wind (blue, an arrow the way it blows).
+pub(super) fn compass(cv: &mut Canvas, u: &Uav, osd: &Osd, col: u8) {
+    let w = FEED_CANVAS.0 as f32;
+    let (c, half, per_deg, y) = (w / 2.0, 96.0, 96.0 / 70.0, 18.0);
+    let hdg = u.heading.to_degrees().rem_euclid(360.0) as f32;
+    let off = |brg: f32| ((brg - hdg + 540.0).rem_euclid(360.0) - 180.0) * per_deg;
+    let lo = ((hdg - half / per_deg) / 15.0).ceil() as i32;
+    let hi = ((hdg + half / per_deg) / 15.0).floor() as i32;
+    for k in lo..=hi {
+        let deg = k * 15;
+        let x = c + (deg as f32 - hdg) * per_deg;
+        let d = deg.rem_euclid(360);
+        if d % 45 == 0 {
+            cv.stroke(Vec2::new(x, y - 5.0), Vec2::new(x, y), 1.0, col);
+            let l = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][d as usize / 45];
+            stroke_text_at(cv, x, 7.0, l, 6.0, 0.9, col, Align::Centre);
+        } else {
+            cv.stroke(Vec2::new(x, y - 2.5), Vec2::new(x, y), 1.0, col);
+        }
     }
-    let pct = format!("{:.0}", thr.clamp(0.0, 1.0) * 100.0);
-    stroke_text_at(cv, (x0 + x1) / 2.0, bottom + 9.0, &pct, 5.0, 0.8, col, Align::Centre);
-    stroke_text_at(cv, (x0 + x1) / 2.0, top - 7.0, "THR", 5.0, 0.8, col, Align::Centre);
+    if let Some((brg, _)) = to_waypoint(u) {
+        let x = c + off(brg.to_degrees()).clamp(-half, half);
+        cv.triangle(
+            [Vec2::new(x, y + 1.0), Vec2::new(x - 3.5, y - 5.0), Vec2::new(x + 3.5, y - 5.0)],
+            CYAN,
+        );
+    }
+    if let Some(home) = osd.home {
+        let (de, dn) = (home.x - u.pos[0], home.y - u.pos[1]);
+        let x = c + off(de.atan2(dn).to_degrees() as f32).clamp(-half, half);
+        cv.ring(Vec2::new(x, y - 3.0), 2.75, 5.5, YELLOW);
+        stroke_text_at(cv, x, y - 3.0, "H", 4.5, 0.9, BLACK, Align::Centre);
+    }
+    let tip = Vec2::new(c, y + 3.0);
+    cv.polyline(&[tip, tip + Vec2::new(-4.0, 6.0), tip + Vec2::new(4.0, 6.0), tip], 1.0, col);
+    stroke_text_at(cv, c, y + 16.0, &format!("{hdg:03.0}°"), 8.0, 1.1, col, Align::Centre);
+    if let Some((to, ms)) = osd.wind {
+        stroke_text_at(cv, c, y + 28.0, &format!("{ms:.1} M/S"), 5.0, 0.8, BLUE, Align::Centre);
+        if ms > 0.05 {
+            let a = to - u.heading as f32;
+            let d = Vec2::new(a.sin(), -a.cos());
+            let p = Vec2::new(c, y + 39.0);
+            arrow(cv, p - d * 6.0, p + d * 6.0, BLUE);
+        }
+    }
+}
+
+/// An arrow from `a` to `b`.
+fn arrow(cv: &mut Canvas, a: Vec2, b: Vec2, col: u8) {
+    let d = (b - a).normalize_or(Vec2::X);
+    let side = Vec2::new(-d.y, d.x);
+    cv.stroke(a, b, 1.2, col);
+    cv.stroke(b, b - d * 4.0 + side * 3.0, 1.2, col);
+    cv.stroke(b, b - d * 4.0 - side * 3.0, 1.2, col);
+}
+
+/// A link's strength ending at `right`: L, an arrow (up the uplink, down the downlink), five
+/// bars and the dBm under them; orange fair, red weak.
+fn link(cv: &mut Canvas, right: f32, y: f32, up: bool, dbm: f32) {
+    let c = if dbm < -85.0 {
+        RED
+    } else if dbm < -72.0 {
+        ORANGE
+    } else {
+        GREEN
+    };
+    let lit = ((dbm + 100.0) / 10.0).ceil().clamp(0.0, 5.0) as i32;
+    for i in 0..5 {
+        let x = right - 29.0 + i as f32 * 6.0;
+        let bh = 2.0 + i as f32 * 2.0;
+        let (a, b) = (Vec2::new(x, y + 9.0 - bh), Vec2::new(x + 4.0, y + 9.0));
+        if i < lit {
+            cv.fill_rect(a.x as i32, a.y as i32, 5, bh as i32 + 1, c);
+        } else {
+            cv.frame(a, b, 0.8, GREY);
+        }
+    }
+    let ax = right - 36.0;
+    let (a, b) = if up { (y + 9.0, y + 1.0) } else { (y + 1.0, y + 9.0) };
+    arrow(cv, Vec2::new(ax, a), Vec2::new(ax, b), c);
+    stroke_text_at(cv, ax - 5.0, y + 5.0, "L", 7.0, 1.0, c, Align::Right);
+    stroke_text_at(
+        cv,
+        right - 13.0,
+        y + 15.5,
+        &format!("{dbm:.0} DBM"),
+        4.0,
+        0.7,
+        c,
+        Align::Centre,
+    );
 }
 
 /// The bearing (rad) and distance (km) to the next waypoint.
@@ -513,133 +684,6 @@ fn to_waypoint(u: &Uav) -> Option<(f32, f64)> {
     let m = u.target()?.metres();
     let (de, dn) = (m[0] - u.pos[0], m[1] - u.pos[1]);
     Some((de.atan2(dn) as f32, de.hypot(dn) / 1000.0))
-}
-
-/// The heading tape across the top: ticks every 5 degrees, numbers every 10 (the cardinal
-/// points by letter), the heading boxed at the middle, the next waypoint's bearing marked.
-pub(super) fn heading_tape(cv: &mut Canvas, u: &Uav, col: u8) {
-    let w = FEED_CANVAS.0 as f32;
-    let (y, half, per_deg) = (40.0, 80.0, 2.0);
-    let c = w / 2.0;
-    let hdg = u.heading.to_degrees().rem_euclid(360.0) as f32;
-    cv.stroke(Vec2::new(c - half, y), Vec2::new(c + half, y), 1.0, col);
-    let lo = ((hdg - half / per_deg) / 5.0).ceil() as i32;
-    let hi = ((hdg + half / per_deg) / 5.0).floor() as i32;
-    for k in lo..=hi {
-        let deg = k * 5;
-        let x = c + (deg as f32 - hdg) * per_deg;
-        let major = deg % 10 == 0;
-        cv.stroke(Vec2::new(x, y), Vec2::new(x, y + if major { 5.0 } else { 3.0 }), 1.0, col);
-        if major && (x - c).abs() > 14.0 {
-            let d = deg.rem_euclid(360);
-            let label = match d {
-                0 => "N".to_string(),
-                90 => "E".to_string(),
-                180 => "S".to_string(),
-                270 => "W".to_string(),
-                _ => format!("{:02}", d / 10),
-            };
-            stroke_text_at(cv, x, y + 11.0, &label, 5.0, 0.8, col, Align::Centre);
-        }
-    }
-    // The next waypoint's bearing: a mark on the tape (at its edge when off it).
-    if let Some((brg, _)) = to_waypoint(u) {
-        let off = ((brg.to_degrees() - hdg + 540.0).rem_euclid(360.0) - 180.0) * per_deg;
-        let x = c + off.clamp(-half, half);
-        cv.triangle(
-            [Vec2::new(x, y - 1.0), Vec2::new(x - 4.0, y - 7.0), Vec2::new(x + 4.0, y - 7.0)],
-            CYAN,
-        );
-    }
-    cv.fill_rect(c as i32 - 13, y as i32 + 6, 26, 11, BLACK);
-    cv.frame(Vec2::new(c - 13.0, y + 6.0), Vec2::new(c + 13.0, y + 17.0), 1.0, col);
-    stroke_text_at(cv, c, y + 11.5, &format!("{hdg:03.0}"), 6.0, 0.9, col, Align::Centre);
-}
-
-/// The next waypoint at the bottom: its number and kind, bearing and distance.
-pub(super) fn waypoint_line(cv: &mut Canvas, u: &Uav) {
-    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
-    let (Some(wp), Some((brg, km))) = (u.target(), to_waypoint(u)) else { return };
-    let deg = brg.to_degrees().rem_euclid(360.0);
-    let text = format!("WP{} {} {deg:03.0} {km:.1}KM", u.next + 1, wp.kind.name());
-    stroke_text_at(cv, w / 2.0, h - 10.0, &text, 6.0, 0.9, CYAN, Align::Centre);
-}
-
-/// The HSI at the bottom: the compass rose turning with the heading, the lubber line, the
-/// course to the next waypoint and its distance.
-pub(super) fn hsi(cv: &mut Canvas, u: &Uav, col: u8) {
-    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
-    let r = 26.0;
-    let c = Vec2::new(w / 2.0, h - r - 6.0);
-    let (bx0, bx1) = (c.x - 92.0, c.x + 92.0);
-    cv.fill_rect(
-        bx0 as i32,
-        (c.y - r - 4.0) as i32,
-        (bx1 - bx0) as i32,
-        (2.0 * r + 8.0) as i32,
-        BLACK,
-    );
-    cv.frame(Vec2::new(bx0, c.y - r - 4.0), Vec2::new(bx1, c.y + r + 4.0), 1.0, col);
-    let hdg = u.heading as f32;
-    // Screen direction of a bearing (heading up).
-    let dir = |b: f32| {
-        let a = b - hdg;
-        Vec2::new(a.sin(), -a.cos())
-    };
-    cv.ring(c, r, 1.0, col);
-    for k in 0..12 {
-        let b = (k as f32 * 30.0).to_radians();
-        let d = dir(b);
-        let len = if k % 3 == 0 { 5.0 } else { 3.0 };
-        cv.stroke(c + d * r, c + d * (r - len), 1.0, col);
-        if k % 3 == 0 {
-            let l = ["N", "E", "S", "W"][k / 3];
-            let p = c + d * (r - 10.0);
-            stroke_text_at(cv, p.x, p.y, l, 5.0, 0.8, col, Align::Centre);
-        }
-    }
-    // The lubber line, the drone in the middle.
-    cv.stroke(c - Vec2::new(0.0, r + 3.0), c - Vec2::new(0.0, r - 4.0), 1.4, YELLOW);
-    cv.stroke(c + Vec2::new(-5.0, 0.0), c + Vec2::new(5.0, 0.0), 1.2, YELLOW);
-    cv.stroke(c + Vec2::new(0.0, -4.0), c + Vec2::new(0.0, 5.0), 1.2, YELLOW);
-    let deg = u.heading.to_degrees().rem_euclid(360.0);
-    stroke_text_at(
-        cv,
-        bx0 + 6.0,
-        c.y - r + 4.0,
-        &format!("HDG {deg:03.0}"),
-        5.0,
-        0.8,
-        col,
-        Align::Left,
-    );
-    // The course to the next waypoint: an arrow across the rose.
-    if let Some(wp) = u.target() {
-        let m = wp.metres();
-        let (de, dn) = (m[0] - u.pos[0], m[1] - u.pos[1]);
-        let brg = de.atan2(dn) as f32;
-        let d = dir(brg);
-        let (a, b) = (c - d * (r - 6.0), c + d * (r - 6.0));
-        cv.stroke(a, b, 1.4, CYAN);
-        let side = Vec2::new(-d.y, d.x);
-        cv.triangle([b + d * 3.0, b - d * 4.0 + side * 4.0, b - d * 4.0 - side * 4.0], CYAN);
-        let km = de.hypot(dn) / 1000.0;
-        let deg = brg.to_degrees().rem_euclid(360.0);
-        let lines =
-            [format!("WP{} {}", u.next + 1, wp.kind.name()), format!("{deg:03.0} {km:.1}KM")];
-        for (i, l) in lines.iter().enumerate() {
-            stroke_text_at(
-                cv,
-                bx1 - 6.0,
-                c.y - r + 4.0 + i as f32 * 10.0,
-                l,
-                5.0,
-                0.8,
-                CYAN,
-                Align::Right,
-            );
-        }
-    }
 }
 
 /// The camera's projection (`trackcam::WIDE`: f = 256 times the zoom over its width in
@@ -688,39 +732,21 @@ pub(super) fn bracket(cv: &mut Canvas, p: Vec2, s: f32, col: u8) {
     }
 }
 
-/// The forward FLIR's overlay: the horizon and its pitch steps where they are in the picture
-/// (the camera rolls and pitches with the drone), the flight path marker where it is going (on
-/// the nose, the middle, but for an interceptor sinking or sliding).
+/// The forward camera's overlay: the horizon as a long thin line where it is in the picture (the
+/// camera rolls and pitches with the drone), a small cross where it is going (on the nose, the
+/// middle, but for an interceptor sinking or sliding).
 fn horizon(cv: &mut Canvas, u: &Uav, eo: &ConsoleEo, col: u8) {
-    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
-    let o = Vec2::new(w / 2.0, h / 2.0);
     let project = projection(eo);
-    // A direction (Bevy world) at a heading and an elevation (rad).
-    let at = |hdg: f64, el: f64| {
-        Vec3::new((hdg.sin() * el.cos()) as f32, el.sin() as f32, (-hdg.cos() * el.cos()) as f32)
-    };
-    // Along the way it looks (straight up or down: along its nose).
+    // A direction (Bevy world) at a heading on the horizon.
+    let at = |hdg: f64| Vec3::new(hdg.sin() as f32, 0.0, -hdg.cos() as f32);
     let (hdg, span) = (u.heading, 0.3);
-    for deg in [0.0f64, -20.0, -10.0, 10.0, 20.0] {
-        let el = deg.to_radians();
-        let (Some(a), Some(c), Some(b)) =
-            (project(at(hdg - span, el)), project(at(hdg, el)), project(at(hdg + span, el)))
-        else {
-            continue;
-        };
+    if let (Some(a), Some(c), Some(b)) =
+        (project(at(hdg - span)), project(at(hdg)), project(at(hdg + span)))
+    {
         let along = (b - a).normalize_or(Vec2::X);
-        if deg == 0.0 {
-            cv.stroke(c - along * 90.0, c - along * 20.0, 1.2, col);
-            cv.stroke(c + along * 20.0, c + along * 90.0, 1.2, col);
-        } else if (c - o).length() < h / 2.0 - 30.0 {
-            cv.dashed(c - along * 24.0, c + along * 24.0, 3.0, 3.0, 0.8, col);
-            let l = c + along * 30.0;
-            stroke_text_at(cv, l.x, l.y, &format!("{deg:.0}"), 5.0, 0.8, col, Align::Left);
-        }
+        cv.stroke(c - along * 120.0, c + along * 120.0, 1.0, col);
     }
     let p = path_marker(u, eo);
-    cv.stroke(p - Vec2::new(16.0, 0.0), p - Vec2::new(5.0, 0.0), 1.4, YELLOW);
-    cv.stroke(p + Vec2::new(5.0, 0.0), p + Vec2::new(16.0, 0.0), 1.4, YELLOW);
-    cv.stroke(p - Vec2::new(0.0, 5.0), p - Vec2::new(0.0, 10.0), 1.4, YELLOW);
-    cv.ring(p, 4.0, 1.2, YELLOW);
+    cv.stroke(p - Vec2::splat(3.0), p + Vec2::splat(3.0), 1.0, col);
+    cv.stroke(p + Vec2::new(-3.0, 3.0), p + Vec2::new(3.0, -3.0), 1.0, col);
 }

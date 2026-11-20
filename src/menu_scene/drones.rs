@@ -198,20 +198,25 @@ fn drones<const DIVE: bool>(
             if h.hit {
                 // The last picture (the blast) under it.
                 tex.canvas.clear(crate::canvas::TRANSPARENT);
-                let text = if DIVE { "LINK LOST - IMPACT" } else { "LINK LOST - DETONATED" };
                 crate::font::stroke_text_at(
                     &mut tex.canvas,
                     fw / 2.0,
                     fh / 2.0,
-                    text,
-                    9.0,
-                    1.2,
-                    crate::station::scope::RED,
+                    "NO SIGNAL",
+                    12.0,
+                    1.4,
+                    crate::station::scope::WHITE,
                     crate::font::Align::Centre,
                 );
                 tex.transparent = true;
             } else {
-                gcs::feed(&mut tex.canvas, &u, (!DIVE).then_some("GERAN-2"), box_at);
+                // Some minutes up, from the center, in a light breeze.
+                let osd = gcs::Osd {
+                    flown: if DIVE { 1312.0 } else { 241.0 } + t,
+                    home: Some(m(h.centre)),
+                    wind: Some(((heading + 2.4).rem_euclid(std::f32::consts::TAU), 3.7)),
+                };
+                gcs::feed(&mut tex.canvas, &u, (!DIVE).then_some("GERAN-2"), box_at, &osd);
                 tex.transparent = true;
             }
             tex.dirty = true;

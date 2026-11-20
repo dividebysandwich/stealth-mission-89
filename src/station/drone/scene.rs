@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use stealth_sim::uav::{Uav, UavKind, UavMode, UavWp, WpKind};
 
 use super::super::scope::{BLACK, CYAN, DARK, GREEN, GREY, RED, WHITE, YELLOW};
+pub use super::feed::Osd;
 use crate::canvas::{Canvas, TRANSPARENT};
 use crate::cockpit3d::{FEED_CANVAS, MAP_CANVAS};
 use crate::font::{Align, stroke_text_at};
@@ -57,34 +58,26 @@ pub fn uav(
     }
 }
 
-/// The camera overlay over the drone's forward picture: its name, the mode, the battery, the
-/// lock or the dive, a box on its quarry (canvas units), the ladders, the throttle, the
-/// heading tape and the waypoint.
-pub fn feed(cv: &mut Canvas, u: &Uav, lock: Option<&str>, quarry: Option<Vec2>) {
+/// The camera overlay over the drone's forward picture (as `feed.rs` draws it): its name, the
+/// mode, the lock or the dive, a box on its quarry (canvas units), the FPV overlay (`osd`: how
+/// long it has flown, its home, the wind).
+pub fn feed(cv: &mut Canvas, u: &Uav, lock: Option<&str>, quarry: Option<Vec2>, osd: &Osd) {
     cv.reset_clip();
     cv.clear(TRANSPARENT);
-    let (w, h) = (FEED_CANVAS.0 as f32, FEED_CANVAS.1 as f32);
-    // The camera in FLIR, white hot (as `feed.rs` with FLIR on).
-    let col = WHITE;
-    stroke_text_at(cv, 46.0, 9.0, &format!("{} FWD FLIR", u.label()), 6.0, 0.9, col, Align::Left);
-    stroke_text_at(cv, w - 46.0, 9.0, u.mode.name(), 6.0, 0.9, col, Align::Right);
-    let tank = if u.kind.jet() { "FUEL" } else { "BAT" };
-    let battery = format!("{tank} {:.0}%", u.battery * 100.0);
-    stroke_text_at(cv, 46.0, 20.0, &battery, 5.0, 0.8, col, Align::Left);
+    let w = FEED_CANVAS.0 as f32;
+    let col = GREEN;
+    stroke_text_at(cv, 52.0, 9.0, &format!("{} FWD FLIR", u.label()), 6.0, 0.9, col, Align::Left);
+    stroke_text_at(cv, w - 52.0, 9.0, u.mode.name(), 6.0, 0.9, col, Align::Right);
     if u.mode == UavMode::Dive {
-        stroke_text_at(cv, w / 2.0, 32.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
+        stroke_text_at(cv, w / 2.0, 72.0, "TERMINAL DIVE", 7.0, 1.0, RED, Align::Centre);
     }
     if let Some(name) = lock {
-        stroke_text_at(cv, w / 2.0, 58.0, &format!("LOCK {name}"), 7.0, 1.0, RED, Align::Centre);
+        stroke_text_at(cv, w / 2.0, 84.0, &format!("LOCK {name}"), 7.0, 1.0, RED, Align::Centre);
     }
     if let Some(q) = quarry {
         super::feed::bracket(cv, q, 9.0, RED);
     }
-    super::feed::ladders(cv, u, col);
-    super::feed::throttle_gauge(cv, u, u.ctrl[2], col);
-    super::feed::heading_tape(cv, u, col);
-    super::feed::waypoint_line(cv, u);
-    let _ = h;
+    super::feed::overlay(cv, u, osd, u.ctrl[2], col);
 }
 
 /// Something on the scene's map: where (m east, north of the map's middle), its heading
