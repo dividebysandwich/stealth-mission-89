@@ -1892,6 +1892,30 @@ fn water_light(world: vec3<f32>) -> vec2<f32> {
     return select(vec2<f32>(key, 1.0), vec2<f32>(1.0, key), (flags & LIGHT_MOON_KEY) != 0u);
 }
 
+// The point of flat water under this pixel (`frag`: its framebuffer position), where the view
+// ray meets the plane of `world` (the interpolated position); `world` itself off flat water.
+// The sea's polygons are kilometres across: their interpolated position, a few metres over the
+// water, was off by up to half a metre, differently each frame as the eye moved, and the
+// waves and their glitter shook.
+fn flat_water_point(frag: vec2<f32>, world: vec3<f32>, face: vec3<f32>) -> vec3<f32> {
+    let eye = view.world_position;
+    if (abs(normalize(face).y) < 0.999 || eye.y <= world.y) {
+        return world;
+    }
+    let ndc = vec2<f32>(
+        (frag.x - view.viewport.x) / view.viewport.z * 2.0 - 1.0,
+        1.0 - (frag.y - view.viewport.y) / view.viewport.w * 2.0,
+    );
+    // A point some way along the ray (reversed infinite depth: 0.001 is a thousand near
+    // planes out).
+    let q = view.world_from_clip * vec4<f32>(ndc, 0.001, 1.0);
+    let ray = q.xyz / q.w - eye;
+    if (ray.y >= -1e-6) {
+        return world;
+    }
+    return eye + ray * ((eye.y - world.y) / -ray.y);
+}
+
 // `wave`: the point of the sea (from the floating origin) whose waves light this pixel (the
 // waves' mesh: before its displacement).
 fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
@@ -2270,10 +2294,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         let across = min(length(deriv.ground_dx), length(deriv.ground_dy));
 #ifdef OCEAN_GRID
         let wave = in.ocean.xy;
-#else
-        let wave = in.world_position.xz;
-#endif
         rgb = water_reflection(rgb, in.world_position, wave, dir, deriv.foot, across, dark);
+#else
+        let at = flat_water_point(in.clip_position.xy, in.world_position, deriv.face);
+        rgb = water_reflection(rgb, at, at.xz, at - view.world_position, deriv.foot, across, dark);
+#endif
     }
 #endif
     let d = length(dir);
