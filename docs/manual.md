@@ -3496,6 +3496,33 @@ Your airfields' Gepards and Stinger teams engage the drones that come within the
 Gepard (chapter 9.13) is a fine way to spend a wave: its airburst rounds were made for this. A drone
 command center's interceptors and X-12s (10.4) can meet them on the way.
 
+## 10.3a The missile war
+
+The drone theaters' campaigns have missile strikes too, both ways.
+
+**Iskander.** Every few hours (5 to 2.5, Green to Elite) the enemy sends an Iskander TEL out of one
+of its bases: it drives about 8 km towards the front, sets up for 12 minutes and fires two ballistic
+missiles at a friendly airfield or city up to 450 km away. While it drives and sets up, the board
+carries a **DESTROY THE ISKANDER TEL** mission at its firing point (a CAS mission the AI flies too) and
+the log says when it can fire. The launch is announced with the time to impact (well under a
+minute at short range). Only a **Patriot** can intercept the missiles: they come down too high and
+fast for NASAMS, the guns and the fighters. Each one that gets through destroys what it hits.
+
+**Kh-101.** Every few hours a Tu-95 flies a quarter of the way from its base towards its target and
+lets six Kh-101 cruise missiles go; the launch is announced. They fly low (60 m), around a dogleg,
+at some 800 km/h, and radars see them only within about 25 km. Patriots, NASAMS, the guns, your
+fighters (and you: lock one up) can all shoot them down. Getting to the bomber first stops the
+raid.
+
+**FP-7 and Flamingo.** Command orders the friendly side's own launch sites at spots it picks,
+behind the front and well clear of the airfields (at least 15 km). Each is a LOGISTICS mission (two
+cargo loads, as an air defence site; the AI's helicopters fly them if no player does). Built, a
+site sets up for 15 minutes and fires at the nearest enemy SAM site in reach (an airfield when there
+is none): two FP-7 ballistic missiles (200 km) or one Flamingo cruise missile, which leaves its ramp
+on a rocket booster in a column of smoke, drops it after ten seconds and cruises on its turbofan.
+The enemy's long range SAMs can shoot them down. A site rests 40 minutes between salvos and draws
+its missiles from its supply base's stock (LOGISTICS tab).
+
 ## 10.4 The drone command center
 
 Your side can build drone command centers, much as it builds Gepard and Patriot sites, and anyone can
