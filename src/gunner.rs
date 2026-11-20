@@ -404,11 +404,18 @@ fn orbit(
     let asw_seat = own && manning.as_deref().is_some_and(|m| m.asw());
     // The MH-60R's operator wants the dipping sonar: a low hover (`asw::dip_pilot`), the height
     // flown before it kept for after.
-    if k.heli.is_some() && own && let Some(u) = asw.as_deref().filter(|u| u.low_hover) {
+    if k.heli.is_some()
+        && own
+        && let Some(u) = asw.as_deref().filter(|u| u.low_hover)
+    {
         if before_hover.is_none() {
             *before_hover = Some(state.height.unwrap_or(a.altitude - a.ground_altitude));
         }
-        crate::flight::crew_low_hover(&mut a, &k, u.hover_height.unwrap_or(crate::asw::DIP_HOVER_WU));
+        crate::flight::crew_low_hover(
+            &mut a,
+            &k,
+            u.hover_height.unwrap_or(crate::asw::DIP_HOVER_WU),
+        );
         state.height = None;
         return;
     }
@@ -451,8 +458,7 @@ fn orbit(
         }
         let err = state.orbit_speed - a.knots();
         let dt = time.delta_secs();
-        state.throttle_trim =
-            (state.throttle_trim + err * SPEED_INTEGRAL * dt).clamp(0.0, 1.0);
+        state.throttle_trim = (state.throttle_trim + err * SPEED_INTEGRAL * dt).clamp(0.0, 1.0);
         state.orbit_throttle = (state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0);
         return;
     }
@@ -937,7 +943,9 @@ fn draw_info(
     player: Query<&Aircraft, With<Player>>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat)) = (manning.filter(|m| m.gunner() && m.console() && !m.asw()), combat) else {
+    let (Some(m), Some(combat)) =
+        (manning.filter(|m| m.gunner() && m.console() && !m.asw()), combat)
+    else {
         return;
     };
     let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else {

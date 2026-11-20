@@ -327,10 +327,8 @@ fn init_layered(
         composite: HashMap::new(),
         clamp_linear: linear("layered_clamp", AddressMode::ClampToEdge),
         repeat_linear: linear("layered_repeat", AddressMode::Repeat),
-        nearest: device.create_sampler(&SamplerDescriptor {
-            label: Some("layered_nearest"),
-            ..default()
-        }),
+        nearest: device
+            .create_sampler(&SamplerDescriptor { label: Some("layered_nearest"), ..default() }),
     });
     commands.insert_resource(LayeredMaps {
         weather: map_texture(&device, "layered_weather", WEATHER_FORMAT),
@@ -487,11 +485,8 @@ fn prepare_layered(
         && let Some(set) = noise::get()
     {
         let texture3d = |label, n: usize, data: &[u8]| {
-            let size = Extent3d {
-                width: n as u32,
-                height: n as u32,
-                depth_or_array_layers: n as u32,
-            };
+            let size =
+                Extent3d { width: n as u32, height: n as u32, depth_or_array_layers: n as u32 };
             let texture = device.create_texture(&TextureDescriptor {
                 label: Some(label),
                 size,
@@ -561,9 +556,8 @@ fn prepare_layered(
         &pipeline_cache.get_bind_group_layout(&p.map_layout),
         &BindGroupEntries::sequential((map_binding, inst_binding)),
     );
-    let mut encoder = device.create_command_encoder(&CommandEncoderDescriptor {
-        label: Some("layered_maps"),
-    });
+    let mut encoder =
+        device.create_command_encoder(&CommandEncoderDescriptor { label: Some("layered_maps") });
     if weather_dirty {
         let mut pass = encoder.begin_render_pass(&RenderPassDescriptor {
             label: Some("layered_weather_map"),
@@ -617,7 +611,10 @@ fn prepare_layered(
                 view: &maps.deck,
                 depth_slice: None,
                 resolve_target: None,
-                ops: Operations { load: LoadOp::Clear(LinearRgba::NONE.into()), store: StoreOp::Store },
+                ops: Operations {
+                    load: LoadOp::Clear(LinearRgba::NONE.into()),
+                    store: StoreOp::Store,
+                },
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
@@ -747,9 +744,9 @@ fn prepare_layered_views(
         let (colour, depths) = (texture("layered_colour"), texture("layered_depths"));
 
         // The history: kept while the view keeps its size and is drawn every frame.
-        let clip_from_world = view.clip_from_world.unwrap_or_else(|| {
-            view.clip_from_view * view.world_from_view.affine().inverse()
-        });
+        let clip_from_world = view
+            .clip_from_world
+            .unwrap_or_else(|| view.clip_from_view * view.world_from_view.affine().inverse());
         let key = view.retained_view_entity;
         let fresh = |device: &RenderDevice| History {
             textures: std::array::from_fn(|_| {

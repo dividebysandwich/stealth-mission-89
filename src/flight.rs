@@ -1449,8 +1449,11 @@ fn landing_corridor(t: &Theater, east: f64, north: f64, landing: u8, heli: bool)
             continue;
         }
         let carrier = flags & 0x200 != 0;
-        let (ex, ey) =
-            if carrier && landing == 1 { stealth_sim::catapult::LANDING_BOX_EASY } else { (ex, ey) };
+        let (ex, ey) = if carrier && landing == 1 {
+            stealth_sim::catapult::LANDING_BOX_EASY
+        } else {
+            (ex, ey)
+        };
         let (bx, by) = if carrier {
             stealth_sim::catapult::LANDING_BOX
         } else if heli {

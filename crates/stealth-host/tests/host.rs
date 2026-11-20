@@ -1125,11 +1125,11 @@ fn a_launch_site_is_built_and_fires() {
         .expect("an FP-7 site posted");
     assert!(d.by.is_none());
     assert!(
-        host.state
-            .sites
-            .iter()
-            .filter(|s| s.kind == SiteKind::Airfield)
-            .all(|s| dist(s.x - d.x, s.y - d.y) >= tuning::LAUNCH_SITE_AIRFIELD_CLEAR),
+        host.state.sites.iter().filter(|s| s.kind == SiteKind::Airfield).all(|s| dist(
+            s.x - d.x,
+            s.y - d.y
+        )
+            >= tuning::LAUNCH_SITE_AIRFIELD_CLEAR),
         "too near an airfield"
     );
     host.fast_track_site(&mut sim, PlayerId(0), d.id).unwrap();
@@ -1140,7 +1140,9 @@ fn a_launch_site_is_built_and_fires() {
         e2.extend(e);
         host.tick(&mut sim, 1.0 / 15.0, &e2);
         let strikes = &host.state.missile_strikes;
-        fired |= strikes.iter().any(|s| s.site == Some(d.id) && matches!(s.state, StrikeState::Inbound { .. }));
+        fired |= strikes
+            .iter()
+            .any(|s| s.site == Some(d.id) && matches!(s.state, StrikeState::Inbound { .. }));
         if let Some(s) = strikes
             .iter()
             .find(|s| s.missile == StrikeMissile::Fp7 && s.state == StrikeState::Ended)

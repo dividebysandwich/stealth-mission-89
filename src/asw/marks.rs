@@ -137,13 +137,15 @@ mod tests {
     fn more_sensors_pin_the_contact_tighter() {
         let target = [3000.0, 4000.0];
         let line = |p: [f64; 2]| {
-            let b = (target[0] - p[0]).atan2(target[1] - p[1]).to_degrees().rem_euclid(360.0) as f32;
+            let b =
+                (target[0] - p[0]).atan2(target[1] - p[1]).to_degrees().rem_euclid(360.0) as f32;
             (p, b)
         };
         let two = [line([0.0, 0.0]), line([6000.0, 0.0])];
         let (at, e2) = estimate(&two).expect("crossed");
         assert!((at[0] - target[0]).hypot(at[1] - target[1]) < 1.0);
-        let four = [line([0.0, 0.0]), line([6000.0, 0.0]), line([0.0, 8000.0]), line([6000.0, 8000.0])];
+        let four =
+            [line([0.0, 0.0]), line([6000.0, 0.0]), line([0.0, 8000.0]), line([6000.0, 8000.0])];
         let (_, e4) = estimate(&four).expect("crossed");
         assert!(e4 < e2, "four {e4:.0} m, two {e2:.0} m");
         // Parallel lines don't cross.
@@ -154,7 +156,10 @@ mod tests {
     fn a_mark_follows_its_trace_and_is_lost_without_it() {
         use stealth_sim::asw::{Line, Sample};
         let mut marks = [Mark { id: 0, sensor: 3, bearing: 90.0, snr: 10, seen: 0.0 }];
-        let s = |b: u16, snr: i8| Sample { lines: vec![Line { snr, bearing: Some(b), ..Default::default() }], ..Default::default() };
+        let s = |b: u16, snr: i8| Sample {
+            lines: vec![Line { snr, bearing: Some(b), ..Default::default() }],
+            ..Default::default()
+        };
         for k in 0..20 {
             follow(&mut marks, 3, &s(95, 10), k as f32 * 0.25);
         }

@@ -765,7 +765,9 @@ mod tests {
             .flat_map(|by| (0..15).map(move |bx| (bx, by)))
             .map(|(bx, by)| {
                 (0..16)
-                    .map(|i| w.clouds_in(CloudKind::Cumulus, bx * 4 + i % 4, by * 4 + i / 4).count())
+                    .map(|i| {
+                        w.clouds_in(CloudKind::Cumulus, bx * 4 + i % 4, by * 4 + i / 4).count()
+                    })
                     .sum::<usize>() as f32
             })
             .collect();

@@ -1,6 +1,6 @@
 pub mod aaa;
-pub mod asw;
 pub mod ai_loadout;
+pub mod asw;
 pub mod ballistics;
 pub mod campaign;
 pub mod catapult;
@@ -20,30 +20,28 @@ mod damage;
 pub mod dlz;
 pub mod drones;
 pub mod ground;
-pub mod gunship;
 pub mod guidance;
+pub mod gunship;
 pub use stealth_mission::hills;
+pub mod jamming;
+pub mod jp233;
 pub mod lights;
 mod missiles;
 pub mod munitions;
+pub mod naval;
 pub mod net;
 mod objectives;
+pub mod paradrop;
 mod pilot;
 mod radar;
 pub mod relief;
+pub mod rockets;
 pub mod score;
 pub mod sfw;
 pub mod slam;
 pub mod standoff;
-pub mod naval;
-pub mod paradrop;
-pub mod jamming;
-pub mod jp233;
-pub mod rockets;
-pub mod wingman;
-mod wing_ground;
-pub mod strike_missiles;
 pub mod station;
+pub mod strike_missiles;
 pub mod supply;
 mod targeting;
 pub mod terrain_follow;
@@ -51,12 +49,15 @@ mod tiles;
 pub mod uav;
 mod weapons;
 mod weather;
+mod wing_ground;
+pub mod wingman;
 
 pub use data::{
     AircraftKind, AircraftType, MissileType, Runway, SimData, TheaterTiles, ThreatType, Town,
     WeaponType,
 };
 pub use pilot::{Pilot, PilotEvent};
+pub use radar::jammer_type;
 pub use radar::{
     DetectCtx, F22_RCS, F117_RCS, LOW_LEVEL_FT, MAST, Pose, RADAR_EMV, TORNADO_LOW_LEVEL_FT,
     aspect_factor, aspect_lobes, comanche_signature, detect, emv,
@@ -64,7 +65,6 @@ pub use radar::{
 pub use rng::Rng;
 pub use targeting::{HELMET_SEEKER, SEEKER_GIMBAL};
 pub use types::*;
-pub use radar::jammer_type;
 
 use math::{s16, view_z};
 use serde::{Deserialize, Serialize};

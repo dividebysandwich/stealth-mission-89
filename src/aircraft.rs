@@ -1404,7 +1404,8 @@ impl AircraftKind {
                     s.as_str(),
                     "f18" | "f18e" | "fa18" | "f/a18e" | "superhornet" | "hornet"
                 ) && *k == AircraftKind::FA18E)
-                || (matches!(s.as_str(), "growler" | "ea18" | "e/a18g") && *k == AircraftKind::EA18G)
+                || (matches!(s.as_str(), "growler" | "ea18" | "e/a18g")
+                    && *k == AircraftKind::EA18G)
                 || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m")
                     && *k == AircraftKind::C5)
                 || (matches!(s.as_str(), "c130" | "gunship" | "spectre" | "ac130h" | "ac130u")

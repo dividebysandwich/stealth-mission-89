@@ -919,7 +919,11 @@ fn a_gunner_crews_another_players_kiowa_and_takes_it_over() {
     }));
     assert!(w.sim.pilot_absent(pa.0) && w.sim.pilot_in_the_air(pb.0));
     assert_eq!(w.sim.owner_seat(pb.0), Seat::Gunner);
-    assert_eq!(w.sim.pilot_bays(pb.0), &[(20, 1), (22, 1)][..], "his stores went with the aircraft");
+    assert_eq!(
+        w.sim.pilot_bays(pb.0),
+        &[(20, 1), (22, 1)][..],
+        "his stores went with the aircraft"
+    );
 }
 
 /// Bravo crews Alpha's RAH-66 from its rear seat over the network: his trigger fires the chin

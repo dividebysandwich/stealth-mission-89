@@ -529,14 +529,8 @@ impl Engine {
     }
 }
 
-const DISTANT_FILES: [&str; 6] = [
-    "jet.flac",
-    "engine.flac",
-    "helicopter.flac",
-    "interceptor.flac",
-    "chinook.flac",
-    "x12.flac",
-];
+const DISTANT_FILES: [&str; 6] =
+    ["jet.flac", "engine.flac", "helicopter.flac", "interceptor.flac", "chinook.flac", "x12.flac"];
 
 /// Another aircraft heard: an AI flight unit or another player.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

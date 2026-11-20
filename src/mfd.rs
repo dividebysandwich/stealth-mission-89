@@ -210,7 +210,8 @@ impl MfdState {
 
     /// The SLAM-ER page's report to the simulation (the F/A-18E with the modern avionics).
     pub fn slam_input(&self) -> Option<stealth_sim::slam::SlamInput> {
-        (self.modern && self.av.offered(crate::avionics::Format::Slam)).then(|| self.av.slam.input())
+        (self.modern && self.av.offered(crate::avionics::Format::Slam))
+            .then(|| self.av.slam.input())
     }
 
     /// The JAM page's report to the simulation (the EA-18G with the modern avionics), the
@@ -254,8 +255,7 @@ impl MfdState {
             } else {
                 crate::avionics::Format::Tgp
             };
-            self.av.shown(page) == Some(side)
-                && self.av.menu(side).is_none()
+            self.av.shown(page) == Some(side) && self.av.menu(side).is_none()
         } else {
             side == MfdSide::Right && self.right == RightMfd::Camera
         }

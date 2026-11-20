@@ -32,12 +32,14 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use stealth_sim::asw::{AswCmd, AswCrew, BuoyKind, DipState, Pattern, TorpProgram};
 
-use crate::cockpit3d::{ConsoleButton, ConsoleCanvas, ConsolePanel, ConsoleScreen, DragPhase, ScreenDrag};
 use crate::cockpit3d::layout::ConsoleKey;
+use crate::cockpit3d::{
+    ConsoleButton, ConsoleCanvas, ConsolePanel, ConsoleScreen, DragPhase, ScreenDrag,
+};
 use crate::combat::Combat;
 use crate::font::{Align, stroke_text_at};
-use crate::station::Manning;
 use crate::settings::AppState;
+use crate::station::Manning;
 
 /// The main display's canvas (`cockpit3d::displays::ASW_CANVAS`).
 const CANVAS: Vec2 = Vec2::new(640.0, 480.0);
@@ -62,22 +64,24 @@ impl Plugin for AswPlugin {
             .init_resource::<mad::MadTrace>()
             .add_plugins(audio::AswAudioPlugin)
             .add_systems(
-            Update,
-            (
-                (script, input, mad::osb, send)
-                    .chain()
-                    .after(crate::input::InputSystemsSet)
-                    .after(crate::script::ScriptSet)
-                    .before(crate::flight::FlightSystems),
-                route_sync.after(crate::combat::CombatSystems),
-                sub_near.after(crate::combat::CombatSystems),
-                dip_pilot.after(send).before(crate::flight::FlightSystems),
-                mad::sample.after(crate::combat::CombatSystems),
-                effects::splashes.after(crate::combat::CombatSystems),
-                (sonar::record, draw_main, draw_info, panel).chain().after(crate::combat::CombatSystems),
-            )
-                .run_if(in_state(AppState::Flight)),
-        );
+                Update,
+                (
+                    (script, input, mad::osb, send)
+                        .chain()
+                        .after(crate::input::InputSystemsSet)
+                        .after(crate::script::ScriptSet)
+                        .before(crate::flight::FlightSystems),
+                    route_sync.after(crate::combat::CombatSystems),
+                    sub_near.after(crate::combat::CombatSystems),
+                    dip_pilot.after(send).before(crate::flight::FlightSystems),
+                    mad::sample.after(crate::combat::CombatSystems),
+                    effects::splashes.after(crate::combat::CombatSystems),
+                    (sonar::record, draw_main, draw_info, panel)
+                        .chain()
+                        .after(crate::combat::CombatSystems),
+                )
+                    .run_if(in_state(AppState::Flight)),
+            );
     }
 }
 
@@ -383,7 +387,8 @@ pub fn key(ui: &mut AswUi, k: ConsoleKey, crew: &AswCrew, sim: &stealth_sim::Sim
         ConsoleKey::Depth(n) => {
             let set = if crew.dip.set > 0.0 { crew.dip.set } else { 60.0 };
             let step = if n == 1 { -10.0 } else { 10.0 };
-            ui.outbox.push(AswCmd::DipDepth((set + step).clamp(10.0, stealth_sim::asw::DIP_MAX) as u16));
+            ui.outbox
+                .push(AswCmd::DipDepth((set + step).clamp(10.0, stealth_sim::asw::DIP_MAX) as u16));
         }
         ConsoleKey::Audio => ui.audio = if ui.audio.is_some() { None } else { ui.sensor },
         ConsoleKey::Mad => ui.outbox.push(AswCmd::Mad(!crew.mad_down)),
@@ -406,11 +411,9 @@ pub fn mark_signal(ui: &mut AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner
         ui.note("PUT THE CURSOR ON A TRACE");
         return;
     };
-    if let Some(i) = ui
-        .marks
-        .iter()
-        .position(|m| m.sensor == sensor && sonar::bearing_off(m.bearing, brg).abs() <= marks::FOLLOW)
-    {
+    if let Some(i) = ui.marks.iter().position(|m| {
+        m.sensor == sensor && sonar::bearing_off(m.bearing, brg).abs() <= marks::FOLLOW
+    }) {
         let m = ui.marks.remove(i);
         ui.sel_mark = None;
         ui.note(format!("MARK {} DELETED", m.letter()));
@@ -432,7 +435,9 @@ pub fn mark_signal(ui: &mut AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner
             .map(|&(_, b, snr)| (b as f32, snr))
             .find(|&(b, _)| sonar::bearing_off(b, brg).abs() <= marks::FOLLOW)
     };
-    let Some((bearing, snr)) = marks::trace_near(&sample, brg).map(|l| (l.bearing.unwrap_or_default() as f32, l.snr)).or_else(echo)
+    let Some((bearing, snr)) = marks::trace_near(&sample, brg)
+        .map(|l| (l.bearing.unwrap_or_default() as f32, l.snr))
+        .or_else(echo)
     else {
         ui.note("NO SIGNAL AT THE CURSOR");
         return;
@@ -440,7 +445,11 @@ pub fn mark_signal(ui: &mut AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner
     let (id, t) = (ui.mark_id, ui.t);
     ui.marks.retain(|m| !(m.sensor == sensor && m.id == id));
     ui.marks.push(marks::Mark { id, sensor, bearing, snr, seen: t });
-    ui.note(format!("MARK {} ON {}", marks::letter(id), if sensor == 0 { "DIP".to_string() } else { format!("B{sensor}") }));
+    ui.note(format!(
+        "MARK {} ON {}",
+        marks::letter(id),
+        if sensor == 0 { "DIP".to_string() } else { format!("B{sensor}") }
+    ));
 }
 
 /// PING: the selected DICASS or the dipping sonar between pinging and listening.
@@ -460,7 +469,9 @@ fn ping(ui: &mut AswUi, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
 /// RELEASE: the torpedo on the chosen station (else the other one).
 fn release(ui: &mut AswUi, sim: &stealth_sim::Sim, owner: u8) {
     let stores = owner_stores(sim, owner);
-    let has = |s: u8| stores.get(s as usize).is_some_and(|&(w, n)| w == stealth_sim::asw::MK54_WEAPON && n > 0);
+    let has = |s: u8| {
+        stores.get(s as usize).is_some_and(|&(w, n)| w == stealth_sim::asw::MK54_WEAPON && n > 0)
+    };
     let station = [ui.station, 3 - ui.station].into_iter().find(|&s| has(s));
     match station {
         Some(s) => ui.outbox.push(AswCmd::Release { station: s }),
@@ -469,7 +480,14 @@ fn release(ui: &mut AswUi, sim: &stealth_sim::Sim, owner: u8) {
 }
 
 /// A touch on the main display (canvas units).
-fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
+fn touch(
+    ui: &mut AswUi,
+    p: Vec2,
+    phase: DragPhase,
+    crew: &AswCrew,
+    sim: &stealth_sim::Sim,
+    owner: u8,
+) {
     match ui.page {
         Page::Sonar => sonar::click(ui, p, phase, crew, sim, owner),
         Page::Wpn => {
@@ -654,7 +672,9 @@ fn draw_main(
         return;
     }
     *since = 0.0;
-    let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Asw) else { return };
+    let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Asw) else {
+        return;
+    };
     let owner = m.unit as u8;
     let sim = &combat.sim;
     let crew = sim.asw().crew(owner).cloned().unwrap_or_default();
@@ -683,7 +703,16 @@ fn draw_main(
         }
         Page::Map => {
             tex.backdrop = None;
-            map::draw(&mut tex.canvas, &ui, &crew, sim, owner, hunt.as_ref(), &mad, mfd.av.mad_gain);
+            map::draw(
+                &mut tex.canvas,
+                &ui,
+                &crew,
+                sim,
+                owner,
+                hunt.as_ref(),
+                &mad,
+                mfd.av.mad_gain,
+            );
         }
     }
     // The page keys' row along the bottom.
@@ -721,7 +750,9 @@ fn draw_info(
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTextureRef)>,
 ) {
     let (Some(combat), Some(m)) = (combat, manning.as_deref().filter(|m| m.asw())) else { return };
-    let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else { return };
+    let Some((_, mut tex)) = screens.iter_mut().find(|(s, _)| s.0 == ConsoleScreen::Info) else {
+        return;
+    };
     use scope::{BLACK, CYAN, GREEN, RED, YELLOW};
     let owner = m.unit as u8;
     let sim = &combat.sim;
@@ -751,30 +782,54 @@ fn draw_info(
     };
     line(cv, 1, &format!("PILOT {pilot}"), GREEN);
     if crew.hover_req {
-        let there = owner_view(sim, owner).is_some_and(|v| {
-            (v.height as f64 * M_PER_WU) < 70.0 * 0.3048 && v.knots < 5
-        });
-        line(cv, 8, if there { "IN THE DIP HOVER" } else { "DIP HOVER REQUESTED" }, if there { GREEN } else { YELLOW });
+        let there = owner_view(sim, owner)
+            .is_some_and(|v| (v.height as f64 * M_PER_WU) < 70.0 * 0.3048 && v.knots < 5);
+        line(
+            cv,
+            8,
+            if there { "IN THE DIP HOVER" } else { "DIP HOVER REQUESTED" },
+            if there { GREEN } else { YELLOW },
+        );
     }
     if let Some(v) = owner_view(sim, owner) {
-        line(cv, 2, &format!("ALT {:>5.0} FT  SPD {:>3} KT", v.height as f64 * M_PER_WU / 0.3048, v.knots), GREEN);
+        line(
+            cv,
+            2,
+            &format!("ALT {:>5.0} FT  SPD {:>3} KT", v.height as f64 * M_PER_WU / 0.3048, v.knots),
+            GREEN,
+        );
     }
     let dip = match crew.dip.state {
         DipState::Up => "UP".to_string(),
         DipState::Broken => "LOST".to_string(),
         s => format!(
             "{} {:.0}/{:.0} M {}",
-            if s == DipState::Lowering { "LWR" } else if s == DipState::Raising { "RAISE" } else { "DOWN" },
+            if s == DipState::Lowering {
+                "LWR"
+            } else if s == DipState::Raising {
+                "RAISE"
+            } else {
+                "DOWN"
+            },
             crew.dip.depth,
             crew.dip.set.max(10.0),
             if crew.dip.active { "ACT" } else { "PAS" }
         ),
     };
-    line(cv, 3, &format!("DIP {dip}"), if crew.dip.state == DipState::Broken { RED } else { GREEN });
+    line(
+        cv,
+        3,
+        &format!("DIP {dip}"),
+        if crew.dip.state == DipState::Broken { RED } else { GREEN },
+    );
     line(
         cv,
         4,
-        &format!("MAD {} {:>4.1} NT", if crew.mad_down { "OUT" } else { "IN " }, crew.mad as f32 / 10.0),
+        &format!(
+            "MAD {} {:>4.1} NT",
+            if crew.mad_down { "OUT" } else { "IN " },
+            crew.mad as f32 / 10.0
+        ),
         if crew.mad > 30 { YELLOW } else { GREEN },
     );
     let live = sim.asw().buoys_of(owner).count();
@@ -788,7 +843,8 @@ fn draw_info(
         GREEN,
     );
     let stores = owner_stores(sim, owner);
-    let torps: i32 = stores.iter().filter(|s| s.0 == stealth_sim::asw::MK54_WEAPON).map(|s| s.1).sum();
+    let torps: i32 =
+        stores.iter().filter(|s| s.0 == stealth_sim::asw::MK54_WEAPON).map(|s| s.1).sum();
     line(
         cv,
         6,
@@ -831,7 +887,9 @@ fn panel(
     if crew.dip.wet() || crew.dip.state == DipState::Lowering {
         lit.push((ConsoleKey::Dip, GREEN));
     }
-    if crew.dip.active || ui.sensor.is_some_and(|id| combat.sim.asw().buoys.iter().any(|b| b.id == id && b.active)) {
+    if crew.dip.active
+        || ui.sensor.is_some_and(|id| combat.sim.asw().buoys.iter().any(|b| b.id == id && b.active))
+    {
         lit.push((ConsoleKey::Ping, YELLOW));
     }
     if ui.audio.is_some() {
@@ -974,7 +1032,10 @@ fn script(
     let here = owner_at(sim, owner).map(|p| p.0).unwrap_or_default();
     let km = |s: &str| -> Option<[f64; 2]> {
         let (e, n) = s.split_once(',')?;
-        Some([here[0] + e.trim().parse::<f64>().ok()? * 1000.0, here[1] + n.trim().parse::<f64>().ok()? * 1000.0])
+        Some([
+            here[0] + e.trim().parse::<f64>().ok()? * 1000.0,
+            here[1] + n.trim().parse::<f64>().ok()? * 1000.0,
+        ])
     };
     while let Some((t, c)) = joined.get(ui.step).cloned() {
         if ui.t < t {
@@ -1085,7 +1146,12 @@ fn script(
                     Some("helix") => Pattern::Helix,
                     _ => Pattern::Circle,
                 };
-                ui.outbox.push(AswCmd::Program(TorpProgram { heading, delay, pattern, ..crew.program }));
+                ui.outbox.push(AswCmd::Program(TorpProgram {
+                    heading,
+                    delay,
+                    pattern,
+                    ..crew.program
+                }));
             }
             "arm" => ui.outbox.push(AswCmd::Arm(true)),
             "release" => release(&mut ui, sim, owner),
@@ -1098,7 +1164,11 @@ fn script(
             }
             "smark" => mark_signal(&mut ui, sim, &crew, owner),
             "range" => ui.range_km = val.parse().unwrap_or(8.0),
-            "markid" => ui.mark_id = val.bytes().next().map_or(0, |c| c.to_ascii_uppercase().saturating_sub(b'A')) % marks::IDS as u8,
+            "markid" => {
+                ui.mark_id =
+                    val.bytes().next().map_or(0, |c| c.to_ascii_uppercase().saturating_sub(b'A'))
+                        % marks::IDS as u8
+            }
             "sensor" => {
                 let n: usize = val.parse().unwrap_or(1);
                 ui.sensor = sim.asw().buoys_of(owner).nth(n.saturating_sub(1)).map(|b| b.id);
@@ -1112,10 +1182,15 @@ fn script(
                             0 => crew.dip.sample.clone(),
                             id => sim.asw().buoys_of(owner).find(|b| b.id == id)?.sample.clone(),
                         };
-                        let l = sample.lines.into_iter().find(|l| !l.ship && !l.ping && !l.torpedo)?;
+                        let l =
+                            sample.lines.into_iter().find(|l| !l.ship && !l.ping && !l.torpedo)?;
                         l.bearing.map(|b| b as f32)
                     };
-                    let brg = if val == "sub" { sub().unwrap_or(0.0) } else { val.parse().unwrap_or(0.0) };
+                    let brg = if val == "sub" {
+                        sub().unwrap_or(0.0)
+                    } else {
+                        val.parse().unwrap_or(0.0)
+                    };
                     ui.cursor.clear();
                     ui.cursor.insert(id, brg);
                     ui.audio = Some(id);

@@ -1,8 +1,8 @@
 pub mod airlift;
 pub mod asw;
-pub mod gunship;
 pub mod drones;
 mod generator;
+pub mod gunship;
 pub mod hills;
 pub mod insertion;
 pub mod rng;

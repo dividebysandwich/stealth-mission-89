@@ -26,7 +26,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
-use bevy::audio::{AddAudioSource, AudioSource, ChannelCount, Decodable, SampleRate, Source, Volume};
+use bevy::audio::{
+    AddAudioSource, AudioSource, ChannelCount, Decodable, SampleRate, Source, Volume,
+};
 use bevy::prelude::*;
 
 use super::AswUi;
@@ -80,7 +82,10 @@ impl Plugin for AswAudioPlugin {
             .add_systems(Startup, load_clips)
             .add_systems(
                 Update,
-                (decode_clips, follow).chain().after(super::sonar::record).run_if(in_state(AppState::Flight)),
+                (decode_clips, follow)
+                    .chain()
+                    .after(super::sonar::record)
+                    .run_if(in_state(AppState::Flight)),
             );
     }
 }
@@ -156,10 +161,11 @@ impl Decodable for SonarAudio {
 }
 
 fn load_clips(server: Res<AssetServer>, mut link: ResMut<SonarLink>) {
-    link.files = ["sounds/ship-big1_loop.flac", "sounds/ship-med1_loop.flac", "sounds/sonarbuoy.flac"]
-        .into_iter()
-        .map(|f| server.load(f))
-        .collect();
+    link.files =
+        ["sounds/ship-big1_loop.flac", "sounds/ship-med1_loop.flac", "sounds/sonarbuoy.flac"]
+            .into_iter()
+            .map(|f| server.load(f))
+            .collect();
 }
 
 /// A recording's samples, its channels mixed down, at `RATE` (resampled if it isn't).
@@ -167,12 +173,15 @@ fn mono(source: &AudioSource) -> Vec<f32> {
     let d = source.decoder();
     let (channels, rate) = (d.channels().get() as usize, d.sample_rate().get());
     let all: Vec<f32> = d.collect();
-    let m: Vec<f32> = all.chunks(channels).map(|c| c.iter().sum::<f32>() / channels as f32).collect();
+    let m: Vec<f32> =
+        all.chunks(channels).map(|c| c.iter().sum::<f32>() / channels as f32).collect();
     if rate == RATE {
         return m;
     }
     let k = rate as f64 / RATE as f64;
-    (0..(m.len() as f64 / k) as usize).map(|i| m[((i as f64 * k) as usize).min(m.len() - 1)]).collect()
+    (0..(m.len() as f64 / k) as usize)
+        .map(|i| m[((i as f64 * k) as usize).min(m.len() - 1)])
+        .collect()
 }
 
 /// Decodes the recordings once they have loaded.
@@ -197,7 +206,8 @@ fn follow(
     mut link: ResMut<SonarLink>,
     mut sources: ResMut<Assets<SonarAudio>>,
 ) {
-    let on = manning.as_deref().is_some_and(|m| m.asw()) && ui.audio.is_some_and(|id| ui.falls.contains_key(&id));
+    let on = manning.as_deref().is_some_and(|m| m.asw())
+        && ui.audio.is_some_and(|id| ui.falls.contains_key(&id));
     let Some(clips) = link.clips.clone().filter(|_| on) else {
         if let Some(e) = link.player.take() {
             commands.entity(e).despawn();
@@ -230,7 +240,9 @@ fn follow(
         // An omnidirectional sensor cannot be steered: what it hears without a bearing is
         // faint under the cursor's contacts, whichever way the cursor points.
         let omni = if l.bearing.is_none() { OMNI_GAIN } else { 1.0 };
-        let g = ((l.snr as f32 + 6.0) / 30.0).clamp(0.0, 0.7) * (-(off / CURSOR_BAND).powi(2)).exp() * omni;
+        let g = ((l.snr as f32 + 6.0) / 30.0).clamp(0.0, 0.7)
+            * (-(off / CURSOR_BAND).powi(2)).exp()
+            * omni;
         let v = &p.voices[k];
         set(&v.tone, l.freqs[0] as f32);
         set(&v.gain, g);
@@ -269,7 +281,11 @@ fn follow(
         }
         // Its echo off a submarine, with the cursor on the submarine's bearing.
         let echo = cursor.and_then(|brg| {
-            s.lines.iter().filter(|l| l.echo && off_line(l, brg) <= CURSOR_BAND * CURSOR_EDGE).map(|l| l.snr).max()
+            s.lines
+                .iter()
+                .filter(|l| l.echo && off_line(l, brg) <= CURSOR_BAND * CURSOR_EDGE)
+                .map(|l| l.snr)
+                .max()
         });
         if let Some(snr) = echo {
             set(&p.bistatic_gain, ((snr as f32 + 10.0) / 40.0).clamp(0.15, 0.8));
@@ -280,7 +296,12 @@ fn follow(
     if link.player.is_none() {
         let handle = sources.add(SonarAudio { params: link.params.clone(), clips });
         let volume = settings.master_volume * settings.effects_volume * 0.8;
-        let e = commands.spawn((AudioPlayer(handle), PlaybackSettings::LOOP.with_volume(Volume::Linear(volume)))).id();
+        let e = commands
+            .spawn((
+                AudioPlayer(handle),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(volume)),
+            ))
+            .id();
         link.player = Some(e);
     }
 }

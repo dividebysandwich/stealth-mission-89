@@ -3681,7 +3681,8 @@ fn slam_run(
     prog: slam::SlamProgram,
 ) -> (Sim, PlayerState, (i32, i32), Vec<SimEvent>) {
     let d = data();
-    let (m, mut sim) = aaa_mission_with(d, SimOptions { external_stores: true, ..Default::default() });
+    let (m, mut sim) =
+        aaa_mission_with(d, SimOptions { external_stores: true, ..Default::default() });
     let (mx, my) = sandbox(&mut sim, &m);
     sim.set_training(true);
     sim.set_loadout(&[(SLAMER_WEAPON, rounds)]);
@@ -4403,13 +4404,19 @@ fn a_wingman_joins_and_flies_formation() {
         wing_step(&mut sim, &mut p);
     }
     let (along, right) = wing_offset(&sim, &p);
-    assert!((-300.0..0.0).contains(&along) && (300.0..500.0).contains(&right), "spread {along:.0} {right:.0}");
+    assert!(
+        (-300.0..0.0).contains(&along) && (300.0..500.0).contains(&right),
+        "spread {along:.0} {right:.0}"
+    );
     assert_eq!(sim.wing_command(me, WingCmd::Trail), WingReply::Copy);
     for _ in 0..15 * 60 {
         wing_step(&mut sim, &mut p);
     }
     let (along, right) = wing_offset(&sim, &p);
-    assert!((-1400.0..-1000.0).contains(&along) && right.abs() < 200.0, "trail {along:.0} {right:.0}");
+    assert!(
+        (-1400.0..-1000.0).contains(&along) && right.abs() < 200.0,
+        "trail {along:.0} {right:.0}"
+    );
     // Nothing locked: nothing to engage; no HARM: no SAMs.
     assert_eq!(sim.wing_command(me, WingCmd::Engage), WingReply::NoTarget);
     assert_eq!(sim.wing_command(me, WingCmd::Sams), WingReply::NoHarm);
@@ -4464,7 +4471,10 @@ fn a_helicopter_wingman_flies_close_formation() {
         wing_step(&mut sim, &mut p);
     }
     let (along, right) = wing_offset(&sim, &p);
-    assert!((-100.0..10.0).contains(&along) && (90.0..150.0).contains(&right), "spread {along:.0} {right:.0}");
+    assert!(
+        (-100.0..10.0).contains(&along) && (90.0..150.0).contains(&right),
+        "spread {along:.0} {right:.0}"
+    );
 }
 
 /// A sandbox that keeps its airfields (none friendly: stopping on one ends no mission), its

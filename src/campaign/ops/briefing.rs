@@ -295,9 +295,8 @@ pub(super) fn briefing(
                                 c.wingman = wing;
                             }
                             ui.add_space(4.0);
-                            let extra = shell::TARGET
-                                + 4.0
-                                + if real { shell::TARGET + 4.0 } else { 0.0 };
+                            let extra =
+                                shell::TARGET + 4.0 + if real { shell::TARGET + 4.0 } else { 0.0 };
                             let size = egui::vec2(w - 36.0, (h - 24.0 - 160.0 - extra).max(300.0));
                             ui.allocate_ui(size, |ui| {
                                 ui.set_min_size(size);

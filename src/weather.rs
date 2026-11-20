@@ -454,7 +454,16 @@ fn setup_weather(
     let weather = mission.as_ref().map(|m| m.0.weather).unwrap_or_default();
     let wind = mission.as_ref().map(|m| m.0.wind).unwrap_or_default();
     let assets = (&mut *meshes, &mut *materials);
-    start(&mut commands, weather, wind, campaign.as_deref(), &palette, assets, &settings, &mut state);
+    start(
+        &mut commands,
+        weather,
+        wind,
+        campaign.as_deref(),
+        &palette,
+        assets,
+        &settings,
+        &mut state,
+    );
 }
 
 /// The weather shown behind the menu (`menu_scene`): set it to change the clouds.
@@ -756,7 +765,9 @@ fn stream_clouds(
                 Visibility::default(),
             ))
             .id();
-        state.puffs.insert((c.kind, w.layer_seed(c.kind), c.gx, c.gy, c.slot), (e, (c.x, c.y), c.rank));
+        state
+            .puffs
+            .insert((c.kind, w.layer_seed(c.kind), c.gx, c.gy, c.slot), (e, (c.x, c.y), c.rank));
     }
 }
 
@@ -988,11 +999,8 @@ fn shade_clouds(
     let env = |name: &str| std::env::var(name).ok().and_then(|v| v.parse::<u32>().ok());
     // Ultra: the layered clouds march more steps at half resolution.
     let layered = layered_on(&settings);
-    let (steps, scale) = if layered {
-        (LAYERED_STEPS, LAYERED_SCALE)
-    } else {
-        (q.step_count, q.resolution_scale)
-    };
+    let (steps, scale) =
+        if layered { (LAYERED_STEPS, LAYERED_SCALE) } else { (q.step_count, q.resolution_scale) };
     let want = CloudRenderSettings {
         mode: if layered { CloudMode::Layered } else { CloudMode::Wavelet },
         j_cap: env("SM89_CLOUD_JCAP").unwrap_or(q.j_cap),
@@ -1026,7 +1034,8 @@ fn sun_lit_color(sunlit: Vec3, h: f32, on: bool) -> (Vec3, f32) {
     }
     let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));
     // Below the horizon the afterglow on the clouds' undersides turns pink.
-    let low = Vec3::new(1.0, 0.25, 0.28).lerp(Vec3::new(1.0, 0.38, 0.06), smoothstep(-0.13, -0.06, h));
+    let low =
+        Vec3::new(1.0, 0.25, 0.28).lerp(Vec3::new(1.0, 0.38, 0.06), smoothstep(-0.13, -0.06, h));
     let sun = low.lerp(Vec3::new(1.0, 0.93, 0.78), smoothstep(-0.06, 0.3, h));
     // Brightest and deepest as the sun goes down (seen from the air the horizon dips: the
     // disc meets it at about -0.06).

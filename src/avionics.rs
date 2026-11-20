@@ -3124,8 +3124,11 @@ fn draw_side_gun_scope(
     };
     c.frame(Vec2::new(x0, y0), Vec2::new(x0 + w, y0 + h), 1.0, col);
     let (az, dep) = stealth_sim::gunship::GIMBAL_EL;
-    let (lim, lo, hi) =
-        (stealth_sim::gunship::GIMBAL_AZ.to_degrees() as f32, az.to_degrees() as f32, dep.to_degrees() as f32);
+    let (lim, lo, hi) = (
+        stealth_sim::gunship::GIMBAL_AZ.to_degrees() as f32,
+        az.to_degrees() as f32,
+        dep.to_degrees() as f32,
+    );
     let bears = if g.in_gimbal { GREEN } else { col };
     c.frame(at(lim, lo), at(-lim, hi), 1.5, bears);
     // The wing's line, dashed down the middle.

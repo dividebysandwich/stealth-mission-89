@@ -61,10 +61,12 @@ fn hash(mut x: u32) -> u32 {
 }
 
 fn hash3(x: i32, y: i32, z: i32, seed: u32) -> u32 {
-    hash((x as u32).wrapping_mul(0x8DA6_B343)
-        ^ (y as u32).wrapping_mul(0xD816_3841)
-        ^ (z as u32).wrapping_mul(0xCB1A_B31F)
-        ^ seed.wrapping_mul(0x9E37_79B9))
+    hash(
+        (x as u32).wrapping_mul(0x8DA6_B343)
+            ^ (y as u32).wrapping_mul(0xD816_3841)
+            ^ (z as u32).wrapping_mul(0xCB1A_B31F)
+            ^ seed.wrapping_mul(0x9E37_79B9),
+    )
 }
 
 fn unit(h: u32) -> f32 {

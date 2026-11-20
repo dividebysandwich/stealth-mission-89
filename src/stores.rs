@@ -291,15 +291,11 @@ fn aim_hardpoints(
     for (k, st) in stations.iter().enumerate() {
         let Some(point) = points.get_mut(st.station) else { continue };
         let left = bays[st.station].1;
-        let next = hung
-            .stations
-            .get(k)
-            .and_then(|h| h.as_ref())
-            .and_then(|(_, r, _)| {
-                // A rocket pod's rockets all leave its one store.
-                let i = usize::try_from(left - 1).ok()?.min(r.len().checked_sub(1)?);
-                rounds.get(*r.get(i)?).ok()
-            });
+        let next = hung.stations.get(k).and_then(|h| h.as_ref()).and_then(|(_, r, _)| {
+            // A rocket pod's rockets all leave its one store.
+            let i = usize::try_from(left - 1).ok()?.min(r.len().checked_sub(1)?);
+            rounds.get(*r.get(i)?).ok()
+        });
         let p = next.map_or(gltf(st.at), |g| to_model.transform_point3(g.translation()));
         *point = [p.x * s, -p.z * s, p.y * s + lift];
     }

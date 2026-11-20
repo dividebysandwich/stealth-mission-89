@@ -160,8 +160,7 @@ pub(crate) struct MapState {
     deck_key: Option<(u32, u32, [u32; 6])>,
 }
 
-type LodCameras<'w, 's> =
-    Query<'w, 's, &'static GlobalTransform, With<crate::render::CloudCamera>>;
+type LodCameras<'w, 's> = Query<'w, 's, &'static GlobalTransform, With<crate::render::CloudCamera>>;
 
 /// Gathers the layered clouds' frame (`PostUpdate`, in `CloudSystems`).
 pub(crate) fn upload_layered_frame(
@@ -215,9 +214,7 @@ pub(crate) fn upload_layered_frame(
             ]
         })
         .collect();
-    instances.sort_by(|a, b| {
-        a[0].x.hypot(a[0].y).total_cmp(&b[0].x.hypot(b[0].y))
-    });
+    instances.sort_by(|a, b| a[0].x.hypot(a[0].y).total_cmp(&b[0].x.hypot(b[0].y)));
     instances.truncate(MAX_CONVECTIVE);
     if state.anchor != Some(anchor) || state.instances != instances {
         frame.weather_gen += 1;
@@ -254,11 +251,8 @@ pub(crate) fn upload_layered_frame(
     let s = &shading;
     let render_y = |y: f32| (y as f64 - origin.y) as f32;
     let deck = clouds.deck;
-    let (lo, hi) = clouds
-        .clouds
-        .iter()
-        .filter(|c| c.fill > 0.0)
-        .fold((f32::MAX, f32::MIN), |(lo, hi), c| {
+    let (lo, hi) =
+        clouds.clouds.iter().filter(|c| c.fill > 0.0).fold((f32::MAX, f32::MIN), |(lo, hi), c| {
             (lo.min(c.base.y as f32), hi.max(c.base.y as f32 + c.height))
         });
     let (lo, hi) = match clouds.cumulus_layer {
@@ -276,18 +270,15 @@ pub(crate) fn upload_layered_frame(
         line_color: s.line_color.extend(0.0),
         fog: s.fog,
         ramp: s.ramp,
-        deck: deck.map_or(Vec4::ZERO, |d| {
-            Vec4::new(render_y(d.base), render_y(d.top), d.threshold, 1.0)
-        }),
+        deck: deck
+            .map_or(Vec4::ZERO, |d| Vec4::new(render_y(d.base), render_y(d.top), d.threshold, 1.0)),
         deck_field: deck.map_or(Vec4::ZERO, |d| {
             Vec4::new(d.mean_cover, clouds.darken, (d.seed & 0xFFFF) as f32, d.unit)
         }),
-        deck_cells: deck.map_or(Vec4::ONE, |d| {
-            Vec4::new(d.octaves[0].0, d.octaves[1].0, d.octaves[2].0, 0.0)
-        }),
-        deck_weights: deck.map_or(Vec4::ZERO, |d| {
-            Vec4::new(d.octaves[0].1, d.octaves[1].1, d.octaves[2].1, 0.0)
-        }),
+        deck_cells: deck
+            .map_or(Vec4::ONE, |d| Vec4::new(d.octaves[0].0, d.octaves[1].0, d.octaves[2].0, 0.0)),
+        deck_weights: deck
+            .map_or(Vec4::ZERO, |d| Vec4::new(d.octaves[0].1, d.octaves[1].1, d.octaves[2].1, 0.0)),
         band: if has_band {
             Vec4::new(render_y(lo), render_y(hi), 1.0, clouds.storm_darken)
         } else {
@@ -310,9 +301,9 @@ pub(crate) fn upload_layered_frame(
             let d = clouds.wind_dir.normalize_or_zero();
             Vec4::new(clouds.cumulus_cover.clamp(0.0, 1.0), d.x, d.y, 0.0)
         },
-        cumulus: clouds.cumulus_layer.map_or(Vec4::ZERO, |(b, t)| {
-            Vec4::new(render_y(b), render_y(t), 1.0, 0.0)
-        }),
+        cumulus: clouds
+            .cumulus_layer
+            .map_or(Vec4::ZERO, |(b, t)| Vec4::new(render_y(b), render_y(t), 1.0, 0.0)),
         sun_color: s.sun_color,
     };
 }

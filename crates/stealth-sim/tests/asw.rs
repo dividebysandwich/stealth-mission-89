@@ -34,9 +34,16 @@ const HOME: [f64; 2] = [200_000.0, 200_000.0];
 /// A Seahawk's simulation with nothing else about; flat sea.
 fn seahawk() -> Sim {
     let d = data();
-    let s = MissionSettings { theater: 1, roe: 2, opponents: 1, kind: MissionKind::Strike, ..Default::default() };
+    let s = MissionSettings {
+        theater: 1,
+        roe: 2,
+        opponents: 1,
+        kind: MissionKind::Strike,
+        ..Default::default()
+    };
     let m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(0x5EA)).unwrap();
-    let opts = SimOptions { seahawk: true, helicopter: true, external_stores: true, ..Default::default() };
+    let opts =
+        SimOptions { seahawk: true, helicopter: true, external_stores: true, ..Default::default() };
     let mut sim = Sim::with_options(&d.sim, &m, opts);
     sim.flatten_hills();
     for o in sim.objects_mut().iter_mut() {
@@ -138,7 +145,12 @@ fn the_layer_hides_a_deep_submarine_from_a_shallow_hydrophone() {
     assert!(sub(&sim).depth > 50.0);
     let snr = |deep: bool| {
         let depth = BUOY_DEPTHS[deep as usize];
-        sim.asw().buoys.iter().find(|b| b.depth == depth).and_then(|b| b.sample.lines.iter().find(|l| !l.ship && !l.ping)).map(|l| l.snr)
+        sim.asw()
+            .buoys
+            .iter()
+            .find(|b| b.depth == depth)
+            .and_then(|b| b.sample.lines.iter().find(|l| !l.ship && !l.ping))
+            .map(|l| l.snr)
     };
     assert!(snr(true).is_some(), "the deep one hears it");
     assert!(snr(false).is_none(), "the shallow one doesn't: {:?}", snr(false));
@@ -189,12 +201,20 @@ fn no_more_than_four_buoys_at_once() {
         drop_at(&mut sim, HOME[0] + k as f64 * 500.0, HOME[1], BuoyKind::Difar, false);
     }
     run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.2);
-    assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None }).is_err());
+    assert!(
+        sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None })
+            .is_err()
+    );
     let id = sim.asw().buoys[0].id;
     sim.asw_command(0, AswCmd::Scuttle { id }).unwrap();
     // A fifth DIFAR is not aboard (four carried); a BT goes.
-    assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None }).is_err());
-    assert!(sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Bt, deep: false, at: None }).is_ok());
+    assert!(
+        sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: None })
+            .is_err()
+    );
+    assert!(
+        sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Bt, deep: false, at: None }).is_ok()
+    );
 }
 
 #[test]
@@ -203,7 +223,8 @@ fn a_drop_on_the_map_waits_for_the_aircraft_to_get_there() {
     hunt(&mut sim, [HOME[0] + 30_000.0, HOME[1]], 0.0, 60.0, None);
     run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.2);
     let point = (HOME[0] as i32 + 2000, HOME[1] as i32);
-    sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: Some(point) }).unwrap();
+    sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Difar, deep: false, at: Some(point) })
+        .unwrap();
     run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 1.0);
     assert!(sim.asw().buoys.is_empty());
     // The drop is a waypoint of the route, for the aircraft to fly to.
@@ -295,7 +316,13 @@ fn a_programmed_torpedo_finds_and_sinks_the_submarine() {
     sim.set_loadout(&[(20, 4), (MK54_WEAPON, 1), (MK54_WEAPON, 1)]);
     let ps = at(HOME[0], HOME[1], 25.0, 0.0);
     run(&mut sim, &ps, 0.5);
-    let program = TorpProgram { heading: Some(45), delay: 5, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+    let program = TorpProgram {
+        heading: Some(45),
+        delay: 5,
+        pattern: Pattern::Circle,
+        ceiling: 30,
+        floor: 250,
+    };
     sim.asw_command(0, AswCmd::Program(program)).unwrap();
     assert!(sim.asw_command(0, AswCmd::Release { station: 1 }).is_err(), "not armed");
     sim.asw_command(0, AswCmd::Arm(true)).unwrap();
@@ -312,7 +339,10 @@ fn a_programmed_torpedo_finds_and_sinks_the_submarine() {
     }
     assert!(!sub(&sim).alive, "torpedo {:?} sub {:?}", sim.asw().torpedoes, sub(&sim));
     assert_eq!(sim.asw().result, AswResult::Won);
-    assert!(ev.iter().any(|e| matches!(e, SimEvent::AswSplash { kind: 1, .. })), "the entry splash");
+    assert!(
+        ev.iter().any(|e| matches!(e, SimEvent::AswSplash { kind: 1, .. })),
+        "the entry splash"
+    );
     assert!(ev.iter().any(|e| matches!(e, SimEvent::AswSplash { kind: 2, .. })), "the plume");
 }
 
@@ -356,7 +386,13 @@ fn a_submarine_left_alone_torpedoes_its_ship() {
     let ship = (3..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 == 0).unwrap();
     let o = sim.objects()[ship];
     let target = object_metres(&o);
-    hunt(&mut sim, [target[0] - 9000.0, target[1]], std::f64::consts::FRAC_PI_2, 60.0, Some(Intent::Approach { ship }));
+    hunt(
+        &mut sim,
+        [target[0] - 9000.0, target[1]],
+        std::f64::consts::FRAC_PI_2,
+        60.0,
+        Some(Intent::Approach { ship }),
+    );
     let ps = at(HOME[0], HOME[1], 30.0, 0.0);
     let mut ev = Vec::new();
     for _ in 0..1200 {
@@ -393,7 +429,9 @@ fn a_submarine_through_the_blockade_fails_the_hunt() {
 #[test]
 fn the_buoys_hear_the_ships_too_but_the_tracker_leaves_them_out() {
     let mut sim = seahawk();
-    let ship = (3..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
+    let ship = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0x0200 != 0)
+        .expect("a carrier");
     let at_ship = object_metres(&sim.objects()[ship]);
     hunt(&mut sim, [at_ship[0] + 30_000.0, at_ship[1]], 0.0, 30.0, None);
     drop_at(&mut sim, at_ship[0] + 3000.0, at_ship[1], BuoyKind::Difar, false);
@@ -417,7 +455,9 @@ fn the_others_never_see_the_submarines() {
 #[test]
 fn a_campaign_hunt_spawns_off_the_carrier_and_its_sinking_is_the_hunters_objective() {
     let mut sim = seahawk();
-    let carrier = (0..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
+    let carrier = (0..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0x0200 != 0)
+        .expect("a carrier");
     let c = object_metres(&sim.objects()[carrier]);
     sim.set_pilot_target(0, Some((HUNT_MISSION, carrier)));
     sim.start_hunt_for(0, HuntTarget::Carrier(carrier), 99);
@@ -433,8 +473,16 @@ fn a_campaign_hunt_spawns_off_the_carrier_and_its_sinking_is_the_hunters_objecti
     sim.set_loadout(&[(20, 4), (MK54_WEAPON, 1), (MK54_WEAPON, 1)]);
     let ps = at(near[0], near[1], 25.0, 0.0);
     run(&mut sim, &ps, 0.5);
-    let heading = (sub(&sim).at[0] - near[0]).atan2(sub(&sim).at[1] - near[1]).to_degrees().rem_euclid(360.0) as u16;
-    let program = TorpProgram { heading: Some(heading), delay: 5, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+    let heading =
+        (sub(&sim).at[0] - near[0]).atan2(sub(&sim).at[1] - near[1]).to_degrees().rem_euclid(360.0)
+            as u16;
+    let program = TorpProgram {
+        heading: Some(heading),
+        delay: 5,
+        pattern: Pattern::Circle,
+        ceiling: 30,
+        floor: 250,
+    };
     sim.asw_command(0, AswCmd::Program(program)).unwrap();
     sim.asw_command(0, AswCmd::Arm(true)).unwrap();
     sim.asw_command(0, AswCmd::Release { station: 1 }).unwrap();
@@ -463,7 +511,11 @@ fn a_buoy_hears_another_sonars_ping() {
     for _ in 0..48 {
         run(&mut sim, &at(HOME[0], HOME[1], 30.0, 0.0), 0.25);
         let b = |id| sim.asw().buoys.iter().find(|b| b.id == id).unwrap().sample.clone();
-        heard |= b(difar).heard && b(difar).lines.iter().any(|l| l.ping && l.freqs[0] == PING_LINE_HZ[0] && l.bearing.is_some());
+        heard |= b(difar).heard
+            && b(difar)
+                .lines
+                .iter()
+                .any(|l| l.ping && l.freqs[0] == PING_LINE_HZ[0] && l.bearing.is_some());
         own |= b(dicass).heard;
     }
     assert!(heard, "the DIFAR heard the DICASS ping, a line with its bearing");
@@ -517,9 +569,17 @@ fn another_sonars_ping_comes_back_off_a_quiet_submarine_at_its_bearing() {
     let d = |a: [f64; 2], b: [f64; 2]| (a[0] - b[0]).hypot(a[1] - b[1]);
     let tick = 1.0 / SENSE_HZ;
     let direct = d(p, HOME) / 1500.0;
-    assert!((ping_at - t0 - direct).abs() <= tick / 2.0 + 0.05, "ping after {:.2} s, {direct:.2} s due", ping_at - t0);
+    assert!(
+        (ping_at - t0 - direct).abs() <= tick / 2.0 + 0.05,
+        "ping after {:.2} s, {direct:.2} s due",
+        ping_at - t0
+    );
     let round = (d(p, s_at) + d(s_at, HOME)) / 1500.0;
-    assert!((t - t0 - round).abs() <= tick / 2.0 + 0.05, "echo after {:.2} s, {round:.2} s due", t - t0);
+    assert!(
+        (t - t0 - round).abs() <= tick / 2.0 + 0.05,
+        "echo after {:.2} s, {round:.2} s due",
+        t - t0
+    );
     let brg = l.bearing.expect("a DIFAR's bearing") as i32;
     assert!((brg - 90).abs() <= 10, "the echo at {brg}, the submarine at 090");
 }
@@ -531,7 +591,9 @@ fn a_submarine_goes_silent_under_a_hovering_helicopter_and_every_so_often() {
     drop_at(&mut sim, HOME[0], HOME[1], BuoyKind::Difar, true);
     let away = at(HOME[0] - 8000.0, HOME[1], 300.0, 100.0);
     run(&mut sim, &away, 10.0);
-    let heard = |sim: &Sim| sim.asw().buoys[0].sample.lines.iter().any(|l| !l.ship && !l.ping && !l.torpedo && !l.echo);
+    let heard = |sim: &Sim| {
+        sim.asw().buoys[0].sample.lines.iter().any(|l| !l.ship && !l.ping && !l.torpedo && !l.echo)
+    };
     assert!(heard(&sim), "heard running: {:?}", sim.asw().buoys[0].sample);
     // The helicopter comes to a hover over it: it stops dead, nothing to hear.
     let s = sub(&sim).at;
@@ -557,7 +619,8 @@ fn a_submarine_goes_silent_under_a_hovering_helicopter_and_every_so_often() {
 #[test]
 fn a_campaign_barrier_hunt_starts_on_the_enemys_side_of_the_line_and_makes_for_the_far_side() {
     let mut sim = seahawk();
-    let fields: Vec<usize> = (3..sim.objects().len()).filter(|&i| sim.objects()[i].x != 0).collect();
+    let fields: Vec<usize> =
+        (3..sim.objects().len()).filter(|&i| sim.objects()[i].x != 0).collect();
     // Two places some way apart (the bases): the line between them.
     let (a, b) = fields
         .iter()
@@ -614,7 +677,8 @@ fn the_dipping_sonar_pings_much_farther_than_a_dicass() {
             run(&mut sim, &ps, 25.0);
             sim.asw_command(0, AswCmd::DipMode { active: true }).unwrap();
         } else {
-            sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Dicass, deep: true, at: None }).unwrap();
+            sim.asw_command(0, AswCmd::DropBuoy { kind: BuoyKind::Dicass, deep: true, at: None })
+                .unwrap();
             run(&mut sim, &ps, 5.0);
             let id = sim.asw().buoys[0].id;
             sim.asw_command(0, AswCmd::BuoyMode { id, active: true }).unwrap();
@@ -622,7 +686,8 @@ fn the_dipping_sonar_pings_much_farther_than_a_dicass() {
         let mut ranged = None;
         for _ in 0..60 {
             run(&mut sim, &ps, 0.25);
-            let s = if dip { crew(&sim).dip.sample.clone() } else { sim.asw().buoys[0].sample.clone() };
+            let s =
+                if dip { crew(&sim).dip.sample.clone() } else { sim.asw().buoys[0].sample.clone() };
             ranged = ranged.or(s.lines.iter().find_map(|l| l.range));
         }
         ranged
@@ -638,12 +703,23 @@ fn the_dipping_sonar_pings_much_farther_than_a_dicass() {
 fn a_single_missions_hunt_won_scores_even_when_ended_from_the_menu() {
     let d = data();
     let theater = (0..32)
-        .find(|&t| d.gdata.theaters.get(t).is_some_and(|th| th.world.objects.iter().any(|o| o.flags & 0x0200 != 0)))
+        .find(|&t| {
+            d.gdata
+                .theaters
+                .get(t)
+                .is_some_and(|th| th.world.objects.iter().any(|o| o.flags & 0x0200 != 0))
+        })
         .expect("a theater with a carrier");
-    let s = MissionSettings { theater, kind: MissionKind::Strike, helicopter: true, ..Default::default() };
+    let s = MissionSettings {
+        theater,
+        kind: MissionKind::Strike,
+        helicopter: true,
+        ..Default::default()
+    };
     let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(5)).unwrap();
     stealth_mission::asw::for_asw(&mut m, &d.gdata, Some(stealth_mission::asw::Scenario::Carrier));
-    let opts = SimOptions { seahawk: true, helicopter: true, external_stores: true, ..Default::default() };
+    let opts =
+        SimOptions { seahawk: true, helicopter: true, external_stores: true, ..Default::default() };
     let mut sim = Sim::with_options(&d.sim, &m, opts);
     assert_eq!(sim.asw().subs.len(), 1);
     sim.set_loadout(&[(20, 4), (MK54_WEAPON, 1), (MK54_WEAPON, 1)]);
@@ -651,8 +727,16 @@ fn a_single_missions_hunt_won_scores_even_when_ended_from_the_menu() {
     let near = [s0[0] - 450.0, s0[1] - 450.0];
     let ps = at(near[0], near[1], 25.0, 0.0);
     run(&mut sim, &ps, 0.5);
-    let heading = (sub(&sim).at[0] - near[0]).atan2(sub(&sim).at[1] - near[1]).to_degrees().rem_euclid(360.0) as u16;
-    let program = TorpProgram { heading: Some(heading), delay: 5, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+    let heading =
+        (sub(&sim).at[0] - near[0]).atan2(sub(&sim).at[1] - near[1]).to_degrees().rem_euclid(360.0)
+            as u16;
+    let program = TorpProgram {
+        heading: Some(heading),
+        delay: 5,
+        pattern: Pattern::Circle,
+        ceiling: 30,
+        floor: 250,
+    };
     sim.asw_command(0, AswCmd::Program(program)).unwrap();
     sim.asw_command(0, AswCmd::Arm(true)).unwrap();
     sim.asw_command(0, AswCmd::Release { station: 1 }).unwrap();

@@ -58,11 +58,21 @@ impl Scenario {
 /// What one submarine is after (map units, x east, y south; world object indices).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SubIntent {
-    Blockade { a: (i32, i32), b: (i32, i32), goal: (i32, i32) },
-    Approach { object: i16 },
-    Attack { object: i16 },
+    Blockade {
+        a: (i32, i32),
+        b: (i32, i32),
+        goal: (i32, i32),
+    },
+    Approach {
+        object: i16,
+    },
+    Attack {
+        object: i16,
+    },
     /// One of this carrier's escorts (the simulation picks the theater ship).
-    Escort { carrier: i16 },
+    Escort {
+        carrier: i16,
+    },
 }
 
 /// A submarine of the mission: where it starts (map units), heading to begin with (degrees),
@@ -120,7 +130,9 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     let friendly = |o: &WorldObject| o.flags & F::FRIENDLY != 0;
     let carrier = (3..n)
         .filter(|&i| w.objects[i].flags & F::CARRIER != 0 && friendly(&w.objects[i]))
-        .min_by_key(|&i| dist(pos(&w.objects[i]), (m.takeoff.position.x, m.takeoff.position.y)) as i64);
+        .min_by_key(|&i| {
+            dist(pos(&w.objects[i]), (m.takeoff.position.x, m.takeoff.position.y)) as i64
+        });
     // No carrier: a narrow sea's barrier between two friendly airfields.
     let barrier = carrier.is_none().then(|| {
         let code = crate::ALL_THEATERS.get(m.settings.theater)?;
@@ -173,7 +185,9 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
             !friendly(o) && o.flags & F::NEUTRAL == 0 && o.name != 0 && !water(pos(o))
         })
         .filter(|&i| dist(pos(&w.objects[i]), cp) > 45.0 * KM)
-        .filter_map(|i| sea_point(pos(&w.objects[i]), (2.0 * KM, 6.0 * KM), r ^ i as u32).map(|p| (i, p)))
+        .filter_map(|i| {
+            sea_point(pos(&w.objects[i]), (2.0 * KM, 6.0 * KM), r ^ i as u32).map(|p| (i, p))
+        })
         .min_by_key(|&(i, _)| dist(pos(&w.objects[i]), cp) as i64);
     if scenario == Scenario::Blockade && port.is_none() {
         scenario = Scenario::Carrier;
@@ -205,16 +219,26 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
                 }
             }
             let at = |s: f64, d: f64| {
-                ((mid.0 + along.0 * s + normal.0 * d) as i32, (mid.1 + along.1 * s + normal.1 * d) as i32)
+                (
+                    (mid.0 + along.0 * s + normal.0 * d) as i32,
+                    (mid.1 + along.1 * s + normal.1 * d) as i32,
+                )
             };
             let open = |p: (i32, i32)| {
                 water(p)
                     && (0..8).all(|j| {
                         let b = (j as f64 * 45.0).to_radians();
-                        water(((p.0 as f64 + b.sin() * KM) as i32, (p.1 as f64 - b.cos() * KM) as i32))
+                        water((
+                            (p.0 as f64 + b.sin() * KM) as i32,
+                            (p.1 as f64 - b.cos() * KM) as i32,
+                        ))
                     })
             };
-            let goal = [20.0, 35.0, 10.0].into_iter().map(|km| at(0.0, -km * KM)).find(|&g| water(g)).unwrap_or(at(0.0, -20.0 * KM));
+            let goal = [20.0, 35.0, 10.0]
+                .into_iter()
+                .map(|km| at(0.0, -km * KM))
+                .find(|&g| water(g))
+                .unwrap_or(at(0.0, -20.0 * KM));
             for k in 0..count {
                 let start = (0..48).find_map(|j| {
                     let salt = r.wrapping_add(k * 97).wrapping_add(j * 7919);
@@ -223,10 +247,19 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
                     Some(at(s, d)).filter(|&p| open(p))
                 });
                 let Some(p) = start else { continue };
-                subs.push(SubPlan { at: p, heading: heading_to(p, goal), intent: SubIntent::Blockade { a, b, goal }, nuclear });
+                subs.push(SubPlan {
+                    at: p,
+                    heading: heading_to(p, goal),
+                    intent: SubIntent::Blockade { a, b, goal },
+                    nuclear,
+                });
             }
             protect = None;
-            place_name = format!("{} and {}", w.name(w.objects[fa].name as i32), w.name(w.objects[fb].name as i32));
+            place_name = format!(
+                "{} and {}",
+                w.name(w.objects[fa].name as i32),
+                w.name(w.objects[fb].name as i32)
+            );
             area = subs.first().map_or(cp, |s| s.at);
         }
         Scenario::Blockade => {
@@ -235,7 +268,10 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
             let l = dx.hypot(dy).max(1.0);
             let (ux, uy) = (dx / l, dy / l);
             let at = |s: f64, side: f64| {
-                ((start.0 as f64 + ux * s - uy * side) as i32, (start.1 as f64 + uy * s + ux * side) as i32)
+                (
+                    (start.0 as f64 + ux * s - uy * side) as i32,
+                    (start.1 as f64 + uy * s + ux * side) as i32,
+                )
             };
             let line = l * 0.4;
             let a = at(line, -15.0 * KM);
@@ -244,7 +280,12 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
             for k in 0..count {
                 let p = at(0.0, (k as f64 - 0.5) * KM * 2.0 * (count - 1) as f64);
                 let p = if water(p) { p } else { start };
-                subs.push(SubPlan { at: p, heading: heading_to(p, goal), intent: SubIntent::Blockade { a, b, goal }, nuclear });
+                subs.push(SubPlan {
+                    at: p,
+                    heading: heading_to(p, goal),
+                    intent: SubIntent::Blockade { a, b, goal },
+                    nuclear,
+                });
             }
             protect = None;
             place_name = w.name(w.objects[pi].name as i32).to_string();
@@ -277,10 +318,18 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     // The datum: where the first was reported, a few kilometres off.
     let off = (r >> 16) as f64 / 65536.0 * DATUM_ERROR;
     let ang = ((r >> 4) % 360) as f64;
-    let datum = ((area.0 as f64 + ang.to_radians().sin() * off) as i32, (area.1 as f64 - ang.to_radians().cos() * off) as i32);
-    let (layer, bottom) = if barrier.is_some() { (15 + (r >> 20) % 20, BARRIER_BOTTOM) } else { (30 + (r >> 20) % 91, 0) };
+    let datum = (
+        (area.0 as f64 + ang.to_radians().sin() * off) as i32,
+        (area.1 as f64 - ang.to_radians().cos() * off) as i32,
+    );
+    let (layer, bottom) = if barrier.is_some() {
+        (15 + (r >> 20) % 20, BARRIER_BOTTOM)
+    } else {
+        (30 + (r >> 20) % 91, 0)
+    };
     let sea_state = 1 + ((r >> 24) % 4) as u8;
-    m.hunt = Some(Hunt { scenario, subs: subs.clone(), layer: layer as u16, sea_state, datum, bottom });
+    m.hunt =
+        Some(Hunt { scenario, subs: subs.clone(), layer: layer as u16, sea_state, datum, bottom });
 
     // From the carrier (or the barrier's airfield) and back to it.
     let co = w.objects[home];
@@ -326,9 +375,15 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
         if subs.len() > 1 { "both submarines" } else { "the submarine" }
     );
     let (secondary_summary, secondary_objective) = if carrier.is_some() {
-        (format!("Recover aboard the {carrier_name}."), "Sink every submarine, then land back on the carrier.".to_string())
+        (
+            format!("Recover aboard the {carrier_name}."),
+            "Sink every submarine, then land back on the carrier.".to_string(),
+        )
     } else {
-        (format!("Land back at {carrier_name}."), format!("Sink every submarine, then land back at {carrier_name}."))
+        (
+            format!("Land back at {carrier_name}."),
+            format!("Sink every submarine, then land back at {carrier_name}."),
+        )
     };
     let template = m.primary.clone();
     let hunt_target = |summary: &String, objective: &String| Target {
@@ -369,7 +424,11 @@ pub fn for_asw(m: &mut Mission, data: &GameData, choice: Option<Scenario>) {
     b.primary_objective = primary_objective;
     b.secondary_summary = secondary_summary;
     b.secondary_objective = secondary_objective;
-    b.armament = vec!["2 Mk 54 torpedoes".into(), "4 AGM-114 Hellfire".into(), "8 sonobuoys (4 DIFAR, 2 DICASS, 2 BT)".into()];
+    b.armament = vec![
+        "2 Mk 54 torpedoes".into(),
+        "4 AGM-114 Hellfire".into(),
+        "8 sonobuoys (4 DIFAR, 2 DICASS, 2 BT)".into(),
+    ];
     let l = &data.briefings.labels;
     let mut lines = vec![
         b.header.clone(),

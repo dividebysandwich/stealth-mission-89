@@ -920,7 +920,13 @@ fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Ve
         let q = p.clamp(fld.0, fld.1);
         let r = 14.0;
         c.polyline(
-            &[q + Vec2::new(0.0, -r), q + Vec2::new(r, 0.0), q + Vec2::new(0.0, r), q + Vec2::new(-r, 0.0), q + Vec2::new(0.0, -r)],
+            &[
+                q + Vec2::new(0.0, -r),
+                q + Vec2::new(r, 0.0),
+                q + Vec2::new(0.0, r),
+                q + Vec2::new(-r, 0.0),
+                q + Vec2::new(0.0, -r),
+            ],
             PEN,
             INK,
         );
@@ -946,7 +952,8 @@ fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Ve
         }
     }
     // Where a pallet released now comes down.
-    if let Some(p) = d.impact_dir.and_then(|dir| project(dir, f.scale)).filter(|&p| inside(fld, p)) {
+    if let Some(p) = d.impact_dir.and_then(|dir| project(dir, f.scale)).filter(|&p| inside(fld, p))
+    {
         c.ring(p, 8.0, PEN, INK);
         c.stroke(p - Vec2::X * 4.0, p + Vec2::X * 4.0, THIN, INK);
         c.stroke(p - Vec2::Y * 4.0, p + Vec2::Y * 4.0, THIN, INK);
@@ -955,7 +962,13 @@ fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Ve
     let soon = d.release_secs.is_some_and(|s| s < DROP_WARN_SECS);
     let msg = if d.green() {
         let at = d.release_secs.is_some_and(|s| s.abs() < 1.5);
-        if at && f.blink { Some("DROP") } else if at { None } else { Some("GREEN LIGHT") }
+        if at && f.blink {
+            Some("DROP")
+        } else if at {
+            None
+        } else {
+            Some("GREEN LIGHT")
+        }
     } else if d.ramp > 0.0 && d.ramp < 1.0 {
         Some("RAMP MOVING")
     } else if d.ramp <= 0.0 && soon {

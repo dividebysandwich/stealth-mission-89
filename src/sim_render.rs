@@ -806,11 +806,11 @@ fn sync_aaa(
             // A missile battery's launcher fires at a fixed elevation.
             let el = u.kind.battery_launcher().map_or(u.aim_el, |b| b.elevation());
             s.0[AAA_GUN_SLOT] = bam16(-el);
-        }
             // A missile launcher: its missiles gone off the erector.
             if let Some(er) = stealth_sim::strike_missiles::erector(u.kind) {
                 s.0[LAUNCHER_FIRED_SLOT] = (er.missiles.len() as i32 - u.rounds).max(0) as i16;
             }
+        }
     }
 
     // The sandbag walls round the dug-in units, on the ground and its slope.
@@ -1901,7 +1901,10 @@ fn world_model_state(
             v.extend(crate::aircraft::SEAHAWK_STORE_SLOTS.into_iter().zip(stores));
         }
         if let Some((mad, dip)) = seahawk_sensors {
-            v.extend([(crate::aircraft::SEAHAWK_MAD_SLOT, mad), (crate::aircraft::SEAHAWK_DIP_SLOT, dip)]);
+            v.extend([
+                (crate::aircraft::SEAHAWK_MAD_SLOT, mad),
+                (crate::aircraft::SEAHAWK_DIP_SLOT, dip),
+            ]);
         }
         if v.iter().any(|&(k, x)| s.0[k] != x) {
             for (k, x) in v {
@@ -1969,10 +1972,10 @@ fn own_shadow(
             | crate::camera::View::Tactical
             | crate::camera::View::Weapon
             | crate::camera::View::Free
+            | crate::camera::View::Observe
     );
     // At an air defence console the aircraft waits unseen (`player::own_model_visibility`).
     let show = a.altitude < 1000.0
-            | crate::camera::View::Observe
         && !assets.palette.lights_on()
         && !(settings.shadows && external)
         && !manning.as_deref().is_some_and(|m| m.console());
@@ -2188,10 +2191,10 @@ pub(crate) fn sync_remote_pilots(
                 scale,
                 spec.helicopter,
             );
+            commands.entity(e).insert(crate::camera::Observable::Remote(p.id));
             vis.planes.insert(p.id, (e, spec.model, dot, muzzle, landing));
         }
         let look = if lights { SPOT_NIGHT } else { SPOT };
-            commands.entity(e).insert(crate::camera::Observable::Remote(p.id));
         let Some(v) = vis.planes.get_mut(&p.id) else { continue };
         spot_look(&mut commands, &mut v.2, look, |c| {
             solid_material(&mut vis.materials, &mut materials, &globals, c)
@@ -2301,10 +2304,11 @@ pub(crate) fn sync_remote_pilots(
                         .map(|&(w, n)| (if w == 255 { -1 } else { w as i32 }, n as i32));
                     let stores = crate::aircraft::seahawk_store_values(stations);
                     let (mad, dip) = seahawk_sensor_values(sim, p.id);
-                    for (k, x) in crate::aircraft::SEAHAWK_STORE_SLOTS
-                        .into_iter()
-                        .zip(stores)
-                        .chain([(crate::aircraft::SEAHAWK_MAD_SLOT, mad), (crate::aircraft::SEAHAWK_DIP_SLOT, dip)])
+                    for (k, x) in
+                        crate::aircraft::SEAHAWK_STORE_SLOTS.into_iter().zip(stores).chain([
+                            (crate::aircraft::SEAHAWK_MAD_SLOT, mad),
+                            (crate::aircraft::SEAHAWK_DIP_SLOT, dip),
+                        ])
                     {
                         if s.0[k] != x {
                             s.0[k] = x;

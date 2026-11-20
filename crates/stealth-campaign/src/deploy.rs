@@ -55,8 +55,7 @@ impl CampaignState {
             return Some("Too close to the edge of the map".into());
         }
         // (The war's own launch sites do not count against the players'.)
-        let open =
-            self.deployments.iter().filter(|d| !d.built && !d.kind.launch_site()).count();
+        let open = self.deployments.iter().filter(|d| !d.built && !d.kind.launch_site()).count();
         if open >= DEPLOY_OPEN_MAX {
             return Some(format!("{DEPLOY_OPEN_MAX} sites are waiting for their cargo already"));
         }

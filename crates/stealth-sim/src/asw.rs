@@ -246,7 +246,8 @@ impl Ocean {
     /// `d2` (m deep) `r` m apart.
     fn loss(&self, r: f64, d1: f64, d2: f64) -> f64 {
         let r = r.max(1.0);
-        let layer = if (d1 < self.layer as f64) != (d2 < self.layer as f64) { LAYER_LOSS } else { 0.0 };
+        let layer =
+            if (d1 < self.layer as f64) != (d2 < self.layer as f64) { LAYER_LOSS } else { 0.0 };
         20.0 * r.log10() + 0.1 * r / 1000.0 + layer
     }
 }
@@ -403,7 +404,8 @@ pub enum Pattern {
 }
 
 impl Pattern {
-    pub const ALL: [Pattern; 4] = [Pattern::Straight, Pattern::Circle, Pattern::Snake, Pattern::Helix];
+    pub const ALL: [Pattern; 4] =
+        [Pattern::Straight, Pattern::Circle, Pattern::Snake, Pattern::Helix];
 
     pub fn name(self) -> &'static str {
         match self {
@@ -770,17 +772,28 @@ impl Asw {
 pub enum AswCmd {
     /// Drop a buoy (deep: its hydrophone at the deeper setting) here, or at a point (m east,
     /// north), dropped as the aircraft passes over it (the point added to the route's end).
-    DropBuoy { kind: BuoyKind, deep: bool, at: Option<(i32, i32)> },
+    DropBuoy {
+        kind: BuoyKind,
+        deep: bool,
+        at: Option<(i32, i32)>,
+    },
     /// A DICASS listens or pings.
-    BuoyMode { id: u16, active: bool },
-    Scuttle { id: u16 },
+    BuoyMode {
+        id: u16,
+        active: bool,
+    },
+    Scuttle {
+        id: u16,
+    },
     /// The operator asks the pilot for the dip hover (40 ft over the sea), or no longer.
     Hover(bool),
     /// Lower or raise the dipping sonar.
     Dip(bool),
     /// Its depth set (m).
     DipDepth(u16),
-    DipMode { active: bool },
+    DipMode {
+        active: bool,
+    },
     /// The MAD towed body out or in.
     Mad(bool),
     /// Mark the submarine under the aircraft (a fix where it is).
@@ -788,12 +801,20 @@ pub enum AswCmd {
     Program(TorpProgram),
     Arm(bool),
     /// The operator drops the torpedo on this station (armed).
-    Release { station: u8 },
+    Release {
+        station: u8,
+    },
     /// The route, whole (world units east, north), at this revision, and the buoys to drop at
     /// its points (the point's index, the kind, deep): these replace the drops waiting.
-    Route { rev: u16, points: Vec<(i32, i32)>, drops: Vec<(u8, BuoyKind, bool)> },
+    Route {
+        rev: u16,
+        points: Vec<(i32, i32)>,
+        drops: Vec<(u8, BuoyKind, bool)>,
+    },
     /// The pilot's client: the mission's waypoints after the route (world units east, north).
-    Mission { points: Vec<(i32, i32)> },
+    Mission {
+        points: Vec<(i32, i32)>,
+    },
 }
 
 /// A Seahawk as the sensors need it: position (m east, north), height above the sea (m), speed
@@ -847,9 +868,11 @@ impl AswSetup {
                 at: map_metres(s.at),
                 heading: (s.heading as f64).to_radians(),
                 intent: match s.intent {
-                    I::Blockade { a, b, goal } => {
-                        Intent::Blockade { a: map_metres(a), b: map_metres(b), goal: map_metres(goal) }
-                    }
+                    I::Blockade { a, b, goal } => Intent::Blockade {
+                        a: map_metres(a),
+                        b: map_metres(b),
+                        goal: map_metres(goal),
+                    },
                     I::Approach { object } => Intent::Approach { ship: object.max(0) as usize },
                     I::Attack { object } => Intent::Attack { ship: object.max(0) as usize },
                     I::Escort { carrier } => Intent::Escort { carrier: carrier.max(0) as usize },
@@ -945,7 +968,8 @@ impl Sim {
         }
         for i in 0..self.asw.subs.len() {
             self.asw.subs[i].pd_in = (PD_EVERY.0 + self.asw.rand(PD_EVERY.1 - PD_EVERY.0)) as f64;
-            self.asw.subs[i].silent_in = (SILENT_EVERY.0 + self.asw.rand(SILENT_EVERY.1 - SILENT_EVERY.0)) as f64;
+            self.asw.subs[i].silent_in =
+                (SILENT_EVERY.0 + self.asw.rand(SILENT_EVERY.1 - SILENT_EVERY.0)) as f64;
         }
     }
 
@@ -958,10 +982,13 @@ impl Sim {
             .filter(|&i| i != carrier && self.is_ship(i as i32))
             .filter(|&i| {
                 let o = &self.objects[i];
-                (o.x - c.x).abs() < ESCORT_REACH && (o.y - c.y).abs() < ESCORT_REACH && o.flags & oflags::CARRIER == 0
+                (o.x - c.x).abs() < ESCORT_REACH
+                    && (o.y - c.y).abs() < ESCORT_REACH
+                    && o.flags & oflags::CARRIER == 0
             })
             .min_by(|&a, &b| {
-                dist(object_metres(&self.objects[a]), from).total_cmp(&dist(object_metres(&self.objects[b]), from))
+                dist(object_metres(&self.objects[a]), from)
+                    .total_cmp(&dist(object_metres(&self.objects[b]), from))
             })
     }
 
@@ -996,7 +1023,13 @@ impl Sim {
         let Some((i, datum)) = self.spawn_hunted(target, seed) else { return };
         self.asw.subs[i].ai_hunt = Some(mission);
         let sub = self.asw.subs[i].id;
-        self.asw.ai_hunts.push(AiHunt { mission, sub, tags: vec![tag], datum, ..Default::default() });
+        self.asw.ai_hunts.push(AiHunt {
+            mission,
+            sub,
+            tags: vec![tag],
+            datum,
+            ..Default::default()
+        });
     }
 
     /// A campaign's hunted submarine: some 22-28 km off the carrier, closing on one of its
@@ -1005,7 +1038,10 @@ impl Sim {
     fn spawn_hunted(&mut self, target: HuntTarget, seed: u32) -> Option<(usize, [f64; 2])> {
         let barrier = match target {
             HuntTarget::Barrier { a, b, enemy } => {
-                let (a, b) = (self.objects.get(a).map(object_metres)?, self.objects.get(b).map(object_metres)?);
+                let (a, b) = (
+                    self.objects.get(a).map(object_metres)?,
+                    self.objects.get(b).map(object_metres)?,
+                );
                 Some((a, b, map_metres(enemy)))
             }
             HuntTarget::Carrier(_) => None,
@@ -1013,7 +1049,8 @@ impl Sim {
         if self.asw.rng.is_none() {
             self.asw.rng = Some(Rng::new(seed | 1));
             let layer = 30 + self.asw.rand(90);
-            self.asw.ocean = Ocean { layer: layer as f32, sea_state: 1 + self.asw.rand(4) as u8, bottom: 600.0 };
+            self.asw.ocean =
+                Ocean { layer: layer as f32, sea_state: 1 + self.asw.rand(4) as u8, bottom: 600.0 };
             // A barrier across a narrow sea: shallow water (the Gulf of Finland's), the layer
             // high in it.
             if barrier.is_some() {
@@ -1051,7 +1088,12 @@ impl Sim {
                     .map(|&d| [mid[0] - n[0] * d, mid[1] - n[1] * d])
                     .find(|&g| self.sea_at(g))
                     .unwrap_or([mid[0] - n[0] * 20_000.0, mid[1] - n[1] * 20_000.0]);
-                let setup = SubSetup { at, heading: bearing(at, goal), intent: Intent::Blockade { a, b, goal }, nuclear };
+                let setup = SubSetup {
+                    at,
+                    heading: bearing(at, goal),
+                    intent: Intent::Blockade { a, b, goal },
+                    nuclear,
+                };
                 (at, setup)
             }
             (HuntTarget::Carrier(carrier), _) => {
@@ -1111,7 +1153,8 @@ impl Sim {
         while k < self.asw.ai_hunts.len() {
             let mut h = self.asw.ai_hunts[k].clone();
             let sub = self.asw.subs.iter().position(|s| s.id == h.sub);
-            let flying: Vec<(u32, usize)> = h.tags.iter().filter_map(|&t| Some((t, self.flight_of_tag(t)?))).collect();
+            let flying: Vec<(u32, usize)> =
+                h.tags.iter().filter_map(|&t| Some((t, self.flight_of_tag(t)?))).collect();
             let over = sub.is_none_or(|i| !self.asw.subs[i].alive || self.asw.subs[i].done);
             if over || h.up && flying.is_empty() {
                 // Home; a submarine nobody hunts any more withdraws.
@@ -1147,7 +1190,13 @@ impl Sim {
                     }
                     let id = self.asw.id();
                     let heading = bearing(p, f);
-                    let program = TorpProgram { heading: None, delay: 2, pattern: Pattern::Circle, ceiling: 30, floor: 250 };
+                    let program = TorpProgram {
+                        heading: None,
+                        delay: 2,
+                        pattern: Pattern::Circle,
+                        ceiling: 30,
+                        floor: 250,
+                    };
                     self.asw.torpedoes.push(Torpedo {
                         id,
                         owner: AI_OWNER,
@@ -1172,7 +1221,9 @@ impl Sim {
                 }
             }
             // Out of torpedoes: home (the submarine runs on, the mission failed).
-            let left = flying.iter().any(|&(t, _)| h.dropped.iter().find(|d| d.0 == t).map_or(0, |d| d.1) < AI_TORPEDOES);
+            let left = flying.iter().any(|&(t, _)| {
+                h.dropped.iter().find(|d| d.0 == t).map_or(0, |d| d.1) < AI_TORPEDOES
+            });
             let running = self.asw.torpedoes.iter().any(|t| t.owner == AI_OWNER);
             if !flying.is_empty() && !left && !running {
                 for &(_, i) in &flying {
@@ -1187,7 +1238,13 @@ impl Sim {
     }
 
     /// Test aid: a buoy of `player`'s put in the water at `at` (m east, north) at once.
-    pub fn test_buoy_at(&mut self, player: u8, kind: BuoyKind, deep: bool, at: [f64; 2]) -> Result<(), Text> {
+    pub fn test_buoy_at(
+        &mut self,
+        player: u8,
+        kind: BuoyKind,
+        deep: bool,
+        at: [f64; 2],
+    ) -> Result<(), Text> {
         let mut h = self.heli(player as usize);
         h.at = at;
         h.height = 0.0;
@@ -1227,7 +1284,8 @@ impl Sim {
                 if c.buoys_left[kind.index()] == 0 {
                     return Err(text!("asw-no-buoys", kind = kind.name()));
                 }
-                let live = self.asw.buoys_of(owner).count() + self.asw.crew(owner).map_or(0, |c| c.pending.len());
+                let live = self.asw.buoys_of(owner).count()
+                    + self.asw.crew(owner).map_or(0, |c| c.pending.len());
                 if live >= MAX_BUOYS {
                     return Err(text!("asw-buoys-live", n = MAX_BUOYS as i64));
                 }
@@ -1279,7 +1337,11 @@ impl Sim {
                 if changed && player != owner {
                     let back = self.pl.id as usize;
                     self.activate(owner as usize);
-                    self.msg(if on { text!("asw-hover-request") } else { text!("asw-hover-cancelled") });
+                    self.msg(if on {
+                        text!("asw-hover-request")
+                    } else {
+                        text!("asw-hover-cancelled")
+                    });
                     self.activate(back);
                 }
                 Ok(())
@@ -1417,7 +1479,14 @@ impl Sim {
         let height = ((p.alt - ground).max(0)) as f64 * M_PER_WU;
         let heading = (p.heading as u16) as f64 / 65536.0 * TAU;
         let speed = p.knots as f64 * KT;
-        Heli { id: k as u8, at, height, speed, heading, vel: [heading.sin() * speed, heading.cos() * speed] }
+        Heli {
+            id: k as u8,
+            at,
+            height,
+            speed,
+            heading,
+            vel: [heading.sin() * speed, heading.cos() * speed],
+        }
     }
 
     fn drop_buoy(&mut self, h: &Heli, kind: BuoyKind, deep: bool) -> Result<(), Text> {
@@ -1512,7 +1581,9 @@ impl Sim {
             .events
             .iter()
             .filter_map(|e| match *e {
-                SimEvent::Explosion { x, y, alt, kind } if alt < 60 && kind != -1 && kind != -16 => {
+                SimEvent::Explosion { x, y, alt, kind }
+                    if alt < 60 && kind != -1 && kind != -16 =>
+                {
                     Some(([x as f64 * M_PER_MAP, (0x8000 - y) as f64 * M_PER_MAP], false))
                 }
                 SimEvent::RoundImpact { x, y, .. } => Some((
@@ -1558,7 +1629,10 @@ impl Sim {
         s.alive = false;
         let (at, hunter, ai) = (s.at, s.hunter, s.ai_hunt);
         // The AI's: its mission achieved.
-        if let Some(tag) = ai.and_then(|m| self.asw.ai_hunts.iter().find(|h| h.mission == m)).and_then(|h| h.tags.first().copied()) {
+        if let Some(tag) = ai
+            .and_then(|m| self.asw.ai_hunts.iter().find(|h| h.mission == m))
+            .and_then(|h| h.tags.first().copied())
+        {
             self.emit(SimEvent::CampaignSubSunk { tag });
         }
         // A campaign's: the hunter's objective.
@@ -1570,7 +1644,10 @@ impl Sim {
             }
             self.activate(back);
         }
-        self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 2 });
+        self.emit(SimEvent::AswSplash {
+            at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32],
+            kind: 2,
+        });
         self.tell_crews(text!("asw-sub-sunk"));
     }
 
@@ -1656,7 +1733,9 @@ impl Sim {
             .asw
             .subs
             .iter()
-            .map(|s| s.hunter.is_some_and(|p| !self.pilot_exists(p as usize) || self.pilot_absent(p)))
+            .map(|s| {
+                s.hunter.is_some_and(|p| !self.pilot_exists(p as usize) || self.pilot_absent(p))
+            })
             .collect();
         let mut k = 0;
         self.asw.subs.retain(|_| {
@@ -1669,7 +1748,9 @@ impl Sim {
             }
             let goal = match self.asw.subs[i].intent {
                 Intent::Blockade { goal, .. } => goal,
-                Intent::Approach { ship } | Intent::Attack { ship } | Intent::Escort { carrier: ship } => {
+                Intent::Approach { ship }
+                | Intent::Attack { ship }
+                | Intent::Escort { carrier: ship } => {
                     self.objects.get(ship).map_or(self.asw.subs[i].at, object_metres)
                 }
             };
@@ -1687,12 +1768,16 @@ impl Sim {
             let r2 = self.asw.rand(1000);
             // A helicopter low and slow near it: heard (its rotor on the water).
             let overhead = helis.iter().any(|h| {
-                h.height < OVERHEAD_HEIGHT && h.speed < OVERHEAD_SPEED && dist(h.at, self.asw.subs[i].at) < OVERHEAD_RANGE
+                h.height < OVERHEAD_HEIGHT
+                    && h.speed < OVERHEAD_SPEED
+                    && dist(h.at, self.asw.subs[i].at) < OVERHEAD_RANGE
             });
             let low = lows
                 .iter()
                 .filter(|h| dist(h.at, self.asw.subs[i].at) < SURFACE_RANGE)
-                .min_by(|a, b| dist(a.at, self.asw.subs[i].at).total_cmp(&dist(b.at, self.asw.subs[i].at)))
+                .min_by(|a, b| {
+                    dist(a.at, self.asw.subs[i].at).total_cmp(&dist(b.at, self.asw.subs[i].at))
+                })
                 .map(|h| (h.id, h.at));
             let s = &mut self.asw.subs[i];
             // A helicopter low near it: it may come up and fight it with MANPADS.
@@ -1736,7 +1821,9 @@ impl Sim {
             // Silent: stopped every so often, and while a helicopter hovers near (till it has
             // been gone a while); running for it once hunted in earnest (a ping, a torpedo).
             s.silent_in -= dt;
-            if matches!(s.posture, Posture::Transit | Posture::Periscope) && (s.silent_in <= 0.0 || overhead) {
+            if matches!(s.posture, Posture::Transit | Posture::Periscope)
+                && (s.silent_in <= 0.0 || overhead)
+            {
                 s.posture = Posture::Silent;
                 s.posture_t = 0.0;
                 s.silent_for = if overhead {
@@ -1752,7 +1839,8 @@ impl Sim {
                 if s.posture_t > s.silent_for {
                     s.posture = Posture::Transit;
                     s.posture_t = 0.0;
-                    s.silent_in = (SILENT_EVERY.0 + r2 * (SILENT_EVERY.1 - SILENT_EVERY.0) / 1000) as f64;
+                    s.silent_in =
+                        (SILENT_EVERY.0 + r2 * (SILENT_EVERY.1 - SILENT_EVERY.0) / 1000) as f64;
                 }
             }
             let to_goal = bearing(s.at, goal);
@@ -1762,11 +1850,17 @@ impl Sim {
                 Posture::Silent => (s.heading, 0.0, s.depth),
                 Posture::Surfaced => (s.heading, 0.0, 0.0),
                 Posture::Evade => {
-                    let away = s.threat.map_or(to_goal + std::f64::consts::FRAC_PI_2, |t| bearing(t, s.at));
+                    let away = s
+                        .threat
+                        .map_or(to_goal + std::f64::consts::FRAC_PI_2, |t| bearing(t, s.at));
                     // Away from the threat, but bending back toward its goal.
                     let h = away + wrap(to_goal - away).clamp(-1.2, 1.2) * 0.5;
                     let fast = s.posture_t < 90.0;
-                    (h, if fast { SPRINT } else { QUIET }, (layer + 80.0).min(self.asw.ocean.bottom as f64 - 30.0))
+                    (
+                        h,
+                        if fast { SPRINT } else { QUIET },
+                        (layer + 80.0).min(self.asw.ocean.bottom as f64 - 30.0),
+                    )
                 }
             };
             if s.posture == Posture::Evade && s.posture_t > 300.0 {
@@ -1791,12 +1885,18 @@ impl Sim {
             let want_depth = want_depth.min(bottom - 20.0).max(PERISCOPE_DEPTH.min(want_depth));
             let rate = if s.posture == Posture::Surfaced { SURFACE_RATE } else { SUB_DIVE };
             s.depth += (want_depth - s.depth).clamp(-rate * dt, rate * dt);
-            let next = [s.at[0] + s.heading.sin() * s.speed * dt, s.at[1] + s.heading.cos() * s.speed * dt];
+            let next = [
+                s.at[0] + s.heading.sin() * s.speed * dt,
+                s.at[1] + s.heading.cos() * s.speed * dt,
+            ];
             let ahead = [s.at[0] + s.heading.sin() * 1500.0, s.at[1] + s.heading.cos() * 1500.0];
             let (s_heading, s_at) = (s.heading, s.at);
             // Keep to the sea: turn away from land ahead.
             if !self.sea_at(ahead) {
-                let left = [s_at[0] + (s_heading - 0.8).sin() * 1500.0, s_at[1] + (s_heading - 0.8).cos() * 1500.0];
+                let left = [
+                    s_at[0] + (s_heading - 0.8).sin() * 1500.0,
+                    s_at[1] + (s_heading - 0.8).cos() * 1500.0,
+                ];
                 let turn = if self.sea_at(left) { -1.0 } else { 1.0 };
                 let s = &mut self.asw.subs[i];
                 s.heading = (s.heading + turn * SUB_TURN * 3.0 * dt).rem_euclid(TAU);
@@ -1808,18 +1908,22 @@ impl Sim {
             let s = self.asw.subs[i].clone();
             match s.intent {
                 Intent::Blockade { a, b, .. } => {
-                    let side = |p: [f64; 2]| (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+                    let side =
+                        |p: [f64; 2]| (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
                     let start_side = side(goal);
                     if side(s.at) * start_side > 0.0 && dist(s.at, goal) < dist(a, b) {
                         self.asw.subs[i].done = true;
                         self.lose_hunt(AswResult::Escaped, None);
                     }
                 }
-                Intent::Approach { ship } | Intent::Attack { ship } | Intent::Escort { carrier: ship } => {
+                Intent::Approach { ship }
+                | Intent::Attack { ship }
+                | Intent::Escort { carrier: ship } => {
                     // In missile range: up to periscope depth, then its salvo at its ship (an
                     // escort of the carrier's, or the carrier).
                     let d = dist(s.at, goal);
-                    let free = !matches!(s.posture, Posture::Evade | Posture::Surfaced | Posture::Attack);
+                    let free =
+                        !matches!(s.posture, Posture::Evade | Posture::Surfaced | Posture::Attack);
                     if !s.fired && free && d < MISSILE_RANGE && d > ATTACK_RANGE {
                         let sub = &mut self.asw.subs[i];
                         if sub.posture != Posture::Periscope {
@@ -1839,7 +1943,9 @@ impl Sim {
                             sub.salvo -= 1;
                             sub.salvo_t = SALVO_GAP;
                             let target = match s.intent {
-                                Intent::Escort { carrier } => self.escort_of(carrier, s.at).unwrap_or(carrier),
+                                Intent::Escort { carrier } => {
+                                    self.escort_of(carrier, s.at).unwrap_or(carrier)
+                                }
                                 _ => ship,
                             };
                             missiles.push((s.at, target, s.id));
@@ -1861,7 +1967,10 @@ impl Sim {
         }
         for (at, ship, id) in missiles {
             if self.launch_sea_missile(at, ship, id) {
-                self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 4 });
+                self.emit(SimEvent::AswSplash {
+                    at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32],
+                    kind: 4,
+                });
                 self.tell_crews(text!("asw-missile-launch"));
             } else if let Some(s) = self.asw.subs.iter_mut().find(|s| s.id == id) {
                 // No missile slot free: it goes once one is.
@@ -1883,9 +1992,14 @@ impl Sim {
             && o < self.objects.len()
         {
             let at = object_metres(&self.objects[o]);
-            self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 3 });
+            self.emit(SimEvent::AswSplash {
+                at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32],
+                kind: 3,
+            });
             // A carrier takes it and stays afloat; anything smaller sinks.
-            if self.objects[o].flags & oflags::CARRIER == 0 && self.objects[o].flags & oflags::DESTROYED == 0 {
+            if self.objects[o].flags & oflags::CARRIER == 0
+                && self.objects[o].flags & oflags::DESTROYED == 0
+            {
                 self.destroy_ground(o as i32);
             }
         }
@@ -1936,18 +2050,25 @@ impl Sim {
                 return true;
             }
             b.life -= dt32;
-            if b.kind == BuoyKind::Bt && b.life <= BT_LIFE - BT_REPORT && b.life + dt32 > BT_LIFE - BT_REPORT {
+            if b.kind == BuoyKind::Bt
+                && b.life <= BT_LIFE - BT_REPORT
+                && b.life + dt32 > BT_LIFE - BT_REPORT
+            {
                 reports.push(b.owner);
             }
             b.life > 0.0
         });
         for at in splashes {
             if self.sea_at(at) {
-                self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 0 });
+                self.emit(SimEvent::AswSplash {
+                    at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32],
+                    kind: 0,
+                });
             }
         }
         // Buoys that came down on land are lost.
-        let wet: Vec<bool> = self.asw.buoys.iter().map(|b| b.fall > 0.0 || self.sea_at(b.at)).collect();
+        let wet: Vec<bool> =
+            self.asw.buoys.iter().map(|b| b.fall > 0.0 || self.sea_at(b.at)).collect();
         let mut k = 0;
         self.asw.buoys.retain(|_| {
             k += 1;
@@ -2048,8 +2169,12 @@ impl Sim {
         let mut hits = Vec::new();
         let mut entries = Vec::new();
         let layer = self.asw.ocean.layer as f64;
-        let subs: Vec<(u16, [f64; 2], f64, bool)> =
-            self.asw.subs.iter().map(|s| (s.id, s.at, s.depth, s.alive && s.posture == Posture::Evade)).collect();
+        let subs: Vec<(u16, [f64; 2], f64, bool)> = self
+            .asw
+            .subs
+            .iter()
+            .map(|s| (s.id, s.at, s.depth, s.alive && s.posture == Posture::Evade))
+            .collect();
         let mut torps = std::mem::take(&mut self.asw.torpedoes);
         let mut lost = Vec::new();
         for t in torps.iter_mut() {
@@ -2085,10 +2210,12 @@ impl Sim {
                     let w = TORP_SEARCH / CIRCLE_R;
                     t.heading = match t.program.pattern {
                         Pattern::Straight => t.base_heading,
-                        Pattern::Circle | Pattern::Helix => (t.base_heading + w * st).rem_euclid(TAU),
-                        Pattern::Snake => {
-                            (t.base_heading + SNAKE_SWING * (TAU * st / SNAKE_PERIOD).sin()).rem_euclid(TAU)
+                        Pattern::Circle | Pattern::Helix => {
+                            (t.base_heading + w * st).rem_euclid(TAU)
                         }
+                        Pattern::Snake => (t.base_heading
+                            + SNAKE_SWING * (TAU * st / SNAKE_PERIOD).sin())
+                        .rem_euclid(TAU),
                     };
                 }
                 TorpPhase::Home => {
@@ -2097,7 +2224,8 @@ impl Sim {
                         let turn = wrap(want - t.heading).clamp(-15.0 * DEG * dt, 15.0 * DEG * dt);
                         t.heading = (t.heading + turn).rem_euclid(TAU);
                         t.p[2] += (-depth - t.p[2]).clamp(-4.0 * dt, 4.0 * dt);
-                        let d3 = (dist([t.p[0], t.p[1]], at).powi(2) + (t.p[2] + depth).powi(2)).sqrt();
+                        let d3 =
+                            (dist([t.p[0], t.p[1]], at).powi(2) + (t.p[2] + depth).powi(2)).sqrt();
                         if d3 < TORP_HIT {
                             hits.push((t.id, t.target.unwrap_or(0)));
                         }
@@ -2150,7 +2278,10 @@ impl Sim {
         torps.retain(|t| !lost.contains(&t.id) && !hits.iter().any(|h| h.0 == t.id));
         self.asw.torpedoes = torps;
         for at in entries {
-            self.emit(SimEvent::AswSplash { at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32], kind: 1 });
+            self.emit(SimEvent::AswSplash {
+                at: [(at[0] * 10.0) as i32, (at[1] * 10.0) as i32],
+                kind: 1,
+            });
         }
         for (_, sub) in hits {
             if let Some(i) = self.asw.subs.iter().position(|s| s.id == sub && s.alive) {
@@ -2178,23 +2309,36 @@ impl Sim {
         let ships: Vec<([f64; 2], f64, [u16; 2])> = (0..self.objects.len())
             .filter(|&i| {
                 let o = &self.objects[i];
-                o.flags & oflags::DESTROYED == 0 && (o.flags & oflags::CARRIER != 0 || self.is_ship(i as i32))
+                o.flags & oflags::DESTROYED == 0
+                    && (o.flags & oflags::CARRIER != 0 || self.is_ship(i as i32))
             })
             .map(|i| {
                 let o = &self.objects[i];
                 let carrier = o.flags & oflags::CARRIER != 0;
                 let level = if carrier { 168.0 } else { 156.0 + (i % 5) as f64 };
-                let tones = if carrier { [60, 11] } else { [47 + (i % 9) as u16 * 3, 14 + (i % 6) as u16 * 2] };
+                let tones = if carrier {
+                    [60, 11]
+                } else {
+                    [47 + (i % 9) as u16 * 3, 14 + (i % 6) as u16 * 2]
+                };
                 (object_metres(o), level, tones)
             })
-            .filter(|(at, ..)| self.asw.buoys.iter().any(|b| dist(*at, b.at) < SHIP_HEARD) || self.asw.crews.iter().any(|c| c.dip.wet() && dist(*at, c.dip.at) < SHIP_HEARD))
+            .filter(|(at, ..)| {
+                self.asw.buoys.iter().any(|b| dist(*at, b.at) < SHIP_HEARD)
+                    || self
+                        .asw
+                        .crews
+                        .iter()
+                        .any(|c| c.dip.wet() && dist(*at, c.dip.at) < SHIP_HEARD)
+            })
             .collect();
         let mut alerts: Vec<[f64; 2]> = Vec::new();
         let mut fixes: Vec<(u8, Fix)> = Vec::new();
         // Noise in the measurements: drawn first (the borrow of the buoys below).
-        let draws: Vec<f64> = (0..(self.asw.buoys.len() + self.asw.crews.len()) * subs.len().max(1) * 4)
-            .map(|_| self.asw.gauss())
-            .collect();
+        let draws: Vec<f64> =
+            (0..(self.asw.buoys.len() + self.asw.crews.len()) * subs.len().max(1) * 4)
+                .map(|_| self.asw.gauss())
+                .collect();
         let mut di = 0usize;
         let mut draw = || {
             let d = draws.get(di).copied().unwrap_or(0.0);
@@ -2243,7 +2387,11 @@ impl Sim {
                 let passive = s.level() - tl - noise + di.unwrap_or(0.0) - PASSIVE_DT;
                 let (n1, n2) = (draw(), draw());
                 let true_b = bearing(at, s.at);
-                let mut line = Line { snr: passive.clamp(-60.0, 60.0) as i8, freqs: s.freqs(), ..Default::default() };
+                let mut line = Line {
+                    snr: passive.clamp(-60.0, 60.0) as i8,
+                    freqs: s.freqs(),
+                    ..Default::default()
+                };
                 let mut heard = passive > 0.0;
                 if heard && di.is_some() {
                     let err = (2.0 + 25.0 / (1.0 + passive)) * DEG;
@@ -2251,7 +2399,8 @@ impl Sim {
                     line.bearing = Some(deg(b));
                 }
                 if ping {
-                    let (reach, sl) = if sensor == 0 { (DIP_RANGE, DIP_SL) } else { (DICASS_RANGE, PING_SL) };
+                    let (reach, sl) =
+                        if sensor == 0 { (DIP_RANGE, DIP_SL) } else { (DICASS_RANGE, PING_SL) };
                     let excess = sl - 2.0 * tl + TARGET_STRENGTH - (noise - ACTIVE_DI) - ACTIVE_DT;
                     if excess > 0.0 && r < reach {
                         let err_b = (1.5 + 10.0 / (1.0 + excess)) * DEG;
@@ -2259,11 +2408,17 @@ impl Sim {
                         let range = r + n2 * (10.0 + r * 0.01);
                         line.bearing = Some(deg(b));
                         line.range = Some(range.clamp(0.0, 65_000.0) as u16);
-                        let closing = -(s.heading.sin() * (at[0] - s.at[0]) + s.heading.cos() * (at[1] - s.at[1])) / r * s.speed;
+                        let closing = -(s.heading.sin() * (at[0] - s.at[0])
+                            + s.heading.cos() * (at[1] - s.at[1]))
+                            / r
+                            * s.speed;
                         line.doppler = (-closing / KT).round().clamp(-60.0, 60.0) as i8;
                         line.snr = line.snr.max(excess.clamp(0.0, 60.0) as i8);
                         let fix = [at[0] + b.sin() * range, at[1] + b.cos() * range];
-                        fixes.push((owner, Fix { at: fix, err: (30.0 + r * err_b) as f32, t: clock, how: 1 }));
+                        fixes.push((
+                            owner,
+                            Fix { at: fix, err: (30.0 + r * err_b) as f32, t: clock, how: 1 },
+                        ));
                         heard = true;
                     }
                 }
@@ -2274,7 +2429,9 @@ impl Sim {
             // The torpedoes running: their fast screws, cavitating.
             for &(t_at, t_depth, id) in &torps {
                 let r = dist(at, t_at).max(20.0);
-                let passive = TORPEDO_LEVEL - ocean.loss(r, depth, t_depth) - noise + di.unwrap_or(0.0) - PASSIVE_DT;
+                let passive = TORPEDO_LEVEL - ocean.loss(r, depth, t_depth) - noise
+                    + di.unwrap_or(0.0)
+                    - PASSIVE_DT;
                 if passive <= 0.0 {
                     continue;
                 }
@@ -2291,7 +2448,8 @@ impl Sim {
             // The ships: heard (never pinged: the sonars' pings are set for submarines).
             for &(ship_at, level, freqs) in &ships {
                 let r = dist(at, ship_at).max(50.0);
-                let passive = level - ocean.loss(r, depth, 5.0) - noise + di.unwrap_or(0.0) - PASSIVE_DT;
+                let passive =
+                    level - ocean.loss(r, depth, 5.0) - noise + di.unwrap_or(0.0) - PASSIVE_DT;
                 if passive <= 0.0 {
                     continue;
                 }
@@ -2335,11 +2493,12 @@ impl Sim {
                     if r1 >= reach {
                         continue;
                     }
-                    let excess = sl - ocean.loss(r1, p_depth, s.depth) - ocean.loss(r2, depth, s.depth)
-                        + TARGET_STRENGTH
-                        - noise
-                        + di.unwrap_or(0.0)
-                        - ACTIVE_DT;
+                    let excess =
+                        sl - ocean.loss(r1, p_depth, s.depth) - ocean.loss(r2, depth, s.depth)
+                            + TARGET_STRENGTH
+                            - noise
+                            + di.unwrap_or(0.0)
+                            - ACTIVE_DT;
                     if excess <= 0.0 {
                         continue;
                     }
@@ -2364,7 +2523,14 @@ impl Sim {
             lines.sort_by_key(|l| (!(l.ping || l.echo), -(l.snr as i16)));
             let pings = lines.iter().filter(|l| l.ping || l.echo).count();
             lines.truncate(pings + 4);
-            *sample = Sample { seq: sample.seq.wrapping_add(1), noise: noise as u8, lines, ping, heard, due };
+            *sample = Sample {
+                seq: sample.seq.wrapping_add(1),
+                noise: noise as u8,
+                lines,
+                ping,
+                heard,
+                due,
+            };
         }
         for (o, f) in fixes {
             self.asw.crew_mut(o).fixes.push(f);
@@ -2405,7 +2571,10 @@ impl Sim {
                 .min_by(|a, b| a.1.total_cmp(&b.1));
             match near {
                 Some((i, _, _)) => groups[i].push(*f),
-                None => match fresh.iter_mut().find(|g| dist(g[0].at, f.at) < 3.0 * f.err as f64 + 500.0) {
+                None => match fresh
+                    .iter_mut()
+                    .find(|g| dist(g[0].at, f.at) < 3.0 * f.err as f64 + 500.0)
+                {
                     Some(g) => g.push(*f),
                     None => fresh.push(vec![*f]),
                 },
@@ -2462,11 +2631,13 @@ fn fit(n: u8, fixes: &[Fix], now: f64) -> Track {
     let mean = |k: usize| fixes.iter().zip(&w).map(|(f, w)| f.at[k] * w).sum::<f64>() / sw;
     let (mx, my) = (mean(0), mean(1));
     let stt: f64 = fixes.iter().zip(&w).map(|(f, w)| w * (f.t - tm).powi(2)).sum();
-    let span = fixes.iter().map(|f| f.t).fold(f64::MIN, f64::max) - fixes.iter().map(|f| f.t).fold(f64::MAX, f64::min);
+    let span = fixes.iter().map(|f| f.t).fold(f64::MIN, f64::max)
+        - fixes.iter().map(|f| f.t).fold(f64::MAX, f64::min);
     let mut vel = [0.0, 0.0];
     if fixes.len() >= 3 && span > 30.0 && stt > 0.0 {
         for (k, m) in [(0, mx), (1, my)] {
-            vel[k] = fixes.iter().zip(&w).map(|(f, w)| w * (f.t - tm) * (f.at[k] - m)).sum::<f64>() / stt;
+            vel[k] = fixes.iter().zip(&w).map(|(f, w)| w * (f.t - tm) * (f.at[k] - m)).sum::<f64>()
+                / stt;
         }
         // No submarine runs faster than this: a wild fit is no speed at all.
         let v = vel[0].hypot(vel[1]);

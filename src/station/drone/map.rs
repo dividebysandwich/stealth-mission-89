@@ -880,9 +880,7 @@ fn plan(cv: &mut Canvas, p: &super::Plan) {
     let hint = match p.kind {
         UavKind::Stork => ["END ON A LOITER POINT", ""],
         UavKind::Fp2 => ["END ON A TERMINATE POINT", "(OR LOITER: SURVEY)"],
-        UavKind::Interceptor | UavKind::X12 => {
-            ["LOITER IN THEIR PATH", "AT THEIR HEIGHT (ALT+/-)"]
-        }
+        UavKind::Interceptor | UavKind::X12 => ["LOITER IN THEIR PATH", "AT THEIR HEIGHT (ALT+/-)"],
     };
     for (i, l) in hint.iter().enumerate() {
         stroke_text_at(cv, 6.0, ROW_Y + 72.0 + i as f32 * 12.0, l, 5.0, 0.8, GREY, Align::Left);

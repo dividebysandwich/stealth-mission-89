@@ -24,14 +24,14 @@
 
 mod air_defence;
 mod designate;
+mod front;
 mod logistics;
 mod menu;
-mod front;
 mod ops;
-pub(crate) mod shell;
-mod war_map;
 pub(crate) mod picture;
+pub(crate) mod shell;
 pub mod unit_view;
+mod war_map;
 
 pub use menu::CampaignWindow;
 pub(crate) use menu::{SAVES_HEIGHT, confirm_delete, delete_popup};
@@ -1243,12 +1243,14 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
                 };
                 c.take_loadout = Some(loadout);
                 c.take_route = route;
-                host.take_mission(sim, me, offer, base, aircraft, Some(stores)).and_then(|mut ev| {
-                    if wingman {
-                        ev.extend(host.take_wingman(sim, me, aircraft)?);
-                    }
-                    Ok(ev)
-                })
+                host.take_mission(sim, me, offer, base, aircraft, Some(stores)).and_then(
+                    |mut ev| {
+                        if wingman {
+                            ev.extend(host.take_wingman(sim, me, aircraft)?);
+                        }
+                        Ok(ev)
+                    },
+                )
             }
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),

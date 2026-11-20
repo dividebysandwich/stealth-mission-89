@@ -299,7 +299,9 @@ impl CampaignState {
             .ai_missions
             .iter()
             .filter(|m| m.side == side && m.open() && !matches!(m.target, AiTarget::Hunt { .. }))
-            .filter(|m| !matches!(m.offer.objective, Objective::Asw { .. } | Objective::Barrier { .. }))
+            .filter(|m| {
+                !matches!(m.offer.objective, Objective::Asw { .. } | Objective::Barrier { .. })
+            })
             .count();
         let mut window = self.launches_in_window(side);
         let mut runway = self.runway(side);

@@ -111,12 +111,16 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 33] =
-    [4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1, 1, 7, 7];
+const BAY_QTY: [u8; 33] = [
+    4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1, 1, 7,
+    7,
+];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers, a 7-tube pod of rockets).
-const PYLON_QTY: [u8; 33] =
-    [1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7, 7];
+const PYLON_QTY: [u8; 33] = [
+    1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7,
+    7,
+];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
 pub const STINGER: u8 = 21;
@@ -1779,10 +1783,7 @@ impl PlannedLoadout {
             }
             // Whatever the briefing: the Sidewinders on the rails, a full launcher of Hellfires
             // on every pylon.
-            AircraftKind::AH1Z
-            | AircraftKind::AH64
-            | AircraftKind::RAH66
-            | AircraftKind::MH60R => {
+            AircraftKind::AH1Z | AircraftKind::AH64 | AircraftKind::RAH66 | AircraftKind::MH60R => {
                 for (s, h) in stores.iter_mut().zip(lay.hardpoints) {
                     *s = h.loads.first().copied();
                 }
@@ -1790,7 +1791,17 @@ impl PlannedLoadout {
             // Whatever the briefing: three jammer pods, HARMs outboard, AMRAAMs on the
             // nacelles, tanks inboard.
             AircraftKind::EA18G => {
-                for (i, w) in [(0, 2), (1, ALQ99), (2, 17), (3, 1), (4, ALQ99), (5, 1), (6, 17), (7, ALQ99), (8, 2)] {
+                for (i, w) in [
+                    (0, 2),
+                    (1, ALQ99),
+                    (2, 17),
+                    (3, 1),
+                    (4, ALQ99),
+                    (5, 1),
+                    (6, 17),
+                    (7, ALQ99),
+                    (8, 2),
+                ] {
                     stores[i] = Some(w);
                 }
             }

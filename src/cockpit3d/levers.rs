@@ -739,9 +739,7 @@ pub(super) fn grab_levers(
         for m in
             config.vr_buttons.iter().filter(|m| m.hand == side && !config.vr_grabs(side, m.input))
         {
-            if at_console
-                && side == VrHand::Left
-                && m.target != ButtonTarget::Action(Action::Menu)
+            if at_console && side == VrHand::Left && m.target != ButtonTarget::Action(Action::Menu)
             {
                 continue;
             }

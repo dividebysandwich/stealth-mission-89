@@ -62,7 +62,9 @@ pub(super) fn aim(
     eo: Option<ResMut<ConsoleEo>>,
     time: Res<Time<Real>>,
 ) {
-    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else { return };
+    let (Some(m), Some(combat), Some(c)) = (manning.filter(|m| !m.gunner()), combat, c) else {
+        return;
+    };
     // A drone command center's camera is on its drone (`drone::feed`).
     if m.drones() {
         return;
@@ -146,7 +148,11 @@ pub(super) fn draw(
     mfd: Res<crate::mfd::MfdState>,
     mut screens: Query<(&ConsoleCanvas, &mut CanvasTexture)>,
 ) {
-    let (Some(m), Some(combat), Some(c), Some(eo)) = (manning.filter(|m| !m.gunner()), combat, c, eo) else { return };
+    let (Some(m), Some(combat), Some(c), Some(eo)) =
+        (manning.filter(|m| !m.gunner()), combat, c, eo)
+    else {
+        return;
+    };
     if m.drones() {
         return;
     }

@@ -943,9 +943,10 @@ impl CampaignState {
         run: u32,
         ev: &mut Vec<CampaignEvent>,
     ) -> Option<ObjectId> {
-        let k = self.cargo_runs.iter().position(|r| {
-            r.id == run && matches!(r.state, CargoState::Scheduled { .. })
-        })?;
+        let k = self
+            .cargo_runs
+            .iter()
+            .position(|r| r.id == run && matches!(r.state, CargoState::Scheduled { .. }))?;
         self.cargo_runs[k].state = CargoState::Player { player };
         self.board_at = f64::MIN;
         self.escort_cargo(k, ev);
@@ -985,8 +986,7 @@ impl CampaignState {
         lost: bool,
         ev: &mut Vec<CampaignEvent>,
     ) {
-        let Some(k) =
-            self.cargo_runs.iter().position(|r| r.state == CargoState::Player { player })
+        let Some(k) = self.cargo_runs.iter().position(|r| r.state == CargoState::Player { player })
         else {
             return;
         };

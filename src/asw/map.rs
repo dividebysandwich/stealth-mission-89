@@ -148,7 +148,14 @@ fn drop_refused(
 }
 
 /// A touch on the page (canvas units).
-pub fn touch(ui: &mut AswUi, p: Vec2, phase: DragPhase, crew: &AswCrew, sim: &stealth_sim::Sim, owner: u8) {
+pub fn touch(
+    ui: &mut AswUi,
+    p: Vec2,
+    phase: DragPhase,
+    crew: &AswCrew,
+    sim: &stealth_sim::Sim,
+    owner: u8,
+) {
     let c = centre(ui, sim, owner);
     match phase {
         // The MAD's window over the map takes no touches.
@@ -282,7 +289,14 @@ fn mark_label(ui: &AswUi, c: [f64; 2], at: [f64; 2], bearing: f32) -> Vec2 {
 }
 
 /// The mark whose letter is under `s`.
-fn mark_at(ui: &AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner: u8, c: [f64; 2], s: Vec2) -> Option<usize> {
+fn mark_at(
+    ui: &AswUi,
+    sim: &stealth_sim::Sim,
+    crew: &AswCrew,
+    owner: u8,
+    c: [f64; 2],
+    s: Vec2,
+) -> Option<usize> {
     ui.marks
         .iter()
         .enumerate()
@@ -333,9 +347,24 @@ pub fn draw(
             Btn::Drop(n) => ui.drop.is_some_and(|k| k.index() as u8 + 1 == n),
             _ => false,
         };
-        let col = if matches!(b, Btn::Drop(_)) && lit { YELLOW } else if lit { GREEN } else { GREY };
+        let col = if matches!(b, Btn::Drop(_)) && lit {
+            YELLOW
+        } else if lit {
+            GREEN
+        } else {
+            GREY
+        };
         cv.rect(r[0] as i32, r[1] as i32, r[2] as i32, r[3] as i32, col);
-        stroke_text_at(cv, r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 + 1.0, label, 7.0, 1.1, WHITE, Align::Centre);
+        stroke_text_at(
+            cv,
+            r[0] + r[2] / 2.0,
+            r[1] + r[3] / 2.0 + 1.0,
+            label,
+            7.0,
+            1.1,
+            WHITE,
+            Align::Centre,
+        );
     }
     cv.set_clip(0, TOP as i32, 640, BOTTOM as i32);
     // Range rings round the aircraft, a kilometre grid's ticks.
@@ -357,9 +386,17 @@ pub fn draw(
         if s.x < -20.0 || s.x > 660.0 || s.y < TOP - 20.0 || s.y > BOTTOM + 20.0 {
             continue;
         }
-        let friendly = o.flags & (stealth_sim::types::oflags::FRIENDLY | stealth_sim::types::oflags::NEUTRAL) != 0
+        let friendly = o.flags
+            & (stealth_sim::types::oflags::FRIENDLY | stealth_sim::types::oflags::NEUTRAL)
+            != 0
             || carrier;
-        let col = if o.flags & stealth_sim::types::oflags::DESTROYED != 0 { GREY } else if friendly { CYAN } else { RED };
+        let col = if o.flags & stealth_sim::types::oflags::DESTROYED != 0 {
+            GREY
+        } else if friendly {
+            CYAN
+        } else {
+            RED
+        };
         let r = if carrier { 6.0 } else { 3.5 };
         cv.stroke(s - Vec2::new(r, 0.0), s + Vec2::new(r, 0.0), 2.0, col);
         cv.stroke(s - Vec2::new(r * 0.5, 2.5), s + Vec2::new(r * 0.5, -2.5), 1.5, col);
@@ -373,7 +410,8 @@ pub fn draw(
         stroke_text_at(cv, d.x + 10.0, d.y - 8.0, "DATUM", 6.0, 1.0, YELLOW, Align::Left);
         for s in &h.subs {
             if let stealth_mission::asw::SubIntent::Blockade { a, b, .. } = s.intent {
-                let (a, b) = (at(stealth_sim::asw::map_metres(a)), at(stealth_sim::asw::map_metres(b)));
+                let (a, b) =
+                    (at(stealth_sim::asw::map_metres(a)), at(stealth_sim::asw::map_metres(b)));
                 cv.dashed(a, b, 10.0, 6.0, 1.2, RED);
                 break;
             }
@@ -475,14 +513,21 @@ pub fn draw(
     }
     // The tracks: a diamond, its course for two minutes, its error ring.
     for t in &crew.tracks {
-        let Some(col) = marks::faded_colour(YELLOW, (now - t.last) as f32, stealth_sim::asw::TRACK_DROP as f32)
+        let Some(col) =
+            marks::faded_colour(YELLOW, (now - t.last) as f32, stealth_sim::asw::TRACK_DROP as f32)
         else {
             continue;
         };
         let s = at(t.at);
         let d = 6.0;
         cv.polyline(
-            &[s + Vec2::new(0.0, -d), s + Vec2::new(d, 0.0), s + Vec2::new(0.0, d), s + Vec2::new(-d, 0.0), s + Vec2::new(0.0, -d)],
+            &[
+                s + Vec2::new(0.0, -d),
+                s + Vec2::new(d, 0.0),
+                s + Vec2::new(0.0, d),
+                s + Vec2::new(-d, 0.0),
+                s + Vec2::new(0.0, -d),
+            ],
             1.6,
             col,
         );
@@ -491,7 +536,16 @@ pub fn draw(
         cv.ring(s, (t.err / k).max(3.0), 0.7, col);
         let kt = t.vel[0].hypot(t.vel[1]) / 0.514;
         let course = (t.vel[0].atan2(t.vel[1]).to_degrees().rem_euclid(360.0)) as i32;
-        stroke_text_at(cv, s.x + 10.0, s.y - 10.0, &format!("S{} {course:03}/{kt:.0}", t.n), 6.0, 1.0, col, Align::Left);
+        stroke_text_at(
+            cv,
+            s.x + 10.0,
+            s.y - 10.0,
+            &format!("S{} {course:03}/{kt:.0}", t.n),
+            6.0,
+            1.0,
+            col,
+            Align::Left,
+        );
     }
     // The torpedoes.
     for t in sim.asw().torpedoes.iter().filter(|t| t.owner == owner) {
@@ -566,7 +620,16 @@ pub fn draw(
         stroke_text_at(cv, x0 + 6.0, y0 + 9.0, "MAD", 6.0, 1.1, GREEN, Align::Left);
         let col = super::mad::trail_colour(now * 10.0, mad.trail_top());
         stroke_text_at(cv, x0 + 40.0, y0 + 9.0, &format!("{now:+.1}"), 6.0, 1.1, col, Align::Left);
-        stroke_text_at(cv, x1 - 6.0, y0 + 9.0, &format!("+/-{full} NT"), 6.0, 1.1, CYAN, Align::Right);
+        stroke_text_at(
+            cv,
+            x1 - 6.0,
+            y0 + 9.0,
+            &format!("+/-{full} NT"),
+            6.0,
+            1.1,
+            CYAN,
+            Align::Right,
+        );
         super::mad::plot(cv, mad, [x0 + 14.0, y0 + 17.0, x1 - 14.0, y1 - 17.0], full, 5.0, 10.0);
     }
     cv.reset_clip();

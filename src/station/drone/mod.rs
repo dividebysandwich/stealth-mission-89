@@ -936,7 +936,9 @@ fn test_aid(
         };
         let Some(t) = target else { return };
         let alt = match (kind, air()) {
-            (UavKind::Interceptor | UavKind::X12, Some(f)) => (f.alt as f64 * crate::world::WU) as f32,
+            (UavKind::Interceptor | UavKind::X12, Some(f)) => {
+                (f.alt as f64 * crate::world::WU) as f32
+            }
             _ => kind.perf().altitude as f32,
         };
         let route = match kind {

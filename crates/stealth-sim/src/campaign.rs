@@ -2052,9 +2052,8 @@ impl Sim {
                 let in_bubble = |j: usize| {
                     (!cap || approx(xy[j].0 - ax, xy[j].1 - ay) < CAP_BUBBLE)
                         && (!escort || approx(xy[j].0 - gx, xy[j].1 - gy) < ESCORT_BUBBLE)
-                        && wing.is_none_or(|((wx, wy), r, _)| {
-                            approx(xy[j].0 - wx, xy[j].1 - wy) < r
-                        })
+                        && wing
+                            .is_none_or(|((wx, wy), r, _)| approx(xy[j].0 - wx, xy[j].1 - wy) < r)
                 };
                 f.target = (0..sides.len())
                     .filter(|&j| {

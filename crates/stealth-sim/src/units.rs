@@ -350,8 +350,14 @@ mod tests {
         assert_eq!(t.missiles[crate::naval::SEA_MISSILE_SPEC as usize].name, "3M-54");
         assert_eq!((t.weapons.len(), t.compat.len()), (33, 33));
         assert_eq!(t.weapons[crate::jp233::JP233_WEAPON as usize].short_name, "JP233");
-        assert_eq!(t.weapons[crate::rockets::HYDRA_WEAPON as usize].spec as i32, crate::rockets::HYDRA_SPEC);
-        assert_eq!(t.weapons[crate::rockets::APKWS_WEAPON as usize].spec as i32, crate::rockets::APKWS_SPEC);
+        assert_eq!(
+            t.weapons[crate::rockets::HYDRA_WEAPON as usize].spec as i32,
+            crate::rockets::HYDRA_SPEC
+        );
+        assert_eq!(
+            t.weapons[crate::rockets::APKWS_WEAPON as usize].spec as i32,
+            crate::rockets::APKWS_SPEC
+        );
         assert_eq!(t.weapons[25].spec as i32, crate::types::SLAMER_SPEC, "SLAM-ER");
         assert_eq!(t.weapons[26].spec as i32, crate::types::JSOW_SPEC, "JSOW");
         assert_eq!(t.weapons[27].spec as i32, crate::types::MALD_SPEC, "MALD");

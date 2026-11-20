@@ -24,8 +24,8 @@ mod board;
 pub(crate) mod drone;
 mod eo;
 mod info;
-pub(crate) mod scope;
 pub(crate) mod scene;
+pub(crate) mod scope;
 pub(crate) mod signal;
 mod sound;
 
@@ -262,7 +262,8 @@ fn sync_manning(
         })
     };
     let cockpit_of = |owner: u8| kind_of(owner).filter(|k| k.spec().gunner_seat.is_some());
-    let seat_of = |owner: u8| kind_of(owner).filter(|k| k.spec().gunner_seat.is_some() || k.seahawk());
+    let seat_of =
+        |owner: u8| kind_of(owner).filter(|k| k.spec().gunner_seat.is_some() || k.seahawk());
     let want = match (phase, combat.as_deref()) {
         (Some(Phase::Crew { owner }), _) => Some(Manning {
             unit: owner as usize,
@@ -473,8 +474,8 @@ fn vr_console(
     mut actions: MessageWriter<crate::input::ActionEvent>,
 ) {
     use crate::cockpit3d::{
-        BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT,
-        BUTTON_STICK_RIGHT, BUTTON_STICK_UP, BUTTON_THUMB,
+        BUTTON_PRIMARY, BUTTON_SECONDARY, BUTTON_STICK_DOWN, BUTTON_STICK_LEFT, BUTTON_STICK_RIGHT,
+        BUTTON_STICK_UP, BUTTON_THUMB,
     };
     use crate::input::{Action, ActionEvent};
     let Some(m) = manning.filter(|m| !m.drones() && (m.console() || m.gunner())) else { return };

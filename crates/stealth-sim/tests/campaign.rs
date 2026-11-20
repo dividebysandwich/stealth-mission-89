@@ -1409,7 +1409,13 @@ fn ai_jets_launch_from_the_catapults() {
 /// A campaign simulation of a theater with a friendly carrier (the Persian Gulf).
 fn carrier_campaign() -> Sim {
     let d = data();
-    let s = MissionSettings { theater: 1, roe: 2, opponents: 1, kind: MissionKind::Strike, ..Default::default() };
+    let s = MissionSettings {
+        theater: 1,
+        roe: 2,
+        opponents: 1,
+        kind: MissionKind::Strike,
+        ..Default::default()
+    };
     let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(78)).unwrap();
     m.world = d.gdata.theaters[1].world.clone();
     m.weather = Default::default();
@@ -1421,7 +1427,9 @@ fn an_ai_asw_flight_finds_its_submarine_and_torpedoes_it() {
     use stealth_sim::ai_missions::UH60;
     let mut sim = carrier_campaign();
     quiet(&mut sim);
-    let carrier = (3..sim.objects().len()).find(|&i| sim.objects()[i].flags & 0x0200 != 0).expect("a carrier");
+    let carrier = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0x0200 != 0)
+        .expect("a carrier");
     let o = sim.objects()[carrier];
     sim.spawn_ai_mission(carrier, UH60, AiTask::Patrol(o.x, o.y), 71, true);
     sim.start_ai_hunt(5, 71, stealth_sim::asw::HuntTarget::Carrier(carrier), 9);
@@ -1431,12 +1439,20 @@ fn an_ai_asw_flight_finds_its_submarine_and_torpedoes_it() {
     assert_eq!(sim.asw().ai_hunts[0].tags, vec![71, 72]);
     let mut sunk = None;
     for t in 0..45 * 60 {
-        if run(&mut sim, &idle(), 1).iter().any(|e| matches!(e, SimEvent::CampaignSubSunk { tag: 71 })) {
+        if run(&mut sim, &idle(), 1)
+            .iter()
+            .any(|e| matches!(e, SimEvent::CampaignSubSunk { tag: 71 }))
+        {
             sunk = Some(t);
             break;
         }
     }
-    assert!(sunk.is_some_and(|t| t > 180), "not sunk: {:?} {:?}", sim.asw().ai_hunts, sim.asw().subs);
+    assert!(
+        sunk.is_some_and(|t| t > 180),
+        "not sunk: {:?} {:?}",
+        sim.asw().ai_hunts,
+        sim.asw().subs
+    );
     assert!(sim.asw().torpedoes.iter().all(|t| t.owner == stealth_sim::asw::AI_OWNER));
     // The hunt is over: its helicopters fly home.
     run(&mut sim, &idle(), 2);
@@ -1681,7 +1697,14 @@ fn a_flamingo_drops_its_booster() {
     quiet(&mut sim);
     let home = find(&sim, 0x001, Some("Komarno"));
     let o = sim.objects()[home];
-    let i = sim.launch_strike_missile(MissileKind::Flamingo, (o.x - 3000, o.y), None, (o.x, o.y), Some(home), 950);
+    let i = sim.launch_strike_missile(
+        MissileKind::Flamingo,
+        (o.x - 3000, o.y),
+        None,
+        (o.x, o.y),
+        Some(home),
+        950,
+    );
     run(&mut sim, &idle(), 5);
     assert_eq!(sim.strike_missile_motor(i), Some((true, true)));
     run(&mut sim, &idle(), 7);

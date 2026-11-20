@@ -3986,5 +3986,8 @@ fn the_gulf_of_finland_hunts_a_submarine_breaking_out() {
     let Objective::Barrier { a, b } = o.objective else { panic!("{:?}", o.objective) };
     let name = |k| state.site(k).map(|s| s.name.clone()).unwrap_or_default();
     assert_eq!((name(a).as_str(), name(b).as_str()), ("Helsinki", "Tallinn"));
-    assert!(state.objective_met(&o.objective, &crate::Progress { sub_sunk: true, ..Default::default() }));
+    assert!(
+        state
+            .objective_met(&o.objective, &crate::Progress { sub_sunk: true, ..Default::default() })
+    );
 }

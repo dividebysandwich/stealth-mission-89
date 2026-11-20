@@ -297,14 +297,25 @@ fn asw_hunts_start_from_the_carrier_with_submarines_at_sea() {
     let mut seen = std::collections::BTreeMap::<String, usize>::new();
     let mut theaters = 0;
     for theater in 0..stealth_formats::ALL_THEATERS.len() {
-        let Some(th) = data.theaters.get(theater).filter(|t| !t.world.objects.is_empty()) else { continue };
-        let carrier = th.world.objects.iter().any(|o| {
-            o.flags & world::flags::CARRIER != 0 && o.flags & world::flags::FRIENDLY != 0
-        });
+        let Some(th) = data.theaters.get(theater).filter(|t| !t.world.objects.is_empty()) else {
+            continue;
+        };
+        let carrier =
+            th.world.objects.iter().any(|o| {
+                o.flags & world::flags::CARRIER != 0 && o.flags & world::flags::FRIENDLY != 0
+            });
         // A narrow sea without a carrier: its blockade between two friendly airfields.
         let barrier = asw::BARRIERS.iter().any(|b| b.0 == stealth_formats::ALL_THEATERS[theater]);
-        for (k, scenario) in [Scenario::Blockade, Scenario::Convoy, Scenario::Carrier].into_iter().enumerate() {
-            let s = MissionSettings { theater, kind: MissionKind::Strike, helicopter: true, opponents: (k % 2) as u8 * 3, ..Default::default() };
+        for (k, scenario) in
+            [Scenario::Blockade, Scenario::Convoy, Scenario::Carrier].into_iter().enumerate()
+        {
+            let s = MissionSettings {
+                theater,
+                kind: MissionKind::Strike,
+                helicopter: true,
+                opponents: (k % 2) as u8 * 3,
+                ..Default::default()
+            };
             let Ok(mut m) = generate(&data, &s, Seed::Srand(k as u16 * 911 + 5)) else { continue };
             asw::for_asw(&mut m, &data, Some(scenario));
             let name = m.theater_name.clone();
@@ -321,9 +332,17 @@ fn asw_hunts_start_from_the_carrier_with_submarines_at_sea() {
                 assert!((15..=34).contains(&h.layer) && h.bottom == 100, "{name}");
                 for sub in &h.subs {
                     assert!(th.is_water(sub.at.0, sub.at.1), "{name}: sub on land");
-                    let SubIntent::Blockade { a, b, goal } = sub.intent else { panic!("{name}: {:?}", sub.intent) };
-                    let side = |p: (i32, i32)| ((b.0 - a.0) as i64) * ((p.1 - a.1) as i64) - ((b.1 - a.1) as i64) * ((p.0 - a.0) as i64);
-                    assert!(side(sub.at).signum() != side(goal).signum(), "{name}: the goal across the line");
+                    let SubIntent::Blockade { a, b, goal } = sub.intent else {
+                        panic!("{name}: {:?}", sub.intent)
+                    };
+                    let side = |p: (i32, i32)| {
+                        ((b.0 - a.0) as i64) * ((p.1 - a.1) as i64)
+                            - ((b.1 - a.1) as i64) * ((p.0 - a.0) as i64)
+                    };
+                    assert!(
+                        side(sub.at).signum() != side(goal).signum(),
+                        "{name}: the goal across the line"
+                    );
                 }
                 assert!(!h.subs.is_empty());
                 continue;
@@ -336,15 +355,22 @@ fn asw_hunts_start_from_the_carrier_with_submarines_at_sea() {
             let cp = (m.takeoff.position.x, m.takeoff.position.y);
             for sub in &h.subs {
                 assert!(th.is_water(sub.at.0, sub.at.1), "{name} {:?}: sub on land", h.scenario);
-                let d = |a: (i32, i32), b: (i32, i32)| (((a.0 - b.0) as f64).powi(2) + ((a.1 - b.1) as f64).powi(2)).sqrt() / 64.0;
+                let d = |a: (i32, i32), b: (i32, i32)| {
+                    (((a.0 - b.0) as f64).powi(2) + ((a.1 - b.1) as f64).powi(2)).sqrt() / 64.0
+                };
                 match sub.intent {
-                    SubIntent::Attack { object } | SubIntent::Approach { object } | SubIntent::Escort { carrier: object } => {
+                    SubIntent::Attack { object }
+                    | SubIntent::Approach { object }
+                    | SubIntent::Escort { carrier: object } => {
                         let o = th.world.objects[object as usize];
                         let km = d(sub.at, (o.x as i32, o.y as i32));
                         assert!((20.0..=30.0).contains(&km), "{name}: {km:.0} km from its target");
                     }
                     SubIntent::Blockade { goal, .. } => {
-                        assert!(d(goal, cp) < d(sub.at, cp), "{name}: the goal lies toward the carrier");
+                        assert!(
+                            d(goal, cp) < d(sub.at, cp),
+                            "{name}: the goal lies toward the carrier"
+                        );
                     }
                 }
             }

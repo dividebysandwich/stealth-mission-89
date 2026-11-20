@@ -482,7 +482,8 @@ impl Host {
         if !sim.takeable(tag) {
             return Err(text!("ce-no-ai-aircraft"));
         }
-        if seat == Seat::Gunner && !self.state.ai_mission_of_tag(tag).is_some_and(|m| m.gunner_seat())
+        if seat == Seat::Gunner
+            && !self.state.ai_mission_of_tag(tag).is_some_and(|m| m.gunner_seat())
         {
             return Err(text!("crew-no-such-seat"));
         }

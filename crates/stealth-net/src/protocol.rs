@@ -319,7 +319,11 @@ mod tests {
             CrewCmd::Leave,
             CrewCmd::Seat(Seat::Gunner),
             CrewCmd::Aim(stealth_sim::crew::GunnerAim {
-                pod: Some(stealth_sim::PodAim { heading: 0x4000, pitch: -0x800, ground: Some((5, 6)) }),
+                pod: Some(stealth_sim::PodAim {
+                    heading: 0x4000,
+                    pitch: -0x800,
+                    ground: Some((5, 6)),
+                }),
                 trigger: true,
                 gun: 1,
                 station: Some(2),
@@ -348,11 +352,21 @@ mod tests {
         {
             use stealth_sim::asw::*;
             for cmd in [
-                AswCmd::DropBuoy { kind: BuoyKind::Dicass, deep: true, at: Some((120_000, 98_000)) },
+                AswCmd::DropBuoy {
+                    kind: BuoyKind::Dicass,
+                    deep: true,
+                    at: Some((120_000, 98_000)),
+                },
                 AswCmd::BuoyMode { id: 3, active: true },
                 AswCmd::Dip(true),
                 AswCmd::DipDepth(90),
-                AswCmd::Program(TorpProgram { heading: Some(270), delay: 20, pattern: Pattern::Snake, ceiling: 40, floor: 200 }),
+                AswCmd::Program(TorpProgram {
+                    heading: Some(270),
+                    delay: 20,
+                    pattern: Pattern::Snake,
+                    ceiling: 40,
+                    floor: 200,
+                }),
                 AswCmd::Release { station: 2 },
                 AswCmd::Route {
                     rev: 4,
@@ -389,7 +403,13 @@ mod tests {
                     owner: 1,
                     route: vec![(5, 6)],
                     route_rev: 2,
-                    tracks: vec![Track { n: 1, at: [3.0, 4.0], vel: [1.0, 0.5], err: 120.0, last: 30.0 }],
+                    tracks: vec![Track {
+                        n: 1,
+                        at: [3.0, 4.0],
+                        vel: [1.0, 0.5],
+                        err: 120.0,
+                        last: 30.0,
+                    }],
                     ..Default::default()
                 }],
                 ..Default::default()

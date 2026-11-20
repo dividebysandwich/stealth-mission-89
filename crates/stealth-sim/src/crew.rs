@@ -161,7 +161,12 @@ impl Sim {
         let spectre = if self.mirror && owner != self.pl.id {
             self.remote.iter().any(|p| {
                 p.id == owner
-                    && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk || p.growler)
+                    && has_gunner_seat(
+                        p.spectre,
+                        p.apache,
+                        p.kiowa,
+                        p.comanche || p.seahawk || p.growler,
+                    )
                     && p.chute.is_none()
             })
         } else {
@@ -169,7 +174,12 @@ impl Sim {
             p.id == owner
                 && !p.absent
                 && p.eject == 0
-                && has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk || p.growler)
+                && has_gunner_seat(
+                    p.spectre,
+                    p.apache,
+                    p.kiowa,
+                    p.comanche || p.seahawk || p.growler,
+                )
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
     }
@@ -247,7 +257,12 @@ impl Sim {
                 }
                 if seat == Seat::Gunner {
                     let p = self.pilot_ref(player as usize);
-                    if !has_gunner_seat(p.spectre, p.apache, p.kiowa, p.comanche || p.seahawk || p.growler) {
+                    if !has_gunner_seat(
+                        p.spectre,
+                        p.apache,
+                        p.kiowa,
+                        p.comanche || p.seahawk || p.growler,
+                    ) {
                         return Err(text!("crew-no-such-seat"));
                     }
                     if self.gunner_of(player).is_some() {
