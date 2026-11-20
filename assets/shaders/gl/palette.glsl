@@ -1700,22 +1700,23 @@ void main() {
     float foot = length(fwidth(v_world));
     vec2 gdx = dFdx(v_world.xz);
     vec2 gdy = dFdy(v_world.xz);
-    // The waves' mesh only over the open water and not where the finer level is; the flat sea
-    // not under the mesh (palette.wgsl `fragment`).
+    // The waves' mesh only over the open water and not where the finer level is (reaching one
+    // of its cells into it: multisampling drops a fragment's samples by the pixel's centre);
+    // the flat sea not under the mesh (palette.wgsl `fragment`).
     if ((u_flags & FLAG_OCEAN) != 0u) {
         if (ocean_mask_at(v_ocean.xy).x < 0.5) {
             discard;
         }
         uint level = uint(v_ocean.z + 0.5);
         if (level > 0u) {
-            float half_ = OCEAN_HALF * OCEAN_CELL0 * exp2(float(level - 1u)) - 0.01;
+            float half_ = (OCEAN_HALF - 1.0) * OCEAN_CELL0 * exp2(float(level - 1u));
             if (all(lessThan(abs(v_ocean.xy - ocean_level_centre(level - 1u)), vec2(half_)))) {
                 discard;
             }
         }
     } else if ((u_flags & FLAG_WATER) != 0u && g.ocean.z > 0.5) {
         uint last = OCEAN_LEVELS - 1u;
-        float half_ = OCEAN_HALF * OCEAN_CELL0 * exp2(float(last)) - 0.01;
+        float half_ = (OCEAN_HALF - 0.5) * OCEAN_CELL0 * exp2(float(last));
         vec2 p = v_world.xz;
         if (all(lessThan(abs(p - ocean_level_centre(last)), vec2(half_))) && ocean_mask_at(p).x >= 0.5) {
             discard;

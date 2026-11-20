@@ -1986,21 +1986,26 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     deriv.ground_dy = dpdy(in.world_position.xz);
 #ifdef OCEAN_GRID
     // The waves' mesh: only over the open water, and not where the finer level inside it is.
+    // A level reaches one of the finer level's cells into it (where the finer level lies on
+    // this level's grid, so the two match): a fragment is dropped for all its samples by its
+    // pixel's centre, and an edge that only just met would leave the samples outside the
+    // finer level uncovered under multisampling (lines of the sky round the levels).
     if (ocean_mask_at(in.ocean.xy).x < 0.5) {
         discard;
     }
     let level = u32(in.ocean.z + 0.5);
     if (level > 0u) {
-        let half = OCEAN_HALF * OCEAN_CELL0 * exp2(f32(level - 1u)) - 0.01;
+        let half = (OCEAN_HALF - 1.0) * OCEAN_CELL0 * exp2(f32(level - 1u));
         if (all(abs(in.ocean.xy - ocean_level_centre(level - 1u)) < vec2<f32>(half))) {
             discard;
         }
     }
 #else ifdef PALETTE_OCEAN
-    // The flat sea under the waves' mesh.
+    // The flat sea under the waves' mesh, reaching half a cell under its flattened edge (the
+    // levels' overlap above).
     if ((material.flags & FLAG_WATER) != 0u && globals.ocean.z > 0.5) {
         let last = OCEAN_LEVELS - 1u;
-        let half = OCEAN_HALF * OCEAN_CELL0 * exp2(f32(last)) - 0.01;
+        let half = (OCEAN_HALF - 0.5) * OCEAN_CELL0 * exp2(f32(last));
         let p = in.world_position.xz;
         if (all(abs(p - ocean_level_centre(last)) < vec2<f32>(half)) && ocean_mask_at(p).x >= 0.5) {
             discard;
