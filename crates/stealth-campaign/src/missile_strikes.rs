@@ -581,7 +581,8 @@ impl CampaignState {
             let d = dist(p.0 - t.1, p.1 - t.2).max(1) as f64;
             let (ux, uy) = ((p.0 - t.1) as f64 / d, (p.1 - t.2) as f64 / d);
             let frac = 0.45 + self.rng.below(30) as f64 / 100.0;
-            let reach = missile.range() as f64 * frac;
+            // Well behind the front, but on the map (a cruise missile reaches much further).
+            let reach = missile.range().min(FP7_RANGE) as f64 * frac;
             let side = (self.rng.below(41) - 20) as f64 / 100.0 * reach;
             let (x, y) =
                 (t.1 + (ux * reach - uy * side) as i32, t.2 + (uy * reach + ux * side) as i32);

@@ -54,7 +54,9 @@ impl CampaignState {
         if !(0x200..0x7E00).contains(&x) || !(0x200..0x7E00).contains(&y) {
             return Some("Too close to the edge of the map".into());
         }
-        let open = self.deployments.iter().filter(|d| !d.built).count();
+        // (The war's own launch sites do not count against the players'.)
+        let open =
+            self.deployments.iter().filter(|d| !d.built && !d.kind.launch_site()).count();
         if open >= DEPLOY_OPEN_MAX {
             return Some(format!("{DEPLOY_OPEN_MAX} sites are waiting for their cargo already"));
         }
