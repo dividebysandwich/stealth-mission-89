@@ -1595,8 +1595,81 @@ fn a_bomber_and_a_tel_launch_their_missiles() {
     }
     assert!(arrived, "the TEL never got there");
     assert_eq!(sim.launcher_at(unit), Some(to));
-    let n = sim.fire_launcher(unit, MissileKind::Iskander, &[((t.x, t.y), Some(home))], 0x7100_0000);
-    assert_eq!(n, 1);
+    // It sets up with its erector down; told to fire, it raises its missiles first.
+    assert_eq!(sim.units()[unit].aim_el, 0.0);
+    assert_eq!(sim.units()[unit].rounds, 2);
+    let aims = [((t.x, t.y), Some(home)), ((t.x + 4, t.y), None)];
+    let n = sim.fire_launcher(unit, MissileKind::Iskander, &aims, 0x7100_0000);
+    assert_eq!(n, 2);
+    let ev = run(&mut sim, &idle(), 10);
+    assert!(!ev.iter().any(|e| matches!(e, SimEvent::StrikeMissilesAway { .. })), "erecting");
+    assert!(sim.units()[unit].aim_el > 0.5 && sim.units()[unit].aim_el < 1.0);
+    let ev = run(&mut sim, &idle(), 15);
+    assert!(
+        ev.iter()
+            .any(|e| matches!(e, SimEvent::StrikeMissilesAway { tag: 0x7100_0000, count: 2, .. }))
+    );
+    assert_eq!(sim.units()[unit].rounds, 1, "one left, the other on its way");
+    // The first lifted off the erector: just over the TEL, climbing straight up.
+    let [ue, un, _] = sim.units()[unit].metres();
+    let m = (0..sim.flights().len())
+        .find(|&i| sim.ballistic_missile(i))
+        .map(|i| sim.flights()[i])
+        .expect("a missile up");
+    let (me, mn) = (m.wx as f64 * M_PER_WU, (0x10_0000 - m.wy) as f64 * M_PER_WU);
+    assert!((me - ue).hypot(mn - un) < 40.0, "{} m off the TEL", (me - ue).hypot(mn - un));
+    assert!(m.pitch > 0x3000, "pitch {:#x}", m.pitch);
+    run(&mut sim, &idle(), 10);
+    assert_eq!(sim.units()[unit].rounds, 0);
+    // Empty, it lowers its erector and leaves three minutes on.
+    run(&mut sim, &idle(), 60);
+    assert_eq!(sim.units()[unit].aim_el, 0.0);
+    assert!(!sim.units()[unit].gone);
+    run(&mut sim, &idle(), 130);
+    assert!(sim.units()[unit].gone);
+    assert_eq!(sim.launcher_at(unit), None);
+}
+
+/// Metres per world unit.
+const M_PER_WU: f64 = 15.625 / 32.0;
+
+/// A Flamingo launcher raises its rail to the launch angle; the missile leaves along it on its
+/// booster, slowly at first.
+#[test]
+fn a_flamingo_leaves_its_rail() {
+    use stealth_sim::strike_missiles::MissileKind;
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let home = find(&sim, 0x001, Some("Komarno"));
+    let o = sim.objects()[home];
+    let at = (o.x - 3000, o.y);
+    let unit = sim.spawn_launcher(GroundKind::FlamingoLauncher, at, at, true, true);
+    assert!(sim.launcher_loaded(unit));
+    assert_eq!(
+        sim.fire_launcher(unit, MissileKind::Flamingo, &[((o.x, o.y), Some(home))], 0x7200_0000),
+        1
+    );
+    assert!(!sim.launcher_loaded(unit));
+    let mut up = None;
+    for f in 0..20 * 15 {
+        sim.step(&idle(), 15);
+        if let Some(i) = (0..sim.flights().len()).find(|&i| sim.cruise_missile(i)) {
+            up = Some((i, f));
+            break;
+        }
+    }
+    let (i, _) = up.expect("it left");
+    assert!((sim.units()[unit].aim_el - 0.5).abs() < 0.01);
+    let m = sim.flights()[i];
+    let [ue, un, _] = sim.units()[unit].metres();
+    let (me, mn) = (m.wx as f64 * M_PER_WU, (0x10_0000 - m.wy) as f64 * M_PER_WU);
+    assert!((me - ue).hypot(mn - un) < 15.0, "{} m off the launcher", (me - ue).hypot(mn - un));
+    run(&mut sim, &idle(), 1);
+    let m2 = sim.flights()[i];
+    let moved = ((m2.wx - m.wx) as f64).hypot((m2.wy - m.wy) as f64) * M_PER_WU;
+    assert!(moved > 15.0 && moved < 80.0, "{moved} m in its first second");
+    assert!(m2.alt > m.alt);
+    assert_eq!(sim.units()[unit].rounds, 0);
 }
 
 /// A Flamingo leaves on its rocket booster, which burns out and drops away after ten seconds;

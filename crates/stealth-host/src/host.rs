@@ -886,11 +886,21 @@ impl Host {
         for e in events {
             match &e {
                 CampaignEvent::LauncherDeploy { strike, missile, from, to, blue, fixed } => {
-                    let kind = glue::launcher_kind(*missile);
-                    let unit = sim.spawn_launcher(kind, *from, *to, *blue, *fixed);
-                    self.launchers.retain(|l| l.0 != *strike);
-                    self.launchers.push((*strike, unit));
-                    self.pending.push(Report::LauncherPlaced { strike: *strike, unit: unit as u32 });
+                    // A launch site's launcher still loaded fires this salvo.
+                    let loaded = *fixed
+                        && self
+                            .launchers
+                            .iter()
+                            .find(|l| l.0 == *strike)
+                            .is_some_and(|&(_, u)| sim.launcher_loaded(u));
+                    if !loaded {
+                        let kind = glue::launcher_kind(*missile);
+                        let unit = sim.spawn_launcher(kind, *from, *to, *blue, *fixed);
+                        self.launchers.retain(|l| l.0 != *strike);
+                        self.launchers.push((*strike, unit));
+                        self.pending
+                            .push(Report::LauncherPlaced { strike: *strike, unit: unit as u32 });
+                    }
                 }
                 CampaignEvent::LauncherFire { strike, missile, aims, tag } => {
                     let aims: Vec<((i32, i32), Option<usize>)> =

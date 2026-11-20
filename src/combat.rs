@@ -2156,7 +2156,8 @@ fn publish(
 
 /// Test aid: `--launch-missile kind,secs[,km]` (iskander, kh101, fp7, flamingo): that long into
 /// the flight a strike missile leaves the ground `km` (3) ahead of the aircraft, for a point
-/// 80 km on along its heading.
+/// 80 km on along its heading: a Kh-101 straight off the ground, the others from their launcher
+/// standing there across the aircraft's way (it raises its erector first).
 fn test_launch_missile(combat: &mut Combat, now: f32) {
     use std::sync::atomic::{AtomicBool, Ordering};
     use stealth_sim::strike_missiles::MissileKind;
@@ -2186,7 +2187,32 @@ fn test_launch_missile(combat: &mut Combat, now: f32) {
     let mu = |m: f64| m / stealth_sim::aaa::M_PER_MAP;
     let at = |m: f64| (p.mx + (h.sin() * mu(m)) as i32, p.my - (h.cos() * mu(m)) as i32);
     let (from, aim) = (at(km * 1000.0), at(km * 1000.0 + 80_000.0));
-    combat.sim.launch_strike_missile(kind, from, None, aim, None, 0x7F00_0000);
+    let launcher = match kind {
+        MissileKind::Iskander => Some(stealth_sim::aaa::GroundKind::IskanderTel),
+        MissileKind::Fp7 => Some(stealth_sim::aaa::GroundKind::Fp7Launcher),
+        MissileKind::Flamingo => Some(stealth_sim::aaa::GroundKind::FlamingoLauncher),
+        MissileKind::Kh101 => None,
+    };
+    let Some(l) = launcher else {
+        combat.sim.launch_strike_missile(kind, from, None, aim, None, 0x7F00_0000);
+        return;
+    };
+    let unit = combat.sim.spawn_launcher(l, from, from, kind.blue(), true);
+    // Side on to the aircraft, its rail (a cruise missile's) pointing to its right.
+    if let Some(f) = combat.sim.units_mut()[unit].fine.as_mut() {
+        f.heading = (h + std::f64::consts::FRAC_PI_2) as f32;
+    }
+    combat.sim.fire_launcher(
+        unit,
+        kind,
+        &[(aim, None), (aim, None)][..kind_count(kind)],
+        0x7F00_0000,
+    );
+}
+
+/// The missiles a test launcher of `kind` fires.
+fn kind_count(kind: stealth_sim::strike_missiles::MissileKind) -> usize {
+    if kind == stealth_sim::strike_missiles::MissileKind::Flamingo { 1 } else { 2 }
 }
 
 /// Watches the C-5's pallets go: how many it had, when the last one went.

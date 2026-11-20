@@ -30,9 +30,9 @@ mod effects;
 mod events;
 mod flow;
 pub mod ground;
+pub mod missile_strikes;
 mod missions;
 mod munitions;
-pub mod missile_strikes;
 mod record;
 mod resupply;
 pub mod rng;
@@ -403,7 +403,8 @@ pub enum CampaignEvent {
         aaa: u32,
     },
     /// A missile strike's launcher (strike `strike`): a TEL drives from `from` to `to` (map
-    /// units), a friendly launch site's launcher stands at `to` (`fixed`).
+    /// units), a friendly launch site's launcher stands at `to` (`fixed`; `strike` the site's
+    /// id: for each salvo, a loaded one in place of the one that left empty).
     LauncherDeploy {
         strike: u32,
         missile: missile_strikes::StrikeMissile,

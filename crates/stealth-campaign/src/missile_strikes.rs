@@ -114,6 +114,9 @@ pub struct MissileStrike {
     /// When it ended (campaign seconds).
     #[serde(default)]
     pub ended_at: f64,
+    /// Its first missile left (a launcher's lets them go once its erector is up).
+    #[serde(default)]
+    pub away: bool,
 }
 
 impl MissileStrike {
@@ -259,6 +262,7 @@ impl CampaignState {
             down: 0,
             site: None,
             ended_at: 0.0,
+            away: false,
         };
         let aims = self.strike_aims(&strike);
         match missile {
@@ -335,10 +339,11 @@ impl CampaignState {
                 else {
                     return;
                 };
-                // (Or as it was told to fire: nothing left it.)
+                // (Or as it was told to fire, before its missiles left.)
                 let st = self.missile_strikes[k].state;
+                let away = self.missile_strikes[k].away;
                 if matches!(st, StrikeState::Moving | StrikeState::Preparing { .. })
-                    || matches!(st, StrikeState::Inbound { at } if now - at < 1.0)
+                    || matches!(st, StrikeState::Inbound { .. }) && !away
                 {
                     self.missile_strikes[k].state = StrikeState::Ended;
                     self.missile_strikes[k].ended_at = self.clock;
@@ -355,6 +360,7 @@ impl CampaignState {
                 let Some(k) = self.missile_strikes.iter().position(|s| s.tag() == tag) else {
                     return;
                 };
+                self.missile_strikes[k].away = true;
                 // A launcher's fire was announced when it was ordered.
                 if !matches!(self.missile_strikes[k].state, StrikeState::Moving) {
                     return;
@@ -391,7 +397,9 @@ impl CampaignState {
     fn launch_warning(&mut self, s: &MissileStrike, ev: &mut Vec<CampaignEvent>) {
         let Some(t) = self.site(s.target) else { return };
         let d = dist(t.x - s.firing.0, t.y - s.firing.1) as f64 * MAP_UNIT_M;
-        let secs = (d / s.missile.speed()).round() as i64;
+        // A launcher's missiles leave once its erector is up.
+        let erect = if s.missile == StrikeMissile::Kh101 { 0.0 } else { LAUNCHER_ERECT_SECS };
+        let secs = (d / s.missile.speed() + erect).round() as i64;
         let target = self.target_name(s.target);
         let id = match (s.side, s.missile.ballistic()) {
             (Side::Red, true) => "cl-tbm-launch",
@@ -503,7 +511,7 @@ impl CampaignState {
             return;
         }
         self.post_launch_sites(ev);
-        self.launch_site_salvos();
+        self.launch_site_salvos(ev);
     }
 
     /// A new launch site of a kind none of which stands or is being built, now and then.
@@ -599,7 +607,7 @@ impl CampaignState {
 
     /// Built launch sites, rested since their last salvo and with missiles at their supply base,
     /// set up a new one at the enemy's nearest military target in reach (a SAM site first).
-    fn launch_site_salvos(&mut self) {
+    fn launch_site_salvos(&mut self, ev: &mut Vec<CampaignEvent>) {
         let now = self.clock;
         let sites: Vec<(u32, DefenceKind, (i32, i32), Option<ObjectId>)> = self
             .deployments
@@ -655,6 +663,16 @@ impl CampaignState {
                 down: 0,
                 site: Some(site),
                 ended_at: 0.0,
+                away: false,
+            });
+            // A loaded launcher at the site (the last one left empty).
+            ev.push(CampaignEvent::LauncherDeploy {
+                strike: site,
+                missile,
+                from: at,
+                to: at,
+                blue: true,
+                fixed: true,
             });
         }
     }

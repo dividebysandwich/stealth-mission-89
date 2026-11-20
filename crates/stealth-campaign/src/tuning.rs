@@ -429,6 +429,8 @@ pub const MISSILE_STRIKE_COST: f64 = 15.0;
 pub const TEL_DRIVE: i32 = 512;
 pub const TEL_PREPARE: f64 = 12.0 * 60.0;
 pub const SITE_PREPARE: f64 = 15.0 * 60.0;
+/// A launcher told to fire raises its erector first (s, about as the simulation does).
+pub const LAUNCHER_ERECT_SECS: f64 = 25.0;
 /// Missiles a TEL fires, and a Tu-95 (which launches a quarter of the way from its base).
 pub const ISKANDER_SALVO: u8 = 2;
 pub const KH101_SALVO: u8 = 6;

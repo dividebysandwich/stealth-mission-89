@@ -130,6 +130,8 @@ const AAA_MODELS: i32 = 110;
 /// Their state slots: turret (or crew) azimuth and gun (or launcher) elevation.
 const AAA_TURRET_SLOT: usize = 21;
 const AAA_GUN_SLOT: usize = 22;
+/// A missile launcher's missiles gone off its erector (tools/models/air_defence.py).
+const LAUNCHER_FIRED_SLOT: usize = 25;
 /// Detail level range multiplier of the guns (seen from further than an aircraft's parts).
 const AAA_LOD_RANGE: f32 = 4.0;
 /// The sandbag wall round a defensive position (in `models/aaa.glb`), its radius as built (m),
@@ -797,11 +799,17 @@ fn sync_aaa(
         vis.set_if_neq(if u.gone { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;
-            s.0[AAA_TURRET_SLOT] = bam16(u.aim_az - heading);
+            // A missile launcher's erector is fixed along its hull (no turret).
+            s.0[AAA_TURRET_SLOT] =
+                if u.kind.missile_launcher() { 0 } else { bam16(u.aim_az - heading) };
             // A missile battery's launcher fires at a fixed elevation.
             let el = u.kind.battery_launcher().map_or(u.aim_el, |b| b.elevation());
             s.0[AAA_GUN_SLOT] = bam16(-el);
         }
+            // A missile launcher: its missiles gone off the erector.
+            if let Some(er) = stealth_sim::strike_missiles::erector(u.kind) {
+                s.0[LAUNCHER_FIRED_SLOT] = (er.missiles.len() as i32 - u.rounds).max(0) as i16;
+            }
     }
 
     // The sandbag walls round the dug-in units, on the ground and its slope.

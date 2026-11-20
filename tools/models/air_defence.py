@@ -28,6 +28,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 
 import mklib  # noqa: E402
+import stores  # noqa: E402
 from mklib import Geo, Ramp, block, frustum, wheel  # noqa: E402
 
 # Model numbers (after the drones' 100 and 101).
@@ -1537,7 +1538,29 @@ def paratrooper():
 # ----------------------------------------------------------------------- Missile launchers
 # Each lies with its missile(s) along the vehicle, nose forward (+y, towards the cab); the
 # erector (part 2, slot 22) pivots at the missile's tail and raises it upright for launch
-# (the simulation sets the elevation once the launcher is at its firing point).
+# (the simulation raises it when the launcher is told to fire). The missiles on it are the
+# flight models' (stores.py), each its own child drawn while fewer than its turn have left
+# (slot 25: missiles fired, in this order); their centres match `erector()` in
+# crates/stealth-sim/src/strike_missiles.rs, where each lifts off.
+FIRED_SLOT = 25
+
+
+def erector_missiles(name, parent, store, centres):
+    """The missiles riding the erector `parent` (part `name`): `store`'s body (and its groups
+    shown before the launch) at each of `centres` (m from the pivot, erector down)."""
+    geo = Geo().add(store.body)
+    for slot, value, g in store.groups:
+        if value == 0:
+            geo.add(g)
+    for k, c in enumerate(centres):
+        g = geo.transformed(lambda p, c=c: p + mklib.v3(c))
+        for v in range(k + 1):
+            mesh_obj("%s_m%d%s_s%dv%d" % (name, k, "abcdef"[v], FIRED_SLOT, v), g, parent)
+
+
+ISKANDER_MISSILES = [(-0.55, 3.8, 0.48), (0.55, 3.8, 0.48)]
+FP7_MISSILES = [(-0.62, 4.4, 0.46), (0.62, 4.4, 0.46)]
+FLAMINGO_MISSILES = [(0.0, 6.25, 1.0)]
 
 
 def ballistic_missile(length, r, paint, nose=0.3, fins=True):
@@ -1579,12 +1602,14 @@ def heavy_chassis(length, axles, paint=OLIVE, wheels=RUBBER, cab=True):
     return g
 
 
-def iskander_erector(paint=OLIVE):
-    """The Iskander's erector: the cradle with its two 9M723s side by side, tails at the pivot."""
+def iskander_erector(paint=OLIVE, loaded=True):
+    """The Iskander's erector: the cradle with its two 9M723s side by side, tails at the pivot
+    (the intact one's missiles are its own children)."""
     g = Geo()
     g.add(block(-1.15, 1.15, 0.0, 7.4, -0.3, 0.0, OLIVE_DARK if paint is OLIVE else paint))
-    for x in (-0.55, 0.55):
-        g.add(ballistic_missile(7.3, 0.46, paint).transformed(lambda p, x=x: p + mklib.v3((x, 0.15, 0.48))))
+    if loaded:
+        for x in (-0.55, 0.55):
+            g.add(ballistic_missile(7.3, 0.46, paint).transformed(lambda p, x=x: p + mklib.v3((x, 0.15, 0.48))))
     return g
 
 
@@ -1593,18 +1618,22 @@ def iskander_tel():
     chassis = heavy_chassis(12.7, (-4.9, -3.3, 2.6, 4.2))
     intact = mesh_obj("aaa_129_lod0_s1v0", chassis, lod0)
     table = part("aaa_129_lod0_s1v0_part1", Geo(), intact, (0, 0, 1.5), TURRET_SLOT, 0)
-    part("aaa_129_lod0_s1v0_part2", iskander_erector(), table, (0, -6.0, 0.4), GUN_SLOT, 1)
+    erector = part("aaa_129_lod0_s1v0_part2", iskander_erector(loaded=False), table, (0, -6.0, 0.4), GUN_SLOT, 1)
+    erector_missiles(erector.name, erector, stores.iskander_9m723(), ISKANDER_MISSILES)
     w = heavy_chassis(12.7, (-4.9, -3.3, 2.6, 4.2), BURNT, BURNT)
     w.add(iskander_erector(BURNT).rotated_x(0.08).rotated_z(0.12).transformed(lambda p: p + mklib.v3((0.2, -6.0, 1.9))))
     mesh_obj("aaa_129_lod0_s1v1", w, lod0)
     far(lod1, "aaa_129", [(-1.45, 1.45, -6.35, 6.35, 0.3, 1.5), (-1.45, 1.45, 3.95, 6.35, 1.5, 2.9), (-1.15, 1.15, -6.0, 1.4, 1.5, 2.5)])
 
 
-def fp7_erector(paint=OLIVE):
-    """The FP-7's erector: one missile in its cradle, the tail at the pivot."""
+def fp7_erector(paint=OLIVE, loaded=True):
+    """The FP-7's erector: two missiles side by side in its cradle, tails at the pivot (the
+    intact one's missiles are its own children)."""
     g = Geo()
-    g.add(block(-0.75, 0.75, 0.0, 8.8, -0.3, 0.0, OLIVE_DARK if paint is OLIVE else paint))
-    g.add(ballistic_missile(8.6, 0.44, paint, nose=0.25).transformed(lambda p: p + mklib.v3((0, 0.1, 0.46))))
+    g.add(block(-1.25, 1.25, 0.0, 8.8, -0.3, 0.0, OLIVE_DARK if paint is OLIVE else paint))
+    if loaded:
+        for x in (-0.62, 0.62):
+            g.add(ballistic_missile(8.6, 0.44, paint, nose=0.25).transformed(lambda p, x=x: p + mklib.v3((x, 0.1, 0.46))))
     return g
 
 
@@ -1613,7 +1642,8 @@ def fp7_launcher():
     chassis = heavy_chassis(11.0, (-4.0, -2.6, 3.4))
     intact = mesh_obj("aaa_130_lod0_s1v0", chassis, lod0)
     table = part("aaa_130_lod0_s1v0_part1", Geo(), intact, (0, 0, 1.5), TURRET_SLOT, 0)
-    part("aaa_130_lod0_s1v0_part2", fp7_erector(), table, (0, -5.2, 0.4), GUN_SLOT, 1)
+    erector = part("aaa_130_lod0_s1v0_part2", fp7_erector(loaded=False), table, (0, -5.2, 0.4), GUN_SLOT, 1)
+    erector_missiles(erector.name, erector, stores.fp7_missile(), FP7_MISSILES)
     w = heavy_chassis(11.0, (-4.0, -2.6, 3.4), BURNT, BURNT)
     w.add(fp7_erector(BURNT).rotated_z(-0.15).transformed(lambda p: p + mklib.v3((-0.3, -5.2, 1.9))))
     mesh_obj("aaa_130_lod0_s1v1", w, lod0)
@@ -1657,11 +1687,13 @@ def flamingo_body(paint=OLIVE, wheels=RUBBER):
     return g
 
 
-def flamingo_rail(paint=OLIVE):
-    """The launch rail with its missile, raised by the erector at its tail."""
+def flamingo_rail(paint=OLIVE, loaded=True):
+    """The launch rail with its missile, raised by the erector at its tail (the intact one's
+    missile is its own child)."""
     g = Geo()
     g.add(block(-0.5, 0.5, 0.0, 12.0, -0.25, 0.0, OLIVE_DARK if paint is OLIVE else paint))
-    g.add(flamingo_missile(paint).transformed(lambda p: p + mklib.v3((0, 0.0, 0.62))))
+    if loaded:
+        g.add(flamingo_missile(paint).transformed(lambda p: p + mklib.v3((0, 0.0, 0.62))))
     return g
 
 
@@ -1669,7 +1701,8 @@ def flamingo_launcher():
     root, lod0, lod1 = levels(FLAMINGO_LN, 20000)
     intact = mesh_obj("aaa_131_lod0_s1v0", flamingo_body(), lod0)
     table = part("aaa_131_lod0_s1v0_part1", Geo(), intact, (0, 0, 1.3), TURRET_SLOT, 0)
-    part("aaa_131_lod0_s1v0_part2", flamingo_rail(), table, (0, -6.3, 0.3), GUN_SLOT, 1)
+    rail = part("aaa_131_lod0_s1v0_part2", flamingo_rail(loaded=False), table, (0, -6.3, 0.3), GUN_SLOT, 1)
+    erector_missiles(rail.name, rail, stores.flamingo_fp5(), FLAMINGO_MISSILES)
     w = flamingo_body(BURNT, BURNT)
     w.add(flamingo_rail(BURNT).rotated_z(0.1).transformed(lambda p: p + mklib.v3((0.2, -6.3, 1.6))))
     mesh_obj("aaa_131_lod0_s1v1", w, lod0)

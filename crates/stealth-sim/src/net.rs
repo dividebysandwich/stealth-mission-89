@@ -392,10 +392,11 @@ impl Sim {
                 .units
                 .iter()
                 .enumerate()
-                // A manned one too: its turret slewed by hand.
+                // A manned one too: its turret slewed by hand; a missile launcher's erector.
                 .filter(|&(i, u)| {
                     !u.destroyed
                         && (u.tracking
+                            || u.kind.missile_launcher()
                             || u.burst > 0
                             || self.manned_by(i).is_some()
                             || u.kind.mobile() && self.ground_busy(i))
