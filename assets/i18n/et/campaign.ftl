@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R lendab ainult allveelaevavastaseid missioone
 ce-ac130-sams = Vaenlase SAM-positsioonid on AC-130 jaoks sihtmärgile liiga lähedal
 ce-airlift-c5 = Õhutransporti lennatakse C-5-ga
 ce-airlift-no-handover = Lennake kaubalend ise baasi
+cl-wingman-lost = Mängija { $player } tiivamees tulistati alla
+cl-wingman-no-sortie = Tiivamees tuleb kaasa ainult lennule

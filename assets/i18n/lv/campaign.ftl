@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R lido tikai pretzemūdeņu misijās
 ce-ac130-sams = Ienaidnieka SAM pozīcijas ir pārāk tuvu mērķim AC-130
 ce-airlift-c5 = Gaisa transportu lido ar C-5
 ce-airlift-no-handover = Nogādājiet kravu bāzē paši
+cl-wingman-lost = Spēlētāja { $player } pārinieks notriekts
+cl-wingman-no-sortie = Pārinieks nāk līdzi tikai lidojumā

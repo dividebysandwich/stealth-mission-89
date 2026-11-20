@@ -126,3 +126,4 @@ kg-pan = Guardarsi intorno (tenuto), come il mouse
 kg-mouse-look = Guardarsi intorno col mouse (tenuto; fuori: orbita della telecamera), la rotella fa zoom
 kg-click-control = Premere l'interruttore o il pulsante dell'abitacolo, o la scheda della kneeboard, sotto il puntatore
 kg-ptt = Radio, tenere premuto per parlare (multigiocatore)
+kg-radio-menu = Menu radio: chiamate al gregario (1-7)

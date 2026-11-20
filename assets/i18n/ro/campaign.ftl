@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R zboară doar misiuni antisubmarin
 ce-ac130-sams = Pozițiile SAM inamice sunt prea aproape de țintă pentru AC-130
 ce-airlift-c5 = Transportul aerian se zboară cu C-5
 ce-airlift-no-handover = Duceți singur marfa până la bază
+cl-wingman-lost = Coechipierul lui { $player } a fost doborât
+cl-wingman-no-sortie = Un coechipier vine doar cu o misiune

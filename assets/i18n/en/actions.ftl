@@ -109,3 +109,4 @@ action-accept-tasking = Accept tasking
 action-rwr-priority = RWR priority
 action-rwr-separate = RWR target separate
 action-record-gif = Record GIF
+action-radio-menu = Radio menu (wingman)

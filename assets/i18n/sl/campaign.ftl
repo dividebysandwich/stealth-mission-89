@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R leti le protipodmorniške naloge
 ce-ac130-sams = Sovražni položaji SAM so za AC-130 preblizu cilja
 ce-airlift-c5 = Zračni prevoz se leti s C-5
 ce-airlift-no-handover = Tovor do baze pripeljite sami
+cl-wingman-lost = Krilni pilot igralca { $player } je bil sestreljen
+cl-wingman-no-sortie = Krilni pilot gre zraven le na nalogo

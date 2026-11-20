@@ -108,3 +108,4 @@ action-accept-tasking = 接受任务
 action-rwr-priority = RWR 优先模式
 action-rwr-separate = RWR 目标分离
 action-record-gif = 录制 GIF
+action-radio-menu = 无线电菜单(僚机)

@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R은 대잠 임무만 수행
 ce-ac130-sams = 적 SAM 기지가 목표에 너무 가까워 AC-130이 출격할 수 없음
 ce-airlift-c5 = 공수는 C-5로 수행합니다
 ce-airlift-no-handover = 화물은 직접 기지까지 운송하십시오
+cl-wingman-lost = { $player }의 윙맨이 격추되었다
+cl-wingman-no-sortie = 윙맨은 출격할 때만 함께한다

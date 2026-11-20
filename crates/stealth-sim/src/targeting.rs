@@ -73,7 +73,7 @@ impl Sim {
         (Some((sx, sy)), de92)
     }
 
-    fn valid_gnd(&self) -> Option<usize> {
+    pub(crate) fn valid_gnd(&self) -> Option<usize> {
         let g = self.pl.gnd_lock;
         (g >= 0 && (g as usize) < self.objects.len()).then_some(g as usize)
     }

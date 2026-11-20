@@ -108,3 +108,4 @@ action-accept-tasking = Αποδοχή αποστολής
 action-rwr-priority = Προτεραιότητα RWR
 action-rwr-separate = Διαχωρισμός στόχων RWR
 action-record-gif = Εγγραφή GIF
+action-radio-menu = Μενού ασυρμάτου (σμηνίας)

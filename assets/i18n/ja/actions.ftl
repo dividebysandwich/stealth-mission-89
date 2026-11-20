@@ -109,3 +109,4 @@ action-accept-tasking = 任務を受諾
 action-rwr-priority = RWR優先表示
 action-rwr-separate = RWR目標分離
 action-record-gif = GIFを録画
+action-radio-menu = 無線メニュー(僚機)

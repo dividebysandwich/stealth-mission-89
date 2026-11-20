@@ -128,3 +128,4 @@ kg-pan = Ringi vaatamine (hoitud), nagu hiirega
 kg-mouse-look = Vaata hiirega ringi (hoitud; väljas: kaamera tiirutab), ratas suumib
 kg-click-control = Vajuta kokpiti lülitit või nuppu, või põlvelaua sakki, hiirekursori all
 kg-ptt = Raadio, hoia all rääkimiseks (mitmikmäng)
+kg-radio-menu = Raadiomenüü: kõned tiivamehele (1-7)

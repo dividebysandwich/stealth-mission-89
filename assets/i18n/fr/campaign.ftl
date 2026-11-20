@@ -342,3 +342,5 @@ ce-mh60r-only = Le MH-60R ne vole qu'en lutte anti-sous-marine
 ce-ac130-sams = Des sites SAM ennemis sont trop près de l'objectif pour l'AC-130
 ce-airlift-c5 = Le transport aérien se fait en C-5
 ce-airlift-no-handover = Menez vous-même le fret jusqu'à sa base
+cl-wingman-lost = L'ailier de { $player } a été abattu
+cl-wingman-no-sortie = Un ailier ne vient qu'avec une sortie

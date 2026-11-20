@@ -126,3 +126,4 @@ kg-pan = Regarder autour (maintenu), comme la souris
 kg-mouse-look = Regarder autour à la souris (maintenu ; dehors : orbiter la caméra), la molette zoome
 kg-click-control = Appuyer sur l'interrupteur ou le bouton du cockpit, ou l'onglet de la planchette, sous le pointeur
 kg-ptt = Radio, maintenir pour parler (multijoueur)
+kg-radio-menu = Menu radio : appels à l'ailier (1-7)

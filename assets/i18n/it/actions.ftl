@@ -108,3 +108,4 @@ action-accept-tasking = Accettare l'incarico
 action-rwr-priority = Priorità dell'RWR
 action-rwr-separate = Separazione bersagli dell'RWR
 action-record-gif = Registrare GIF
+action-radio-menu = Menu radio (gregario)

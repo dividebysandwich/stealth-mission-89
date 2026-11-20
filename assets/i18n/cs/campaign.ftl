@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R létá jen protiponorkové mise
 ce-ac130-sams = Nepřátelská stanoviště SAM jsou pro AC-130 příliš blízko cíle
 ce-airlift-c5 = Leteckou přepravu létá C-5
 ce-airlift-no-handover = Nákladní let do základny dokončete sami
+cl-wingman-lost = Wingman hráče { $player } byl sestřelen
+cl-wingman-no-sortie = Wingman letí jen s misí

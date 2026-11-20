@@ -214,3 +214,5 @@ weapon-role-32 = Rachete de 70 mm dirijate laser: fiecare se îndreaptă spre pu
 employment-32 =
     Îndreptați containerul de desemnare spre țintă și trageți în axa botului; virează spre punct
     Până la 6 km; țineți containerul pe țintă până la impact
+loadout-wingman = COECHIPIER
+    .facts = Un coechipier IA în același avion și cu același armament ți se alătură în aer; meniul radio (\) îi dă ordine

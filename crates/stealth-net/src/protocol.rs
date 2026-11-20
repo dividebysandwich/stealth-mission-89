@@ -14,7 +14,7 @@ use stealth_sim::{Commands, PlayerState, SimEvent};
 pub use crate::voice::VoicePacket;
 
 /// Changes with every change of the messages: client and server must agree.
-pub const PROTOCOL: u16 = 58;
+pub const PROTOCOL: u16 = 59;
 pub const DEFAULT_PORT: u16 = 28989;
 /// Players a server takes at most.
 pub const MAX_PLAYERS: usize = stealth_sim::MAX_PILOTS;
@@ -42,6 +42,9 @@ pub enum ToServer {
         base: Option<u16>,
         aircraft: Aircraft,
         stores: Option<Stores>,
+        /// An AI wingman of his aircraft comes along.
+        #[serde(default)]
+        wingman: bool,
     },
     OrderInsertion {
         place: PlaceId,
@@ -117,6 +120,8 @@ pub enum ToServer {
     },
     /// At a friendly air defence console: man it, leave it, fight it.
     Station(StationCmd),
+    /// A radio call to his AI wingman.
+    Wing(stealth_sim::wingman::WingCmd),
     /// A seat in an aircraft: sit at another's gunner's console, leave it, move seats, the
     /// console (its aim goes unreliable, often).
     Crew(CrewCmd),

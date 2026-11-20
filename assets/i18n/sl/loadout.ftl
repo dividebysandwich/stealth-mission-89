@@ -214,3 +214,5 @@ weapon-role-32 = Laserno vodene 70-mm rakete: vsaka leti proti laserski točki c
 employment-32 =
     Usmerite ciljni zabojnik na cilj in streljajte v smeri nosu; zavijejo proti točki
     Do 6 km; držite zabojnik na cilju do zadetka
+loadout-wingman = KRILNI PILOT
+    .facts = Krilni pilot UI v istem letalu z isto oborožitvijo se vam pridruži v zraku; radijski meni (\) mu daje ukaze

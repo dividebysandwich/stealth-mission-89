@@ -214,3 +214,5 @@ weapon-role-32 = Lasergeleide 70 mm-raketten: elke raket stuurt naar de laservle
 employment-32 =
     Richt de pod op het doel en vuur langs de neus; ze draaien naar de vlek
     Tot 6 km; houd de pod op het doel tot de inslag
+loadout-wingman = WINGMAN
+    .facts = Een AI-wingman in hetzelfde toestel met dezelfde bewapening sluit in de lucht aan; het radiomenu (\) geeft hem opdrachten

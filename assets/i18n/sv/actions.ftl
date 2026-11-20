@@ -108,3 +108,4 @@ action-accept-tasking = Acceptera uppdrag
 action-rwr-priority = RWR-prioritet
 action-rwr-separate = RWR-målseparation
 action-record-gif = Spela in GIF
+action-radio-menu = Radiomeny (rotekamrat)

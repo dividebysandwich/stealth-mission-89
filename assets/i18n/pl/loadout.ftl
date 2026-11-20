@@ -214,3 +214,5 @@ weapon-role-32 = Rakiety 70 mm naprowadzane laserowo: każda leci na plamkę las
 employment-32 =
     Nakieruj zasobnik na cel i strzelaj wzdłuż nosa; skręcą na plamkę
     Do 6 km; trzymaj zasobnik na celu aż do trafienia
+loadout-wingman = SKRZYDŁOWY
+    .facts = Skrzydłowy SI w tym samym samolocie i z tym samym uzbrojeniem dołącza w powietrzu; menu radiowe (\) wydaje mu rozkazy

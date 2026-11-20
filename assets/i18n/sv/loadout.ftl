@@ -214,3 +214,5 @@ weapon-role-32 = Laserstyrda 70 mm-raketer: var och en styr mot målkapselns las
 employment-32 =
     Rikta målkapseln mot målet och skjut längs nosen; de svänger mot punkten
     Upp till 6 km; håll kapseln på målet tills de träffar
+loadout-wingman = ROTEKAMRAT
+    .facts = En AI-rotekamrat i samma flygplan med samma beväpning ansluter i luften; radiomenyn (\) ger den order

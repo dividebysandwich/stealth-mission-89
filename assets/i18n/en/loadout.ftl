@@ -214,3 +214,5 @@ weapon-role-32 = Laser-guided 70 mm rockets: each homes on the targeting pod's l
 employment-32 =
     Put the targeting pod on the target and fire along the nose; they turn onto the spot
     Up to 6 km; keep the pod on the target until they hit
+loadout-wingman = WINGMAN
+    .facts = An AI wingman in the same aircraft with the same stores joins you once you are up; the radio menu (\) gives it its orders

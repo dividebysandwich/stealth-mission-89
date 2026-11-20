@@ -343,3 +343,5 @@ ce-mh60r-only = O MH-60R só voa missões antissubmarino
 ce-ac130-sams = Há sítios SAM inimigos perto demais do alvo para o AC-130
 ce-airlift-c5 = O transporte aéreo é voado no C-5
 ce-airlift-no-handover = Leve você mesmo a carga até a base
+cl-wingman-lost = O ala de { $player } foi abatido
+cl-wingman-no-sortie = Um ala só vem com uma surtida

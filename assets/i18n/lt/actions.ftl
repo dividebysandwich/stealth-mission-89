@@ -108,3 +108,4 @@ action-accept-tasking = Priimti užduotį
 action-rwr-priority = RWR prioritetas
 action-rwr-separate = RWR taikinių atskyrimas
 action-record-gif = Įrašyti GIF
+action-radio-menu = Radijo meniu (sparnininkas)

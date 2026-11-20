@@ -602,7 +602,11 @@ impl Sim {
                 cmd.dpsi = 0.0;
             }
         }
-        if u.flags & fflags::ESCORT != 0
+        if let Some(v) = self.wing_speed(i, u) {
+            // A wingman: its lead's speed, more to catch up with its station.
+            cmd.speed = v;
+            cmd.ab = ae.ab && v > ae.v_max;
+        } else if u.flags & fflags::ESCORT != 0
             && self.escort_leader >= 0
             && let Some(l) = self.flights.get(self.escort_leader as usize)
         {

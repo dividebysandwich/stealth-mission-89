@@ -343,3 +343,5 @@ ce-mh60r-only = De MH-60R vliegt alleen onderzeebootbestrijding
 ce-ac130-sams = Vijandelijke SAM-stellingen liggen te dicht bij het doel voor de AC-130
 ce-airlift-c5 = Luchttransport wordt met de C-5 gevlogen
 ce-airlift-no-handover = Vlieg de vracht zelf naar de basis
+cl-wingman-lost = De wingman van { $player } is neergeschoten
+cl-wingman-no-sortie = Een wingman gaat alleen mee op een vlucht

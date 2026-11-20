@@ -109,3 +109,4 @@ action-accept-tasking = Принять задание
 action-rwr-priority = Приоритет RWR
 action-rwr-separate = Разделение целей RWR
 action-record-gif = Записать GIF
+action-radio-menu = Радиоменю (ведомый)

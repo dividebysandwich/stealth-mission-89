@@ -214,3 +214,5 @@ weapon-role-32 = Lézerirányítású 70 mm-es rakéták: mindegyik a célzókon
 employment-32 =
     Állítsa a célzókonténert a célra, és lőjön az orr irányába; a folt felé fordulnak
     Legfeljebb 6 km; tartsa a konténert a célon a becsapódásig
+loadout-wingman = KÍSÉRŐ
+    .facts = Egy MI kísérő ugyanazzal a géppel és fegyverzettel a levegőben csatlakozik; a rádiómenü (\) adja ki a parancsait

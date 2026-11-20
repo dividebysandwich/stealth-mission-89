@@ -129,3 +129,4 @@ kg-pan = Melihat sekeliling (ditahan), seperti mouse
 kg-mouse-look = Lihat sekeliling dengan mouse (ditahan; di luar: kamera mengorbit), roda memperbesar
 kg-click-control = Tekan sakelar atau tombol kokpit, atau tab kneeboard, di bawah penunjuk mouse
 kg-ptt = Radio, tahan untuk berbicara (multipemain)
+kg-radio-menu = Menu radio: panggilan ke wingman (1-7)

@@ -108,3 +108,4 @@ action-accept-tasking = Glac leis an tasc
 action-rwr-priority = Tosaíocht RWR
 action-rwr-separate = Spriocanna RWR a scaradh
 action-record-gif = Taifead GIF
+action-radio-menu = Roghchlár raidió (sciathánaí)

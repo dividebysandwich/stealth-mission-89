@@ -69,6 +69,7 @@ mod i18n;
 mod input;
 mod input_dialog;
 mod jp233;
+mod radio_menu;
 mod rockets;
 mod key_guide;
 mod keyboard_layout;
@@ -384,6 +385,7 @@ pub fn run() {
             asw::AswPlugin,
             naval::NavalPlugin,
         ))
+        .add_plugins(radio_menu::RadioMenuPlugin)
         .add_plugins((
             fires::FiresPlugin,
             terrain::TerrainPlugin,

@@ -109,3 +109,4 @@ action-accept-tasking = Sprejmi nalogo
 action-rwr-priority = Prednost RWR
 action-rwr-separate = Ločevanje ciljev RWR
 action-record-gif = Snemaj GIF
+action-radio-menu = Radijski meni (krilni pilot)

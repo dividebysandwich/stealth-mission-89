@@ -214,3 +214,5 @@ weapon-role-32 = Laserem naváděné 70mm rakety: každá míří na laserový b
 employment-32 =
     Namiřte zaměřovací kontejner na cíl a palte ve směru přídě; stočí se k bodu
     Do 6 km; držte kontejner na cíli až do zásahu
+loadout-wingman = WINGMAN
+    .facts = AI wingman ve stejném letounu se stejnou výzbrojí se k vám připojí ve vzduchu; rádiové menu (\) mu dává rozkazy

@@ -343,3 +343,5 @@ ce-mh60r-only = Der MH-60R fliegt nur U-Jagd-Einsätze
 ce-ac130-sams = Feindliche SAM-Stellungen liegen zu nah am Ziel für die AC-130
 ce-airlift-c5 = Lufttransport fliegt die C-5
 ce-airlift-no-handover = Den Frachtflug zur Basis selbst zu Ende fliegen
+cl-wingman-lost = Der Rottenflieger von { $player } wurde abgeschossen
+cl-wingman-no-sortie = Ein Rottenflieger kommt nur zu einem Einsatz mit

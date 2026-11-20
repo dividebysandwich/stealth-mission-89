@@ -280,6 +280,23 @@ impl Host {
         Ok(out)
     }
 
+    /// The player who just took a mission takes an AI wingman of his aircraft along: its
+    /// stores (his, again) come out of his base's stock, and it joins him once he is up.
+    pub fn take_wingman(
+        &mut self,
+        sim: &mut Sim,
+        player: PlayerId,
+        aircraft: Aircraft,
+    ) -> Result<Vec<HostEvent>, Text> {
+        let Some(base) = self.state.sortie(player).map(|s| s.base) else {
+            return Err(stealth_i18n::text!("cl-wingman-no-sortie"));
+        };
+        let mut stores = sim.pilot_bays(player.0);
+        self.draw_stores(base, &mut stores);
+        sim.request_wingman_with(player.0, glue::ai_spec(aircraft), stores);
+        Ok(Vec::new())
+    }
+
     /// The stores of the sorties started in `out`: `stores`, else the mission's bays (out of
     /// the base's stock when `draw`).
     fn load_stores(

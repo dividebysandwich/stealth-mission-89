@@ -109,3 +109,4 @@ action-accept-tasking = Hyväksy tehtävä
 action-rwr-priority = RWR-prioriteetti
 action-rwr-separate = RWR-maalien erottelu
 action-record-gif = Tallenna GIF
+action-radio-menu = Radiovalikko (siipimies)

@@ -129,3 +129,4 @@ kg-pan = Ħares madwarek (maħsub), bħall-maws
 kg-mouse-look = Ħares madwarek bil-maws (miżmum; barra: il-kamera ddur), ir-rota tagħmel zoom
 kg-click-control = Agħfas is-swiċċ jew il-buttuna tal-cockpit, jew it-tab tal-kneeboard, taħt il-pointer
 kg-ptt = Radju, żomm biex titkellem (multiplayer)
+kg-radio-menu = Menu tar-radju: sejħiet lill-wingman (1-7)

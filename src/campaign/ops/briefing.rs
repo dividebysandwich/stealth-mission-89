@@ -288,7 +288,16 @@ pub(super) fn briefing(
                                 }
                                 ui.add_space(4.0);
                             }
-                            let extra = if real { shell::TARGET + 4.0 } else { 0.0 };
+                            // An AI wingman of the same aircraft and stores (out of the base's
+                            // stock too).
+                            let mut wing = c.wingman;
+                            if shell::switch(ui, &mut wing, &t!("loadout-wingman")).clicked() {
+                                c.wingman = wing;
+                            }
+                            ui.add_space(4.0);
+                            let extra = shell::TARGET
+                                + 4.0
+                                + if real { shell::TARGET + 4.0 } else { 0.0 };
                             let size = egui::vec2(w - 36.0, (h - 24.0 - 160.0 - extra).max(300.0));
                             ui.allocate_ui(size, |ui| {
                                 ui.set_min_size(size);
@@ -332,6 +341,7 @@ pub(super) fn briefing(
             aircraft: b.aircraft,
             loadout: b.loadout.clone(),
             route: b.route.clone(),
+            wingman: c.wingman,
         });
         return;
     }

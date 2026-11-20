@@ -368,3 +368,5 @@ ce-mh60r-only = MH-60R lata tylko na misje ZOP
 ce-ac130-sams = Wrogie stanowiska SAM są za blisko celu dla AC-130
 ce-airlift-c5 = Transport lotniczy wykonuje C-5
 ce-airlift-no-handover = Dostarcz ładunek do bazy samodzielnie
+cl-wingman-lost = Skrzydłowy gracza { $player } został zestrzelony
+cl-wingman-no-sortie = Skrzydłowy leci tylko z misją

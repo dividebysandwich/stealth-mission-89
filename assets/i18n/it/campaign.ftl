@@ -343,3 +343,5 @@ ce-mh60r-only = L'MH-60R vola solo missioni antisommergibile
 ce-ac130-sams = Siti SAM nemici troppo vicini all'obiettivo per l'AC-130
 ce-airlift-c5 = Il trasporto aereo si vola con il C-5
 ce-airlift-no-handover = Porti lei stesso il carico alla sua base
+cl-wingman-lost = Il gregario di { $player } è stato abbattuto
+cl-wingman-no-sortie = Un gregario viene solo con una sortita

@@ -1967,6 +1967,7 @@ pub fn loadout_ui(
     w: &mut LoadoutWindow,
     state: &mut MenuState,
     aircraft: AircraftKind,
+    wingman: &mut bool,
 ) {
     if !w.open {
         return;
@@ -2005,6 +2006,12 @@ pub fn loadout_ui(
                 {
                     lo.stores.iter_mut().for_each(|s| *s = None);
                 }
+                ui.add_space(12.0);
+                // An AI wingman of the same aircraft and stores comes along.
+                facts(
+                    crate::campaign::shell::switch(ui, wingman, &t!("loadout-wingman")),
+                    t_lines!("loadout-wingman.facts"),
+                );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.add(big_button(t!("loadout-done")).icon(icon::DONE).primary()).clicked() {
                         w.open = false;

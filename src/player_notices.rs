@@ -103,6 +103,8 @@ pub struct PlayerNotices {
     /// The coop radio: who is talking, or this player transmitting (a line under the
     /// messages, keeping the panel up).
     pub radio: Option<String>,
+    /// The radio menu while it is open (`radio_menu.rs`): its lines, keeping the panel up.
+    pub menu: Vec<String>,
 }
 
 impl PlayerNotices {
@@ -335,7 +337,7 @@ fn cockpit_panel(
     }
     let shown = notices.shown();
     let typing = notices.typing.is_some();
-    if shown.is_empty() && !typing && notices.radio.is_none() {
+    if shown.is_empty() && !typing && notices.radio.is_none() && notices.menu.is_empty() {
         *up = 0.0;
         for (_, _, mut v, _) in &mut panels {
             v.set_if_neq(Visibility::Hidden);
@@ -431,6 +433,9 @@ fn place_panel(
             lines.push(Line { text, name: 0, name_ink: OWN, ink: OWN });
         }
     }
+    for text in &notices.menu {
+        lines.push(Line { text: text.clone(), name: 0, name_ink: NEWS, ink: NEWS });
+    }
     let want = (lines, field);
     let mut height = PITCH;
     for (mut panel, _, _, _) in panels.iter_mut() {
@@ -451,7 +456,7 @@ fn place_panel(
         let at = centre * (1.0 - forward);
         Transform::from_translation(at).with_scale(size.extend(1.0) * PULL * (1.0 - forward))
     };
-    let a = alpha(up, shown, typing || notices.radio.is_some());
+    let a = alpha(up, shown, typing || notices.radio.is_some() || !notices.menu.is_empty());
     for (_, mut tf, mut v, m) in panels.iter_mut() {
         *tf = place(0.005);
         v.set_if_neq(Visibility::Inherited);

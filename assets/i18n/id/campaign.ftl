@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R hanya menerbangkan misi antikapal selam
 ce-ac130-sams = Situs SAM musuh terlalu dekat dengan sasaran untuk AC-130
 ce-airlift-c5 = Angkutan udara diterbangkan dengan C-5
 ce-airlift-no-handover = Terbangkan sendiri kargo itu ke pangkalannya
+cl-wingman-lost = Wingman { $player } ditembak jatuh
+cl-wingman-no-sortie = Wingman hanya ikut dalam sorti

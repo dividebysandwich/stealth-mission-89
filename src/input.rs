@@ -12,6 +12,7 @@ impl Plugin for InputPlugin {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ConsoleThrottle>()
             .add_message::<ActionEvent>()
@@ -29,6 +30,22 @@ impl Plugin for InputPlugin {
 /// While set (the in-flight menu is open), keys, buttons and sticks only open and close the menu.
 #[derive(Resource, Default)]
 pub struct InputBlock(pub bool);
+
+/// While set (the radio menu is open), the digit keys pick its calls (`radio_menu.rs`) and do
+/// nothing else.
+#[derive(Resource, Default)]
+pub struct RadioCapture(pub bool);
+
+/// The keys the radio menu's calls are on.
+pub const RADIO_KEYS: [KeyCode; 7] = [
+    KeyCode::Digit1,
+    KeyCode::Digit2,
+    KeyCode::Digit3,
+    KeyCode::Digit4,
+    KeyCode::Digit5,
+    KeyCode::Digit6,
+    KeyCode::Digit7,
+];
 
 /// At an air defence console (the input blocked): the stick and the gun and fire triggers still
 /// pass, they slew and fire its gun (`station`).
@@ -160,6 +177,8 @@ pub enum Action {
     Resupply,
     /// Campaign: take the urgent mission the AWACS diverts the pilot to.
     AcceptTasking,
+    /// The radio menu: calls to the AI wingman (`radio_menu.rs`).
+    RadioMenu,
     DayNight,
     /// Modern avionics: lock what is under the sensor of interest's cursor.
     LockCursor,
@@ -498,6 +517,7 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Alt, K::KeyT, Training),
         (Alt, K::KeyR, Resupply),
         (Alt, K::KeyA, AcceptTasking),
+        (None, K::Backslash, RadioMenu),
         (Alt, K::KeyN, DayNight),
         (None, K::KeyK, Kneeboard),
         (None, K::KeyY, Chat),
@@ -549,7 +569,7 @@ fn read_keyboard(
     mut stick: ResMut<VirtualStick>,
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
-    (block, console): (Res<InputBlock>, Res<ConsoleStick>),
+    (block, console, radio): (Res<InputBlock>, Res<ConsoleStick>, Res<RadioCapture>),
     view: Option<Res<crate::camera::ViewState>>,
     mut throttle_since: Local<Option<f64>>,
     mut nozzle_since: Local<Option<f64>>,
@@ -572,6 +592,7 @@ fn read_keyboard(
         if (block.0 && !matches!(action, Action::Menu | Action::RecordGif))
             || action.stick_direction().is_some()
             || camera_key(m.key)
+            || (radio.0 && RADIO_KEYS.contains(&m.key))
         {
             continue;
         }
@@ -868,6 +889,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
@@ -900,6 +922,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .insert_resource(InputBlock(true))
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
@@ -935,6 +958,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
@@ -964,6 +988,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .insert_resource(InputBlock(true))
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
@@ -992,6 +1017,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
@@ -1010,6 +1036,7 @@ mod tests {
         let mut app = App::new();
         app.init_resource::<FlightControls>()
             .init_resource::<InputBlock>()
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<MouseButton>>()
             .insert_resource(config)
@@ -1066,6 +1093,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .insert_resource(InputBlock(true))
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()
@@ -1118,6 +1146,7 @@ mod tests {
         app.init_resource::<FlightControls>()
             .init_resource::<VirtualStick>()
             .init_resource::<InputBlock>()
+            .init_resource::<RadioCapture>()
             .init_resource::<ConsoleStick>()
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<Time<Real>>()

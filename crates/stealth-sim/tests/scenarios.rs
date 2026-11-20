@@ -4363,3 +4363,106 @@ fn apkws_homes_on_the_laser_spot() {
     }
     assert!(sim.units()[0].destroyed, "{events:?}");
 }
+
+/// One step of a wingman test: the lead flies on at its speed along its heading (the test's
+/// input does not move it by itself).
+fn wing_step(sim: &mut Sim, p: &mut PlayerState) -> Vec<SimEvent> {
+    let ev = sim.step(p, 15);
+    let h = p.heading as f64 * std::f64::consts::TAU / 65536.0;
+    let d = (p.velocity as f64 / 16.0) / 15.0;
+    p.x += (h.sin() * d).round() as i32;
+    p.y += (h.cos() * d).round() as i32;
+    ev
+}
+
+/// The wingman's distance from its lead (m) along his track (+ ahead) and to his right.
+fn wing_offset(sim: &Sim, p: &PlayerState) -> (f64, f64) {
+    let i = sim.wingman_of(sim.active_pilot()).expect("a wingman");
+    let u = sim.flights()[i];
+    let (e, s) = (u.wx as f64 - p.x as f64, u.wy as f64 - (0x10_0000 - p.y) as f64);
+    let h = p.heading as f64 * std::f64::consts::TAU / 65536.0;
+    let m = aaa::M_PER_MAP / 32.0;
+    ((e * h.sin() - s * h.cos()) * m, (e * h.cos() + s * h.sin()) * m)
+}
+
+/// A wingman (an F-16) joins its lead once he is up and flies spread on his right; told
+/// to go trail it drops back behind him; told home it leaves him.
+#[test]
+fn a_wingman_joins_and_flies_formation() {
+    use stealth_sim::wingman::{WingCmd, WingReply};
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::F16);
+    let mut p = player_at(mx, my, 5000, 0x4000, 400);
+    assert!(sim.wingman_pending(me));
+    wing_step(&mut sim, &mut p);
+    assert!(sim.wingman_of(me).is_some(), "joined");
+    for _ in 0..15 * 40 {
+        wing_step(&mut sim, &mut p);
+    }
+    let (along, right) = wing_offset(&sim, &p);
+    assert!((-300.0..0.0).contains(&along) && (300.0..500.0).contains(&right), "spread {along:.0} {right:.0}");
+    assert_eq!(sim.wing_command(me, WingCmd::Trail), WingReply::Copy);
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+    }
+    let (along, right) = wing_offset(&sim, &p);
+    assert!((-1400.0..-1000.0).contains(&along) && right.abs() < 200.0, "trail {along:.0} {right:.0}");
+    // Nothing locked: nothing to engage; no HARM: no SAMs.
+    assert_eq!(sim.wing_command(me, WingCmd::Engage), WingReply::NoTarget);
+    assert_eq!(sim.wing_command(me, WingCmd::Sams), WingReply::NoHarm);
+    assert_eq!(sim.wing_command(me, WingCmd::Rtb), WingReply::Copy);
+    for _ in 0..15 * 30 {
+        wing_step(&mut sim, &mut p);
+    }
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(along.hypot(right) > 3000.0, "still with him: {along:.0} {right:.0}");
+}
+
+/// A wingman with HARMs fires one at the SAM site its lead calls it on, then rejoins.
+#[test]
+fn a_wingman_fires_a_harm_at_a_sam_site() {
+    use stealth_sim::wingman::{WingCmd, WingReply};
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    // A SAM site 25 km ahead (east).
+    place_site(&mut sim, 5, 4, mx + 1600, my);
+    sim.set_loadout(&[(2, 1), (2, 1), (0, 1), (0, 1)]);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::F16);
+    let mut p = player_at(mx, my, 8000, 0x4000, 400);
+    for _ in 0..15 * 10 {
+        wing_step(&mut sim, &mut p);
+    }
+    assert_eq!(sim.wing(me).map(|w| w.harms), Some(2));
+    assert_eq!(sim.wing_command(me, WingCmd::Sams), WingReply::Engaging);
+    let mut fired = false;
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+        fired |= sim.wing(me).is_some_and(|w| w.harms == 1);
+        if fired {
+            break;
+        }
+    }
+    assert!(fired, "no HARM fired: {:?}", sim.wing(me));
+    assert_eq!(sim.wing(me).map(|w| w.order), Some(stealth_sim::wingman::WingOrder::Formation));
+}
+
+/// A helicopter's wingman (an AH-64) keeps its closer station on its lead.
+#[test]
+fn a_helicopter_wingman_flies_close_formation() {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::AH64);
+    let mut p = player_at(mx, my, 300, 0x4000, 80);
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+    }
+    let (along, right) = wing_offset(&sim, &p);
+    assert!((-100.0..10.0).contains(&along) && (90.0..150.0).contains(&right), "spread {along:.0} {right:.0}");
+}

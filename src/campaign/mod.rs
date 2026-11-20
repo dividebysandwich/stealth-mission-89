@@ -171,6 +171,8 @@ pub enum Action {
         aircraft: Airframe,
         loadout: crate::loadout::PlannedLoadout,
         route: Option<PlannedRoute>,
+        /// An AI wingman comes along.
+        wingman: bool,
     },
     OrderInsertion {
         place: PlaceId,
@@ -238,6 +240,8 @@ pub enum Action {
     Crew(CrewCmd),
     /// A Seahawk crew's sensor command (`asw`).
     Asw(stealth_sim::asw::AswCmd),
+    /// A radio call to the player's AI wingman.
+    Wing(stealth_sim::wingman::WingCmd),
 }
 
 /// The last sortie's debrief.
@@ -290,6 +294,8 @@ pub struct ActiveCampaign {
     /// The stores and the route chosen in the briefing for the sortie being taken.
     pub take_loadout: Option<crate::loadout::PlannedLoadout>,
     pub take_route: Option<PlannedRoute>,
+    /// An AI wingman comes along on the sorties taken (the briefing's switch; the setting).
+    pub wingman: bool,
 }
 
 impl ActiveCampaign {
@@ -367,6 +373,7 @@ impl ActiveCampaign {
             exit: false,
             take_loadout: None,
             take_route: None,
+            wingman: false,
         }
     }
 
@@ -569,6 +576,7 @@ fn begin(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     c.started = true;
     let c = &mut *c;
     c.aircraft = airframe_of(s.settings.aircraft);
+    c.wingman = s.settings.wingman;
     match c.role {
         Role::Client => s.combat.sim.make_mirror(c.me.0),
         Role::Local | Role::Host => {
@@ -808,12 +816,14 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             let loadout = briefed_loadout(c, offer, None, c.aircraft);
             if let Some(loadout) = loadout {
                 let aircraft = c.aircraft;
+                let wingman = c.wingman;
                 c.actions.push(Action::TakeMission {
                     offer,
                     base: None,
                     aircraft,
                     loadout,
                     route: None,
+                    wingman,
                 });
             }
         }
@@ -1214,7 +1224,7 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
     }
     for a in std::mem::take(&mut c.actions) {
         let result = match a {
-            Action::TakeMission { offer, base, aircraft, loadout, route } => {
+            Action::TakeMission { offer, base, aircraft, loadout, route, wingman } => {
                 let stores = Stores {
                     stations: loadout.stations(),
                     select: 0,
@@ -1222,7 +1232,12 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
                 };
                 c.take_loadout = Some(loadout);
                 c.take_route = route;
-                host.take_mission(sim, me, offer, base, aircraft, Some(stores))
+                host.take_mission(sim, me, offer, base, aircraft, Some(stores)).and_then(|mut ev| {
+                    if wingman {
+                        ev.extend(host.take_wingman(sim, me, aircraft)?);
+                    }
+                    Ok(ev)
+                })
             }
             Action::OrderInsertion { place } => host.order_insertion(sim, me, place),
             Action::RequestSupport { offer } => host.request_support(sim, me, offer),
@@ -1256,6 +1271,10 @@ fn host_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEvent
             Action::LeaveAircraft => host.leave_aircraft(sim, me),
             Action::Crew(cmd) => host.crew(sim, me, cmd),
             Action::Asw(cmd) => sim.asw_command(me.0, cmd).map(|()| Vec::new()),
+            Action::Wing(cmd) => {
+                sim.wing_command(me.0, cmd);
+                Ok(Vec::new())
+            }
         };
         match result {
             Ok(ev) => {
@@ -1292,7 +1311,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
     };
     for a in std::mem::take(&mut c.actions) {
         let msg = match a {
-            Action::TakeMission { offer, base, aircraft, loadout, route } => {
+            Action::TakeMission { offer, base, aircraft, loadout, route, wingman } => {
                 let stores = Stores {
                     stations: loadout.stations(),
                     select: 0,
@@ -1300,7 +1319,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
                 };
                 c.take_loadout = Some(loadout);
                 c.take_route = route;
-                ToServer::TakeMission { offer, base, aircraft, stores: Some(stores) }
+                ToServer::TakeMission { offer, base, aircraft, stores: Some(stores), wingman }
             }
             Action::OrderInsertion { place } => ToServer::OrderInsertion { place },
             Action::RequestSupport { offer } => ToServer::RequestSupport { offer },
@@ -1344,6 +1363,7 @@ fn client_frame(c: &mut ActiveCampaign, s: &mut Session, dt: f32) -> Vec<HostEve
             }
             Action::Crew(cmd) => ToServer::Crew(cmd),
             Action::Asw(cmd) => ToServer::Asw(cmd),
+            Action::Wing(cmd) => ToServer::Wing(cmd),
         };
         client.send(&msg);
     }
@@ -1630,6 +1650,7 @@ fn leave(
     if let Some(c) = c {
         // The menu keeps the campaign's aircraft choice, not the parked F-117A.
         settings.aircraft = kind_of(c.aircraft);
+        settings.wingman = c.wingman;
         c.save();
         commands.remove_resource::<ActiveCampaign>();
     }

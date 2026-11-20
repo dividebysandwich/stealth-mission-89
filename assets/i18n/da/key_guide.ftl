@@ -128,3 +128,4 @@ kg-pan = Se dig omkring (holdt), som musen
 kg-mouse-look = Se dig om med musen (holdt; udenfor: kredse med kameraet), hjulet zoomer
 kg-click-control = Tryk på cockpittets kontakt eller knap, eller knæbrættets fane, under musemarkøren
 kg-ptt = Radio, hold nede for at tale (multiplayer)
+kg-radio-menu = Radiomenu: kald til wingman (1-7)

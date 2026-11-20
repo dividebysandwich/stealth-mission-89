@@ -343,3 +343,5 @@ ce-mh60r-only = Ní eitlíonn an MH-60R ach misin frithfhomhuirí
 ce-ac130-sams = Tá láithreáin SAM an namhad ró-ghar don sprioc don AC-130
 ce-airlift-c5 = Eitlítear aeriompar sa C-5
 ce-airlift-no-handover = Eitil an lasta go dtí a bhonn tú féin
+cl-wingman-lost = Leagadh sciathánaí { $player }
+cl-wingman-no-sortie = Ní thagann sciathánaí ach le sortie

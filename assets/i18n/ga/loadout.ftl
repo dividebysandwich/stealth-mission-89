@@ -214,3 +214,5 @@ weapon-role-32 = Roicéid 70 mm faoi threorú léasair: téann gach ceann ar spo
 employment-32 =
     Cuir an pota spriocdhírithe ar an sprioc agus scaoil feadh na srón; casann siad ar an spota
     Suas le 6 km; coinnigh an pota ar an sprioc go mbuaileann siad
+loadout-wingman = SCIATHÁNAÍ
+    .facts = Tagann sciathánaí IS san aerárthach céanna leis an armlón céanna leat san aer; tugann an roghchlár raidió (\) orduithe dó

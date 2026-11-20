@@ -129,3 +129,4 @@ kg-pan = Körülnézés (nyomva tartva), mint az egérrel
 kg-mouse-look = Körülnézés egérrel (nyomva tartva; kívül: a kamera körberepül), a görgő nagyít
 kg-click-control = Az egérmutató alatti pilótafülke-kapcsoló vagy -gomb, vagy térdtábla-fül megnyomása
 kg-ptt = Rádió, tartsd lenyomva a beszédhez (többjátékos)
+kg-radio-menu = Rádiómenü: hívások a kísérőnek (1-7)

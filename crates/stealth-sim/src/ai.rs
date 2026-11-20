@@ -210,7 +210,12 @@ impl Sim {
         } else {
             mode = 3;
             let (mut x, mut y, mut z);
-            if let Some((gx, gy)) = self.campaign_goal(i, &u) {
+            if let Some((gx, gy, gz)) = self.wing_goal(i) {
+                // A wingman flies to its station at its lead's height.
+                x = gx;
+                y = gy;
+                z = gz;
+            } else if let Some((gx, gy)) = self.campaign_goal(i, &u) {
                 x = gx;
                 y = gy;
                 z = if self.campaign_striking(i) {

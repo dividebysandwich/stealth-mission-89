@@ -214,3 +214,5 @@ weapon-role-32 = Lasergelenkte 70-mm-Raketen: jede steuert auf den Laserpunkt de
 employment-32 =
     Den Zielbehälter auf das Ziel richten und in Flugrichtung feuern; sie drehen auf den Punkt ein
     Bis 6 km; den Behälter bis zum Einschlag auf dem Ziel halten
+loadout-wingman = ROTTENFLIEGER
+    .facts = Ein KI-Rottenflieger im selben Flugzeug mit denselben Waffen schließt nach dem Start auf; das Funkmenü (\) gibt ihm Befehle

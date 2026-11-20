@@ -1163,6 +1163,10 @@ pub enum SimEvent {
         crater: bool,
         kill: bool,
     },
+    /// The active pilot's AI wingman answers his radio call.
+    WingReply {
+        reply: crate::wingman::WingReply,
+    },
     /// A 70 mm rocket left its tube (fine units like [`Jp233Burst`]); `guided`: an APKWS.
     RocketFired {
         at: (i32, i32, i32),

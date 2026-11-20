@@ -126,3 +126,4 @@ kg-pan = Se dig omkring (hållen), som musen
 kg-mouse-look = Titta omkring med musen (hållen; utanför: kameran kretsar), hjulet zoomar
 kg-click-control = Tryck på cockpitens strömbrytare eller knapp, eller knäbrädans flik, under muspekaren
 kg-ptt = Radio, håll nere för att prata (flerspelare)
+kg-radio-menu = Radiomeny: anrop till rotekamraten (1-7)

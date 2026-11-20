@@ -126,3 +126,4 @@ kg-pan = Rozglądanie się (trzymane), jak myszą
 kg-mouse-look = Rozglądanie się myszą (trzymane; na zewnątrz: kamera krąży), kółko przybliża
 kg-click-control = Naciśnięcie przełącznika lub przycisku w kokpicie, albo karty tabliczki na kolanie, pod wskaźnikiem myszy
 kg-ptt = Radio, przytrzymaj, aby mówić (wiele graczy)
+kg-radio-menu = Menu radiowe: wywołania skrzydłowego (1-7)

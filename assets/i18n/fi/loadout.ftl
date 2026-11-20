@@ -214,3 +214,5 @@ weapon-role-32 = Laserohjatut 70 mm:n raketit: kukin hakeutuu maalinosoitussäil
 employment-32 =
     Suuntaa maalinosoitussäiliö maaliin ja ammu nokan suuntaan; ne kääntyvät pisteeseen
     Enintään 6 km; pidä säiliö maalissa osumaan asti
+loadout-wingman = SIIPIMIES
+    .facts = Tekoälysiipimies samalla koneella ja samoilla aseilla liittyy seuraasi ilmassa; radiovalikko (\) antaa sille käskyt

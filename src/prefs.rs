@@ -59,6 +59,8 @@ pub struct Prefs {
     pub realistic_terrain: bool,
     pub realistic_ai_flight: bool,
     pub tacview: bool,
+    /// An AI wingman comes along on single, career and campaign missions.
+    pub wingman: bool,
     pub tacview_real_time: bool,
     pub air_defence: bool,
     pub head_tracking: bool,
@@ -156,6 +158,7 @@ impl Default for Prefs {
             realistic_terrain: true,
             realistic_ai_flight: true,
             tacview: false,
+            wingman: false,
             tacview_real_time: false,
             air_defence: true,
             head_tracking: false,
@@ -282,6 +285,7 @@ impl Prefs {
             realistic_terrain: s.realistic_terrain,
             realistic_ai_flight: s.realistic_ai_flight,
             tacview: s.tacview,
+            wingman: s.wingman,
             tacview_real_time: s.tacview_real_time,
             air_defence: s.air_defence,
             head_tracking: s.head_tracking,
@@ -376,6 +380,7 @@ impl Prefs {
         s.realistic_ai_flight &= self.realistic_ai_flight;
         s.realistic_damage |= self.realistic_damage;
         s.tacview |= self.tacview;
+        s.wingman |= self.wingman;
         s.tacview_real_time |= self.tacview_real_time;
         s.air_defence |= self.air_defence;
         s.head_tracking |= self.head_tracking;
@@ -485,6 +490,7 @@ impl Prefs {
         self.atc_vary_station = s.atc_vary_station;
         self.vr_cockpit_scale = s.vr_cockpit_scale;
         self.tacview = s.tacview;
+        self.wingman = s.wingman;
         self.tacview_real_time = s.tacview_real_time;
         self.head_tracking = s.head_tracking;
         self.tracking_mouse_look = s.tracking_mouse_look;

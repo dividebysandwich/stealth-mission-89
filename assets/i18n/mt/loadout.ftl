@@ -214,3 +214,5 @@ weapon-role-32 = Rokits ta' 70 mm iggwidati bil-lejżer: kull wieħed imur għat
 employment-32 =
     Poġġi l-pod tal-immirar fuq il-mira u spara mal-imnieħer; idawru lejn it-tikka
     Sa 6 km; żomm il-pod fuq il-mira sakemm jolqtu
+loadout-wingman = WINGMAN
+    .facts = Wingman tal-IA fl-istess ajruplan bl-istess armi jingħaqad miegħek fl-ajru; il-menu tar-radju (\) jagħtih l-ordnijiet

@@ -214,3 +214,5 @@ weapon-role-32 = Laserstyrede 70 mm-raketter: hver styrer mod målbelysningskaps
 employment-32 =
     Sæt målkapslen på målet og skyd langs næsen; de drejer ind mod pletten
     Op til 6 km; hold kapslen på målet, til de rammer
+loadout-wingman = WINGMAN
+    .facts = En AI-wingman i samme fly med samme bevæbning slutter sig til dig i luften; radiomenuen (\) giver den ordrer

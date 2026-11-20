@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R flyger bara ubåtsjakt
 ce-ac130-sams = Fientliga luftvärnsrobotar står för nära målet för AC-130
 ce-airlift-c5 = Lufttransport flygs i C-5
 ce-airlift-no-handover = Flyg själv frakten till basen
+cl-wingman-lost = { $player }s rotekamrat sköts ned
+cl-wingman-no-sortie = En rotekamrat följer bara med på ett uppdrag

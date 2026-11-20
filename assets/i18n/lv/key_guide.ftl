@@ -126,3 +126,4 @@ kg-pan = Skatīties apkārt (turot), kā ar peli
 kg-mouse-look = Skatīties apkārt ar peli (turot; ārpusē: kamera riņķo), ritenītis tālummaina
 kg-click-control = Nospiest kabīnes slēdzi vai pogu, vai ceļgala planšetes cilni, zem peles rādītāja
 kg-ptt = Radio, turiet nospiestu, lai runātu (daudzspēlētāju)
+kg-radio-menu = Radio izvēlne: izsaukumi pāriniekam (1-7)

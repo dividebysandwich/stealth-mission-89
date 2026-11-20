@@ -214,3 +214,5 @@ weapon-role-32 = Roket 70 mm berpemandu laser: masing-masing mengarah ke titik l
 employment-32 =
     Arahkan pod penjejak ke sasaran dan tembak searah hidung; roket berbelok ke titik itu
     Hingga 6 km; tahan pod pada sasaran sampai mengenai
+loadout-wingman = WINGMAN
+    .facts = Wingman AI dengan pesawat dan persenjataan yang sama bergabung di udara; menu radio (\) memberinya perintah

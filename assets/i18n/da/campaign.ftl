@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R flyver kun antiubådsmissioner
 ce-ac130-sams = Fjendtlige SAM-stillinger er for tæt på målet til AC-130
 ce-airlift-c5 = Lufttransport flyves i C-5
 ce-airlift-no-handover = Flyv selv fragten til basen
+cl-wingman-lost = { $player }s wingman blev skudt ned
+cl-wingman-no-sortie = En wingman følger kun med på en mission

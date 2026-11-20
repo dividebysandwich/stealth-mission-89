@@ -126,3 +126,4 @@ kg-pan = Rondkijken (ingedrukt), zoals met de muis
 kg-mouse-look = Rondkijken met de muis (ingedrukt; buiten: de camera draait rond), het wiel zoomt
 kg-click-control = De schakelaar of knop in de cockpit, of het tabblad van het kniebord, onder de muisaanwijzer indrukken
 kg-ptt = Radio, ingedrukt houden om te praten (multiplayer)
+kg-radio-menu = Radiomenu: oproepen aan de wingman (1-7)

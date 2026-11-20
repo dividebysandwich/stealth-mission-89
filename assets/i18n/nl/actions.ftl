@@ -108,3 +108,4 @@ action-accept-tasking = Opdracht aannemen
 action-rwr-priority = RWR-prioriteit
 action-rwr-separate = RWR-doelscheiding
 action-record-gif = GIF opnemen
+action-radio-menu = Radiomenu (wingman)

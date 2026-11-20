@@ -40,6 +40,7 @@ pub mod paradrop;
 pub mod jamming;
 pub mod jp233;
 pub mod rockets;
+pub mod wingman;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -279,6 +280,9 @@ pub struct Sim {
     /// The 70 mm rockets in flight ([`rockets`]).
     #[serde(default, skip_serializing_if = "rockets::Rockets::is_empty")]
     pub(crate) rockets: rockets::Rockets,
+    /// Wingmen waiting for their leads to get up ([`wingman`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) pending_wing: Vec<wingman::PendingWing>,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -657,6 +661,7 @@ impl Sim {
             paradrop: paradrop::Paradrop::default(),
             jp233: jp233::Jp233::default(),
             rockets: rockets::Rockets::default(),
+            pending_wing: Vec::new(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,

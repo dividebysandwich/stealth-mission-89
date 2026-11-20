@@ -128,3 +128,4 @@ kg-pan = Razgledavanje (držanje), kao miš
 kg-mouse-look = Razgledavanje mišem (držanje; vani: kruženje kamerom), kotačić zumira
 kg-click-control = Pritisak na prekidač ili gumb u kokpitu, ili karticu ploče na koljenu, ispod pokazivača miša
 kg-ptt = Radio, držite za govor (više igrača)
+kg-radio-menu = Radijski izbornik: pozivi pratitelju (1-7)

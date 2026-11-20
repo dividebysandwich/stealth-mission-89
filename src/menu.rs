@@ -2132,7 +2132,8 @@ pub(crate) fn menu_ui(
         settings.vr,
     );
     crate::planner::planner_ui(ctx, &mut planner, &mut state, settings.aircraft);
-    crate::loadout::loadout_ui(ctx, &mut loadout, &mut state, settings.aircraft);
+    let aircraft = settings.aircraft;
+    crate::loadout::loadout_ui(ctx, &mut loadout, &mut state, aircraft, &mut settings.wingman);
     let loaded = crate::savegame::saves_ui(ctx, &mut saves, settings.vr);
     if before
         != (

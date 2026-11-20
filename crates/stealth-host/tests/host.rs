@@ -991,3 +991,29 @@ fn coop_players_take_different_catapults() {
     }
     assert_ne!(cats[0], cats[1], "both on catapult {}", cats[0]);
 }
+
+/// The campaign and the simulation agree on the wingmen's tag.
+#[test]
+fn wingman_tags_agree() {
+    assert_eq!(stealth_campaign::WING_TAG, stealth_sim::wingman::WING_TAG);
+}
+
+/// A player taking a wingman along draws its stores from his base's stock too, and the
+/// wingman joins him once he is up.
+#[test]
+fn a_wingman_draws_its_stores_from_the_base() {
+    let (mut host, mut sim) = central_europe();
+    let p = PlayerId(0);
+    let o = host.state.board.iter().find(|o| !o.kind.ai_flown()).unwrap().clone();
+    let stores = stealth_host::Stores {
+        stations: vec![(1, 2), (0, 2), (-1, 0)],
+        select: 0,
+        ..Default::default()
+    };
+    let before = host.state.available(o.base, stealth_campaign::Munition::Aim120);
+    host.take_mission(&mut sim, p, o.id, None, Aircraft::F16, Some(stores)).unwrap();
+    host.take_wingman(&mut sim, p, Aircraft::F16).unwrap();
+    let after = host.state.available(o.base, stealth_campaign::Munition::Aim120);
+    assert_eq!(before - after, 4, "his two and the wingman's two");
+    assert!(sim.wingman_pending(p.0));
+}

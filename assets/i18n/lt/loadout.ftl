@@ -214,3 +214,5 @@ weapon-role-32 = Lazeriu valdomos 70 mm raketos: kiekviena skrenda į taikymo ko
 employment-32 =
     Nukreipkite konteinerį į taikinį ir šaukite pagal nosį; jos pasisuka į tašką
     Iki 6 km; laikykite konteinerį ant taikinio iki pataikymo
+loadout-wingman = SPARNININKAS
+    .facts = DI sparnininkas tuo pačiu orlaiviu su ta pačia ginkluote prisijungia ore; radijo meniu (\) duoda jam įsakymus

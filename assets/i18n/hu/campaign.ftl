@@ -343,3 +343,5 @@ ce-mh60r-only = Az MH-60R csak tengeralattjáró-elhárító bevetést repül
 ce-ac130-sams = Az ellenséges SAM-állások túl közel vannak a célhoz az AC-130-hoz
 ce-airlift-c5 = A légiszállítást a C-5 repüli
 ce-airlift-no-handover = A rakományt magának kell a bázisra vinnie
+cl-wingman-lost = { $player } kísérőjét lelőtték
+cl-wingman-no-sortie = Kísérő csak bevetésre jön

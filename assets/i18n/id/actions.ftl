@@ -108,3 +108,4 @@ action-accept-tasking = Terima penugasan
 action-rwr-priority = Prioritas RWR
 action-rwr-separate = Pemisahan target RWR
 action-record-gif = Rekam GIF
+action-radio-menu = Menu radio (wingman)

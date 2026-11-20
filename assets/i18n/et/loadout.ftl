@@ -214,3 +214,5 @@ weapon-role-32 = Laserjuhitavad 70 mm raketid: igaüks suundub sihtimiskonteiner
 employment-32 =
     Suuna sihtimiskonteiner sihtmärgile ja tulista nina suunas; need pööravad punktile
     Kuni 6 km; hoia konteinerit sihtmärgil tabamuseni
+loadout-wingman = TIIVAMEES
+    .facts = Sama lennuki ja relvastusega tehisintellektiga tiivamees liitub õhus; raadiomenüü (\) annab talle käske

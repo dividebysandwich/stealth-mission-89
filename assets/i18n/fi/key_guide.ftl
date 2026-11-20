@@ -128,3 +128,4 @@ kg-pan = Katsele ympärille (pidetty), kuten hiirellä
 kg-mouse-look = Katsele ympärillesi hiirellä (pidetty; ulkona: kamera kiertää), rulla zoomaa
 kg-click-control = Paina ohjaamon kytkintä tai painiketta, tai polvitaulun välilehteä, hiiren osoittimen alla
 kg-ptt = Radio, pidä painettuna puhuaksesi (moninpeli)
+kg-radio-menu = Radiovalikko: kutsut siipimiehelle (1-7)

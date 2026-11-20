@@ -214,3 +214,5 @@ weapon-role-32 = Laserski vođene rakete od 70 mm: svaka leti prema laserskoj to
 employment-32 =
     Usmjerite ciljnički kontejner na cilj i pucajte duž nosa; skreću prema točki
     Do 6 km; držite kontejner na cilju do pogotka
+loadout-wingman = PRATITELJ
+    .facts = UI pratitelj u istom zrakoplovu s istim naoružanjem pridružuje vam se u zraku; radijski izbornik (\) mu daje zapovijedi

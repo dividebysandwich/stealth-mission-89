@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60Rは対潜任務のみ
 ce-ac130-sams = 敵SAMサイトが目標に近すぎてAC-130は出撃できない
 ce-airlift-c5 = 空輸は C-5 で行います
 ce-airlift-no-handover = 貨物は自分で基地まで運んでください
+cl-wingman-lost = { $player }の僚機が撃墜された
+cl-wingman-no-sortie = 僚機は出撃時のみ同行する

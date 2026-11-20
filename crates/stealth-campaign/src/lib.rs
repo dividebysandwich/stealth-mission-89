@@ -44,6 +44,9 @@ pub mod weather;
 use serde::{Deserialize, Serialize};
 use stealth_i18n::Text;
 
+/// A player's AI wingman's campaign tag: this plus his id (`stealth_sim::wingman::WING_TAG`).
+pub const WING_TAG: u32 = 0xE5C1_0000;
+
 pub use ai_missions::{
     AiAirframe, AiMission, AiMissionState, AiTarget, RedJob, ai_flown, pick_blue, pick_red,
 };

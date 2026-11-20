@@ -232,6 +232,9 @@ pub struct CampaignFlight {
     /// A strike aircraft out of guided weapons: it drops iron bombs, flying over its target.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub iron: bool,
+    /// A pilot's wingman ([`crate::wingman`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wing: Option<crate::wingman::Wing>,
 }
 
 impl CampaignFlight {
@@ -1274,6 +1277,7 @@ impl Sim {
             pass_wait: 0,
             hunt: None,
             iron: false,
+            wing: None,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1369,6 +1373,7 @@ impl Sim {
             pass_wait: 0,
             hunt: None,
             iron: false,
+            wing: None,
         });
         i
     }
@@ -1448,6 +1453,7 @@ impl Sim {
             pass_wait: 0,
             hunt: None,
             iron: false,
+            wing: None,
         });
         i
     }
@@ -1511,6 +1517,7 @@ impl Sim {
             pass_wait: 0,
             hunt: None,
             iron: false,
+            wing: None,
         });
         i
     }
@@ -1554,7 +1561,7 @@ impl Sim {
             let (ex, ey) = ((dx * c - dy * s) / d, (dx * s + dy * c) / d);
             return Some((gx + (ex * out) as i32, gy + (ey * out) as i32));
         }
-        if matches!(f.role, Role::Strike | Role::Recon) {
+        if matches!(f.role, Role::Strike | Role::Recon) || f.wing.is_some() {
             return Some((gx, gy));
         }
         if approx(u.x - gx, u.y - gy) > 0x200 {
@@ -1629,6 +1636,7 @@ impl Sim {
         if self.frame % fs == 0 {
             self.campaign_acquire();
         }
+        self.update_wingmen();
         self.update_stations();
         self.update_uavs();
         self.update_ground();
@@ -2008,12 +2016,17 @@ impl Sim {
                 let cap = f.task == FighterTask::Cap;
                 let (ax, ay) = f.anchor;
                 let leashed = cap && approx(u.x - ax, u.y - ay) > CAP_LEASH;
+                // A wingman: the enemies round its lead, the one it was told to engage first.
+                let wing = f.wing.map(|w| self.wing_bubble(&w));
                 // An escort keeps to the enemies near what it escorts (its goal follows it).
                 let escort = f.blue && f.hunt.is_some();
                 let (gx, gy) = f.goal;
                 let in_bubble = |j: usize| {
                     (!cap || approx(xy[j].0 - ax, xy[j].1 - ay) < CAP_BUBBLE)
                         && (!escort || approx(xy[j].0 - gx, xy[j].1 - gy) < ESCORT_BUBBLE)
+                        && wing.is_none_or(|((wx, wy), r, _)| {
+                            approx(xy[j].0 - wx, xy[j].1 - wy) < r
+                        })
                 };
                 f.target = (0..sides.len())
                     .filter(|&j| !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
@@ -2022,6 +2035,9 @@ impl Sim {
                     .filter(|&(j, d)| d < FIGHTER_SEARCH * stealth[j] / 100)
                     .min_by_key(|&(_, d)| d)
                     .map(|t| t.0);
+                if let Some((_, _, Some(j))) = wing {
+                    f.target = Some(j);
+                }
                 if cap {
                     let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
                     if f.target.is_some() {

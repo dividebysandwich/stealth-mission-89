@@ -108,3 +108,4 @@ action-accept-tasking = Aceitar a missão
 action-rwr-priority = Prioridade do RWR
 action-rwr-separate = Separação de alvos do RWR
 action-record-gif = Gravar GIF
+action-radio-menu = Menu de rádio (ala)

@@ -103,6 +103,8 @@ pub struct Settings {
     pub realistic_terrain: bool,
     /// `--tacview`: the flight is saved as a Tacview ACMI file when it ends.
     pub tacview: bool,
+    /// `--wingman`: an AI wingman comes along (single, career and campaign missions).
+    pub wingman: bool,
     /// `--tacview-real-time`: the flight is sent to Tacview while it is flown
     /// (tacview_real_time.rs).
     pub tacview_real_time: bool,
@@ -394,6 +396,7 @@ impl Settings {
             realistic_ai_flight: !has("--classic-ai-flight"),
             realistic_terrain: !has("--classic-terrain"),
             tacview: has("--tacview"),
+            wingman: has("--wingman"),
             tacview_real_time: has("--tacview-real-time"),
             tacview_address: get(&a, "--tacview-address")
                 .and_then(|s| crate::tacview_real_time::parse_address(&s))

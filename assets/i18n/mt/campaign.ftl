@@ -343,3 +343,5 @@ ce-mh60r-only = L-MH-60R itir biss missjonijiet kontra s-sottomarini
 ce-ac130-sams = Is-siti SAM tal-għadu huma qrib wisq tal-mira għall-AC-130
 ce-airlift-c5 = It-trasport bl-ajru jsir bis-C-5
 ce-airlift-no-handover = Ġorr il-merkanzija sal-bażi tagħha int stess
+cl-wingman-lost = Il-wingman ta' { $player } ġie mwaqqa'
+cl-wingman-no-sortie = Wingman jiġi biss ma' sortie

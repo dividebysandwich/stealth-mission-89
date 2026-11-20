@@ -108,3 +108,4 @@ action-accept-tasking = 임무 수락
 action-rwr-priority = RWR 우선순위
 action-rwr-separate = RWR 목표 분리
 action-record-gif = GIF 녹화
+action-radio-menu = 무선 메뉴(윙맨)

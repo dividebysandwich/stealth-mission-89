@@ -109,3 +109,4 @@ action-accept-tasking = Võta ülesanne vastu
 action-rwr-priority = RWR-i prioriteet
 action-rwr-separate = RWR-i sihtmärkide eraldamine
 action-record-gif = Salvesta GIF
+action-radio-menu = Raadiomenüü (tiivamees)

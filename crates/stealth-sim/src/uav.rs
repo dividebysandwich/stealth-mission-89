@@ -1023,6 +1023,7 @@ impl Sim {
             pass_wait: 0,
             hunt: None,
             iron: false,
+            wing: None,
         });
         let d = &mut c.defence;
         d.uav_serial += 1;

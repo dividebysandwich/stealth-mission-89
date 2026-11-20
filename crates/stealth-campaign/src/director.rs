@@ -5,7 +5,7 @@
 
 use crate::state::*;
 use crate::tuning::*;
-use crate::{CampaignEvent, Convoy, ConvoyUnit, Report, WorldView};
+use crate::{CampaignEvent, Convoy, ConvoyUnit, Report, WING_TAG, WorldView};
 use stealth_i18n::{Text, text};
 
 /// The narrow seas a submarine slips out of past a line between two friendly bases, the ASW
@@ -13,6 +13,23 @@ use stealth_i18n::{Text, text};
 use stealth_mission::asw::BARRIERS as ASW_BARRIERS;
 
 impl CampaignState {
+    /// A player's wingman (campaign tag `WING_TAG` + his id) shot down: under the airframe
+    /// rule one aircraft fewer of the friendly side's.
+    fn wingman_lost(&mut self, tag: u32, ev: &mut Vec<CampaignEvent>) {
+        if !(WING_TAG..WING_TAG + 0x100).contains(&tag) {
+            return;
+        }
+        let player = PlayerId((tag - WING_TAG) as u8);
+        let heli = self.sortie(player).is_some_and(|s| s.aircraft.helicopter());
+        if self.rules.is_some_and(|r| r.airframe_losses) {
+            let f = self.forces_mut(Side::Blue);
+            let pool = if heli { &mut f.helicopters } else { &mut f.fighters };
+            *pool = pool.saturating_sub(1);
+        }
+        let name = self.player_name(player).map(str::to_string).unwrap_or_default();
+        ev.push(CampaignEvent::Message(text!("cl-wingman-lost", player = name)));
+    }
+
     pub(crate) fn report(&mut self, r: &Report, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         self.sortie_report(r);
         self.ai_mission_report(r, ev);
@@ -81,6 +98,7 @@ impl CampaignState {
             }
             Report::SamKill { aaa, side } => self.sam_kill(aaa, side, view, ev),
             Report::FlightDestroyed { tag, .. } if tag != 0 => {
+                self.wingman_lost(tag, ev);
                 self.patrols.retain(|p| p.0 != tag);
                 self.cap_report(tag, true);
                 self.raider_gone(tag, ev);

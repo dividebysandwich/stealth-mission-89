@@ -144,6 +144,8 @@ pub struct Combat {
     pub jp233_fx: Vec<SimEvent>,
     /// The rockets' launches and bursts this frame (drawn by `rockets`).
     pub rocket_fx: Vec<SimEvent>,
+    /// The AI wingman's answers this frame (`radio_menu` says them).
+    pub wing_replies: Vec<stealth_sim::wingman::WingReply>,
     /// The AC-130s' guns firing and their shells landing this frame (drawn by `side_guns`).
     pub side_gun_fx: Vec<SimEvent>,
     /// The submarine hunt's splashes this frame (`asw::effects`).
@@ -400,6 +402,12 @@ fn start_combat(
         .unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft));
     sim.set_loadout(&loadout.stations());
     sim.select_bay(loadout.first_choice(m));
+    // An AI wingman of the same aircraft and stores (a campaign's comes with its sortie).
+    if settings.wingman && campaign.is_none() {
+        let spec = stealth_host::glue::ai_spec(crate::campaign::airframe_of(settings.aircraft));
+        let me = sim.active_pilot();
+        sim.request_wingman(me, spec);
+    }
     // Test aid (`--damage bits,hits`): start damaged (bits as in `stealth_sim::dmg`, 0x20 fire).
     let args: Vec<String> = std::env::args().collect();
     if let Some((bits, hits)) =
@@ -473,6 +481,7 @@ fn start_combat(
         sfw_fx: Vec::new(),
         jp233_fx: Vec::new(),
         rocket_fx: Vec::new(),
+        wing_replies: Vec::new(),
         side_gun_fx: Vec::new(),
         asw_fx: Vec::new(),
         signal_flares: Vec::new(),
@@ -2775,6 +2784,7 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
         }
         // A rocket off its pod or its warhead going off: drawn by `rockets`; a kill burns.
         SimEvent::RocketFired { .. } => combat.rocket_fx.push(e),
+        SimEvent::WingReply { reply } => combat.wing_replies.push(reply),
         SimEvent::RocketBurst { at, kill } => {
             if kill {
                 let fine = 32 * stealth_sim::ROUND_FINE;

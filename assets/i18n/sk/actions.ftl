@@ -109,3 +109,4 @@ action-accept-tasking = Prijať úlohu
 action-rwr-priority = Priorita RWR
 action-rwr-separate = Oddelenie cieľov RWR
 action-record-gif = Nahrať GIF
+action-radio-menu = Rádiové menu (wingman)

@@ -255,8 +255,13 @@ impl Server {
                 }
                 return Vec::new();
             }
-            (ToServer::TakeMission { offer, base, aircraft, stores }, Some(p)) => {
-                host.take_mission(sim, p, offer, base, aircraft, stores)
+            (ToServer::TakeMission { offer, base, aircraft, stores, wingman }, Some(p)) => {
+                host.take_mission(sim, p, offer, base, aircraft, stores).and_then(|mut ev| {
+                    if wingman {
+                        ev.extend(host.take_wingman(sim, p, aircraft)?);
+                    }
+                    Ok(ev)
+                })
             }
             (ToServer::OrderInsertion { place }, Some(p)) => host.order_insertion(sim, p, place),
             (ToServer::RequestSupport { offer }, Some(p)) => host.request_support(sim, p, offer),
@@ -281,6 +286,10 @@ impl Server {
             (ToServer::Asw(cmd), Some(p)) => sim.asw_command(p.0, cmd).map(|()| Vec::new()),
             (ToServer::LeaveAircraft, Some(p)) => host.leave_aircraft(sim, p),
             (ToServer::Station(cmd), Some(p)) => host.station(sim, p, cmd),
+            (ToServer::Wing(cmd), Some(p)) => {
+                sim.wing_command(p.0, cmd);
+                return Vec::new();
+            }
             (ToServer::Hit(hit), Some(p)) => {
                 sim.claim_hit(p.0, hit);
                 return Vec::new();

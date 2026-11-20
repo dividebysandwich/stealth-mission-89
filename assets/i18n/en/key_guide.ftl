@@ -128,3 +128,4 @@ kg-training = Go to training
 kg-resupply = Resupply
 kg-accept-tasking = Accept divert
 kg-quit = Quit
+kg-radio-menu = Radio menu: calls to the wingman (1-7)

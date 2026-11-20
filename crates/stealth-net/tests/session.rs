@@ -120,6 +120,7 @@ fn a_player_joins_flies_and_returns() {
                 base: None,
                 aircraft: Aircraft::F16,
                 stores: None,
+                wingman: false,
             });
         }
         for e in frame(&mut w, &mut c, None, now) {
@@ -339,6 +340,7 @@ fn players_plan_a_mission_together() {
         base: None,
         aircraft: Aircraft::F117,
         stores: None,
+        wingman: false,
     });
     assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
         plans(k, e).is_some_and(|p| p.flying == vec![pa] && p.crew == vec![pb])

@@ -128,3 +128,4 @@ kg-pan = Dairytis (laikant), kaip pele
 kg-mouse-look = Dairytis pele (laikant; išorėje: kamera skrieja aplink), ratukas keičia mastelį
 kg-click-control = Paspausti kabinos jungiklį ar mygtuką, arba kelio planšetės skirtuką, po pelės žymekliu
 kg-ptt = Radijas, laikykite nuspaudę, kad kalbėtumėte (daugelio žaidėjų)
+kg-radio-menu = Radijo meniu: šaukiniai sparnininkui (1-7)

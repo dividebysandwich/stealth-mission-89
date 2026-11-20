@@ -343,3 +343,5 @@ brief-task-drones = Shoot down the attack drones before they dive into the targe
 ce-logistics-uh60 = Logistics is flown in the UH-60 or the CH-47
 brief-task-logistics = Hook a cargo crate beside the airfield's runway (hover over it below 50 ft) and fly it to the new site's helipad: set it down within 90 m of the pad
 brief-task-airlift = Take off with the cargo, fly it to the base and stop on its runway to unload it
+cl-wingman-lost = { $player }'s wingman was shot down
+cl-wingman-no-sortie = A wingman comes along only with a sortie

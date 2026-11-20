@@ -106,6 +106,7 @@ fn flight(
         pass_wait: 0,
         hunt: None,
         iron: false,
+        wing: None,
     }
 }
 
@@ -146,7 +147,7 @@ impl Sim {
     }
 
     /// The record of an aircraft of type `spec` flying `task` from base `from`.
-    fn mission_flight(
+    pub(crate) fn mission_flight(
         &self,
         spec: i32,
         task: AiTask,

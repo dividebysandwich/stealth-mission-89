@@ -128,3 +128,4 @@ kg-pan = Privire în jur (ținut), ca mouse-ul
 kg-mouse-look = Privire în jur cu mouse-ul (ținut; afară: camera orbitează), rotița face zoom
 kg-click-control = Apăsarea comutatorului sau butonului din carlingă, sau a filei planșetei, de sub cursorul mouse-ului
 kg-ptt = Radio, țineți apăsat pentru a vorbi (multiplayer)
+kg-radio-menu = Meniu radio: apeluri către coechipier (1-7)

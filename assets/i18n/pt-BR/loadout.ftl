@@ -214,3 +214,5 @@ weapon-role-32 = Foguetes de 70 mm guiados a laser: cada um segue o ponto laser 
 employment-32 =
     Aponte o pod de designação para o alvo e dispare pelo nariz; eles curvam para o ponto
     Até 6 km; mantenha o pod no alvo até o impacto
+loadout-wingman = ALA
+    .facts = Um ala de IA na mesma aeronave e com o mesmo armamento se junta a você no ar; o menu de rádio (\) dá as ordens

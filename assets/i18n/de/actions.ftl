@@ -109,3 +109,4 @@ action-accept-tasking = Auftrag annehmen
 action-rwr-priority = RWR-Priorität
 action-rwr-separate = RWR-Zieltrennung
 action-record-gif = GIF aufnehmen
+action-radio-menu = Funkmenü (Rottenflieger)

@@ -102,6 +102,7 @@ impl Sim {
             pass_wait: 0,
             hunt: None,
             iron: false,
+            wing: None,
         });
         i
     }

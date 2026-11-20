@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R skraido tik priešpovandenines misijas
 ce-ac130-sams = Priešo SAM pozicijos per arti taikinio AC-130 lėktuvui
 ce-airlift-c5 = Oro transportas skraidomas C-5
 ce-airlift-no-handover = Krovinį į bazę nuskraidinkite patys
+cl-wingman-lost = Žaidėjo { $player } sparnininkas numuštas
+cl-wingman-no-sortie = Sparnininkas lydi tik skrydyje

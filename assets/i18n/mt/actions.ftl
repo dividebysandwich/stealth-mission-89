@@ -109,3 +109,4 @@ action-accept-tasking = Aċċetta l-kompitu
 action-rwr-priority = Prijorità tal-RWR
 action-rwr-separate = Separazzjoni tal-miri tal-RWR
 action-record-gif = Irrekordja GIF
+action-radio-menu = Menu tar-radju (wingman)

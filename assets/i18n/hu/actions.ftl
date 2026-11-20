@@ -109,3 +109,4 @@ action-accept-tasking = Feladat elfogadása
 action-rwr-priority = RWR prioritás
 action-rwr-separate = RWR célpontok szétválasztása
 action-record-gif = GIF felvétele
+action-radio-menu = Rádiómenü (kísérő)

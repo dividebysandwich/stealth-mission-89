@@ -128,3 +128,4 @@ kg-pan = Rozhlížení (držet), jako myš
 kg-mouse-look = Rozhlížení myší (držet; venku: kroužení kamerou), kolečko přibližuje
 kg-click-control = Stisknout spínač nebo tlačítko v kokpitu, nebo záložku kolenní desky, pod ukazatelem myši
 kg-ptt = Rádio, podržte pro vysílání (multiplayer)
+kg-radio-menu = Rádiové menu: volání wingmana (1-7)

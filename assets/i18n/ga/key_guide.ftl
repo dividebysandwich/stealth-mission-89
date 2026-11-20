@@ -128,3 +128,4 @@ kg-pan = Féach timpeall (coinnithe), cosúil leis an luch
 kg-mouse-look = Féach thart leis an luch (coinnithe; amuigh: fithis an cheamara), súmálann an roth
 kg-click-control = Brúigh lasc nó cnaipe an chockpit, nó cluaisín an chláir ghlúine, faoi phointeoir na luiche
 kg-ptt = Raidió, coinnigh síos le labhairt (il-imreoir)
+kg-radio-menu = Roghchlár raidió: glaonna ar an sciathánaí (1-7)

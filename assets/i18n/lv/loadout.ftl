@@ -214,3 +214,5 @@ weapon-role-32 = Ar lāzeru vadāmas 70 mm raķetes: katra tēmē uz mērķēša
 employment-32 =
     Novirziet konteineru uz mērķi un šaujiet deguna virzienā; tās pagriežas uz punktu
     Līdz 6 km; turiet konteineru uz mērķa līdz trāpījumam
+loadout-wingman = PĀRINIEKS
+    .facts = MI pārinieks tajā pašā lidmašīnā ar tādu pašu bruņojumu pievienojas gaisā; radio izvēlne (\) dod tam pavēles

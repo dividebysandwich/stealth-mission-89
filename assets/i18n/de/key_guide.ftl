@@ -126,3 +126,4 @@ kg-pan = Umschauen (gehalten), wie mit der Maus
 kg-mouse-look = Mit der Maus umsehen (gehalten; außen: Kamera umkreisen), das Mausrad zoomt
 kg-click-control = Den Schalter oder Knopf im Cockpit, oder den Reiter des Kniebretts, unter dem Mauszeiger drücken
 kg-ptt = Funk, zum Sprechen gedrückt halten (Mehrspieler)
+kg-radio-menu = Funkmenü: Rufe an den Rottenflieger (1-7)

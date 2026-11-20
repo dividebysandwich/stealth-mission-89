@@ -342,3 +342,5 @@ ce-mh60r-only = MH-60R 只执行反潜任务
 ce-ac130-sams = 敌方防空导弹阵地离目标太近，AC-130 无法出动
 ce-airlift-c5 = 空运任务由 C-5 执行
 ce-airlift-no-handover = 请亲自把货物运到基地
+cl-wingman-lost = { $player }的僚机被击落
+cl-wingman-no-sortie = 僚机只随出击同行

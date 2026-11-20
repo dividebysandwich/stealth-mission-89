@@ -343,3 +343,5 @@ ce-mh60r-only = MH-60R lentää vain sukellusveneentorjuntaa
 ce-ac130-sams = Vihollisen ilmatorjuntaohjukset ovat liian lähellä maalia AC-130:lle
 ce-airlift-c5 = Ilmakuljetukset lennetään C-5:llä
 ce-airlift-no-handover = Lennä rahti itse tukikohtaan
+cl-wingman-lost = Pelaajan { $player } siipimies ammuttiin alas
+cl-wingman-no-sortie = Siipimies tulee mukaan vain lennolle

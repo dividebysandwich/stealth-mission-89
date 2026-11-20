@@ -109,3 +109,4 @@ action-accept-tasking = Acceptă misiunea
 action-rwr-priority = Prioritate RWR
 action-rwr-separate = Separare ținte RWR
 action-record-gif = Înregistrare GIF
+action-radio-menu = Meniu radio (coechipier)
