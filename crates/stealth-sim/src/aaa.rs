@@ -155,6 +155,13 @@ pub enum GroundKind {
     /// An unmanned explosive attack boat (a Sea Baby): races in at a ship and blows up against
     /// its side (`crate::naval`).
     Usv,
+    /// An Iskander-M TEL (9P78-1): drives to its firing point, raises its two missiles and
+    /// fires them (`strike_missiles.rs`); no gun.
+    IskanderTel,
+    /// An FP-7 ballistic missile launcher at a friendly launch site.
+    Fp7Launcher,
+    /// A Flamingo cruise missile launcher at a friendly launch site.
+    FlamingoLauncher,
 }
 
 /// A friendly missile battery: a radar that tracks and the launchers around it that fire on
@@ -266,6 +273,9 @@ impl GroundKind {
             GroundKind::NasamsLauncher => "NASAMS",
             GroundKind::NasamsRadar => "NASAMS radar",
             GroundKind::Usv => "USV",
+            GroundKind::IskanderTel => "Iskander TEL",
+            GroundKind::Fp7Launcher => "FP-7 launcher",
+            GroundKind::FlamingoLauncher => "Flamingo launcher",
         }
     }
 
@@ -297,7 +307,16 @@ impl GroundKind {
     pub fn unarmed(self) -> bool {
         self.battery().is_some()
             || matches!(self, GroundKind::DroneCenter | GroundKind::Usv)
+            || self.missile_launcher()
             || self.armour()
+    }
+
+    /// A ballistic or cruise missile launcher (`strike_missiles.rs`).
+    pub fn missile_launcher(self) -> bool {
+        matches!(
+            self,
+            GroundKind::IskanderTel | GroundKind::Fp7Launcher | GroundKind::FlamingoLauncher
+        )
     }
 
     /// A main battle tank.
@@ -861,7 +880,10 @@ impl Sim {
                 | GroundKind::T90
                 | GroundKind::Leopard2
                 | GroundKind::Bradley
-                | GroundKind::Bmp2 => {}
+                | GroundKind::Bmp2
+                | GroundKind::IskanderTel
+                | GroundKind::Fp7Launcher
+                | GroundKind::FlamingoLauncher => {}
             }
         }
         self.units = units;

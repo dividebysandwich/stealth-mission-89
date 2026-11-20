@@ -1024,6 +1024,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         let d = &mut c.defence;
         d.uav_serial += 1;

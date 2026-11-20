@@ -1163,6 +1163,26 @@ pub enum SimEvent {
         crater: bool,
         kill: bool,
     },
+    /// A TEL (or launcher) is at its firing point (`Sim::units` index).
+    LauncherArrived {
+        unit: usize,
+    },
+    /// Missiles left a launcher or a bomber (its campaign tag; theirs follow it), from (x, y)
+    /// map units.
+    StrikeMissilesAway {
+        tag: u32,
+        count: u8,
+        x: i32,
+        y: i32,
+        blue: bool,
+    },
+    /// A strike missile (its campaign tag) went off at (x, y), destroying `kills` things.
+    StrikeMissileImpact {
+        tag: u32,
+        x: i32,
+        y: i32,
+        kills: u8,
+    },
     /// The active pilot's AI wingman answers his radio call.
     WingReply {
         reply: crate::wingman::WingReply,

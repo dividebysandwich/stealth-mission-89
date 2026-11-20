@@ -200,6 +200,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i

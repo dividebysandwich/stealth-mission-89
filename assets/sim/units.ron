@@ -97,6 +97,13 @@
         (id: "fa18e", name: "F/A-18E", nato: "Super Hornet", mach: 1.6, radius_km: 720, agility: 5, radar: "friendly", model: 79),
         // The EA-18G Growler: the F/A-18E's electronic attack two-seater (jamming.rs).
         (id: "ea18g", name: "EA-18G", nato: "Growler", mach: 1.6, radius_km: 720, agility: 5, radar: "friendly", model: 81),
+        // Ground attack missiles, flown by strike_missiles.rs (appended): the enemy's Iskander
+        // ballistic and Kh-101 cruise missiles, the friendly FP-7 ballistic and Flamingo cruise
+        // missiles.
+        (id: "iskander", name: "Iskander", nato: "SS-26 Stone", mach: 3.0, radius_km: 500, agility: 1, radar: "none", model: 87, kind: Drone),
+        (id: "kh101", name: "Kh-101", nato: "Kh-101", kmh: 800, radius_km: 2500, agility: 1, radar: "none", model: 88, kind: Drone),
+        (id: "fp7", name: "FP-7", nato: "FP-7", mach: 3.0, radius_km: 200, agility: 1, radar: "none", model: 89, kind: Drone),
+        (id: "flamingo", name: "Flamingo", nato: "FP-5", kmh: 900, radius_km: 3000, agility: 1, radar: "none", model: 90, kind: Drone),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,

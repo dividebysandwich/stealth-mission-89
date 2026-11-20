@@ -1447,3 +1447,154 @@ fn an_ai_asw_flight_finds_its_submarine_and_torpedoes_it() {
         }
     }
 }
+
+/// An Iskander from 150 km east of Neuburg comes down on it within its flight time and
+/// destroys it.
+#[test]
+fn an_iskander_hits_its_target() {
+    use stealth_sim::strike_missiles::MissileKind;
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let home = find(&sim, 0x401, Some("Neuburg"));
+    let o = sim.objects()[home];
+    let from = (o.x + 9600, o.y);
+    sim.launch_strike_missile(MissileKind::Iskander, from, None, (o.x, o.y), Some(home), 900);
+    let mut hit = None;
+    for s in 0..200 {
+        for e in run(&mut sim, &idle(), 1) {
+            if let SimEvent::StrikeMissileImpact { tag: 900, kills, .. } = e {
+                hit = Some((s, kills));
+            }
+        }
+        if hit.is_some() {
+            break;
+        }
+    }
+    let (secs, kills) = hit.expect("it never came down");
+    assert!((80..130).contains(&secs), "{secs} s for 150 km");
+    assert!(kills >= 1);
+    assert!(sim.objects()[home].flags & oflags::DESTROYED != 0);
+}
+
+/// Over a NASAMS battery an Iskander is not engaged (it is too high and fast for it); a
+/// Patriot battery fires at it.
+#[test]
+fn only_the_patriot_engages_a_ballistic_missile() {
+    use stealth_sim::strike_missiles::MissileKind;
+    for (patriot, want) in [(false, false), (true, true)] {
+        let (_, mut sim) = campaign();
+        quiet(&mut sim);
+        let home = find(&sim, 0x401, Some("Neuburg"));
+        let o = sim.objects()[home];
+        if patriot {
+            sim.place_patriot(o.x + 0x100, o.y);
+        } else {
+            sim.place_nasams(o.x + 0x100, o.y);
+        }
+        let i = sim.launch_strike_missile(
+            MissileKind::Iskander,
+            (o.x + 9600, o.y),
+            None,
+            (o.x, o.y),
+            Some(home),
+            900,
+        );
+        let mut engaged = false;
+        for _ in 0..200 {
+            let ev = run(&mut sim, &idle(), 1);
+            engaged |= sim.ai_missiles().iter().any(|m| m.target == i && m.ground.is_none());
+            if ev.iter().any(|e| {
+                matches!(
+                    e,
+                    SimEvent::StrikeMissileImpact { tag: 900, .. }
+                        | SimEvent::CampaignFlightDestroyed { tag: 900, .. }
+                )
+            }) {
+                break;
+            }
+        }
+        assert_eq!(engaged, want, "patriot {patriot}");
+    }
+}
+
+/// A Kh-101 cruise missile is engaged by a NASAMS battery at its target.
+#[test]
+fn a_nasams_battery_engages_a_cruise_missile() {
+    use stealth_sim::strike_missiles::MissileKind;
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let home = find(&sim, 0x401, Some("Neuburg"));
+    let o = sim.objects()[home];
+    sim.place_nasams(o.x + 0x80, o.y);
+    let i = sim.launch_strike_missile(
+        MissileKind::Kh101,
+        (o.x + 2500, o.y),
+        Some(300),
+        (o.x, o.y),
+        Some(home),
+        901,
+    );
+    let mut engaged = false;
+    for _ in 0..400 {
+        let ev = run(&mut sim, &idle(), 1);
+        engaged |= sim.ai_missiles().iter().any(|m| m.target == i && m.ground.is_none());
+        if ev.iter().any(|e| {
+            matches!(
+                e,
+                SimEvent::StrikeMissileImpact { tag: 901, .. }
+                    | SimEvent::CampaignFlightDestroyed { tag: 901, .. }
+            )
+        }) {
+            break;
+        }
+    }
+    assert!(engaged, "the NASAMS never fired at it");
+}
+
+/// A Tu-95 flies to its launch point and lets its Kh-101s go, then turns home; an Iskander
+/// TEL drives to its firing point and fires.
+#[test]
+fn a_bomber_and_a_tel_launch_their_missiles() {
+    use stealth_sim::aaa::GroundKind;
+    use stealth_sim::strike_missiles::{MissileKind, Salvo};
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let home = find(&sim, 0x401, Some("Neuburg"));
+    let enemy = find(&sim, 0x001, Some("Komarno"));
+    let (t, e) = (sim.objects()[home], sim.objects()[enemy]);
+    let launch = (e.x + (t.x - e.x) / 8, e.y + (t.y - e.y) / 8);
+    let mut aims = [(0, 0); 6];
+    aims[0] = (t.x, t.y);
+    aims[1] = (t.x + 4, t.y);
+    let salvo =
+        Salvo { kind: MissileKind::Kh101, count: 2, aims, objects: [None; 6], tag: 0x7000_0000 };
+    sim.spawn_missile_carrier(enemy, launch, salvo, false);
+    let mut away = false;
+    for _ in 0..30 * 60 {
+        if run(&mut sim, &idle(), 1)
+            .iter()
+            .any(|e| matches!(e, SimEvent::StrikeMissilesAway { tag: 0x7000_0000, count: 2, .. }))
+        {
+            away = true;
+            break;
+        }
+    }
+    assert!(away, "the bomber never fired");
+    // A TEL 2 km from its firing point.
+    let to = (e.x, e.y - 64);
+    let unit = sim.spawn_launcher(GroundKind::IskanderTel, (e.x, e.y), to, false, false);
+    let mut arrived = false;
+    for _ in 0..400 {
+        if run(&mut sim, &idle(), 1)
+            .iter()
+            .any(|ev| matches!(ev, SimEvent::LauncherArrived { unit: u } if *u == unit))
+        {
+            arrived = true;
+            break;
+        }
+    }
+    assert!(arrived, "the TEL never got there");
+    assert_eq!(sim.launcher_at(unit), Some(to));
+    let n = sim.fire_launcher(unit, MissileKind::Iskander, &[((t.x, t.y), Some(home))], 0x7100_0000);
+    assert_eq!(n, 1);
+}

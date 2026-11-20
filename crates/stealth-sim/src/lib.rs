@@ -41,6 +41,7 @@ pub mod jamming;
 pub mod jp233;
 pub mod rockets;
 pub mod wingman;
+pub mod strike_missiles;
 pub mod station;
 pub mod supply;
 mod targeting;
@@ -286,6 +287,9 @@ pub struct Sim {
     /// The wingmen's answers given between steps (pilot, answer), handed over with the next.
     #[serde(skip)]
     pub(crate) wing_replies: Vec<(u8, wingman::WingReply)>,
+    /// The TELs on their way to their firing points ([`strike_missiles`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) launchers: Vec<strike_missiles::Launcher>,
     /// Apron parking spots for the parked base traffic: world x, y and heading;
     /// empty = parked on the base object (classic).
     #[serde(default)]
@@ -666,6 +670,7 @@ impl Sim {
             rockets: rockets::Rockets::default(),
             pending_wing: Vec::new(),
             wing_replies: Vec::new(),
+            launchers: Vec::new(),
             drones: m.drones.as_ref().map(|d| drones::Drones {
                 defend: d.defend,
                 target: d.target as i32,

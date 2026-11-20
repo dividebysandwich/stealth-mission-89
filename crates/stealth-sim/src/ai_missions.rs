@@ -107,6 +107,8 @@ fn flight(
         hunt: None,
         iron: false,
         wing: None,
+        missile: None,
+        salvo: None,
     }
 }
 

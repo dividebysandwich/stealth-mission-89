@@ -157,6 +157,8 @@ pub enum Role {
     /// Reconnaissance: flies low to its goal, photographs the object there (`strike` until
     /// then) and flies home.
     Recon,
+    /// A ballistic or cruise missile at a ground target (`strike_missiles.rs` flies it).
+    Missile,
 }
 
 /// An aircraft the campaign launched.
@@ -235,6 +237,12 @@ pub struct CampaignFlight {
     /// A pilot's wingman ([`crate::wingman`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wing: Option<crate::wingman::Wing>,
+    /// A missile's flight ([`crate::strike_missiles`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub missile: Option<crate::strike_missiles::StrikeMissile>,
+    /// A bomber's missiles, fired at its goal.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub salvo: Option<crate::strike_missiles::Salvo>,
 }
 
 impl CampaignFlight {
@@ -1278,6 +1286,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
@@ -1374,6 +1384,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         i
     }
@@ -1454,6 +1466,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         i
     }
@@ -1518,6 +1532,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         i
     }
@@ -1637,6 +1653,7 @@ impl Sim {
             self.campaign_acquire();
         }
         self.update_wingmen();
+        self.update_strike_missiles();
         self.update_stations();
         self.update_uavs();
         self.update_ground();
@@ -1786,7 +1803,9 @@ impl Sim {
         // How close a SAM site engages each low flyer: helicopters, strike aircraft in and out.
         let low: Vec<Option<i32>> = (0..self.flights.len())
             .map(|i| {
-                if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter {
+                if self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter
+                    || self.cruise_missile(i)
+                {
                     Some(HELO_SAM_REACH)
                 } else if self.flights[i].spec == crate::ai_missions::TORNADO
                     || self.campaign_flight(i).is_some_and(|f| {
@@ -1807,6 +1826,11 @@ impl Sim {
             .map(|i| self.campaign_flight(i).is_some_and(|f| f.role == Role::Uav))
             .collect();
         let drone_reach = (crate::uav::DETECT_RANGE / M_PER_MAP) as i32;
+        // Missiles: a ballistic one only a long range SAM engages; a cruise missile is seen late.
+        let ballistic: Vec<bool> =
+            (0..self.flights.len()).map(|i| self.ballistic_missile(i)).collect();
+        let cruise: Vec<bool> = (0..self.flights.len()).map(|i| self.cruise_missile(i)).collect();
+        let cruise_reach = (crate::strike_missiles::CRUISE_DETECT_M / M_PER_MAP) as i32;
         // Stealthy aircraft: radars find them this much closer (percent).
         let stealth: Vec<i32> =
             self.flights.iter().map(|u| self.ac_type(u.spec).stealth as i32).collect();
@@ -1815,13 +1839,15 @@ impl Sim {
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         // The nearest aircraft of a side in reach (`low` for a SAM radar's low flyers).
-        let near = |x: i32, y: i32, blue: bool, reach: i32, sam: bool, min_alt: f64| {
+        let near = |x: i32, y: i32, blue: bool, reach: i32, sam: bool, min_alt: f64, tbm: bool| {
             (0..sides.len())
                 .filter(|&j| sides[j] == Some(blue) && pos[j][2] > min_alt)
+                .filter(|&j| tbm || !ballistic[j])
                 .map(|j| (j, approx(xy[j].0 - x, xy[j].1 - y)))
                 .filter(|&(j, d)| {
                     let reach = if sam { reach * stealth[j] / 100 } else { reach };
                     let reach = if unseen[j] { reach.min(drone_reach) } else { reach };
+                    let reach = if cruise[j] { reach.min(cruise_reach) } else { reach };
                     d < low[j].filter(|_| sam).map_or(reach, |l| reach.min(l))
                 })
                 .min_by_key(|&(_, d)| d)
@@ -1845,7 +1871,8 @@ impl Sim {
             let lock = (self.missile(spec).lock_range as i32) << 6;
             let reach = lock * if c.intel[i] { INTEL_DETECTION } else { 10 } / 10;
             let reach = if jammed[i] { reach * crate::jamming::JAM_SCORE_PCT / 100 } else { reach };
-            let Some((j, d)) = near(o.x, o.y, true, reach, true, 15.0) else {
+            let tbm = crate::munitions::long_range_sam(spec);
+            let Some((j, d)) = near(o.x, o.y, true, reach, true, 15.0, tbm) else {
                 continue;
             };
             if d > horizon(pos[j][2]) || rng.random(100) > 40 + 15 * self.diff {
@@ -1896,7 +1923,8 @@ impl Sim {
                 continue;
             }
             if let Some(b) = u.kind.battery_radar() {
-                let track = near(u.x, u.y, !blue, b.reach(), true, PATRIOT_FLOOR)
+                let tbm = b == crate::aaa::SamBattery::Patriot;
+                let track = near(u.x, u.y, !blue, b.reach(), true, PATRIOT_FLOOR, tbm)
                     .filter(|&(j, d)| d <= horizon(pos[j][2]));
                 c.aaa_target[k] = track.map(|t| t.0);
                 let a = &mut self.units[k];
@@ -1909,7 +1937,7 @@ impl Sim {
             }
             let (_, reach, ceiling) = gun_envelope(u.kind);
             let reach = (reach / M_PER_MAP) as i32;
-            let Some((j, _)) = near(u.x, u.y, !blue, reach, false, 15.0) else {
+            let Some((j, _)) = near(u.x, u.y, !blue, reach, false, 15.0, false) else {
                 continue;
             };
             if pos[j][2] > ceiling {
@@ -1989,7 +2017,7 @@ impl Sim {
             if striker {
                 let armed = f.loadout.missiles() > 0 || self.ai_has_gun(u.spec);
                 f.target = (0..sides.len())
-                    .filter(|&j| sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
+                    .filter(|&j| sides[j] == Some(!f.blue) && pos[j][2] > 0.0 && !ballistic[j])
                     .map(|j| (j, approx(xy[j].0 - u.x, xy[j].1 - u.y)))
                     .filter(|&(_, d)| d < WATCH)
                     .min_by_key(|&(_, d)| d)
@@ -2029,7 +2057,9 @@ impl Sim {
                         })
                 };
                 f.target = (0..sides.len())
-                    .filter(|&j| !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0)
+                    .filter(|&j| {
+                        !leashed && sides[j] == Some(!f.blue) && pos[j][2] > 0.0 && !ballistic[j]
+                    })
                     .filter(|&j| in_bubble(j))
                     .map(|j| (j, approx(xy[j].0 - u.x, xy[j].1 - u.y)))
                     .filter(|&(j, d)| d < FIGHTER_SEARCH * stealth[j] / 100)

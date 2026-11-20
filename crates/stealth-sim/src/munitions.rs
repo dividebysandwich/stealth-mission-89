@@ -103,6 +103,8 @@ impl Sim {
             hunt: None,
             iron: false,
             wing: None,
+            missile: None,
+            salvo: None,
         });
         i
     }
