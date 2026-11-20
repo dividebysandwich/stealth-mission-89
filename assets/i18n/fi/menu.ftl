@@ -206,6 +206,11 @@ aircraft-f16 =
         Monitoimihävittäjä
         Mach 2 -luokka, 9 g, nopea kallistus
         F-16-ohjaamo RWR:llä
+aircraft-f22 =
+    .facts =
+        Häivetekniikkaa käyttävä ilmaherruushävittäjä
+        Mach 2 -luokka, superristeily, 9 g
+        Sisäiset asekuilut, työntövoiman suuntaus
 aircraft-fa18e =
     .facts =
         Monitoimihävittäjä, lentotukialuksilta

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ZÁSOBOVÁNÍ
 ck-airlift = PŘEPRAVA
+ck-logistics = LOGISTIKA
 
 ## Odmítnuté příkazy
 

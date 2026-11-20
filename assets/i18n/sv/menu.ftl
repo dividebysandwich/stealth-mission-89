@@ -206,6 +206,11 @@ aircraft-f16 =
         Mångsidigt jaktflygplan
         Mach 2-klass, 9 g, snabb rullning
         F-16-cockpit med RWR
+aircraft-f22 =
+    .facts =
+        Smygande luftöverlägsenhetsjaktplan
+        Mach 2-klass, supercruise, 9 g
+        Interna vapenrum, styrbar dragkraft
 aircraft-fa18e =
     .facts =
         Mångsidigt jaktflygplan, från hangarfartygen

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = REAPROVIZIONARE
 ck-airlift = TRANSPORT AERIAN
+ck-logistics = LOGISTICĂ
 
 ## Comenzi refuzate
 

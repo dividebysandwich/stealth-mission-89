@@ -206,6 +206,11 @@ aircraft-f16 =
         Sokoldalú vadászgép
         Mach 2 kategória, 9 g, gyors orsózás
         F-16 pilótafülke RWR-rel
+aircraft-f22 =
+    .facts =
+        Lopakodó légifölény-vadászgép
+        Mach 2 kategória, szuperszonikus utazósebesség, 9 g
+        Belső fegyverterek, tolóerő-vektorálás
 aircraft-fa18e =
     .facts =
         Sokoldalú vadászgép, a repülőgép-hordozókról

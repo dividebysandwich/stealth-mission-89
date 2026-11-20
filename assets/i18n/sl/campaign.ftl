@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = OSKRBA
 ck-airlift = ZRAČNI PREVOZ
+ck-logistics = LOGISTIKA
 
 ## Zavrnjeni ukazi
 

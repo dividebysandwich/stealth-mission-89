@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = RIFORNIM.
 ck-airlift = TRASPORTO
+ck-logistics = LOGISTICA
 
 ## Comandi rifiutati
 

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = 補給
 ck-airlift = 空輸
+ck-logistics = 補給
 
 ## 拒否されたコマンド
 

@@ -206,6 +206,11 @@ aircraft-f16 =
         Viacúčelová stíhačka
         Trieda Mach 2, 9 g, rýchle klonenie
         Kokpit F-16 s RWR
+aircraft-f22 =
+    .facts =
+        Stealth stíhačka pre vzdušnú prevahu
+        Trieda Mach 2, supercruise, 9 g
+        Vnútorné pumovnice, vektorovanie ťahu
 aircraft-fa18e =
     .facts =
         Viacúčelová stíhačka, z lietadlových lodí

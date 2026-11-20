@@ -206,6 +206,11 @@ aircraft-f16 =
         Multirolle-jager
         Mach 2-klassen, 9 g, hurtig rulning
         F-16-cockpit med RWR
+aircraft-f22 =
+    .facts =
+        Stealth-luftoverlegenhedsjager
+        Mach 2-klassen, supercruise, 9 g
+        Indvendige våbenrum, vektoriseret tryk
 aircraft-fa18e =
     .facts =
         Multirolle-jager, fra hangarskibene

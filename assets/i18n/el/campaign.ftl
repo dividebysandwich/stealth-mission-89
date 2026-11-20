@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ΑΝΕΦΟΔΙΑΣΜΟΣ
 ck-airlift = ΑΕΡΟΜΕΤΑΦΟΡΑ
+ck-logistics = ΕΦΟΔΙΑΣΜΟΣ
 
 ## Αρνήσεις εντολών
 

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = TÄIENDUS
 ck-airlift = ÕHUTRANSPORT
+ck-logistics = LOGISTIKA
 
 ## Tagasilükatud käsud
 

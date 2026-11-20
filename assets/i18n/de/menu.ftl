@@ -206,6 +206,11 @@ aircraft-f16 =
         Mehrzweckjäger
         Mach-2-Klasse, 9 g, schnelle Rolle
         F-16-Cockpit mit RWR
+aircraft-f22 =
+    .facts =
+        Tarnkappen-Luftüberlegenheitsjäger
+        Mach-2-Klasse, Supercruise, 9 g
+        Interne Waffenschächte, Schubvektorsteuerung
 aircraft-fa18e =
     .facts =
         Mehrzweckjäger, von den Flugzeugträgern

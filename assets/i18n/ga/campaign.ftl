@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ATHSHOLÁTHAR
 ck-airlift = AERIOMPAR
+ck-logistics = LÓISTÍOCHT
 
 ## Orduithe diúltaithe
 

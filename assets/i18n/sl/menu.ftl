@@ -206,6 +206,11 @@ aircraft-f16 =
         Večnamenski lovec
         Razred Mach 2, 9 g, hitro kotaljenje
         Kabina F-16 z RWR
+aircraft-f22 =
+    .facts =
+        Nevidni lovec za prevlado v zraku
+        Razred Mach 2, nadzvočno križarjenje, 9 g
+        Notranji prostori za orožje, usmerjanje potiska
 aircraft-fa18e =
     .facts =
         Večnamenski lovec, z letalonosilk

@@ -206,6 +206,11 @@ aircraft-f16 =
         Avion de vânătoare multirol
         Clasa Mach 2, 9 g, ruliu rapid
         Cockpit F-16 cu RWR
+aircraft-f22 =
+    .facts =
+        Avion de vânătoare stealth de superioritate aeriană
+        Clasa Mach 2, supercroazieră, 9 g
+        Compartimente interne de armament, vectorizarea tracțiunii
 aircraft-fa18e =
     .facts =
         Avion de vânătoare multirol, de pe portavioane

@@ -206,6 +206,11 @@ aircraft-f16 =
         Mitmeotstarbeline hävitaja
         Mach 2 klass, 9 g, kiire rull
         F-16 cockpit RWR-iga
+aircraft-f22 =
+    .facts =
+        Varjatud õhuülekaalu hävitaja
+        Mach 2 klass, ülehelikiirusel ilma järelpõletita, 9 g
+        Sisemised relvaruumid, veojõuvektori juhtimine
 aircraft-fa18e =
     .facts =
         Mitmeotstarbeline hävitaja, lennukikandjatelt

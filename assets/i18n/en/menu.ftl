@@ -206,6 +206,11 @@ aircraft-f16 =
         Multirole fighter
         Mach 2 class, 9 g, quick roll
         F-16 cockpit with RWR
+aircraft-f22 =
+    .facts =
+        Stealth air superiority fighter
+        Mach 2 class, supercruise, 9 g
+        Internal weapons bays, thrust vectoring
 aircraft-fa18e =
     .facts =
         Multirole fighter, from the carriers

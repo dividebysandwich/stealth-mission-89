@@ -315,6 +315,78 @@ impl UiFont {
 mod tests {
     use super::*;
 
+    /// Ids built at runtime from an enum's name ("ck-logistics") are not seen by
+    /// `every_language_is_complete`, which only compares the languages with each other.
+    #[test]
+    fn built_ids_exist() {
+        use stealth_campaign::MissionKind as K;
+        let kinds = [
+            K::Recon,
+            K::Sead,
+            K::Cap,
+            K::Cas,
+            K::AntiShip,
+            K::Strike,
+            K::Escort,
+            K::Insertion,
+            K::Intercept,
+            K::Defend,
+            K::Interdiction,
+            K::Csar,
+            K::Awacs,
+            K::Resupply,
+            K::Logistics,
+            K::Airlift,
+            K::Asw,
+            K::FleetDefence,
+        ];
+        // A new kind fails to compile here until it is in `kinds` too.
+        let _ = |k: K| match k {
+            K::Recon
+            | K::Sead
+            | K::Cap
+            | K::Cas
+            | K::AntiShip
+            | K::Strike
+            | K::Escort
+            | K::Insertion
+            | K::Intercept
+            | K::Defend
+            | K::Interdiction
+            | K::Csar
+            | K::Awacs
+            | K::Resupply
+            | K::Logistics
+            | K::Airlift
+            | K::Asw
+            | K::FleetDefence => (),
+        };
+        let mut ids = Vec::new();
+        for k in kinds {
+            let n = k.name().to_ascii_lowercase();
+            ids.extend([format!("ck-{n}"), format!("brief-task-{n}")]);
+        }
+        for a in AircraftKind::ALL {
+            ids.push(format!("aircraft-{}.facts", a.id()));
+        }
+        for t in THEATERS {
+            ids.extend([format!("theater-{}", t.0), format!("theater-{}.facts", t.0)]);
+        }
+        for s in Sky::ALL {
+            let id = sky_id(s);
+            ids.extend([format!("{id}.facts"), id]);
+        }
+        for w in stealth_mission::WindLevel::ALL {
+            let id = format!("wind-{}", w.name().to_lowercase());
+            ids.extend([format!("{id}.facts"), id]);
+        }
+        for e in crate::effects::Effect::ALL {
+            ids.extend([format!("effect-{}", e.name()), format!("fm-effect-{}", e.name())]);
+        }
+        let missing: Vec<_> = ids.iter().filter(|id| !stealth_i18n::exists(id)).collect();
+        assert!(missing.is_empty(), "no English text for {missing:?}");
+    }
+
     /// Every character of the CJK languages' texts is in their font, or the player would see an
     /// empty box (`python tools/i18n_fonts.py` makes the fonts again).
     #[test]

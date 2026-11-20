@@ -206,6 +206,11 @@ aircraft-f16 =
         Caça multifunção
         Classe Mach 2, 9 g, rolamento rápido
         Cockpit de F-16 com RWR
+aircraft-f22 =
+    .facts =
+        Caça furtivo de superioridade aérea
+        Classe Mach 2, supercruzeiro, 9 g
+        Compartimentos internos de armas, empuxo vetorado
 aircraft-fa18e =
     .facts =
         Caça multifunção, a partir dos porta-aviões

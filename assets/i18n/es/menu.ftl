@@ -206,6 +206,11 @@ aircraft-f16 =
         Caza polivalente
         Clase Mach 2, 9 g, alabeo rápido
         Cabina de F-16 con RWR
+aircraft-f22 =
+    .facts =
+        Caza furtivo de superioridad aérea
+        Clase Mach 2, supercrucero, 9 g
+        Bodegas de armas internas, empuje vectorial
 aircraft-fa18e =
     .facts =
         Caza polivalente, desde los portaaviones

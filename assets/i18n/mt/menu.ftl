@@ -206,6 +206,11 @@ aircraft-f16 =
         Ġellied multirole
         Klassi Mach 2, 9 g, roll veloċi
         Kokpit F-16 bl-RWR
+aircraft-f22 =
+    .facts =
+        Ġellied stealth għas-superjorità tal-ajru
+        Klassi Mach 2, supercruise, 9 g
+        Kompartimenti interni tal-armi, thrust vectoring
 aircraft-fa18e =
     .facts =
         Ġellied multirole, mill-ġarrieri tal-ajruplani

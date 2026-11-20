@@ -191,6 +191,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = СНАБЖЕНИЕ
 ck-airlift = ПЕРЕВОЗКА
+ck-logistics = ЛОГИСТИКА
 
 ## Отклонённые команды
 

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = NACHSCHUB
 ck-airlift = LUFTTRANSPORT
+ck-logistics = LOGISTIK
 
 ## Abgelehnte Befehle
 

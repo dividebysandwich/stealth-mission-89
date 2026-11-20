@@ -206,6 +206,11 @@ aircraft-f16 =
         Trodaire il-róil
         Aicme Mach 2, 9 g, rolladh tapa
         Cockpit F-16 le RWR
+aircraft-f22 =
+    .facts =
+        Trodaire sárcheannais aeir stealth
+        Aicme Mach 2, sár-thaisteal, 9 g
+        Bánna inmheánacha arm, sá veicteoireach
 aircraft-fa18e =
     .facts =
         Trodaire il-róil, ó na hiompróirí

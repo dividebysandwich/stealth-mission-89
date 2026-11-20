@@ -206,6 +206,11 @@ aircraft-f16 =
         Daugiafunkcis naikintuvas
         Mach 2 klasės, 9 g, greitas posvyris
         F-16 kabina su RWR
+aircraft-f22 =
+    .facts =
+        Nematomas oro pranašumo naikintuvas
+        Mach 2 klasės, viršgarsinis kreiseris, 9 g
+        Vidiniai ginklų skyriai, traukos vektoriaus valdymas
 aircraft-fa18e =
     .facts =
         Daugiafunkcis naikintuvas, iš lėktuvnešių

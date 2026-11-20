@@ -191,6 +191,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = RAVITO
 ck-airlift = TRANSPORT
+ck-logistics = LOGISTIQUE
 
 ## Commandes refusées
 

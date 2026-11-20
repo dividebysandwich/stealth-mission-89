@@ -191,6 +191,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = 补给
 ck-airlift = 空运
+ck-logistics = 后勤
 
 ## 被拒绝的指令
 

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = TÄYDENNYS
 ck-airlift = ILMAKULJETUS
+ck-logistics = LOGISTIIKKA
 
 ## Hylätyt komennot
 

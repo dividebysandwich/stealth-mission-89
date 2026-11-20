@@ -206,6 +206,11 @@ aircraft-f16 =
         Daudzfunkcionāls iznīcinātājs
         Mach 2 klase, 9 g, ātra ruļļošanās
         F-16 kabīne ar RWR
+aircraft-f22 =
+    .facts =
+        Neredzamais gaisa pārākuma iznīcinātājs
+        Mach 2 klase, virsskaņas kreisēšana, 9 g
+        Iekšējie ieroču nodalījumi, vilces vektora vadība
 aircraft-fa18e =
     .facts =
         Daudzfunkcionāls iznīcinātājs, no aviācijas bāzeskuģiem

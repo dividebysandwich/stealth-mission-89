@@ -206,6 +206,11 @@ aircraft-f16 =
         Višenamjenski lovac
         Klasa Mach 2, 9 g, brzo valjanje
         Kokpit F-16 s RWR-om
+aircraft-f22 =
+    .facts =
+        Nevidljivi lovac za nadmoć u zraku
+        Klasa Mach 2, superkrstarenje, 9 g
+        Unutarnji odjeljci za oružje, vektoriranje potiska
 aircraft-fa18e =
     .facts =
         Višenamjenski lovac, s nosača zrakoplova

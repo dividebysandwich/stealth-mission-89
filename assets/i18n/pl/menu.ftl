@@ -206,6 +206,11 @@ aircraft-f16 =
         Wielozadaniowy myśliwiec
         Klasa Mach 2, 9 g, szybki przechył
         Kokpit F-16 z RWR
+aircraft-f22 =
+    .facts =
+        Myśliwiec przewagi powietrznej stealth
+        Klasa Mach 2, superprzelot, 9 g
+        Wewnętrzne komory uzbrojenia, wektorowanie ciągu
 aircraft-fa18e =
     .facts =
         Wielozadaniowy myśliwiec, z lotniskowców

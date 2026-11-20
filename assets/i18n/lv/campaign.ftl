@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = PAPILDINĀJUMS
 ck-airlift = GAISA TRANSPORTS
+ck-logistics = LOĢISTIKA
 
 ## Atteiktās komandas
 

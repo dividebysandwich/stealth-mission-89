@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = BEVOORR.
 ck-airlift = LUCHTTRANSPORT
+ck-logistics = LOGISTIEK
 
 ## Geweigerde commando's
 

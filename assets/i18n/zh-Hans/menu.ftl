@@ -206,6 +206,11 @@ aircraft-f16 =
         多用途战斗机
         2 马赫级，9 g，滚转迅速
         带 RWR 的 F-16 座舱
+aircraft-f22 =
+    .facts =
+        隐身空优战斗机
+        2 马赫级，超音速巡航，9 g
+        内置弹舱，推力矢量
 aircraft-fa18e =
     .facts =
         多用途战斗机，从航母起飞

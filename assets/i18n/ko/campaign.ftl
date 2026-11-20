@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = 보급
 ck-airlift = 공수
+ck-logistics = 군수
 
 ## 거부된 명령
 

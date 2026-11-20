@@ -206,6 +206,11 @@ aircraft-f16 =
         Chasseur multirôle
         Classe Mach 2, 9 g, roulis rapide
         Cockpit de F-16 avec RWR
+aircraft-f22 =
+    .facts =
+        Chasseur furtif de supériorité aérienne
+        Classe Mach 2, supercroisière, 9 g
+        Soutes à armement internes, poussée vectorielle
 aircraft-fa18e =
     .facts =
         Chasseur multirôle, depuis les porte-avions

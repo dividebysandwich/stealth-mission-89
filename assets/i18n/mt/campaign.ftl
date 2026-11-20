@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = RIFORNIMENTI
 ck-airlift = TRASPORT
+ck-logistics = LOĠISTIKA
 
 ## Kmandi miċħuda
 

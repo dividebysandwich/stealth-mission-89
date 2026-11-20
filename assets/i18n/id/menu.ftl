@@ -206,6 +206,11 @@ aircraft-f16 =
         Pesawat tempur multiperan
         Kelas Mach 2, 9 g, roll cepat
         Kokpit F-16 dengan RWR
+aircraft-f22 =
+    .facts =
+        Pesawat tempur siluman superioritas udara
+        Kelas Mach 2, supercruise, 9 g
+        Ruang senjata internal, vektor dorong
 aircraft-fa18e =
     .facts =
         Pesawat tempur multiperan, dari kapal induk

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = UTÁNPÓTLÁS
 ck-airlift = LÉGISZÁLLÍTÁS
+ck-logistics = LOGISZTIKA
 
 ## Elutasított parancsok
 

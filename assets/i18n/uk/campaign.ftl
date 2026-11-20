@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = ПОСТАЧАННЯ
 ck-airlift = ПЕРЕВЕЗЕННЯ
+ck-logistics = ЛОГІСТИКА
 
 ## Відмови у виконанні команд
 

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = PAPILDYMAS
 ck-airlift = ORO TRANSPORTAS
+ck-logistics = LOGISTIKA
 
 ## Atmesti įsakymai
 

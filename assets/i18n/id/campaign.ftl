@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = PASOKAN
 ck-airlift = ANGKUT UDARA
+ck-logistics = LOGISTIK
 
 ## Perintah yang ditolak
 

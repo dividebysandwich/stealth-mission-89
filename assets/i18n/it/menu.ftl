@@ -206,6 +206,11 @@ aircraft-f16 =
         Caccia multiruolo
         Classe Mach 2, 9 g, rollio rapido
         Cockpit dell'F-16 con RWR
+aircraft-f22 =
+    .facts =
+        Caccia stealth da superiorità aerea
+        Classe Mach 2, supercrociera, 9 g
+        Stive armi interne, spinta vettoriale
 aircraft-fa18e =
     .facts =
         Caccia multiruolo, dalle portaerei

@@ -192,6 +192,7 @@ ck-csar = CSAR
 ck-awacs = AWACS
 ck-resupply = RESUPPLY
 ck-airlift = AIRLIFT
+ck-logistics = LOGISTICS
 
 ## Refused commands
 
