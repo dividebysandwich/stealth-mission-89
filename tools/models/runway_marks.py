@@ -7,8 +7,10 @@ runway it becomes when destroyed. The pad, taxiways, aprons, lights and the coar
     tools/models/export.sh <file>
 
 Runs on the open master and saves it. The markings are painted white, which goes black at
-dusk, so they are shown by day only: they go into `_s11v0` of the two finest levels (the
-second one is drawn from 500 m to 4 km of the runway's middle, the whole approach), and the
+dusk, so the day's go into `_s11v0` of the two finest levels (the second one is drawn from
+500 m to 4 km of the runway's middle, the whole approach) and a copy in the fixed grey
+`NIGHT_MARK`, which keeps its brightness while the ground darkens, into `_s11v1` (shown while
+the lights are on, from dusk to dawn): dim paint on the dark asphalt. The
 base mesh of the finest level loses the marking faces of earlier runs (colours 203 and 224).
 In the two finest levels `_s1v1` (destroyed) gets the craters. Model space: x east, y north
 (along the runway), z up, in LOD2 units (4 WU, about 1.95 m). The runway is the long asphalt
@@ -35,6 +37,8 @@ from mklib import Geo, Ramp  # noqa: E402
 
 UNIT_M = 4 * 512_000.0 / 1_048_576.0
 OLD_MARK, MARK, ASPHALT = 203, 224, 238
+# The night markings: fixed palette grey 21 (the asphalt is 21 by day, 12 at dusk, 8 at night).
+NIGHT_MARK = 8
 MARK_Z = 0.45
 DEBRIS = Ramp(0xE8, 0xEF)
 SCORCH = 0xEE
@@ -237,6 +241,13 @@ def rebuild(root):
                 if not detail:
                     marks.add(centreline_lines(half_l, w))
                 mklib.set_geometry(c, marks)
+                # Faces only: lines of a fixed colour are drawn as lights (undimmed at night),
+                # and the runway's centreline lights show the far centreline by night.
+                night = mklib.Geo()
+                night.faces = [(pts, NIGHT_MARK) for pts, _ in marks.faces]
+                name = lod.name + "_s11v1"
+                node = bpy.data.objects.get(name) or mklib.link_child(lod, name, None)
+                mklib.set_geometry(node, night)
             if c.name == lod.name + "_s1v1" and c.type == "MESH":
                 mklib.set_geometry(c, wreck(detail))
 

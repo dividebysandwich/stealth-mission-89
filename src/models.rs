@@ -215,8 +215,8 @@ pub struct CondNode {
     pub conds: Vec<(usize, i16)>,
 }
 
-/// An airbase's runway markings (the `_s11v0` daytime layer of its two finest levels,
-/// tools/models/runway_marks.py): drawn `MARKS_Y` model units over the asphalt to stay clear
+/// An airbase's runway markings (the `_s11v0` day and `_s11v1` night layers of its two finest
+/// levels, tools/models/runway_marks.py): drawn `MARKS_Y` model units over the asphalt to stay clear
 /// of it from afar, they are lowered to just above it as the camera comes close, so they lie
 /// on the runway instead of floating over it. Their footprint (model x, z).
 #[derive(Component)]
@@ -701,7 +701,7 @@ impl ModelAssets<'_> {
         if !conds.is_empty() && !name.contains("_pal_") {
             e.insert(CondNode { root, conds });
         }
-        if name.ends_with("_s11v0")
+        if (name.ends_with("_s11v0") || name.ends_with("_s11v1"))
             && (name.contains("_lod0_") || name.contains("_lod1_"))
             && let Some(marks) = self.runway_marks(handle)
         {
