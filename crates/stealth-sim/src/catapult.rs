@@ -386,6 +386,10 @@ impl Sim {
             Phase::Tension => {
                 u.speed = 0;
                 set(u, (p.east, p.north));
+                // A wingman runs up once its lead is launched.
+                if self.wing_holds_launch(i) {
+                    l.frames = 0;
+                }
                 if l.frames >= AI_RUNUP_S * fs {
                     l = AiLaunch { phase: Phase::Shoot, frames: 0, ..l };
                 }

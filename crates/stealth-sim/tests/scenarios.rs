@@ -4466,3 +4466,256 @@ fn a_helicopter_wingman_flies_close_formation() {
     let (along, right) = wing_offset(&sim, &p);
     assert!((-100.0..10.0).contains(&along) && (90.0..150.0).contains(&right), "spread {along:.0} {right:.0}");
 }
+
+/// A sandbox that keeps its airfields (none friendly: stopping on one ends no mission), its
+/// lead taking off and landing judged by no one.
+fn runway_sandbox(d: &Data) -> Sim {
+    let opts = SimOptions { landing: LandingMode::NoCrashes, ..Default::default() };
+    let (m, mut sim) = aaa_mission_with(d, opts);
+    let flags: Vec<i32> = sim.objects().iter().map(|o| o.flags).collect();
+    sandbox(&mut sim, &m);
+    sim.units_mut().clear();
+    for (o, f) in sim.objects_mut().iter_mut().zip(flags) {
+        o.flags |= f & oflags::AIRFIELD;
+    }
+    sim
+}
+
+/// A runway of the sandbox's theater, and a lead on its centreline `along` m from its middle
+/// (negative: towards the end it is taken off from), heading along it, at rest with the gear
+/// down.
+fn lead_on_runway(sim: &Sim, along: f64) -> (Runway, PlayerState) {
+    let r = sim.runways()[0];
+    let wu = |m: f64| (m / (aaa::M_PER_MAP / 32.0)).round() as i32;
+    let h = r.axis.0.atan2(r.axis.1);
+    let mut p = player_at(0, 0, 0, (h / std::f64::consts::TAU * 65536.0) as i32 as u16, 0);
+    (p.x, p.y) = (wu(r.c.0 + r.axis.0 * along), wu(r.c.1 + r.axis.1 * along));
+    p.on_ground = true;
+    p.gear_up = false;
+    (r, p)
+}
+
+/// Flight unit `i`'s place on runway `r` (m along from its middle, across).
+fn on_runway(sim: &Sim, i: usize, r: &Runway) -> (f64, f64) {
+    let u = sim.flights()[i];
+    let m = aaa::M_PER_MAP / 32.0;
+    let (e, n) = (u.wx as f64 * m, (0x10_0000 - u.wy) as f64 * m);
+    let (dx, dy) = (e - r.c.0, n - r.c.1);
+    (dx * r.axis.0 + dy * r.axis.1, -dx * r.axis.1 + dy * r.axis.0)
+}
+
+/// The lead flies a 3° approach to `touchdown` m along runway `r` from its middle, lands and
+/// brakes at `brake` kt/s to a stop, then waits 30 s. Checks the wingman on the way: never
+/// below the runway, on it once down.
+fn land_on(sim: &mut Sim, p: &mut PlayerState, r: &Runway, touchdown: f64, brake: u16) {
+    let me = sim.active_pilot();
+    let m = aaa::M_PER_MAP / 32.0;
+    let mut stopped = 0;
+    for _ in 0..15 * 300 {
+        wing_step(sim, p);
+        let (e, n) = (p.x as f64 * m, p.y as f64 * m);
+        let along = (e - r.c.0) * r.axis.0 + (n - r.c.1) * r.axis.1;
+        let to_go = touchdown - along;
+        if !p.on_ground {
+            let ft = (to_go.max(0.0) * 0.0524 * 3.28) as u16;
+            (p.altitude, p.height) = (ft, ft);
+            p.on_ground = ft == 0;
+            p.climb_rate = if p.on_ground { 0 } else { -12 };
+        } else {
+            p.velocity = p.velocity.saturating_sub(brake * 27 / 15);
+        }
+        if let Some(i) = sim.wingman_of(me) {
+            let u = sim.flights()[i];
+            assert_eq!(u.flags & fflags::DESTROYED, 0, "crashed");
+            assert!(u.alt >= 12, "under the ground: {}", u.alt);
+            if u.alt < 20 {
+                let (a, x) = on_runway(sim, i, r);
+                assert!(
+                    a.abs() < r.half_len && x.abs() < r.half_width,
+                    "off the runway {a:.0} {x:.0}"
+                );
+            }
+        }
+        if p.velocity == 0 {
+            stopped += 1;
+            if stopped > 15 * 30 {
+                return;
+            }
+        }
+    }
+    panic!("never stopped");
+}
+
+/// A wingman starts on the runway beside its lead, rolls and lifts off with him, and flies
+/// out to its station once they are up.
+#[test]
+fn a_wingman_takes_off_beside_its_lead() {
+    use stealth_sim::wingman::WingPhase;
+    let d = data();
+    let mut sim = runway_sandbox(d);
+    let (r, mut p) = lead_on_runway(&sim, -800.0);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::F16);
+    wing_step(&mut sim, &mut p);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Takeoff));
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(
+        (-15.0..-5.0).contains(&along) && (15.0..25.0).contains(&right),
+        "{along:.0} {right:.0}"
+    );
+    let i = sim.wingman_of(me).unwrap();
+    assert_eq!(sim.flights()[i].alt, 12);
+    // Waiting a minute on the runway: it waits with him.
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+    }
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Takeoff));
+    // The roll: 8 kt/s to 150 kt, then up at 20 ft/s.
+    let mut up = None;
+    for f in 0..15 * 90 {
+        if p.on_ground {
+            p.velocity += 8 * 27 / 15;
+            p.on_ground = p.velocity < 150 * 27;
+        } else {
+            p.altitude += 2;
+            p.height = p.altitude;
+            p.gear_up = p.height > 100;
+        }
+        wing_step(&mut sim, &mut p);
+        let Some(i) = sim.wingman_of(me) else { panic!("gone") };
+        if sim.wing(me).map(|w| w.phase) == Some(WingPhase::Takeoff) {
+            let (along, right) = wing_offset(&sim, &p);
+            assert!(
+                along.abs() < 20.0 && (15.0..25.0).contains(&right),
+                "{f}: {along:.0} {right:.0}"
+            );
+            if sim.flights()[i].alt < 20 {
+                let (a, x) = on_runway(&sim, i, &r);
+                assert!(
+                    a.abs() < r.half_len && x.abs() < r.half_width,
+                    "off the runway {a:.0} {x:.0}"
+                );
+            }
+        } else if up.is_none() {
+            up = Some(p.height);
+        }
+    }
+    assert!(up.is_some_and(|h| (300..400).contains(&h)), "up at {up:?} ft");
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Air));
+    p.altitude = 3000;
+    p.height = 3000;
+    p.velocity = 400 * 27;
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+    }
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(
+        (-300.0..0.0).contains(&along) && (300.0..500.0).contains(&right),
+        "spread {along:.0} {right:.0}"
+    );
+}
+
+/// A wingman lands beside its lead on a runway wide enough for two and stops beside him.
+#[test]
+fn a_wingman_lands_beside_its_lead() {
+    use stealth_sim::wingman::WingPhase;
+    let d = data();
+    let mut sim = runway_sandbox(d);
+    let (r, mut p) = lead_on_runway(&sim, -r_len(&sim) - 6000.0);
+    (p.on_ground, p.velocity, p.altitude, p.height) = (false, 150 * 27, 1000, 1000);
+    p.climb_rate = -12;
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::F16);
+    wing_step(&mut sim, &mut p);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Landing));
+    land_on(&mut sim, &mut p, &r, -r.half_len + 250.0, 8);
+    assert_eq!(sim.mission_end(), None);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Parked));
+    let i = sim.wingman_of(me).expect("still there");
+    assert_eq!(sim.flights()[i].speed, 0);
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(along.abs() < 80.0 && (15.0..25.0).contains(&right), "{along:.0} {right:.0}");
+}
+
+fn r_len(sim: &Sim) -> f64 {
+    sim.runways()[0].half_len
+}
+
+/// A C-5's wingman (no room for two on the runway) lands behind its lead and stops short of
+/// him.
+#[test]
+fn a_big_wingman_lands_behind_its_lead() {
+    use stealth_sim::wingman::WingPhase;
+    let d = data();
+    let mut sim = runway_sandbox(d);
+    let (r, mut p) = lead_on_runway(&sim, -r_len(&sim) - 6000.0);
+    (p.on_ground, p.velocity, p.altitude, p.height) = (false, 140 * 27, 1000, 1000);
+    p.climb_rate = -12;
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::munitions::C5);
+    wing_step(&mut sim, &mut p);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Landing));
+    land_on(&mut sim, &mut p, &r, -r.half_len + 200.0, 8);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Parked));
+    let (along, right) = wing_offset(&sim, &p);
+    assert!((-600.0..-85.0).contains(&along) && right.abs() < 10.0, "{along:.0} {right:.0}");
+}
+
+/// A C-5's wingman takes off behind its lead on his track.
+#[test]
+fn a_big_wingman_takes_off_behind_its_lead() {
+    use stealth_sim::wingman::WingPhase;
+    let d = data();
+    let mut sim = runway_sandbox(d);
+    let (_, mut p) = lead_on_runway(&sim, -700.0);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::munitions::C5);
+    wing_step(&mut sim, &mut p);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Takeoff));
+    let (along, right) = wing_offset(&sim, &p);
+    assert!((-160.0..-140.0).contains(&along) && right.abs() < 1.0, "{along:.0} {right:.0}");
+}
+
+/// A helicopter's wingman starts beside its lead, lifts off with him, and sets down beside
+/// him when he lands.
+#[test]
+fn a_helicopter_wingman_lifts_off_and_lands_with_its_lead() {
+    use stealth_sim::wingman::WingPhase;
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    let me = sim.active_pilot();
+    let mut p = player_at(mx, my, 0, 0x4000, 0);
+    p.on_ground = true;
+    sim.request_wingman(me, stealth_sim::ai_missions::AH64);
+    wing_step(&mut sim, &mut p);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Takeoff));
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(along.abs() < 2.0 && (15.0..30.0).contains(&right), "{along:.0} {right:.0}");
+    p.on_ground = false;
+    for _ in 0..15 * 10 {
+        p.altitude += 1;
+        p.height = p.altitude;
+        wing_step(&mut sim, &mut p);
+    }
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Air));
+    p.velocity = 80 * 27;
+    for _ in 0..15 * 30 {
+        wing_step(&mut sim, &mut p);
+    }
+    // Down again: slowing, then setting down.
+    for _ in 0..15 * 20 {
+        p.velocity = p.velocity.saturating_sub(27 * 6 / 15);
+        p.altitude = p.altitude.saturating_sub(1).max(if p.velocity > 0 { 60 } else { 0 });
+        p.height = p.altitude;
+        p.on_ground = p.altitude == 0;
+        p.climb_rate = if p.on_ground { 0 } else { -15 };
+        wing_step(&mut sim, &mut p);
+    }
+    assert!(p.on_ground);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Landing));
+    let i = sim.wingman_of(me).unwrap();
+    assert!(sim.flights()[i].alt <= 14, "in the air at {}", sim.flights()[i].alt);
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(along.abs() < 10.0 && (15.0..30.0).contains(&right), "{along:.0} {right:.0}");
+}

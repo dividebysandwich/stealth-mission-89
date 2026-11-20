@@ -35,8 +35,11 @@ const TRAIL_HELI: (f64, f64) = (0.0, 300.0);
 /// Within this (m) of its station it keeps it as a formation pilot does (jet, helicopter).
 const SNAP_JET: f64 = 1500.0;
 const SNAP_HELI: f64 = 400.0;
-/// How fast it closes on its station there (1/s).
+/// How fast it closes on its station there (1/s), at most this part of its lead's speed and
+/// this much more (m/s).
 const STATION_GAIN: f64 = 0.8;
+const CLOSE_MAX: f64 = 0.15;
+const CLOSE_MIN: f64 = 10.0;
 /// It joins up from this far (m) behind its station, once its lead is this high (ft over the
 /// ground: a jet, a helicopter).
 const JOIN_BACK: f64 = 1500.0;
@@ -80,6 +83,30 @@ pub enum Form {
     Trail,
 }
 
+/// Where the wingman is with its lead: up with him, or on the ground and in the circuit with
+/// him ([`crate::wing_ground`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum WingPhase {
+    /// In the air: formation, its orders.
+    #[default]
+    Air,
+    /// On a carrier's catapult, launched after its lead.
+    Catapult,
+    /// On the runway with its lead, rolling and lifting off with him.
+    Takeoff,
+    /// Landing with him: beside him, or behind him on his track.
+    Landing,
+    /// Stopped after the landing.
+    Parked,
+}
+
+impl WingPhase {
+    /// It flies its lead's track ([`crate::wing_ground`]), not as the AI flies.
+    pub fn on_track(self) -> bool {
+        matches!(self, WingPhase::Takeoff | WingPhase::Landing | WingPhase::Parked)
+    }
+}
+
 /// A wingman's record (its [`crate::campaign::CampaignFlight`]'s).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Wing {
@@ -94,9 +121,12 @@ pub struct Wing {
     pub air: Option<u16>,
     /// Frames its lead has been on the ground (or out of the world).
     pub lead_down: i32,
+    #[serde(default)]
+    pub phase: WingPhase,
 }
 
-/// A wingman waiting for its lead to get up.
+/// A wingman waiting for its lead (on the ground: it starts beside him; in the air: it joins
+/// him once he is up).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PendingWing {
     pub lead: u8,
@@ -203,7 +233,8 @@ fn wing_stores(sim: &Sim, bays: &[(i32, i32)]) -> (AiLoadout, u8, u8) {
 }
 
 impl Sim {
-    /// Pilot `lead` takes a wingman of AI aircraft type `spec`: it joins him once he is up.
+    /// Pilot `lead` takes a wingman of AI aircraft type `spec`: on the runway with him (it
+    /// takes off with him), else it joins him once he is up.
     pub fn request_wingman(&mut self, lead: u8, spec: i32) {
         self.request_wingman_with(lead, spec, Vec::new());
     }
@@ -268,7 +299,8 @@ impl Sim {
         (l.wx + re * right - fe * aft, l.wy + rs * right - fs * aft, l.alt)
     }
 
-    /// Lead and wingman are in the air and the lead is high enough: the wingman joins.
+    /// The lead on the runway: the wingman starts beside him. In the air and high enough: the
+    /// wingman joins him.
     fn join_wingmen(&mut self) {
         let mut k = 0;
         while k < self.pending_wing.len() {
@@ -278,6 +310,14 @@ impl Sim {
                 k += 1;
                 continue;
             }
+            if pilot.on_ground {
+                if self.spawn_wingman_on_ground(&p) {
+                    self.pending_wing.remove(k);
+                } else {
+                    k += 1;
+                }
+                continue;
+            }
             let heli = self.aircraft_kind(p.spec) == AircraftKind::Helicopter;
             let high = if heli { JOIN_HELI_FT } else { JOIN_JET_FT };
             if pilot.on_ground || pilot.p.height < high {
@@ -285,14 +325,21 @@ impl Sim {
                 continue;
             }
             self.pending_wing.remove(k);
-            self.spawn_wingman(p);
+            let l = self.lead(p.lead);
+            let at = self.station(&l, Form::Spread, p.spec, JOIN_BACK);
+            self.spawn_wingman_at(p, Some(at));
         }
     }
 
-    /// Wingman `p` joins its lead from behind its station.
-    fn spawn_wingman(&mut self, p: PendingWing) -> usize {
+    /// Wingman `p` joins its lead at `at` (wu east, south, viewZ; none: where he is, for its
+    /// place on the ground to be set).
+    pub(crate) fn spawn_wingman_at(
+        &mut self,
+        p: PendingWing,
+        at: Option<(f64, f64, i32)>,
+    ) -> usize {
         let l = self.lead(p.lead);
-        let (wx, wy, alt) = self.station(&l, Form::Spread, p.spec, JOIN_BACK);
+        let (wx, wy, alt) = at.unwrap_or((l.wx, l.wy, l.alt));
         let t = self.ac_type(p.spec).clone();
         let i = self.campaign_slot();
         let (wx, wy) = (wx.round() as i32, wy.round() as i32);
@@ -330,10 +377,12 @@ impl Sim {
             self.ai_flight[i] = Default::default();
         }
         self.campaign.as_mut().expect("campaign").flights[i] = Some(f);
-        let back = self.pl.id as usize;
-        self.activate(p.lead as usize);
-        self.msg(text!("wing-joined"));
-        self.activate(back);
+        if at.is_some() {
+            let back = self.pl.id as usize;
+            self.activate(p.lead as usize);
+            self.msg(text!("wing-joined"));
+            self.activate(back);
+        }
         i
     }
 
@@ -398,6 +447,9 @@ impl Sim {
     /// station point, on his heading and attitude.
     fn keep_station(&mut self, i: usize, w: &Wing) {
         let mut u = self.flights[i];
+        if u.flags & fflags::TAKEOFF != 0 {
+            return;
+        }
         let l = self.lead(w.lead);
         let (x, y, z) = self.station(&l, w.form, u.spec, 0.0);
         let heli = self.aircraft_kind(u.spec) == AircraftKind::Helicopter;
@@ -416,6 +468,11 @@ impl Sim {
         let (px, py) = (u.wx as f64 - hu.sin() * own, u.wy as f64 + hu.cos() * own);
         let (dx, dy) = (x - px, y - py);
         let mv = l.speed * dt;
+        // Closing at most a fraction of its lead's speed (from beside him after the take-off,
+        // out to its station).
+        let most = (l.speed * CLOSE_MAX + CLOSE_MIN * WU_PER_M) * dt;
+        let c = (dx.hypot(dy) * k).max(1e-9);
+        let k = k * (most / c).min(1.0);
         let nx = px + h.sin() * mv + dx * k;
         let ny = py - h.cos() * mv + dy * k;
         u.wx = nx.round() as i32;
@@ -532,14 +589,50 @@ impl Sim {
             if u.flags & fflags::DESTROYED != 0 || u.flags & fflags::EXISTS == 0 {
                 continue;
             }
-            // Its lead down or gone a while: home.
+            // Its lead down or gone a while: home (on the ground with him: once he is gone).
             let pilot = self.pilot_ref(w.lead as usize);
             let away = pilot.id != w.lead || pilot.absent || pilot.eject != 0;
-            w.lead_down = if away || pilot.on_ground { w.lead_down + 1 } else { 0 };
+            let with_him = w.phase != WingPhase::Air;
+            w.lead_down = if away || (pilot.on_ground && !with_him) { w.lead_down + 1 } else { 0 };
             if w.lead_down > LEAD_DOWN_SECS * fs && w.order != WingOrder::Rtb {
+                let low = u.alt <= self.ground_z(u.x, u.y) + 20;
+                let down = matches!(w.phase, WingPhase::Takeoff | WingPhase::Parked)
+                    || (w.phase == WingPhase::Landing && low)
+                    || (w.phase == WingPhase::Catapult && u.flags & fflags::TAKEOFF != 0);
+                if down {
+                    // Never up, or down with him: it stays down.
+                    self.wing_landed(i);
+                    continue;
+                }
+                if w.phase != WingPhase::Air {
+                    self.leave_track(i, WingPhase::Air);
+                    w.phase = WingPhase::Air;
+                }
                 w.order = WingOrder::Rtb;
                 self.wing_rejoin(i);
                 self.recall_flight(WING_TAG + w.lead as u32);
+            }
+            if let Some(Some(f)) = self.campaign.as_mut().map(|c| &mut c.flights[i]) {
+                f.wing = Some(w);
+            }
+            // With its lead on the ground and in the circuit.
+            match w.phase {
+                WingPhase::Takeoff | WingPhase::Landing | WingPhase::Parked => {
+                    self.fly_track(i);
+                    continue;
+                }
+                WingPhase::Catapult => {
+                    if u.flags & fflags::TAKEOFF == 0 {
+                        w.phase = WingPhase::Air;
+                    } else {
+                        continue;
+                    }
+                }
+                WingPhase::Air => {
+                    if self.wing_lands(i, &w) {
+                        continue;
+                    }
+                }
             }
             let f = self.campaign.as_ref().and_then(|c| c.flights[i]).expect("wingman");
             match w.order {

@@ -7,7 +7,7 @@ use stealth_i18n::text;
 /// How high over the mountains the AI's aircraft keep (altitude units, 300 m).
 const TERRAIN_CLEARANCE: i32 = 614;
 /// The AV-8B's model (it takes off short from a carrier, no catapult).
-const HARRIER_MODEL: i16 = 47;
+pub(crate) const HARRIER_MODEL: i16 = 47;
 /// The room kept over the rolling hills ahead (altitude units, about 60 m).
 const HILLS_CLEARANCE: i32 = 123;
 /// Flying straight out of a circle round its approach point, it climbs to this much over the
@@ -48,6 +48,11 @@ impl Sim {
         self.flight_vel.resize(nf, [0.0; 3]);
         for i in 0..nf {
             if self.flights[i].flags & fflags::EXISTS == 0 {
+                self.flights[i].mode = 0;
+                continue;
+            }
+            // A wingman on its lead's track is moved by it (`Sim::fly_track`).
+            if self.wing_on_track(i) {
                 self.flights[i].mode = 0;
                 continue;
             }

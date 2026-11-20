@@ -41,6 +41,7 @@ pub mod jamming;
 pub mod jp233;
 pub mod rockets;
 pub mod wingman;
+mod wing_ground;
 pub mod strike_missiles;
 pub mod station;
 pub mod supply;
@@ -284,6 +285,9 @@ pub struct Sim {
     /// Wingmen waiting for their leads to get up ([`wingman`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) pending_wing: Vec<wingman::PendingWing>,
+    /// The tracks of the leads whose wingmen fly them (on the ground, landing).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) wing_paths: Vec<wing_ground::WingPath>,
     /// The wingmen's answers given between steps (pilot, answer), handed over with the next.
     #[serde(skip)]
     pub(crate) wing_replies: Vec<(u8, wingman::WingReply)>,
@@ -669,6 +673,7 @@ impl Sim {
             jp233: jp233::Jp233::default(),
             rockets: rockets::Rockets::default(),
             pending_wing: Vec::new(),
+            wing_paths: Vec::new(),
             wing_replies: Vec::new(),
             launchers: Vec::new(),
             drones: m.drones.as_ref().map(|d| drones::Drones {

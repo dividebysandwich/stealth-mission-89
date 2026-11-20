@@ -1614,3 +1614,43 @@ fn a_flamingo_drops_its_booster() {
     run(&mut sim, &idle(), 7);
     assert_eq!(sim.strike_missile_motor(i), Some((false, false)));
 }
+
+/// A jet's wingman on a carrier takes a catapult and holds there until its lead is launched,
+/// then follows him off the deck.
+#[test]
+fn a_wingman_launches_after_its_lead() {
+    use stealth_sim::catapult::{AiLaunch, Phase, from_report, report};
+    use stealth_sim::wingman::WingPhase;
+    let d = data();
+    let s = MissionSettings {
+        theater: 1,
+        roe: 2,
+        opponents: 1,
+        kind: MissionKind::Strike,
+        ..Default::default()
+    };
+    let mut m = stealth_mission::generate(&d.gdata, &s, Seed::Srand(78)).unwrap();
+    m.world = d.gdata.theaters[1].world.clone();
+    m.weather = Default::default();
+    let mut sim = Sim::with_options(&d.sim, &m, SimOptions::default());
+    quiet(&mut sim);
+    let b = (0..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & oflags::CARRIER != 0)
+        .expect("a carrier");
+    let mut p = sim.start_state_at(b);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, F16);
+    run(&mut sim, &p, 20);
+    assert_eq!(sim.wing(me).map(|w| w.phase), Some(WingPhase::Catapult));
+    let i = sim.wingman_of(me).expect("on deck");
+    let l = AiLaunch::decode(sim.flights()[i].cat).expect("on a catapult");
+    assert_eq!(l.phase, Phase::Tension);
+    let (mine, _) = from_report(p.catapult).unwrap();
+    assert_ne!(l.cat, mine, "on his catapult");
+    // He is launched: it runs up and goes.
+    p.catapult = report(mine, Phase::Stroke);
+    run(&mut sim, &p, 10);
+    let u = sim.flights()[i];
+    assert_eq!(u.cat, 0, "still on the catapult");
+    assert!(u.speed >= 150 && u.flags & fflags::DESTROYED == 0);
+}
