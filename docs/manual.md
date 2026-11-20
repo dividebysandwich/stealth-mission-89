@@ -2259,6 +2259,8 @@ farther head-on.
 | Mk 82 Snakeye, ISCB-1 mines | Ground | 0.9-1.3 km short | 200-500 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | BLU-107 Durandal | Runways | 0.9-1.3 km short of the runway | 200-500 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
 | JP233 | Runways, vehicles, parked aircraft | A 500 m strip behind you, from overhead | 1,000 ft or lower | Tornado (forward shoulder pylons) |
+| Hydra 70 rockets | Vehicles, troops, soft targets | 1-5 km, by the rocket reticle | Hover to a shallow dive | AH-64D, AH-1Z (19-tube pods on the wing pylons), OH-58D, A-10C, AV-8B (7-tube pods) |
+| APKWS rockets | Vehicles (laser) | Up to 6 km with the pod on the target | Hover to a shallow dive | As the Hydra 70 |
 | IR/optical camera | Recon target | Photos from 2-8 km | Any | F-117A, F-16C, Tornado, A-10C, AV-8B (centreline) |
 | 20 mm gun | Air and ground | Up to 2 km (ground: 4 km) | Any | All but the real F-117A and the UH-60, OH-58D and CH-47 (510 rounds) |
 | M3P .50 cal pod | Air and ground | Up to 2 km (ground: 4 km) | Any | OH-58D (500 rounds per pod, along the nose) |
@@ -2380,6 +2382,22 @@ column: it refuses above 1,000 ft over the ground.
 
 Low and level over an airfield is where its guns are: an attack with the JP233 is an attack
 the defences have to be down for, or that comes in under them fast.
+
+## 6.7a 70 mm rockets: Hydra 70 and APKWS
+
+**Hydra 70.** Unguided 70 mm rockets in pods: nineteen to a pod on the attack helicopters' wing
+pylons, seven on the OH-58D's pylons and the jets' wing stations. A press of the trigger fires a
+pair, one from each side; keep it held and they ripple, a pair every quarter second. They leave
+along the nose, burn for a second and then fall, so aim with the **rocket reticle**: the ring with
+four ticks on the HUD (AG mode) and on the helicopters' helmet display shows where a rocket fired
+now comes down, the slant range under it and the time of flight over it; IN RNG blinks inside
+5 km. Each rocket scatters a little, so they are for an area: vehicles, troops, launchers and
+radars in the open. From a hover the reticle sits low and far; a shallow dive brings it up to
+the target and keeps the scatter short.
+
+**APKWS.** The same rocket with a laser seeker. Put the targeting pod on the target and fire along
+the nose: after a moment each rocket turns onto the pod's laser spot, and it keeps steering as
+long as the pod stays on it. Cheap enough to fire one pair per vehicle.
 
 ## 6.8 Camera, fuel tank and cargo
 
