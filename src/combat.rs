@@ -841,6 +841,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     combat.asw_fx.clear();
     combat.signal_flares.clear();
     combat.sam_launches.clear();
+    test_launch_missile(combat, time.elapsed_secs());
     for t in std::mem::take(&mut combat.prior_tiles) {
         tiles.set(t.level as usize, t.col, t.row, t.index, t.shape);
     }
@@ -2151,6 +2152,41 @@ fn publish(
         new_cues.drop = Some(drop_cue(&a, pos, eye, sim, &mut drops, wall, run));
     }
     *cues = new_cues;
+}
+
+/// Test aid: `--launch-missile kind,secs[,km]` (iskander, kh101, fp7, flamingo): that long into
+/// the flight a strike missile leaves the ground `km` (3) ahead of the aircraft, for a point
+/// 80 km on along its heading.
+fn test_launch_missile(combat: &mut Combat, now: f32) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use stealth_sim::strike_missiles::MissileKind;
+    static DONE: AtomicBool = AtomicBool::new(false);
+    if DONE.load(Ordering::Relaxed) {
+        return;
+    }
+    let Some(arg) = std::env::args().skip_while(|a| a != "--launch-missile").nth(1) else {
+        DONE.store(true, Ordering::Relaxed);
+        return;
+    };
+    let mut it = arg.split(',');
+    let kind = match it.next().unwrap_or("") {
+        "iskander" => MissileKind::Iskander,
+        "kh101" => MissileKind::Kh101,
+        "fp7" => MissileKind::Fp7,
+        _ => MissileKind::Flamingo,
+    };
+    let secs: f32 = it.next().and_then(|s| s.parse().ok()).unwrap_or(2.0);
+    let km: f64 = it.next().and_then(|s| s.parse().ok()).unwrap_or(3.0);
+    if now < secs {
+        return;
+    }
+    DONE.store(true, Ordering::Relaxed);
+    let p = combat.sim.player();
+    let h = (p.heading as u16) as f64 * std::f64::consts::TAU / 65536.0;
+    let mu = |m: f64| m / stealth_sim::aaa::M_PER_MAP;
+    let at = |m: f64| (p.mx + (h.sin() * mu(m)) as i32, p.my - (h.cos() * mu(m)) as i32);
+    let (from, aim) = (at(km * 1000.0), at(km * 1000.0 + 80_000.0));
+    combat.sim.launch_strike_missile(kind, from, None, aim, None, 0x7F00_0000);
 }
 
 /// Watches the C-5's pallets go: how many it had, when the last one went.
