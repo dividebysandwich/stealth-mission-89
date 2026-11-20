@@ -1,5 +1,5 @@
 //! The Super Hornet's cockpit, close on its left screen: the SLAM-ER's seeker picture, locked
-//! on its target, closing on it in its last seconds (`Shot::Slam`).
+//! on its target, closing on it in its last seconds, in FLIR (`Shot::Slam`).
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
@@ -25,6 +25,8 @@ pub(super) fn build(app: &mut App) {
 const SPEED: f64 = 240.0;
 const START: f64 = 1150.0;
 const DIVE: f64 = 0.16;
+/// The seeker's picture (pixels).
+const SEEKER: (u32, u32) = (480, 360);
 
 /// The scene: the jet's flight, the target and the missile's line to it.
 #[derive(Component)]
@@ -49,6 +51,7 @@ fn slam(
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
     mut ex: ResMut<Explosions>,
+    mut flir: ResMut<super::SceneFlir>,
 ) {
     if stage.begin(&[stage::AAA]) {
         // A SAM site of the theater, else a vehicle of our own on open land.
@@ -84,7 +87,7 @@ fn slam(
             climb: 0.0,
         };
         let cabin = spawn_cabin(&mut stage, Cabin::new(Seat::Cockpit(AircraftKind::FA18E), None));
-        stage.commands.entity(cabin).insert(pod::WantsPod((480, 360), 9f32.to_radians()));
+        stage.commands.entity(cabin).insert(pod::WantsPod(SEEKER, 9f32.to_radians()));
         stage.commands.spawn((ShotEntity, Run { weave, target, from, hit: false }));
         return;
     }
@@ -108,17 +111,20 @@ fn slam(
     if cabin.fitted.is_none() {
         return;
     }
+    // The seeker's picture in FLIR.
+    flir.0 = Some(SEEKER);
     screens.picture(MfdSide::Left, !r.hit);
     if let Some(mut tex) = screens.canvas(Screen::Left) {
         if r.hit {
             // The picture gone with the missile.
             tex.canvas.clear(0);
-            pod::overlay(&mut tex.canvas, "SLAM A", "IMPACT", false, ("RNG 0.0", "TTI 0"));
+            let bottom = ("RNG 0.0", "TTI 0");
+            pod::overlay(&mut tex.canvas, "SLAM A", "IMPACT", false, bottom, "FLIR");
             tex.transparent = false;
         } else {
             let rng = format!("RNG {:.1}", range / 1852.0);
             let tti = format!("TTI {:.0}", (range / SPEED).ceil());
-            pod::overlay(&mut tex.canvas, "SLAM A", "LOCK", true, (&rng, &tti));
+            pod::overlay(&mut tex.canvas, "SLAM A", "LOCK", true, (&rng, &tti), "FLIR");
             tex.transparent = true;
         }
         tex.dirty = true;

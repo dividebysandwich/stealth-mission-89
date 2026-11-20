@@ -256,6 +256,7 @@ fn pod_gun(
             if firing { "GUN" } else { "TRK" },
             true,
             (&format!("RNG {:.1}", range / 1000.0), &rounds),
+            "TV",
         );
         tex.transparent = true;
         tex.dirty = true;

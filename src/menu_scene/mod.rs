@@ -56,9 +56,16 @@ impl Plugin for MenuScenePlugin {
             )
             .add_systems(
                 Update,
-                (director::direct, apply_look, director::prefetch, |mut f: ResMut<SceneFov>| {
-                    f.1 = false
-                })
+                (
+                    director::direct,
+                    apply_look,
+                    director::prefetch,
+                    // The scenes set these each frame.
+                    |mut f: ResMut<SceneFov>, mut flir: ResMut<SceneFlir>| {
+                        f.1 = false;
+                        flir.0 = None;
+                    },
+                )
                     .chain()
                     .in_set(DirectorSet),
             )
@@ -123,7 +130,7 @@ impl Default for SceneFov {
     }
 }
 
-/// A scene's camera picture shown in FLIR (a console's): its size (pixels), set each frame
+/// A scene's camera picture shown in FLIR (a console's, a seeker's): its size (pixels), set each frame
 /// (`palette` draws the picture of that size so).
 #[derive(Resource, Default)]
 pub(crate) struct SceneFlir(pub Option<(u32, u32)>);

@@ -120,8 +120,16 @@ fn text_right(c: &mut Canvas, x: f32, y: f32, s: &str, size: f32) {
 }
 
 /// A seeker's or pod's overlay over its picture (the canvas left see-through): the crosshair,
-/// a box once tracking, the title and mode at the top, the range and a time or count below.
-pub fn overlay(c: &mut Canvas, title: &str, mode: &str, locked: bool, bottom: (&str, &str)) {
+/// a box once tracking, the title and mode at the top, the range and a time or count below,
+/// the sensor's name (TV, FLIR) over them.
+pub fn overlay(
+    c: &mut Canvas,
+    title: &str,
+    mode: &str,
+    locked: bool,
+    bottom: (&str, &str),
+    sensor: &str,
+) {
     c.clear(0);
     let (w, h) = (c.w as f32, c.h as f32);
     let o = Vec2::new(w / 2.0, h / 2.0);
@@ -136,5 +144,5 @@ pub fn overlay(c: &mut Canvas, title: &str, mode: &str, locked: bool, bottom: (&
     text_right(c, w - 40.0, y0, mode, 7.0);
     text(c, 40.0, h - BAND - 14.0, bottom.0, 7.0);
     text_right(c, w - 40.0, h - BAND - 14.0, bottom.1, 7.0);
-    text(c, 40.0, h - BAND - 24.0, "TV", 6.0);
+    text(c, 40.0, h - BAND - 24.0, sensor, 6.0);
 }
