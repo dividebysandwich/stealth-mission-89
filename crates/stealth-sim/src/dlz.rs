@@ -85,7 +85,8 @@ impl Sim {
     /// air-to-air one against the air lock in AIR mode; None without one, or when the missile
     /// can do nothing to the target.
     pub fn launch_zone(&self) -> Option<LaunchZone> {
-        if self.pl.gun_selected {
+        // The rockets are aimed by their CCIP reticle, not a launch zone.
+        if self.pl.gun_selected || crate::rockets::rocket_weapon(self.selected_weapon().0) {
             return None;
         }
         match self.pl.hud_mode {

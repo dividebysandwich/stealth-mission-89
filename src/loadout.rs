@@ -141,6 +141,7 @@ pub const HYDRA: u8 = 31;
 pub const APKWS: u8 = 32;
 
 /// A rocket pod: hung as one pod, its rounds the rockets in it.
+#[cfg(test)]
 pub fn rocket_pod(w: u8) -> bool {
     matches!(w, HYDRA | APKWS)
 }
