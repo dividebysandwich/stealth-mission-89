@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } indítva { $target } ellen, bec
 cl-missile-strike-over = { $missile } csapás { $target } ellen: { $hits } talált, { $down } lelőve
 cl-blue-strike-over = Saját { $missile } csapásunk { $target } ellen: { $hits } talált, { $down } lelőve
 cb-tel-hunt = Semmisítsd meg az Iskander indítót { $place } közelében
+cl-supply-fp7 = FP-7 indítóállás { $place } közelében
+cl-supply-flamingo = Flamingo indítóállás { $place } közelében
+cl-launch-site-posted = A parancsnokság új állást rendel: { $site }; a rakomány a logisztikai táblán

@@ -53,9 +53,12 @@ pub enum Munition {
     /// 70 mm rockets (counted one by one): the unguided Hydra 70 and the laser-guided APKWS.
     Hydra,
     Apkws,
+    /// The launch sites' FP-7 ballistic and Flamingo cruise missiles.
+    Fp7,
+    Flamingo,
 }
 
-const BLUE: [Munition; 20] = [
+const BLUE: [Munition; 22] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -76,6 +79,8 @@ const BLUE: [Munition; 20] = [
     Munition::Jp233,
     Munition::Hydra,
     Munition::Apkws,
+    Munition::Fp7,
+    Munition::Flamingo,
 ];
 const RED: [Munition; 8] = [
     Munition::Aa10,
@@ -138,6 +143,8 @@ impl Munition {
             Jp233 => "JP233",
             Hydra => "Hydra 70",
             Apkws => "APKWS",
+            Fp7 => "FP-7",
+            Flamingo => "Flamingo",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -178,6 +185,8 @@ impl Munition {
             Jp233 => 8.0,
             Hydra => 152.0,
             Apkws => 76.0,
+            Fp7 => 6.0,
+            Flamingo => 4.0,
         }
     }
 
@@ -208,6 +217,8 @@ impl Munition {
             Jp233 => 3.0,
             Hydra => 38.0,
             Apkws => 19.0,
+            Fp7 => 1.0,
+            Flamingo => 0.5,
         }
     }
 

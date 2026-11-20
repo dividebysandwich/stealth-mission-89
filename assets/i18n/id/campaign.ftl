@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } diluncurkan ke { $target }, men
 cl-missile-strike-over = Serangan { $missile } ke { $target }: { $hits } kena, { $down } ditembak jatuh
 cl-blue-strike-over = Serangan { $missile } kita ke { $target }: { $hits } kena, { $down } ditembak jatuh
 cb-tel-hunt = Hancurkan peluncur Iskander di dekat { $place }
+cl-supply-fp7 = lokasi peluncuran FP-7 dekat { $place }
+cl-supply-flamingo = lokasi peluncuran Flamingo dekat { $place }
+cl-launch-site-posted = Komando memerintahkan { $site } baru: muatannya ada di papan logistik

@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } seolta ar { $target }, tuairte�
 cl-missile-strike-over = Ionsaí { $missile } ar { $target }: { $hits } buailte, { $down } leagtha
 cl-blue-strike-over = Ár n-ionsaí { $missile } ar { $target }: { $hits } buailte, { $down } leagtha
 cb-tel-hunt = Scrios an lainseálaí Iskander gar do { $place }
+cl-supply-fp7 = láithreán lainseála FP-7 gar do { $place }
+cl-supply-flamingo = láithreán lainseála Flamingo gar do { $place }
+cl-launch-site-posted = Ordaíonn an ceannasaíocht { $site } nua: tá a lasta ar chlár na lóistíochta

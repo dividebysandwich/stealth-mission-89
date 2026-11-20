@@ -200,9 +200,19 @@ impl Host {
             sim.place_battery(b.x, b.y);
         }
         // The new sites the players supplied stand again.
-        for d in self.state.deployments.iter().filter(|d| d.built) {
-            let (x, y) = d.unit_at();
-            glue::place_site(sim, d.kind, x, y);
+        let built: Vec<(u32, stealth_campaign::DefenceKind, (i32, i32))> = self
+            .state
+            .deployments
+            .iter()
+            .filter(|d| d.built)
+            .map(|d| (d.id, d.kind, d.unit_at()))
+            .collect();
+        for (id, kind, (x, y)) in built {
+            // A launch site's launcher fires as its strikes say (by the site's id).
+            if let Some(unit) = glue::place_site(sim, kind, x, y) {
+                self.launchers.retain(|l| l.0 != id);
+                self.launchers.push((id, unit));
+            }
         }
         let stocks: Vec<SavedStock> = self
             .state
@@ -976,7 +986,12 @@ impl Host {
                         crate::cargo::cargo_run(sim, &self.state, *id, *tag, *x, *y);
                     sim.spawn_cargo(*from as usize, pickup, drop, *tag);
                 }
-                CampaignEvent::SiteBuilt { x, y, kind, .. } => glue::place_site(sim, *kind, *x, *y),
+                CampaignEvent::SiteBuilt { id, x, y, kind } => {
+                    if let Some(unit) = glue::place_site(sim, *kind, *x, *y) {
+                        self.launchers.retain(|l| l.0 != *id);
+                        self.launchers.push((*id, unit));
+                    }
+                }
                 CampaignEvent::BatteryDeployed { x, y, .. } => sim.place_battery(*x, *y),
                 CampaignEvent::GunRepaired { place } => {
                     if let Some(p) = self.state.place(*place) {

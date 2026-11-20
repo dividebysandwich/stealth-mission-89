@@ -353,3 +353,6 @@ cl-blue-missile-launch = { $count } { $missile } выпущено по { $target
 cl-missile-strike-over = Удар { $missile } по { $target }: { $hits } попаданий, { $down } сбито
 cl-blue-strike-over = Наш удар { $missile } по { $target }: { $hits } попаданий, { $down } сбито
 cb-tel-hunt = Уничтожь пусковую установку «Искандер» у { $place }
+cl-supply-fp7 = стартовая позиция FP-7 у { $place }
+cl-supply-flamingo = стартовая позиция Flamingo у { $place }
+cl-launch-site-posted = Командование приказывает развернуть: { $site }; груз на доске логистики

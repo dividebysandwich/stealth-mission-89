@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } gestartet auf { $target }, Eins
 cl-missile-strike-over = { $missile }-Angriff auf { $target }: { $hits } Treffer, { $down } abgeschossen
 cl-blue-strike-over = Unser { $missile }-Angriff auf { $target }: { $hits } Treffer, { $down } abgeschossen
 cb-tel-hunt = Zerstöre den Iskander-Werfer bei { $place }
+cl-supply-fp7 = FP-7-Startstellung bei { $place }
+cl-supply-flamingo = Flamingo-Startstellung bei { $place }
+cl-launch-site-posted = Das Kommando befiehlt eine neue { $site }: ihre Fracht steht auf der Logistiktafel

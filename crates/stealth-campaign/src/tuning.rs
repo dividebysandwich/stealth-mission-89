@@ -435,3 +435,13 @@ pub const KH101_SALVO: u8 = 6;
 pub const KH101_LAUNCH_FRAC: f64 = 0.25;
 /// Ended strikes kept (for the log).
 pub const MISSILE_STRIKES_KEPT: usize = 20;
+/// The friendly launch sites: the cargo loads one needs, how far (map units, 15 km) from any
+/// airfield its spot is picked, how often (campaign s) a new one may be posted, and the rest
+/// between a site's salvos.
+pub const DEPLOY_LOADS_LAUNCH_SITE: u8 = 2;
+pub const LAUNCH_SITE_AIRFIELD_CLEAR: i32 = 960;
+pub const LAUNCH_SITE_EVERY: f64 = 2.0 * 3600.0;
+pub const LAUNCH_SITE_REST: f64 = 40.0 * 60.0;
+/// Missiles a friendly launch site fires in a salvo: FP-7s, Flamingos.
+pub const FP7_SALVO: u8 = 2;
+pub const FLAMINGO_SALVO: u8 = 1;

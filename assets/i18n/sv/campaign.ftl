@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } avfyrade mot { $target }, nedsl
 cl-missile-strike-over = { $missile }-anfall mot { $target }: { $hits } träffar, { $down } nedskjutna
 cl-blue-strike-over = Vårt { $missile }-anfall mot { $target }: { $hits } träffar, { $down } nedskjutna
 cb-tel-hunt = Förstör Iskander-rampen nära { $place }
+cl-supply-fp7 = FP-7-avfyrningsplats nära { $place }
+cl-supply-flamingo = Flamingo-avfyrningsplats nära { $place }
+cl-launch-site-posted = Ledningen beordrar en ny { $site }: lasten finns på logistiktavlan

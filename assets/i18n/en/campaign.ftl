@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } away at { $target }, impact in 
 cl-missile-strike-over = { $missile } strike on { $target }: { $hits } hit, { $down } shot down
 cl-blue-strike-over = Our { $missile } strike on { $target }: { $hits } hit, { $down } shot down
 cb-tel-hunt = Destroy the Iskander TEL near { $place }
+cl-supply-fp7 = FP-7 launch site near { $place }
+cl-supply-flamingo = Flamingo launch site near { $place }
+cl-launch-site-posted = Command orders a new { $site }: its cargo is on the logistics board

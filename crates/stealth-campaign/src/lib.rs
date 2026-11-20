@@ -574,6 +574,7 @@ impl CampaignState {
         self.drone_waves(&mut ev);
         self.missile_strikes_due(&mut ev);
         self.run_missile_strikes(&mut ev);
+        self.blue_missile_war(&mut ev);
         self.forward_batteries(view, &mut ev);
         self.run_resupply(view, &mut ev);
         self.run_deployments(view, &mut ev);

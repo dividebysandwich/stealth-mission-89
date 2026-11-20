@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } lansirano na { $target }, udar 
 cl-missile-strike-over = Napad { $missile } na { $target }: { $hits } pogodaka, { $down } oborenih
 cl-blue-strike-over = Naš napad { $missile } na { $target }: { $hits } pogodaka, { $down } oborenih
 cb-tel-hunt = Uništi lanser Iskander kod { $place }
+cl-supply-fp7 = lansirni položaj FP-7 kod { $place }
+cl-supply-flamingo = lansirni položaj Flamingo kod { $place }
+cl-launch-site-posted = Zapovjedništvo naređuje novi { $site }: teret je na logističkoj ploči

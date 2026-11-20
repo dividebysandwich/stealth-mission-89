@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } odpálených na { $target }, do
 cl-missile-strike-over = Útok { $missile } na { $target }: { $hits } zásahov, { $down } zostrelených
 cl-blue-strike-over = Náš útok { $missile } na { $target }: { $hits } zásahov, { $down } zostrelených
 cb-tel-hunt = Znič odpaľovacie zariadenie Iskander pri { $place }
+cl-supply-fp7 = odpaľovacie stanovište FP-7 pri { $place }
+cl-supply-flamingo = odpaľovacie stanovište Flamingo pri { $place }
+cl-launch-site-posted = Velenie nariaďuje nové { $site }: náklad je na logistickej tabuli

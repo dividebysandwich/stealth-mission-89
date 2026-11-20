@@ -111,6 +111,9 @@ pub struct MissileStrike {
     /// A friendly launch site's (its deployment id).
     #[serde(default)]
     pub site: Option<u32>,
+    /// When it ended (campaign seconds).
+    #[serde(default)]
+    pub ended_at: f64,
 }
 
 impl MissileStrike {
@@ -126,6 +129,11 @@ impl MissileStrike {
 
     pub fn open(&self) -> bool {
         self.state != StrikeState::Ended
+    }
+
+    /// Its launcher's id with the simulation's host: a launch site's deployment, else its own.
+    pub fn launcher_id(&self) -> u32 {
+        self.site.unwrap_or(self.id)
     }
 
     /// It is fired from a TEL (else from a bomber or a launch site).
@@ -250,6 +258,7 @@ impl CampaignState {
             hits: 0,
             down: 0,
             site: None,
+            ended_at: 0.0,
         };
         let aims = self.strike_aims(&strike);
         match missile {
@@ -290,7 +299,7 @@ impl CampaignState {
         let now = self.clock;
         match *r {
             Report::LauncherPlaced { strike, unit } => {
-                if let Some(s) = self.missile_strikes.iter_mut().find(|s| s.id == strike) {
+                for s in self.missile_strikes.iter_mut().filter(|s| s.launcher_id() == strike) {
                     s.unit = Some(unit);
                 }
             }
@@ -321,7 +330,9 @@ impl CampaignState {
                 }
             }
             Report::LauncherLost { strike } => {
-                let Some(k) = self.missile_strikes.iter().position(|s| s.id == strike) else {
+                let Some(k) =
+                    self.missile_strikes.iter().position(|s| s.launcher_id() == strike && s.open())
+                else {
                     return;
                 };
                 // (Or as it was told to fire: nothing left it.)
@@ -330,6 +341,7 @@ impl CampaignState {
                     || matches!(st, StrikeState::Inbound { at } if now - at < 1.0)
                 {
                     self.missile_strikes[k].state = StrikeState::Ended;
+                    self.missile_strikes[k].ended_at = self.clock;
                     let s = self.missile_strikes[k].clone();
                     let id =
                         if s.side == Side::Red { "cl-tel-destroyed" } else { "cl-launcher-lost" };
@@ -368,6 +380,7 @@ impl CampaignState {
                 {
                     // Its bomber shot down before it fired.
                     self.missile_strikes[k].state = StrikeState::Ended;
+                    self.missile_strikes[k].ended_at = self.clock;
                 }
             }
             _ => {}
@@ -405,6 +418,7 @@ impl CampaignState {
         }
         let s = s.clone();
         self.missile_strikes[k].state = StrikeState::Ended;
+        self.missile_strikes[k].ended_at = self.clock;
         let id = if s.side == Side::Red { "cl-missile-strike-over" } else { "cl-blue-strike-over" };
         let text = text!(
             id,
@@ -415,10 +429,6 @@ impl CampaignState {
         );
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text));
-        // A friendly launch site reloads for its next salvo.
-        if let Some(site) = s.site {
-            self.site_reloads(site, ev);
-        }
     }
 
     /// Preparing launchers ready: they fire.
@@ -435,13 +445,14 @@ impl CampaignState {
             let aims = self.strike_aims(&s);
             if aims.is_empty() {
                 self.missile_strikes[k].state = StrikeState::Ended;
+                self.missile_strikes[k].ended_at = self.clock;
                 continue;
             }
             // Fired, and announced.
             self.missile_strikes[k].state = StrikeState::Inbound { at: now };
             self.launch_warning(&s, ev);
             ev.push(CampaignEvent::LauncherFire {
-                strike: s.id,
+                strike: s.launcher_id(),
                 missile: s.missile,
                 aims,
                 tag: s.tag(),
@@ -484,8 +495,168 @@ impl CampaignState {
             .collect()
     }
 
-    /// A friendly launch site's next salvo (`blue_strikes`: phase 4 fills it in).
-    pub(crate) fn site_reloads(&mut self, _site: u32, _ev: &mut Vec<CampaignEvent>) {}
+    /// The friendly side's missile war of the drone theaters: a launch site of each kind
+    /// (FP-7, Flamingo) is posted for the logistics missions to build at a spot the war picks,
+    /// clear of the airfields; the built sites fire at the enemy's military targets in reach.
+    pub(crate) fn blue_missile_war(&mut self, ev: &mut Vec<CampaignEvent>) {
+        if !stealth_mission::drone_theater(&self.setup.theater_code) || self.rules.is_none() {
+            return;
+        }
+        self.post_launch_sites(ev);
+        self.launch_site_salvos();
+    }
+
+    /// A new launch site of a kind none of which stands or is being built, now and then.
+    fn post_launch_sites(&mut self, ev: &mut Vec<CampaignEvent>) {
+        let now = self.clock;
+        if self.launch_site_at != 0.0 && now - self.launch_site_at < LAUNCH_SITE_EVERY {
+            return;
+        }
+        self.launch_site_at = now;
+        for kind in [DefenceKind::Fp7Site, DefenceKind::FlamingoSite] {
+            if self.deployments.iter().any(|d| d.kind == kind) {
+                continue;
+            }
+            let Some((x, y)) = self.launch_spot(kind) else { continue };
+            let name = self.near_name(x, y);
+            let id = self.id();
+            let loads = crate::deploy::loads(kind);
+            let d = Deployment {
+                id,
+                x,
+                y,
+                kind,
+                name,
+                by: None,
+                posted: now,
+                expires: now + DEPLOY_TIMEOUT,
+                loads,
+                delivered: Vec::new(),
+                ai: Vec::new(),
+                open_since: now,
+                built: false,
+                seen: false,
+                base: self.supply_base(x, y),
+                crates: vec![CrateState::AtBase; loads as usize],
+            };
+            let text = text!("cl-launch-site-posted", site = d.label());
+            self.deployments.push(d);
+            self.note(text.clone());
+            ev.push(CampaignEvent::Message(text));
+            self.board_at = f64::MIN;
+        }
+    }
+
+    /// The enemy's military targets a friendly missile goes for (the site's object, where, a SAM
+    /// site): its SAM sites and its airfields.
+    fn red_military(&self) -> Vec<(ObjectId, i32, i32, bool)> {
+        self.sites
+            .iter()
+            .filter(|s| s.alive() && matches!(s.kind, SiteKind::Sam | SiteKind::Airfield))
+            .filter(|s| self.owner(s.object) == Some(Side::Red))
+            .map(|s| (s.object, s.x, s.y, s.kind == SiteKind::Sam))
+            .collect()
+    }
+
+    /// A spot for a new launch site of `kind` (map units): in friendly territory, on land, clear
+    /// of the towns and the airfields, behind the front within its missile's reach of an enemy
+    /// target.
+    pub fn launch_spot(&mut self, kind: DefenceKind) -> Option<(i32, i32)> {
+        let missile = kind.launch_missile()?;
+        let targets = self.red_military();
+        if targets.is_empty() {
+            return None;
+        }
+        let ours: Vec<(i32, i32)> =
+            self.places.iter().filter(|p| p.owner == Side::Blue).map(|p| (p.x, p.y)).collect();
+        let airfields: Vec<(i32, i32)> = self
+            .sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Airfield)
+            .map(|s| (s.x, s.y))
+            .collect();
+        for _ in 0..80 {
+            let t = targets[self.rng.below(targets.len() as i32) as usize];
+            let p = *ours.iter().min_by_key(|p| dist(p.0 - t.1, p.1 - t.2))?;
+            let d = dist(p.0 - t.1, p.1 - t.2).max(1) as f64;
+            let (ux, uy) = ((p.0 - t.1) as f64 / d, (p.1 - t.2) as f64 / d);
+            let frac = 0.45 + self.rng.below(30) as f64 / 100.0;
+            let reach = missile.range() as f64 * frac;
+            let side = (self.rng.below(41) - 20) as f64 / 100.0 * reach;
+            let (x, y) =
+                (t.1 + (ux * reach - uy * side) as i32, t.2 + (uy * reach + ux * side) as i32);
+            if self.deploy_refusal(x, y, kind, &[]).is_some() {
+                continue;
+            }
+            if airfields.iter().any(|a| dist(a.0 - x, a.1 - y) < LAUNCH_SITE_AIRFIELD_CLEAR) {
+                continue;
+            }
+            return Some((x, y));
+        }
+        None
+    }
+
+    /// Built launch sites, rested since their last salvo and with missiles at their supply base,
+    /// set up a new one at the enemy's nearest military target in reach (a SAM site first).
+    fn launch_site_salvos(&mut self) {
+        let now = self.clock;
+        let sites: Vec<(u32, DefenceKind, (i32, i32), Option<ObjectId>)> = self
+            .deployments
+            .iter()
+            .filter(|d| d.built && d.kind.launch_site())
+            .map(|d| (d.id, d.kind, d.unit_at(), d.base))
+            .collect();
+        let targets = self.red_military();
+        for (site, kind, at, base) in sites {
+            let Some(missile) = kind.launch_missile() else { continue };
+            let busy = self.missile_strikes.iter().any(|s| s.site == Some(site) && s.open());
+            let rested = self
+                .missile_strikes
+                .iter()
+                .filter(|s| s.site == Some(site))
+                .all(|s| now - s.ended_at >= LAUNCH_SITE_REST);
+            if busy || !rested {
+                continue;
+            }
+            let Some(&(target, _, _, _)) = targets
+                .iter()
+                .filter(|t| dist(t.1 - at.0, t.2 - at.1) <= missile.range())
+                .min_by_key(|t| (!t.3, dist(t.1 - at.0, t.2 - at.1)))
+            else {
+                continue;
+            };
+            let count = if missile.ballistic() { FP7_SALVO } else { FLAMINGO_SALVO };
+            let munition = match missile {
+                StrikeMissile::Fp7 => crate::Munition::Fp7,
+                _ => crate::Munition::Flamingo,
+            };
+            if self.munitions_on()
+                && let Some(b) = base
+                && self.draw(b, munition, count as u32) < count as u32
+            {
+                continue;
+            }
+            let id = self.id();
+            let place = self.site(target).and_then(|s| s.place);
+            self.missile_strikes.push(MissileStrike {
+                id,
+                side: Side::Blue,
+                missile,
+                target,
+                place,
+                from: at,
+                base: base.unwrap_or(0),
+                firing: at,
+                count,
+                state: StrikeState::Preparing { ready_at: now + SITE_PREPARE },
+                unit: None,
+                hits: 0,
+                down: 0,
+                site: Some(site),
+                ended_at: 0.0,
+            });
+        }
+    }
 
     /// The name of the place nearest a point (map units).
     pub(crate) fn near_name(&self, x: i32, y: i32) -> String {

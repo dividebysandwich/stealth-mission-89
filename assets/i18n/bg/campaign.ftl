@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } изстреляни по { $ta
 cl-missile-strike-over = Удар с { $missile } по { $target }: { $hits } попадения, { $down } свалени
 cl-blue-strike-over = Нашият удар с { $missile } по { $target }: { $hits } попадения, { $down } свалени
 cb-tel-hunt = Унищожи пусковата установка Искандер край { $place }
+cl-supply-fp7 = стартова позиция FP-7 край { $place }
+cl-supply-flamingo = стартова позиция Flamingo край { $place }
+cl-launch-site-posted = Командването нарежда нова { $site }: товарът е на таблото за логистика

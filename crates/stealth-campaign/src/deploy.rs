@@ -17,6 +17,7 @@ pub fn footprint(kind: DefenceKind) -> i32 {
         DefenceKind::Patriot => DEPLOY_FOOTPRINT_PATRIOT,
         DefenceKind::Drones => DEPLOY_FOOTPRINT_DRONES,
         DefenceKind::Nasams => DEPLOY_FOOTPRINT_NASAMS,
+        DefenceKind::Fp7Site | DefenceKind::FlamingoSite => DEPLOY_FOOTPRINT_NASAMS,
     }
 }
 
@@ -32,6 +33,7 @@ pub fn loads(kind: DefenceKind) -> u8 {
         DefenceKind::Patriot => DEPLOY_LOADS_PATRIOT,
         DefenceKind::Drones => DEPLOY_LOADS_DRONES,
         DefenceKind::Nasams => DEPLOY_LOADS_NASAMS,
+        DefenceKind::Fp7Site | DefenceKind::FlamingoSite => DEPLOY_LOADS_LAUNCH_SITE,
     }
 }
 

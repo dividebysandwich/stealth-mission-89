@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } izstreljenih na { $target }, za
 cl-missile-strike-over = Napad { $missile } na { $target }: { $hits } zadetkov, { $down } sestreljenih
 cl-blue-strike-over = Naš napad { $missile } na { $target }: { $hits } zadetkov, { $down } sestreljenih
 cb-tel-hunt = Uniči izstrelišče Iskander pri { $place }
+cl-supply-fp7 = izstrelišče FP-7 pri { $place }
+cl-supply-flamingo = izstrelišče Flamingo pri { $place }
+cl-launch-site-posted = Poveljstvo ukazuje novo { $site }: tovor je na logistični tabli

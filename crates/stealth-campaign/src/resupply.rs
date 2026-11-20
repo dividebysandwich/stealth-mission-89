@@ -52,7 +52,10 @@ impl CampaignState {
             None => {
                 let id = match kind {
                     DefenceKind::Gepard => "cl-resupply-out-of-rounds",
-                    DefenceKind::Patriot | DefenceKind::Nasams => "cl-resupply-out-of-missiles",
+                    DefenceKind::Patriot
+                    | DefenceKind::Nasams
+                    | DefenceKind::Fp7Site
+                    | DefenceKind::FlamingoSite => "cl-resupply-out-of-missiles",
                     DefenceKind::Drones => "cl-resupply-out-of-drones",
                 };
                 text!(id, unit = r.title())

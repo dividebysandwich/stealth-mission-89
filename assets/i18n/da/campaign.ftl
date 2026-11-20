@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } affyret mod { $target }, nedsla
 cl-missile-strike-over = { $missile }-angreb på { $target }: { $hits } ramte, { $down } skudt ned
 cl-blue-strike-over = Vores { $missile }-angreb på { $target }: { $hits } ramte, { $down } skudt ned
 cb-tel-hunt = Ødelæg Iskander-affyringsvognen ved { $place }
+cl-supply-fp7 = FP-7-affyringsstilling ved { $place }
+cl-supply-flamingo = Flamingo-affyringsstilling ved { $place }
+cl-launch-site-posted = Kommandoen beordrer en ny { $site }: lasten står på logistiktavlen

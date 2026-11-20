@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } paleistos į { $target }, smūg
 cl-missile-strike-over = { $missile } smūgis į { $target }: { $hits } pataikė, { $down } numuštos
 cl-blue-strike-over = Mūsų { $missile } smūgis į { $target }: { $hits } pataikė, { $down } numuštos
 cb-tel-hunt = Sunaikink Iskander leidimo įrenginį prie { $place }
+cl-supply-fp7 = FP-7 paleidimo pozicija prie { $place }
+cl-supply-flamingo = Flamingo paleidimo pozicija prie { $place }
+cl-launch-site-posted = Vadovybė įsako įrengti: { $site }; jos krovinys logistikos lentoje

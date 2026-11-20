@@ -1142,6 +1142,9 @@ pub struct CampaignState {
     pub iskander_at: f64,
     #[serde(default)]
     pub kh101_at: f64,
+    /// When the friendly side last posted a launch site.
+    #[serde(default)]
+    pub launch_site_at: f64,
     /// The enemy's forward batteries, and when it last looked into pushing one forward.
     #[serde(default)]
     pub batteries: Vec<Battery>,
@@ -1210,7 +1213,8 @@ pub struct CampaignState {
 }
 
 /// What a friendly site the players build and man is: a Gepard, a Patriot battery, a drone
-/// command center or a NASAMS battery.
+/// command center or a NASAMS battery; or a missile launch site (an FP-7's, a Flamingo's) the
+/// war builds at its own spots (`missile_strikes.rs`), which fires by itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 pub enum DefenceKind {
     #[default]
@@ -1218,6 +1222,8 @@ pub enum DefenceKind {
     Patriot,
     Drones,
     Nasams,
+    Fp7Site,
+    FlamingoSite,
 }
 
 impl DefenceKind {
@@ -1228,6 +1234,8 @@ impl DefenceKind {
             DefenceKind::Patriot => "Patriot battery",
             DefenceKind::Drones => "drone command center",
             DefenceKind::Nasams => "NASAMS battery",
+            DefenceKind::Fp7Site => "FP-7 launch site",
+            DefenceKind::FlamingoSite => "Flamingo launch site",
         }
     }
 
@@ -1238,6 +1246,23 @@ impl DefenceKind {
             DefenceKind::Patriot => "Patriot",
             DefenceKind::Drones => "Drones",
             DefenceKind::Nasams => "NASAMS",
+            DefenceKind::Fp7Site => "FP-7",
+            DefenceKind::FlamingoSite => "Flamingo",
+        }
+    }
+
+    /// A missile launch site (it is not manned, it fires by itself).
+    pub fn launch_site(self) -> bool {
+        matches!(self, DefenceKind::Fp7Site | DefenceKind::FlamingoSite)
+    }
+
+    /// The missile a launch site fires.
+    pub fn launch_missile(self) -> Option<crate::missile_strikes::StrikeMissile> {
+        use crate::missile_strikes::StrikeMissile;
+        match self {
+            DefenceKind::Fp7Site => Some(StrikeMissile::Fp7),
+            DefenceKind::FlamingoSite => Some(StrikeMissile::Flamingo),
+            _ => None,
         }
     }
 }
@@ -1251,6 +1276,8 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Patriot,
             Drones,
             Nasams,
+            Fp7Site,
+            FlamingoSite,
         }
         #[derive(Deserialize)]
         #[serde(untagged)]
@@ -1263,6 +1290,8 @@ impl<'de> Deserialize<'de> for DefenceKind {
             Either::Patriot(false) | Either::Kind(Named::Gepard) => DefenceKind::Gepard,
             Either::Kind(Named::Drones) => DefenceKind::Drones,
             Either::Kind(Named::Nasams) => DefenceKind::Nasams,
+            Either::Kind(Named::Fp7Site) => DefenceKind::Fp7Site,
+            Either::Kind(Named::FlamingoSite) => DefenceKind::FlamingoSite,
         })
     }
 }
@@ -1333,6 +1362,8 @@ impl SupplyRequest {
             DefenceKind::Patriot => "cl-supply-patriot",
             DefenceKind::Drones => "cl-supply-drones",
             DefenceKind::Nasams => "cl-supply-nasams",
+            DefenceKind::Fp7Site => "cl-supply-fp7",
+            DefenceKind::FlamingoSite => "cl-supply-flamingo",
         };
         text!(id, place = self.name.as_str())
     }
@@ -1397,6 +1428,8 @@ impl Deployment {
             DefenceKind::Patriot => "Patriot site",
             DefenceKind::Drones => "Drone command center",
             DefenceKind::Nasams => "NASAMS site",
+            DefenceKind::Fp7Site => "FP-7 launch site",
+            DefenceKind::FlamingoSite => "Flamingo launch site",
         };
         format!("{what} near {}", self.name)
     }
@@ -1408,6 +1441,8 @@ impl Deployment {
             DefenceKind::Patriot => "cl-supply-patriot",
             DefenceKind::Drones => "cl-supply-drones",
             DefenceKind::Nasams => "cl-supply-nasams",
+            DefenceKind::Fp7Site => "cl-supply-fp7",
+            DefenceKind::FlamingoSite => "cl-supply-flamingo",
         };
         text!(id, place = self.name.as_str())
     }
@@ -1723,6 +1758,7 @@ impl CampaignState {
             missile_strikes: Vec::new(),
             iskander_at: 0.0,
             kh101_at: 0.0,
+            launch_site_at: 0.0,
             batteries: Vec::new(),
             battery_at: f64::MIN,
             defence_stock: Vec::new(),

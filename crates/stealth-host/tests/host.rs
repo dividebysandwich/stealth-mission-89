@@ -36,8 +36,14 @@ fn two_players(code: &str) {
         wing,
         "the same name is the same player"
     );
-    let flown: Vec<u32> =
-        host.state.board.iter().filter(|o| !o.kind.ai_flown()).map(|o| o.id).collect();
+    // (Not the new sites' cargo: a helicopter's.)
+    let flown: Vec<u32> = host
+        .state
+        .board
+        .iter()
+        .filter(|o| !o.kind.ai_flown() && o.kind != stealth_campaign::MissionKind::Logistics)
+        .map(|o| o.id)
+        .collect();
     assert!(flown.len() >= 2, "{:?}", host.state.board);
     let mut inputs: Vec<(u8, PlayerState)> = Vec::new();
     for (p, &offer, aircraft) in [(me, &flown[0], Aircraft::F117), (wing, &flown[1], Aircraft::F16)]
@@ -1088,6 +1094,58 @@ fn a_kh101_strike_plays_out() {
             .find(|s| s.missile == StrikeMissile::Kh101 && s.state == StrikeState::Ended)
         {
             assert!(inbound, "never fired: {s:?}");
+            assert_eq!(s.hits + s.down, s.count, "{s:?}");
+            return;
+        }
+    }
+    panic!("{:?}", host.state.missile_strikes);
+}
+
+/// On Ukraine the war posts a friendly FP-7 launch site well clear of the airfields; built, it
+/// sets up and fires at the enemy's military targets, its missiles coming down or shot down.
+#[test]
+fn a_launch_site_is_built_and_fires() {
+    use stealth_campaign::missile_strikes::{StrikeMissile, StrikeState};
+    use stealth_campaign::{DefenceKind, SiteKind, dist, tuning};
+    let s = setup("ukraine");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "ukraine").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.state.iskander_at = 1e9;
+    host.state.kh101_at = 1e9;
+    host.tick(&mut sim, 0.1, &[]);
+    let d = host
+        .state
+        .deployments
+        .iter()
+        .find(|d| d.kind == DefenceKind::Fp7Site)
+        .cloned()
+        .expect("an FP-7 site posted");
+    assert!(d.by.is_none());
+    assert!(
+        host.state
+            .sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Airfield)
+            .all(|s| dist(s.x - d.x, s.y - d.y) >= tuning::LAUNCH_SITE_AIRFIELD_CLEAR),
+        "too near an airfield"
+    );
+    host.fast_track_site(&mut sim, PlayerId(0), d.id).unwrap();
+    let mut fired = false;
+    for _ in 0..15 * 60 * 40 {
+        let e = sim.step_pilots(&[], 15);
+        let mut e2 = host.take_sim_events(&mut sim);
+        e2.extend(e);
+        host.tick(&mut sim, 1.0 / 15.0, &e2);
+        let strikes = &host.state.missile_strikes;
+        fired |= strikes.iter().any(|s| s.site == Some(d.id) && matches!(s.state, StrikeState::Inbound { .. }));
+        if let Some(s) = strikes
+            .iter()
+            .find(|s| s.missile == StrikeMissile::Fp7 && s.state == StrikeState::Ended)
+        {
+            assert!(fired);
             assert_eq!(s.hits + s.down, s.count, "{s:?}");
             return;
         }

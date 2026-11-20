@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $missile }{ $count }発を{ $target }へ発射、約{
 cl-missile-strike-over = { $target }への{ $missile }攻撃: 命中{ $hits }、撃墜{ $down }
 cl-blue-strike-over = 味方の{ $target }への{ $missile }攻撃: 命中{ $hits }、撃墜{ $down }
 cb-tel-hunt = { $place }付近のイスカンデル発射機を破壊せよ
+cl-supply-fp7 = { $place }付近のFP-7発射陣地
+cl-supply-flamingo = { $place }付近のフラミンゴ発射陣地
+cl-launch-site-posted = 司令部が新たな{ $site }を命令: 資材は兵站ボードにある

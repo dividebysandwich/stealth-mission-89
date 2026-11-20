@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } lasti sihtmärgile { $target },
 cl-missile-strike-over = { $missile } rünnak sihtmärgile { $target }: { $hits } tabamust, { $down } alla tulistatud
 cl-blue-strike-over = Meie { $missile } rünnak sihtmärgile { $target }: { $hits } tabamust, { $down } alla tulistatud
 cb-tel-hunt = Hävita Iskanderi kanderakett { $place } lähedal
+cl-supply-fp7 = FP-7 stardipositsioon { $place } lähedal
+cl-supply-flamingo = Flamingo stardipositsioon { $place } lähedal
+cl-launch-site-posted = Juhatus käsib rajada: { $site }; selle last on logistikatahvlil

@@ -638,18 +638,30 @@ pub fn station_unit(kind: stealth_campaign::DefenceKind) -> stealth_sim::aaa::Gr
         DefenceKind::Patriot => GroundKind::PatriotRadar,
         DefenceKind::Drones => GroundKind::DroneCenter,
         DefenceKind::Nasams => GroundKind::NasamsRadar,
+        DefenceKind::Fp7Site => GroundKind::Fp7Launcher,
+        DefenceKind::FlamingoSite => GroundKind::FlamingoLauncher,
     }
 }
 
-/// A new site the players supplied stands at (x, y).
-pub fn place_site(sim: &mut Sim, kind: stealth_campaign::DefenceKind, x: i32, y: i32) {
+/// A new site the players supplied stands at (x, y): a launch site's launcher is its ground unit
+/// (returned).
+pub fn place_site(
+    sim: &mut Sim,
+    kind: stealth_campaign::DefenceKind,
+    x: i32,
+    y: i32,
+) -> Option<usize> {
     use stealth_campaign::DefenceKind;
     match kind {
         DefenceKind::Gepard => sim.place_gepard(x, y),
         DefenceKind::Patriot => sim.place_patriot(x, y),
         DefenceKind::Drones => sim.place_drone_center(x, y),
         DefenceKind::Nasams => sim.place_nasams(x, y),
+        DefenceKind::Fp7Site | DefenceKind::FlamingoSite => {
+            return Some(sim.spawn_launcher(station_unit(kind), (x, y), (x, y), true, true));
+        }
     }
+    None
 }
 
 /// The simulation's missile of a campaign missile strike.

@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } gelanceerd op { $target }, insl
 cl-missile-strike-over = { $missile }-aanval op { $target }: { $hits } raak, { $down } neergeschoten
 cl-blue-strike-over = Onze { $missile }-aanval op { $target }: { $hits } raak, { $down } neergeschoten
 cb-tel-hunt = Vernietig de Iskander-lanceerder bij { $place }
+cl-supply-fp7 = FP-7-lanceerplaats bij { $place }
+cl-supply-flamingo = Flamingo-lanceerplaats bij { $place }
+cl-launch-site-posted = Het commando beveelt een nieuwe { $site }: de vracht staat op het logistiekbord

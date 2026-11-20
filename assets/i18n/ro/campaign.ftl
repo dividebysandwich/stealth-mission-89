@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } lansate asupra { $target }, imp
 cl-missile-strike-over = Lovitura { $missile } asupra { $target }: { $hits } au lovit, { $down } doborâte
 cl-blue-strike-over = Lovitura noastră { $missile } asupra { $target }: { $hits } au lovit, { $down } doborâte
 cb-tel-hunt = Distruge lansatorul Iskander de lângă { $place }
+cl-supply-fp7 = poziție de lansare FP-7 lângă { $place }
+cl-supply-flamingo = poziție de lansare Flamingo lângă { $place }
+cl-launch-site-posted = Comanda ordonă o nouă { $site }: încărcătura e pe panoul de logistică

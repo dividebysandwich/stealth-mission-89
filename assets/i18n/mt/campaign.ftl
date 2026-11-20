@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } imniedja fuq { $target }, impat
 cl-missile-strike-over = Attakk { $missile } fuq { $target }: { $hits } laqtu, { $down } twaqqgħu
 cl-blue-strike-over = L-attakk { $missile } tagħna fuq { $target }: { $hits } laqtu, { $down } twaqqgħu
 cb-tel-hunt = Eqred il-lanċjatur Iskander qrib { $place }
+cl-supply-fp7 = sit tat-tnedija FP-7 qrib { $place }
+cl-supply-flamingo = sit tat-tnedija Flamingo qrib { $place }
+cl-launch-site-posted = Il-kmand jordna { $site } ġdid: il-merkanzija tiegħu hija fuq il-bord tal-loġistika

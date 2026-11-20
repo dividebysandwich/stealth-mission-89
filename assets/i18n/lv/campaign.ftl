@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } palaistas uz { $target }, trāp
 cl-missile-strike-over = { $missile } trieciens pa { $target }: { $hits } trāpījumi, { $down } notriektas
 cl-blue-strike-over = Mūsu { $missile } trieciens pa { $target }: { $hits } trāpījumi, { $down } notriektas
 cb-tel-hunt = Iznīcini Iskander palaišanas iekārtu pie { $place }
+cl-supply-fp7 = FP-7 palaišanas pozīcija pie { $place }
+cl-supply-flamingo = Flamingo palaišanas pozīcija pie { $place }
+cl-launch-site-posted = Pavēlniecība pavēl izveidot: { $site }; tās krava ir loģistikas dēlī

@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $missile } { $count }발을 { $target }로 발사, �
 cl-missile-strike-over = { $target }에 대한 { $missile } 공격: 명중 { $hits }, 격추 { $down }
 cl-blue-strike-over = 아군의 { $target }에 대한 { $missile } 공격: 명중 { $hits }, 격추 { $down }
 cb-tel-hunt = { $place } 부근의 이스칸데르 발사대를 파괴하라
+cl-supply-fp7 = { $place } 부근 FP-7 발사 진지
+cl-supply-flamingo = { $place } 부근 플라밍고 발사 진지
+cl-launch-site-posted = 사령부가 새 { $site } 구축을 명령: 화물은 군수 게시판에 있다

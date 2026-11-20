@@ -353,3 +353,6 @@ cl-blue-missile-launch = 已向{ $target }发射{ $count }枚{ $missile },约{ $
 cl-missile-strike-over = { $missile }打击{ $target }:命中{ $hits }枚,被击落{ $down }枚
 cl-blue-strike-over = 我方{ $missile }打击{ $target }:命中{ $hits }枚,被击落{ $down }枚
 cb-tel-hunt = 摧毁{ $place }附近的伊斯坎德尔发射车
+cl-supply-fp7 = { $place }附近的FP-7发射阵地
+cl-supply-flamingo = { $place }附近的火烈鸟发射阵地
+cl-launch-site-posted = 指挥部下令建立新的{ $site }:物资见后勤板

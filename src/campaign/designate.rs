@@ -73,6 +73,8 @@ pub(super) fn kind_label(kind: DefenceKind) -> &'static str {
         DefenceKind::Patriot => "PATRIOT",
         DefenceKind::Drones => t!("ad-drones"),
         DefenceKind::Nasams => "NASAMS",
+        DefenceKind::Fp7Site => "FP-7",
+        DefenceKind::FlamingoSite => "FLAMINGO",
     }
 }
 
@@ -210,6 +212,8 @@ pub(super) fn pointer(
             DefenceKind::Patriot => "ds-new-patriot",
             DefenceKind::Drones => "ds-new-drones",
             DefenceKind::Nasams => "ds-new-nasams",
+            // (Launch sites are not designated by the players.)
+            DefenceKind::Fp7Site | DefenceKind::FlamingoSite => "ds-new-nasams",
         })
         .to_string()
     });

@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } laukaistu kohteeseen { $target 
 cl-missile-strike-over = { $missile }-isku kohteeseen { $target }: { $hits } osumaa, { $down } ammuttu alas
 cl-blue-strike-over = Oma { $missile }-iskumme kohteeseen { $target }: { $hits } osumaa, { $down } ammuttu alas
 cb-tel-hunt = Tuhoa Iskander-laukaisuajoneuvo lähellä kohdetta { $place }
+cl-supply-fp7 = FP-7-laukaisupaikka lähellä kohdetta { $place }
+cl-supply-flamingo = Flamingo-laukaisupaikka lähellä kohdetta { $place }
+cl-launch-site-posted = Johto määrää uuden: { $site }; sen rahti on logistiikkataululla

@@ -354,3 +354,6 @@ cl-blue-missile-launch = { $count } { $missile } εκτοξεύθηκαν κατ
 cl-missile-strike-over = Πλήγμα { $missile } στο { $target }: { $hits } εύστοχοι, { $down } καταρρίφθηκαν
 cl-blue-strike-over = Το πλήγμα μας με { $missile } στο { $target }: { $hits } εύστοχοι, { $down } καταρρίφθηκαν
 cb-tel-hunt = Κατάστρεψε τον εκτοξευτή Iskander κοντά στο { $place }
+cl-supply-fp7 = θέση εκτόξευσης FP-7 κοντά στο { $place }
+cl-supply-flamingo = θέση εκτόξευσης Flamingo κοντά στο { $place }
+cl-launch-site-posted = Η διοίκηση διατάζει νέα { $site }: το φορτίο της είναι στον πίνακα εφοδιασμού
