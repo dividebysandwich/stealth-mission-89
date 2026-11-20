@@ -4502,6 +4502,7 @@ keyboard. The complete table, with the classic game's keys, is in [keys.md](keys
 | | Look ahead / rear / left / right | Shift `/` / Shift `.` / Shift `,` / Shift M |
 | | Slot / chase / side / weapon / tactical / inverse tactical | Shift F1 … Shift F6 |
 | | Free camera (W A S D, Q / E, Shift faster, Ctrl slower) | Shift F7 |
+| | Observer camera round the nearest aircraft, missile or vehicle (again: the next) | Shift F9 |
 | | Zoom / unzoom / wide angle | Z / X / C |
 | | Look around (cockpit) / orbit (external views) | Right mouse button (bindable as *Mouse look*) |
 | | Zoom in and out (cockpit: up to 6x; external views: the camera distance) | Mouse wheel with the right mouse button held, or hold Numpad `*` / Numpad `/` (bindable to joystick buttons as *View zoom in / out*, or to an axis) |
