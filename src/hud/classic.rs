@@ -293,6 +293,17 @@ fn weapon_cues(c: &mut Canvas, f: &HudFrame, col: u8) {
         c.line(0xA0, fpm_y, x, y, col);
         target_box(c, x, y, 5, true, true, 0x29);
     }
+    // Rockets: a small ring with ticks where a rocket fired now lands.
+    if let Some((x, y)) = cues.rocket.and_then(|r| r.screen).map(at) {
+        c.line(x - 4, y - 3, x + 4, y - 3, col);
+        c.line(x - 4, y + 3, x + 4, y + 3, col);
+        c.line(x - 4, y - 3, x - 4, y + 3, col);
+        c.line(x + 4, y - 3, x + 4, y + 3, col);
+        c.line(x, y - 6, x, y - 4, col);
+        c.line(x, y + 4, x, y + 6, col);
+        c.line(x - 7, y, x - 5, y, col);
+        c.line(x + 5, y, x + 7, y, col);
+    }
     if let Some((bar, flash)) = cues.ranging_bar
         && (!flash || f.blink)
     {

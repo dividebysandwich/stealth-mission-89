@@ -206,3 +206,11 @@ weapon-role-30 = Dispenser għall-attakk fuq ajruporti: iqiegħed bombi żgħar 
 employment-30 =
     Jibqa' fuq il-pilun u jitfa' għal żewġ sekondi; tir livell u baxx fuq il-mira
     Minn mhux aktar minn 1000 ft 'il fuq mill-art; tliet krateri jagħlqu runway, il-mini jistennew il-vetturi
+weapon-role-31 = Rokits mhux iggwidati ta' 70 mm f'pod: f'pari jew f'raffiki kontra vetturi u truppi fil-miftuħ
+employment-31 =
+    Immira bir-retikolu tar-rokits (CCIP): juri fejn jaqa' rokit sparat issa
+    Agħfas għal par, żomm għal raffika; l-aħjar minn għadsa baxxa fi ħdan 4 km
+weapon-role-32 = Rokits ta' 70 mm iggwidati bil-lejżer: kull wieħed imur għat-tikka tal-lejżer tal-pod tal-immirar
+employment-32 =
+    Poġġi l-pod tal-immirar fuq il-mira u spara mal-imnieħer; idawru lejn it-tikka
+    Sa 6 km; żomm il-pod fuq il-mira sakemm jolqtu

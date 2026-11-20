@@ -206,3 +206,11 @@ weapon-role-30 = Lennuvälja ründekonteiner: külvab langevarjudel kraatripommi
 employment-30 =
     Jääb pülooni külge ja heidab kaks sekundit; lenda horisontaalselt ja madalalt üle sihtmärgi
     Kõige rohkem 1000 ft kõrguselt maapinnast; kolm kraatrit sulgevad raja, miinid ootavad sõidukeid
+weapon-role-31 = Juhitamata 70 mm raketid konteineris: paaride või seeriatena sõidukite ja lagedal olevate vägede vastu
+employment-31 =
+    Sihi raketisihikuga (CCIP): see näitab, kuhu praegu tulistatud rakett langeb
+    Vajuta paari jaoks, hoia seeria jaoks; parim laugest sööstust alla 4 km
+weapon-role-32 = Laserjuhitavad 70 mm raketid: igaüks suundub sihtimiskonteineri laserpunktile
+employment-32 =
+    Suuna sihtimiskonteiner sihtmärgile ja tulista nina suunas; need pööravad punktile
+    Kuni 6 km; hoia konteinerit sihtmärgil tabamuseni

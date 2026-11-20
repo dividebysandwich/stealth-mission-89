@@ -206,3 +206,11 @@ weapon-role-30 = Airfield attack dispenser: lays cratering bomblets and anti-arm
 employment-30 =
     Stays on the pylon and dispenses for two seconds; fly level and low over the target
     From no higher than 1000 ft over the ground; three craters close a runway, the mines wait for vehicles
+weapon-role-31 = Unguided 70 mm rockets in a pod: pairs or ripples against vehicles and troops in the open
+employment-31 =
+    Aim with the rocket reticle (CCIP): it shows where a rocket fired now lands
+    Press for a pair, hold for a ripple; best from a shallow dive inside 4 km
+weapon-role-32 = Laser-guided 70 mm rockets: each homes on the targeting pod's laser spot
+employment-32 =
+    Put the targeting pod on the target and fire along the nose; they turn onto the spot
+    Up to 6 km; keep the pod on the target until they hit

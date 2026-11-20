@@ -206,3 +206,11 @@ weapon-role-30 = Vliegveldaanvalscontainer: legt kraterbommetjes en antitankmijn
 employment-30 =
     Blijft aan de pyloon en werpt twee seconden lang af; vlieg horizontaal en laag over het doel
     Vanaf hooguit 1000 ft boven de grond; drie kraters sluiten een baan, de mijnen wachten op voertuigen
+weapon-role-31 = Ongeleide 70 mm-raketten in een houder: paren of salvo's tegen voertuigen en troepen in het open veld
+employment-31 =
+    Richt met het raketvizier (CCIP): het toont waar een nu afgevuurde raket inslaat
+    Druk voor een paar, houd vast voor een salvo; het best vanuit een ondiepe duik binnen 4 km
+weapon-role-32 = Lasergeleide 70 mm-raketten: elke raket stuurt naar de laservlek van de doelaanwijspod
+employment-32 =
+    Richt de pod op het doel en vuur langs de neus; ze draaien naar de vlek
+    Tot 6 km; houd de pod op het doel tot de inslag

@@ -1329,7 +1329,7 @@ impl Sim {
 
     /// The OH-58D's left and right weapons pylon as its model shows them (state slots 26 and
     /// 27, `bays` its two stations): 0 none, else the store (1 Hellfires, 2 Stingers, 3 a gun
-    /// pod) plus 4 for each of the two missiles fired.
+    /// pod, 4 a rocket pod) plus 4 for each of the two missiles fired.
     pub fn pylon_looks(&self, bays: &[(i32, i32)]) -> [u8; 2] {
         let look = |b: Option<&(i32, i32)>| {
             let &(w, n) = b?;
@@ -1337,6 +1337,7 @@ impl Sim {
             let fired = 4 * (2 - n.clamp(0, 2)) as u8;
             match spec {
                 0 => Some(3),
+                rockets::HYDRA_SPEC | rockets::APKWS_SPEC => Some(4),
                 HELLFIRE_SPEC => Some(1 + fired),
                 STINGER_SPEC => Some(2 + fired),
                 _ => None,

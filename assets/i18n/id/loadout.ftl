@@ -206,3 +206,11 @@ weapon-role-30 = Dispenser serang lapangan udara: menebar bom kecil pembuat kawa
 employment-30 =
     Tetap di pylon dan menebar selama dua detik; terbang datar dan rendah di atas sasaran
     Dari ketinggian paling tinggi 1000 ft di atas tanah; tiga kawah menutup landasan, ranjau menunggu kendaraan
+weapon-role-31 = Roket 70 mm tanpa pemandu dalam pod: berpasangan atau beruntun melawan kendaraan dan pasukan di tempat terbuka
+employment-31 =
+    Bidik dengan retikel roket (CCIP): menunjukkan tempat roket yang ditembakkan sekarang jatuh
+    Tekan untuk sepasang, tahan untuk tembakan beruntun; terbaik dari menukik landai dalam 4 km
+weapon-role-32 = Roket 70 mm berpemandu laser: masing-masing mengarah ke titik laser pod penjejak sasaran
+employment-32 =
+    Arahkan pod penjejak ke sasaran dan tembak searah hidung; roket berbelok ke titik itu
+    Hingga 6 km; tahan pod pada sasaran sampai mengenai

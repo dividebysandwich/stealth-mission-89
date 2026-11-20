@@ -50,9 +50,12 @@ pub enum Munition {
     /// The F/A-18E's SLAM-ER and the Tornado's JP233 dispenser.
     SlamEr,
     Jp233,
+    /// 70 mm rockets (counted one by one): the unguided Hydra 70 and the laser-guided APKWS.
+    Hydra,
+    Apkws,
 }
 
-const BLUE: [Munition; 18] = [
+const BLUE: [Munition; 20] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -71,6 +74,8 @@ const BLUE: [Munition; 18] = [
     Munition::Mald,
     Munition::SlamEr,
     Munition::Jp233,
+    Munition::Hydra,
+    Munition::Apkws,
 ];
 const RED: [Munition; 8] = [
     Munition::Aa10,
@@ -131,6 +136,8 @@ impl Munition {
             Mald => "ADM-160 MALD",
             SlamEr => "AGM-84H SLAM-ER",
             Jp233 => "JP233",
+            Hydra => "Hydra 70",
+            Apkws => "APKWS",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -169,6 +176,8 @@ impl Munition {
             Mald => 12.0,
             SlamEr => 8.0,
             Jp233 => 8.0,
+            Hydra => 152.0,
+            Apkws => 76.0,
         }
     }
 
@@ -197,6 +206,8 @@ impl Munition {
             Mald => 4.0,
             SlamEr => 2.0,
             Jp233 => 3.0,
+            Hydra => 38.0,
+            Apkws => 19.0,
         }
     }
 
@@ -211,6 +222,7 @@ impl Munition {
             Munition::Penguin | Munition::Cbu105 => Some(Munition::Agm65),
             Munition::Jsow => Some(Munition::Gbu12),
             Munition::SlamEr => Some(Munition::Agm65),
+            Munition::Apkws => Some(Munition::Hydra),
             _ => None,
         }
     }
@@ -234,6 +246,8 @@ impl Munition {
             26 => Jsow,
             27 => Mald,
             30 => Jp233,
+            31 => Hydra,
+            32 => Apkws,
             _ => return None,
         })
     }

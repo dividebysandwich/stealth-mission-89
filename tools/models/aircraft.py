@@ -2481,6 +2481,9 @@ def write_stores_table(path):
                 n = qty[i][w]
                 rack = stores.rack_for(kind, w, n)
                 mounts = racks[rack].mounts[:n] if rack else [((0.0, 0.0, 0.0), 0.0)]
+                # A rocket pod is one store, its rounds the rockets in it.
+                if w in stores.ROCKET_PODS:
+                    mounts = [((0.0, 0.0, 0.0), 0.0)]
                 if rack == "ter" and n == 2:
                     mounts = racks[rack].mounts[:2]
                 rounds = []

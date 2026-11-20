@@ -206,3 +206,11 @@ weapon-role-30 = Vsebnik za napad na letališča: polaga bombice za kraterje in 
 employment-30 =
     Ostane na nosilcu in odmetava dve sekundi; letite vodoravno in nizko nad ciljem
     Z največ 1000 ft nad tlemi; trije kraterji zaprejo stezo, mine čakajo na vozila
+weapon-role-31 = Nevodene 70-mm rakete v zabojniku: v parih ali rafalih proti vozilom in vojakom na odprtem
+employment-31 =
+    Merite z raketnim merilnikom (CCIP): kaže, kam pade raketa, izstreljena zdaj
+    Pritisnite za par, držite za rafal; najbolje iz plitvega strmoglavljenja do 4 km
+weapon-role-32 = Laserno vodene 70-mm rakete: vsaka leti proti laserski točki ciljnega zabojnika
+employment-32 =
+    Usmerite ciljni zabojnik na cilj in streljajte v smeri nosu; zavijejo proti točki
+    Do 6 km; držite zabojnik na cilju do zadetka

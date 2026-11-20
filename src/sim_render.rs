@@ -33,6 +33,7 @@ impl Plugin for SimRenderPlugin {
             .init_resource::<crate::ground_fire::GroundRounds>()
             .init_resource::<crate::sfw::SfwVisuals>()
             .init_resource::<crate::jp233::Jp233Visuals>()
+            .init_resource::<crate::rockets::RocketVisuals>()
             .init_resource::<RemoteVisuals>()
             .init_resource::<crate::pallet_chute::PalletChutes>()
             .add_systems(OnExit(AppState::Flight), cleanup)
@@ -46,6 +47,7 @@ impl Plugin for SimRenderPlugin {
                         .run_if(resource_exists::<Combat>),
                     crate::sfw::sync_sfw.run_if(resource_exists::<Combat>),
                     crate::jp233::sync_jp233.run_if(resource_exists::<Combat>),
+                    crate::rockets::sync_rockets.run_if(resource_exists::<Combat>),
                     sync_remote_pilots.run_if(resource_exists::<Combat>),
                     crate::pallet_chute::sync_pallet_chutes
                         .after(sync_objects)
@@ -290,6 +292,7 @@ fn cleanup(
     mut rounds: ResMut<crate::ground_fire::GroundRounds>,
     mut sfw: ResMut<crate::sfw::SfwVisuals>,
     mut jp233: ResMut<crate::jp233::Jp233Visuals>,
+    mut rockets: ResMut<crate::rockets::RocketVisuals>,
     mut chutes: ResMut<crate::pallet_chute::PalletChutes>,
 ) {
     *aaa = AaaVisuals::default();
@@ -297,6 +300,7 @@ fn cleanup(
     *rounds = Default::default();
     *sfw = Default::default();
     *jp233 = Default::default();
+    *rockets = Default::default();
     *remote = RemoteVisuals::default();
     for e in &q {
         commands.entity(e).try_despawn();

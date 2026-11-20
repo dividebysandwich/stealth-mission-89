@@ -206,3 +206,11 @@ weapon-role-30 = Dáileoir ionsaithe aerpháirce: leagann sé buamaí beaga crá
 employment-30 =
     Fanann sé ar an bpíolón agus dáileann sé ar feadh dhá shoicind; eitil go cothrom agus íseal os cionn na sprice
     Ó 1000 ft ar a mhéad os cionn na talún; dúnann trí chráitéar rúidbhealach, fanann na mianaigh le feithiclí
+weapon-role-31 = Roicéid 70 mm gan treorú i bpota: ina bpéirí nó ina sraitheanna i gcoinne feithiclí agus trúpaí faoin aer
+employment-31 =
+    Dírigh le crosóg na roicéad (CCIP): taispeánann sí cá dtuirlingeoidh roicéad a scaoiltear anois
+    Brúigh le haghaidh péire, coinnigh síos le haghaidh sraithe; is fearr ó thumadh éadomhain laistigh de 4 km
+weapon-role-32 = Roicéid 70 mm faoi threorú léasair: téann gach ceann ar spota léasair an phota spriocdhírithe
+employment-32 =
+    Cuir an pota spriocdhírithe ar an sprioc agus scaoil feadh na srón; casann siad ar an spota
+    Suas le 6 km; coinnigh an pota ar an sprioc go mbuaileann siad

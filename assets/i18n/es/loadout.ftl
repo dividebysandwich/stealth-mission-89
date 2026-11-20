@@ -206,3 +206,11 @@ weapon-role-30 = Dispensador de ataque a aeródromos: siembra bombetas de cráte
 employment-30 =
     Se queda en el pilón y lanza durante dos segundos; vuela nivelado y bajo sobre el objetivo
     Desde no más de 1000 ft sobre el suelo; tres cráteres cierran una pista, las minas esperan a los vehículos
+weapon-role-31 = Cohetes de 70 mm no guiados en lanzador: por parejas o en ráfagas contra vehículos y tropas al descubierto
+employment-31 =
+    Apunte con la retícula de cohetes (CCIP): muestra dónde cae un cohete disparado ahora
+    Pulse para una pareja, mantenga para una ráfaga; mejor en picado suave a menos de 4 km
+weapon-role-32 = Cohetes de 70 mm guiados por láser: cada uno se dirige al punto láser del pod de designación
+employment-32 =
+    Ponga el pod de designación sobre el blanco y dispare hacia el frente; giran hacia el punto
+    Hasta 6 km; mantenga el pod sobre el blanco hasta el impacto

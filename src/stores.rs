@@ -252,9 +252,10 @@ fn hang_stores(
                 let rack = load.rack.and_then(|m| spawn(m, st.at, st.roll));
                 hung.stations[k] = Some((w, rounds, rack));
             }
-            // The rounds still there: the first `left` of them (the camera pod, a tank used up
-            // and an empty JP233 stay on).
-            let stays = matches!(w, CAMERA | FUEL_TANK | JP233);
+            // The rounds still there: the first `left` of them (the camera pod, a tank used up,
+            // an empty JP233 and a rocket pod, a round its rockets, stay on).
+            let stays =
+                matches!(w, CAMERA | FUEL_TANK | JP233) || stealth_sim::rockets::rocket_weapon(w);
             if let Some((_, rounds, _)) = &hung.stations[k] {
                 for (i, &e) in rounds.iter().enumerate() {
                     if let Ok(mut v) = shown.get_mut(e) {
@@ -294,7 +295,11 @@ fn aim_hardpoints(
             .stations
             .get(k)
             .and_then(|h| h.as_ref())
-            .and_then(|(_, r, _)| rounds.get(*r.get(usize::try_from(left - 1).ok()?)?).ok());
+            .and_then(|(_, r, _)| {
+                // A rocket pod's rockets all leave its one store.
+                let i = usize::try_from(left - 1).ok()?.min(r.len().checked_sub(1)?);
+                rounds.get(*r.get(i)?).ok()
+            });
         let p = next.map_or(gltf(st.at), |g| to_model.transform_point3(g.translation()));
         *point = [p.x * s, -p.z * s, p.y * s + lift];
     }
@@ -449,7 +454,9 @@ mod tests {
                 assert_eq!(st.station, i, "{kind:?}");
                 for w in h.loads {
                     let load = st.loads.get(w).unwrap_or_else(|| panic!("{kind:?} {} {w}", h.name));
-                    assert_eq!(load.rounds.len(), h.rounds(*w) as usize, "{kind:?} {} {w}", h.name);
+                    // A rocket pod is hung as one store.
+                    let n = if crate::loadout::rocket_pod(*w) { 1 } else { h.rounds(*w) };
+                    assert_eq!(load.rounds.len(), n as usize, "{kind:?} {} {w}", h.name);
                     assert!(weapon_model(*w as i32).is_some());
                 }
             }

@@ -206,3 +206,11 @@ weapon-role-30 = Zasobnik do ataku na lotniska: rozrzuca na spadochronikach bomb
 employment-30 =
     Zostaje na pylonie i wyrzuca przez dwie sekundy; leć poziomo i nisko nad celem
     Z wysokości nie większej niż 1000 ft nad ziemią; trzy kratery zamykają pas, miny czekają na pojazdy
+weapon-role-31 = Niekierowane rakiety 70 mm w wyrzutni: parami lub salwami przeciw pojazdom i piechocie w terenie odkrytym
+employment-31 =
+    Celuj celownikiem rakietowym (CCIP): pokazuje, gdzie spadnie rakieta odpalona teraz
+    Naciśnij, by odpalić parę, przytrzymaj dla salwy; najlepiej z płytkiego nurkowania z mniej niż 4 km
+weapon-role-32 = Rakiety 70 mm naprowadzane laserowo: każda leci na plamkę lasera zasobnika celowniczego
+employment-32 =
+    Nakieruj zasobnik na cel i strzelaj wzdłuż nosa; skręcą na plamkę
+    Do 6 km; trzymaj zasobnik na celu aż do trafienia

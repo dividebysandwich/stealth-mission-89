@@ -285,6 +285,9 @@ pub struct HudCues {
     /// gun's pipper (selected or not), or a fixed gun's while selected.
     pub helmet_lock: Option<(Vec3, bool)>,
     pub turret_gun: Option<GunCue>,
+    /// Rockets selected: the CCIP rocket reticle (on the HUD in AG, on a full helmet display
+    /// in every cockpit view).
+    pub rocket: Option<RocketCue>,
     /// The AH-64's chin gun and TADS as they point (azimuth right and elevation up in the
     /// aircraft frame, rad), for its model.
     pub chin_gun: Option<(f32, f32)>,
@@ -442,6 +445,20 @@ pub struct GunCue {
     /// Range to the locked target (m); None: no target, the pipper is for 1000 m.
     pub range_m: Option<f32>,
     /// Locked target within the gun's range.
+    pub in_range: bool,
+}
+
+/// Where a rocket fired now lands (`stealth_sim::rockets::impact`).
+#[derive(Debug, Clone, Copy)]
+pub struct RocketCue {
+    /// Direction from the eye (aircraft frame: x right, y up, -z forward).
+    pub dir: Vec3,
+    /// The reticle on the 320x200 screen (classic HUD).
+    pub screen: Option<(i32, i32)>,
+    /// Slant range (m) and time of flight (s) to the impact.
+    pub range_m: f32,
+    pub tof: f32,
+    /// Close enough to hit what is there (the rockets' effective range).
     pub in_range: bool,
 }
 

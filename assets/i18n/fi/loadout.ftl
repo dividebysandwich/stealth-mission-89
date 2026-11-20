@@ -206,3 +206,11 @@ weapon-role-30 = Lentokentän rynnäkkösäiliö: levittää laskuvarjoilla kraa
 employment-30 =
     Pysyy ripustimessa ja pudottaa kahden sekunnin ajan; lennä vaakalennossa ja matalalla maalin yli
     Enintään 1000 ft maanpinnasta; kolme kraateria sulkee kiitotien, miinat odottavat ajoneuvoja
+weapon-role-31 = Ohjaamattomat 70 mm:n raketit sarjatulikotelossa: pareittain tai sarjoina ajoneuvoja ja avoimessa maastossa olevia joukkoja vastaan
+employment-31 =
+    Tähtää rakettitähtäimellä (CCIP): se näyttää, mihin nyt ammuttu raketti osuu
+    Paina parille, pidä pohjassa sarjalle; parhaiten loivasta syöksystä alle 4 km:stä
+weapon-role-32 = Laserohjatut 70 mm:n raketit: kukin hakeutuu maalinosoitussäiliön laserpisteeseen
+employment-32 =
+    Suuntaa maalinosoitussäiliö maaliin ja ammu nokan suuntaan; ne kääntyvät pisteeseen
+    Enintään 6 km; pidä säiliö maalissa osumaan asti

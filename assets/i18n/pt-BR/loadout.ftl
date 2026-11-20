@@ -206,3 +206,11 @@ weapon-role-30 = Dispensador de ataque a aeródromos: espalha bombetas de crater
 employment-30 =
     Fica no pilone e lança por dois segundos; voe nivelado e baixo sobre o alvo
     De no máximo 1000 ft acima do solo; três crateras fecham uma pista, as minas esperam os veículos
+weapon-role-31 = Foguetes de 70 mm não guiados em casulo: em pares ou em salvas contra veículos e tropas a céu aberto
+employment-31 =
+    Mire com o retículo de foguetes (CCIP): mostra onde cai um foguete disparado agora
+    Pressione para um par, segure para uma salva; melhor em mergulho raso a menos de 4 km
+weapon-role-32 = Foguetes de 70 mm guiados a laser: cada um segue o ponto laser do pod de designação
+employment-32 =
+    Aponte o pod de designação para o alvo e dispare pelo nariz; eles curvam para o ponto
+    Até 6 km; mantenha o pod no alvo até o impacto

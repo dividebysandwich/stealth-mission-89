@@ -206,3 +206,11 @@ weapon-role-30 = Lidlauku uzbrukuma konteiners: ar izpletņiem izkaisa krāterus
 employment-30 =
     Paliek uz pilona un kaisa divas sekundes; lidojiet horizontāli un zemu virs mērķa
     No ne vairāk kā 1000 ft virs zemes; trīs krāteri slēdz skrejceļu, mīnas gaida transportlīdzekļus
+weapon-role-31 = Nevadāmas 70 mm raķetes konteinerā: pa pāriem vai sērijās pret transportlīdzekļiem un karaspēku klajā vietā
+employment-31 =
+    Tēmējiet ar raķešu tēmēkli (CCIP): tas rāda, kur nokritīs tagad izšauta raķete
+    Nospiediet pārim, turiet sērijai; vislabāk no lēzena pikējuma līdz 4 km
+weapon-role-32 = Ar lāzeru vadāmas 70 mm raķetes: katra tēmē uz mērķēšanas konteinera lāzera punktu
+employment-32 =
+    Novirziet konteineru uz mērķi un šaujiet deguna virzienā; tās pagriežas uz punktu
+    Līdz 6 km; turiet konteineru uz mērķa līdz trāpījumam

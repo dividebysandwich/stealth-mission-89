@@ -206,3 +206,11 @@ weapon-role-30 = Repülőtér-támadó konténer: ejtőernyős kráterező bomb�
 employment-30 =
     A függesztőn marad és két másodpercig szór; repülj vízszintesen és alacsonyan a cél fölött
     Legfeljebb 1000 ft-ről a talaj fölött; három kráter lezár egy kifutót, az aknák járművekre várnak
+weapon-role-31 = Irányítatlan 70 mm-es rakéták konténerben: párban vagy sorozatban járművek és nyílt terepen lévő csapatok ellen
+employment-31 =
+    Célozzon a rakétairányzékkal (CCIP): megmutatja, hová csapódik a most indított rakéta
+    Nyomja meg egy párért, tartsa lenyomva sorozatért; legjobb enyhe zuhanásból 4 km-en belül
+weapon-role-32 = Lézerirányítású 70 mm-es rakéták: mindegyik a célzókonténer lézerfoltjára tart
+employment-32 =
+    Állítsa a célzókonténert a célra, és lőjön az orr irányába; a folt felé fordulnak
+    Legfeljebb 6 km; tartsa a konténert a célon a becsapódásig

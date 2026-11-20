@@ -206,3 +206,11 @@ weapon-role-30 = Kontejner k napadení letišť: klade kráterové pumičky a pr
 employment-30 =
     Zůstává na závěsníku a vyhazuje dvě sekundy; leťte vodorovně a nízko nad cílem
     Z výšky nejvýše 1000 ft nad zemí; tři krátery uzavřou dráhu, miny čekají na vozidla
+weapon-role-31 = Neřízené 70mm rakety v kontejneru: po párech nebo v dávkách proti vozidlům a vojákům v otevřeném terénu
+employment-31 =
+    Miřte raketovým zaměřovačem (CCIP): ukazuje, kam dopadne raketa odpálená teď
+    Stiskněte pro pár, podržte pro dávku; nejlépe z mělkého střemhlavého letu do 4 km
+weapon-role-32 = Laserem naváděné 70mm rakety: každá míří na laserový bod zaměřovacího kontejneru
+employment-32 =
+    Namiřte zaměřovací kontejner na cíl a palte ve směru přídě; stočí se k bodu
+    Do 6 km; držte kontejner na cíli až do zásahu

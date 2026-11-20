@@ -25,7 +25,8 @@ navigation lights (`_s12v1`) and red beacons (`_s20v1`). Levels 0 and 1 also hav
   (`_part4`, slot 31), both about the turret's pivot, square to the fuselage;
 - the TADS turret turning in azimuth (`_part5`, slot 9);
 - the stores on the four wing pylons, slots 21 (left outer), 22 (left inner), 23 (right inner),
-  24 (right outer): 0 nothing, 1 an empty M299 launcher, 2..5 the launcher with 1..4 Hellfires;
+  24 (right outer): 0 nothing, 1 an empty M299 launcher, 2..5 the launcher with 1..4 Hellfires,
+  6 an M261 pod of nineteen 70 mm rockets;
 - the wingtip Stinger launchers, slots 26 (left) and 27 (right): 0 nothing, 1 the empty
   launcher, 2..3 the launcher with 1..2 Stingers.
 Dark olive drab. Built in metres and scaled to aircraft units (K per metre). Model space: x right,
@@ -482,6 +483,28 @@ def m299(x, count, level):
     return g
 
 
+# The M261's nineteen tubes: one in the middle, six round it, twelve round those.
+M261_TUBES = ([(0.0, 0.0)] + [(0.075 * math.cos(math.radians(a)), 0.075 * math.sin(math.radians(a))) for a in range(0, 360, 60)]
+              + [(0.150 * math.cos(math.radians(a)), 0.150 * math.sin(math.radians(a))) for a in range(15, 360, 30)])
+
+
+def m261(x, level):
+    """An M261 pod of nineteen 70 mm rockets under the pylon at `x` (drawing frame): its short
+    hanger, the fat tube bundle with the tube mouths dark on both faces."""
+    g = Geo()
+    r = 0.20
+    z = PYLON_FOOT - 0.06 - r
+    front, back = HELLFIRE_NOSE - 0.05, HELLFIRE_NOSE - 1.65
+    g.add(mklib.block(x - 0.05, x + 0.05, back + 0.55, front - 0.55, z + r - 0.02, PYLON_FOOT, METAL))
+    n = 14 if level == 0 else 8
+    g.add(frustum((x, front, z), (x, back, z), r, r, STORE, n=n))
+    if level == 0:
+        for y in (front + 0.002, back - 0.002):
+            for dx, dz in M261_TUBES:
+                g.add(frustum((x + dx, y + 0.001, z + dz), (x + dx, y, z + dz), 0.034, 0.034, DARK, n=6))
+    return g
+
+
 STINGER_Z = WING_Z - 0.22
 
 
@@ -696,6 +719,7 @@ def build():
             for slot, px in ((21, -PYLONS[1]), (22, -PYLONS[0]), (23, PYLONS[0]), (24, PYLONS[1])):
                 for count in range(5):
                     group(lod, [(slot, count + 1)], placed(m299(px, count, level)))
+                group(lod, [(slot, 6)], placed(m261(px, level)))
             for slot, x in ((26, -WING_TIP), (27, WING_TIP)):
                 for count in range(3):
                     group(lod, [(slot, count + 1)], placed(atas(x, count, level)))

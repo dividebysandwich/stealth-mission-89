@@ -206,3 +206,11 @@ weapon-role-30 = Dispenseur d'attaque d'aérodrome : sème des bombettes de crat
 employment-30 =
     Reste sur le pylône et largue pendant deux secondes ; volez en palier et bas au-dessus de l'objectif
     Depuis 1000 ft sol au plus ; trois cratères ferment une piste, les mines attendent les véhicules
+weapon-role-31 = Roquettes de 70 mm non guidées en panier : par paires ou en salves contre véhicules et troupes à découvert
+employment-31 =
+    Visez avec le réticule roquettes (CCIP) : il montre où tombe une roquette tirée maintenant
+    Appuyez pour une paire, maintenez pour une salve ; idéal en piqué léger à moins de 4 km
+weapon-role-32 = Roquettes de 70 mm guidées laser : chacune se dirige vers la tache laser de la nacelle
+employment-32 =
+    Pointez la nacelle de désignation sur la cible et tirez dans l'axe ; elles virent vers la tache
+    Jusqu'à 6 km ; gardez la nacelle sur la cible jusqu'à l'impact

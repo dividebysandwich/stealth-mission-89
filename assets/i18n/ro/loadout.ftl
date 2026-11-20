@@ -206,3 +206,11 @@ weapon-role-30 = Dispenser de atac al aerodromurilor: împrăștie bombițe de c
 employment-30 =
     Rămâne pe pilon și lansează timp de două secunde; zboară orizontal și jos deasupra țintei
     De la cel mult 1000 ft deasupra solului; trei cratere închid o pistă, minele așteaptă vehiculele
+weapon-role-31 = Rachete nedirijate de 70 mm în container: în perechi sau în salve contra vehiculelor și trupelor la vedere
+employment-31 =
+    Țintiți cu reticulul pentru rachete (CCIP): arată unde cade o rachetă lansată acum
+    Apăsați pentru o pereche, țineți pentru o salvă; cel mai bine dintr-un picaj ușor sub 4 km
+weapon-role-32 = Rachete de 70 mm dirijate laser: fiecare se îndreaptă spre punctul laser al containerului de desemnare
+employment-32 =
+    Îndreptați containerul de desemnare spre țintă și trageți în axa botului; virează spre punct
+    Până la 6 km; țineți containerul pe țintă până la impact

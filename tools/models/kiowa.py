@@ -465,9 +465,28 @@ def gun_pod(x, level):
     return g
 
 
+def rocket_pod(x, front, z, r, length, tubes, level):
+    """A rocket pod along y: its front face at `front`, axis at (`x`, `z`), radius `r`, the tube
+    mouths `tubes` ((x, z) offsets) dark on both faces."""
+    g = Geo()
+    n = 12 if level == 0 else 8
+    back = front - length
+    g.add(frustum((x, front, z), (x, back, z), r, r, STORE, n=n))
+    if level == 0:
+        for y in (front + 0.002, back - 0.002):
+            for dx, dz in tubes:
+                g.add(frustum((x + dx, y + 0.001, z + dz), (x + dx, y, z + dz), 0.032, 0.032, DARK, n=6))
+    return g
+
+
+# The M260's seven tubes: one in the middle, six round it.
+M260_TUBES = [(0.0, 0.0)] + [(0.075 * math.cos(math.radians(a)), 0.075 * math.sin(math.radians(a))) for a in range(0, 360, 60)]
+
+
 def pylon(sx, kind, level, left=2):
     """The universal weapons pylon on one side (`sx` -1 left, 1 right) with its stores: `kind`
-    1 Hellfires, 2 Stingers (`left` of the two, the inner one last), 3 the gun pod."""
+    1 Hellfires, 2 Stingers (`left` of the two, the inner one last), 3 the gun pod, 4 an M260
+    pod of seven 70 mm rockets."""
     g = Geo()
     x0, x1 = ARM_X
     y = ARM_Y
@@ -477,6 +496,10 @@ def pylon(sx, kind, level, left=2):
     if kind == 3:
         g.add(mklib.block(x - 0.04, x + 0.04, y - 0.52, y - 0.08, STORE_Z + 0.22, ARM_Z, METAL))
         g.add(gun_pod(x, level))
+        return g
+    if kind == 4:
+        g.add(mklib.block(x - 0.04, x + 0.04, y - 0.45, y - 0.05, STORE_Z + 0.12, ARM_Z, METAL))
+        g.add(rocket_pod(x, 1.05, STORE_Z, 0.125, 1.25, M260_TUBES, level))
         return g
     g.add(mklib.block(x - 0.04, x + 0.04, y - 0.50, y - 0.10, STORE_Z + 0.20, ARM_Z, METAL))
     # The launcher: a beam across under the hanger, a rail down to each store.
@@ -536,6 +559,7 @@ def build():
         lod = bpy.data.objects[f"{NAME}_lod{level}"]
         for sx, slot in ((-1, 26), (1, 27)):
             group(lod, [(slot, 3)], pylon(sx, 3, level))
+            group(lod, [(slot, 4)], pylon(sx, 4, level))
             for kind in (1, 2):
                 for fired in range(3):
                     group(lod, [(slot, kind + 4 * fired)], pylon(sx, kind, level, 2 - fired))

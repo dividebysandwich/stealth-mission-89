@@ -206,3 +206,11 @@ weapon-role-30 = Dispenser d'attacco agli aeroporti: semina bombette da cratere 
 employment-30 =
     Resta sul pilone e rilascia per due secondi; vola livellato e basso sull'obiettivo
     Da non più di 1000 ft dal suolo; tre crateri chiudono una pista, le mine aspettano i veicoli
+weapon-role-31 = Razzi da 70 mm non guidati in lanciatore: a coppie o a raffica contro veicoli e truppe allo scoperto
+employment-31 =
+    Mirare con il reticolo razzi (CCIP): mostra dove cade un razzo sparato ora
+    Premere per una coppia, tenere premuto per una raffica; meglio in leggera picchiata entro 4 km
+weapon-role-32 = Razzi da 70 mm a guida laser: ognuno punta sul punto laser del pod di designazione
+employment-32 =
+    Puntare il pod sul bersaglio e sparare lungo il muso; virano verso il punto
+    Fino a 6 km; tenere il pod sul bersaglio fino all'impatto

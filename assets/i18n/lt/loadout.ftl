@@ -206,3 +206,11 @@ weapon-role-30 = Aerodromų atakos konteineris: parašiutais išbarsto kraterius
 employment-30 =
     Lieka ant pilono ir barsto dvi sekundes; skriskite horizontaliai ir žemai virš taikinio
     Ne aukščiau kaip 1000 ft virš žemės; trys krateriai uždaro taką, minos laukia transporto priemonių
+weapon-role-31 = Nevaldomos 70 mm raketos konteineryje: poromis ar serijomis prieš transporto priemones ir atvirus karius
+employment-31 =
+    Taikykitės raketų taikikliu (CCIP): jis rodo, kur nukris dabar paleista raketa
+    Paspauskite porai, laikykite serijai; geriausia iš nuožulnaus pikiravimo iki 4 km
+weapon-role-32 = Lazeriu valdomos 70 mm raketos: kiekviena skrenda į taikymo konteinerio lazerio tašką
+employment-32 =
+    Nukreipkite konteinerį į taikinį ir šaukite pagal nosį; jos pasisuka į tašką
+    Iki 6 km; laikykite konteinerį ant taikinio iki pataikymo

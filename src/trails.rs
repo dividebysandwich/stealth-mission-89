@@ -250,6 +250,8 @@ enum Source {
     RemoteSmoke(u8, bool),
     /// An aircraft of the menu's scene (`Contrails`) and its engine.
     Scene(Entity, usize),
+    /// A 70 mm rocket (its id) while its motor burns.
+    Rocket(u16),
 }
 
 /// On an aircraft of the menu's scene: it trails contrails from these points (its frame,
@@ -482,6 +484,10 @@ fn update_trails(
         if let Some((pos, _)) = crate::sim_render::projectile_pose(&combat, s) {
             emitters.push((Source::Missile(s, m.spec), &SMOKE, pos));
         }
+    }
+    // The 70 mm rockets while their motors burn, where they are drawn.
+    for r in sim.rockets().rockets.iter().filter(|r| r.burning()) {
+        emitters.push((Source::Rocket(r.id), &SMOKE, crate::rockets::drawn_at(&combat, r)));
     }
     for (i, u, _) in sim.active_aircraft() {
         if u.flags & fflags::DESTROYED != 0 || (u.wx == 0 && u.wy == 0) || u.alt < CONTRAIL_VIEW_Z {

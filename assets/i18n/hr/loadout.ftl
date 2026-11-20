@@ -206,3 +206,11 @@ weapon-role-30 = Spremnik za napad na aerodrome: polaže bombice za kratere i pr
 employment-30 =
     Ostaje na nosaču i izbacuje dvije sekunde; letite vodoravno i nisko iznad cilja
     S najviše 1000 ft iznad tla; tri kratera zatvaraju stazu, mine čekaju vozila
+weapon-role-31 = Nevođene rakete od 70 mm u lanseru: u parovima ili salvama protiv vozila i vojnika na otvorenom
+employment-31 =
+    Ciljajte raketnim ciljnikom (CCIP): pokazuje gdje pada raketa ispaljena sada
+    Pritisnite za par, držite za salvu; najbolje iz plitkog obrušavanja unutar 4 km
+weapon-role-32 = Laserski vođene rakete od 70 mm: svaka leti prema laserskoj točki ciljničkog kontejnera
+employment-32 =
+    Usmjerite ciljnički kontejner na cilj i pucajte duž nosa; skreću prema točki
+    Do 6 km; držite kontejner na cilju do pogotka

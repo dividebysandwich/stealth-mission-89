@@ -206,3 +206,11 @@ weapon-role-30 = Beholder til angreb på flyvepladser: lægger kraterbomber og p
 employment-30 =
     Bliver på pylonen og kaster i to sekunder; flyv vandret og lavt over målet
     Fra højst 1000 ft over jorden; tre kratere lukker en bane, minerne venter på køretøjer
+weapon-role-31 = Ustyrede 70 mm-raketter i en kapsel: par eller salver mod køretøjer og tropper i det åbne
+employment-31 =
+    Sigt med raketsigtet (CCIP): det viser, hvor en raket affyret nu rammer
+    Tryk for et par, hold for en salve; bedst fra et fladt dyk inden for 4 km
+weapon-role-32 = Laserstyrede 70 mm-raketter: hver styrer mod målbelysningskapslens laserplet
+employment-32 =
+    Sæt målkapslen på målet og skyd langs næsen; de drejer ind mod pletten
+    Op til 6 km; hold kapslen på målet, til de rammer

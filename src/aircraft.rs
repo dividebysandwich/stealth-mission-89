@@ -155,11 +155,14 @@ pub const APACHE_TADS_SLOT: usize = 9;
 pub const APACHE_TILT: f32 = 0.0876;
 
 /// The AH-64's store slot values for its stations' (weapon type, rounds left; a negative type
-/// none): 0 nothing on a station, 1 its empty launcher, 1 + n with n rounds on it.
+/// none): 0 nothing on a station, 1 its empty launcher, 1 + n with n rounds on it, 6 a rocket
+/// pod (full or empty).
 pub fn apache_store_values(stations: impl Iterator<Item = (i32, i32)>) -> [i16; 6] {
     let mut v = [0; 6];
     for (s, (w, n)) in v.iter_mut().zip(stations) {
-        if w >= 0 {
+        if stealth_sim::rockets::rocket_weapon(w) {
+            *s = 6;
+        } else if w >= 0 {
             *s = 1 + n.clamp(0, 4) as i16;
         }
     }

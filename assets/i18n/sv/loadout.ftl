@@ -206,3 +206,11 @@ weapon-role-30 = Behållare för attack mot flygfält: lägger kraterbomber och 
 employment-30 =
     Sitter kvar på pylonen och fäller i två sekunder; flyg plant och lågt över målet
     Från högst 1000 ft över marken; tre kratrar stänger en bana, minorna väntar på fordon
+weapon-role-31 = Ostyrda 70 mm-raketer i kapsel: par eller salvor mot fordon och trupp i det fria
+employment-31 =
+    Sikta med raketsiktet (CCIP): det visar var en raket som avfyras nu slår ned
+    Tryck för ett par, håll för en salva; bäst från en flack dykning inom 4 km
+weapon-role-32 = Laserstyrda 70 mm-raketer: var och en styr mot målkapselns laserpunkt
+employment-32 =
+    Rikta målkapseln mot målet och skjut längs nosen; de svänger mot punkten
+    Upp till 6 km; håll kapseln på målet tills de träffar

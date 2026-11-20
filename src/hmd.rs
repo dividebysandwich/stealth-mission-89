@@ -268,6 +268,7 @@ pub(crate) fn draw_scene(
         sight: Some(head * Vec3::NEG_Z),
         lock: lock.map(|l| (l, true)),
         gun: None,
+        rocket: None,
         seeker,
         pod: None,
         waypoints: Vec::new(),
@@ -419,6 +420,7 @@ fn draw(
             .turret_gun
             .filter(|_| full && matches!(stores.gun_slave, Some("HMS") | None))
             .map(|g| g.dir),
+        rocket: cues.rocket.filter(|_| full).map(|r| (r.dir, r.range_m)),
         seeker: combat.and_then(|c| {
             // East, north, up to the world frame (x east, y up, -z north).
             let [e, n, u] = c.sim.helmet_seeker()?;
@@ -475,6 +477,8 @@ struct Frame {
     /// The gun's pipper (aircraft frame): a turret's while it is slaved to the helmet, a fixed
     /// gun's while it is selected.
     gun: Option<Vec3>,
+    /// Rockets selected: where one fired now lands (aircraft frame) and its range (m).
+    rocket: Option<(Vec3, f32)>,
     /// Where the Sidewinder seeker looks (world).
     seeker: Option<Vec3>,
     /// Where the targeting pod looks (world direction from the eye: its ground point, else along
@@ -574,6 +578,15 @@ fn draw_visor(c: &mut Canvas, f: &Frame) {
             c.stroke(q + Vec2::new(-r * 0.7, r * 0.7), q + Vec2::new(r * 0.7, -r * 0.7), THIN, INK);
         }
     }
+    if let Some((d, m)) = f.rocket
+        && let Some(g) = project(head(d))
+    {
+        let q = g.clamp(lo, hi);
+        let r = 18.0;
+        crate::hud::modern::rocket_reticle(c, q, r, q != g && f.blink);
+        let km = format!("{:.1}", m / 1000.0);
+        stroke_text_at(c, q.x, q.y + r + 26.0, &km, TEXT, PEN * 0.85, INK, Align::Centre);
+    }
     if let Some(s) = &f.gun_line {
         stroke_text_at(c, centre.x, centre.y + 150.0, s, TEXT, PEN * 0.85, INK, Align::Centre);
     }
@@ -660,6 +673,7 @@ mod tests {
             sight: None,
             lock: None,
             gun: None,
+            rocket: None,
             seeker: None,
             pod: None,
             waypoints: Vec::new(),

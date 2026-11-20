@@ -206,3 +206,11 @@ weapon-role-30 = Flugplatz-Angriffsbehälter: legt Krater-Bomblets und Panzerabw
 employment-30 =
     Bleibt am Pylon und wirft zwei Sekunden lang ab; tief und im Horizontalflug über das Ziel fliegen
     Aus höchstens 1000 ft über Grund; drei Krater sperren eine Piste, die Minen warten auf Fahrzeuge
+weapon-role-31 = Ungelenkte 70-mm-Raketen im Behälter: Paare oder Salven gegen Fahrzeuge und Truppen im Freien
+employment-31 =
+    Mit dem Raketenvisier (CCIP) zielen: es zeigt, wo eine jetzt abgefeuerte Rakete einschlägt
+    Drücken für ein Paar, halten für eine Salve; am besten aus flachem Sturzflug unter 4 km
+weapon-role-32 = Lasergelenkte 70-mm-Raketen: jede steuert auf den Laserpunkt des Zielbehälters
+employment-32 =
+    Den Zielbehälter auf das Ziel richten und in Flugrichtung feuern; sie drehen auf den Punkt ein
+    Bis 6 km; den Behälter bis zum Einschlag auf dem Ziel halten

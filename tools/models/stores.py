@@ -427,6 +427,26 @@ def jp233():
     return Store(hang(g, 0.0, hh + 0.03))
 
 
+def lau131():
+    """LAU-131/A: the 7-tube launcher of 70 mm rockets: a short olive cylinder, its front and
+    back faces showing the seven tube mouths (one in the middle, six round it), the strongback
+    with its lugs on top; the same pod for the Hydra 70 and the APKWS."""
+    r, n, t = 0.13, 0.78, -0.86
+    g = body([(n, r - 0.01), (n - 0.02, r), (t + 0.02, r), (t, r - 0.01)], OLIVE, n=16,
+             bands=[(n - 0.10, n - 0.16, DARK), (t + 0.16, t + 0.10, DARK)])
+    g.add(frustum((0, n + 0.001, 0), (0, n, 0), r - 0.01, r - 0.01, DARK, 16))
+    g.add(frustum((0, t, 0), (0, t - 0.001, 0), r - 0.01, r - 0.01, DARK, 16))
+    tubes = [(0.0, 0.0)] + [(0.078 * math.cos(math.radians(a)), 0.078 * math.sin(math.radians(a)))
+                            for a in range(0, 360, 60)]
+    for x, z in tubes:
+        for y in (n + 0.002, t - 0.003):
+            g.add(frustum((x, y + 0.001, z), (x, y, z), 0.033, 0.033, BLACK, 8))
+    # The strongback the lugs sit in.
+    g.add(block(-0.05, 0.05, -0.30, 0.30, r - 0.02, r + 0.025, OLIVE))
+    lugs(g, 0.0, r + 0.025)
+    return Store(hang(g, 0.0, r + 0.025))
+
+
 def maverick():
     """AGM-65: the glass seeker dome, the stubby body, the long-chord delta wings and the
     control fins behind them."""
@@ -638,11 +658,14 @@ WEAPON_MODELS = {
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
     25: (80, slamer), 26: (82, jsow), 27: (83, mald), 29: (84, alq99), 30: (85, jp233),
+    31: (86, lau131), 32: (86, lau131),
 }
+# The rocket pods: hung as one pod whatever their rounds (the rockets inside it).
+ROCKET_PODS = (31, 32)
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28}
+          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28, 31: 0.13, 32: 0.13}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -723,7 +746,7 @@ RACKS = {"rail": (70, rail_launcher), "lau117": (71, lau117), "lau118": (72, lau
 def rack_for(kind, weapon, rounds):
     """The rack a station of `kind` ("rail": a missile rail of its own, "pylon", "side": a rail
     on a pylon's side) hangs weapon `weapon` on, `rounds` of it; None: straight on the pylon."""
-    if kind in ("rail", "side"):
+    if kind in ("rail", "side") or weapon in ROCKET_PODS:
         return None
     if weapon in (0, 1):
         return "rail"
@@ -752,7 +775,7 @@ LOADOUT_RS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."
 
 # The weapon type constants of src/loadout.rs.
 NAMED = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26,
-         "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30}
+         "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30, "HYDRA": 31, "APKWS": 32}
 
 
 def _loadout_text():

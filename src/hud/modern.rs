@@ -321,6 +321,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         side_guns(c, f, g);
     }
     gun_sight(c, f);
+    rocket_sight(c, f);
     if let Some((loc, gs)) = f.ils {
         ils_bars(c, fpm, h, down, loc, gs);
     }
@@ -734,6 +735,37 @@ fn gun_sight(c: &mut Canvas, f: &HudFrame) {
     small(c, q.x, q.y + r + 22.0, &format!("{:.1}", m / 1000.0), Align::Centre);
     if g.in_range && f.blink {
         text(c, q.x, q.y - r - 22.0, "SHOOT", Align::Centre);
+    }
+}
+
+/// Rockets selected: the CCIP rocket reticle (where a rocket fired now lands): a ring with four
+/// ticks round a dot, the slant range in km under it, the time of flight over it; IN RNG
+/// blinks within the rockets' effective range.
+fn rocket_sight(c: &mut Canvas, f: &HudFrame) {
+    let fld = field(f);
+    let Some(g) = f.cues.rocket else { return };
+    let Some(p) = project(g.dir, f.scale) else { return };
+    let q = p.clamp(fld.0, fld.1);
+    let r = 22.0;
+    rocket_reticle(c, q, r, q != p && f.blink);
+    small(c, q.x, q.y + r + 22.0, &format!("{:.1}", g.range_m / 1000.0), Align::Centre);
+    small(c, q.x, q.y - r - 14.0, &format!("{:.1}s", g.tof), Align::Centre);
+    if g.in_range && f.blink {
+        small(c, q.x + r + 12.0, q.y + 5.0, "IN RNG", Align::Left);
+    }
+}
+
+/// The rocket reticle at `q` (radius `r`): a ring, its four ticks pointing out and the centre
+/// dot; `crossed` when it waits at the field's edge.
+pub(crate) fn rocket_reticle(c: &mut Canvas, q: Vec2, r: f32, crossed: bool) {
+    c.ring(q, r, PEN, INK);
+    c.ring(q, 1.5, PEN * 1.4, INK);
+    for d in [Vec2::X, Vec2::Y, Vec2::NEG_X, Vec2::NEG_Y] {
+        c.stroke(q + d * r, q + d * (r + 9.0), PEN, INK);
+    }
+    if crossed {
+        c.stroke(q - Vec2::splat(r * 0.7), q + Vec2::splat(r * 0.7), THIN, INK);
+        c.stroke(q + Vec2::new(-r * 0.7, r * 0.7), q + Vec2::new(r * 0.7, -r * 0.7), THIN, INK);
     }
 }
 
