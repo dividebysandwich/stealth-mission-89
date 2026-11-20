@@ -1640,6 +1640,10 @@ def flamingo_missile(paint):
     for sx in (-1, 1):
         g.add(mklib.hexa([(sx * 0.3, 0.35, -0.3), (sx * 0.3, 1.5, -0.3), (sx * 0.85, 0.9, -0.85), (sx * 0.85, 0.4, -0.85),
                           (sx * 0.34, 0.35, -0.26), (sx * 0.34, 1.5, -0.26), (sx * 0.89, 0.9, -0.81), (sx * 0.89, 0.4, -0.81)], paint))
+    # The rocket booster slung under the rear fuselage for the launch.
+    bz = -(r + 0.34)
+    g.add(frustum((0, 0.5, bz), (0, 3.6, bz), 0.24, 0.3, STEEL, n=10))
+    g.add(frustum((0, 3.6, bz), (0, 3.9, bz), 0.3, 0.05, STEEL, n=10, caps=False))
     return g
 
 

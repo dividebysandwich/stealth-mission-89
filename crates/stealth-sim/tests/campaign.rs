@@ -1598,3 +1598,19 @@ fn a_bomber_and_a_tel_launch_their_missiles() {
     let n = sim.fire_launcher(unit, MissileKind::Iskander, &[((t.x, t.y), Some(home))], 0x7100_0000);
     assert_eq!(n, 1);
 }
+
+/// A Flamingo leaves on its rocket booster, which burns out and drops away after ten seconds;
+/// it cruises on its turbofan.
+#[test]
+fn a_flamingo_drops_its_booster() {
+    use stealth_sim::strike_missiles::MissileKind;
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let home = find(&sim, 0x001, Some("Komarno"));
+    let o = sim.objects()[home];
+    let i = sim.launch_strike_missile(MissileKind::Flamingo, (o.x - 3000, o.y), None, (o.x, o.y), Some(home), 950);
+    run(&mut sim, &idle(), 5);
+    assert_eq!(sim.strike_missile_motor(i), Some((true, true)));
+    run(&mut sim, &idle(), 7);
+    assert_eq!(sim.strike_missile_motor(i), Some((false, false)));
+}

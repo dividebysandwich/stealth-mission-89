@@ -516,7 +516,17 @@ def flamingo_fp5():
     # Two fins angled 45 degrees down either side under the tail.
     for rot in (225.0, 315.0):
         fins(g, t + 1.5, t + 0.35, r * 0.75, 0.75, paint, n=1, rot=rot, tip=(t + 0.9, t + 0.4), thick=0.05)
-    return Store(g)
+    # The solid rocket booster slung under the rear fuselage for the launch (state slot 15 = 0;
+    # dropped after its burn), its nozzle tilted down so it pushes through the centre of mass,
+    # and its flame (slot 14).
+    br, bz, b0, b1 = 0.3, -(r + 0.34), t + 0.5, t + 3.9
+    booster = body([(b1, 0.05), (b1 - 0.4, br * 0.8), (b1 - 0.7, br), (b0 + 0.3, br), (b0, br * 0.8)], GREY, n=12)
+    booster.add(frustum((0, b0, 0), (0, b0 - 0.35, -0.08), br * 0.6, br * 0.75, DARK, 10))
+    booster = booster.transformed(lambda p: Vector((p.x, p.y, p.z + bz)))
+    for y in (b0 + 0.8, b1 - 1.0):
+        booster.add(block(-0.06, 0.06, y - 0.15, y + 0.15, bz + br - 0.05, -r * 0.8, DARK))
+    flame = frustum((0, b0 - 0.35, bz - 0.08), (0, b0 - 3.5, bz - 0.9), br * 0.6, br * 0.15, FLAME, 8)
+    return Store(g, flame, groups=[(15, 0, booster)])
 
 
 def maverick():

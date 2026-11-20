@@ -48,6 +48,10 @@ const ERECT_ANGLE: f32 = 1.45;
 const ERECT_RATE: f64 = 0.05;
 /// A carrier launches its salvo this close to its launch point (map units).
 const SALVO_REACH: i32 = 0x40;
+/// The Flamingo's rocket booster under it helps it off its ramp for this long (s), then drops
+/// away; a ballistic missile's motor burns over this share of its arc.
+pub const BOOSTER_SECS: f64 = 10.0;
+const BALLISTIC_BURN: f64 = 0.35;
 /// Radars find a cruise missile only this close (m).
 pub const CRUISE_DETECT_M: f64 = 25_000.0;
 
@@ -427,6 +431,18 @@ impl Sim {
                 self.flights[i].wp = home;
             }
         }
+    }
+
+    /// Flight unit `i`'s strike missile: its motor (or booster) burning, and whether it still
+    /// carries its booster (a Flamingo for its first seconds). None: not a strike missile.
+    pub fn strike_missile_motor(&self, i: usize) -> Option<(bool, bool)> {
+        let m = self.strike_missile_of(i)?;
+        let secs = m.frame as f64 / self.fs.max(1) as f64;
+        Some(match m.kind {
+            MissileKind::Flamingo => (secs < BOOSTER_SECS, secs < BOOSTER_SECS),
+            k if k.ballistic() => ((m.frame as f64) < m.frames as f64 * BALLISTIC_BURN, false),
+            _ => (false, false),
+        })
     }
 
     /// The missile of flight unit `i` (if it is one).

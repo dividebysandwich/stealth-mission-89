@@ -150,6 +150,19 @@ const SMOKE: Style = Style {
     fade_in: 0.0,
 };
 
+/// A strike missile's rocket booster (the Flamingo's off its ramp): a thick white column.
+const BOOSTER_SMOKE: Style = Style {
+    colour: 7,
+    opacity: 0.85,
+    width: (1.5, 16.0),
+    grow: 25.0,
+    fade_after: 15.0,
+    fade: 45.0,
+    spacing: 10.0,
+    head_alpha: 1.0,
+    fade_in: 0.0,
+};
+
 const CONTRAIL: Style = Style {
     colour: 15,
     opacity: 0.6,
@@ -252,6 +265,8 @@ enum Source {
     Scene(Entity, usize),
     /// A 70 mm rocket (its id) while its motor burns.
     Rocket(u16),
+    /// A strike missile (flight unit) while its motor or booster burns.
+    StrikeMissile(usize),
 }
 
 /// On an aircraft of the menu's scene: it trails contrails from these points (its frame,
@@ -488,6 +503,14 @@ fn update_trails(
     // The 70 mm rockets while their motors burn, where they are drawn.
     for r in sim.rockets().rockets.iter().filter(|r| r.burning()) {
         emitters.push((Source::Rocket(r.id), &SMOKE, crate::rockets::drawn_at(&combat, r)));
+    }
+    // Strike missiles with their motor (or the Flamingo's booster) burning.
+    for (i, u, _) in sim.active_aircraft() {
+        let Some((true, booster)) = sim.strike_missile_motor(i) else { continue };
+        let prev = combat.prev_flights.get(i);
+        let (east, north, alt) = unit_position(prev, &u, alpha);
+        let style = if booster { &BOOSTER_SMOKE } else { &SMOKE };
+        emitters.push((Source::StrikeMissile(i), style, wu_to_bevy(east, north, alt)));
     }
     for (i, u, _) in sim.active_aircraft() {
         if u.flags & fflags::DESTROYED != 0 || (u.wx == 0 && u.wy == 0) || u.alt < CONTRAIL_VIEW_Z {

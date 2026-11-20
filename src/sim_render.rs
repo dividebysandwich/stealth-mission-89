@@ -1349,13 +1349,19 @@ pub(crate) fn sync_objects(
                 let gear = stealth_sim::lights::gear_down(&u);
                 let [s18, s19, s20] =
                     anticollision(time.elapsed_secs(), (i as f32 * 0.618).fract(), nav);
+                // A strike missile: its motor's flame (slot 14) and its booster dropped (15).
+                let (flame, dropped) = match sim.strike_missile_motor(i) {
+                    Some((motor, booster)) => (motor, !booster),
+                    None => (special, false),
+                };
                 let v = [
                     (5, (intact && gear) as i16),
                     (10, lights as i16),
                     (11, lights as i16),
                     (12, nav as i16),
                     (13, (intact && !gear) as i16),
-                    (14, special as i16),
+                    (14, flame as i16),
+                    (15, dropped as i16),
                     s18,
                     s19,
                     s20,
