@@ -514,13 +514,10 @@ def flamingo_fp5():
     g.add(flamingo_nacelle(ny0, ny1, nr, r + nr - 0.12, paint))
     g.add(block(-0.32, 0.32, ny0 + 0.9, ny1 - 0.6, r * 0.6, r + 0.25, paint, taper=0.1))
     # Two fins angled 45 degrees down either side under the tail.
-    for rot in (225.0, 315.0):
+    # An X tail on the fuselage: two fins angled 45 degrees down and two mirroring them up and
+    # out (clear of the nacelle above).
+    for rot in (45.0, 135.0, 225.0, 315.0):
         fins(g, t + 1.5, t + 0.35, r * 0.75, 0.75, paint, n=1, rot=rot, tip=(t + 0.9, t + 0.4), thick=0.05)
-    # Their mirror above: two fins off the nacelle's sides at its rear, angled up and out.
-    up = Geo()
-    for rot in (25.0, 155.0):
-        fins(up, ny0 + 1.4, ny0 + 0.3, nr * 0.9, 0.8, paint, n=1, rot=rot, tip=(ny0 + 0.85, ny0 + 0.35), thick=0.05)
-    g.add(up.transformed(lambda p: Vector((p.x, p.y, p.z + r + nr - 0.12))))
     # The solid rocket booster slung under the rear fuselage for the launch (state slot 15 = 0;
     # dropped after its burn), its nozzle tilted down so it pushes through the centre of mass,
     # and its flame (slot 14).
