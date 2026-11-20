@@ -81,10 +81,12 @@ pub enum Shot {
     Signal,
     /// A Kiowa, an Apache or a Chinook low over the land, following the ground.
     Nap,
+    /// The AC-130 gunner's console: the pod's FLIR picture as the guns strike vehicles.
+    GunnerConsole,
 }
 
 /// Every scene, the apron first.
-pub const SHOTS: [Shot; 28] = [
+pub const SHOTS: [Shot; 29] = [
     Shot::Apron,
     Shot::Carrier,
     Shot::SamSite,
@@ -113,6 +115,7 @@ pub const SHOTS: [Shot; 28] = [
     Shot::Launch,
     Shot::Signal,
     Shot::Nap,
+    Shot::GunnerConsole,
 ];
 
 /// Where a scene has to be: on Tabor's apron, at sea by the carrier, anywhere.
@@ -154,6 +157,7 @@ impl Shot {
             Shot::Launch => "launch",
             Shot::Signal => "signal",
             Shot::Nap => "nap",
+            Shot::GunnerConsole => "gunner",
         }
     }
 

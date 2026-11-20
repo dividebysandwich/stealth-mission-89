@@ -890,7 +890,7 @@ pub fn gimbal_look(orientation: Quat, los: Vec3) -> GimbalLook {
 /// 0 to 70 degrees down; the guns' reach in it (`bears` while they bear), the wing's line
 /// dashed, and the pod's line of sight a cross (at the frame's edge, blinking, when farther
 /// off), red out of reach.
-fn draw_gimbal_scope(
+pub(crate) fn draw_gimbal_scope(
     cv: &mut crate::canvas::Canvas,
     at: Vec2,
     size: Vec2,
