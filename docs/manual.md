@@ -1793,6 +1793,32 @@ back a page; on the first page they close the menu.
 
 Changes apply at once and are saved as the defaults for the next flight.
 
+## 4.7a Your wingman and the radio menu
+
+Switch **WINGMAN** on (the loadout window's footer for single missions and the career, the
+LOADOUT step of a campaign briefing) and an AI wingman flies the mission with you: the same
+aircraft with the same stores. In a campaign its stores come out of your base's stock as yours
+do, and with the *Airframe losses* rule its loss costs the friendly side an aircraft.
+
+It joins you from behind once you are a few hundred feet up and flies **spread** (abeam on your
+right, a little back) or **in trail** (behind you); a helicopter's wingman keeps closer. In
+formation it fights off enemy aircraft that come near you, and if it carries HARMs it fires one at
+a SAM site that launches at you, then rejoins.
+
+Press **\\** for the radio menu (beside the HUD, in the headset too), then a number:
+
+| Key | Call | What it does |
+|---|---|---|
+| 1 | Engage my target | Your air lock; else your ground lock or the targeting pod's point |
+| 2 | Engage SAMs | A HARM at the SAM site firing at you, else the nearest one |
+| 3 | Cover me | Hunts enemy aircraft farther round you |
+| 4 | Rejoin | Back on your wing |
+| 5 | Return to base | Goes home and lands |
+| 6 / 7 | Go trail / Go spread | Changes its station |
+
+It answers over the radio: *Copy*, *Engaging*, or why it can't (no target, no HARM, Winchester).
+If you land or eject it goes home.
+
 ## 4.8 The kneeboard
 
 A kneeboard lies on your left thigh: look down to read it. Its tabs: **BRIEF** (orders,
