@@ -324,10 +324,11 @@ impl CampaignState {
                 let Some(k) = self.missile_strikes.iter().position(|s| s.id == strike) else {
                     return;
                 };
-                if matches!(
-                    self.missile_strikes[k].state,
-                    StrikeState::Moving | StrikeState::Preparing { .. }
-                ) {
+                // (Or as it was told to fire: nothing left it.)
+                let st = self.missile_strikes[k].state;
+                if matches!(st, StrikeState::Moving | StrikeState::Preparing { .. })
+                    || matches!(st, StrikeState::Inbound { at } if now - at < 1.0)
+                {
                     self.missile_strikes[k].state = StrikeState::Ended;
                     let s = self.missile_strikes[k].clone();
                     let id =
@@ -342,6 +343,10 @@ impl CampaignState {
                 let Some(k) = self.missile_strikes.iter().position(|s| s.tag() == tag) else {
                     return;
                 };
+                // A launcher's fire was announced when it was ordered.
+                if !matches!(self.missile_strikes[k].state, StrikeState::Moving) {
+                    return;
+                }
                 self.missile_strikes[k].state = StrikeState::Inbound { at: now };
                 let s = self.missile_strikes[k].clone();
                 self.launch_warning(&s, ev);
@@ -432,8 +437,9 @@ impl CampaignState {
                 self.missile_strikes[k].state = StrikeState::Ended;
                 continue;
             }
-            // Fired: `MissilesAway` from the simulation makes it inbound.
+            // Fired, and announced.
             self.missile_strikes[k].state = StrikeState::Inbound { at: now };
+            self.launch_warning(&s, ev);
             ev.push(CampaignEvent::LauncherFire {
                 strike: s.id,
                 missile: s.missile,

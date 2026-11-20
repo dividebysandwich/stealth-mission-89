@@ -42,7 +42,7 @@ const CRUISE_AGL: f64 = 60.0;
 const CRUISE_TURN: f64 = 0.06;
 const DIVE_FROM: f64 = 1500.0;
 /// A TEL's road speed (m/s).
-const TEL_SPEED: f64 = 12.0;
+const TEL_SPEED: f64 = 15.0;
 /// A launcher's erector: how far it raises its missiles (rad) and how fast (rad/s).
 const ERECT_ANGLE: f32 = 1.45;
 const ERECT_RATE: f64 = 0.05;

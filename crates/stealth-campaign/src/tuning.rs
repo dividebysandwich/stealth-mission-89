@@ -424,9 +424,9 @@ pub const ISKANDER_EVERY: [f64; 4] = [5.0 * 3600.0, 4.0 * 3600.0, 3.0 * 3600.0, 
 pub const KH101_EVERY: [f64; 4] = [7.0 * 3600.0, 5.5 * 3600.0, 4.5 * 3600.0, 3.5 * 3600.0];
 /// What a strike costs the enemy's operations.
 pub const MISSILE_STRIKE_COST: f64 = 15.0;
-/// A TEL drives this far out of its base (map units, 20 km) and sets up for this long (s); a
+/// A TEL drives this far out of its base (map units, 8 km) and sets up for this long (s); a
 /// friendly launch site gets ready for this long.
-pub const TEL_DRIVE: i32 = 1_280;
+pub const TEL_DRIVE: i32 = 512;
 pub const TEL_PREPARE: f64 = 12.0 * 60.0;
 pub const SITE_PREPARE: f64 = 15.0 * 60.0;
 /// Missiles a TEL fires, and a Tu-95 (which launches a quarter of the way from its base).
