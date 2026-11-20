@@ -147,7 +147,12 @@ const TROOP_OPEN_SECS: f32 = 1.0;
 
 /// The model of a ground unit of kind `k`.
 fn unit_model(k: stealth_sim::aaa::GroundKind) -> i32 {
+    use stealth_sim::aaa::GroundKind as K;
     match k {
+        // After the models that are not units (tools/models/air_defence.py).
+        K::IskanderTel => AAA_MODELS + 19,
+        K::Fp7Launcher => AAA_MODELS + 20,
+        K::FlamingoLauncher => AAA_MODELS + 21,
         stealth_sim::aaa::GroundKind::Usv => USV_MODEL,
         k => AAA_MODELS + k as i32,
     }

@@ -447,6 +447,57 @@ def lau131():
     return Store(hang(g, 0.0, r + 0.025))
 
 
+# ---------------------------------------------------------------------------------------------
+# Strike missiles flown as aircraft (crates/stealth-sim/src/strike_missiles.rs): centred on
+# their middle, nose +y.
+
+
+def ballistic(L, r, paint, nose_frac, band=None, fin_h=0.3):
+    """A ballistic missile: the cylinder, the ogive nose, four small tail fins, its motor flame."""
+    n, t = L / 2, -L / 2
+    nose = L * nose_frac
+    stations = [(n, 0.0), (n - nose * 0.25, r * 0.45), (n - nose * 0.6, r * 0.85), (n - nose, r), (t, r)]
+    g = body(stations, paint, n=12, bands=[band] if band else ())
+    fins(g, t + L * 0.14, t + 0.05, r, fin_h, DARK, tip=(t + L * 0.07, t + 0.05))
+    return Store(g, motor_flame(t, r, 3.0))
+
+
+def iskander_9m723():
+    """9M723 (Iskander-M): 7.3 m, 0.92 m across, a long slender nose, olive with a dark band."""
+    return ballistic(7.3, 0.46, OLIVE, 0.38, band=(-1.0, -1.2, DARK), fin_h=0.28)
+
+
+def fp7_missile():
+    """FP-7: a slimmer, longer ballistic missile in light grey, its fins larger."""
+    return ballistic(8.6, 0.44, JET_GREY, 0.3, band=(1.6, 1.4, DARK), fin_h=0.38)
+
+
+def kh101():
+    """Kh-101: 7.45 m, the faceted stealthy body, the wings out, the engine under the tail."""
+    L, hw, hh = 7.45, 0.36, 0.34
+    n, t = L / 2, -L / 2
+    g = loft([(n, 0.0, 0.05, 0.04), (n - 0.6, 0.0, hw * 0.8, hh * 0.7), (n - 1.4, 0.0, hw, hh),
+              (t + 0.4, 0.0, hw, hh), (t, 0.0, hw * 0.7, hh * 0.6)], DARK, n=8, power=2.0)
+    g.add(wing((0, 0.6, 0.0), 0.75, (1.6, 0.35, 0.0), 0.45, DARK, t=0.05))
+    # The turbofan dropped out under the tail, the tail fins.
+    g.add(frustum((0, t + 1.6, -hh - 0.12), (0, t + 0.2, -hh - 0.12), 0.18, 0.2, BLACK, 10))
+    fins(g, t + 0.7, t + 0.05, hw * 0.8, 0.4, DARK, n=3, rot=90.0)
+    return Store(g)
+
+
+def flamingo_fp5():
+    """Flamingo (FP-5): 12.5 m, a long round fuselage, straight wings, the turbofan in a pod on
+    top of the tail, light grey."""
+    L, r = 12.5, 0.6
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.5, 0.35), (n - 1.5, r), (t + 0.5, r * 0.9), (t, r * 0.7)], JET_GREY, n=12)
+    g.add(wing((0, 0.3, 0.0), 1.0, (3.0, 0.0, 0.0), 0.7, JET_GREY, t=0.08))
+    g.add(frustum((0, t + 3.5, r + 0.5), (0, t + 0.4, r + 0.5), 0.45, 0.48, DARK, 12))
+    g.add(block(-0.12, 0.12, t + 1.0, t + 3.0, r - 0.1, r + 0.15, JET_GREY))
+    g.add(wing((0, t + 0.9, 0.0), 0.8, (1.4, t + 0.6, 0.2), 0.45, JET_GREY, t=0.06))
+    return Store(g)
+
+
 def maverick():
     """AGM-65: the glass seeker dome, the stubby body, the long-chord delta wings and the
     control fins behind them."""

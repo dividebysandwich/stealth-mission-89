@@ -55,6 +55,11 @@ USV = 126
 SUBMARINE = 127
 # A paratrooper (crates/stealth-sim/src/paradrop.rs): hanging under his chute, then standing.
 PARATROOPER = 128
+# The missile launchers (crates/stealth-sim/src/strike_missiles.rs): the enemy's Iskander TEL,
+# the friendly FP-7 and Flamingo launchers.
+ISKANDER_TEL = 129
+FP7_LN = 130
+FLAMINGO_LN = 131
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -1529,6 +1534,131 @@ def paratrooper():
 # -------------------------------------------------------------------------------------- common
 
 
+# ----------------------------------------------------------------------- Missile launchers
+# Each lies with its missile(s) along the vehicle, nose forward (+y, towards the cab); the
+# erector (part 2, slot 22) pivots at the missile's tail and raises it upright for launch
+# (the simulation sets the elevation once the launcher is at its firing point).
+
+
+def ballistic_missile(length, r, paint, nose=0.3, fins=True):
+    """A ballistic missile along +y from its tail (y 0): the body, the ogive nose, the tail fins."""
+    g = Geo()
+    body = length * (1.0 - nose)
+    g.add(frustum((0, 0, 0), (0, body, 0), r, r, paint, n=10))
+    g.add(frustum((0, body, 0), (0, body + length * nose * 0.6, 0), r, r * 0.55, paint, n=10, caps=False))
+    g.add(frustum((0, body + length * nose * 0.6, 0), (0, length, 0), r * 0.55, 0.02, paint, n=10, caps=False))
+    if fins:
+        for a in (45, 135, 225, 315):
+            d = mklib.v3((math.cos(math.radians(a)), 0, math.sin(math.radians(a))))
+            side = mklib.v3((-d.z, 0, d.x)) * 0.02
+            root0, root1 = d * r, d * r + mklib.v3((0, length * 0.12, 0))
+            tip0, tip1 = d * (r + 0.35), d * (r + 0.35) + mklib.v3((0, length * 0.05, 0))
+            g.add(mklib.hexa([root0 - side, root1 - side, tip1 - side, tip0 - side,
+                              root0 + side, root1 + side, tip1 + side, tip0 + side], OLIVE_DARK))
+    return g
+
+
+def heavy_chassis(length, axles, paint=OLIVE, wheels=RUBBER, cab=True):
+    """A long multi-axle wheeled chassis, cab forward (+y): its deck at 1.5 m."""
+    g = Geo()
+    y0, y1 = -length / 2, length / 2
+    g.add(block(-1.4, 1.4, y0, y1 - 2.4, 1.0, 1.5, paint))
+    g.add(block(-1.3, 1.3, y0, y1, 0.8, 1.05, OLIVE_DARK if paint is OLIVE else paint))
+    if cab:
+        # The two-piece cab split by the engine, its windscreens to the front.
+        for sx in (-1, 1):
+            g.add(block(sx * 0.4, sx * 1.45, y1 - 2.4, y1, 1.0, 2.9, paint, taper=0.06, taper_y=0.15))
+            g.add(block(sx * 0.5, sx * 1.35, y1 + 0.01, y1 + 0.03, 2.0, 2.7, GLASS))
+        g.add(block(-0.4, 0.4, y1 - 2.4, y1 - 0.2, 1.0, 2.3, OLIVE_DARK if paint is OLIVE else paint))
+    for sx in (-1, 1):
+        for y in axles:
+            g.add(wheel((sx * 1.2, y, 0.68), 0.68, 0.5, wheels, n=8))
+        # Jacks lowered at the rear for launch.
+        g.add(block(sx * 1.45 - 0.12, sx * 1.45 + 0.12, y0 + 0.2, y0 + 0.45, 0.0, 1.0, STEEL))
+        g.add(block(sx * 1.45 - 0.3, sx * 1.45 + 0.3, y0 + 0.05, y0 + 0.6, 0.0, 0.06, STEEL))
+    return g
+
+
+def iskander_erector(paint=OLIVE):
+    """The Iskander's erector: the cradle with its two 9M723s side by side, tails at the pivot."""
+    g = Geo()
+    g.add(block(-1.15, 1.15, 0.0, 7.4, -0.3, 0.0, OLIVE_DARK if paint is OLIVE else paint))
+    for x in (-0.55, 0.55):
+        g.add(ballistic_missile(7.3, 0.46, paint).transformed(lambda p, x=x: p + mklib.v3((x, 0.15, 0.48))))
+    return g
+
+
+def iskander_tel():
+    root, lod0, lod1 = levels(ISKANDER_TEL, 20000)
+    chassis = heavy_chassis(12.7, (-4.9, -3.3, 2.6, 4.2))
+    intact = mesh_obj("aaa_129_lod0_s1v0", chassis, lod0)
+    table = part("aaa_129_lod0_s1v0_part1", Geo(), intact, (0, 0, 1.5), TURRET_SLOT, 0)
+    part("aaa_129_lod0_s1v0_part2", iskander_erector(), table, (0, -6.0, 0.4), GUN_SLOT, 1)
+    w = heavy_chassis(12.7, (-4.9, -3.3, 2.6, 4.2), BURNT, BURNT)
+    w.add(iskander_erector(BURNT).rotated_x(0.08).rotated_z(0.12).transformed(lambda p: p + mklib.v3((0.2, -6.0, 1.9))))
+    mesh_obj("aaa_129_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_129", [(-1.45, 1.45, -6.35, 6.35, 0.3, 1.5), (-1.45, 1.45, 3.95, 6.35, 1.5, 2.9), (-1.15, 1.15, -6.0, 1.4, 1.5, 2.5)])
+
+
+def fp7_erector(paint=OLIVE):
+    """The FP-7's erector: one missile in its cradle, the tail at the pivot."""
+    g = Geo()
+    g.add(block(-0.75, 0.75, 0.0, 8.8, -0.3, 0.0, OLIVE_DARK if paint is OLIVE else paint))
+    g.add(ballistic_missile(8.6, 0.44, paint, nose=0.25).transformed(lambda p: p + mklib.v3((0, 0.1, 0.46))))
+    return g
+
+
+def fp7_launcher():
+    root, lod0, lod1 = levels(FP7_LN, 20000)
+    chassis = heavy_chassis(11.0, (-4.0, -2.6, 3.4))
+    intact = mesh_obj("aaa_130_lod0_s1v0", chassis, lod0)
+    table = part("aaa_130_lod0_s1v0_part1", Geo(), intact, (0, 0, 1.5), TURRET_SLOT, 0)
+    part("aaa_130_lod0_s1v0_part2", fp7_erector(), table, (0, -5.2, 0.4), GUN_SLOT, 1)
+    w = heavy_chassis(11.0, (-4.0, -2.6, 3.4), BURNT, BURNT)
+    w.add(fp7_erector(BURNT).rotated_z(-0.15).transformed(lambda p: p + mklib.v3((-0.3, -5.2, 1.9))))
+    mesh_obj("aaa_130_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_130", [(-1.45, 1.45, -5.5, 5.5, 0.3, 1.5), (-1.45, 1.45, 3.1, 5.5, 1.5, 2.9), (-0.75, 0.75, -5.2, 3.0, 1.5, 2.4)])
+
+
+def flamingo_missile(paint):
+    """The Flamingo (FP-5) along +y from its tail: the long round fuselage, the straight wings,
+    the turbofan in its pod on top of the tail, the tailplanes."""
+    g = Geo()
+    L, r = 12.5, 0.6
+    g.add(frustum((0, 0, 0), (0, L - 1.5, 0), r * 0.85, r, paint, n=10))
+    g.add(frustum((0, L - 1.5, 0), (0, L, 0), r, 0.08, paint, n=10, caps=False))
+    g.add(mklib.wing((0, L * 0.45, 0), 1.0, (3.0, L * 0.45 - 0.3, 0), 0.7, paint, t=0.08))
+    g.add(frustum((0, 0.4, r + 0.55), (0, 3.6, r + 0.55), 0.48, 0.5, OLIVE_DARK, n=10))
+    g.add(block(-0.12, 0.12, 1.2, 3.0, r - 0.1, r + 0.2, paint))
+    g.add(mklib.wing((0, 0.6, 0), 0.8, (1.4, 0.3, 0.2), 0.45, paint, t=0.06))
+    return g
+
+
+def flamingo_body(paint=OLIVE, wheels=RUBBER):
+    """The Flamingo's launcher: a tractor and its semitrailer with the launch rail on it."""
+    g = semitrailer(13.0, paint, wheels).add(tractor(paint, wheels).transformed(lambda p: p + mklib.v3((0, 9.0, 0))))
+    return g
+
+
+def flamingo_rail(paint=OLIVE):
+    """The launch rail with its missile, raised by the erector at its tail."""
+    g = Geo()
+    g.add(block(-0.5, 0.5, 0.0, 12.0, -0.25, 0.0, OLIVE_DARK if paint is OLIVE else paint))
+    g.add(flamingo_missile(paint).transformed(lambda p: p + mklib.v3((0, 0.0, 0.62))))
+    return g
+
+
+def flamingo_launcher():
+    root, lod0, lod1 = levels(FLAMINGO_LN, 20000)
+    intact = mesh_obj("aaa_131_lod0_s1v0", flamingo_body(), lod0)
+    table = part("aaa_131_lod0_s1v0_part1", Geo(), intact, (0, 0, 1.3), TURRET_SLOT, 0)
+    part("aaa_131_lod0_s1v0_part2", flamingo_rail(), table, (0, -6.3, 0.3), GUN_SLOT, 1)
+    w = flamingo_body(BURNT, BURNT)
+    w.add(flamingo_rail(BURNT).rotated_z(0.1).transformed(lambda p: p + mklib.v3((0.2, -6.3, 1.6))))
+    mesh_obj("aaa_131_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_131", [(-1.3, 1.3, -6.5, 12.6, 0.3, 1.3), (-1.3, 1.3, 10.6, 12.6, 1.3, 2.9), (-3.0, 3.0, -6.3, 5.7, 1.4, 2.6)])
+
+
 def levels(index, near, far_level=True):
     """The root, its detailed level (within `near` model units) and a far level (boxes)."""
     name = "aaa_%03d" % index
@@ -1580,6 +1710,9 @@ def main():
     usv()
     submarine()
     paratrooper()
+    iskander_tel()
+    fp7_launcher()
+    flamingo_launcher()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

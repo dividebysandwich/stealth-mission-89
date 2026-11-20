@@ -157,6 +157,8 @@ pub struct OpsUi {
     pub test_manned: bool,
     pub test_strike: bool,
     pub test_geran: bool,
+    /// `--campaign-missiles` was done.
+    pub test_missiles: bool,
     /// `--campaign-take-control` was done, `--campaign-leave`.
     pub test_controlled: bool,
     pub test_left: bool,

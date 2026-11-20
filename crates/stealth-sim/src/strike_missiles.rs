@@ -43,6 +43,9 @@ const CRUISE_TURN: f64 = 0.06;
 const DIVE_FROM: f64 = 1500.0;
 /// A TEL's road speed (m/s).
 const TEL_SPEED: f64 = 12.0;
+/// A launcher's erector: how far it raises its missiles (rad) and how fast (rad/s).
+const ERECT_ANGLE: f32 = 1.45;
+const ERECT_RATE: f64 = 0.05;
 /// A carrier launches its salvo this close to its launch point (map units).
 const SALVO_REACH: i32 = 0x40;
 /// Radars find a cruise missile only this close (m).
@@ -347,6 +350,14 @@ impl Sim {
         for k in 0..self.launchers.len() {
             let l = self.launchers[k];
             if l.arrived {
+                // Set up at its firing point: the erector raises its missiles upright.
+                if let Some(u) = self.units.get_mut(l.unit as usize)
+                    && !u.destroyed
+                {
+                    // A cruise missile's rail only to its launch angle.
+                    let top = if u.kind == GroundKind::FlamingoLauncher { 0.5 } else { ERECT_ANGLE };
+                    u.aim_el = (u.aim_el + (ERECT_RATE * dt) as f32).min(top);
+                }
                 continue;
             }
             let Some(u) = self.units.get_mut(l.unit as usize) else { continue };

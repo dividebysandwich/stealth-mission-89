@@ -1018,6 +1018,17 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
             c.ui.test_strike = true;
         }
     }
+    // Test aid: `--campaign-missiles iskander|kh101`: the enemy orders that missile strike at
+    // once (a drone theater's campaign).
+    if !c.ui.test_missiles
+        && let Some(kind) = std::env::args().skip_while(|a| a != "--campaign-missiles").nth(1)
+        && let Some(host) = c.host_mut()
+    {
+        let iskander = kind.eq_ignore_ascii_case("iskander");
+        host.state.iskander_at = if iskander { -1e7 } else { 1e9 };
+        host.state.kh101_at = if iskander { 1e9 } else { -1e7 };
+        c.ui.test_missiles = true;
+    }
     // Test aid: `--campaign-geran <n> [km]` (with `--campaign-drones`): once an interceptor is
     // up and level, a raid of n enemy Geran-2s km (2) ahead of its nose at its height, from the
     // enemy place nearest there and flying at the friendly place behind the interceptor.

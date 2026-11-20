@@ -2323,6 +2323,8 @@ BUILDERS = {
     81: lambda: fa18e(growler=True),
 }
 STORES = {1: air_missile, 10: maverick, 11: supply_drop, 12: bomb, 15: sam_missile, 44: wreck}
+# The strike missiles the AI flies as aircraft (stores.py): Iskander, Kh-101, FP-7, Flamingo.
+STRIKE_MISSILES = {87: "iskander_9m723", 88: "kh101", 89: "fp7_missile", 90: "flamingo_fp5"}
 # Models no part of the game draws.
 UNUSED = [2, 34, 35, 36, 37, 38, 39, 40, 41, 42]
 K = 16.384
@@ -2522,6 +2524,9 @@ def build():
         print(f"{lod.name}: radius {lod['radius']} (weapon {w})")
     for name, (index, make) in sorted(stores.RACKS.items()):
         lod = build_store(index, stores.Store(make().body))
+        print(f"{lod.name}: radius {lod['radius']} ({name})")
+    for index, name in sorted(STRIKE_MISSILES.items()):
+        lod = build_store(index, getattr(stores, name)())
         print(f"{lod.name}: radius {lod['radius']} ({name})")
     write_stores_table(os.path.join(ROOT, "assets", "models", "stores.json"))
 
