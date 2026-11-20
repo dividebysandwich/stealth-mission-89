@@ -658,8 +658,7 @@ fn stream_tiles(
                         Some(i),
                     ),
                     None => {
-                        let unit_m =
-                            (unit * WU) as f32 * crate::models::tile_model_scale(&name, unit);
+                        let unit_m = crate::models::tile_model_scale(&name, unit);
                         let len = assets.raised_size(gltf, &name).map_or(60.0, |s| s * unit_m);
                         crate::sea::Ship::new(len.max(10.0), crate::sea::seed_at(east, north), None)
                     }

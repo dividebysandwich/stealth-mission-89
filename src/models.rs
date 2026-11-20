@@ -360,8 +360,97 @@ pub fn tile_model_scale(name: &str, unit: f64) -> f32 {
     if TILE_HELICOPTERS.contains(&name) {
         crate::player::AIRCRAFT_MODEL_SCALE as f32
     } else {
-        (unit * crate::world::WU) as f32
+        (unit * crate::world::WU) as f32 * real_scale(name)
     }
+}
+
+/// The classic library's vehicles, SAM sites, tall buildings and ships are drawn several times
+/// their real size (a 50 m tank, a 470 m destroyer); next to the trees, aircraft and the
+/// remake's own models (all true to scale) these factors shrink them to about real size.
+/// Render only: the sim's hit tests go by map distances. Per library (shape ids differ between
+/// libraries): (shape, factor).
+const REAL_SCALE: &[(&str, &[(u16, f32)])] = &[
+    // houses, houses2, SA missile, SAM radar, tower, patrol boat, windmill, mobile SAM, tank
+    (
+        "central_europe",
+        &[
+            (26, 0.5),
+            (27, 0.5),
+            (33, 0.25),
+            (38, 0.3),
+            (39, 0.5),
+            (53, 0.32),
+            (65, 0.45),
+            (76, 0.2),
+            (77, 0.2),
+        ],
+    ),
+    // destroyer, town, SA missile, SAM radar, tanker, missile boat, trawler
+    ("cuba", &[(18, 0.32), (26, 0.5), (33, 0.25), (38, 0.4), (49, 0.66), (53, 0.32), (76, 0.25)]),
+    // mobile Scud, SA missile, SAM radar, tower, destroyer, missile boat, Rep. Guards (tank)
+    (
+        "desert_storm",
+        &[(20, 0.2), (47, 0.25), (52, 0.35), (53, 0.4), (76, 0.32), (92, 0.32), (96, 0.2)],
+    ),
+    // destroyer, town, SA missile, SAM radar, missile boat, armed fishing boat, T-72s
+    ("korea", &[(18, 0.32), (26, 0.5), (33, 0.25), (38, 0.4), (53, 0.32), (76, 0.25), (98, 0.2)]),
+    // oil tanker, village, SA missile, SAM radar, tower, missile boat, destroyer, missile,
+    // mobile SAM, tank
+    (
+        "libya",
+        &[
+            (23, 0.66),
+            (39, 0.5),
+            (44, 0.25),
+            (49, 0.3),
+            (50, 0.5),
+            (54, 0.32),
+            (69, 0.32),
+            (75, 0.35),
+            (76, 0.2),
+            (77, 0.2),
+        ],
+    ),
+    // SA missile, SAM radar, tower, destroyer
+    ("middle_east", &[(47, 0.25), (52, 0.3), (53, 0.4), (76, 0.32)]),
+    // SA missile, SAM radar, tower, destroyer, Typhoon, Krivak
+    ("north_cape", &[(31, 0.25), (36, 0.3), (37, 0.5), (64, 0.32), (75, 0.7), (77, 0.65)]),
+    // oil tanker, village, SA missile, SAM radar, tower, missile boat, destroyer, Aegis cruiser
+    (
+        "persian_gulf",
+        &[
+            (25, 0.66),
+            (40, 0.5),
+            (47, 0.25),
+            (52, 0.3),
+            (53, 0.5),
+            (69, 0.32),
+            (76, 0.32),
+            (89, 0.37),
+        ],
+    ),
+    // destroyer, town, SA missile, SAM radar, missile boat
+    ("vietnam", &[(18, 0.32), (26, 0.5), (33, 0.25), (38, 0.35), (53, 0.32)]),
+];
+
+/// The classic model library a theater's tile models come from (tools/theater/regions).
+fn library_of(theater: &str) -> &str {
+    match theater {
+        "ukraine" | "suwalki" | "gulf_of_finland" => "central_europe",
+        t => t,
+    }
+}
+
+/// Real-size factor of a tile model named `<theater>_<shape>` (1 for the rest).
+fn real_scale(name: &str) -> f32 {
+    let Some((theater, shape)) = name.rsplit_once('_') else { return 1.0 };
+    let Ok(shape) = shape.parse::<u16>() else { return 1.0 };
+    let library = library_of(theater);
+    REAL_SCALE
+        .iter()
+        .find(|(l, _)| *l == library)
+        .and_then(|(_, f)| f.iter().find(|(s, _)| *s == shape))
+        .map_or(1.0, |&(_, f)| f)
 }
 
 /// Range multiplier for a model's last (coarsest) detail level.
@@ -914,6 +1003,20 @@ pub fn triangle_mesh(tris: &[[Vec3; 3]]) -> Mesh {
 #[cfg(test)]
 mod tests {
     use super::CollisionHull;
+
+    #[test]
+    fn real_scale_goes_by_library() {
+        use super::real_scale;
+        // The tank of Central Europe's library, also in the theaters built from it.
+        assert_eq!(real_scale("central_europe_077"), 0.2);
+        assert_eq!(real_scale("ukraine_077"), 0.2);
+        // Shape 76 is a mobile SAM there, a trawler in Cuba's library.
+        assert_eq!(real_scale("cuba_076"), 0.25);
+        // Hangars, the region's own models and special targets keep their size.
+        assert_eq!(real_scale("central_europe_040"), 1.0);
+        assert_eq!(real_scale("ukraine_110"), 1.0);
+        assert_eq!(real_scale("special_targets_013"), 1.0);
+    }
 
     /// Plane hulls from the CE models: inside a mountain range collides, above it doesn't, and
     /// flat airbase surfaces never contain points above the ground.
