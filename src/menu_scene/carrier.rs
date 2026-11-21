@@ -34,6 +34,9 @@ const ROLL_OUT: f32 = 90.0;
 const LIFT_AT: f32 = 1.0;
 const HELI_CLIMB: f32 = 4.0;
 const HELI_TURN: f32 = 0.25;
+/// The helicopter's spot (m, nimitz.blend as `catapult::PARKING`): starboard, aft of the island
+/// (which stands at about 18 to 37 m starboard, 39 to 84 m aft) and clear of the angled deck.
+const HELI_SPOT: (f64, f64) = (22.0, -105.0);
 
 /// What flies off and onto the deck, and where.
 #[derive(Component)]
@@ -77,7 +80,7 @@ fn carrier(
         let deck_y = catapult::DECK_WU * WU;
         let launch = catapult::pose(obj, ns, 0);
         let landing = catapult::landing(obj, ns);
-        let spot = catapult::deck_point(obj, ns, catapult::PARKING[0]);
+        let spot = catapult::deck_point(obj, ns, HELI_SPOT);
         let bow = if ns < 0 { std::f64::consts::PI } else { 0.0 };
         let mut on_deck = ModelState::default();
         (on_deck.0[5], on_deck.0[6], on_deck.0[12]) = (1, 2, 1);
@@ -147,11 +150,13 @@ fn carrier(
         wu_point(e, n, d.deck_y + up),
         stage::attitude(lh as f32, flare, 0.0),
     );
-    // The helicopter lifts off and turns away over the side.
+    // The helicopter lifts off and turns away over the starboard side (away from the island).
     let lift = (t - LIFT_AT).max(0.0);
+    let (bs, bc) = d.bow.sin_cos();
+    let side = (lift * lift * 0.8) as f64;
     let hp = wu_point(d.spot.0, d.spot.1, d.deck_y + (HELI_CLIMB * lift) as f64)
-        + enu((lift * lift * 0.8) as f64, 0.0, 0.0);
-    let hh = d.bow as f32 - 1.2 + HELI_TURN * lift;
+        + enu(bc * side, 0.0, -bs * side);
+    let hh = d.bow as f32 + 1.2 + HELI_TURN * lift;
     stage::put(&mut q, d.heli, hp, stage::attitude(hh, -0.05 * lift.min(1.0), 0.0));
     // Against the sun, or the moon by night: the ship between the camera and the light.
     let light = if sky.sun.y > -0.05 { sky.sun } else { sky.moon };
