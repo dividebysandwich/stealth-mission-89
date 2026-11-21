@@ -1195,6 +1195,9 @@ pub struct CampaignState {
     /// The supply roads cut (`RoadNet` edges: a bridge's span brought down, for good).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cut_roads: Vec<usize>,
+    /// The enemy's supply trucks.
+    #[serde(default, skip_serializing_if = "crate::roads::TruckFleet::is_default")]
+    pub trucks: crate::roads::TruckFleet,
     /// The supply convoys' record.
     #[serde(default, skip_serializing_if = "crate::roads::SupplyLog::is_empty")]
     pub supply_log: crate::roads::SupplyLog,
@@ -1578,6 +1581,17 @@ impl Terrain {
         self.3.slope_within(e, n, r as f64 * m) > SITE_SLOPE
     }
 
+    /// The same terrain without the theater's supply roads (its enemy bases supplied by air:
+    /// a comparison for the balance of supply by road).
+    pub fn without_roads(&self) -> Self {
+        let world = self.0.as_ref().map(|t| {
+            let mut t = (**t).clone();
+            t.roads = None;
+            std::sync::Arc::new(t)
+        });
+        Self(world, self.1.clone(), Default::default(), self.3.clone())
+    }
+
     /// Water at a map point; None without the theater's terrain.
     pub fn is_water(&self, x: i32, y: i32) -> Option<bool> {
         self.0.as_ref().map(|t| t.is_water(x, y))
@@ -1804,6 +1818,7 @@ impl CampaignState {
             cargo_runs: Vec::new(),
             cut_roads: Vec::new(),
             supply_log: Default::default(),
+            trucks: Default::default(),
             cargo_lost: Vec::new(),
             cargo_cooldown: Vec::new(),
             site_magazines: Vec::new(),

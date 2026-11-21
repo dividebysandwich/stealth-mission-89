@@ -408,6 +408,9 @@ pub const SUPPLY_WAIT: f64 = 5.0 * 60.0;
 pub const SUPPLY_LOW: f64 = 0.6;
 pub const SUPPLY_TRUCKS: usize = 3;
 pub const TECHNICAL_CHANCE: f64 = 0.5;
+/// The enemy's fleet of supply trucks, and how many new ones an hour make up for those lost.
+pub const TRUCK_FLEET: usize = 36;
+pub const TRUCK_REPLACE: f64 = 0.5;
 /// The production base keeps up to this many times a base's full stock.
 pub const PRODUCTION_CAP: f64 = 3.0;
 /// The enemy's SAM sites and guns refill their magazines this often (s), from the bases with

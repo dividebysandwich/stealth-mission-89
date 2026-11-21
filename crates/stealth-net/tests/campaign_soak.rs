@@ -80,6 +80,10 @@ fn campaign_soak() {
         ..Default::default()
     };
     let mut host = Host::new(setup.clone(), &data, rules).unwrap();
+    // A comparison: the enemy's bases supplied by air, not by road.
+    if std::env::var("SOAK_NO_ROADS").is_ok() {
+        host.state.terrain = host.state.terrain.without_roads();
+    }
     let sim_data = theater::sim_data(setup.theater, &code).unwrap();
     let mut sim = host.new_sim(&sim_data);
     host.begin(&mut sim);
@@ -121,6 +125,25 @@ fn campaign_soak() {
     let mut ad_log: Vec<String> = Vec::new();
     let mut ad_dry = [0usize; 2];
     let mut samples = 0usize;
+    // Supply by road: convoys on the road per sample, each run's time on it, and samples with
+    // a road-served base out of something.
+    let mut road_on: Vec<usize> = Vec::new();
+    let mut road_runs: BTreeMap<u32, (f64, String)> = BTreeMap::new();
+    let mut road_out = 0usize;
+    let interdict: f64 = std::env::var("SOAK_INTERDICT").ok().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+    let mut struck = 0usize;
+    let mut fleet_dry = 0usize;
+    let road_bases: Vec<u16> = host
+        .state
+        .sites
+        .iter()
+        .filter(|s| s.kind == stealth_campaign::SiteKind::Airfield)
+        .filter(|s| {
+            ["Taganrog", "Berdiansk", "Melitopol", "Dzhankoi", "Kirovske", "Hvardiiske", "Saky", "Belbek"]
+                .contains(&s.name.as_str())
+        })
+        .map(|s| s.object)
+        .collect();
     for frame in 0..frames {
         t = frame as f64 * dt;
         // What is after each aircraft (for the report of what shot it down).
@@ -131,6 +154,20 @@ fn campaign_soak() {
         shelled.clear();
         for (target, _) in sim.ai_shell_targets() {
             *shelled.entry(target).or_default() += 1;
+        }
+        // Players' strikes on the supply convoys (`SOAK_INTERDICT` trucks an hour): the truck
+        // furthest along the roads.
+        if interdict > 0.0 && frame > 0 && frame % ((3600.0 / interdict / dt) as u64).max(1) == 0 {
+            let truck = sim
+                .convoys()
+                .iter()
+                .filter(|c| c.supply)
+                .flat_map(|c| c.units.iter().map(|&k| k as usize))
+                .find(|&k| sim.units()[k].kind.truck() && !sim.units()[k].destroyed);
+            if let Some(k) = truck {
+                sim.units_mut()[k].destroyed = true;
+                struck += 1;
+            }
         }
         let mut events = sim.step_pilots(&[], FS);
         events.extend(host.take_sim_events(&mut sim));
@@ -153,6 +190,10 @@ fn campaign_soak() {
                         r.escorts.push(e);
                     }
                 }
+            }
+            if r.road.is_some() && r.state == stealth_campaign::CargoState::Airborne {
+                let to = host.state.site(r.to).map_or(String::new(), |s| s.name.clone());
+                road_runs.entry(r.tag).or_insert((t, to));
             }
             cargo.insert(r.tag, (r, t));
         }
@@ -193,6 +234,14 @@ fn campaign_soak() {
             }
             launches = [0; 3];
             sam_log.push(line);
+            // Supply by road.
+            road_on.push(sim.convoys().iter().filter(|c| c.supply).count());
+            fleet_dry += (st.road_net().is_some() && st.trucks.ready < 3.0) as usize;
+            road_out += st
+                .stocks
+                .keys()
+                .filter(|&&b| road_bases.contains(&b) && !st.out_of(b, Side::Red).is_empty())
+                .count();
             // The friendly side.
             samples += 1;
             let prod = st.production_base(Side::Blue);
@@ -569,6 +618,32 @@ fn campaign_soak() {
             let fate = tracks.get(e).and_then(|t| t.end.clone()).unwrap_or("-".into());
             println!("     escort {e}: {fate}");
         }
+    }
+    println!("\n== Supply convoys");
+    let log = &host.state.supply_log;
+    println!(
+        "convoys over {}, trucks arrived {}, trucks lost {}, items delivered {}, lost {}, cut roads {:?}",
+        log.convoys, log.trucks_arrived, log.trucks_lost, log.items_delivered, log.items_lost, host.state.cut_roads
+    );
+    println!("samples with no trucks ready: {fleet_dry} of {samples}");
+    println!("trucks struck by the soak (SOAK_INTERDICT {interdict}/h): {struck}");
+    let f = &host.state.trucks;
+    println!("truck fleet at the end: {:.1} ready, {} out, {} returning", f.ready, f.out, f.returning.iter().map(|r| r.1 as u32).sum::<u32>());
+    if !road_on.is_empty() {
+        let mean = road_on.iter().sum::<usize>() as f64 / road_on.len() as f64;
+        println!(
+            "on the road: mean {mean:.1}, most {}; road-served base-samples out of something: {road_out}",
+            road_on.iter().max().unwrap()
+        );
+    }
+    for (tag, (start, to)) in &road_runs {
+        let done = host.state.cargo_run(*tag).is_none();
+        let end = cargo.get(tag).map_or(t, |c| c.1);
+        println!(
+            "tag {tag:5} -> {to}: on the road {:.0} min{}",
+            (end - start) / 60.0,
+            if done { "" } else { " (still)" }
+        );
     }
     println!("\n== Stocks");
     for (b, s) in &host.state.stocks {

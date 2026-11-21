@@ -625,7 +625,7 @@ impl CampaignState {
     /// A side's production base: of its intact airfields the one whose cargo flights to the
     /// others cross the fewest of the other side's places (none over the enemy's land if it
     /// can be helped), the furthest from them of those.
-    fn rearmost(&self, side: Side) -> Option<ObjectId> {
+    pub(crate) fn rearmost(&self, side: Side) -> Option<ObjectId> {
         let enemy: Vec<(i32, i32)> =
             self.places.iter().filter(|p| p.owner == side.enemy()).map(|p| (p.x, p.y)).collect();
         let fields: Vec<(ObjectId, i32, i32)> = self
@@ -725,6 +725,7 @@ impl CampaignState {
             }
         }
         self.produce(dt);
+        self.run_trucks(dt);
         self.schedule_cargo(ev);
         self.launch_cargo(ev);
     }
@@ -843,6 +844,9 @@ impl CampaignState {
                 for (m, n) in r.load {
                     self.put_in(r.from, m, n);
                 }
+                if let Some(w) = &r.road {
+                    self.trucks_unused(w.trucks());
+                }
                 self.board_at = f64::MIN;
                 continue;
             }
@@ -862,7 +866,9 @@ impl CampaignState {
             if self.cargo_runs[k].road.is_some() {
                 if !self.launch_road(k, ev) {
                     // No way there by road: it flies.
-                    self.cargo_runs[k].road = None;
+                    if let Some(w) = self.cargo_runs[k].road.take() {
+                        self.trucks_unused(w.trucks());
+                    }
                 } else {
                     continue;
                 }
