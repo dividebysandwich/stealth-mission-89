@@ -391,6 +391,34 @@ const REAL_SCALE: &[(&str, &[(u16, f32)])] = &[
     ("vietnam", &[(18, 0.32), (26, 0.5), (53, 0.32)]),
 ];
 
+/// The red SAM sites' tile models per library (tools/theater/libraries `sa_missile`,
+/// `sam_radar`, `mobile_sam`): their intact vehicles (`_s1v0`) are hot in the FLIR picture like
+/// the units, not just warm like the buildings round them.
+const HOT_TILES: &[(&str, &[u16])] = &[
+    ("central_europe", &[33, 38, 76]),
+    ("cuba", &[33, 38]),
+    ("desert_storm", &[47, 52]),
+    ("korea", &[33, 38]),
+    ("libya", &[44, 49, 76]),
+    ("middle_east", &[47, 52]),
+    ("north_cape", &[31, 36]),
+    ("persian_gulf", &[47, 52]),
+    ("vietnam", &[33, 38]),
+];
+
+/// Whether a tile model's mesh node (`<theater>_<shape>_lod<k>_s1v0...`) is a SAM site's intact
+/// vehicle (hot in the FLIR picture).
+fn hot_tile_mesh(name: &str) -> bool {
+    let Some((model, rest)) = name.split_once("_lod") else { return false };
+    if !rest.contains("_s1v0") {
+        return false;
+    }
+    let Some((theater, shape)) = model.rsplit_once('_') else { return false };
+    let Ok(shape) = shape.parse::<u16>() else { return false };
+    let library = library_of(theater);
+    HOT_TILES.iter().any(|(l, s)| *l == library && s.contains(&shape))
+}
+
 /// The classic model library a theater's tile models come from (tools/theater/regions).
 fn library_of(theater: &str) -> &str {
     match theater {
@@ -716,9 +744,10 @@ impl ModelAssets<'_> {
                         self.palette.material(color)
                     };
                     let (flat, warm) = self.shape_class(&prim.mesh, tag.0 & 7);
-                    // Units are hot in the FLIR picture, but not their `_cold` parts (the
-                    // sandbag wall round a defensive position).
-                    let child_tag = match (warm, tag.0 & 7 == LEVEL_AIRCRAFT) {
+                    // Units (and the SAM sites' vehicles) are hot in the FLIR picture, but not
+                    // their `_cold` parts (the sandbag wall round a defensive position).
+                    let hot = tag.0 & 7 == LEVEL_AIRCRAFT || hot_tile_mesh(name);
+                    let child_tag = match (warm, hot) {
                         _ if name.ends_with("_cold") => tag.clone(),
                         (true, true) => MeshTag(tag.0 | TAG_WARM | TAG_HOT),
                         (true, false) => MeshTag(tag.0 | TAG_WARM),
@@ -975,6 +1004,19 @@ mod tests {
         assert_eq!(real_scale("central_europe_039"), 1.0);
         assert_eq!(real_scale("ukraine_110"), 1.0);
         assert_eq!(real_scale("special_targets_013"), 1.0);
+    }
+
+    #[test]
+    fn sam_site_vehicles_are_hot() {
+        use super::hot_tile_mesh;
+        assert!(hot_tile_mesh("ukraine_033_lod0_s1v0"));
+        assert!(hot_tile_mesh("central_europe_038_lod1_s1v0_part1"));
+        assert!(hot_tile_mesh("persian_gulf_052_lod0_s1v0_lines_pal_239"));
+        // The revetment, the wreck, other libraries' shapes and other models stay warm.
+        assert!(!hot_tile_mesh("cuba_033_lod0"));
+        assert!(!hot_tile_mesh("cuba_033_lod0_s1v1"));
+        assert!(!hot_tile_mesh("north_cape_033_lod0_s1v0"));
+        assert!(!hot_tile_mesh("central_europe_040_lod0_s1v0"));
     }
 
     /// Plane hulls from the CE models: inside a mountain range collides, above it doesn't, and
