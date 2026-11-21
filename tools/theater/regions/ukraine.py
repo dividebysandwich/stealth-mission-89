@@ -376,6 +376,33 @@ AIRBASES = [
     ("Luhansk", 39.37, 48.42, False),
 ]
 
+# Supply roads the enemy's trucks drive (assemble.py `roads`): named junctions, then roads as
+# lists of junction names and (lon, lat) bends. "Kerch bridge" joins its two ends over the road
+# deck of the Crimean bridge (kerch.py). R-280 runs along the Azov coast from Rostov to
+# Melitopol, the link over the Perekop isthmus takes it on into Crimea (the theater's Sivash
+# has no Chonhar crossing), the Tavrida highway comes over the bridge from Krymsk.
+ROAD_NODES = {
+    "Rostov": (39.72, 47.23), "Taganrog": (38.90, 47.27), "Mariupol": (37.55, 47.13),
+    "Berdiansk": (36.79, 46.80), "Melitopol": (35.37, 46.85), "Armiansk": (33.69, 46.10),
+    "Dzhankoi": (34.40, 45.71), "Krymsk": (37.98, 44.97), "Kerch": (36.30, 45.30),
+    "Feodosia": (35.40, 45.10), "Simferopol": (34.10, 44.95), "Sevastopol": (33.55, 44.62),
+    "Saky": (33.62, 45.14),
+}
+ROADS = [
+    ("R-280", ["Rostov", (39.50, 47.29), (39.20, 47.28), "Taganrog", (38.55, 47.20), (38.15, 47.14),
+               (37.80, 47.13), "Mariupol", (37.30, 47.08), (37.05, 46.96), (36.85, 46.84), "Berdiansk",
+               (36.45, 46.80), (36.10, 46.84), (35.75, 46.85), "Melitopol"]),
+    ("M-17", ["Melitopol", (34.90, 46.55), (34.33, 46.36), (33.80, 46.30), "Armiansk", (33.80, 45.95),
+              (34.10, 45.82), "Dzhankoi", (34.30, 45.45), "Simferopol"]),
+    ("A-290", ["Krymsk", (37.64, 45.12), (37.30, 45.20), (36.95, 45.25), "Kerch bridge", "Kerch"]),
+    ("Tavrida", ["Kerch", (35.78, 45.30), "Feodosia", (35.10, 45.05), (34.60, 45.05), "Simferopol",
+                 (33.86, 44.75), "Sevastopol"]),
+    ("Saky road", ["Simferopol", (33.85, 45.06), "Saky"]),
+]
+# Where the trucks come from, and the airbases a spur road joins to the nearest road.
+ROAD_ENTRIES = ["Rostov", "Krymsk"]
+ROAD_BASES = ["Taganrog", "Berdiansk", "Melitopol", "Dzhankoi", "Kirovske", "Hvardiiske", "Saky", "Belbek"]
+
 # Nuclear power plants: (name, lon, lat, model kind).
 NPPS = [
     ("Zaporizhzhia NPP", 34.59, 47.51, "znpp"),

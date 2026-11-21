@@ -298,6 +298,9 @@ pub struct Theater {
     /// Remake theaters: the real towns for the scenery layout.
     #[serde(default)]
     pub towns: Vec<TownSite>,
+    /// Remake theaters with supply roads: the roads (drawn as highways, trucks on them).
+    #[serde(default)]
+    pub roads: stealth_mission::roads::RoadNet,
     /// The rolling hills (`assets/theaters/<id>.hills`, read beside the theater).
     #[serde(skip)]
     pub hills: stealth_sim::hills::Hills,
@@ -355,6 +358,7 @@ impl Theater {
                 .iter()
                 .map(|t| stealth_sim::Town::from_metres(t.x, t.y, t.r))
                 .collect(),
+            roads: self.roads.clone(),
             relief: stealth_host::theater::relief(&self.id),
             hills: self.hills.clone(),
             helipads: stealth_host::theater::helipads(&self.id),

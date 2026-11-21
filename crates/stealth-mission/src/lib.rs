@@ -6,6 +6,7 @@ pub mod gunship;
 pub mod hills;
 pub mod insertion;
 pub mod rng;
+pub mod roads;
 pub mod tables;
 mod text;
 pub mod units;

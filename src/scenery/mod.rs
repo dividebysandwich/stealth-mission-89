@@ -543,6 +543,8 @@ struct LayoutSource {
     towns: Vec<crate::world::TownSite>,
     style: Option<style::Style>,
     hills: stealth_sim::hills::Hills,
+    /// The theater's supply roads on land (metres), drawn as highways.
+    roads: Vec<Vec<DVec2>>,
 }
 
 impl LayoutSource {
@@ -560,11 +562,17 @@ impl LayoutSource {
             towns: theater.towns.clone(),
             style: style::Style::for_theater(&theater.id, theater.index),
             hills: theater.hills.clone(),
+            roads: theater
+                .roads
+                .land_lines()
+                .map(|l| l.into_iter().map(|(x, y)| DVec2::new(x, y)).collect())
+                .collect(),
         }
     }
 
     fn build(&self) -> Layout {
         let mut ground = ground::Ground::build(&self.ground);
+        ground.highways.extend(self.roads.iter().cloned());
         let fields: Vec<airfield::Airfield> = ground
             .runways
             .clone()

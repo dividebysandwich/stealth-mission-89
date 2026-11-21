@@ -58,6 +58,7 @@ DRY_MARGIN = 150
 # Half extents of an airfield, the runway and its aprons (metres east, north; runways run
 # north-south).
 FIELD_HALF = (700, 1300)
+ROAD_STEP = 150.0  # metres between a supply road's points at most
 
 # Layouts of a LOD1 cell (2 km square): (metres east, metres north of the cell centre, kind).
 # The first entry of a site is its main object (the SAM sites' radar).
@@ -250,6 +251,7 @@ class Layout:
         self.launch = []  # (name, placement)
         self.neutral_bases = []
         self.fields = []  # runway centres (metres)
+        self.field_of = {}  # airbase name -> runway centre (metres)
         self.airstrips = []
         self.carriers = []
         self.airbases()
@@ -257,6 +259,7 @@ class Layout:
         self.towns()
         self.sites()
         self.kerch_bridge()
+        self.road_net = self.roads()
         self.city_sams()
         self.launch_sites()
         self.objects()
@@ -279,6 +282,7 @@ class Layout:
             oy2 = (cy - (r2 * 4096 + 2048) * 4) // 4
             t = self.put_at_cell(2, c2, r2, ox2, oy2, BASE)
             self.fields.append(self.centre_m(1, c1, r1))
+            self.field_of[name] = self.centre_m(1, c1, r1)
             self.template("base_support_blue" if friendly else "base_support", c1, r1)
             if friendly is None:
                 self.neutral_bases.append((name, t))
@@ -439,6 +443,96 @@ class Layout:
             return
         for shape, _, _, (x, y) in kerch.Bridge(geo).pieces():
             self.put(kerch.LEVEL, x, y, shape)
+
+    def roads(self):
+        """The supply roads (`ROADS` of the region): {"nodes": [(name, x, y)], "edges": [(a, b,
+        name, bridge, [(x, y, z)])]}, metres; z is the bridge's deck over the sea (0 on land).
+        Spurs join the `ROAD_BASES` airfields to the nearest point of a road (that edge is split
+        there); points every `ROAD_STEP` metres at most."""
+        if not getattr(geo, "ROADS", None):
+            return None
+        nodes, edges = [], []
+        index = {}
+
+        def node(name, x, y):
+            index[name] = len(nodes)
+            nodes.append((name, x, y))
+            return index[name]
+
+        for name, (lon, lat) in geo.ROAD_NODES.items():
+            node(name, *geo.ll(lon, lat))
+        bridge = kerch.Bridge(geo) if "kerch_bridge" in geo.EXTRA_MODELS else None
+        for road, items in geo.ROADS:
+            a, pts = None, []
+            k = 0
+            while k < len(items):
+                item = items[k]
+                if item == "Kerch bridge":
+                    # The deck from its east end to its west end (the roads come from the east).
+                    n = kerch.ROAD[0]
+                    e = node("Kerch bridge E", *bridge.point(bridge.length, n))
+                    w = node("Kerch bridge W", *bridge.point(0.0, n))
+                    pts.append((*bridge.point(bridge.length, n), 0.0))
+                    edges.append((a, e, road, False, pts))
+                    steps = max(1, math.ceil(bridge.length / ROAD_STEP))
+                    deck = [(*bridge.point(bridge.length * (1 - j / steps), n), bridge.deck(bridge.length * (1 - j / steps)))
+                            for j in range(steps + 1)]
+                    edges.append((e, w, road, True, deck))
+                    a, pts = w, [(*bridge.point(0.0, n), 0.0)]
+                elif isinstance(item, str):
+                    i = index[item]
+                    pts.append((nodes[i][1], nodes[i][2], 0.0))
+                    if a is not None:
+                        edges.append((a, i, road, False, pts))
+                    a, pts = i, [(nodes[i][1], nodes[i][2], 0.0)]
+                else:
+                    pts.append((*geo.ll(*item), 0.0))
+                k += 1
+        # Spurs to the airfields: from the road's nearest point to beside the runway.
+        for base in getattr(geo, "ROAD_BASES", []):
+            if base not in self.field_of:
+                print("road base without a field:", base)
+                continue
+            fx, fy = self.field_of[base]
+            best = None
+            for ei, (a, b, road, br, pts) in enumerate(edges):
+                if br:
+                    continue
+                for j in range(len(pts) - 1):
+                    (ax, ay, _), (bx, by, _) = pts[j], pts[j + 1]
+                    dx, dy = bx - ax, by - ay
+                    t = max(0.0, min(1.0, ((fx - ax) * dx + (fy - ay) * dy) / max(dx * dx + dy * dy, 1e-9)))
+                    px, py = ax + dx * t, ay + dy * t
+                    d = math.hypot(fx - px, fy - py)
+                    if best is None or d < best[0]:
+                        best = (d, ei, j, t, px, py)
+            d, ei, j, t, px, py = best
+            a, b, road, br, pts = edges[ei]
+            if t <= 0.0 and j == 0:
+                junction = a
+            elif t >= 1.0 and j == len(pts) - 2:
+                junction = b
+            else:
+                junction = node(base + " junction", px, py)
+                edges[ei] = (a, junction, road, br, pts[:j + 1] + [(px, py, 0.0)])
+                edges.append((junction, b, road, br, [(px, py, 0.0)] + pts[j + 1:]))
+            # The spur ends beside the runway, on the road's side of the field.
+            side = 1.0 if px > fx else -1.0
+            ex, ey = fx + side * (FIELD_HALF[0] + 200.0), fy + max(-FIELD_HALF[1], min(FIELD_HALF[1], py - fy)) * 0.5
+            end = node(base + " base", ex, ey)
+            edges.append((junction, end, base + " spur", False, [(px, py, 0.0), (ex, ey, 0.0)]))
+        out_edges = []
+        for a, b, road, br, pts in edges:
+            fine = [pts[0]]
+            for p, q in zip(pts, pts[1:]):
+                n = max(1, math.ceil(math.hypot(q[0] - p[0], q[1] - p[1]) / ROAD_STEP))
+                fine += [(p[0] + (q[0] - p[0]) * j / n, p[1] + (q[1] - p[1]) * j / n, p[2] + (q[2] - p[2]) * j / n)
+                         for j in range(1, n + 1)]
+            wet = sum(1 for x, y, z in fine if z == 0.0 and not self.land(x, y))
+            if wet > 3:
+                print("road %s: %d points in water" % (road, wet))
+            out_edges.append((a, b, road, br, fine))
+        return {"nodes": nodes, "edges": out_edges, "entries": [index[n] for n in getattr(geo, "ROAD_ENTRIES", [])]}
 
     def launch_sites(self):
         for name, lon, lat in geo.LAUNCH_SITES:
@@ -803,6 +897,16 @@ def write_ron(lay, grids, world, model_count, model_attr):
         % (o["name"], o["x"], o["y"], o["unit_type"], o["flags"], o["occupant_type"], o["patrol_count"], o["object_idx"])
         for o in world["objects"])
     front = ", ".join("(%.1f, %.1f, %.2f)" % p for p in geo.front_m())
+    roads = ""
+    if lay.road_net:
+        net = lay.road_net
+        nodes = ", ".join("(name: %s, x: %.1f, y: %.1f)" % (ron_str(n), x, y) for n, x, y in net["nodes"])
+        edges = ",\n            ".join(
+            "(a: %d, b: %d, name: %s, bridge: %s, pts: [%s])" % (
+                a, b, ron_str(name), "true" if br else "false", ", ".join("(%.1f, %.1f, %.1f)" % p for p in pts))
+            for a, b, name, br, pts in net["edges"])
+        roads = "\n    roads: (\n        nodes: [%s],\n        edges: [\n            %s\n        ],\n        entries: %s,\n    )," % (
+            nodes, edges, ron_list(net["entries"]))
     towns = ",\n        ".join(
         "(name: %s, x: %.1f, y: %.1f, r: %.1f, kind: %d, ruined: %.2f)" % (ron_str(n), x, y, r, k, ru)
         for n, x, y, r, k, ru in lay.town_sites)
@@ -832,7 +936,7 @@ def write_ron(lay, grids, world, model_count, model_attr):
     front: [{front}],
     towns: [
         {towns}
-    ],
+    ],{roads}
 )
 """
     open(os.path.join(ROOT, "assets", "theaters", geo.ID + ".ron"), "w").write(text)
@@ -860,7 +964,7 @@ def training(world):
             for k, v in spec.items()}
 
 
-def write_json(grids, world, launch):
+def write_json(grids, world, launch, road_net=None):
     td = {
         "launch_sites": launch,
         "date": list(geo.DATE),
@@ -868,6 +972,11 @@ def write_json(grids, world, launch):
         "squadrons": geo.SQUADRONS,
         **{k: v for k, v in (("training", training(world)), ("closed_bases", [world["names"].index(n) for n in getattr(geo, "CLOSED_BASES", [])]),
                              ("patrol_fighter", getattr(geo, "PATROL_FIGHTER", None))) if v},
+        **({"roads": {
+            "nodes": [{"name": n, "x": round(x, 1), "y": round(y, 1)} for n, x, y in road_net["nodes"]],
+            "edges": [{"a": a, "b": b, "name": name, "bridge": br, "pts": [[round(v, 1) for v in p] for p in pts]}
+                      for a, b, name, br, pts in road_net["edges"]],
+            "entries": road_net["entries"]}} if road_net else {}),
         "world": world,
         "g": [[0] * 512, grids["lod1"], grids["lod2"], grids["lod3"], grids["inner4"]],
         "tiles": [[[list(o) for o in t] for t in lv] for lv in grids["tiles"]],
@@ -887,7 +996,7 @@ def main():
     world["grid"] = lay.territory()
     model_count, model_attr = merge_models(new_glb, meta)
     write_ron(lay, grids, world, model_count, model_attr)
-    write_json(grids, world, launch)
+    write_json(grids, world, launch, lay.road_net)
     if hasattr(geo, "palette"):
         geo.palette(ROOT)
     # The simulation reads a rebuilt classic theater's tiles from its theater file.

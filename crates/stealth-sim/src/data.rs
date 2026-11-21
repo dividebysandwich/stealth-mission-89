@@ -110,6 +110,9 @@ pub struct TheaterTiles {
     /// Remake theaters: the real towns (their defenders stand round the edge).
     #[serde(default)]
     pub towns: Vec<Town>,
+    /// The supply roads (theaters with them), for the bridges' decks.
+    #[serde(default, skip_serializing_if = "stealth_mission::roads::RoadNet::is_empty")]
+    pub roads: stealth_mission::roads::RoadNet,
     /// The mountains (`assets/theaters/<code>.relief`, read beside the tiles).
     #[serde(skip)]
     pub relief: crate::relief::Relief,
@@ -283,6 +286,8 @@ struct TheaterFile {
     model_attr: Vec<u8>,
     #[serde(default)]
     towns: Vec<TownSite>,
+    #[serde(default)]
+    roads: stealth_mission::roads::RoadNet,
 }
 
 impl TheaterTiles {
@@ -290,7 +295,7 @@ impl TheaterTiles {
     pub fn read_ron(text: &[u8]) -> Result<Self> {
         let t: TheaterFile = ron::from_str(std::str::from_utf8(text)?)?;
         let towns = t.towns.iter().map(|s| Town::from_metres(s.x, s.y, s.r)).collect();
-        Ok(Self { towns, ..Self::from_tilesets(&t.grid, &t.tiles, &t.model_attr) })
+        Ok(Self { towns, roads: t.roads, ..Self::from_tilesets(&t.grid, &t.tiles, &t.model_attr) })
     }
 
     /// A theater's tile data from its terrain (remake theaters, which the exported classic
@@ -314,6 +319,7 @@ impl TheaterTiles {
             objects: [level(1), level(2)],
             model_attr: model_attr.to_vec(),
             towns: Vec::new(),
+            roads: Default::default(),
             relief: Default::default(),
             hills: Default::default(),
             helipads: Vec::new(),
