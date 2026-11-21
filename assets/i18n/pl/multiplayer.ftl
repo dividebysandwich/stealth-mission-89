@@ -53,6 +53,7 @@ pic-enemy-fighter = Myśliwiec wroga (na radarze)
 pic-sam-known = Stanowisko SAM (znane)
 pic-guns-known = Działka / MANPADS (znane)
 pic-armour = Czołg / BWP (wróg: w zasięgu wzroku)
+pic-supply = Konwój zaopatrzeniowy (wrogie ciężarówki na drogach)
 pic-patriot-reach = Zasięg Patriot
 pic-nasams-reach = Zasięg NASAMS
 pic-gepard-stinger = Gepard / Stinger

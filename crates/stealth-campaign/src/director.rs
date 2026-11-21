@@ -36,6 +36,7 @@ impl CampaignState {
         self.supply_report(r, ev);
         self.cargo_report(r, ev);
         self.cargo_plane_report(r, ev);
+        self.road_report(r, ev);
         match *r {
             // A player flying a cargo run at its base: the load is delivered.
             Report::PlayerLanded { player, base } => {

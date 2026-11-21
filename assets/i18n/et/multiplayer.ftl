@@ -53,6 +53,7 @@ pic-enemy-fighter = Vaenlase hävitaja (radaril)
 pic-sam-known = SAM-positsioon (teada)
 pic-guns-known = Kahurid / MANPADS (teada)
 pic-armour = Tank / jalaväe lahingumasin (vaenlane: nähtaval)
+pic-supply = Varustuskolonn (vaenlase veokid teedel)
 pic-patriot-reach = Patrioti ulatus
 pic-nasams-reach = NASAMS-i ulatus
 pic-gepard-stinger = Gepard / Stinger

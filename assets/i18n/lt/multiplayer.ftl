@@ -53,6 +53,7 @@ pic-enemy-fighter = Priešo naikintuvas (radare)
 pic-sam-known = SAM pozicija (žinoma)
 pic-guns-known = Pabūklai / MANPADS (žinomi)
 pic-armour = Tankas / PKM (priešas: matomas)
+pic-supply = Tiekimo vilkstinė (priešo sunkvežimiai keliuose)
 pic-patriot-reach = Patriot veikimo nuotolis
 pic-nasams-reach = NASAMS veikimo nuotolis
 pic-gepard-stinger = Gepard / Stinger

@@ -18,6 +18,11 @@ pub enum ConvoyUnit {
     Carrier,
     /// ZSU-23-4, Gepard: covers the column against aircraft.
     Escort,
+    /// A supply convoy's civilian box truck, army truck, and the pickup with a machine gun
+    /// that escorts them (`roads.rs`).
+    CivTruck,
+    ArmyTruck,
+    Technical,
 }
 
 /// A convoy's column, head first: the air defence gun in the middle.

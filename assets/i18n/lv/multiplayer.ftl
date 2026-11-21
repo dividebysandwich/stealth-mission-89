@@ -53,6 +53,7 @@ pic-enemy-fighter = Ienaidnieka iznīcinātājs (uz radara)
 pic-sam-known = SAM pozīcija (zināma)
 pic-guns-known = Lielgabali / MANPADS (zināmi)
 pic-armour = Tanks / KKM (ienaidnieks: redzamībā)
+pic-supply = Apgādes kolonna (ienaidnieka kravas auto uz ceļiem)
 pic-patriot-reach = Patriot darbības rādiuss
 pic-nasams-reach = NASAMS darbības rādiuss
 pic-gepard-stinger = Gepard / Stinger

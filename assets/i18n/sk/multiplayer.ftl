@@ -53,6 +53,7 @@ pic-enemy-fighter = Nepriateľská stíhačka (na radare)
 pic-sam-known = Stanovište SAM (známe)
 pic-guns-known = Delá / MANPADS (známe)
 pic-armour = Tank / BVP (nepriateľ: na dohľad)
+pic-supply = Zásobovací konvoj (nepriateľské nákladné autá na cestách)
 pic-patriot-reach = Dosah Patriot
 pic-nasams-reach = Dosah NASAMS
 pic-gepard-stinger = Gepard / Stinger

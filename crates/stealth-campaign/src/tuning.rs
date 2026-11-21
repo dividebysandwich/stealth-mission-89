@@ -396,6 +396,18 @@ pub const CARGO_ROUTE_CLEAR: i32 = 0xA00;
 /// A cargo aircraft that comes down this close to a base of its side (map units, ~8 km)
 /// delivers there.
 pub const CARGO_LAND_RADIUS: i32 = 0x200;
+/// Supply by road (`roads.rs`): a base within this many metres of a road's spur end is
+/// supplied by truck; up to this many convoys on the road to it at once, a new one at least
+/// this long (s) after the last and this long (s) before it sets off, when something there
+/// (with what is coming) is below this share of a full stock. A convoy has this many trucks,
+/// and a pickup with a machine gun at this chance.
+pub const ROAD_BASE_REACH: f64 = 4000.0;
+pub const SUPPLY_CONVOYS_MAX: usize = 3;
+pub const SUPPLY_SPACING: f64 = 15.0 * 60.0;
+pub const SUPPLY_WAIT: f64 = 5.0 * 60.0;
+pub const SUPPLY_LOW: f64 = 0.6;
+pub const SUPPLY_TRUCKS: usize = 3;
+pub const TECHNICAL_CHANCE: f64 = 0.5;
 /// The production base keeps up to this many times a base's full stock.
 pub const PRODUCTION_CAP: f64 = 3.0;
 /// The enemy's SAM sites and guns refill their magazines this often (s), from the bases with

@@ -63,6 +63,9 @@ pub fn convoy_kinds(side: Side, units: &[ConvoyUnit]) -> Vec<GroundKind> {
             ConvoyUnit::Carrier => ifv,
             ConvoyUnit::Escort if blue => GroundKind::Gepard,
             ConvoyUnit::Escort => GroundKind::Zsu,
+            ConvoyUnit::CivTruck => GroundKind::CivTruck,
+            ConvoyUnit::ArmyTruck => GroundKind::ArmyTruck,
+            ConvoyUnit::Technical => GroundKind::Technical,
         })
         .collect()
 }
@@ -78,6 +81,9 @@ pub fn world_view(sim: &Sim) -> WorldView {
             let vehicle = match u.kind {
                 k if k.tank() => Some(ConvoyUnit::Tank),
                 k if k.carrier() => Some(ConvoyUnit::Carrier),
+                GroundKind::CivTruck => Some(ConvoyUnit::CivTruck),
+                GroundKind::ArmyTruck => Some(ConvoyUnit::ArmyTruck),
+                GroundKind::Technical => Some(ConvoyUnit::Technical),
                 _ if convoy != 0 => Some(ConvoyUnit::Escort),
                 _ => None,
             };

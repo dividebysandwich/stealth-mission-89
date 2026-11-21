@@ -53,6 +53,7 @@ pic-enemy-fighter = 敵戦闘機（レーダー上）
 pic-sam-known = SAM陣地（確認済み）
 pic-guns-known = 火砲 / MANPADS（確認済み）
 pic-armour = 戦車 / 歩兵戦闘車（敵：視認時）
+pic-supply = 補給車列（道路上の敵トラック）
 pic-patriot-reach = パトリオットの射程
 pic-nasams-reach = NASAMSの射程
 pic-gepard-stinger = ゲパルト / スティンガー

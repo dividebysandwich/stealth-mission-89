@@ -3991,3 +3991,159 @@ fn the_gulf_of_finland_hunts_a_submarine_breaking_out() {
             .objective_met(&o.objective, &crate::Progress { sub_sunk: true, ..Default::default() })
     );
 }
+
+/// A Ukraine campaign on its terrain (with its supply roads), munitions on.
+fn road_campaign() -> CampaignState {
+    let mut c = campaign_on_terrain("ukraine", 9);
+    c.rules = Some(CampaignRules::default());
+    c.tick(1.0, &WorldView::default(), &[]);
+    c
+}
+
+fn airfield_named(c: &CampaignState, name: &str) -> ObjectId {
+    c.sites
+        .iter()
+        .find(|s| s.kind == SiteKind::Airfield && s.name == name)
+        .unwrap_or_else(|| panic!("no airfield {name}"))
+        .object
+}
+
+/// The supply convoys launched in some events: (tag, units, route).
+fn convoys_launched(ev: &[CampaignEvent]) -> Vec<(u32, Vec<ConvoyUnit>, Vec<[f64; 2]>)> {
+    ev.iter()
+        .filter_map(|e| match e {
+            CampaignEvent::SupplyConvoyLaunched { tag, units, route, .. } => {
+                Some((*tag, units.clone(), route.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn route_length(route: &[[f64; 2]]) -> f64 {
+    route.windows(2).map(|w| (w[1][0] - w[0][0]).hypot(w[1][1] - w[0][1])).sum()
+}
+
+#[test]
+fn the_enemy_s_bases_along_the_roads_are_supplied_by_truck() {
+    let c = road_campaign();
+    for name in ["Taganrog", "Berdiansk", "Melitopol", "Dzhankoi", "Kirovske", "Hvardiiske", "Saky", "Belbek"] {
+        assert!(c.road_served(airfield_named(&c, name), Side::Red), "{name}");
+    }
+    for name in ["Krasnodar", "Millerovo", "Dnipro"] {
+        let b = airfield_named(&c, name);
+        assert!(!c.road_served(b, Side::Red) && !c.road_served(b, Side::Blue), "{name}");
+    }
+    // Without the theater's terrain (a coop client's state) there are no roads.
+    assert!(campaign("ukraine", 9).road_net().is_none());
+}
+
+#[test]
+fn a_supply_convoy_delivers_what_its_trucks_get_there_with() {
+    let mut c = road_campaign();
+    let b = airfield_named(&c, "Melitopol");
+    let p = c.production_base(Side::Red).unwrap();
+    run_out(&mut c, b, Munition::SamMedium);
+    let before = c.available(p, Munition::SamMedium);
+    c.tick(1.0, &WorldView::default(), &[]);
+    let runs: Vec<_> = c.cargo_runs.iter().filter(|r| r.to == b).cloned().collect();
+    assert_eq!(runs.len(), 1, "{runs:?}");
+    let r = &runs[0];
+    let road = r.road.as_ref().expect("by road");
+    assert_eq!(road.trucks(), 3);
+    let load = r.load.iter().find(|l| l.0 == Munition::SamMedium).expect("SAMs").1;
+    assert_eq!(c.available(p, Munition::SamMedium), before - load);
+    // No other while the first is fresh, nor an intercept offer for the other side.
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.cargo_runs.iter().filter(|r| r.to == b).count(), 1);
+    assert!(c.board.iter().all(|o| o.objective != Objective::Cargo { tag: r.tag }));
+    let mut launched = Vec::new();
+    for _ in 0..tuning::SUPPLY_WAIT as i32 + 5 {
+        launched.extend(convoys_launched(&c.tick(1.0, &WorldView::default(), &[])));
+    }
+    let (tag, units, route) = launched.into_iter().find(|l| l.0 == r.tag).expect("it set off");
+    assert_eq!(units, road.units);
+    // From where R-280 comes in at Rostov, to beside the base.
+    let net = c.road_net().unwrap();
+    let rostov = &net.nodes[net.node("Rostov").unwrap()];
+    assert!((route[0][0] - rostov.x).hypot(route[0][1] - rostov.y) < 1.0);
+    let s = c.site(b).unwrap();
+    let end = *route.last().unwrap();
+    let to = [s.x as f64 * 15.625, (0x8000 - s.y) as f64 * 15.625];
+    assert!((end[0] - to[0]).hypot(end[1] - to[1]) < 3000.0);
+    // Two of its three trucks get there: two thirds of the load.
+    c.tick(1.0, &WorldView::default(), &[Report::SupplyConvoyArrived { tag, trucks: 2 }]);
+    assert_eq!(c.available(b, Munition::SamMedium), load * 2 / 3);
+    assert!(c.cargo_runs.iter().all(|x| x.tag != tag));
+    assert_eq!(c.supply_log.trucks_lost, 1);
+}
+
+#[test]
+fn a_whole_convoy_lost_is_news_and_does_not_hold_up_the_next() {
+    let mut c = road_campaign();
+    let b = airfield_named(&c, "Berdiansk");
+    run_out(&mut c, b, Munition::SamShort);
+    let mut tag = None;
+    for _ in 0..tuning::SUPPLY_WAIT as i32 + 5 {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        tag = tag.or(convoys_launched(&ev).into_iter().find(|l| {
+            c.cargo_runs.iter().any(|r| r.tag == l.0 && r.to == b)
+        }).map(|l| l.0));
+    }
+    let tag = tag.expect("a convoy");
+    let ev = c.tick(1.0, &WorldView::default(), &[Report::SupplyConvoyArrived { tag, trucks: 0 }]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("convoy"))), "{ev:?}");
+    assert_eq!(c.available(b, Munition::SamShort), 0);
+    // The next one goes (no cooldown as after a cargo aircraft shot down).
+    for _ in 0..(tuning::SUPPLY_SPACING / 60.0) as i32 + 2 {
+        c.tick(60.0, &WorldView::default(), &[]);
+    }
+    assert!(c.cargo_runs.iter().any(|r| r.to == b && r.road.is_some()));
+}
+
+#[test]
+fn the_kerch_bridge_cut_sends_the_trucks_for_crimea_round_by_the_isthmus() {
+    let mut c = road_campaign();
+    let b = airfield_named(&c, "Kirovske");
+    let net = c.road_net().unwrap().clone();
+    let bridge = net.edges.iter().position(|e| e.arch.is_some()).expect("the Kerch bridge");
+    let (ax, ay, _) = net.edges[bridge].arch.unwrap();
+    let over = |route: &[[f64; 2]]| route.iter().any(|p| (p[0] - ax).hypot(p[1] - ay) < 200.0);
+    let before = c.road_route(b).expect("a way to Kirovske");
+    assert!(over(&before), "over the bridge from Krymsk");
+    let ev = c.tick(1.0, &WorldView::default(), &[Report::RoadCut { edge: bridge }]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("cut"))), "{ev:?}");
+    assert_eq!(c.cut_roads, [bridge]);
+    let after = c.road_route(b).expect("still a way, the long one");
+    assert!(!over(&after));
+    let (l0, l1) = (route_length(&before), route_length(&after));
+    assert!(l1 > 1.3 * l0, "{l0} -> {l1}");
+    // For good: a save keeps it.
+    let back: CampaignState = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+    assert_eq!(back.cut_roads, [bridge]);
+}
+
+#[test]
+fn trucks_that_turn_back_bring_their_loads_back() {
+    let mut c = road_campaign();
+    let b = airfield_named(&c, "Belbek");
+    let p = c.production_base(Side::Red).unwrap();
+    run_out(&mut c, b, Munition::SamShort);
+    let full = c.available(p, Munition::SamShort);
+    let mut tag = None;
+    for _ in 0..tuning::SUPPLY_WAIT as i32 + 5 {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        tag = tag.or(convoys_launched(&ev).into_iter().find(|l| {
+            c.cargo_runs.iter().any(|r| r.tag == l.0 && r.to == b)
+        }).map(|l| l.0));
+    }
+    let tag = tag.expect("a convoy");
+    let load = c.cargo_runs.iter().find(|r| r.tag == tag).unwrap().load.clone();
+    let n = load.iter().find(|l| l.0 == Munition::SamShort).unwrap().1;
+    let at_pool = c.available(p, Munition::SamShort);
+    c.tick(1.0, &WorldView::default(), &[Report::SupplyTurnedBack { tag, trucks: 3 }]);
+    assert_eq!(c.available(p, Munition::SamShort), at_pool + n);
+    c.tick(1.0, &WorldView::default(), &[Report::SupplyConvoyArrived { tag, trucks: 0 }]);
+    assert_eq!(c.supply_log.trucks_lost, 0);
+    assert!(full >= at_pool);
+}

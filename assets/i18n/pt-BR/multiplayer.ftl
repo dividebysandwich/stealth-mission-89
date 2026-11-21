@@ -53,6 +53,7 @@ pic-enemy-fighter = Caça inimigo (no radar)
 pic-sam-known = Sítio SAM (conhecido)
 pic-guns-known = Canhões / MANPADS (conhecidos)
 pic-armour = Tanque / VCI (inimigo: à vista)
+pic-supply = Comboio de suprimento (caminhões inimigos nas estradas)
 pic-patriot-reach = Alcance dos Patriot
 pic-nasams-reach = Alcance dos NASAMS
 pic-gepard-stinger = Gepard / Stinger

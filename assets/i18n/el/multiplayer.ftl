@@ -54,6 +54,7 @@ pic-enemy-fighter = Εχθρικό μαχητικό (στο radar)
 pic-sam-known = Θέση SAM (γνωστή)
 pic-guns-known = Πυροβόλα / MANPADS (γνωστά)
 pic-armour = Άρμα / ΤΟΜΑ (εχθρικό: σε οπτική επαφή)
+pic-supply = Φάλαγγα ανεφοδιασμού (εχθρικά φορτηγά στους δρόμους)
 pic-patriot-reach = Εμβέλεια Patriot
 pic-nasams-reach = Εμβέλεια NASAMS
 pic-gepard-stinger = Gepard / Stinger

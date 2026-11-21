@@ -35,6 +35,7 @@ mod missions;
 mod munitions;
 mod record;
 mod resupply;
+mod roads;
 pub mod rng;
 mod sead;
 mod state;
@@ -173,6 +174,21 @@ pub enum Report {
     /// A campaign resupply helicopter set its load down at its air defence unit.
     SupplyDelivered {
         tag: u32,
+    },
+    /// Road run `tag`'s supply convoy is over: `trucks` of its trucks got to the base (0: all
+    /// lost, or turned back).
+    SupplyConvoyArrived {
+        tag: u32,
+        trucks: u8,
+    },
+    /// `trucks` trucks of road run `tag` turned back at a cut road.
+    SupplyTurnedBack {
+        tag: u32,
+        trucks: u8,
+    },
+    /// Supply road `edge` (`RoadNet` edge) is cut: its bridge's span came down.
+    RoadCut {
+        edge: usize,
     },
     /// An aircraft of a side was shot down by a missile of the SAM battery of the other side's
     /// radar `aaa` (AAA unit index).
@@ -496,6 +512,15 @@ pub enum CampaignEvent {
         from: ObjectId,
         to: ObjectId,
         tag: u32,
+    },
+    /// Road run `id`'s supply convoy (campaign tag `tag`) of `units`, head first, sets off along
+    /// `route` (metres east, north) to the base at its end.
+    SupplyConvoyLaunched {
+        id: u32,
+        side: Side,
+        tag: u32,
+        units: Vec<ConvoyUnit>,
+        route: Vec<[f64; 2]>,
     },
     /// Player `from`'s aircraft goes on with player `to` (his gunner, `Command::HandSortie`):
     /// `to`'s sortie starts where it is.

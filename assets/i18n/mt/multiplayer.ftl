@@ -53,6 +53,7 @@ pic-enemy-fighter = Fighter tal-għadu (fuq ir-radar)
 pic-sam-known = Sit SAM (magħruf)
 pic-guns-known = Kanun / MANPADS (magħruf)
 pic-armour = Tank / IFV (għadu: jidher)
+pic-supply = Konvoj tal-provvista (trakkijiet tal-għadu fit-toroq)
 pic-patriot-reach = Firxa tal-Patriot
 pic-nasams-reach = Firxa tal-NASAMS
 pic-gepard-stinger = Gepard / Stinger

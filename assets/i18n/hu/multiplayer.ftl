@@ -53,6 +53,7 @@ pic-enemy-fighter = Ellenséges vadász (radaron)
 pic-sam-known = SAM-állás (ismert)
 pic-guns-known = Ágyúk / MANPADS (ismert)
 pic-armour = Harckocsi / gyalogsági harcjármű (ellenség: látótávolságban)
+pic-supply = Utánpótlási konvoj (ellenséges teherautók az utakon)
 pic-patriot-reach = Patriot hatótávolság
 pic-nasams-reach = NASAMS hatótávolság
 pic-gepard-stinger = Gepard / Stinger

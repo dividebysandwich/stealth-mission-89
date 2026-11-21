@@ -53,6 +53,7 @@ pic-enemy-fighter = Trodaire namhad (ar radar)
 pic-sam-known = Suíomh SAM (ar eolas)
 pic-guns-known = Gunnaí / MANPADS (ar eolas)
 pic-armour = Umar / feithicil troda coisithe (namhaid: le feiceáil)
+pic-supply = Conbhua soláthair (trucailí namhad ar na bóithre)
 pic-patriot-reach = Raon Patriot
 pic-nasams-reach = Raon NASAMS
 pic-gepard-stinger = Gepard / Stinger

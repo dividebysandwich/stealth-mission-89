@@ -25,6 +25,11 @@ use crate::rules::Rules;
 
 /// Seconds between the friendly aircraft's looks for enemy radars.
 const SPOT_EVERY: f64 = 1.0;
+/// A destroyed tile object this close (m) to a supply road's bridge span is that span; the
+/// vehicles this close to its middle (m) go down with it (half the Kerch arch's 227 m, and a
+/// little).
+const ROAD_ARCH_MATCH: f64 = 100.0;
+const ROAD_ARCH_FALL: f64 = 130.0;
 /// The take-off formation of coop players on a runway (world units, ~0.49 m): the step back
 /// between the rows and the columns' offset left and right of the centre line.
 const STEP_BACK: i32 = 0x80;
@@ -155,6 +160,20 @@ impl Host {
         self.landed.iter().find(|l| l.0 == player).map(|l| l.1)
     }
 
+    /// The supply road a destroyed tile object cuts: a bridge's span on it came down (its
+    /// trucks on the span go down with it, those still to cross it turn back).
+    fn road_cut_by(&self, sim: &mut Sim, t: &stealth_sim::TileDamage) -> Option<usize> {
+        if t.shape & 0x100 == 0 {
+            return None;
+        }
+        let net = self.state.road_net()?;
+        let at = sim.tile_metres(t)?;
+        let edge = net.arch_near((t.shape & 0xFF) as u8, at[0], at[1], ROAD_ARCH_MATCH)?;
+        let (x, y, _) = net.edges[edge].arch?;
+        sim.cut_supply([x, y], ROAD_ARCH_FALL);
+        Some(edge)
+    }
+
     /// The simulation for this campaign (the host's; a client's mirror is built the same way).
     pub fn new_sim(&self, data: &stealth_sim::SimData) -> Sim {
         let water = match self.state.terrain.0.clone() {
@@ -186,6 +205,14 @@ impl Host {
                 // The guns and armour it lost stay lost until the campaign replaces them.
                 sim.wreck_defences(p.x, p.y, blue, p.guns_lost as usize);
                 sim.wreck_armour(p.x, p.y, blue, p.armour_lost as usize);
+            }
+        }
+        // The supply roads' bridges brought down earlier stay down.
+        if let Some(net) = self.state.road_net() {
+            for &k in &self.state.cut_roads {
+                if let Some((x, y, shape)) = net.edges.get(k).and_then(|e| e.arch) {
+                    sim.wreck_tile_at(shape, [x, y]);
+                }
             }
         }
         // The convoys go on from where they were; those that stopped stand there.
@@ -787,6 +814,17 @@ impl Host {
                 SimEvent::CampaignFlightDelivered { tag, .. } => {
                     reports.push(Report::SupplyDelivered { tag })
                 }
+                SimEvent::SupplyConvoyArrived { tag, trucks } => {
+                    reports.push(Report::SupplyConvoyArrived { tag, trucks })
+                }
+                SimEvent::SupplyTurnedBack { tag, trucks } => {
+                    reports.push(Report::SupplyTurnedBack { tag, trucks })
+                }
+                SimEvent::TileDestroyed(t) => {
+                    if let Some(edge) = self.road_cut_by(sim, &t) {
+                        reports.push(Report::RoadCut { edge });
+                    }
+                }
                 SimEvent::ObjectiveDone { primary: true } => {
                     match self.state.sortie(player).map(|s| &s.offer.objective) {
                         Some(Objective::Recon { object, .. }) => {
@@ -1023,6 +1061,10 @@ impl Host {
                     sim.spawn_convoy(*id, *side == Side::Blue, &kinds, route);
                 }
                 CampaignEvent::ConvoyEnded { id } => sim.end_convoy(*id),
+                CampaignEvent::SupplyConvoyLaunched { side, tag, units, route, .. } => {
+                    let kinds = glue::convoy_kinds(*side, units);
+                    sim.spawn_supply_convoy(*tag, *side == Side::Blue, &kinds, route, 0.0);
+                }
                 CampaignEvent::PlaceCaptured { place, side, members, removed } => {
                     let blue = *side == Side::Blue;
                     for &m in members {

@@ -53,6 +53,7 @@ pic-enemy-fighter = Vijandelijke jager (op radar)
 pic-sam-known = SAM-site (bekend)
 pic-guns-known = Kanonnen / MANPADS (bekend)
 pic-armour = Tank / pantserinfanterievoertuig (vijand: in zicht)
+pic-supply = Bevoorradingskonvooi (vijandelijke vrachtwagens op de wegen)
 pic-patriot-reach = Bereik Patriot
 pic-nasams-reach = Bereik NASAMS
 pic-gepard-stinger = Gepard / Stinger

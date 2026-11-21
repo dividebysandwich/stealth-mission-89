@@ -53,6 +53,7 @@ pic-enemy-fighter = Vihollisen hävittäjä (tutkassa)
 pic-sam-known = SAM-asema (tunnettu)
 pic-guns-known = Tykit / MANPADS (tunnettu)
 pic-armour = Panssarivaunu / rynnäkköpanssarivaunu (vihollinen: näkyvissä)
+pic-supply = Huoltosaattue (vihollisen kuorma-autot teillä)
 pic-patriot-reach = Patriot-kantama
 pic-nasams-reach = NASAMS-kantama
 pic-gepard-stinger = Gepard / Stinger

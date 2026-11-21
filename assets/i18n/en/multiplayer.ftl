@@ -55,6 +55,7 @@ pic-enemy-fighter = Enemy fighter (on radar)
 pic-sam-known = SAM site (known)
 pic-guns-known = Guns / MANPADS (known)
 pic-armour = Tank / IFV (enemy: in sight)
+pic-supply = Supply convoy (enemy trucks on the roads)
 pic-patriot-reach = Patriot reach
 pic-nasams-reach = NASAMS reach
 pic-gepard-stinger = Gepard / Stinger

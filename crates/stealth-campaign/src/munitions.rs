@@ -417,6 +417,9 @@ pub struct CargoRun {
     /// Its escort's fighters (campaign tags) in the air.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub escorts: Vec<u32>,
+    /// By road, in a truck convoy (`roads.rs`), not by air; `Airborne` while on the road.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub road: Option<crate::roads::RoadRun>,
 }
 
 impl CargoRun {
@@ -555,7 +558,7 @@ impl CampaignState {
     }
 
     /// Munitions into a base's stock (of its side's).
-    fn put_in(&mut self, base: ObjectId, m: Munition, n: u32) {
+    pub(crate) fn put_in(&mut self, base: ObjectId, m: Munition, n: u32) {
         if self.stock(base).is_none() || n == 0 {
             return;
         }
@@ -757,6 +760,12 @@ impl CampaignState {
             // One at a time, and none for a while after one was shot down.
             let cooling =
                 self.cargo_cooldown.iter().any(|&(b, until)| b == base && until > self.clock);
+            if base != from && self.road_served(base, side) {
+                if self.site(base).is_some_and(Site::alive) {
+                    self.schedule_road(base, side, from);
+                }
+                continue;
+            }
             if base == from || cooling || self.cargo_runs.iter().any(|r| r.to == base) {
                 continue;
             }
@@ -804,6 +813,7 @@ impl CampaignState {
                 state: CargoState::Scheduled { launch_at: now + CARGO_WAIT },
                 posted: now,
                 escorts: Vec::new(),
+                road: None,
             });
             // The interceptors' offer goes up with it.
             self.board_at = f64::MIN;
@@ -849,6 +859,14 @@ impl CampaignState {
                     }
                 }
             }
+            if self.cargo_runs[k].road.is_some() {
+                if !self.launch_road(k, ev) {
+                    // No way there by road: it flies.
+                    self.cargo_runs[k].road = None;
+                } else {
+                    continue;
+                }
+            }
             let r = &mut self.cargo_runs[k];
             r.state = CargoState::Airborne;
             ev.push(CampaignEvent::CargoPlaneLaunched {
@@ -870,8 +888,10 @@ impl CampaignState {
             Report::FlightLanded { tag, x, y } => (tag, Some((x, y))),
             _ => return,
         };
-        let Some(k) =
-            self.cargo_runs.iter().position(|c| c.tag == tag && c.state == CargoState::Airborne)
+        let Some(k) = self
+            .cargo_runs
+            .iter()
+            .position(|c| c.tag == tag && c.state == CargoState::Airborne && c.road.is_none())
         else {
             return;
         };
@@ -930,7 +950,8 @@ impl CampaignState {
         let name = |b: ObjectId| self.site(b).map_or(String::new(), |s| s.name.clone());
         self.cargo_runs
             .iter()
-            .filter(|r| r.side == side && matches!(r.state, CargoState::Scheduled { .. }))
+            .filter(|r| r.side == side && r.road.is_none())
+            .filter(|r| matches!(r.state, CargoState::Scheduled { .. }))
             .filter_map(|r| {
                 let to = self.site(r.to)?;
                 let (x, y) = self.cargo_point(r);
@@ -1083,7 +1104,7 @@ impl CampaignState {
     pub(crate) fn cargo_offers(&self, side: Side) -> Vec<(Text, Objective, i32, i32, i32)> {
         self.cargo_runs
             .iter()
-            .filter(|r| r.side == side.enemy())
+            .filter(|r| r.side == side.enemy() && r.road.is_none())
             .map(|r| {
                 let (x, y) = self.cargo_point(r);
                 let base = self.site(r.to).map_or(String::new(), |s| s.name.clone());

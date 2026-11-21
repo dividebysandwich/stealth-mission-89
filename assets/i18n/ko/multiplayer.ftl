@@ -53,6 +53,7 @@ pic-enemy-fighter = 적 전투기 (레이더 포착)
 pic-sam-known = SAM 기지 (확인됨)
 pic-guns-known = 대공포 / MANPADS (확인됨)
 pic-armour = 전차 / 보병전투차 (적: 시야 내)
+pic-supply = 보급 호송대 (도로 위 적 트럭)
 pic-patriot-reach = 패트리엇 사거리
 pic-nasams-reach = NASAMS 사거리
 pic-gepard-stinger = 게파르트 / 스팅어

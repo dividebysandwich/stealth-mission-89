@@ -53,6 +53,7 @@ pic-enemy-fighter = 敌方战斗机（雷达上）
 pic-sam-known = SAM 阵地（已知）
 pic-guns-known = 高炮 / MANPADS（已知）
 pic-armour = 坦克 / 步兵战车（敌方：目视范围内）
+pic-supply = 补给车队（公路上的敌方卡车）
 pic-patriot-reach = Patriot 射程
 pic-nasams-reach = NASAMS 射程
 pic-gepard-stinger = Gepard / Stinger

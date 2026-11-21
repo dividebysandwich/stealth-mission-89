@@ -53,6 +53,7 @@ pic-enemy-fighter = Fjendtligt jagerfly (på radar)
 pic-sam-known = SAM-stilling (kendt)
 pic-guns-known = Kanoner / MANPADS (kendt)
 pic-armour = Kampvogn / pansret mandskabsvogn (fjende: inden for syne)
+pic-supply = Forsyningskonvoj (fjendtlige lastbiler på vejene)
 pic-patriot-reach = Patriots rækkevidde
 pic-nasams-reach = NASAMS' rækkevidde
 pic-gepard-stinger = Gepard / Stinger

@@ -1192,6 +1192,12 @@ pub struct CampaignState {
     /// Bases whose cargo aircraft was shot down, and until when none flies there again.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cargo_cooldown: Vec<(ObjectId, f64)>,
+    /// The supply roads cut (`RoadNet` edges: a bridge's span brought down, for good).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cut_roads: Vec<usize>,
+    /// The supply convoys' record.
+    #[serde(default, skip_serializing_if = "crate::roads::SupplyLog::is_empty")]
+    pub supply_log: crate::roads::SupplyLog,
     /// The enemy SAM sites' magazines not full (object, missiles; the simulation's, kept over
     /// a save).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -1796,6 +1802,8 @@ impl CampaignState {
             production: [None; 2],
             production_target: [None; 2],
             cargo_runs: Vec::new(),
+            cut_roads: Vec::new(),
+            supply_log: Default::default(),
             cargo_lost: Vec::new(),
             cargo_cooldown: Vec::new(),
             site_magazines: Vec::new(),

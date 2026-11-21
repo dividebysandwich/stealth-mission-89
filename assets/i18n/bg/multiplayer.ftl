@@ -53,6 +53,7 @@ pic-enemy-fighter = Вражески изтребител (на радара)
 pic-sam-known = SAM позиция (известна)
 pic-guns-known = Оръдия / MANPADS (известни)
 pic-armour = Танк / БМП (враг: в полезрение)
+pic-supply = Конвой за снабдяване (вражески камиони по пътищата)
 pic-patriot-reach = Обсег на Patriot
 pic-nasams-reach = Обсег на NASAMS
 pic-gepard-stinger = Gepard / Stinger

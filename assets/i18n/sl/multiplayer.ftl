@@ -53,6 +53,7 @@ pic-enemy-fighter = Sovražni lovec (na radarju)
 pic-sam-known = Položaj SAM (znan)
 pic-guns-known = Topovi / MANPADS (znani)
 pic-armour = Tank / BVP (sovražnik: na vidiku)
+pic-supply = Oskrbovalni konvoj (sovražni tovornjaki na cestah)
 pic-patriot-reach = Doseg Patriot
 pic-nasams-reach = Doseg NASAMS
 pic-gepard-stinger = Gepard / Stinger

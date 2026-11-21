@@ -1202,3 +1202,83 @@ fn a_launch_site_is_built_and_fires() {
     }
     panic!("{:?}", host.state.missile_strikes);
 }
+
+fn ukraine() -> (Host, stealth_sim::Sim) {
+    let s = setup("ukraine");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "ukraine").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    (host, sim)
+}
+
+fn airfield(host: &Host, name: &str) -> stealth_campaign::ObjectId {
+    host.state
+        .sites
+        .iter()
+        .find(|s| s.kind == stealth_campaign::SiteKind::Airfield && s.name == name)
+        .unwrap()
+        .object
+}
+
+/// A red base on R-280 runs low: a truck convoy drives from Rostov and delivers.
+#[test]
+fn a_supply_convoy_drives_munitions_to_taganrog() {
+    use stealth_campaign::Munition;
+    let (mut host, mut sim) = ukraine();
+    let to = airfield(&host, "Taganrog");
+    // Something it keeps and the production base has made.
+    let p = host.state.production_base(stealth_campaign::Side::Red).unwrap();
+    let m = *Munition::of_side(stealth_campaign::Side::Red)
+        .iter()
+        .find(|&&m| host.state.full_stock(to, m) >= 4.0 && host.state.available(p, m) >= 4)
+        .expect("a munition to bring");
+    let n = host.state.available(to, m);
+    host.state.draw(to, m, n);
+    // Fast trucks (a test aid): the 40 km take a few minutes.
+    sim.set_convoy_speed(200.0);
+    let mut tag = None;
+    let mut arrived = None;
+    let mut trucks_seen = 0;
+    for _ in 0..30 * 60 * 15 {
+        let ev = sim.step_pilots(&[], 15);
+        let mut all = host.take_sim_events(&mut sim);
+        all.extend(ev);
+        for e in &all {
+            if let stealth_sim::SimEvent::SupplyConvoyArrived { tag: t, trucks } = e.event
+                && Some(t) == tag
+            {
+                arrived = Some(trucks);
+            }
+        }
+        host.tick(&mut sim, 1.0 / 15.0, &all);
+        if tag.is_none() {
+            tag = host.state.cargo_runs.iter().find(|r| r.to == to && r.road.is_some()).map(|r| r.tag);
+        }
+        trucks_seen = trucks_seen.max(sim.units().iter().filter(|u| u.kind.truck() && !u.destroyed).count());
+        if arrived.is_some() {
+            break;
+        }
+    }
+    tag.expect("a supply convoy was scheduled");
+    assert_eq!(arrived, Some(3), "all three trucks got there");
+    assert!(trucks_seen >= 3);
+    assert!(host.state.available(to, m) > 0, "delivered");
+    assert!(host.state.cargo_runs.iter().all(|r| r.to != to || r.road.is_none() || Some(r.tag) != tag));
+}
+
+/// The Kerch bridge's road arch brought down cuts the road for the campaign.
+#[test]
+fn the_kerch_road_arch_down_cuts_the_road() {
+    let (mut host, mut sim) = ukraine();
+    let net = host.state.road_net().unwrap().clone();
+    let edge = net.edges.iter().position(|e| e.arch.is_some()).unwrap();
+    let (x, y, shape) = net.edges[edge].arch.unwrap();
+    sim.wreck_tile_at(shape, [x, y]);
+    let ev = host.take_sim_events(&mut sim);
+    assert!(ev.iter().any(|e| matches!(e.event, stealth_sim::SimEvent::TileDestroyed(_))));
+    host.tick(&mut sim, 1.0 / 15.0, &ev);
+    assert_eq!(host.state.cut_roads, [edge]);
+}

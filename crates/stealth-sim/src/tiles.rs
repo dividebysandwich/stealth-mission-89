@@ -183,6 +183,43 @@ impl Sim {
         }
     }
 
+    /// Where tile object `t` stands (metres east, north).
+    pub fn tile_metres(&self, t: &TileDamage) -> Option<[f64; 2]> {
+        let tiles = self.tiles.as_ref()?;
+        let lv = t.level as usize;
+        let cell = tiles.cell(lv, t.col, t.row);
+        let &(ox, oy, _) = tiles.objects_of(lv, cell).get(t.index as usize)?;
+        // World units per level unit: LOD1 1, LOD2 4.
+        let u = if lv == 1 { 1.0 } else { 4.0 };
+        let wu = crate::aaa::M_PER_MAP / 32.0;
+        let east = ((t.col * 4096 + 2048) as f64 + ox as f64) * u * wu;
+        let north = ((t.row * 4096 + 2048) as f64 + oy as f64) * u * wu;
+        Some([east, north])
+    }
+
+    /// Campaign: the tile object of shape `shape` nearest `at` (metres east, north), if within
+    /// 100 m of it, is wrecked (it came down earlier in the campaign).
+    pub fn wreck_tile_at(&mut self, shape: u8, at: [f64; 2]) {
+        let wu = crate::aaa::M_PER_MAP / 32.0;
+        let (x, y) = ((at[0] / wu) as i32, (at[1] / wu) as i32);
+        let Some(hit) = self.find_nearest_tile(x, y) else { return };
+        let Some(p) = self.tile_metres(&TileDamage {
+            level: hit.level,
+            index: hit.index,
+            col: hit.col,
+            row: hit.row,
+            shape: 0,
+        }) else {
+            return;
+        };
+        if hit.base_shape == shape as i32
+            && !hit.damaged
+            && (p[0] - at[0]).hypot(p[1] - at[1]) < 100.0
+        {
+            self.set_tile_shape(hit, shape as i32 | 0x100);
+        }
+    }
+
     /// Record a new shape for a tile object in the damage list.
     pub(crate) fn set_tile_shape(&mut self, t: TileHit, shape: i32) {
         if t.level == 0 {

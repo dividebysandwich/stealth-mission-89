@@ -53,6 +53,7 @@ pic-enemy-fighter = Avion de vânătoare inamic (pe radar)
 pic-sam-known = Poziție SAM (cunoscută)
 pic-guns-known = Tunuri / MANPADS (cunoscute)
 pic-armour = Tanc / MLI (inamic: la vedere)
+pic-supply = Convoi de aprovizionare (camioane inamice pe drumuri)
 pic-patriot-reach = Raza Patriot
 pic-nasams-reach = Raza NASAMS
 pic-gepard-stinger = Gepard / Stinger

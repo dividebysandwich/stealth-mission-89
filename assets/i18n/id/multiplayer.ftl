@@ -52,6 +52,7 @@ pic-enemy-fighter = Pesawat tempur musuh (di radar)
 pic-sam-known = Situs SAM (diketahui)
 pic-guns-known = Kanon / MANPADS (diketahui)
 pic-armour = Tank / IFV (musuh: terlihat)
+pic-supply = Konvoi pasokan (truk musuh di jalan)
 pic-patriot-reach = Jangkauan Patriot
 pic-nasams-reach = Jangkauan NASAMS
 pic-gepard-stinger = Gepard / Stinger
