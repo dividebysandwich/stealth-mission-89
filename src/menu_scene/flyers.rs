@@ -159,9 +159,10 @@ fn tornado(
     fov.0 = 30f32.to_radians();
 }
 
-/// An interceptor closing on a Geran ahead of it, the camera riding beside and behind it:
-/// the quadcopter (0.6 m long) on a Geran-2, or the X-12 jet (2.4 m) on a jet Geran-3. Both
-/// fly level along their way.
+/// An interceptor closing on a Geran ahead of it, the camera riding with it at a random
+/// place behind it (near or farther, beside either way, above or below): the quadcopter
+/// (0.6 m long) on a Geran-2, or the X-12 jet (2.4 m) on a jet Geran-3. Both fly level along
+/// their way, and the interceptor is still behind the Geran at the scene's end.
 fn interceptor(
     mut stage: Stage,
     flyers: Query<(Entity, &Flyer)>,
@@ -171,9 +172,12 @@ fn interceptor(
 ) {
     // Interceptor model, its speed and length, the Geran's model and speed (m/s, m).
     const QUAD: (&str, f32, f32, &str, f32) = ("drones_105", 60.0, 0.6, "drones_100", 51.0);
-    const X12: (&str, f32, f32, &str, f32) = ("drones_106", 140.0, 2.4, "drones_101", 122.0);
+    const X12: (&str, f32, f32, &str, f32) = ("drones_106", 132.0, 2.4, "drones_101", 122.0);
     let (model, speed, len, quarry, quarry_speed) =
         if (stage.director.roll >> 9) & 1 == 0 { QUAD } else { X12 };
+    // The Geran's lead at the start: it closes over the scene to some lengths of the
+    // interceptor at the end, never past it.
+    let gap = ((speed - quarry_speed) * Shot::Interceptor.seconds() + len * 8.0).max(70.0);
     if stage.begin(&[stage::DRONES]) {
         let start = stage.land() + DVec3::Y * 350.0;
         let heading = (stage.director.roll % 360) as f32 * 0.0175;
@@ -186,7 +190,7 @@ fn interceptor(
             phase: 0.0,
             climb: 0.0,
         };
-        let f = stage::forward(heading) * 70.0;
+        let f = stage::forward(heading) * gap;
         let geran = Weave {
             start: start + enu(f.x as f64, 6.0, f.y as f64),
             speed: quarry_speed,
@@ -205,13 +209,21 @@ fn interceptor(
     let t = stage.director.t;
     let Some((_, p, _, v)) = fly(&stage, &flyers, &mut q) else { return };
     let heading = v.x.atan2(-v.z);
-    // Behind and beside it, swinging out a little (as far as its size wants); the Geran
-    // beyond it.
+    // The camera's place behind it, the scene's pick (lengths of a quadcopter, as far as the
+    // interceptor's size wants): near or farther back, beside it either way, above or under
+    // it, drifting in or out a little; the Geran beyond it.
+    let r = |n: u32| {
+        let h = (stage.director.roll ^ n.wrapping_mul(0x9E37_79B9)).wrapping_mul(0x45D9_F3B);
+        ((h ^ (h >> 16)) & 0xFFFF) as f32 / 65535.0
+    };
+    let sign = if r(1) < 0.5 { 1.0 } else { -1.0 };
+    let back = 1.6 + 2.2 * r(2) + (r(3) - 0.6) * 0.3 * t;
+    let side = sign * ((0.5 + 1.3 * r(4)) + (r(5) - 0.3) * 0.3 * t);
+    let up = -0.7 + 1.9 * r(6);
     let k = len / 0.6;
-    let side = (1.2 + 0.2 * t) * k.sqrt() * 1.6f32.min(k);
-    let eye =
-        stage::behind(p, heading, (2.4 - 0.2 * t) * k.sqrt() * 1.4f32.min(k), side, 0.6 * k.sqrt());
-    let ahead = stage::forward(heading) * len * 1.6;
+    let s = k.sqrt();
+    let eye = stage::behind(p, heading, back * s * 1.4f32.min(k), side * s * 1.6f32.min(k), up * s);
+    let ahead = stage::forward(heading) * len * 0.8;
     stage::look(&mut cam, eye, p + enu(ahead.x as f64, 0.3, ahead.y as f64));
     fov.0 = 50f32.to_radians();
 }
