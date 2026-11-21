@@ -40,7 +40,7 @@ use bevy::mesh::{MeshTag, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task};
 
-use crate::dots::{dot_batch, dot_batch_coloured};
+use crate::dots::{Glow, dot_batch, dot_batch_coloured, dot_batch_words};
 use crate::models::{ModelAssets, ModelLibrary};
 use crate::palette::{DetailLevel, Palette, REMAP_DETAIL_HIGH};
 use crate::palette_material::{
@@ -891,10 +891,21 @@ fn stream_blocks(
     mut backlog: ResMut<SceneryBacklog>,
     mut built_now: ResMut<budget::BlocksBuilt>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut glowing: Local<Option<bool>>,
 ) {
     built_now.0 = 0;
     let Ok(anchor) = anchor.single() else { return };
     let ranges = budget.scenery_ranges(&settings);
+    // The lights tier as glowing lamps (`Effects::city_lights`): switching rebuilds it.
+    let glow = crate::palette_material::city_lights(&settings);
+    if glowing.replace(glow).is_some_and(|was| was != glow) {
+        blocks.0.retain(|&(tier, _, _), e| {
+            if tier == Tier::Lights {
+                commands.entity(*e).try_despawn();
+            }
+            tier != Tier::Lights
+        });
+    }
     // Alt-D: detail 2 drops the trees, detail 0 and 1 all extra scenery.
     let fields = detail.0 >= 2 && scenery.style.as_ref().is_some_and(|s| s.farmland.is_some());
     let lights = detail.0 >= 2 && scenery.style.is_some() && palette.lights_on();
@@ -1016,7 +1027,11 @@ fn stream_blocks(
             break;
         }
         n += 1;
-        let geom = content::build(&scenery, bx, by, tier, ranges.houses, ranges.trees);
+        let geom = if tier == Tier::Lights && glow {
+            content::build_lights(&scenery, bx, by, ranges.glow * glow_share())
+        } else {
+            content::build(&scenery, bx, by, tier, ranges.houses, ranges.trees)
+        };
         let c = centre(bx, by, tier.block_size());
         let e = spawn_block(
             &mut commands,
@@ -1033,6 +1048,22 @@ fn stream_blocks(
     built_now.0 = n as u32;
 }
 
+/// Share of the towns' optional glowing lamps at full detail: fewer on the low-power builds
+/// (`HEAVY_EFFECTS_OFF`); `SM89_CITY_LIGHTS=<share>` sets it (0..1).
+fn glow_share() -> f64 {
+    static SHARE: std::sync::OnceLock<f64> = std::sync::OnceLock::new();
+    *SHARE.get_or_init(|| {
+        std::env::var("SM89_CITY_LIGHTS")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .map(|v| v.clamp(0.0, 1.0))
+            .unwrap_or(if crate::effects::HEAVY_EFFECTS_OFF { GLOW_SHARE_LOW_POWER } else { 1.0 })
+    })
+}
+
+/// `glow_share` on the Steam Frame and Android.
+const GLOW_SHARE_LOW_POWER: f64 = 0.6;
+
 fn mesh(topology: PrimitiveTopology, pos: Vec<Vec3>) -> Mesh {
     Mesh::new(topology, RenderAssetUsages::default())
         .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, pos)
@@ -1041,15 +1072,15 @@ fn mesh(topology: PrimitiveTopology, pos: Vec<Vec3>) -> Mesh {
 /// Model colour of each vertex of a mesh of several colours (with its detail bits,
 /// `geom::FURROW_X`), for its colour words to follow the palette's remap (the detail level).
 #[derive(Component)]
-struct VertexColours(Vec<u16>);
+struct VertexColours(Vec<u32>);
 
 /// A vertex's colour word: its colour byte's, and its detail bits.
-fn vertex_word(palette: &Palette, c: u16) -> u32 {
+fn vertex_word(palette: &Palette, c: u32) -> u32 {
     palette.word(c as u8) as u32 | geom::detail_word(c)
 }
 
 /// Triangles of several colours as one mesh, drawn with `Palette::per_vertex`, in colour order.
-fn multicolour_mesh<K: Copy + Into<u16>>(
+fn multicolour_mesh<K: Copy + Into<u32>>(
     palette: &Palette,
     tris: std::collections::BTreeMap<K, Vec<Vec3>>,
 ) -> Option<(Mesh, VertexColours)> {
@@ -1196,6 +1227,25 @@ fn spawn_geom(
                     dots.clone(),
                     MeshTag(dot_tag | lamp_tag),
                     LampBatch { points, colours, radius },
+                ))
+                .id(),
+        );
+    }
+    // The towns' glowing lamps: added to what is behind them, in any order.
+    if !geom.glow.is_empty() {
+        let (words, points): (Vec<u32>, Vec<Vec3>) = geom.glow.into_iter().unzip();
+        let m = meshes.add(dot_batch_words(&points, &words));
+        let radius = points.iter().map(|p| p.length()).fold(0.0, f32::max);
+        let colours = words.iter().map(|w| *w as u8).collect();
+        children.push(
+            commands
+                .spawn((
+                    Mesh3d(m),
+                    MeshMaterial3d(palette.line_material(content::LAMP)),
+                    dots.clone(),
+                    MeshTag(dot_tag | lamp_tag),
+                    LampBatch { points, colours, radius },
+                    Glow,
                 ))
                 .id(),
         );

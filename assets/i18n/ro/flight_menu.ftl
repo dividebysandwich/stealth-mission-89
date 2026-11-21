@@ -66,6 +66,7 @@ fm-effect-snow = ZĂPADĂ
 fm-effect-mist = CEAȚĂ LA SOL
 fm-effect-cloud-shadows = UMBRELE NORILOR
 fm-effect-ground-detail = DETALIILE SOLULUI
+fm-effect-city-lights = LUMINILE ORAȘELOR
 fm-effect-glass = REFLEXII ÎN STICLĂ
 fm-effect-water = REFLEXII ÎN APĂ
 fm-effect-ocean-waves = VALURI OCEANICE

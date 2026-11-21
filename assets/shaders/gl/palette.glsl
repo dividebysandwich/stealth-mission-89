@@ -53,6 +53,9 @@ layout(std140) uniform Globals {
     vec4 ocean;
     vec4 ocean_mask;
     vec4 ocean_levels[4];
+    // The towns' lights (palette.wgsl `city`, `city_origin`).
+    vec4 city;
+    vec4 city_origin;
     vec4 ground_detail;
     // Reflections (the `REFLECT` variants): x 1 on glass, y 1 on water.
     vec4 reflections;
@@ -108,6 +111,8 @@ const uint TAG_DOT_FAR = 2147483648u;
 const uint TAG_VERTEX_HAZE = 1073741824u;
 const uint TAG_HILLS = 65536u;
 const uint WORD_FLAT_LIT = 65536u;
+// palette.wgsl `FLAG_GLOW`: the towns' glowing lamps.
+const uint FLAG_GLOW = 1024u;
 const float DOT_FAR_MIN = 3000.0;
 const float AIRCRAFT_NIGHT = 0.95;
 const uint CLOUD_RAMP = 0xE0u;
@@ -173,7 +178,7 @@ flat out float v_fog_f;
 // Bit 0: warm object or dot light (FLIR); bit 1: aircraft; bit 2: spotting dot; bit 3: the
 // hills' ground; bit 4: lit as flat ground (the hills' skirts); bit 5: hot (FLIR: a unit, a
 // fire or a dot light); bits 6 and 7: a field's crop rows run along x or along z (DETAIL); bit
-// 8: the scenery's ground (WORD_GROUND).
+// 8: the scenery's ground (WORD_GROUND); bit 9: a wall with windows (WORD_WINDOWS).
 flat out uint v_warm;
 #ifdef CLOUD
 // Smoke volumes, in the plume's local space (unit radius, y 0..1): position (w: noise offset),
@@ -190,6 +195,44 @@ const float DOT_RANGE = 30000.0;
 const float DOT_VIS_FACTOR = 1.5;
 const float DOT_NEAR = 0.4;
 const float SPOT_PIXELS = 12.0;
+
+#ifdef DOT
+// palette.wgsl `glow_lamp`.
+const float GLOW_PIXELS = 2.4;
+const float GLOW_REF = 1500.0;
+const float GLOW_MIN = 1.2;
+const float GLOW_GAIN = 2.0;
+const float GLOW_MAX = 7.0;
+const float GLOW_QUAD = 2.2;
+const float GLOW_RANGE_DIM = 0.3;
+const float GLOW_WINDOW_FADE = 500.0;
+
+vec2 glow_lamp(uint word, float dist, float focal) {
+    float level = float((word >> 8u) & 15u) / 15.0;
+    uint kind = (word >> 12u) & 3u;
+    uint seed = word >> 18u;
+    float b = GLOW_GAIN * (0.25 + 0.75 * level);
+    float scale = min(u_viewport.y / 1080.0, focal / 935.0);
+    float core = GLOW_PIXELS * scale * sqrt((0.25 + 0.75 * level) * GLOW_REF / max(dist, 30.0));
+    float least = GLOW_MIN * max(scale, 0.75);
+    if (core < least) {
+        b *= core / least;
+        core = least;
+    }
+    core = min(core, GLOW_MAX * scale);
+    float range = DOT_RANGE * (GLOW_RANGE_DIM + (1.0 - GLOW_RANGE_DIM) * level);
+    if (g.weather.z > 0.0) {
+        range = min(range, g.weather.z * DOT_VIS_FACTOR);
+    }
+    b *= 1.0 - smoothstep(range * 0.6, range, dist);
+    if (kind == 1u) {
+        b *= smoothstep(g.city.y, g.city.y + GLOW_WINDOW_FADE, dist);
+    }
+    float twinkle = sin(g.dots.y * (2.0 + float(seed & 7u)) + float(seed)) * smoothstep(3000.0, 9000.0, dist);
+    b *= 1.0 + 0.25 * twinkle;
+    return vec2(core * GLOW_QUAD, b);
+}
+#endif
 
 float level_unit(uint code) {
     switch (code) {
@@ -217,7 +260,8 @@ void main() {
         | ((tag & (TAG_DOT_SPOT | 128u)) == (TAG_DOT_SPOT | 128u) ? 4u : 0u)
         | ((tag & (TAG_HILLS | TAG_SMOKE | TAG_DOT_SPOT | 128u)) == TAG_HILLS ? 8u : 0u)
         | (u_word == WORD_PER_VERTEX && (a_word & WORD_FLAT_LIT) != 0u ? 16u : 0u)
-        | (u_word == WORD_PER_VERTEX ? ((a_word >> 17u) & 7u) << 6u : 0u)
+        | (u_word == WORD_PER_VERTEX ? ((a_word >> 17u) & 15u) << 6u : 0u)
+        | (u_word == WORD_PER_VERTEX ? ((a_word >> 21u) & 0x7FFu) << 16u : 0u)
         | ((tag & 128u) != 0u
             || (tag & (TAG_WARM | TAG_HOT | TAG_SMOKE | TAG_DOT_SPOT)) == (TAG_WARM | TAG_HOT) ? 32u : 0u);
 #ifdef CLOUD
@@ -262,7 +306,14 @@ void main() {
         uint tenths = (tag >> 24u) & 0x7Fu;
         px = tenths != 0u ? px * float(tenths) / 10.0 : px * float(((tag >> 8u) & 7u) + 1u);
         bool bright = (tag & 7u) == 5u || tenths > 10u || ((tag >> 8u) & 7u) != 0u;
-        if (g.light_info.z > 1.5 && bright && !spot) {
+        // Glowing lamps: their own size, and their brightness for the fragment (negative).
+        bool glowing = (u_flags & FLAG_GLOW) != 0u;
+        if (glowing) {
+            vec2 lamp = glow_lamp(a_colour, distance(center, eye), 0.5 * vp.y * py);
+            px = lamp.x;
+            v_dot_uv.z = -lamp.y;
+        }
+        if (g.light_info.z > 1.5 && bright && !spot && !glowing) {
             px *= NVG_HALO;
             v_dot_uv.z = NVG_HALO;
         }
@@ -278,7 +329,7 @@ void main() {
         float span = spot_m * 0.5 * vp.y * py / max(clip.w, 0.01);
         float dist = distance(center, eye);
         bool near = (tag & TAG_DOT_FAR) != 0u && dist < DOT_FAR_MIN;
-        if (dist > range || near || (spot && span > SPOT_PIXELS)) {
+        if (dist > range || near || (spot && span > SPOT_PIXELS) || (glowing && v_dot_uv.z > -1e-3)) {
             // Out of range: a degenerate quad outside the clip volume.
             gl_Position = vec4(0.0, 0.0, -1.0, 1.0);
         }
@@ -1492,6 +1543,72 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec2 wave, vec3 dir, float foot, flo
 }
 #endif
 
+#ifdef DOT
+// palette.wgsl `glow_colour`.
+const float GLOW_FALLOFF = 4.5;
+
+vec3 glow_colour(uint word, vec3 palette) {
+    switch ((word >> 14u) & 15u) {
+        case 1u: return mix(vec3(1.0, 0.5, 0.12), vec3(1.0, 0.74, 0.3), float((word >> 18u) & 15u) / 15.0);
+        case 2u: return vec3(0.85, 0.9, 1.0);
+        case 3u: return vec3(0.6, 1.0, 0.85);
+        case 4u: return mix(vec3(1.0, 0.58, 0.24), vec3(1.0, 0.78, 0.45), float((word >> 22u) & 7u) / 7.0);
+        case 5u: return vec3(0.75, 0.85, 1.0);
+        case 6u: return vec3(0.25, 1.0, 0.35);
+        case 7u: return vec3(0.3, 0.45, 1.0);
+        default: return palette;
+    }
+}
+#else
+// palette.wgsl `city_windows`.
+const float WIN_STOREY = 3.0;
+const float WIN_BAY = 3.2;
+const vec2 WIN_HALF = vec2(0.4, 0.33);
+const float WIN_RUN = 4.0;
+const float WIN_SILL = 0.5;
+const vec2 WIN_LIT = vec2(0.2, 0.65);
+const float WIN_PATCH = 5.0;
+const float WIN_WALL_BIN = 40.0;
+const vec3 WIN_WARM = vec3(1.0, 0.62, 0.28);
+const vec3 WIN_COOL = vec3(0.7, 0.82, 1.0);
+const float WIN_COOL_SHARE = 0.3;
+const float WIN_GLOW = 1.1;
+const float WIN_FAR = 0.12;
+
+const float WALL_ANGLES = 2048.0;
+
+vec3 city_windows(vec3 world, vec3 face, uint angle) {
+    if (abs(normalize(face).y) > 0.3) {
+        return vec3(0.0);
+    }
+    vec3 p = world + g.city_origin.xyz;
+    float a = float(angle) / WALL_ANGLES * 6.2831853;
+    vec2 nh = vec2(cos(a), sin(a));
+    vec2 t = vec2(-nh.y, nh.x);
+    vec2 cell = vec2(dot(p.xz, t) / WIN_BAY, p.y / WIN_STOREY);
+    ivec2 ci = ivec2(floor(cell));
+    uint wall = uint(int(floor(dot(p.xz, nh) / WIN_WALL_BIN)) + 0x4000) * 4u + uint(dot(nh, vec2(1.0, 2.0)) + 3.0);
+    ivec2 patch_ = ivec2(floor(cell / WIN_PATCH));
+    float share = mix(WIN_LIT.x, WIN_LIT.y, value_hash(patch_.x, patch_.y, wall ^ 0x51u));
+    int stagger = int(value_hash(0, ci.y, wall ^ 0x3Cu) * WIN_RUN);
+    int run = int(floor(float(ci.x + stagger) / WIN_RUN));
+    float h = value_hash(run, ci.y, wall);
+    float h2 = value_hash(ci.y, run, wall ^ 0xA7u);
+    float lit = h < share ? 1.0 : 0.0;
+    vec3 tint = (h2 < WIN_COOL_SHARE ? WIN_COOL : WIN_WARM) * (0.5 + 0.5 * fract(h2 * 7.0));
+    vec2 aa = max(fwidth(cell), vec2(1e-4));
+    vec2 off = abs(fract(cell) - vec2(0.5, WIN_SILL));
+    vec2 k = smoothstep(vec2(0.6), vec2(1.5), aa);
+    vec2 inside = vec2(
+        1.0 - smoothstep(WIN_HALF.x - aa.x, WIN_HALF.x + aa.x, off.x),
+        1.0 - smoothstep(WIN_HALF.y - aa.y, WIN_HALF.y + aa.y, off.y));
+    vec2 cover = mix(inside, 2.0 * WIN_HALF, k);
+    float far = max(k.x, k.y);
+    vec3 light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
+    return cover.x * cover.y * light * WIN_GLOW;
+}
+#endif
+
 vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     vec3 dir = v_world - eye_pos();
     bool modern = g.params.w != 0.0;
@@ -1603,7 +1720,7 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     uint hi = (v_word >> 8u) & 0xFFu;
     uint lo = v_word & 0xFFu;
 #ifdef DOT
-    lo = v_dot_colour;
+    lo = v_dot_colour & 0xFFu;
 #endif
     if ((uint(g.light_info.w) & 4u) != 0u) {
         return vec4(pal(haze(lo, v_fog)), 1.0);
@@ -1678,12 +1795,26 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
         rgb = water_reflection(rgb, v_world, wave, dir, foot, min(length(gdx), length(gdy)), dark);
     }
 #endif
+#ifndef DOT
+    if (!is_line && (v_warm & 512u) != 0u && g.city.x > 0.0 && !recon_view()) {
+        rgb += city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu) * g.city.x;
+    }
+#endif
     float dl = length(dir);
     if (!is_line) {
         rgb = ground_mist(rgb * cloud_shadow(v_world), v_world, dl);
     }
     float alpha = 1.0;
 #ifdef DOT
+    // A glowing lamp (palette.wgsl): its light through the storm haze and the whiteout, its
+    // falloff as a negative alpha for `main` to scale it by.
+    if (v_dot_uv.z < 0.0) {
+        vec3 nd = dir / max(dl, 1e-3);
+        vec3 c = glow_colour(v_dot_colour, rgb);
+        vec3 seen = whiteout(storm_haze(c, nd, dl), dl) - whiteout(storm_haze(vec3(0.0), nd, dl), dl);
+        float r2 = dot(v_dot_uv.xy, v_dot_uv.xy);
+        return vec4(max(seen, vec3(0.0)), min(-exp(-GLOW_FALLOFF * r2) * -v_dot_uv.z, -1e-6));
+    }
     if (v_dot_uv.z > 1.0) {
         float r = (length(v_dot_uv.xy) * v_dot_uv.z - 1.0) / (v_dot_uv.z - 1.0);
         float k = clamp(1.0 - r, 0.0, 1.0);
@@ -1744,10 +1875,15 @@ void main() {
         }
 #endif
         vec4 c = shade_fragment(face, sky_px, foot, gdx, gdy);
-        o_colour = vec4(flir(c.rgb), c.a);
+        o_colour = c.a < 0.0 ? vec4(flir(c.rgb) * -c.a, 0.0) : vec4(flir(c.rgb), c.a);
         return;
     }
     vec4 c = shade_fragment(face, sky_px, foot, gdx, gdy);
+    // A glowing lamp: premultiplied by its falloff, alpha 0, added to what is behind it.
+    if (c.a < 0.0) {
+        o_colour = vec4(retro(nvg(c.rgb), gl_FragCoord.xy) * -c.a, 0.0);
+        return;
+    }
     vec3 glare = sun_glare(v_world - eye_pos());
     o_colour = vec4(retro(nvg(c.rgb + glare * c.a), gl_FragCoord.xy), c.a);
 }

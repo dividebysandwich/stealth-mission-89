@@ -32,6 +32,10 @@ const TAG_HILLS: u32 = 65536u;
 // A vertex lit as flat ground whatever the face (palette_material.rs `WORD_FLAT_LIT`, above its
 // colour word: the hills' skirts).
 const WORD_FLAT_LIT: u32 = 65536u;
+// A glowing lamp's dot batch (palette_material.rs `FLAG_GLOW`, `Effects::city_lights`).
+const FLAG_GLOW: u32 = 1024u;
+// A building's wall with windows lit at night (palette_material.rs `WORD_WINDOWS`).
+const WORD_WINDOWS: u32 = 1048576u;
 const DOT_FAR_MIN: f32 = 3000.0;
 // Share of a moonless night's darkness on aircraft and their spotting dots: barely visible.
 const AIRCRAFT_NIGHT: f32 = 0.95;
@@ -132,6 +136,11 @@ struct Globals {
     ocean_levels: array<vec4<f32>, 4>,
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
+    // The towns' lights (`PALETTE_CITY`): x the lit windows' strength, y the range inside which
+    // the walls show their windows (the window lamps only beyond it).
+    city: vec4<f32>,
+    // The floating origin (xyz): the windows stay put on the walls.
+    city_origin: vec4<f32>,
     ground_detail: vec4<f32>,
     // Reflections (`PALETTE_GLASS`, `PALETTE_WATER`): x 1 on glass, y 1 on water.
     reflections: vec4<f32>,
@@ -192,7 +201,8 @@ struct VertexOutput {
     // Bit 0: warm object or dot light (FLIR); bit 1: aircraft (level code 5); bit 2: spotting
     // dot; bit 3: the hills' ground; bit 4: lit as flat ground; bit 5: hot (a unit, a fire or a
     // dot light: white in the FLIR picture); bits 6 and 7: a field's crop rows run along x or
-    // along z (the ground detail's furrows); bit 8: the scenery's ground (`WORD_GROUND`).
+    // along z (the ground detail's furrows); bit 8: the scenery's ground (`WORD_GROUND`); bit 9:
+    // a wall with windows (`WORD_WINDOWS`); bits 16..26: its direction (`WORD_WALL_ANGLE`).
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
@@ -230,6 +240,70 @@ const SPOT_PIXELS: f32 = 12.0;
 // Under night vision goggles the bright lights (aircraft lights, the bigger airfield lights)
 // bloom: a halo this many times the lamp's size around it.
 const NVG_HALO: f32 = 3.5;
+
+// Glowing lamps (`FLAG_GLOW`): a soft point whose core is GLOW_PIXELS across on a 1080-line
+// screen GLOW_REF metres away for the brightest, shrinking with the square root of the
+// distance (and of the brightness); below GLOW_MIN pixels it stays that size and dims instead
+// (the light of a point too small to see spread over a pixel or two), so the far lamps fade
+// into glitter. The quad reaches GLOW_QUAD times the core for the falloff.
+const GLOW_PIXELS: f32 = 2.4;
+const GLOW_REF: f32 = 1500.0;
+const GLOW_MIN: f32 = 1.2;
+// Lamps outshine what the screen can show: their cores saturate.
+const GLOW_GAIN: f32 = 2.0;
+const GLOW_MAX: f32 = 7.0;
+const GLOW_QUAD: f32 = 2.2;
+const GLOW_FALLOFF: f32 = 4.5;
+// The dimmest lamps (level 0) are seen up to this share of DOT_RANGE.
+const GLOW_RANGE_DIM: f32 = 0.3;
+// Window lamps fade in over this many metres beyond the walls' range (`Globals::city.y`).
+const GLOW_WINDOW_FADE: f32 = 500.0;
+
+// A glowing lamp's quad size in pixels (x) and brightness (y; 0 hidden), from its packed word
+// (dots.rs `glow_word`) and distance; `focal`: this view's focal length in pixels.
+fn glow_lamp(word: u32, dist: f32, focal: f32) -> vec2<f32> {
+    let level = f32((word >> 8u) & 15u) / 15.0;
+    let kind = (word >> 12u) & 3u;
+    let seed = word >> 18u;
+    var b = GLOW_GAIN * (0.25 + 0.75 * level);
+    // Screen pixels at a 60 degree view (the zoomed tracking camera doesn't magnify them; the
+    // headset's eyes see them their angular size).
+    let scale = min(view.viewport.w / 1080.0, focal / 935.0);
+    var core = GLOW_PIXELS * scale * sqrt((0.25 + 0.75 * level) * GLOW_REF / max(dist, 30.0));
+    let least = GLOW_MIN * max(scale, 0.75);
+    if (core < least) {
+        b *= core / least;
+        core = least;
+    }
+    core = min(core, GLOW_MAX * scale);
+    var range = DOT_RANGE * (GLOW_RANGE_DIM + (1.0 - GLOW_RANGE_DIM) * level);
+    if (globals.weather.z > 0.0) {
+        range = min(range, globals.weather.z * DOT_VIS_FACTOR);
+    }
+    b *= 1.0 - smoothstep(range * 0.6, range, dist);
+    if (kind == 1u) {
+        b *= smoothstep(globals.city.y, globals.city.y + GLOW_WINDOW_FADE, dist);
+    }
+    // Far lamps twinkle a little through the air.
+    let twinkle = sin(globals.dots.y * (2.0 + f32(seed & 7u)) + f32(seed)) * smoothstep(3000.0, 9000.0, dist);
+    b *= 1.0 + 0.25 * twinkle;
+    return vec2<f32>(core * GLOW_QUAD, b);
+}
+
+// A glowing lamp's colour (linear): its tint (dots.rs `GlowTint`), else the palette's.
+fn glow_colour(word: u32, palette: vec3<f32>) -> vec3<f32> {
+    switch ((word >> 14u) & 15u) {
+        // Sodium: orange-yellow, each lamp a little more orange or more yellow.
+        case 1u: { return mix(vec3<f32>(1.0, 0.5, 0.12), vec3<f32>(1.0, 0.74, 0.3), f32((word >> 18u) & 15u) / 15.0); }
+        case 2u: { return vec3<f32>(0.85, 0.9, 1.0); }
+        case 3u: { return vec3<f32>(0.6, 1.0, 0.85); }
+        case 4u: { return mix(vec3<f32>(1.0, 0.58, 0.24), vec3<f32>(1.0, 0.78, 0.45), f32((word >> 22u) & 7u) / 7.0); }
+        case 5u: { return vec3<f32>(0.75, 0.85, 1.0); }
+        case 6u: { return vec3<f32>(0.25, 1.0, 0.35); }
+        case 7u: { return vec3<f32>(0.3, 0.45, 1.0); }
+        default: { return palette; }
+    }
+}
 
 // World units per model unit, by level code in the mesh tag (bits 0..2):
 // 0: LOD0 (0.5), 1: LOD1 (1), 2: LOD2 (4), 3: LOD3 (16), 4: LOD4 (64), 5: aircraft (1/8)
@@ -269,7 +343,9 @@ fn vertex(v: Vertex) -> VertexOutput {
 #ifdef VERTEX_WORD
     out.word = v.word & 0xFFFFu;
     out.warm |= select(0u, 16u, (v.word & WORD_FLAT_LIT) != 0u);
-    out.warm |= ((v.word >> 17u) & 7u) << 6u;
+    out.warm |= ((v.word >> 17u) & 15u) << 6u;
+    // A window wall's direction (`WORD_WALL_ANGLE`) in bits 16..26.
+    out.warm |= ((v.word >> 21u) & 0x7FFu) << 16u;
 #endif
     // Smoke volumes: the view ray and the sun in the plume's local space (inverse of the
     // scaled rotation m = diag(1/s^2) m^T).
@@ -325,7 +401,17 @@ fn vertex(v: Vertex) -> VertexOutput {
         // light would show its whole quad.
         let bright = (tag & 7u) == 5u || tenths > 10u || ((tag >> 8u) & 7u) != 0u;
         let blended = (material.flags & 128u) != 0u;
-        if (globals.light_info.z > 1.5 && bright && blended && !spot) {
+        var glowing = false;
+#ifdef DOT_COLOUR
+        // Glowing lamps: their own size, and their brightness for the fragment (negative).
+        if ((material.flags & FLAG_GLOW) != 0u) {
+            glowing = true;
+            let lamp = glow_lamp(v.colour, distance(center, view.world_position), 0.5 * vp.y * view.clip_from_view[1][1]);
+            px = lamp.x;
+            out.dot_uv.z = -lamp.y;
+        }
+#endif
+        if (globals.light_info.z > 1.5 && bright && blended && !spot && !glowing) {
             px = px * NVG_HALO;
             out.dot_uv.z = NVG_HALO;
         }
@@ -341,7 +427,7 @@ fn vertex(v: Vertex) -> VertexOutput {
         let span = spot_m * 0.5 * vp.y * view.clip_from_view[1][1] / max(clip.w, 0.01);
         let dist = distance(center, view.world_position);
         let near = (tag & TAG_DOT_FAR) != 0u && dist < DOT_FAR_MIN;
-        if (dist > range || near || (spot && span > SPOT_PIXELS)) {
+        if (dist > range || near || (spot && span > SPOT_PIXELS) || (glowing && out.dot_uv.z > -1e-3)) {
             // Out of range (or a spotted aircraft close enough to see, or a far-only dot too
             // close): a degenerate quad outside the clip volume.
             out.clip_position = vec4<f32>(0.0, 0.0, -1.0, 1.0);
@@ -1980,6 +2066,73 @@ struct Deriv {
 }
 
 // The colour word: the material's, or the vertex's.
+// Lit windows on the buildings' walls at night (`PALETTE_CITY`, `WORD_WINDOWS`): a grid of
+// storeys and bays, each window lit or dark by a hash of its cell (a share that varies over
+// the walls), warm or cool; where the cells are only a pixel or two the wall glows with their
+// average instead of shimmering.
+const WIN_STOREY: f32 = 3.0;
+const WIN_BAY: f32 = 3.2;
+// Half the window's width and height in its cell, and its centre's height in the storey.
+const WIN_HALF: vec2<f32> = vec2<f32>(0.4, 0.33);
+// Bays lit together.
+const WIN_RUN: f32 = 4.0;
+const WIN_SILL: f32 = 0.5;
+// Lit share of the windows: between these by patches of the walls.
+const WIN_LIT: vec2<f32> = vec2<f32>(0.2, 0.65);
+// Patches (cells) and the walls' bins along their normal (metres) of the lit share.
+const WIN_PATCH: f32 = 5.0;
+const WIN_WALL_BIN: f32 = 40.0;
+const WIN_WARM: vec3<f32> = vec3<f32>(1.0, 0.62, 0.28);
+const WIN_COOL: vec3<f32> = vec3<f32>(0.7, 0.82, 1.0);
+const WIN_COOL_SHARE: f32 = 0.3;
+const WIN_GLOW: f32 = 1.1;
+// Beyond the windows' resolution the walls glow with this share of their average (dimmer
+// than the true average: a lit wall should read as dark with specks, not as a lamp).
+const WIN_FAR: f32 = 0.12;
+
+// `angle`: the wall's outward direction in WALL_ANGLES steps from x towards z (the face's
+// direction from the derivatives wobbles from pixel to pixel: far from the theater's origin
+// that scrambled the windows).
+const WALL_ANGLES: f32 = 2048.0;
+
+fn city_windows(world: vec3<f32>, face: vec3<f32>, angle: u32) -> vec3<f32> {
+    if (abs(normalize(face).y) > 0.3) {
+        return vec3<f32>(0.0);
+    }
+    let p = world + globals.city_origin.xyz;
+    let a = f32(angle) / WALL_ANGLES * 6.2831853;
+    let nh = vec2<f32>(cos(a), sin(a));
+    let t = vec2<f32>(-nh.y, nh.x);
+    let cell = vec2<f32>(dot(p.xz, t) / WIN_BAY, p.y / WIN_STOREY);
+    let ci = vec2<i32>(floor(cell));
+    // Walls of one facing apart: by their distance along the normal.
+    let wall = u32(i32(floor(dot(p.xz, nh) / WIN_WALL_BIN)) + 0x4000) * 4u + u32(dot(nh, vec2<f32>(1.0, 2.0)) + 3.0);
+    let quarter = vec2<i32>(floor(cell / WIN_PATCH));
+    let share = mix(WIN_LIT.x, WIN_LIT.y, value_hash(quarter.x, quarter.y, wall ^ 0x51u));
+    // Lit in runs (an office, a flat) of a few bays sharing their light, staggered storey by
+    // storey, not window by window.
+    let stagger = i32(value_hash(0, ci.y, wall ^ 0x3Cu) * WIN_RUN);
+    let run = i32(floor(f32(ci.x + stagger) / WIN_RUN));
+    let h = value_hash(run, ci.y, wall);
+    let h2 = value_hash(ci.y, run, wall ^ 0xA7u);
+    let lit = select(0.0, 1.0, h < share);
+    let tint = select(WIN_WARM, WIN_COOL, h2 < WIN_COOL_SHARE) * (0.5 + 0.5 * fract(h2 * 7.0));
+    // The window's rectangle in its cell, its edges smoothed over a pixel.
+    let aa = max(fwidth(cell), vec2<f32>(1e-4));
+    let off = abs(fract(cell) - vec2<f32>(0.5, WIN_SILL));
+    // Each axis averaged on its own where its cells are under a pixel or two: a wall seen
+    // edge on keeps its storeys' bands.
+    let k = smoothstep(vec2<f32>(0.6), vec2<f32>(1.5), aa);
+    let inside = vec2<f32>(
+        1.0 - smoothstep(WIN_HALF.x - aa.x, WIN_HALF.x + aa.x, off.x),
+        1.0 - smoothstep(WIN_HALF.y - aa.y, WIN_HALF.y + aa.y, off.y),
+    );
+    let cover = mix(inside, 2.0 * WIN_HALF, k);
+    let far = max(k.x, k.y);
+    let light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
+    return cover.x * cover.y * light * WIN_GLOW;
+}
+
 fn colour_word(in: VertexOutput) -> u32 {
 #ifdef VERTEX_WORD
     return in.word;
@@ -2055,9 +2208,21 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
             return vec4<f32>(vec3<f32>(pow(select(0.2, 0.35, dir.y < 0.0), 2.2)), 1.0);
         }
         let c = shade_fragment(in, deriv);
+        if (c.a < 0.0) {
+            return vec4<f32>(flir(c.rgb, in.warm, in.fog_f) * -c.a, 0.0);
+        }
         return vec4<f32>(flir(c.rgb, in.warm, in.fog_f), c.a);
     }
     let c = shade_fragment(in, deriv);
+    // A glowing lamp (`FLAG_GLOW`): premultiplied by its falloff, alpha 0, added to what is
+    // behind it.
+    if (c.a < 0.0) {
+#ifdef PALETTE_RETRO
+        return vec4<f32>(retro(nvg(c.rgb, in.clip_position), in.clip_position.xy) * -c.a, 0.0);
+#else
+        return vec4<f32>(nvg(c.rgb, in.clip_position) * -c.a, 0.0);
+#endif
+    }
     let glare = sun_glare(in.world_position - view.world_position);
 #ifdef PALETTE_RETRO
     return vec4<f32>(retro(nvg(c.rgb + glare * c.a, in.clip_position), in.clip_position.xy), c.a);
@@ -2198,7 +2363,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     let hi = (word >> 8u) & 0xFFu;
     var lo = word & 0xFFu;
 #ifdef DOT_COLOUR
-    lo = in.dot_colour;
+    lo = in.dot_colour & 0xFFu;
 #endif
     if ((u32(globals.light_info.w) & 4u) != 0u) {
         return vec4<f32>(pal(haze(lo, in.fog)), 1.0);
@@ -2289,6 +2454,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         rgb = glass_reflection(rgb, deriv.face, dir, dark);
     }
 #endif
+#ifdef PALETTE_CITY
+    if (!is_line && (in.warm & 512u) != 0u && globals.city.x > 0.0 && !recon_view()) {
+        rgb += city_windows(in.world_position, deriv.face, (in.warm >> 16u) & 0x7FFu) * globals.city.x;
+    }
+#endif
 #ifdef PALETTE_WATER
     if (!is_line && (material.flags & FLAG_WATER) != 0u) {
         let across = min(length(deriv.ground_dx), length(deriv.ground_dy));
@@ -2307,6 +2477,18 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
     }
     var alpha = 1.0;
 #ifdef DOT_BATCH
+#ifdef DOT_COLOUR
+    // A glowing lamp: its colour through the storm haze and the whiteout (their light only,
+    // not their veil: it is added to what is behind), and its falloff for `fragment` to scale
+    // it by (as a negative alpha).
+    if (in.dot_uv.z < 0.0) {
+        let nd = dir / max(d, 1e-3);
+        let c = glow_colour(in.dot_colour, rgb);
+        let seen = whiteout(storm_haze(c, nd, d), d) - whiteout(storm_haze(vec3<f32>(0.0), nd, d), d);
+        let r2 = dot(in.dot_uv.xy, in.dot_uv.xy);
+        return vec4<f32>(max(seen, vec3<f32>(0.0)), min(-exp(-GLOW_FALLOFF * r2) * -in.dot_uv.z, -1e-6));
+    }
+#endif
     // A goggles halo: the lamp solid in the middle, its bloom fading out round it.
     if (in.dot_uv.z > 1.0) {
         let r = (length(in.dot_uv.xy) * in.dot_uv.z - 1.0) / (in.dot_uv.z - 1.0);

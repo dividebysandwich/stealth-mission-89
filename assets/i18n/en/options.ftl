@@ -228,6 +228,10 @@ effect-ground-detail = Ground detail
     .facts =
         Modern shaders: the flat ground shows its surface up close
         Crop rows on the fields, tufts on the grass, grain on concrete and tarmac
+effect-city-lights = City lights
+    .facts =
+        Modern shaders: towns at night glitter with soft lights, densest in the centres
+        Tall buildings show lit windows
 effect-glass = Glass reflections
     .facts =
         Modern shaders: glass mirrors the sky

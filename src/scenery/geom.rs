@@ -9,8 +9,9 @@ use bevy::prelude::*;
 
 #[derive(Default)]
 pub struct Geom {
-    /// Raised geometry (casts shadows).
-    pub solid: BTreeMap<u8, Vec<Vec3>>,
+    /// Raised geometry (casts shadows), by colour byte and detail bits (`WINDOWS`, and a
+    /// window wall's direction above them: `wall_angle`).
+    pub solid: BTreeMap<u32, Vec<Vec3>>,
     /// Ground-level surfaces (roads, fields), by colour byte and detail bits (`FURROW_X`,
     /// `FURROW_Z`).
     pub flat: BTreeMap<u16, Vec<Vec3>>,
@@ -18,6 +19,9 @@ pub struct Geom {
     /// Lights shown at night (street lamps, windows, beacons) with their colours, in drawing
     /// order: where two overlap, the later one is on top.
     pub lamps: Vec<(u8, Vec3)>,
+    /// The towns' glowing lamps instead (`Effects::city_lights`): packed words
+    /// (`dots::glow_word`) and positions.
+    pub glow: Vec<(u32, Vec3)>,
     /// White flashers by sequence phase (approach lighting), lit one phase at a time at night.
     pub strobes: BTreeMap<usize, Vec<Vec3>>,
     /// PAPI light units (red below their angle, white above).
@@ -30,13 +34,29 @@ pub const FURROW_X: u16 = 0x100;
 pub const FURROW_Z: u16 = 0x200;
 /// The scenery's ground (`palette_material::WORD_GROUND`), set on its flat surfaces' meshes.
 pub const GROUND: u16 = 0x400;
+/// A building's wall with windows (`palette_material::WORD_WINDOWS`), lit at night.
+pub const WINDOWS: u16 = 0x800;
 
-/// The colour word bits of a flat surface's detail bits (`palette_material::WORD_FURROW_X`).
-pub fn detail_word(key: u16) -> u32 {
-    use crate::palette_material::{WORD_FURROW_X, WORD_FURROW_Z, WORD_GROUND};
-    (if key & FURROW_X != 0 { WORD_FURROW_X } else { 0 })
-        | (if key & FURROW_Z != 0 { WORD_FURROW_Z } else { 0 })
-        | (if key & GROUND != 0 { WORD_GROUND } else { 0 })
+/// A window wall's outward direction in a solid key's bits 16.. (`WALL_ANGLES` steps of the
+/// angle from Bevy x towards z): the shader lays the windows along it, exactly (its own
+/// estimate of a face's direction wobbles from pixel to pixel, which scrambles them).
+pub const WALL_ANGLES: u32 = 2048;
+
+fn wall_angle(out: Vec3) -> u32 {
+    let a = out.z.atan2(out.x).rem_euclid(TAU) / TAU;
+    ((a * WALL_ANGLES as f32).round() as u32 % WALL_ANGLES) << 16
+}
+
+/// The colour word bits of a key's detail bits (`palette_material::WORD_FURROW_X`).
+pub fn detail_word(key: u32) -> u32 {
+    use crate::palette_material::{
+        WORD_FURROW_X, WORD_FURROW_Z, WORD_GROUND, WORD_WALL_ANGLE, WORD_WINDOWS,
+    };
+    let key16 = key as u16;
+    (if key16 & FURROW_X != 0 { WORD_FURROW_X } else { 0 })
+        | (if key16 & FURROW_Z != 0 { WORD_FURROW_Z } else { 0 })
+        | (if key16 & GROUND != 0 { WORD_GROUND } else { 0 })
+        | (if key16 & WINDOWS != 0 { WORD_WINDOWS | ((key >> 16) << WORD_WALL_ANGLE) } else { 0 })
 }
 
 /// One PAPI light unit: block-local position, horizontal unit vector towards the approaching
@@ -71,9 +91,15 @@ impl Geom {
     /// A convex polygon facing `out` (its winding is fixed so the face is front-facing from
     /// that side), shaded by its normal.
     pub fn face(&mut self, c: u8, pts: &[Vec3], out: Vec3) {
+        self.face_bits(c, 0, pts, out);
+    }
+
+    /// `face` with detail bits over its colour byte (`WINDOWS`).
+    fn face_bits(&mut self, c: u8, bits: u16, pts: &[Vec3], out: Vec3) {
         let n = (pts[1] - pts[0]).cross(pts[2] - pts[0]);
         let n = if n.dot(out) < 0.0 { -n } else { n }.normalize_or_zero();
-        let tris = self.solid.entry(shaded(c, n)).or_default();
+        let angle = if bits & WINDOWS != 0 { wall_angle(n) } else { 0 };
+        let tris = self.solid.entry((shaded(c, n) as u16 | bits) as u32 | angle).or_default();
         fan(tris, pts, out);
     }
 
@@ -95,18 +121,33 @@ impl Geom {
         self.lamps.push((c, p));
     }
 
+    /// A glowing lamp (`dots::glow_word`).
+    pub fn glow(&mut self, word: u32, p: Vec3) {
+        self.glow.push((word, p));
+    }
+
     pub fn strobe(&mut self, phase: usize, p: Vec3) {
         self.strobes.entry(phase).or_default().push(p);
     }
 
     /// Vertical walls of a convex footprint from `y0` to `y1`.
     pub fn walls(&mut self, c: u8, foot: &[Vec3], y0: f32, y1: f32) {
+        self.walls_bits(c, 0, foot, y0, y1);
+    }
+
+    /// Walls with windows lit at night (`WINDOWS`).
+    pub fn window_walls(&mut self, c: u8, foot: &[Vec3], y0: f32, y1: f32) {
+        self.walls_bits(c, WINDOWS, foot, y0, y1);
+    }
+
+    fn walls_bits(&mut self, c: u8, bits: u16, foot: &[Vec3], y0: f32, y1: f32) {
         let centre = foot.iter().copied().sum::<Vec3>() / foot.len() as f32;
         for i in 0..foot.len() {
             let (a, b) = (foot[i], foot[(i + 1) % foot.len()]);
             let out = (a + b) * 0.5 - centre;
             let (up0, up1) = (Vec3::Y * y0, Vec3::Y * y1);
-            self.face(c, &[a + up0, b + up0, b + up1, a + up1], Vec3::new(out.x, 0.0, out.z));
+            let pts = [a + up0, b + up0, b + up1, a + up1];
+            self.face_bits(c, bits, &pts, Vec3::new(out.x, 0.0, out.z));
         }
     }
 

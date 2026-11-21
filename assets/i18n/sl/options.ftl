@@ -196,6 +196,10 @@ effect-ground-detail = Podrobnosti tal
     .facts =
         Sodobni senčilniki: ravna tla od blizu pokažejo svojo površino
         Vrste posevkov na poljih, šopi v travi, zrnatost betona in asfalta
+effect-city-lights = Mestne luči
+    .facts =
+        Sodobni senčilniki: mesta ponoči lesketajo z mehkimi lučmi, najgosteje v središčih
+        Visoke stavbe kažejo osvetljena okna
 effect-glass = Odsevi v steklu
     .facts =
         Sodobni senčilniki: steklo zrcali nebo

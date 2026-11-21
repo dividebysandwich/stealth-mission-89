@@ -194,6 +194,10 @@ effect-ground-detail = 地面细节
     .facts =
         现代着色器：近处可见平地的表面
         田里的作物行、草地上的草丛、混凝土和沥青的颗粒
+effect-city-lights = 城市灯光
+    .facts =
+        现代着色器：夜晚城镇闪烁着柔和的灯光，市中心最密集
+        高楼的窗户亮着灯
 effect-glass = 玻璃反射
     .facts =
         现代着色器：玻璃映出天空

@@ -196,6 +196,10 @@ effect-ground-detail = Detaliile solului
     .facts =
         Shadere moderne: terenul plat își arată suprafața de aproape
         Rânduri de culturi pe câmpuri, smocuri în iarbă, granulație pe beton și asfalt
+effect-city-lights = Luminile orașelor
+    .facts =
+        Shadere moderne: noaptea orașele sclipesc cu lumini blânde, cel mai dens în centre
+        Clădirile înalte au ferestre luminate
 effect-glass = Reflexii în sticlă
     .facts =
         Shadere moderne: sticla oglindește cerul

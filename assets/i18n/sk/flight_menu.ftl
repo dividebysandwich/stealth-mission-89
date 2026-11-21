@@ -66,6 +66,7 @@ fm-effect-snow = SNEH
 fm-effect-mist = PRÍZEMNÁ HMLA
 fm-effect-cloud-shadows = TIENE MRAKOV
 fm-effect-ground-detail = DETAIL TERÉNU
+fm-effect-city-lights = SVETLÁ MIEST
 fm-effect-glass = ODRAZY V SKLE
 fm-effect-water = ODRAZY NA VODE
 fm-effect-ocean-waves = OCEÁNSKE VLNY

@@ -66,6 +66,7 @@ fm-effect-snow = SNE
 fm-effect-mist = JORDTÅGE
 fm-effect-cloud-shadows = SKYSKYGGER
 fm-effect-ground-detail = TERRÆNDETALJER
+fm-effect-city-lights = BYENS LYS
 fm-effect-glass = SPEJLINGER I GLAS
 fm-effect-water = SPEJLINGER I VAND
 fm-effect-ocean-waves = HAVBØLGER

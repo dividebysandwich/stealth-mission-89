@@ -66,6 +66,7 @@ fm-effect-snow = 雪
 fm-effect-mist = 地面の霧
 fm-effect-cloud-shadows = 雲の影
 fm-effect-ground-detail = 地面の細部
+fm-effect-city-lights = 街の灯り
 fm-effect-glass = ガラスの反射
 fm-effect-water = 水面の反射
 fm-effect-ocean-waves = 海の波

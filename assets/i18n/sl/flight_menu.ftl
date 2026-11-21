@@ -66,6 +66,7 @@ fm-effect-snow = SNEG
 fm-effect-mist = PRIZEMNA MEGLA
 fm-effect-cloud-shadows = SENCE OBLAKOV
 fm-effect-ground-detail = PODROBNOSTI TAL
+fm-effect-city-lights = MESTNE LUČI
 fm-effect-glass = ODSEVI V STEKLU
 fm-effect-water = ODSEVI NA VODI
 fm-effect-ocean-waves = OCEANSKI VALOVI

@@ -65,6 +65,7 @@ fm-effect-snow = 雪
 fm-effect-mist = 地面薄雾
 fm-effect-cloud-shadows = 云影
 fm-effect-ground-detail = 地面细节
+fm-effect-city-lights = 城市灯光
 fm-effect-glass = 玻璃反射
 fm-effect-water = 水面反射
 fm-effect-ocean-waves = 海浪

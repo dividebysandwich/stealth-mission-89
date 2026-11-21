@@ -80,8 +80,8 @@ Cockpit and graphics
                                ultra (layered: deck, cumulus, storms)
   --effects <list>             atmosphere effects: names on, -name off, all, none
                                (shake, flashes, barrage, cockpit-night, nvg, snow, mist,
-                               cloud-shadows, ground-detail, glass, water, sunbeams,
-                               vapour, night-sky; retro, off by
+                               cloud-shadows, ground-detail, city-lights, glass, water,
+                               sunbeams, vapour, night-sky; retro, off by
                                default: vga, scanlines, pixelize, sharp-hud, sharp-cockpit,
                                sharp-gauges)
   --head-tracking              head/eye tracking through OpenTrack (FreeTrack or UDP 4242)

@@ -196,6 +196,10 @@ effect-ground-detail = Terrændetaljer
     .facts =
         Moderne shadere: den flade jord viser sin overflade tæt på
         Afgrøderækker på markerne, totter i græsset, kornet beton og asfalt
+effect-city-lights = Byens lys
+    .facts =
+        Moderne shadere: byer funkler om natten med bløde lys, tættest i centrum
+        Høje bygninger viser oplyste vinduer
 effect-glass = Spejlinger i glas
     .facts =
         Moderne shadere: glas spejler himlen

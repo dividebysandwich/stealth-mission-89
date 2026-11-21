@@ -196,6 +196,10 @@ effect-ground-detail = Maaston yksityiskohdat
     .facts =
         Nykyaikaiset shaderit: tasainen maa näyttää pintansa läheltä
         Viljarivit pelloilla, tupsut nurmessa, betonin ja asfaltin rakeisuus
+effect-city-lights = Kaupungin valot
+    .facts =
+        Modernit varjostimet: kaupungit kimaltelevat yöllä pehmeinä valoina, tiheimmin keskustoissa
+        Korkeissa rakennuksissa näkyy valaistuja ikkunoita
 effect-glass = Lasin heijastukset
     .facts =
         Modernit varjostimet: lasi heijastaa taivasta

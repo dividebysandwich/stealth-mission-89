@@ -66,6 +66,7 @@ fm-effect-snow = SNÖ
 fm-effect-mist = MARKDIMMA
 fm-effect-cloud-shadows = MOLNSKUGGOR
 fm-effect-ground-detail = MARKDETALJER
+fm-effect-city-lights = STADSLJUS
 fm-effect-glass = SPEGLINGAR I GLAS
 fm-effect-water = SPEGLINGAR I VATTEN
 fm-effect-ocean-waves = HAVSVÅGOR

@@ -16,7 +16,7 @@ use bevy::mesh::{Indices, MeshTag, MeshVertexAttribute, PrimitiveTopology};
 use bevy::prelude::*;
 use bevy::render::render_resource::VertexFormat;
 
-use crate::palette_material::{FLAG_DOT, FLAG_NIGHT_DIM, PaletteMaterial, TAG_DOT};
+use crate::palette_material::{FLAG_DOT, FLAG_GLOW, FLAG_NIGHT_DIM, PaletteMaterial, TAG_DOT};
 
 pub struct DotsPlugin;
 
@@ -64,6 +64,53 @@ pub fn dot_batch_coloured(points: &[Vec3], colours: &[u8]) -> Mesh {
     dot_batch(points).with_inserted_attribute(ATTRIBUTE_DOT_COLOUR, colours)
 }
 
+/// A glowing lamp's kind (`FLAG_GLOW`; the shader's `GLOW_KIND_*`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum GlowKind {
+    /// Street and road lamps, porch and yard lights.
+    Lamp = 0,
+    /// Lit windows: only beyond the range where the walls show theirs (`Globals::city`).
+    Window = 1,
+    /// Floodlights over yards and car parks.
+    Flood = 2,
+    /// Red warning beacons on masts, chimneys and towers.
+    Beacon = 3,
+}
+
+/// A glowing lamp's tint (the shader's `glow_tint`; 0 the palette colour).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum GlowTint {
+    Palette = 0,
+    Sodium = 1,
+    Led = 2,
+    Mercury = 3,
+    WarmWindow = 4,
+    CoolWindow = 5,
+    Green = 6,
+    Blue = 7,
+}
+
+/// The packed word of a glowing lamp (`ATTRIBUTE_DOT_COLOUR` of a `FLAG_GLOW` batch): palette
+/// colour (bits 0..7, for the FLIR and the tint `Palette`), brightness 0..15 (8..11), kind
+/// (12..13), tint (14..17), a seed for its twinkle (18..31).
+pub fn glow_word(colour: u8, level: u8, kind: GlowKind, tint: GlowTint, seed: u32) -> u32 {
+    colour as u32
+        | (level.min(15) as u32) << 8
+        | (kind as u32) << 12
+        | (tint as u32) << 14
+        | (seed & 0x3FFF) << 18
+}
+
+/// A dot batch of glowing lamps, each with its packed word (`glow_word`).
+pub fn dot_batch_words(points: &[Vec3], words: &[u32]) -> Mesh {
+    let words: Vec<u32> = words.iter().flat_map(|&w| [w; 4]).collect();
+    dot_batch(points).with_inserted_attribute(ATTRIBUTE_DOT_COLOUR, words)
+}
+
+/// Dots drawn as glowing lamps (`FLAG_GLOW`): the towns' lights with `Effects::city_lights`.
+#[derive(Component)]
+pub struct Glow;
+
 fn setup_dot_assets(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.insert_resource(DotAssets { quad: meshes.add(dot_batch(&[Vec3::ZERO])) });
 }
@@ -87,34 +134,39 @@ pub fn dot_batch(points: &[Vec3]) -> Mesh {
 /// the reverse.
 #[derive(Resource, Default)]
 struct DotMaterials {
-    twins: HashMap<AssetId<PaletteMaterial>, Handle<PaletteMaterial>>,
+    /// By source and whether glowing (`Glow`).
+    twins: HashMap<(AssetId<PaletteMaterial>, bool), Handle<PaletteMaterial>>,
     sources: HashMap<AssetId<PaletteMaterial>, AssetId<PaletteMaterial>>,
 }
 
 /// Gives every dot the dot variant of its material (spawners and colour changes such as the
 /// PAPI's assign ordinary line materials), and keeps the variants' colours in step.
+#[allow(clippy::type_complexity)]
 fn dot_materials(
     mut dots: ResMut<DotMaterials>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
     mut q: Query<
-        (&MeshTag, &mut MeshMaterial3d<PaletteMaterial>),
+        (&MeshTag, &mut MeshMaterial3d<PaletteMaterial>, Has<Glow>),
         Changed<MeshMaterial3d<PaletteMaterial>>,
     >,
 ) {
-    for (tag, mut material) in &mut q {
+    for (tag, mut material, glow) in &mut q {
         let source = material.0.id();
         if tag.0 & TAG_DOT == 0 || dots.sources.contains_key(&source) {
             continue;
         }
-        let twin = match dots.twins.get(&source) {
+        let twin = match dots.twins.get(&(source, glow)) {
             Some(h) => h.clone(),
             None => {
                 let Some(m) = materials.get(source) else { continue };
                 let mut m = m.clone();
                 // Dots are lights whatever their colour.
                 m.params.flags = (m.params.flags | FLAG_DOT) & !FLAG_NIGHT_DIM;
+                if glow {
+                    m.params.flags |= FLAG_GLOW;
+                }
                 let h = materials.add(m);
-                dots.twins.insert(source, h.clone());
+                dots.twins.insert((source, glow), h.clone());
                 dots.sources.insert(h.id(), source);
                 h
             }
@@ -124,9 +176,9 @@ fn dot_materials(
     // A source gone (a new theater's palette, the old one's materials freed): its twin goes
     // too, else they'd pile up with each palette (and keep its globals buffer).
     let DotMaterials { twins, sources } = &mut *dots;
-    twins.retain(|source, _| materials.contains(*source));
-    sources.retain(|_, source| twins.contains_key(source));
-    for (source, twin) in &dots.twins {
+    twins.retain(|(source, _), _| materials.contains(*source));
+    sources.retain(|_, source| materials.contains(*source));
+    for ((source, _), twin) in &dots.twins {
         let Some(word) = materials.get(*source).map(|m| m.params.word) else { continue };
         if let Some(mut m) = materials.get_mut(twin)
             && m.params.word != word

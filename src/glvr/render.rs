@@ -7,7 +7,7 @@
 use super::extract::{
     Clouds, DrawList, Effect, EffectItem, EguiView, GlassItem, Item, LitItem, ON_TOP, Offscreen,
 };
-use crate::palette_material::{FLAG_BACKGROUND, FLAG_CLOUD_COVERAGE, FLAG_CLOUD_SOFT};
+use crate::palette_material::{FLAG_BACKGROUND, FLAG_CLOUD_COVERAGE, FLAG_CLOUD_SOFT, FLAG_GLOW};
 use bevy::asset::AssetId;
 use bevy::camera::primitives::Aabb;
 use bevy::ecs::entity::Entity;
@@ -1579,7 +1579,24 @@ impl Renderer {
             }
             let p = &programs.dot;
             self.use_program(p);
+            let mut glowing = false;
             for g in &dots {
+                // The towns' glowing lamps are premultiplied with alpha 0: added to what is
+                // behind them, the eye image's alpha kept.
+                let glow = g.flags & FLAG_GLOW != 0;
+                if glow != glowing {
+                    glowing = glow;
+                    let src = if glow { glow::ONE } else { glow::SRC_ALPHA };
+                    // SAFETY: the context is current.
+                    unsafe {
+                        self.gl.blend_func_separate(
+                            src,
+                            glow::ONE_MINUS_SRC_ALPHA,
+                            glow::ZERO,
+                            glow::ONE,
+                        )
+                    };
+                }
                 if let Some(m) = self.meshes.get(&g.mesh) {
                     // SAFETY: the context is current.
                     unsafe { self.gl.uniform_1_u32(p.dot_colour.as_ref(), m.colours as u32) };

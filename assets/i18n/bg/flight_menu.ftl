@@ -66,6 +66,7 @@ fm-effect-snow = СНЯГ
 fm-effect-mist = ПРИЗЕМНА МЪГЛА
 fm-effect-cloud-shadows = СЕНКИ НА ОБЛАЦИТЕ
 fm-effect-ground-detail = ДЕТАЙЛИ НА ТЕРЕНА
+fm-effect-city-lights = ГРАДСКИ СВЕТЛИНИ
 fm-effect-glass = ОТРАЖЕНИЯ В СТЪКЛОТО
 fm-effect-water = ОТРАЖЕНИЯ ВЪВ ВОДАТА
 fm-effect-ocean-waves = ОКЕАНСКИ ВЪЛНИ

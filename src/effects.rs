@@ -29,6 +29,9 @@ pub struct Effects {
     /// Surface detail on the flat ground up close: crop rows on the fields, tufts on the
     /// grass, grain on concrete and tarmac (palette.wgsl `ground_detail`).
     pub ground_detail: bool,
+    /// Modern shading: towns' lights at night as soft points of light, denser and brighter
+    /// towards the centres, and lit windows on the tall buildings (palette.wgsl `PALETTE_CITY`).
+    pub city_lights: bool,
     /// Modern shading: the sky and the sun's or moon's glint mirrored in glass (canopies,
     /// windows; palette.wgsl `glass_reflection`).
     pub glass: bool,
@@ -112,6 +115,7 @@ impl Default for Effects {
             mist: !HEAVY_EFFECTS_OFF,
             cloud_shadows: !HEAVY_EFFECTS_OFF,
             ground_detail: !HEAVY_EFFECTS_OFF,
+            city_lights: true,
             glass: !REFLECTIONS_OFF,
             water: !REFLECTIONS_OFF,
             ocean: !HEAVY_EFFECTS_OFF,
@@ -141,6 +145,7 @@ pub enum Effect {
     Mist,
     CloudShadows,
     GroundDetail,
+    CityLights,
     Glass,
     Water,
     Ocean,
@@ -156,7 +161,7 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const ALL: [Effect; 21] = [
+    pub const ALL: [Effect; 22] = [
         Effect::Shake,
         Effect::Flashes,
         Effect::Barrage,
@@ -166,6 +171,7 @@ impl Effect {
         Effect::Mist,
         Effect::CloudShadows,
         Effect::GroundDetail,
+        Effect::CityLights,
         Effect::Glass,
         Effect::Water,
         Effect::Ocean,
@@ -192,6 +198,7 @@ impl Effect {
             Effect::Mist => "mist",
             Effect::CloudShadows => "cloud-shadows",
             Effect::GroundDetail => "ground-detail",
+            Effect::CityLights => "city-lights",
             Effect::Glass => "glass",
             Effect::Water => "water",
             Effect::Ocean => "ocean-waves",
@@ -233,6 +240,7 @@ impl Effect {
             Effect::Mist => e.mist,
             Effect::CloudShadows => e.cloud_shadows,
             Effect::GroundDetail => e.ground_detail,
+            Effect::CityLights => e.city_lights,
             Effect::Glass => e.glass,
             Effect::Water => e.water,
             Effect::Ocean => e.ocean,
@@ -259,6 +267,7 @@ impl Effect {
             Effect::Mist => e.mist = on,
             Effect::CloudShadows => e.cloud_shadows = on,
             Effect::GroundDetail => e.ground_detail = on,
+            Effect::CityLights => e.city_lights = on,
             Effect::Glass => e.glass = on,
             Effect::Water => e.water = on,
             Effect::Ocean => e.ocean = on,
@@ -350,6 +359,8 @@ mod tests {
         assert!(!Effects::default().sharp(ViewPart::Hud));
         assert_eq!(Effects::default().ground_detail, !HEAVY_EFFECTS_OFF);
         assert!(!Effects::parse("-ground-detail").ground_detail);
+        assert!(Effects::default().city_lights);
+        assert!(!Effects::parse("-city-lights").city_lights);
         assert_eq!(Effects::default().glass, !REFLECTIONS_OFF);
         assert!(Effects::parse("none,glass").glass);
         assert_eq!(Effects::default().water, !REFLECTIONS_OFF);

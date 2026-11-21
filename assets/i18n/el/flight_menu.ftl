@@ -66,6 +66,7 @@ fm-effect-snow = ΧΙΟΝΙ
 fm-effect-mist = ΟΜΙΧΛΗ ΕΔΑΦΟΥΣ
 fm-effect-cloud-shadows = ΣΚΙΕΣ ΝΕΦΩΝ
 fm-effect-ground-detail = ΛΕΠΤΟΜΕΡΕΙΑ ΕΔΑΦΟΥΣ
+fm-effect-city-lights = ΦΩΤΑ ΠΟΛΕΩΝ
 fm-effect-glass = ΑΝΤΑΝΑΚΛΑΣΕΙΣ ΣΤΟ ΓΥΑΛΙ
 fm-effect-water = ΑΝΤΑΝΑΚΛΑΣΕΙΣ ΣΤΟ ΝΕΡΟ
 fm-effect-ocean-waves = ΩΚΕΑΝΙΑ ΚΥΜΑΤΑ

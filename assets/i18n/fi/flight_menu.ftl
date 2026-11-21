@@ -66,6 +66,7 @@ fm-effect-snow = LUMI
 fm-effect-mist = MAASUMU
 fm-effect-cloud-shadows = PILVIEN VARJOT
 fm-effect-ground-detail = MAASTON YKSITYISKOHDAT
+fm-effect-city-lights = KAUPUNGIN VALOT
 fm-effect-glass = LASIN HEIJASTUKSET
 fm-effect-water = VEDEN HEIJASTUKSET
 fm-effect-ocean-waves = MEREN AALLOT

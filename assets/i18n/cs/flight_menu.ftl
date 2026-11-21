@@ -66,6 +66,7 @@ fm-effect-snow = SNÍH
 fm-effect-mist = PŘÍZEMNÍ MLHA
 fm-effect-cloud-shadows = STÍNY MRAKŮ
 fm-effect-ground-detail = DETAIL TERÉNU
+fm-effect-city-lights = SVĚTLA MĚST
 fm-effect-glass = ODRAZY VE SKLE
 fm-effect-water = ODRAZY NA VODĚ
 fm-effect-ocean-waves = OCEÁNSKÉ VLNY

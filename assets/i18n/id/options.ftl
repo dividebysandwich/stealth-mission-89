@@ -196,6 +196,10 @@ effect-ground-detail = Detail tanah
     .facts =
         Shader modern: tanah datar menampakkan permukaannya dari dekat
         Barisan tanaman di ladang, rumpun di rumput, butiran pada beton dan aspal
+effect-city-lights = Lampu kota
+    .facts =
+        Shader modern: kota berkilau di malam hari dengan cahaya lembut, paling rapat di pusatnya
+        Gedung tinggi menampilkan jendela yang menyala
 effect-glass = Pantulan kaca
     .facts =
         Shader modern: kaca memantulkan langit

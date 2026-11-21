@@ -196,6 +196,10 @@ effect-ground-detail = Detalhe do solo
     .facts =
         Shaders modernos: o solo plano mostra sua superfície de perto
         Fileiras de plantio nos campos, tufos na grama, textura no concreto e no asfalto
+effect-city-lights = Luzes da cidade
+    .facts =
+        Shaders modernos: à noite as cidades cintilam com luzes suaves, mais densas no centro
+        Prédios altos mostram janelas acesas
 effect-glass = Reflexos no vidro
     .facts =
         Shaders modernos: o vidro reflete o céu

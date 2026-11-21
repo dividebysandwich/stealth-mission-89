@@ -196,6 +196,10 @@ effect-ground-detail = Detalji tla
     .facts =
         Moderni shaderi: ravno tlo izbliza pokazuje svoju površinu
         Redovi usjeva na poljima, busenovi u travi, zrnatost betona i asfalta
+effect-city-lights = Gradska svjetla
+    .facts =
+        Moderni shaderi: gradovi noću svjetlucaju mekim svjetlima, najgušće u središtima
+        Visoke zgrade imaju osvijetljene prozore
 effect-glass = Odsjaji u staklu
     .facts =
         Moderni shaderi: staklo zrcali nebo

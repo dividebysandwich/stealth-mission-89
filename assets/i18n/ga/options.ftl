@@ -196,6 +196,10 @@ effect-ground-detail = Mionsonraí na talún
     .facts =
         Scáthóirí nua-aimseartha: taispeánann an talamh cothrom a dhromchla in aice láimhe
         Sraitheanna barr ar na páirceanna, tomóga san fhéar, gráinne ar choincréit agus ar tharramhacadam
+effect-city-lights = Soilse na cathrach
+    .facts =
+        Scáthóirí nua-aimseartha: san oíche glioscarnaíonn na bailte le soilse boga, is dlúithe i lár baile
+        Taispeánann foirgnimh arda fuinneoga lasta
 effect-glass = Frithchaitheamh gloine
     .facts =
         Scáthóirí nua-aimseartha: léiríonn an ghloine an spéir

@@ -266,6 +266,7 @@ impl Page {
                     CityLightDistance,
                     Clouds,
                     Effect(E::GroundDetail),
+                    Effect(E::CityLights),
                     Effect(E::Glass),
                     Effect(E::Water),
                     Effect(E::Ocean),

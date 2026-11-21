@@ -66,6 +66,7 @@ fm-effect-snow = LUMI
 fm-effect-mist = MAAUDU
 fm-effect-cloud-shadows = PILVEVARJUD
 fm-effect-ground-detail = MAAPINNA DETAILID
+fm-effect-city-lights = LINNATULED
 fm-effect-glass = PEEGELDUSED KLAASIS
 fm-effect-water = PEEGELDUSED VEES
 fm-effect-ocean-waves = OOKEANILAINED

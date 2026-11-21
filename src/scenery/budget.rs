@@ -37,6 +37,8 @@ pub struct Ranges {
     /// Share of its trees the crossed distant tree tier draws (`content::DISTANT_TREES` of
     /// them at full detail).
     pub trees: f64,
+    /// Share of the towns' glowing lamps the lights tier draws (`Effects::city_lights`).
+    pub glow: f64,
 }
 
 impl Ranges {
@@ -66,6 +68,7 @@ const FULL: Ranges = Ranges {
     lod: 1.0,
     houses: 1.0,
     trees: 1.0,
+    glow: 1.0,
 };
 const LEAST: Ranges = Ranges {
     main: 500.0,
@@ -78,6 +81,7 @@ const LEAST: Ranges = Ranges {
     lod: 0.4,
     houses: 0.3,
     trees: 0.5,
+    glow: 0.35,
 };
 
 pub fn ranges(level: u8) -> Ranges {
@@ -99,6 +103,7 @@ fn interpolate(level: u8, full: Ranges) -> Ranges {
         lod: mix(full.lod as f64, LEAST.lod as f64) as f32,
         houses: mix(full.houses, LEAST.houses),
         trees: mix(full.trees, LEAST.trees),
+        glow: mix(full.glow, LEAST.glow),
     }
 }
 
@@ -129,6 +134,13 @@ impl SceneryBudget {
                 ..FULL
             },
         )
+    }
+}
+
+impl SceneryBudget {
+    /// How far the towns' buildings are drawn (the main and town tiers), metres.
+    pub fn town_radius(&self, settings: &Settings) -> f64 {
+        self.scenery_ranges(settings).radius(Tier::Town)
     }
 }
 

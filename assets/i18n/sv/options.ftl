@@ -196,6 +196,10 @@ effect-ground-detail = Markdetaljer
     .facts =
         Moderna shaders: den platta marken visar sin yta på nära håll
         Grödrader på åkrarna, tuvor i gräset, struktur i betong och asfalt
+effect-city-lights = Stadsljus
+    .facts =
+        Moderna shaders: städer glittrar om natten med mjuka ljus, tätast i centrum
+        Höga byggnader visar tända fönster
 effect-glass = Speglingar i glas
     .facts =
         Moderna shaders: glas speglar himlen

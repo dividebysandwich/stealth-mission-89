@@ -199,6 +199,10 @@ effect-ground-detail = Détail du sol
     .facts =
         Shaders modernes : le sol plat montre sa surface de près
         Rangs de culture dans les champs, touffes dans l'herbe, grain du béton et du bitume
+effect-city-lights = Lumières des villes
+    .facts =
+        Shaders modernes : la nuit, les villes scintillent de lumières douces, plus denses au centre
+        Les immeubles montrent des fenêtres éclairées
 effect-glass = Reflets sur le verre
     .facts =
         Shaders modernes : le verre reflète le ciel

@@ -66,6 +66,7 @@ fm-effect-snow = SNEACHTA
 fm-effect-mist = CEO TALÚN
 fm-effect-cloud-shadows = SCÁTHANNA SCAMALL
 fm-effect-ground-detail = MIONSONRAÍ NA TALÚN
+fm-effect-city-lights = SOILSE NA CATHRACH
 fm-effect-glass = FRITHCHAITHEAMH GLOINE
 fm-effect-water = FRITHCHAITHEAMH UISCE
 fm-effect-ocean-waves = TONNTA AIGÉIN

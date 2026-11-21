@@ -75,6 +75,7 @@ fm-effect-snow = SNOW
 fm-effect-mist = GROUND MIST
 fm-effect-cloud-shadows = CLOUD SHADOWS
 fm-effect-ground-detail = GROUND DETAIL
+fm-effect-city-lights = CITY LIGHTS
 fm-effect-glass = GLASS REFLECTIONS
 fm-effect-water = WATER REFLECTIONS
 fm-effect-ocean-waves = OCEAN WAVES

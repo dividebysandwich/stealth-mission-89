@@ -19,6 +19,7 @@ use super::network::{
     Building, Kind, Network, PowerLine, Rng, RoadKind, Roof, TownKind, hash, noise, street_spacing,
 };
 use super::style::{Style, Tree};
+use crate::dots::{GlowKind, GlowTint, glow_word};
 
 /// Block size (metres).
 pub const BLOCK: f64 = 1000.0;
@@ -43,7 +44,7 @@ const PAVED: [u8; 4] = [0xE9, 0xEA, 0xE9, 0xE8];
 const PAVED_EDGE: f64 = 0.22;
 const PAVED_RAGGED: f64 = 0.3;
 const ROAD: u8 = 0xEC;
-const LAMP: u8 = 0x94;
+pub(super) const LAMP: u8 = 0x94;
 const WINDOW: u8 = 0x95;
 const BEACON: u8 = 0x92;
 const STEEL: u8 = 0xE7;
@@ -190,6 +191,19 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64, trees_shar
     g
 }
 
+/// Block (`bx`, `by`) of the lights tier as glowing lamps (`Effects::city_lights`): denser and
+/// brighter towards the towns' centres, `share` of the optional ones (the automatic scenery
+/// detail and the low-power builds thin them).
+pub fn build_lights(sc: &Scenery, bx: i32, by: i32, share: f64) -> Geom {
+    let f = Frame::new(bx, by, Tier::Lights.block_size());
+    let mut g = Geom::default();
+    city_glow(sc, &f, &mut g, share.clamp(0.0, 1.0));
+    if !g.glow.is_empty() {
+        drape(&sc.hills, &f, &mut g);
+    }
+    g
+}
+
 /// The same lamps at every range, without constructing their buildings or road surfaces.
 fn city_lights(sc: &Scenery, f: &Frame, g: &mut Geom) {
     // Road segments and overlapping lamp posts are owned by 1 km blocks in the main tier.
@@ -210,6 +224,248 @@ fn city_lights(sc: &Scenery, f: &Frame, g: &mut Geom) {
         let b = &sc.net.buildings[i as usize];
         if f.contains(b.p) && !sc.cleared(b.p) {
             building_lights(b, f, g);
+        }
+    }
+}
+
+// Glowing lamps (`build_lights`). Brightness levels 0..15 (`dots::glow_word`).
+/// Street lamps every this many metres at a town's edge and in its centre.
+const GLOW_SPACING: (f64, f64) = (50.0, 26.0);
+const GLOW_STREET: u8 = 7;
+const GLOW_ARTERIAL: u8 = 12;
+const GLOW_PORCH: u8 = 3;
+const GLOW_WINDOW: u8 = 4;
+const GLOW_FLOOD: u8 = 11;
+const GLOW_BEACON: u8 = 12;
+const GLOW_SIGN: u8 = 6;
+/// Lit window lamps per storey and 10 metres of a long side, before the share.
+const GLOW_WINDOWS: f64 = 0.45;
+
+/// Whether an optional lamp of this seed is among `share` of them.
+fn kept(seed: u64, share: f64) -> bool {
+    (seed % 1024) as f64 / 1024.0 < share
+}
+
+fn glow_seed(p: Vec3) -> u32 {
+    hash(0x6C0F, (p.x * 4.0) as i64, (p.z * 4.0) as i64, (p.y * 4.0) as i64) as u32
+}
+
+fn glow(g: &mut Geom, colour: u8, level: u8, kind: GlowKind, tint: GlowTint, p: Vec3) {
+    g.glow(glow_word(colour, level, kind, tint, glow_seed(p)), p);
+}
+
+/// How built up a point is (0 outside the towns).
+fn town_density(net: &Network, p: DVec2) -> f64 {
+    net.town_at(p, 1.0).map_or(0.0, |t| t.density(p))
+}
+
+fn city_glow(sc: &Scenery, f: &Frame, g: &mut Geom, share: f64) {
+    for y in 0..2 {
+        for x in 0..2 {
+            let roads_frame =
+                Frame { o: f.o, min: f.min + DVec2::new(x as f64, y as f64) * BLOCK, size: BLOCK };
+            road_glow(&sc.net, &roads_frame, g, share);
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    for i in sc.net.building_index.around(f.min, f.max()) {
+        if !seen.insert(i) {
+            continue;
+        }
+        let b = &sc.net.buildings[i as usize];
+        if f.contains(b.p) && !sc.cleared(b.p) {
+            building_glow(&sc.net, b, f, g, share);
+        }
+    }
+}
+
+/// The roads' lamps (as `roads` places the lamp posts), closer together and brighter towards
+/// the towns' centres; the through roads' brighter and whiter than the side streets'.
+fn road_glow(net: &Network, f: &Frame, g: &mut Geom, share: f64) {
+    let (min, max) = (f.min, f.max());
+    let mut lamps: Vec<DVec2> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    // Street lamps keep the towns' outline even thinned.
+    let street_share = share.sqrt();
+    for id in net.segment_index.around(min, max) {
+        if !seen.insert(id) {
+            continue;
+        }
+        let (ri, s) = net.segments[id as usize];
+        let road = &net.roads[ri as usize];
+        let s = s as usize;
+        let (a, b) = (road.pts[s], road.pts[s + 1]);
+        let mid = (a + b) * 0.5;
+        if !f.contains(mid) {
+            continue;
+        }
+        let town = net.town_at(mid, 1.0);
+        let street = road.kind == RoadKind::Street;
+        if !street && town.is_none() && !net.towns.iter().any(|t| t.near(mid, 1.0, 350.0)) {
+            continue;
+        }
+        let density = town.map_or(0.0, |t| t.density(mid));
+        let spacing = GLOW_SPACING.0 + (GLOW_SPACING.1 - GLOW_SPACING.0) * density;
+        let (s0, s1) = (road.arc[s], road.arc[s + 1]);
+        let dir = (b - a).normalize_or_zero();
+        let half = road.width * 0.5;
+        let mut k = (s0 / spacing).ceil();
+        while k * spacing < s1 {
+            let t = (k * spacing - s0) / (s1 - s0);
+            // Alternate sides on the through roads; both sides of the centres' wide ones.
+            let sd = if street || (k as i64) % 2 == 0 { 1.0 } else { -1.0 };
+            let foot = a.lerp(b, t) + dir.perp() * sd * (half + 1.5);
+            k += 1.0;
+            let seed = hash(0x1A3B, foot.x as i64, foot.y as i64, 0);
+            if lamps.iter().any(|l| l.distance(foot) < spacing * 0.3) || !kept(seed, street_share) {
+                continue;
+            }
+            lamps.push(foot);
+            let head = f.at(foot, 8.5) - dir3(dir.perp()) * sd as f32 * 1.8 - Vec3::Y * 0.2;
+            // Orange-yellow sodium mostly; some white LEDs, more in the centres and on the
+            // through roads; a few bluish mercury lamps on the side streets.
+            let roll = (seed >> 10) % 100;
+            let led = (if street { 8.0 } else { 15.0 } + 20.0 * density) as u64;
+            let tint = if roll < led {
+                GlowTint::Led
+            } else if street && roll >= 96 {
+                GlowTint::Mercury
+            } else {
+                GlowTint::Sodium
+            };
+            let level = if street { GLOW_STREET + (density * 2.0) as u8 } else { GLOW_ARTERIAL };
+            glow(g, LAMP, level, GlowKind::Lamp, tint, head);
+            if !street && density > 0.45 {
+                let other = a.lerp(b, t) - dir.perp() * sd * (half + 1.5);
+                let head = f.at(other, 8.5) + dir3(dir.perp()) * sd as f32 * 1.8 - Vec3::Y * 0.2;
+                glow(g, LAMP, level, GlowKind::Lamp, tint, head);
+            }
+        }
+    }
+}
+
+/// A building's lights: lit windows (for the towns beyond the walls' range), porch and
+/// entrance lamps, floodlit yards and car parks, warning beacons.
+fn building_glow(net: &Network, b: &Building, f: &Frame, g: &mut Geom, share: f64) {
+    let c = f.at(b.p, 0.0);
+    let d = dir2(b.dir);
+    let along = Vec3::new(d.x, 0.0, d.y);
+    let across = Vec3::new(-d.y, 0.0, d.x);
+    let density = town_density(net, b.p);
+    let mut rng = Rng::new(b.seed ^ 0x6C0F);
+    let beacon = |g: &mut Geom, p: Vec3| {
+        glow(g, BEACON, GLOW_BEACON, GlowKind::Beacon, GlowTint::Palette, p);
+    };
+    // A lamp by the door, on one of the long sides.
+    let porch = |g: &mut Geom, rng: &mut Rng, level: u8| {
+        let side = if rng.chance(0.5) { 1.0 } else { -1.0 };
+        let p = c
+            + along * rng.range(-0.3, 0.3) as f32 * b.l
+            + across * side * (b.w * 0.5 + 1.2)
+            + Vec3::Y * 2.6;
+        let tint = if rng.chance(0.7) { GlowTint::WarmWindow } else { GlowTint::Led };
+        glow(g, LAMP, level, GlowKind::Lamp, tint, p);
+    };
+    match b.kind {
+        Kind::House => {
+            if rng.chance((0.25 + 0.5 * density) * share) {
+                porch(g, &mut rng, GLOW_PORCH);
+            }
+            if rng.chance(0.5 * share) {
+                window_glow(b, c, along, across, 1, &mut rng, g);
+            }
+        }
+        Kind::Apartment | Kind::Tower => {
+            let floors = (b.h / 3.0).floor().max(1.0) as f64;
+            let n = (floors * b.l as f64 / 10.0 * GLOW_WINDOWS * share).round() as usize;
+            window_glow(b, c, along, across, n.min(40), &mut rng, g);
+            if rng.chance((0.5 + 0.5 * density) * share) {
+                porch(g, &mut rng, GLOW_PORCH + 2);
+            }
+            // A floodlit car park or forecourt by some of the big blocks.
+            if b.l * b.w > 500.0 && rng.chance(0.25 * share) {
+                flood_grid(c + across * (b.w * 0.5 + 18.0), along, across, 3, 2, 14.0, g);
+            }
+            // Shop signs and neon in the centres, the odd green or blue among the warm lights.
+            if density > 0.55 && rng.chance(0.2 * share) {
+                let tint = rng.pick(&[GlowTint::Green, GlowTint::Blue, GlowTint::Led]);
+                let p = c + along * rng.range(-0.4, 0.4) as f32 * b.l + across * (b.w * 0.5 + 0.5);
+                glow(g, LAMP, GLOW_SIGN, GlowKind::Lamp, tint, p + Vec3::Y * 3.5);
+            }
+            if b.kind == Kind::Tower && b.h > 60.0 {
+                beacon(g, c + Vec3::Y * (b.h + 1.0));
+            }
+        }
+        Kind::Barn | Kind::Shed => {
+            // Farm and works yards: a light or two over the yard.
+            if b.l * b.w > 300.0 && rng.chance(0.6 * share) {
+                let n = if b.l * b.w > 800.0 { 3 } else { 1 };
+                for i in 0..n {
+                    let p = c
+                        + along * ((i as f32 - (n - 1) as f32 * 0.5) * b.l * 0.4)
+                        + across * (b.w * 0.5 + 4.0)
+                        + Vec3::Y * (b.h.min(9.0) + 1.0);
+                    glow(g, LAMP, GLOW_FLOOD - 2, GlowKind::Flood, GlowTint::Mercury, p);
+                }
+            } else if rng.chance(0.3 * share) {
+                porch(g, &mut rng, GLOW_PORCH);
+            }
+        }
+        Kind::Church => {
+            // Floodlit walls.
+            for side in [-1.0, 1.0] {
+                let p = c + across * side * (b.w * 0.5 + 6.0) + Vec3::Y * 1.0;
+                glow(g, LAMP, GLOW_FLOOD - 1, GlowKind::Flood, GlowTint::Sodium, p);
+            }
+        }
+        Kind::Silo | Kind::Tank | Kind::WaterTower => {
+            if rng.chance(0.5 * share) {
+                let p = c + across * (b.l * 0.5 + 2.0) + Vec3::Y * 4.0;
+                glow(g, LAMP, GLOW_FLOOD - 3, GlowKind::Flood, GlowTint::Sodium, p);
+            }
+        }
+        Kind::Chimney => beacon(g, c + Vec3::Y * (b.h + 0.5)),
+        Kind::Mast => {
+            beacon(g, c + Vec3::Y * (b.h + 0.5));
+            beacon(g, c + Vec3::Y * (b.h * 0.5));
+        }
+        Kind::Radar => beacon(g, c + Vec3::Y * (b.h + 0.3)),
+        Kind::Windsock => beacon(g, c + Vec3::Y * (b.h + 0.4)),
+        _ => {}
+    }
+}
+
+/// `n` lit windows on random storeys of the long sides (seen only beyond the walls' range).
+fn window_glow(
+    b: &Building,
+    c: Vec3,
+    along: Vec3,
+    across: Vec3,
+    n: usize,
+    rng: &mut Rng,
+    g: &mut Geom,
+) {
+    let floors = (b.h / 3.0).floor().max(1.0);
+    for _ in 0..n {
+        let side = if rng.chance(0.5) { 1.0 } else { -1.0 };
+        let floor = (rng.f() * floors as f64).floor() as f32;
+        let x = rng.range(-0.45, 0.45) as f32 * b.l;
+        let p = c + along * x + across * side * (b.w * 0.5 + 0.2) + Vec3::Y * (floor * 3.0 + 1.6);
+        let tint = if rng.chance(0.7) { GlowTint::WarmWindow } else { GlowTint::CoolWindow };
+        let level = GLOW_WINDOW + (rng.f() * 3.0) as u8;
+        glow(g, WINDOW, level, GlowKind::Window, tint, p);
+    }
+}
+
+/// Floodlights on masts in a grid of `nx` by `ny`, `step` metres apart, round `c`.
+fn flood_grid(c: Vec3, along: Vec3, across: Vec3, nx: i32, ny: i32, step: f32, g: &mut Geom) {
+    for i in 0..nx {
+        for j in 0..ny {
+            let p = c
+                + along * ((i as f32 - (nx - 1) as f32 * 0.5) * step)
+                + across * (j as f32 * step)
+                + Vec3::Y * 10.0;
+            glow(g, LAMP, GLOW_FLOOD, GlowKind::Flood, GlowTint::Led, p);
         }
     }
 }
@@ -305,6 +561,81 @@ mod light_tests {
             |g: &Geom| g.lamps.iter().filter(|(c, _)| *c == LAMP).copied().collect::<Vec<_>>();
         assert_eq!(streets(&before), streets(&after));
     }
+
+    /// A city of a remake theater on open ground, nothing else generated round it.
+    fn city() -> (Scenery, DVec2) {
+        let mut style = Style::for_theater("central_europe", 0).unwrap();
+        (style.towns, style.farms, style.pole_lines) = (0.0, 0.0, 0.0);
+        let c = DVec2::new(51_000.0, 51_000.0);
+        let site = crate::world::TownSite { x: c.x, y: c.y, r: 1300.0, kind: 2, ruined: 0.0 };
+        let hills = Default::default();
+        let ground = Ground::default();
+        let net = Network::build(&ground, &style, &[site], &hills);
+        let sc = Scenery {
+            style: Some(style),
+            ground: ground.into(),
+            net: net.into(),
+            airfields: vec![].into(),
+            clearings: vec![],
+            hills,
+        };
+        (sc, c)
+    }
+
+    /// The city's glowing lamps (packed words, ground positions in metres east, north).
+    fn city_glow(sc: &Scenery, c: DVec2, share: f64) -> Vec<(u32, DVec2)> {
+        let size = Tier::Lights.block_size();
+        let (lo, hi) = (((c - 2500.0) / size).floor(), ((c + 2500.0) / size).floor());
+        let mut out = Vec::new();
+        for by in lo.y as i32..=hi.y as i32 {
+            for bx in lo.x as i32..=hi.x as i32 {
+                let o = Frame::new(bx, by, size).o;
+                let g = build_lights(sc, bx, by, share);
+                out.extend(
+                    g.glow.iter().map(|(w, p)| (*w, o + DVec2::new(p.x as f64, -p.z as f64))),
+                );
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn glowing_lamps_crowd_the_centre_and_thin_with_the_share() {
+        let (sc, c) = city();
+        let full = city_glow(&sc, c, 1.0);
+        let town = &sc.net.towns[0];
+        let per_km2 = |lo: f64, hi: f64| {
+            let n = full
+                .iter()
+                .filter(|(_, p)| (lo..hi).contains(&(1.0 - town.core(*p)).clamp(0.0, 1.0)))
+                .count();
+            // The share of the town's area between those cores (1 - core: the edge distance).
+            n as f64 / (hi * hi - lo * lo)
+        };
+        let (centre, edge) = (per_km2(0.0, 0.4), per_km2(0.7, 1.0));
+        assert!(centre > 1.5 * edge, "centre {centre:.0}, edge {edge:.0}");
+        // Deterministic, and thinned by the share (the street lamps less than the rest).
+        assert_eq!(full, city_glow(&sc, c, 1.0));
+        let some = city_glow(&sc, c, 0.35).len() as f64 / full.len() as f64;
+        assert!((0.3..0.75).contains(&some), "share 0.35 kept {some:.2}");
+        // Every kind and tint packed in its bits.
+        let kind = |k: GlowKind| full.iter().filter(|(w, _)| (w >> 12) & 3 == k as u32).count();
+        for k in [GlowKind::Lamp, GlowKind::Window, GlowKind::Flood] {
+            assert!(kind(k) > 0, "no {k:?}");
+        }
+        assert!(full.iter().all(|(w, _)| (w >> 14) & 15 <= GlowTint::Blue as u32));
+        assert!(full.iter().any(|(w, _)| (w >> 14) & 15 == GlowTint::Sodium as u32));
+    }
+
+    #[test]
+    fn blocks_of_flats_have_lit_window_walls() {
+        let (sc, c) = city();
+        let (bx, by) = ((c.x / BLOCK).floor() as i32, (c.y / BLOCK).floor() as i32);
+        let g = build(&sc, bx, by, Tier::Main, 1.0, 1.0);
+        assert!(g.solid.keys().any(|k| *k as u16 & geom::WINDOWS != 0));
+        let town = build(&sc, bx.div_euclid(2), by.div_euclid(2), Tier::Town, 1.0, 1.0);
+        assert!(town.solid.keys().any(|k| *k as u16 & geom::WINDOWS != 0));
+    }
 }
 
 /// The longest edge of the ground's triangles and lines laid on the hills (metres): well under
@@ -336,6 +667,7 @@ pub(super) fn drape(hills: &stealth_sim::hills::Hills, f: &Frame, g: &mut Geom) 
         lines.iter_mut().for_each(raise);
     }
     g.lamps.iter_mut().for_each(|(_, p)| raise(p));
+    g.glow.iter_mut().for_each(|(_, p)| raise(p));
     g.strobes.values_mut().flatten().for_each(raise);
     g.papi.iter_mut().for_each(|l| raise(&mut l.pos));
 }
@@ -646,7 +978,11 @@ fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     let foot = rect(c, d, b.l, b.w);
     match b.kind {
         Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
-            g.walls(wall_colour(b), &foot, 0.0, b.h);
+            if lit_walls(b) {
+                g.window_walls(wall_colour(b), &foot, 0.0, b.h);
+            } else {
+                g.walls(wall_colour(b), &foot, 0.0, b.h);
+            }
             let rise = match b.kind {
                 Kind::Shed => b.w * 0.18,
                 Kind::Church => b.w * 0.6,
@@ -757,6 +1093,12 @@ fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     }
 }
 
+/// Buildings whose walls show lit windows at night (`geom::WINDOWS`): the blocks of flats and
+/// the towers, several storeys of rooms.
+fn lit_walls(b: &Building) -> bool {
+    matches!(b.kind, Kind::Apartment | Kind::Tower) && b.h >= 6.0
+}
+
 /// Houses, sheds and barns: the town tier thins them first.
 fn small(b: &Building) -> bool {
     matches!(b.kind, Kind::House | Kind::Shed | Kind::Barn)
@@ -774,6 +1116,10 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                 return;
             }
             match b.roof {
+                Roof::Flat if lit_walls(b) => {
+                    g.window_walls(wall_colour(b), &foot, 0.0, b.h);
+                    g.cap(b.roof_colour, &foot, b.h);
+                }
                 Roof::Flat => g.block(wall_colour(b), b.roof_colour, &foot, 0.0, b.h),
                 Roof::Gable | Roof::Hip => {
                     let rise = match b.kind {
@@ -781,7 +1127,11 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                         Kind::Church => b.w * 0.6,
                         _ => b.w * 0.42,
                     };
-                    g.walls(b.wall, &foot, 0.0, b.h);
+                    if lit_walls(b) {
+                        g.window_walls(b.wall, &foot, 0.0, b.h);
+                    } else {
+                        g.walls(b.wall, &foot, 0.0, b.h);
+                    }
                     g.gable(b.wall, b.roof_colour, &foot, b.h, rise);
                 }
             }

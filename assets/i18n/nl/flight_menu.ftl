@@ -66,6 +66,7 @@ fm-effect-snow = SNEEUW
 fm-effect-mist = GRONDMIST
 fm-effect-cloud-shadows = WOLKENSCHADUWEN
 fm-effect-ground-detail = BODEMDETAIL
+fm-effect-city-lights = STADSLICHTEN
 fm-effect-glass = WEERSPIEGELINGEN IN GLAS
 fm-effect-water = WEERSPIEGELINGEN IN WATER
 fm-effect-ocean-waves = OCEAANGOLVEN

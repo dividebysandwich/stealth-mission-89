@@ -196,6 +196,10 @@ effect-ground-detail = Maapinna detailid
     .facts =
         Kaasaegsed varjutajad: tasane maa näitab lähedalt oma pinda
         Viljaread põldudel, puhmad rohus, betooni ja asfaldi tekstuur
+effect-city-lights = Linnatuled
+    .facts =
+        Kaasaegsed varjutid: linnad säravad öösel pehmete tuledega, kõige tihedamalt keskustes
+        Kõrghoonetel paistavad valgustatud aknad
 effect-glass = Peegeldused klaasis
     .facts =
         Kaasaegsed varjutajad: klaas peegeldab taevast

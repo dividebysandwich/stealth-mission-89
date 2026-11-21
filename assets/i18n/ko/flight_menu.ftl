@@ -66,6 +66,7 @@ fm-effect-snow = 눈
 fm-effect-mist = 지면 안개
 fm-effect-cloud-shadows = 구름 그림자
 fm-effect-ground-detail = 지면 세부
+fm-effect-city-lights = 도시 불빛
 fm-effect-glass = 유리 반사
 fm-effect-water = 수면 반사
 fm-effect-ocean-waves = 바다 파도

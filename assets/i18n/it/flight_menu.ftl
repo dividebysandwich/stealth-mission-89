@@ -66,6 +66,7 @@ fm-effect-snow = NEVE
 fm-effect-mist = FOSCHIA AL SUOLO
 fm-effect-cloud-shadows = OMBRE DELLE NUVOLE
 fm-effect-ground-detail = DETTAGLIO DEL TERRENO
+fm-effect-city-lights = LUCI DELLE CITTÀ
 fm-effect-glass = RIFLESSI SUL VETRO
 fm-effect-water = RIFLESSI SULL'ACQUA
 fm-effect-ocean-waves = ONDE OCEANICHE

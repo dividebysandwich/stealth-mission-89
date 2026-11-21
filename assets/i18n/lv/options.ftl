@@ -196,6 +196,10 @@ effect-ground-detail = Zemes detaļas
     .facts =
         Mūsdienīgi ēnotāji: līdzena zeme tuvumā parāda savu virsmu
         Sējumu rindas laukos, ceri zālē, betona un asfalta graudainums
+effect-city-lights = Pilsētas gaismas
+    .facts =
+        Mūsdienīgi ēnotāji: naktī pilsētas mirdz maigās gaismās, visblīvāk centros
+        Augstās ēkās redzami izgaismoti logi
 effect-glass = Atspīdumi stiklā
     .facts =
         Modernie ēnotāji: stikls atspoguļo debesis

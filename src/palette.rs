@@ -498,6 +498,11 @@ fn apply_msaa(
 pub(crate) const SKY_RING: [f32; 16] =
     [0., 2., 3., 4., 6., 8., 11., 15., 20., 27., 36., 48., 64., 87., 119., 164.];
 
+/// Daylight (`LightingState::daylight`) below which the lit windows brighten towards full,
+/// and the least share they show at once the lamps are on.
+const CITY_DUSK: f32 = 0.4;
+const CITY_DUSK_LEAST: f32 = 0.35;
+
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn update_globals(
     palette: Res<Palette>,
@@ -520,7 +525,10 @@ fn update_globals(
     sky: Res<crate::sky::Sky>,
     (shadow_lights, world_cameras): (ShadowLights, WorldCameras),
     (bursts, ocean): (Res<crate::flashes::Bursts>, Res<crate::ocean::Ocean>),
-    theater: Option<Res<crate::world::Theater>>,
+    (theater, budget): (
+        Option<Res<crate::world::Theater>>,
+        Option<Res<crate::scenery::budget::SceneryBudget>>,
+    ),
     mut buffers: ResMut<Assets<ShaderBuffer>>,
 ) {
     let Some(mut buf) = buffers.get_mut(&palette.globals) else { return };
@@ -604,6 +612,14 @@ fn update_globals(
         origin.origin.z.rem_euclid(period) as f32,
         0.0,
     );
+    if crate::palette_material::city_lights(&settings) {
+        // The windows come on with the lamps, brightening as the dusk deepens.
+        let night = (palette.lights_on() as u32 as f32)
+            * ((CITY_DUSK - lighting.daylight) / CITY_DUSK).clamp(CITY_DUSK_LEAST, 1.0);
+        let near = budget.as_ref().map_or(0.0, |b| b.town_radius(&settings) as f32);
+        g.city = Vec4::new(night, near, 0.0, 0.0);
+        g.city_origin = origin.origin.as_vec3().extend(0.0);
+    }
     g.sea = weather.sea_globals();
     (g.ocean, g.ocean_mask, g.ocean_levels) = ocean.globals(origin.origin);
     let on = |b: bool| b as u32 as f32;

@@ -196,6 +196,10 @@ effect-ground-detail = Detalle del terreno
     .facts =
         Shaders modernos: el suelo llano muestra su superficie de cerca
         Surcos en los campos, matas en la hierba, grano en el hormigón y el asfalto
+effect-city-lights = Luces de la ciudad
+    .facts =
+        Sombreado moderno: de noche las ciudades brillan con luces suaves, más densas en el centro
+        Los edificios altos muestran ventanas iluminadas
 effect-glass = Reflejos en el cristal
     .facts =
         Shaders modernos: el cristal refleja el cielo

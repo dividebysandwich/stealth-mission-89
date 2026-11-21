@@ -196,6 +196,10 @@ effect-ground-detail = Žemės detalės
     .facts =
         Modernūs šešėliuokliai: plokščia žemė iš arti rodo savo paviršių
         Pasėlių eilės laukuose, kuokštai žolėje, betono ir asfalto grūdėtumas
+effect-city-lights = Miesto šviesos
+    .facts =
+        Modernūs šešėliuokliai: naktį miestai mirga švelniomis šviesomis, tankiausiai centruose
+        Aukštuose pastatuose matyti apšviesti langai
 effect-glass = Atspindžiai stikle
     .facts =
         Modernūs šešėliuokliai: stiklas atspindi dangų

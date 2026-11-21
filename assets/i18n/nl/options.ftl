@@ -196,6 +196,10 @@ effect-ground-detail = Bodemdetail
     .facts =
         Moderne shaders: de vlakke grond toont van dichtbij zijn oppervlak
         Gewasrijen op de akkers, pollen in het gras, korrel op beton en asfalt
+effect-city-lights = Stadslichten
+    .facts =
+        Moderne shaders: steden fonkelen 's nachts met zachte lichtjes, het dichtst in het centrum
+        Hoge gebouwen tonen verlichte ramen
 effect-glass = Weerspiegelingen in glas
     .facts =
         Moderne shaders: glas weerspiegelt de lucht

@@ -196,6 +196,10 @@ effect-ground-detail = Bodendetails
     .facts =
         Moderne Shader: der flache Boden zeigt aus der Nähe seine Oberfläche
         Saatreihen auf den Feldern, Büschel im Gras, Körnung auf Beton und Asphalt
+effect-city-lights = Stadtlichter
+    .facts =
+        Moderne Shader: Städte funkeln nachts mit weichen Lichtern, am dichtesten im Zentrum
+        Hohe Gebäude zeigen beleuchtete Fenster
 effect-glass = Glasspiegelungen
     .facts =
         Moderne Shader: Glas spiegelt den Himmel

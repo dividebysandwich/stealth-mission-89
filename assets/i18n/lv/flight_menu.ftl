@@ -66,6 +66,7 @@ fm-effect-snow = SNIEGS
 fm-effect-mist = ZEMES MIGLA
 fm-effect-cloud-shadows = MĀKOŅU ĒNAS
 fm-effect-ground-detail = ZEMES DETAĻAS
+fm-effect-city-lights = PILSĒTAS GAISMAS
 fm-effect-glass = ATSPĪDUMI STIKLĀ
 fm-effect-water = ATSPĪDUMI ŪDENĪ
 fm-effect-ocean-waves = OKEĀNA VIĻŅI

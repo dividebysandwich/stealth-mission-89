@@ -66,6 +66,7 @@ fm-effect-snow = NIEVE
 fm-effect-mist = NIEBLA A RAS DE SUELO
 fm-effect-cloud-shadows = SOMBRAS DE NUBES
 fm-effect-ground-detail = DETALLE DEL TERRENO
+fm-effect-city-lights = LUCES DE LA CIUDAD
 fm-effect-glass = REFLEJOS EN EL CRISTAL
 fm-effect-water = REFLEJOS EN EL AGUA
 fm-effect-ocean-waves = OLAS OCEÁNICAS

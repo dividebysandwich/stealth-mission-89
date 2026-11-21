@@ -66,6 +66,7 @@ fm-effect-snow = SNIEGAS
 fm-effect-mist = ŽEMĖS RŪKAS
 fm-effect-cloud-shadows = DEBESŲ ŠEŠĖLIAI
 fm-effect-ground-detail = ŽEMĖS DETALĖS
+fm-effect-city-lights = MIESTO ŠVIESOS
 fm-effect-glass = ATSPINDŽIAI STIKLE
 fm-effect-water = ATSPINDŽIAI VANDENYJE
 fm-effect-ocean-waves = VANDENYNO BANGOS

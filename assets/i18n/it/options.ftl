@@ -196,6 +196,10 @@ effect-ground-detail = Dettaglio del terreno
     .facts =
         Shader moderni: il terreno piatto mostra da vicino la sua superficie
         File di coltura nei campi, ciuffi nell'erba, grana su cemento e asfalto
+effect-city-lights = Luci delle città
+    .facts =
+        Shader moderni: di notte le città brillano di luci soffuse, più fitte nei centri
+        Gli edifici alti mostrano finestre illuminate
 effect-glass = Riflessi sul vetro
     .facts =
         Shader moderni: il vetro riflette il cielo

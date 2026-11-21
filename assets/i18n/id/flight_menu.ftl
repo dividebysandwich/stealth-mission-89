@@ -66,6 +66,7 @@ fm-effect-snow = SALJU
 fm-effect-mist = KABUT TANAH
 fm-effect-cloud-shadows = BAYANGAN AWAN
 fm-effect-ground-detail = DETAIL TANAH
+fm-effect-city-lights = LAMPU KOTA
 fm-effect-glass = PANTULAN KACA
 fm-effect-water = PANTULAN AIR
 fm-effect-ocean-waves = OMBAK SAMUDRA

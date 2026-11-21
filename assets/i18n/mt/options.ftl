@@ -196,6 +196,10 @@ effect-ground-detail = Dettall tal-art
     .facts =
         Shaders moderni: l-art ċatta turi l-wiċċ tagħha mill-qrib
         Ringieli ta' uċuħ fl-għelieqi, ċmieren fil-ħaxix, ħbub fuq il-konkrit u l-asfalt
+effect-city-lights = Dwal tal-belt
+    .facts =
+        Shaders moderni: bil-lejl il-bliet jleqqu b'dwal rotob, l-aktar fitti fiċ-ċentri
+        Il-bini għoli juri twieqi mixgħula
 effect-glass = Riflessjonijiet fil-ħġieġ
     .facts =
         Shaders moderni: il-ħġieġ jirrifletti s-sema

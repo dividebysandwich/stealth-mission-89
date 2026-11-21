@@ -65,6 +65,7 @@ fm-effect-snow = SCHNEE
 fm-effect-mist = BODENNEBEL
 fm-effect-cloud-shadows = WOLKENSCHATTEN
 fm-effect-ground-detail = BODENDETAILS
+fm-effect-city-lights = STADTLICHTER
 fm-effect-glass = GLASSPIEGELUNGEN
 fm-effect-water = WASSERSPIEGELUNGEN
 fm-effect-ocean-waves = OZEANWELLEN

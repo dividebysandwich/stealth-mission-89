@@ -196,6 +196,10 @@ effect-ground-detail = Szczegóły podłoża
     .facts =
         Nowoczesne shadery: płaski teren z bliska pokazuje swoją powierzchnię
         Rzędy upraw na polach, kępy w trawie, ziarno betonu i asfaltu
+effect-city-lights = Światła miast
+    .facts =
+        Nowoczesne shadery: nocą miasta migoczą miękkimi światłami, najgęściej w centrach
+        Wysokie budynki mają oświetlone okna
 effect-glass = Odbicia w szkle
     .facts =
         Nowoczesne shadery: szkło odbija niebo

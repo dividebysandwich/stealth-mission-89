@@ -66,6 +66,7 @@ fm-effect-snow = ŚNIEG
 fm-effect-mist = MGŁA PRZY ZIEMI
 fm-effect-cloud-shadows = CIENIE CHMUR
 fm-effect-ground-detail = SZCZEGÓŁY PODŁOŻA
+fm-effect-city-lights = ŚWIATŁA MIAST
 fm-effect-glass = ODBICIA W SZKLE
 fm-effect-water = ODBICIA W WODZIE
 fm-effect-ocean-waves = FALE OCEANU

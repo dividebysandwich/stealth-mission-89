@@ -90,7 +90,7 @@ fn words(palette: &Palette, colours: &[u16]) -> Vec<u32> {
         .map(|&c| match c {
             GROUND => GROUND_WORD,
             SKIRT_COLOUR => GROUND_WORD | WORD_FLAT_LIT,
-            c => palette.word(c as u8) as u32 | super::geom::detail_word(c),
+            c => palette.word(c as u8) as u32 | super::geom::detail_word(c as u32),
         })
         .collect()
 }

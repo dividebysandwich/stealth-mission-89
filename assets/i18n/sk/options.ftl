@@ -196,6 +196,10 @@ effect-ground-detail = Detail terénu
     .facts =
         Moderné shadery: rovná zem zblízka ukazuje svoj povrch
         Riadky plodín na poliach, trsy v tráve, zrnitosť betónu a asfaltu
+effect-city-lights = Svetlá miest
+    .facts =
+        Moderné shadery: mestá v noci trblietajú mäkkými svetlami, najhustejšie v centrách
+        Vysoké budovy majú rozsvietené okná
 effect-glass = Odrazy v skle
     .facts =
         Moderné shadery: sklo zrkadlí oblohu

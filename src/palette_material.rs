@@ -43,6 +43,11 @@ pub const FLAG_WATER: u32 = 256;
 /// The waves' mesh round the viewpoint (`ocean::grid`): placed and displaced by the vertex
 /// shader (`OCEAN_GRID`).
 pub const FLAG_OCEAN: u32 = 512;
+/// With `FLAG_DOT`: the towns' glowing lamps (`Effects::city_lights`): soft points whose size
+/// and brightness fall off with the distance, added to what is behind them (premultiplied,
+/// alpha 0), so they need no drawing order. Their dot batch carries a packed word per lamp
+/// (`dots::glow_word`).
+pub const FLAG_GLOW: u32 = 1024;
 /// Mesh tag bit of warm objects (aircraft, vehicles, buildings, fires): lighter than the cold
 /// ground in the FLIR picture.
 pub const TAG_WARM: u32 = 1 << 11;
@@ -321,7 +326,9 @@ impl Material for PaletteMaterial {
     // The prepass pipeline is only used for the shadow maps (no camera has a depth prepass):
     // world geometry casts sun shadows when the shadows option is on.
     fn alpha_mode(&self) -> AlphaMode {
-        if self.params.flags & (FLAG_CLOUD_SOFT | FLAG_DOT) != 0 {
+        if self.params.flags & FLAG_GLOW != 0 {
+            AlphaMode::Add
+        } else if self.params.flags & (FLAG_CLOUD_SOFT | FLAG_DOT) != 0 {
             AlphaMode::Blend
         } else if self.params.flags & FLAG_CLOUD_COVERAGE != 0 {
             AlphaMode::AlphaToCoverage
@@ -510,6 +517,12 @@ pub struct Globals {
     pub ocean_levels: [Vec4; 4],
     /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
     /// `DETAIL_PERIOD`.
+    /// The towns' lights (`FX_CITY`): x the lit windows' strength 0..1 (0: none), y the range
+    /// (metres) inside which the buildings' walls show their windows, so the window lamps of
+    /// the lights tier only show beyond it.
+    pub city: Vec4,
+    /// The floating origin (xyz, metres): the windows' pattern stays put on the walls.
+    pub city_origin: Vec4,
     pub ground_detail: Vec4,
     /// Reflections (`FX_GLASS`, `FX_WATER`): x 1 on glass, y 1 on water. Must stay the last field (glvr reads it from
     /// the end of the bytes).
@@ -548,8 +561,11 @@ pub const FX_WATER: u32 = 2048;
 /// The simulated open sea (`Effects::ocean`, with the water's reflections): its slopes and
 /// foam on the water, the flat sea dropped under the waves' mesh.
 pub const FX_OCEAN: u32 = 4096;
+/// The towns' lights (`Effects::city_lights`, modern shading): lit windows on the buildings'
+/// walls (`WORD_WINDOWS`).
+pub const FX_CITY: u32 = 8192;
 pub const SKY_VARIANTS: [u32; 4] = [0, FX_STARS, FX_STRATUS, FX_STARS | FX_STRATUS];
-const FX_DEFS: [(u32, &str); 13] = [
+const FX_DEFS: [(u32, &str); 14] = [
     (FX_MIST, "PALETTE_MIST"),
     (FX_CLOUD_SHADOWS, "PALETTE_CLOUD_SHADOWS"),
     (FX_BURST, "PALETTE_BURST"),
@@ -563,6 +579,7 @@ const FX_DEFS: [(u32, &str); 13] = [
     (FX_GLASS, "PALETTE_GLASS"),
     (FX_WATER, "PALETTE_WATER"),
     (FX_OCEAN, "PALETTE_OCEAN"),
+    (FX_CITY, "PALETTE_CITY"),
 ];
 
 /// Whether material `m` draws with the palette whose globals are `globals`. A new theater's
@@ -600,6 +617,7 @@ pub fn fx_bits(settings: &crate::settings::Settings, theater: &str) -> u32 {
         | bit(glass(settings), FX_GLASS)
         | bit(water(settings), FX_WATER)
         | bit(ocean(settings), FX_OCEAN)
+        | bit(city_lights(settings), FX_CITY)
 }
 
 /// The water mirrors the sky (`Effects::water`, modern shading only).
@@ -620,6 +638,12 @@ pub fn glass(settings: &crate::settings::Settings) -> bool {
 /// The flat ground's surface detail is drawn (`Effects::ground_detail`, modern shading only).
 pub fn ground_detail(settings: &crate::settings::Settings) -> bool {
     settings.effects.ground_detail && settings.modern_shading
+}
+
+/// The towns' lights glow and the walls show their windows (`Effects::city_lights`, modern
+/// shading only).
+pub fn city_lights(settings: &crate::settings::Settings) -> bool {
+    settings.effects.city_lights && settings.modern_shading
 }
 
 /// Period (metres) of the ground detail's patterns: `Globals::ground_detail` carries the
@@ -677,6 +701,8 @@ impl Default for Globals {
             ocean: Vec4::ZERO,
             ocean_mask: Vec4::ZERO,
             ocean_levels: [Vec4::ZERO; 4],
+            city: Vec4::ZERO,
+            city_origin: Vec4::ZERO,
             ground_detail: Vec4::ZERO,
             reflections: Vec4::ZERO,
         }
@@ -725,6 +751,12 @@ pub const WORD_FURROW_Z: u32 = 1 << 18;
 /// the ground detail at any height (elsewhere only the hills and what lies at the flat world's
 /// level take it, not a ship's deck).
 pub const WORD_GROUND: u32 = 1 << 19;
+/// Bit of a per-vertex colour word: a building's wall with windows, lit at night
+/// (`FX_CITY`; `scenery::geom::WINDOWS`).
+pub const WORD_WINDOWS: u32 = 1 << 20;
+/// With `WORD_WINDOWS`: the wall's outward direction from this bit up
+/// (`scenery::geom::WALL_ANGLES` steps of the angle from x towards z).
+pub const WORD_WALL_ANGLE: u32 = 21;
 /// Bit of a per-vertex colour word (`ATTRIBUTE_PALETTE_WORD`, above the word itself): the
 /// vertex is lit as flat ground whatever its face's slope (the hills' skirts, which only show in
 /// the cracks between their chunks, in their chunk's mesh).

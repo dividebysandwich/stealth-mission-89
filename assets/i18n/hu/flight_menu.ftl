@@ -66,6 +66,7 @@ fm-effect-snow = HÓ
 fm-effect-mist = TALAJKÖD
 fm-effect-cloud-shadows = FELHŐÁRNYÉKOK
 fm-effect-ground-detail = TALAJRÉSZLETEK
+fm-effect-city-lights = VÁROSI FÉNYEK
 fm-effect-glass = ÜVEGTÜKRÖZŐDÉS
 fm-effect-water = VÍZTÜKRÖZŐDÉS
 fm-effect-ocean-waves = ÓCEÁNI HULLÁMOK

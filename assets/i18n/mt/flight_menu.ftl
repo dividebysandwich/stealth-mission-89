@@ -66,6 +66,7 @@ fm-effect-snow = BORRA
 fm-effect-mist = ĊPAR MAL-ART
 fm-effect-cloud-shadows = DELLIJIET TAS-SĦAB
 fm-effect-ground-detail = DETTALL TAL-ART
+fm-effect-city-lights = DWAL TAL-BELT
 fm-effect-glass = RIFLESSJONIJIET FIL-ĦĠIEĠ
 fm-effect-water = RIFLESSJONIJIET FL-ILMA
 fm-effect-ocean-waves = MEWĠ TAL-OĊEAN

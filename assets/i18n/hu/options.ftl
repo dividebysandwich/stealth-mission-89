@@ -196,6 +196,10 @@ effect-ground-detail = Talajrészletek
     .facts =
         Modern árnyalók: a sík talaj közelről megmutatja a felszínét
         Vetéssorok a földeken, csomók a fűben, szemcsézettség a betonon és az aszfalton
+effect-city-lights = Városi fények
+    .facts =
+        Modern árnyalók: éjjel a városok lágy fényekkel csillognak, a központokban a legsűrűbben
+        A magas épületeken kivilágított ablakok látszanak
 effect-glass = Üvegtükröződés
     .facts =
         Modern árnyalók: az üveg tükrözi az eget
