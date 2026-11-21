@@ -139,6 +139,12 @@ impl Stage<'_, '_> {
         })
     }
 
+    /// Whether a place (Bevy metres) is open ground: dry, no buildings or trees within `r`
+    /// metres (true without the scenery).
+    pub fn clear(&self, p: DVec3, r: f64) -> bool {
+        self.scenery.as_ref().is_none_or(|s| s.unit_clear(DVec2::new(p.x, -p.z), r))
+    }
+
     /// The runway ends of the scenery's airfields (aim point, unit direction towards the
     /// approaching aircraft; metres east, north).
     pub fn runway_ends(&self) -> Vec<(DVec2, DVec2)> {

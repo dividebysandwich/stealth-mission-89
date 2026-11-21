@@ -47,12 +47,13 @@ struct Orbit {
     fired: [usize; 2],
 }
 
-/// A few vehicles round the target at `centre`: their roots and places.
+/// A few vehicles round the target at `centre` (all in its clearing, `Stage::land`): their
+/// roots and places.
 fn vehicles(stage: &mut Stage, centre: DVec3) -> Vec<(Entity, DVec3)> {
     let mut out = Vec::new();
     for (i, name) in ["aaa_117", "aaa_120", "aaa_117", "aaa_110"].into_iter().enumerate() {
         let a = i as f32 * 1.7;
-        let at = centre + enu((a.cos() * 30.0 * i as f32) as f64, 0.0, (a.sin() * 25.0) as f64);
+        let at = centre + enu((a.cos() * 18.0 * i as f32) as f64, 0.0, (a.sin() * 20.0) as f64);
         let at = DVec3::new(at.x, stage.ground(at), at.z);
         if let Some(e) = stage.model(stage::AAA, name, 0.0, crate::models::ModelState::default()) {
             stage
@@ -107,6 +108,22 @@ fn fire_at(
     tof
 }
 
+/// Where on its circle the aircraft starts (radians from east; round from `first`): from where
+/// it sees the target, no hill or building in the way, over the scene's seconds `from..to`.
+fn open_orbit(stage: &Stage, centre: DVec3, first: f32, (from, to): (f32, f32)) -> f32 {
+    let aim = centre + DVec3::Y * 1.5;
+    (0..16)
+        .map(|i| first + i as f32 * std::f32::consts::TAU / 16.0)
+        .find(|&start| {
+            let o = Orbit { centre, start, fired: [0, 0] };
+            (0..=6).all(|k| {
+                let (p, ..) = on_circle(&o, from + (to - from) * k as f32 / 6.0);
+                stage.sight_clear(p, aim, 3.0)
+            })
+        })
+        .unwrap_or(first)
+}
+
 /// The aircraft on its circle `t` seconds in: place, attitude, velocity (Bevy).
 fn on_circle(o: &Orbit, t: f32) -> (DVec3, Quat, Vec3) {
     let a = o.start + t * SPEED / RADIUS;
@@ -135,7 +152,8 @@ fn gunship(
 ) {
     if stage.begin(&[stage::AIRCRAFT, stage::AAA]) {
         let centre = stage.land();
-        let start = (stage.director.roll % 628) as f32 * 0.01;
+        let first = (stage.director.roll % 628) as f32 * 0.01;
+        let start = open_orbit(&stage, centre, first, (0.0, Shot::Gunship.seconds()));
         if let Some(e) = stage.aircraft(AircraftKind::AC130) {
             stage.commands.entity(e).insert(GunshipCraft);
         }
@@ -229,7 +247,9 @@ fn console(
 ) {
     if stage.begin(&[stage::AAA]) {
         let centre = stage.land();
-        let start = (stage.director.roll % 628) as f32 * 0.01;
+        let first = (stage.director.roll % 628) as f32 * 0.01;
+        let seconds = (-CONSOLE_LEAD, Shot::GunnerConsole.seconds());
+        let start = open_orbit(&stage, centre, first, seconds);
         let vehicles = vehicles(&mut stage, centre).into_iter().map(|(e, p)| (e, p, false));
         let seat = Seat::Console(crate::cockpit3d::GUNNER_CONSOLE_MODEL);
         let cabin = spawn_cabin(&mut stage, Cabin::new(seat, None));

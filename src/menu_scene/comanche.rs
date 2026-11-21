@@ -132,6 +132,32 @@ fn rcs(
 const ROUNDS_PER_S: f32 = 12.0;
 const BURST: (f32, f32) = (1.6, 3.4);
 
+/// The pod-gun scene's range (m) and the hover's height over the ground.
+const POD_GUN_RANGE: f32 = 1200.0;
+const POD_GUN_HOVER: f64 = 25.0;
+
+/// The pod-gun scene's places: the vehicles on open ground (no town, no woods round them), the
+/// Comanche hovering `POD_GUN_RANGE` off on the heading (round the compass from `first`) from
+/// which it sees them, no hill, building or trees in the way, and not hovering in a building;
+/// the heading, the hover and the first vehicle's place.
+fn pod_gun_run(stage: &Stage, first: f32) -> (f32, DVec3, DVec3) {
+    let target = stage.land();
+    let aim = target + DVec3::Y * 1.5;
+    let hover = |heading: f32| {
+        let f = stage::forward(heading) * POD_GUN_RANGE;
+        let at = target - enu(f.x as f64, 0.0, f.y as f64);
+        DVec3::new(at.x, stage.ground(at) + POD_GUN_HOVER, at.z)
+    };
+    let heading = (0..24)
+        .map(|i| first + i as f32 * std::f32::consts::TAU / 24.0)
+        .find(|&h| {
+            let p = hover(h);
+            stage.clear(p, 20.0) && stage.sight_clear(p - DVec3::Y, aim, 3.0)
+        })
+        .unwrap_or(first);
+    (heading, hover(heading), target)
+}
+
 /// The Comanche hovering low, its pod's picture on the left screen locked on a vehicle; the
 /// gun fires and the rounds burst round it in the picture.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -155,11 +181,8 @@ fn pod_gun(
     mut tracer: Local<fx::TracerCache>,
 ) {
     if stage.begin(&[stage::AAA]) {
-        let ground = stage.land();
-        let heading = (stage.director.roll % 628) as f32 * 0.01;
-        let f = stage::forward(heading) * 1200.0;
-        let target = ground + enu(f.x as f64, 0.0, f.y as f64);
-        let target = DVec3::new(target.x, stage.ground(target), target.z);
+        let first = (stage.director.roll % 628) as f32 * 0.01;
+        let (heading, hover, target) = pod_gun_run(&stage, first);
         for (i, name) in ["aaa_120", "aaa_117"].into_iter().enumerate() {
             let side = stage::right(heading) * (i as f32 * 14.0);
             let at = target + enu(side.x as f64, 0.0, side.y as f64);
@@ -174,7 +197,7 @@ fn pod_gun(
             }
         }
         let weave = Weave {
-            start: ground + DVec3::Y * (stage.ground(ground) - ground.y + 25.0),
+            start: hover,
             heading,
             speed: 0.0,
             amp: 0.0,
