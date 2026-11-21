@@ -660,7 +660,12 @@ impl Sim {
         self.pl.gun_ammo = gun;
         self.pl.load_side_guns();
         self.pl.gun_firing = false;
-        self.pl.pflags &= pflags::BAY_OPEN;
+        // Bay jets start with their doors shut, whatever the last sortie left them at.
+        self.pl.pflags = 0;
+        self.pl.bay_req = false;
+        self.pl.bay_pending = false;
+        self.pl.bay_close = 0;
+        self.pl.door_anim = 0;
         if external_stores {
             self.pl.bay_req = true;
             self.pl.door_anim = 2;

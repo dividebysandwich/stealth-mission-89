@@ -1750,3 +1750,18 @@ fn a_wingman_launches_after_its_lead() {
     assert_eq!(u.cat, 0, "still on the catapult");
     assert!(u.speed >= 150 && u.flags & fflags::DESTROYED == 0);
 }
+
+#[test]
+fn a_bay_jet_starts_its_sortie_with_the_bays_shut() {
+    let (_, mut sim) = campaign();
+    let base = find(&sim, 0x401, Some("Neuburg"));
+    // A sortie with stores on pylons: seen as an open bay.
+    sim.respawn_pilot(0, base, None, Airframe { external_stores: true, ..Default::default() });
+    assert!(sim.bay_doors_open());
+    // The next in an F-22A: shut, and staying so.
+    sim.respawn_pilot(0, base, None, Airframe { raptor: true, ..Default::default() });
+    assert!(!sim.bay_doors_open());
+    assert_eq!(sim.bay_door_anim(), 0);
+    run(&mut sim, &idle(), 2);
+    assert!(!sim.bay_doors_open() && sim.bay_door_anim() == 0);
+}
