@@ -17,6 +17,8 @@ struct BeamMaterial {
 };
 
 @group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: BeamMaterial;
+// The light's colour (linear rgb; through the night vision goggles their green).
+@group(#{MATERIAL_BIND_GROUP}) @binding(1) var<uniform> colour: vec4<f32>;
 
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
@@ -46,7 +48,6 @@ fn vertex(v: Vertex) -> VertexOutput {
     return out;
 }
 
-const COLOUR: vec3<f32> = vec3<f32>(1.0, 0.95, 0.85);
 // Samples along the view ray through the beam.
 const STEPS: i32 = 16;
 
@@ -97,7 +98,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) front: bool) -> @location(0
         if (a <= 0.003) {
             discard;
         }
-        return vec4<f32>(COLOUR, min(a, 1.0));
+        return vec4<f32>(colour.rgb, min(a, 1.0));
     }
     // March back from there across the longest chord the beam has (from the eye when in it).
     let chord = length(vec2<f32>(p.w, 2.0 * (p.z + p.y * p.w)));
@@ -114,5 +115,5 @@ fn fragment(in: VertexOutput, @builtin(front_facing) front: bool) -> @location(0
     if (a <= 0.003) {
         discard;
     }
-    return vec4<f32>(COLOUR, min(a, 1.0));
+    return vec4<f32>(colour.rgb, min(a, 1.0));
 }

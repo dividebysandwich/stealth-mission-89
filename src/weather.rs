@@ -1237,7 +1237,7 @@ impl CloudQuality {
 }
 
 /// `nvg` in palette.wgsl without the grain: a colour as the night vision goggles show it.
-fn nvg_color(rgb: Vec3, daylight: f32) -> Vec3 {
+pub(crate) fn nvg_color(rgb: Vec3, daylight: f32) -> Vec3 {
     let lum = rgb.dot(Vec3::new(0.2126, 0.7152, 0.0722));
     let gain = 14.0 + (2.5 - 14.0) * daylight.clamp(0.0, 1.0);
     let v = (1.0 - (-lum * gain).exp()).sqrt();

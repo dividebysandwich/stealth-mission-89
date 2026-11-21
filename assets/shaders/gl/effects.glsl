@@ -368,7 +368,7 @@ void main() {
     if (p.x < 0.0) {
         float sa = -p.x * searchlight(eye, d, exit_s, apex, axis, p);
         if (sa <= 0.003) { discard; }
-        o_colour = vec4(COLOUR, min(sa, 1.0));
+        o_colour = vec4(nvg(COLOUR), min(sa, 1.0));
         return;
     }
     float chord = length(vec2(p.w, 2.0 * (p.z + p.y * p.w)));
@@ -382,7 +382,7 @@ void main() {
     float r = length(eye + d * s - apex);
     float a = p.x * (0.03 * sum * ds + 0.8 * exp(-r * r / 0.5));
     if (a <= 0.003) { discard; }
-    o_colour = vec4(COLOUR, min(a, 1.0));
+    o_colour = vec4(nvg(COLOUR), min(a, 1.0));
 }
 #endif
 

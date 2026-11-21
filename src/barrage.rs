@@ -645,7 +645,7 @@ fn draw(
         let mesh = meshes.add(crate::landing_lights::cone_mesh(BEAM_LENGTH, BEAM_ANGLE, LAMP));
         let tan = BEAM_ANGLE.to_radians().tan();
         let params = Vec4::new(-BEAM_BRIGHTNESS, tan, LAMP, BEAM_LENGTH);
-        (mesh, beams.add(BeamMaterial { params }))
+        (mesh, beams.add(BeamMaterial::new(params)))
     });
     // Dimmer at dusk (in eighths: a change re-uploads the material).
     let brightness = -BEAM_BRIGHTNESS * (dark * 8.0).ceil() / 8.0;

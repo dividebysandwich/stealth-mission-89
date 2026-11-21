@@ -49,7 +49,7 @@ impl Plugin for LandingLightsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<BeamMaterial>::default())
             .init_resource::<LandingAssets>()
-            .add_systems(Update, (attach_own, update_own, beams, dim).chain());
+            .add_systems(Update, (attach_own, update_own, beams, dim, goggles).chain());
     }
 }
 
@@ -58,6 +58,19 @@ pub struct BeamMaterial {
     /// x: intensity 0..1, y: tangent of the half angle, z: the lamp's radius, w: length (m).
     #[uniform(0)]
     pub params: Vec4,
+    /// The beam's colour (linear rgb): warm white, as the night vision goggles show it while
+    /// they are on (`goggles`).
+    #[uniform(1)]
+    pub colour: Vec4,
+}
+
+/// A beam's light, warm white.
+const BEAM_COLOUR: Vec3 = Vec3::new(1.0, 0.95, 0.85);
+
+impl BeamMaterial {
+    pub fn new(params: Vec4) -> Self {
+        Self { params, colour: BEAM_COLOUR.extend(1.0) }
+    }
 }
 
 impl Material for BeamMaterial {
@@ -121,7 +134,7 @@ impl FromWorld for LandingAssets {
     fn from_world(world: &mut World) -> Self {
         let mesh = world.resource_mut::<Assets<Mesh>>().add(beam_mesh());
         let params = Vec4::new(1.0, BEAM_ANGLE.to_radians().tan(), LAMP_RADIUS, BEAM_LENGTH);
-        let material = world.resource_mut::<Assets<BeamMaterial>>().add(BeamMaterial { params });
+        let material = world.resource_mut::<Assets<BeamMaterial>>().add(BeamMaterial::new(params));
         Self { mesh, material }
     }
 }
@@ -307,5 +320,33 @@ fn dim(
         && let Some(mut m) = materials.get_mut(&assets.material)
     {
         m.params.x = beam;
+    }
+}
+
+/// Through the night vision goggles the beams (the landing lights' and the searchlights') glow
+/// in the goggles' green like everything else.
+fn goggles(
+    hud: Option<Res<crate::hud::HudState>>,
+    state: Res<LightingState>,
+    mut materials: ResMut<Assets<BeamMaterial>>,
+    mut last: Local<Option<Vec4>>,
+) {
+    let colour = if hud.is_some_and(|h| h.nvg) {
+        crate::weather::nvg_color(BEAM_COLOUR, state.daylight)
+    } else {
+        BEAM_COLOUR
+    }
+    .extend(1.0);
+    // A new material (a searchlight's) starts warm white: look at them all while it differs.
+    if *last == Some(colour) && materials.iter().all(|(_, m)| m.colour == colour) {
+        return;
+    }
+    *last = Some(colour);
+    let ids: Vec<_> =
+        materials.iter().filter(|(_, m)| m.colour != colour).map(|(id, _)| id).collect();
+    for id in ids {
+        if let Some(mut m) = materials.get_mut(id) {
+            m.colour = colour;
+        }
     }
 }
