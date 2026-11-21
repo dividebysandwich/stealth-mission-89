@@ -360,10 +360,11 @@ fn axis_cells(ui: &mut egui::Ui, m: &mut AxisMapping, hotas: &Hotas, builtin: bo
     if m.control.lever() {
         ui.label("");
     } else {
-        ui.scope(|ui| {
+        ui.horizontal(|ui| {
             ui.spacing_mut().slider_width = 70.0;
             ui.add(egui::Slider::new(&mut m.deadzone, 0.0..=0.5).fixed_decimals(2))
                 .on_hover_text(t!("input-dead-zone"));
+            curve_menu(ui, m, hotas);
         });
     }
     let v = hotas.axis(&m.device, m.code).map(|raw| m.output(raw));
@@ -374,6 +375,63 @@ fn axis_cells(ui: &mut egui::Ui, m: &mut AxisMapping, hotas: &Hotas, builtin: bo
     };
     let text = v.map_or(t!("input-move-it").to_string(), |v| format!("{v:+.2}"));
     ui.add(egui::ProgressBar::new(fill).desired_width(90.0).text(text));
+}
+
+/// CURVE beside a stick axis's dead zone: its response curve and saturation, with the curve
+/// drawn and the axis's place on it.
+fn curve_menu(ui: &mut egui::Ui, m: &mut AxisMapping, hotas: &Hotas) {
+    let shaped = m.expo > 0.0 || m.saturation < 1.0;
+    let label =
+        if shaped { format!("{} *", t!("input-curve")) } else { t!("input-curve").to_string() };
+    let body = |ui: &mut egui::Ui| {
+        ui.set_min_width(240.0);
+        ui.spacing_mut().slider_width = 150.0;
+        let range = crate::hotas::EXPO_RANGE;
+        let mut expo = m.expo * 100.0;
+        let slider = egui::Slider::new(&mut expo, range.start() * 100.0..=range.end() * 100.0)
+            .step_by(5.0)
+            .fixed_decimals(0)
+            .suffix("%")
+            .text(t!("input-expo"));
+        if ui.add(slider).on_hover_text(t!("input-expo.facts")).changed() {
+            m.expo = expo / 100.0;
+        }
+        let range = crate::hotas::SATURATION_RANGE;
+        let mut sat = m.saturation * 100.0;
+        let slider = egui::Slider::new(&mut sat, range.start() * 100.0..=range.end() * 100.0)
+            .step_by(5.0)
+            .fixed_decimals(0)
+            .suffix("%")
+            .text(t!("input-saturation"));
+        if ui.add(slider).on_hover_text(t!("input-saturation.facts")).changed() {
+            m.saturation = sat / 100.0;
+        }
+        // The curve over the travel from the centre (both halves alike), the axis on it.
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(240.0, 120.0), egui::Sense::hover());
+        let p = ui.painter_at(rect);
+        p.rect_stroke(rect, 0.0, egui::Stroke::new(1.0, DIM), egui::StrokeKind::Inside);
+        let at = |x: f32, y: f32| {
+            egui::pos2(rect.left() + x * rect.width(), rect.bottom() - y * rect.height())
+        };
+        p.line_segment(
+            [at(0.0, 0.0), at(1.0, 1.0)],
+            egui::Stroke::new(1.0, DIM.gamma_multiply(0.5)),
+        );
+        let mut straight = m.clone();
+        straight.invert = false;
+        let points: Vec<egui::Pos2> =
+            (0..=48).map(|i| i as f32 / 48.0).map(|x| at(x, straight.output(x))).collect();
+        p.add(egui::Shape::line(points, egui::Stroke::new(2.0, GREEN)));
+        if let Some(raw) = hotas.axis(&m.device, m.code) {
+            let x = if m.invert { -raw } else { raw };
+            p.circle_filled(at(x.abs().min(1.0), m.output(raw).abs()), 4.0, AMBER);
+        }
+        ui.ctx().request_repaint();
+        if shaped && ui.button(icon_text(ui, icon::RESET, t!("input-curve-straight"))).clicked() {
+            (m.expo, m.saturation) = (0.0, 1.0);
+        }
+    };
+    ui.menu_button(label, body);
 }
 
 /// Modifier keys, which only count together with another key.

@@ -232,7 +232,11 @@ change is saved at once.
   TGP zoom (a slider or rotary: each zoom step from 1X to 20X, also at a console's camera), the
   look pair and the view zoom (a hat, mini-stick or sprung rocker: how far it is pushed is how
   fast the view turns or zooms, as the view pan and view zoom keys). Click
-  **BIND** and move the axis; *Invert* reverses it, *dead zone* sets the neutral range. The F-117
+  **BIND** and move the axis; *Invert* reverses it, *dead zone* sets the neutral range. *Curve*
+  beside it (the stick, rudder, slew and look axes) sets the *Response curve* (0 % straight; more
+  gives finer control about the centre and the same full deflection at the ends) and the
+  *Saturation* (the travel that gives full deflection), drawn with the axis's place on the curve;
+  *STRAIGHT* puts both back. A shaped axis shows *Curve \**. The F-117
   outline in the corner moves with the mapped axes: if it goes the wrong way, invert.
 - **Buttons**: every action in the game, with its key. Click **BIND** and press a button; a hat or an
   axis pushed past halfway works too.

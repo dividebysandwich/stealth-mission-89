@@ -139,7 +139,23 @@ pub struct AxisMapping {
     pub invert: bool,
     /// Centre dead zone, 0..1 (not used for the throttle).
     pub deadzone: f32,
+    /// The response curve: 0 straight, up to 1 gentle about the centre and quick at the ends
+    /// (`EXPO_RANGE`; not for the levers).
+    #[serde(default)]
+    pub expo: f32,
+    /// The travel that gives the full value, 1 the whole (`SATURATION_RANGE`; not for the
+    /// levers).
+    #[serde(default = "full_travel")]
+    pub saturation: f32,
 }
+
+fn full_travel() -> f32 {
+    1.0
+}
+
+/// The axes' response curve and saturation ranges (`AxisMapping::expo`, `saturation`).
+pub const EXPO_RANGE: std::ops::RangeInclusive<f32> = 0.0..=1.0;
+pub const SATURATION_RANGE: std::ops::RangeInclusive<f32> = 0.5..=1.0;
 
 impl AxisMapping {
     /// A mapping with the control's usual direction and dead zone: a stick or hat pushed
@@ -156,7 +172,7 @@ impl AxisMapping {
             | AxisControl::ViewZoom => 0.1,
             _ => 0.05,
         };
-        Self { control, device, code, invert, deadzone }
+        Self { control, device, code, invert, deadzone, expo: 0.0, saturation: 1.0 }
     }
 
     /// The control's value from the raw axis value (-1..1): -1..1 for the stick and rudder,
@@ -166,8 +182,15 @@ impl AxisMapping {
         if self.control.lever() {
             return ((v + 1.0) / 2.0).clamp(0.0, 1.0);
         }
+        // Past the dead zone to the saturation's travel, then the curve.
         let dz = self.deadzone.clamp(0.0, 0.9);
-        if v.abs() <= dz { 0.0 } else { v.signum() * ((v.abs() - dz) / (1.0 - dz)).min(1.0) }
+        let full = self.saturation.clamp(*SATURATION_RANGE.start(), 1.0).max(dz + 0.05);
+        if v.abs() <= dz {
+            return 0.0;
+        }
+        let x = ((v.abs() - dz) / (full - dz)).min(1.0);
+        let e = self.expo.clamp(*EXPO_RANGE.start(), *EXPO_RANGE.end());
+        v.signum() * ((1.0 - e) * x + e * x * x * x)
     }
 }
 
@@ -1450,6 +1473,8 @@ mod tests {
             code: 0x30005,
             invert: false,
             deadzone: 0.0,
+            expo: 0.0,
+            saturation: 1.0,
         };
         for pull in [0.0, 0.25, 0.5, 1.0, 0.0] {
             d.button_changed(m.code, pull, true);
@@ -1556,6 +1581,8 @@ mod tests {
             code: 0,
             invert: false,
             deadzone: 0.0,
+            expo: 0.0,
+            saturation: 1.0,
         };
         assert_eq!(zoom_step(m.output(-1.0), None), 0);
         assert_eq!(zoom_step(m.output(1.0), None), max);
@@ -1732,13 +1759,32 @@ mod tests {
             code: 0,
             invert: false,
             deadzone: 0.1,
+            expo: 0.0,
+            saturation: 1.0,
         };
         assert_eq!(m.output(0.05), 0.0);
         assert_eq!(m.output(1.0), 1.0);
         assert!((m.output(-0.55) + 0.5).abs() < 1e-6);
-        let t = AxisMapping { control: AxisControl::Throttle, invert: true, ..m };
+        let t = AxisMapping { control: AxisControl::Throttle, invert: true, ..m.clone() };
         assert_eq!(t.output(-1.0), 1.0);
         assert_eq!(t.output(1.0), 0.0);
+        // The curve: gentler about the centre, the ends unchanged; a lever has none.
+        let curved = AxisMapping { expo: 0.6, ..m.clone() };
+        assert!(curved.output(0.55).abs() < m.output(0.55).abs() * 0.7);
+        assert_eq!(curved.output(1.0), 1.0);
+        assert_eq!(curved.output(-1.0), -1.0);
+        let lever = AxisMapping { expo: 0.6, ..t.clone() };
+        assert_eq!(lever.output(0.0), t.output(0.0));
+        // Saturation: the full value at 80 % travel.
+        let short = AxisMapping { saturation: 0.8, ..m.clone() };
+        assert_eq!(short.output(0.8), 1.0);
+        assert!((short.output(0.45) - 0.5).abs() < 1e-6);
+        // Older mappings: no curve, the whole travel.
+        let old: AxisMapping = serde_json::from_str(
+            r#"{"control":"Roll","device":"x","code":1,"invert":false,"deadzone":0.1}"#,
+        )
+        .unwrap();
+        assert_eq!((old.expo, old.saturation), (0.0, 1.0));
     }
 
     /// A Windows joystick's buttons 2 and 3 are the standard layout's B and Y (gilrs' fallback
