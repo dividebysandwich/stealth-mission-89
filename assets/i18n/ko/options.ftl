@@ -100,6 +100,10 @@ options-fps-cap-off = 끔
 options-fps-cap-vr = VR에서는 헤드셋이 프레임 속도를 정합니다
 options-ui-scale = 메뉴 크기
     .facts = 화면에 들어가는 범위에서 메뉴와 창의 크기. 100%: 원래 크기
+options-reset = 탭 초기화
+    .facts = 이 탭의 설정을 기본값으로 되돌립니다 (먼저 확인)
+options-reset-confirm = { $tab } 초기화합니까?
+    .text = 이 설정은 새 플레이어의 상태로 돌아갑니다. 언어, 음성, 키 설정은 그대로입니다.
 options-auto-detail = 지형 디테일 자동 (VR)
     .facts =
         헤드셋에서 프레임이 늦어지면 마을, 숲, 들판의 표시 거리가 줄고 여유가 생기면 다시 늘어납니다

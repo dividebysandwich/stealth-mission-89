@@ -100,6 +100,10 @@ options-fps-cap-off = Désactivé
 options-fps-cap-vr = En VR, le casque fixe la cadence d'images
 options-ui-scale = Taille des menus
     .facts = La taille des menus et des fenêtres, dans la limite de l'écran. 100 % : leur taille propre
+options-reset = RÉINITIALISER L'ONGLET
+    .facts = Les réglages de cet onglet reviennent aux valeurs par défaut (demande d'abord)
+options-reset-confirm = RÉINITIALISER { $tab } ?
+    .text = Ces réglages reviennent à ceux d'un nouveau joueur. La langue, les voix et les touches restent.
 options-auto-detail = Détail automatique du décor (VR)
     .facts =
         Dans le casque, la portée des villes, forêts et champs diminue quand les images prennent du retard et revient quand il reste du temps

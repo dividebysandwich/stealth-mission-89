@@ -100,6 +100,10 @@ options-fps-cap-off = Aus
 options-fps-cap-vr = In VR bestimmt das Headset die Bildrate
 options-ui-scale = Menügröße
     .facts = Größe der Menüs und Fenster, soweit der Bildschirm Platz hat. 100 %: ihre eigene Größe
+options-reset = REITER ZURÜCKSETZEN
+    .facts = Die Einstellungen dieses Reiters zurück auf die Standardwerte (fragt vorher)
+options-reset-confirm = { $tab } ZURÜCKSETZEN?
+    .text = Diese Einstellungen gehen auf die eines neuen Spielers zurück. Sprache, Stimmen und Tastenbelegung bleiben.
 options-auto-detail = Automatische Szenerie-Details (VR)
     .facts =
         Im Headset schrumpft die Reichweite von Städten, Wäldern und Feldern, solange Bilder zu spät kommen, und wächst wieder, wenn Zeit übrig ist

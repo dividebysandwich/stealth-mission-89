@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Sekite kūrimo eigą
 menu-quit = IŠEITI
     .facts = Išeiti į darbalaukį
+menu-quit-confirm = IŠEITI IŠ ŽAIDIMO?
+    .text = Grįžti į darbalaukį.
 menu-version = VERSIJA { $version }
 
 ## Pavienės misijos ekranas

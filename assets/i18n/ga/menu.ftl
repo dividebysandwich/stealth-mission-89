@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Lean an fhorbairt
 menu-quit = SCAOIL
     .facts = Imeacht go dtí an deasc
+menu-quit-confirm = SCOIR AN CLUICHE?
+    .text = Ar ais chuig an deasc.
 menu-version = LEAGAN { $version }
 
 ## Scáileán na misean aonair

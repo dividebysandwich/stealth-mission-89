@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Følg udviklingen
 menu-quit = AFSLUT
     .facts = Tilbage til skrivebordet
+menu-quit-confirm = AFSLUT SPILLET?
+    .text = Tilbage til skrivebordet.
 menu-version = VERSION { $version }
 
 ## Skærm for enkeltmission

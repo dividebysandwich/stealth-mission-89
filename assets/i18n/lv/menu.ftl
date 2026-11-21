@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Sekojiet izstrādei
 menu-quit = IZIET
     .facts = Iziet uz darbvirsmu
+menu-quit-confirm = IZIET NO SPĒLES?
+    .text = Atpakaļ uz darbvirsmu.
 menu-version = VERSIJA { $version }
 
 ## Vienas misijas ekrāns

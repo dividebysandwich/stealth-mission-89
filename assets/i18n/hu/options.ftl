@@ -100,6 +100,10 @@ options-fps-cap-off = Ki
 options-fps-cap-vr = VR-ben a headset szabja meg a képkockasebességet
 options-ui-scale = Menük mérete
     .facts = A menük és ablakok mérete, amennyire a képernyőn elfér. 100%: a saját méretük
+options-reset = LAP VISSZAÁLLÍTÁSA
+    .facts = A lap beállításai vissza az alapértékekre (előbb rákérdez)
+options-reset-confirm = { $tab } VISSZAÁLLÍTÁSA?
+    .text = Ezek a beállítások egy új játékoséra állnak vissza. A nyelv, a hangok és a billentyűk maradnak.
 options-auto-detail = Automatikus tájdetail (VR)
     .facts =
         A headsetben a városok, erdők és mezők látótávolsága csökken, amíg a képkockák késnek, és visszanő, ha van tartalék idő

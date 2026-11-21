@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Seguire lo sviluppo
 menu-quit = USCIRE
     .facts = Torna al desktop
+menu-quit-confirm = USCIRE DAL GIOCO?
+    .text = Torna al desktop.
 menu-version = VERSIONE { $version }
 
 ## Schermata di missione singola

@@ -100,6 +100,10 @@ options-fps-cap-off = Wył.
 options-fps-cap-vr = W VR liczbę klatek ustala gogle
 options-ui-scale = Rozmiar menu
     .facts = Rozmiar menu i okien, na ile pozwala ekran. 100%: ich własny rozmiar
+options-reset = PRZYWRÓĆ KARTĘ
+    .facts = Ustawienia tej karty wracają do domyślnych (najpierw pyta)
+options-reset-confirm = PRZYWRÓCIĆ { $tab }?
+    .text = Te ustawienia wracają do stanu nowego gracza. Język, głosy i klawisze zostają.
 options-auto-detail = Automatyczna szczegółowość scenerii (VR)
     .facts =
         W goglach zasięg miast, lasów i pól maleje, gdy klatki się spóźniają, i rośnie z powrotem, gdy jest zapas czasu

@@ -100,6 +100,10 @@ options-fps-cap-off = Izslēgts
 options-fps-cap-vr = VR režīmā kadru nomaiņu nosaka austiņas
 options-ui-scale = Izvēlņu izmērs
     .facts = Izvēlņu un logu izmērs, cik ekrāns atļauj. 100%: to pašu izmērs
+options-reset = ATIESTATĪT CILNI
+    .facts = Šīs cilnes iestatījumi atpakaļ uz noklusējumu (vispirms jautā)
+options-reset-confirm = ATIESTATĪT { $tab }?
+    .text = Šie iestatījumi atgriežas pie jauna spēlētāja iestatījumiem. Valoda, balsis un taustiņi paliek.
 options-auto-detail = Automātiska ainavas detalizācija (VR)
     .facts =
         Austiņās pilsētu, mežu un lauku redzamības rādiuss samazinās, kamēr kadri kavējas, un atkal pieaug, kad ir laika rezerve

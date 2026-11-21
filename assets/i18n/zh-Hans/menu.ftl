@@ -367,6 +367,8 @@ menu-discord = DISCORD
         关注开发进展
 menu-quit = 退出
     .facts = 退出到桌面
+menu-quit-confirm = 退出游戏?
+    .text = 返回桌面。
 menu-version = 版本 { $version }
 
 ## 单次任务界面

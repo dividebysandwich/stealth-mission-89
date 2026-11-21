@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Kövesse a fejlesztést
 menu-quit = KILÉPÉS
     .facts = Kilépés az asztalra
+menu-quit-confirm = KILÉPSZ A JÁTÉKBÓL?
+    .text = Vissza az asztalra.
 menu-version = VERZIÓ { $version }
 
 ## Egyedi küldetés képernyő

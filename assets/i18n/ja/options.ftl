@@ -100,6 +100,10 @@ options-fps-cap-off = オフ
 options-fps-cap-vr = VR ではヘッドセットがフレームレートを決めます
 options-ui-scale = メニューの大きさ
     .facts = メニューとウィンドウの大きさ (画面に収まる範囲で)。100%: 本来の大きさ
+options-reset = タブをリセット
+    .facts = このタブの設定を初期値に戻します (確認あり)
+options-reset-confirm = { $tab } をリセットしますか?
+    .text = これらの設定は新しいプレイヤーの状態に戻ります。言語、音声、キー割り当てはそのままです。
 options-auto-detail = 地形ディテール自動調整（VR）
     .facts =
         ヘッドセットでは、フレームが遅れている間は街、森、畑の描画距離が縮み、余裕があれば元に戻ります

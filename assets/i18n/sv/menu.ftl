@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Följ utvecklingen
 menu-quit = AVSLUTA
     .facts = Tillbaka till skrivbordet
+menu-quit-confirm = AVSLUTA SPELET?
+    .text = Tillbaka till skrivbordet.
 menu-version = VERSION { $version }
 
 ## Skärmen för enstaka uppdrag

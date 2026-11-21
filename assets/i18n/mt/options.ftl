@@ -100,6 +100,10 @@ options-fps-cap-off = Mitfi
 options-fps-cap-vr = Fil-VR il-headset jiddeċiedi r-rata tal-frejms
 options-ui-scale = Daqs tal-menus
     .facts = Id-daqs tal-menus u t-twieqi, sakemm l-iskrin għandu spazju. 100%: id-daqs tagħhom
+options-reset = IRRISETTJA T-TAB
+    .facts = Is-settings ta' dan it-tab lura għal dawk standard (jistaqsi l-ewwel)
+options-reset-confirm = IRRISETTJA { $tab }?
+    .text = Dawn is-settings jerġgħu lura għal ta' plejer ġdid. Il-lingwa, il-vuċijiet u ċ-ċwievet jibqgħu.
 options-auto-detail = Detall awtomatiku tax-xena (VR)
     .facts =
         Fil-headset, il-medda tal-bliet, tal-foresti u tal-għelieqi tonqos meta l-frames jagħmlu dewmien u terġa' tikber meta jkun hemm ħin żejjed

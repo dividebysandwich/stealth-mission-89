@@ -100,6 +100,10 @@ options-fps-cap-off = Mati
 options-fps-cap-vr = Di VR headset yang menentukan laju bingkai
 options-ui-scale = Ukuran menu
     .facts = Ukuran menu dan jendela, sejauh layar cukup. 100%: ukuran aslinya
+options-reset = SETEL ULANG TAB
+    .facts = Pengaturan tab ini kembali ke bawaan (bertanya dulu)
+options-reset-confirm = SETEL ULANG { $tab }?
+    .text = Pengaturan ini kembali seperti pemain baru. Bahasa, suara, dan tombol tetap.
 options-auto-detail = Detail pemandangan otomatis (VR)
     .facts =
         Di headset, jangkauan kota, hutan dan ladang menyusut saat frame terlambat dan pulih saat ada waktu tersisa

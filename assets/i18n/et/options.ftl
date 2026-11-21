@@ -100,6 +100,10 @@ options-fps-cap-off = Väljas
 options-fps-cap-vr = VR-is määrab kaadrisageduse peakomplekt
 options-ui-scale = Menüü suurus
     .facts = Menüüde ja akende suurus, kuivõrd ekraanile mahub. 100%: nende enda suurus
+options-reset = LÄHTESTA VAHEKAART
+    .facts = Selle vahekaardi seaded vaikeväärtustele (küsib enne)
+options-reset-confirm = LÄHTESTADA { $tab }?
+    .text = Need seaded lähevad tagasi uue mängija omadele. Keel, hääled ja klahvid jäävad.
 options-auto-detail = Automaatne maastiku detailsus (VR)
     .facts =
         Peakomplektis kahaneb linnade, metsade ja põldude kuvamiskaugus, kui kaadrid hilinevad, ja kasvab tagasi, kui aega jätkub

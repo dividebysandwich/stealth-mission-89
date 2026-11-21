@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Śledzenie postępów prac
 menu-quit = WYJŚĆ
     .facts = Wyjście do pulpitu
+menu-quit-confirm = WYJŚĆ Z GRY?
+    .text = Powrót na pulpit.
 menu-version = WERSJA { $version }
 
 ## Ekran pojedynczej misji

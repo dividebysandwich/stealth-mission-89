@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Seguir el desarrollo
 menu-quit = SALIR
     .facts = Volver al escritorio
+menu-quit-confirm = ¿SALIR DEL JUEGO?
+    .text = Volver al escritorio.
 menu-version = VERSIÓN { $version }
 
 ## Pantalla de misión individual

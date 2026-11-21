@@ -100,6 +100,10 @@ options-fps-cap-off = Isključeno
 options-fps-cap-vr = U VR-u broj sličica određuje naglavni uređaj
 options-ui-scale = Veličina izbornika
     .facts = Veličina izbornika i prozora, koliko zaslon dopušta. 100 %: njihova vlastita veličina
+options-reset = VRATI KARTICU
+    .facts = Postavke ove kartice vraćaju se na zadane (prvo pita)
+options-reset-confirm = VRATITI { $tab }?
+    .text = Ove postavke vraćaju se na one novog igrača. Jezik, glasovi i tipke ostaju.
 options-auto-detail = Automatski detalji okoliša (VR)
     .facts =
         U headsetu se domet gradova, šuma i polja smanjuje dok sličice kasne i vraća kad ima viška vremena

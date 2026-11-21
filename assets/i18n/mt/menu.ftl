@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Segwi l-iżvilupp
 menu-quit = OĦROĠ
     .facts = Oħroġ lejn id-desktop
+menu-quit-confirm = OĦROĠ MIL-LOGĦBA?
+    .text = Lura għad-desktop.
 menu-version = VERŻJONI { $version }
 
 ## Skrin tal-missjoni waħda

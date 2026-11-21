@@ -1619,7 +1619,6 @@ fn main_screen(
     career: &mut crate::career::CareerWindow,
     campaign: &mut crate::campaign::CampaignWindow,
     multiplayer: &mut crate::multiplayer_menu::MultiplayerWindow,
-    exit: &mut MessageWriter<AppExit>,
     vr: bool,
 ) {
     // Every button as wide as the longest label needs, its icon and label at the left.
@@ -1733,7 +1732,7 @@ fn main_screen(
                 )
                 .clicked()
             {
-                exit.write(AppExit::Success);
+                ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new(QUIT_ASKED), true));
             }
             ui.add_space(6.0);
             // In the browser: which build runs (docs/web.md).
@@ -1752,6 +1751,70 @@ fn main_screen(
             );
         });
     });
+}
+
+/// QUIT was clicked: the game asks first (egui's memory).
+const QUIT_ASKED: &str = "quit asked";
+
+/// QUIT THE GAME? over the main menu, once QUIT was clicked.
+fn confirm_quit(ctx: &egui::Context, exit: &mut MessageWriter<AppExit>) {
+    let id = egui::Id::new(QUIT_ASKED);
+    if !ctx.data(|d| d.get_temp::<bool>(id).unwrap_or(false)) {
+        return;
+    }
+    let answer = confirm_popup(
+        ctx,
+        "Quit the game",
+        t!("menu-quit-confirm"),
+        t!("menu-quit-confirm.text"),
+        (t!("menu-quit"), icon::QUIT),
+    );
+    match answer {
+        Some(true) => {
+            exit.write(AppExit::Success);
+        }
+        Some(false) => ctx.data_mut(|d| d.remove::<bool>(id)),
+        None => {}
+    }
+}
+
+/// A question over the menu, answered with `yes` (its label and icon; Enter too) or CANCEL
+/// (Esc too): Some(true), Some(false), None while it waits.
+pub(crate) fn confirm_popup(
+    ctx: &egui::Context,
+    name: &str,
+    title: &str,
+    text: &str,
+    (yes, yes_icon): (&str, char),
+) -> Option<bool> {
+    let (enter, escape) =
+        ctx.input(|i| (i.key_pressed(egui::Key::Enter), i.key_pressed(egui::Key::Escape)));
+    let mut answer = if escape {
+        Some(false)
+    } else if enter {
+        Some(true)
+    } else {
+        None
+    };
+    let window = egui::Window::new(name)
+        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+        .collapsible(false)
+        .resizable(false)
+        .title_bar(false)
+        .order(egui::Order::Foreground);
+    Panel::new(title).window(window, ctx, |ui| {
+        ui.label(egui::RichText::new(text).color(BRIGHT));
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if ui.add(big_button(yes).icon(yes_icon).primary()).clicked() {
+                answer = Some(true);
+            }
+            if ui.add(big_button(t!("cancel")).icon(icon::CANCEL)).clicked() {
+                answer = Some(false);
+            }
+        });
+    });
+    answer
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -1892,9 +1955,9 @@ pub(crate) fn menu_ui(
             &mut career,
             &mut campaign,
             &mut multiplayer,
-            &mut exit,
             settings.vr,
         );
+        confirm_quit(ctx, &mut exit);
     }
     if state.mission_screen && !dialogs && !planner.open && !loadout.open && !saves.open {
         // Career sorties take their options from the career window.

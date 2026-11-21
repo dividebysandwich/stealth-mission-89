@@ -100,6 +100,10 @@ options-fps-cap-off = Vypnuté
 options-fps-cap-vr = Vo VR určuje snímkovú frekvenciu headset
 options-ui-scale = Veľkosť ponúk
     .facts = Veľkosť ponúk a okien, pokiaľ má obrazovka miesto. 100 %: ich vlastná veľkosť
+options-reset = OBNOVIŤ KARTU
+    .facts = Nastavenia tejto karty späť na predvolené (najprv sa opýta)
+options-reset-confirm = OBNOVIŤ { $tab }?
+    .text = Tieto nastavenia sa vrátia na stav nového hráča. Jazyk, hlasy a klávesy zostanú.
 options-auto-detail = Automatický detail krajiny (VR)
     .facts =
         V headsete sa dosah miest, lesov a polí zmenšuje, kým snímky meškajú, a vracia sa, keď je čas nazvyš

@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Jälgi arendust
 menu-quit = VÄLJU
     .facts = Välju töölauale
+menu-quit-confirm = LÕPETADA MÄNG?
+    .text = Tagasi töölauale.
 menu-version = VERSIOON { $version }
 
 ## Üksikmissiooni ekraan

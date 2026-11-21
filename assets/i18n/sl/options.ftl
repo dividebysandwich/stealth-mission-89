@@ -100,6 +100,10 @@ options-fps-cap-off = Izklopljeno
 options-fps-cap-vr = V VR hitrost sličic določa naglavni komplet
 options-ui-scale = Velikost menijev
     .facts = Velikost menijev in oken, kolikor zaslon dopušča. 100 %: njihova lastna velikost
+options-reset = PONASTAVI ZAVIHEK
+    .facts = Nastavitve tega zavihka nazaj na privzete (najprej vpraša)
+options-reset-confirm = PONASTAVITI { $tab }?
+    .text = Te nastavitve se vrnejo na nastavitve novega igralca. Jezik, glasovi in tipke ostanejo.
 options-auto-detail = Samodejna podrobnost okolja (VR)
     .facts =
         V očalih se doseg mest, gozdov in polj skrči, ko sličice zamujajo, in se vrne, ko je časa dovolj

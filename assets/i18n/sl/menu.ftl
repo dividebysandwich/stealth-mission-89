@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Spremljajte razvoj
 menu-quit = IZHOD
     .facts = Izhod na namizje
+menu-quit-confirm = ZAPUSTITI IGRO?
+    .text = Nazaj na namizje.
 menu-version = RAZLIČICA { $version }
 
 ## Zaslon posamezne misije

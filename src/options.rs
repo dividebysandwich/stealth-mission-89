@@ -32,6 +32,8 @@ pub struct OptionsWindow {
     /// The VOICES dialog is open over it (`voice_dialog.rs`).
     pub voices: bool,
     tab: Tab,
+    /// RESET TAB was clicked: asking first.
+    confirm_reset: bool,
 }
 
 impl OptionsWindow {
@@ -40,7 +42,7 @@ impl OptionsWindow {
     pub fn from_args() -> Self {
         let args: Vec<String> = std::env::args().collect();
         if args.iter().any(|a| a == "--open-voices") {
-            return Self { open: true, voices: true, tab: Tab::Sound };
+            return Self { open: true, voices: true, tab: Tab::Sound, ..default() };
         }
         let Some(i) = args.iter().position(|a| a == "--open-options") else {
             return Self::default();
@@ -61,6 +63,11 @@ enum Tab {
 }
 
 impl Tab {
+    /// Its title's message.
+    fn title_id(self) -> &'static str {
+        Tab::ALL.iter().find(|t| t.0 == self).map_or("options-tab-game", |t| t.2)
+    }
+
     /// The tab, its `--open-options` name and its title's message.
     const ALL: [(Tab, &'static str, &'static str); 4] = [
         (Tab::Game, "GAME", "options-tab-game"),
@@ -91,7 +98,25 @@ pub fn options_ui(
     if !w.open || dialog.open || w.voices {
         return;
     }
-    let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape));
+    // RESET TAB asks first (Esc answers it, not BACK).
+    if w.confirm_reset {
+        let title = t!("options-reset-confirm", tab = t!(w.tab.title_id()));
+        let answer = crate::menu::confirm_popup(
+            ctx,
+            "Reset the options",
+            &title,
+            t!("options-reset-confirm.text"),
+            (t!("options-reset"), icon::RESET),
+        );
+        if let Some(yes) = answer {
+            w.confirm_reset = false;
+            if yes {
+                reset_tab(w.tab, settings.bypass_change_detection(), &defaults());
+                settings.set_changed();
+            }
+        }
+    }
+    let mut back = ctx.input(|i| i.key_pressed(egui::Key::Escape)) && !w.confirm_reset;
     Panel::new(t!("options-title")).window(screen_window(ctx, "Options", SIZE), ctx, |ui| {
         ui.horizontal(|ui| {
             for (tab, _, name) in Tab::ALL {
@@ -105,15 +130,92 @@ pub fn options_ui(
             ui.add_space(4.0);
             footer_rule(ui);
             ui.label(egui::RichText::new(t!("options-footer")).small().color(DIM));
-            if facts(ui.add(big_button(t!("back")).icon(icon::BACK)), t_lines!("back.facts"))
+            ui.horizontal(|ui| {
+                if facts(ui.add(big_button(t!("back")).icon(icon::BACK)), t_lines!("back.facts"))
+                    .clicked()
+                {
+                    back = true;
+                }
+                if facts(
+                    ui.add(big_button(t!("options-reset")).icon(icon::RESET)),
+                    t_lines!("options-reset.facts"),
+                )
                 .clicked()
-            {
-                back = true;
-            }
+                {
+                    w.confirm_reset = true;
+                }
+            });
         });
     });
     if back {
         w.open = false;
+    }
+}
+
+/// The settings as a new player has them (the command line's flags kept).
+fn defaults() -> Settings {
+    let mut d = Settings::from_args();
+    crate::prefs::Prefs::default().apply(&mut crate::menu::MenuState::default(), &mut d);
+    d
+}
+
+/// A tab's settings back to `d`'s: the language, the window's mode, the voices and the
+/// microphone stay as they are, the key bindings have their own.
+fn reset_tab(tab: Tab, s: &mut Settings, d: &Settings) {
+    match tab {
+        Tab::Game => {
+            s.classic_cockpit = d.classic_cockpit;
+            s.classic_hud = d.classic_hud;
+            s.classic_avionics = d.classic_avionics;
+            s.classic_flight = d.classic_flight;
+            s.auto_trim = d.auto_trim;
+            s.keep_time_accel = d.keep_time_accel;
+            s.tooltips = d.tooltips;
+            s.atc = d.atc;
+            s.player_labels = d.player_labels;
+            s.player_label_size = d.player_label_size;
+            s.seat_height = d.seat_height;
+            s.vr_cockpit_scale = d.vr_cockpit_scale;
+            s.tacview = d.tacview;
+            s.tacview_real_time = d.tacview_real_time;
+            s.gif_scale = d.gif_scale;
+            s.gif_fps = d.gif_fps;
+        }
+        Tab::Graphics => {
+            s.vsync = d.vsync;
+            s.fps_cap = d.fps_cap;
+            s.ui_scale = d.ui_scale;
+            s.modern_shading = d.modern_shading;
+            s.msaa = d.msaa;
+            s.shadows = d.shadows;
+            s.local_lights = d.local_lights;
+            s.continuous_time = d.continuous_time;
+            s.sun_moon = d.sun_moon;
+            s.vr_auto_detail = d.vr_auto_detail;
+            s.cloud_quality = d.cloud_quality;
+            s.scenery_distance = d.scenery_distance;
+            s.city_light_distance = d.city_light_distance;
+            s.effects = d.effects;
+        }
+        Tab::Sound => {
+            s.master_volume = d.master_volume;
+            s.engine_volume = d.engine_volume;
+            s.effects_volume = d.effects_volume;
+            s.warning_volume = d.warning_volume;
+            s.rwr_volume = d.rwr_volume;
+            s.voice_volume = d.voice_volume;
+            s.atc_volume = d.atc_volume;
+            s.music_volume = d.music_volume;
+            s.radio_ducking = d.radio_ducking;
+            s.rwr_tones = d.rwr_tones;
+            s.engine_low_pass = d.engine_low_pass;
+            s.voice = d.voice;
+            s.mic_gain = d.mic_gain;
+        }
+        Tab::Controls => {
+            s.head_tracking = d.head_tracking;
+            s.tracking_mouse_look = d.tracking_mouse_look;
+        }
     }
 }
 
@@ -706,5 +808,29 @@ fn control_options(
             Some(src) => ui.colored_label(GREEN, t!("options-tracking", source = src.name())),
             None => ui.colored_label(AMBER, t!("options-no-tracker")),
         };
+    }
+}
+
+#[cfg(test)]
+mod reset_tests {
+    use super::*;
+
+    /// RESET TAB puts back only its own tab's settings.
+    #[test]
+    fn a_tab_resets_only_its_settings() {
+        let d = defaults();
+        let mut s = d.clone();
+        s.shadows = !d.shadows;
+        s.fps_cap = 60;
+        s.engine_volume = 0.2;
+        s.classic_hud = !d.classic_hud;
+        reset_tab(Tab::Graphics, &mut s, &d);
+        assert_eq!((s.shadows, s.fps_cap), (d.shadows, d.fps_cap));
+        assert_eq!(s.engine_volume, 0.2);
+        assert_eq!(s.classic_hud, !d.classic_hud);
+        reset_tab(Tab::Sound, &mut s, &d);
+        reset_tab(Tab::Game, &mut s, &d);
+        assert_eq!(s.engine_volume, d.engine_volume);
+        assert_eq!(s.classic_hud, d.classic_hud);
     }
 }

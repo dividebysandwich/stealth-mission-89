@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Pratite razvoj
 menu-quit = IZLAZ
     .facts = Izlaz na radnu površinu
+menu-quit-confirm = IZAĆI IZ IGRE?
+    .text = Povratak na radnu površinu.
 menu-version = VERZIJA { $version }
 
 ## Zaslon pojedinačne misije

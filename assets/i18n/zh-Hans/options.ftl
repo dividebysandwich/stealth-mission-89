@@ -100,6 +100,10 @@ options-fps-cap-off = 关闭
 options-fps-cap-vr = 在 VR 中由头显决定帧率
 options-ui-scale = 菜单大小
     .facts = 菜单和窗口的大小 (在屏幕容得下的范围内)。100%: 原始大小
+options-reset = 重置此页
+    .facts = 此页设置恢复默认 (会先确认)
+options-reset-confirm = 重置{ $tab }?
+    .text = 这些设置会恢复为新玩家的状态。语言、语音和按键绑定保持不变。
 options-auto-detail = 自动场景细节（VR）
     .facts =
         在头显中，帧率不足时城镇、森林和田野的显示范围会缩小，有余力时再恢复

@@ -367,6 +367,8 @@ menu-discord = DISCORD
         開発の最新情報
 menu-quit = 終了
     .facts = デスクトップに戻ります
+menu-quit-confirm = ゲームを終了しますか?
+    .text = デスクトップに戻ります。
 menu-version = バージョン { $version }
 
 ## Single mission screen

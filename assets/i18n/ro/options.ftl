@@ -100,6 +100,10 @@ options-fps-cap-off = Oprit
 options-fps-cap-vr = În VR casca stabilește rata cadrelor
 options-ui-scale = Dimensiunea meniurilor
     .facts = Dimensiunea meniurilor și ferestrelor, cât permite ecranul. 100%: dimensiunea lor
+options-reset = RESETEAZĂ FILA
+    .facts = Setările acestei file revin la cele implicite (întreabă mai întâi)
+options-reset-confirm = RESETEZI { $tab }?
+    .text = Aceste setări revin la cele ale unui jucător nou. Limba, vocile și tastele rămân.
 options-auto-detail = Detalii automate ale peisajului (VR)
     .facts =
         În cască, raza de afișare a orașelor, pădurilor și câmpurilor scade cât timp cadrele întârzie și crește la loc când rămâne timp

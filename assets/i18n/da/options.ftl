@@ -100,6 +100,10 @@ options-fps-cap-off = Fra
 options-fps-cap-vr = I VR bestemmer headsettet billedfrekvensen
 options-ui-scale = Menustørrelse
     .facts = Størrelsen på menuer og vinduer, så vidt skærmen har plads. 100 %: deres egen størrelse
+options-reset = NULSTIL FANE
+    .facts = Fanens indstillinger tilbage til standard (spørger først)
+options-reset-confirm = NULSTIL { $tab }?
+    .text = Disse indstillinger går tilbage til en ny spillers. Sprog, stemmer og taster bliver.
 options-auto-detail = Automatisk landskabsdetalje (VR)
     .facts =
         I headsettet skrumper rækkevidden af byer, skove og marker, når billederne kommer for sent, og vokser igen, når der er tid til overs

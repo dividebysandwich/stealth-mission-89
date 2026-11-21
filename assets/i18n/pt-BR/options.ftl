@@ -100,6 +100,10 @@ options-fps-cap-off = Desligado
 options-fps-cap-vr = Em RV o headset define os quadros
 options-ui-scale = Tamanho dos menus
     .facts = O tamanho dos menus e janelas, até onde a tela couber. 100%: o tamanho deles
+options-reset = REDEFINIR ABA
+    .facts = As configurações desta aba voltam ao padrão (pergunta antes)
+options-reset-confirm = REDEFINIR { $tab }?
+    .text = Estas configurações voltam às de um jogador novo. O idioma, as vozes e as teclas ficam.
 options-auto-detail = Detalhe automático do cenário (VR)
     .facts =
         No headset, o alcance de cidades, florestas e campos diminui quando os quadros atrasam e volta a crescer quando sobra tempo

@@ -101,6 +101,10 @@ options-fps-cap-off = Off
 options-fps-cap-vr = In VR the headset sets the frame rate
 options-ui-scale = Menu size
     .facts = The size of the menus and windows, as far as the screen has room. 100%: their own size
+options-reset = RESET TAB
+    .facts = This tab's settings back to their defaults (asks first)
+options-reset-confirm = RESET { $tab }?
+    .text = These settings go back to what a new player has. The language, voices and key bindings stay.
 options-auto-detail = Automatic scenery detail (VR)
     .facts =
         In the headset, the range of towns, forests and fields shrinks while frames run late and grows back when there is time to spare

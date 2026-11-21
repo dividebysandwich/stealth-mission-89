@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Следете разработката
 menu-quit = ИЗХОД
     .facts = Излизане на работния плот
+menu-quit-confirm = ИЗХОД ОТ ИГРАТА?
+    .text = Обратно към работния плот.
 menu-version = ВЕРСИЯ { $version }
 
 ## Екран за единична мисия

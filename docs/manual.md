@@ -201,7 +201,9 @@ Helicopter missions are short ones near a friendly base; in the UH-60 and the CH
 ## 1.3 Options
 
 OPTIONS holds your own settings, saved for every later game. The in-flight menu (Esc) has the same
-pages for what can change in flight.
+pages for what can change in flight. *RESET TAB* (beside BACK) puts the settings of the tab shown
+back to a new player's, after asking; the language, the voices, the microphone and the key bindings
+stay as they are.
 
 | Tab | Settings |
 |---|---|

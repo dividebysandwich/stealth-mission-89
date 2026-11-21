@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Acompanhe o desenvolvimento
 menu-quit = SAIR
     .facts = Voltar à área de trabalho
+menu-quit-confirm = SAIR DO JOGO?
+    .text = Voltar para a área de trabalho.
 menu-version = VERSÃO { $version }
 
 ## Tela de missão avulsa

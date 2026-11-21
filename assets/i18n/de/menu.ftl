@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Die Entwicklung verfolgen
 menu-quit = BEENDEN
     .facts = Zurück zum Desktop
+menu-quit-confirm = SPIEL BEENDEN?
+    .text = Zurück zum Desktop.
 menu-version = VERSION { $version }
 
 ## Einzelmissionsbildschirm

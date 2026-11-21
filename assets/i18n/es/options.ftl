@@ -100,6 +100,10 @@ options-fps-cap-off = Desactivado
 options-fps-cap-vr = En RV el visor marca los fotogramas
 options-ui-scale = Tamaño de los menús
     .facts = El tamaño de menús y ventanas, hasta donde quepa en la pantalla. 100 %: su tamaño propio
+options-reset = RESTABLECER PESTAÑA
+    .facts = Los ajustes de esta pestaña vuelven a sus valores predeterminados (pregunta antes)
+options-reset-confirm = ¿RESTABLECER { $tab }?
+    .text = Estos ajustes vuelven a los de un jugador nuevo. El idioma, las voces y las teclas se mantienen.
 options-auto-detail = Detalle automático del paisaje (VR)
     .facts =
         En el visor, el alcance de pueblos, bosques y campos se reduce cuando los fotogramas van con retraso y vuelve a crecer cuando sobra tiempo

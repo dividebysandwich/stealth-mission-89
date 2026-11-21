@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Seuraa kehitystä
 menu-quit = LOPETA
     .facts = Poistu työpöydälle
+menu-quit-confirm = LOPETETAANKO PELI?
+    .text = Takaisin työpöydälle.
 menu-version = VERSIO { $version }
 
 ## Yksittäisen tehtävän näyttö

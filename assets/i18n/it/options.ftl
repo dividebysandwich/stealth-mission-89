@@ -100,6 +100,10 @@ options-fps-cap-off = Disattivato
 options-fps-cap-vr = In VR il visore decide i fotogrammi
 options-ui-scale = Dimensione dei menu
     .facts = La dimensione di menu e finestre, finché lo schermo ha spazio. 100%: la loro dimensione
+options-reset = RIPRISTINA SCHEDA
+    .facts = Le impostazioni di questa scheda tornano ai valori predefiniti (chiede prima)
+options-reset-confirm = RIPRISTINARE { $tab }?
+    .text = Queste impostazioni tornano a quelle di un nuovo giocatore. Lingua, voci e tasti restano.
 options-auto-detail = Dettaglio automatico dello scenario (VR)
     .facts =
         Nel visore, la distanza di città, boschi e campi si riduce quando i fotogrammi sono in ritardo e torna a crescere quando avanza tempo

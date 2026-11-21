@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Sledujte vývoj
 menu-quit = KONEC
     .facts = Ukončit do systému
+menu-quit-confirm = UKONČIT HRU?
+    .text = Zpět na plochu.
 menu-version = VERZE { $version }
 
 ## Obrazovka jednotlivé mise

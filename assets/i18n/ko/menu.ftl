@@ -367,6 +367,8 @@ menu-discord = DISCORD
         개발 소식 팔로우
 menu-quit = 종료
     .facts = 바탕 화면으로 나가기
+menu-quit-confirm = 게임을 종료합니까?
+    .text = 바탕 화면으로 돌아갑니다.
 menu-version = 버전 { $version }
 
 ## 단일 임무 화면

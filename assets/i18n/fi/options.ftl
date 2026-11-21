@@ -100,6 +100,10 @@ options-fps-cap-off = Pois
 options-fps-cap-vr = VR:ssä lasit määräävät kuvataajuuden
 options-ui-scale = Valikkojen koko
     .facts = Valikkojen ja ikkunoiden koko sikäli kuin näytölle mahtuu. 100 %: niiden oma koko
+options-reset = PALAUTA VÄLILEHTI
+    .facts = Tämän välilehden asetukset oletuksiin (kysyy ensin)
+options-reset-confirm = PALAUTETAANKO { $tab }?
+    .text = Nämä asetukset palaavat uuden pelaajan asetuksiin. Kieli, äänet ja näppäimet säilyvät.
 options-auto-detail = Maiseman automaattiset yksityiskohdat (VR)
     .facts =
         Lasien kanssa kaupunkien, metsien ja peltojen näkyvyysetäisyys lyhenee, kun ruudunpäivitys myöhästyy, ja kasvaa takaisin, kun aikaa jää yli

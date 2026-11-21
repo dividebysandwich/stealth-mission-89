@@ -100,6 +100,10 @@ options-fps-cap-off = As
 options-fps-cap-vr = I VR socraíonn an cloigeann an ráta frámaí
 options-ui-scale = Méid na roghchlár
     .facts = Méid na roghchlár agus na bhfuinneog, a mhéid a bhfuil spás ar an scáileán. 100%: a méid féin
+options-reset = ATHSHOCRAIGH AN CLUAISÍN
+    .facts = Socruithe an chluaisín seo ar ais go dtí na réamhshocruithe (fiafraíonn sé ar dtús)
+options-reset-confirm = ATHSHOCRAIGH { $tab }?
+    .text = Téann na socruithe seo ar ais go dtí socruithe imreora nua. Fanann an teanga, na guthanna agus na heochracha.
 options-auto-detail = Mionsonraí uathoibríocha na tírdhreacha (VR)
     .facts =
         Sa cheannsraith, laghdaíonn raon na mbailte, na foraoisí agus na bpáirceanna nuair a bhíonn fráma déanach agus fásann sé ar ais nuair a bhíonn am le spáráil

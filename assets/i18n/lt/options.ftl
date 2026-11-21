@@ -100,6 +100,10 @@ options-fps-cap-off = Išjungta
 options-fps-cap-vr = VR režime kadrų dažnį nustato šalmas
 options-ui-scale = Meniu dydis
     .facts = Meniu ir langų dydis, kiek leidžia ekranas. 100 %: jų pačių dydis
+options-reset = ATKURTI SKIRTUKĄ
+    .facts = Šio skirtuko nustatymai grąžinami į numatytuosius (pirmiausia paklausia)
+options-reset-confirm = ATKURTI { $tab }?
+    .text = Šie nustatymai grįžta į naujo žaidėjo. Kalba, balsai ir klavišai lieka.
 options-auto-detail = Automatinis aplinkos detalumas (VR)
     .facts =
         Ausinėje miestų, miškų ir laukų matomumo atstumas mažėja, kai kadrai vėluoja, ir didėja, kai yra laiko atsargos

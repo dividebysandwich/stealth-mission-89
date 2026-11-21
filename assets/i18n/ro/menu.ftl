@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Urmăriți dezvoltarea
 menu-quit = IEȘIRE
     .facts = Ieșire pe desktop
+menu-quit-confirm = IEȘI DIN JOC?
+    .text = Înapoi la desktop.
 menu-version = VERSIUNEA { $version }
 
 ## Ecranul misiunii simple

@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Suivez le développement
 menu-quit = QUITTER
     .facts = Retour au bureau
+menu-quit-confirm = QUITTER LE JEU ?
+    .text = Retour au bureau.
 menu-version = VERSION { $version }
 
 ## Écran de mission simple

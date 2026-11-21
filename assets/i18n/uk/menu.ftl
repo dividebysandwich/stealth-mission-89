@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Стежте за розробкою
 menu-quit = ВИЙТИ
     .facts = Вихід на робочий стіл
+menu-quit-confirm = ВИЙТИ З ГРИ?
+    .text = Повернення на робочий стіл.
 menu-version = ВЕРСІЯ { $version }
 
 ## Екран одиночної місії

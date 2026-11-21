@@ -378,6 +378,8 @@ menu-discord = DISCORD
         Follow development
 menu-quit = QUIT
     .facts = Exit to the desktop
+menu-quit-confirm = QUIT THE GAME?
+    .text = Back to the desktop.
 menu-version = VERSION { $version }
 
 ## Single mission screen

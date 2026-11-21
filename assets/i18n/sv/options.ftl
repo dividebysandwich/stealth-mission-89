@@ -100,6 +100,10 @@ options-fps-cap-off = Av
 options-fps-cap-vr = I VR bestämmer headsetet bildfrekvensen
 options-ui-scale = Menystorlek
     .facts = Storleken på menyer och fönster, så långt skärmen räcker. 100 %: deras egen storlek
+options-reset = ÅTERSTÄLL FLIK
+    .facts = Flikens inställningar tillbaka till standard (frågar först)
+options-reset-confirm = ÅTERSTÄLLA { $tab }?
+    .text = Dessa inställningar går tillbaka till en ny spelares. Språk, röster och tangenter blir kvar.
 options-auto-detail = Automatisk terrängdetalj (VR)
     .facts =
         I headsetet krymper räckvidden för städer, skogar och fält när bildrutorna släpar efter och växer tillbaka när det finns tid över

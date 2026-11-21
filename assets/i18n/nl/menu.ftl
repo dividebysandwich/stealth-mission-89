@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Volg de ontwikkeling
 menu-quit = AFSLUITEN
     .facts = Terug naar het bureaublad
+menu-quit-confirm = SPEL AFSLUITEN?
+    .text = Terug naar het bureaublad.
 
 menu-version = VERSIE { $version }
 

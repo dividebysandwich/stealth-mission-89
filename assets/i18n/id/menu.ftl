@@ -367,6 +367,8 @@ menu-discord = DISCORD
         Ikuti perkembangan
 menu-quit = KELUAR
     .facts = Keluar ke desktop
+menu-quit-confirm = KELUAR DARI PERMAINAN?
+    .text = Kembali ke desktop.
 menu-version = VERSI { $version }
 
 ## Layar misi tunggal
