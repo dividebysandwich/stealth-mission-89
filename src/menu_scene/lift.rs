@@ -218,11 +218,13 @@ fn sling(
     time: Res<Time>,
 ) {
     /// The approach ends (s), the hook-up, the lift; the hover's height over the crate's top
-    /// and the rope's length (m).
-    const ARRIVE: f32 = 1.6;
-    const HOOK: f32 = 2.2;
-    const LIFT: f32 = 2.8;
+    /// and how much higher it comes in (m), its speed coming in (m/s).
+    const ARRIVE: f32 = 3.2;
+    const HOOK: f32 = 4.0;
+    const LIFT: f32 = 4.8;
     const HOVER: f32 = 12.0;
+    const DESCENT: f32 = 4.0;
+    const SPEED: f32 = 7.0;
     if stage.begin(&[stage::AIRCRAFT]) {
         let ground = stage.land();
         let heading = (stage.director.roll % 628) as f32 * 0.01;
@@ -243,24 +245,30 @@ fn sling(
     let (Ok(e), Ok(mut l)) = (heli.single(), load.single_mut()) else { return };
     let top = crate::scenery::CRATE_SIZE.z as f64;
     let f = stage::forward(l.heading);
-    // In over the crate, slowing; the hover; then up and away, nose down.
-    let (along, up) = if t < ARRIVE {
-        let s = (ARRIVE - t) / ARRIVE;
-        (-60.0 * s * s, HOVER + 15.0 * s)
+    // In over the crate, slowing smoothly (the nose up as much as it brakes) and settling;
+    // the hover; then the load taken up slowly, and away, the nose eased down.
+    let smooth = |u: f32| {
+        let u = u.clamp(0.0, 1.0);
+        u * u * (3.0 - 2.0 * u)
+    };
+    let (along, up, flare) = if t < ARRIVE {
+        let u = t / ARRIVE;
+        // Its speed falls from `SPEED` as 1 - smoothstep: the braking eases in and out.
+        let gone = SPEED * ARRIVE * (u - u * u * u + 0.5 * u * u * u * u);
+        let brake = SPEED / ARRIVE * 6.0 * u * (1.0 - u);
+        (
+            gone - SPEED * ARRIVE * 0.5,
+            HOVER + DESCENT * (1.0 - smooth(u)),
+            (brake / 9.81).atan() * 0.7,
+        )
     } else if t < LIFT {
-        (0.0, HOVER)
+        (0.0, HOVER, 0.0)
     } else {
         let tau = t - LIFT;
-        (2.5 * tau * tau, HOVER + 5.0 * tau)
+        let away = (tau - 0.8).max(0.0);
+        (0.9 * away * away, HOVER + 0.7 * tau * tau, -0.1 * smooth((tau - 0.5) / 1.5))
     };
     let (off, bank, pitch) = sway(t);
-    let flare = if t < ARRIVE {
-        0.18 * (ARRIVE - t) / ARRIVE
-    } else if t > LIFT {
-        -0.12
-    } else {
-        0.0
-    };
     let base = l.ground + enu((f.x * along) as f64, top + up as f64, (f.y * along) as f64);
     let p = base + DVec3::new(off.x as f64 * 0.5, off.y as f64, off.z as f64 * 0.5);
     if let Ok((mut wp, mut tf, _)) = q.get_mut(e) {

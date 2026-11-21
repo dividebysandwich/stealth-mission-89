@@ -1,4 +1,4 @@
-//! The scenes behind the main menu take turns: each is shown for `SHOT_SECONDS`, the first the
+//! The scenes behind the main menu take turns: each is shown for `Shot::seconds`, the first the
 //! night on Tabor's apron, the others in a shuffled order; every `LOOK_EVERY` scene changes the
 //! weather, the time of day and the theater change. A scene that has to be somewhere else (the
 //! apron, the sea by a carrier) moves to a theater of its own under the same sky. The scenes
@@ -158,6 +158,15 @@ impl Shot {
             Shot::Signal => "signal",
             Shot::Nap => "nap",
             Shot::GunnerConsole => "gunner",
+        }
+    }
+
+    /// How long the scene is shown (s): `SHOT_SECONDS`, longer for a slow one.
+    pub fn seconds(self) -> f32 {
+        match self {
+            // A helicopter settling into a hover and lifting a load takes its time.
+            Shot::Sling => 7.5,
+            _ => SHOT_SECONDS,
         }
     }
 
@@ -380,7 +389,7 @@ impl Director {
         }
         // A scene waiting for its ground (`Stage::ready`) gets its time once it is there.
         let waiting = !self.spawned && self.t < MAX_WAIT;
-        if self.t < SHOT_SECONDS || waiting {
+        if self.t < self.shot.seconds() || waiting {
             return false;
         }
         if self.held && self.shot == Shot::Apron {
@@ -564,7 +573,7 @@ mod tests {
             let looks = d.looks;
             // The scene's things are there (else it waits for them).
             d.spawned = true;
-            assert!(d.step(SHOT_SECONDS));
+            assert!(d.step(d.shot.seconds()));
             assert_eq!(d.looks - looks, (n % LOOK_EVERY == 0) as usize, "scene {n}");
             assert!(fits(d.shot.place(), d.look.theater), "{:?} on {}", d.shot, d.look.theater);
         }
