@@ -271,6 +271,7 @@ effect-water = Water reflections
     .facts =
         Modern shaders: the sea and the lakes mirror the sky in their waves
         The sun's and the moon's light sparkles on the water
+        On calm water seen at a flat angle the ships, the shore and aircraft mirror in it too (desktop)
 effect-ocean-waves = Simulated ocean
     .facts =
         With water reflections: the open sea's waves simulated from the wind's spectrum

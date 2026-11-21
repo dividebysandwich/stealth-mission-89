@@ -237,6 +237,7 @@ effect-water = Víztükröződés
     .facts =
         Modern árnyalók: a tenger és a tavak hullámai tükrözik az eget
         A nap és a hold fénye csillog a vízen
+        Nyugodt vízben, lapos szögből nézve a hajók, a part és a repülőgépek is tükröződnek (asztali gép)
 effect-ocean-waves = Szimulált óceán
     .facts =
         Vízi tükröződéssel: a nyílt tenger hullámai a szél spektrumából szimulálva

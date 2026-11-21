@@ -240,6 +240,7 @@ effect-water = Reflets sur l'eau
     .facts =
         Shaders modernes : la mer et les lacs reflètent le ciel dans leurs vagues
         La lumière du soleil et de la lune scintille sur l'eau
+        Sur une eau calme vue sous un angle rasant, les navires, la côte et les avions s'y reflètent aussi (ordinateur)
 effect-ocean-waves = Océan simulé
     .facts =
         Avec les reflets de l'eau : les vagues du large simulées d'après le spectre du vent

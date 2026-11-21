@@ -237,6 +237,7 @@ effect-water = Odrazy na vode
     .facts =
         Moderné shadery: more a jazerá zrkadlia oblohu vo vlnách
         Svetlo slnka a mesiaca sa trbliece na vode
+        V pokojnej vode pri pohľade pod nízkym uhlom sa zrkadlia aj lode, pobrežie a lietadlá (počítač)
 effect-ocean-waves = Simulovaný oceán
     .facts =
         S odrazmi na vode: vlny otvoreného mora simulované zo spektra vetra

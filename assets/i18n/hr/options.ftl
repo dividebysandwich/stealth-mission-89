@@ -237,6 +237,7 @@ effect-water = Odsjaji na vodi
     .facts =
         Moderni shaderi: more i jezera zrcale nebo u valovima
         Svjetlost sunca i mjeseca svjetluca na vodi
+        U mirnoj vodi gledanoj pod niskim kutom zrcale se i brodovi, obala i zrakoplovi (računalo)
 effect-ocean-waves = Simulirani ocean
     .facts =
         S odrazima na vodi: valovi otvorenog mora simulirani iz spektra vjetra

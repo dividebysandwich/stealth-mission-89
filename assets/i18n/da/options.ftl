@@ -237,6 +237,7 @@ effect-water = Spejlinger i vand
     .facts =
         Moderne shadere: havet og søerne spejler himlen i deres bølger
         Solens og månens lys glitrer på vandet
+        I roligt vand set i lav vinkel spejler skibe, kyst og fly sig også (computer)
 effect-ocean-waves = Simuleret ocean
     .facts =
         Med vandspejlinger: det åbne havs bølger simuleret ud fra vindens spektrum

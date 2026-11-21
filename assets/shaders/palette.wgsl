@@ -145,7 +145,8 @@ struct Globals {
     // The floating origin (xyz): the windows stay put on the walls.
     city_origin: vec4<f32>,
     ground_detail: vec4<f32>,
-    // Reflections (`PALETTE_GLASS`, `PALETTE_WATER`): x 1 on glass, y 1 on water.
+    // Reflections (`PALETTE_GLASS`, `PALETTE_WATER`): x 1 on glass, y 1 on water; zw the main
+    // view's size while its water mirrors the picture (water_ssr.rs, `mirror_share`).
     reflections: vec4<f32>,
 };
 
@@ -2058,6 +2059,22 @@ fn downwash(world: vec3<f32>, t: f32, foot: f32) -> vec3<f32> {
     return vec3<f32>(out.xy, min(out.z, 0.85));
 }
 
+// The share of the picture the screen space reflection takes on calm water seen at a flat
+// angle (water_ssr.wgsl, after the main passes, reads it from the alpha): as much as the water
+// mirrors there, only in the main view, nothing in a rough sea, looking down at it, or far off
+// in the haze. `v`: the view direction (unit), `d`: the distance.
+fn mirror_share(v: vec3<f32>, d: f32) -> f32 {
+    if (globals.reflections.z <= 0.0 || any(abs(view.viewport.zw - globals.reflections.zw) > vec2<f32>(0.5)) || flir_view()) {
+        return 0.0;
+    }
+    let down = clamp(-v.y, 0.0, 1.0);
+    let f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - down, 5.0);
+    let calm = 1.0 - smoothstep(1.0, 3.0, globals.sea.x);
+    let flat = 1.0 - smoothstep(0.2, 0.6, down);
+    let near = 1.0 - smoothstep(15000.0, 40000.0, d);
+    return clamp(f * WATER_MIRROR * calm * flat * near, 0.0, 0.95);
+}
+
 // `wave`: the point of the sea (from the floating origin) whose waves light this pixel (the
 // waves' mesh: before its displacement).
 fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
@@ -2535,6 +2552,11 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
         rgb = atmosphere(rgb, in.world_position, d);
     }
     var alpha = 1.0;
+#ifdef PALETTE_WATER
+    if (!is_line && (material.flags & FLAG_WATER) != 0u) {
+        alpha = 1.0 - mirror_share(dir / max(d, 1e-3), d);
+    }
+#endif
 #ifdef DOT_BATCH
 #ifdef DOT_COLOUR
     // A glowing lamp: its colour through the storm haze and the whiteout (their light only,

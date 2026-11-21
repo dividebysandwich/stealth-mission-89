@@ -237,6 +237,7 @@ effect-water = Atspindžiai vandenyje
     .facts =
         Modernūs šešėliuokliai: jūra ir ežerai bangose atspindi dangų
         Saulės ir mėnulio šviesa žiba vandenyje
+        Ramiame vandenyje, žiūrint mažu kampu, atsispindi ir laivai, krantas bei orlaiviai (kompiuteris)
 effect-ocean-waves = Imituojamas vandenynas
     .facts =
         Su vandens atspindžiais: atviros jūros bangos imituojamos pagal vėjo spektrą

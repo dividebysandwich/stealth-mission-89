@@ -84,6 +84,7 @@ fn spawn(
                 ..default()
             }),
             FreeCam { yaw, pitch },
+            crate::water_ssr::WaterMirror,
             WorldAnchor,
             WorldPos(ground + DVec3::Y * alt),
             Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0)),

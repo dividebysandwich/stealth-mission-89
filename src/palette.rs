@@ -524,10 +524,12 @@ fn update_globals(
     time: Res<Time>,
     sky: Res<crate::sky::Sky>,
     (shadow_lights, world_cameras): (ShadowLights, WorldCameras),
-    (bursts, ocean, downwash): (
+    (bursts, ocean, downwash, window, mirrors): (
         Res<crate::flashes::Bursts>,
         Res<crate::ocean::Ocean>,
         Option<Res<crate::rotor_blur::Downwash>>,
+        Query<&Window, With<bevy::window::PrimaryWindow>>,
+        Query<(), With<crate::water_ssr::WaterMirror>>,
     ),
     (theater, budget): (
         Option<Res<crate::world::Theater>>,
@@ -628,11 +630,17 @@ fn update_globals(
     (g.ocean, g.ocean_mask, g.ocean_levels) = ocean.globals(origin.origin);
     g.downwash = downwash.map_or([Vec4::ZERO; 2], |d| d.0);
     let on = |b: bool| b as u32 as f32;
+    // The main view's size while its water mirrors the picture (water_ssr.rs).
+    let mirror = window
+        .single()
+        .ok()
+        .filter(|_| crate::water_ssr::active(&settings) && !mirrors.is_empty())
+        .map_or(Vec2::ZERO, |w| Vec2::new(w.physical_width() as f32, w.physical_height() as f32));
     g.reflections = Vec4::new(
         on(crate::palette_material::glass(&settings)),
         on(crate::palette_material::water(&settings)),
-        0.0,
-        0.0,
+        mirror.x,
+        mirror.y,
     );
     // The northern lights over the North Cape.
     if settings.effects.night_sky {

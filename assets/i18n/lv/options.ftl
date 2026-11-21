@@ -237,6 +237,7 @@ effect-water = Atspīdumi ūdenī
     .facts =
         Modernie ēnotāji: jūra un ezeri viļņos atspoguļo debesis
         Saules un mēness gaisma mirdz uz ūdens
+        Mierīgā ūdenī, skatoties zemā leņķī, atspoguļojas arī kuģi, krasts un lidaparāti (dators)
 effect-ocean-waves = Simulēts okeāns
     .facts =
         Ar ūdens atspulgiem: atklātas jūras viļņi simulēti no vēja spektra

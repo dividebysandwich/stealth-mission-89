@@ -237,6 +237,7 @@ effect-water = Odsevi na vodi
     .facts =
         Sodobni senčilniki: morje in jezera zrcalijo nebo v valovih
         Svetloba sonca in lune se blešči na vodi
+        V mirni vodi pod nizkim kotom se zrcalijo tudi ladje, obala in letala (računalnik)
 effect-ocean-waves = Simuliran ocean
     .facts =
         Z odsevi na vodi: valovi odprtega morja, simulirani iz spektra vetra

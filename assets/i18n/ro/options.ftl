@@ -237,6 +237,7 @@ effect-water = Reflexii în apă
     .facts =
         Shadere moderne: marea și lacurile oglindesc cerul în valuri
         Lumina soarelui și a lunii sclipește pe apă
+        În apa liniștită privită sub un unghi mic se oglindesc și navele, țărmul și aeronavele (desktop)
 effect-ocean-waves = Ocean simulat
     .facts =
         Cu reflexii pe apă: valurile largului simulate din spectrul vântului

@@ -237,6 +237,7 @@ effect-water = Riflessi sull'acqua
     .facts =
         Shader moderni: il mare e i laghi riflettono il cielo nelle onde
         La luce del sole e della luna scintilla sull'acqua
+        Nell'acqua calma vista con un angolo radente si specchiano anche navi, costa e aerei (desktop)
 effect-ocean-waves = Oceano simulato
     .facts =
         Con i riflessi dell'acqua: le onde del mare aperto simulate dallo spettro del vento

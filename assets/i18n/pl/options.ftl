@@ -237,6 +237,7 @@ effect-water = Odbicia w wodzie
     .facts =
         Nowoczesne shadery: morze i jeziora odbijają niebo w falach
         Światło słońca i księżyca skrzy się na wodzie
+        W spokojnej wodzie widzianej pod niskim kątem odbijają się też statki, brzeg i samoloty (komputer)
 effect-ocean-waves = Symulowany ocean
     .facts =
         Z odbiciami w wodzie: fale otwartego morza symulowane z widma wiatru

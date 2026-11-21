@@ -527,8 +527,9 @@ pub struct Globals {
     /// The floating origin (xyz, metres): the windows' pattern stays put on the walls.
     pub city_origin: Vec4,
     pub ground_detail: Vec4,
-    /// Reflections (`FX_GLASS`, `FX_WATER`): x 1 on glass, y 1 on water. Must stay the last field (glvr reads it from
-    /// the end of the bytes).
+    /// Reflections (`FX_GLASS`, `FX_WATER`): x 1 on glass, y 1 on water; zw the main view's
+    /// size while its water mirrors the picture (water_ssr.rs; 0 when not). Must stay the last
+    /// field (glvr reads it from the end of the bytes).
     pub reflections: Vec4,
 }
 

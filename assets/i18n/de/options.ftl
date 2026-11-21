@@ -237,6 +237,7 @@ effect-water = Wasserspiegelungen
     .facts =
         Moderne Shader: Meer und Seen spiegeln den Himmel in ihren Wellen
         Das Licht von Sonne und Mond glitzert auf dem Wasser
+        In ruhigem Wasser spiegeln sich bei flachem Blickwinkel auch Schiffe, Küste und Flugzeuge (Desktop)
 effect-ocean-waves = Simulierter Ozean
     .facts =
         Mit Wasserspiegelungen: die Wellen der offenen See aus dem Windspektrum simuliert

@@ -237,6 +237,7 @@ effect-water = Peegeldused vees
     .facts =
         Kaasaegsed varjutajad: meri ja järved peegeldavad lainetes taevast
         Päikese- ja kuuvalgus sädeleb veel
+        Vaikses vees peegelduvad madala nurga all vaadates ka laevad, rannik ja lennukid (arvuti)
 effect-ocean-waves = Simuleeritud ookean
     .facts =
         Veepeegeldustega: avamere lained simuleeritud tuule spektrist

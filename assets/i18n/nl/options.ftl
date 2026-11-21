@@ -237,6 +237,7 @@ effect-water = Weerspiegelingen in water
     .facts =
         Moderne shaders: zee en meren weerspiegelen de lucht in hun golven
         Het licht van zon en maan schittert op het water
+        In kalm water onder een vlakke hoek weerspiegelen ook schepen, de kust en vliegtuigen (desktop)
 effect-ocean-waves = Gesimuleerde oceaan
     .facts =
         Met waterreflecties: de golven van de open zee gesimuleerd uit het windspectrum

@@ -112,6 +112,7 @@ mod recorder;
 mod restart;
 mod rockets;
 mod rotor_blur;
+mod water_ssr;
 mod rwr;
 mod savegame;
 mod scenery;
@@ -355,6 +356,7 @@ pub fn run() {
             trackcam::TrackCamPlugin,
             trails::TrailsPlugin,
             rotor_blur::RotorBlurPlugin,
+            water_ssr::WaterSsrPlugin,
             afterburner_flame::AfterburnerFlamePlugin,
             landing_lights::LandingLightsPlugin,
             explosions::ExplosionsPlugin,

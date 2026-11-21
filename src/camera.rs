@@ -469,6 +469,7 @@ pub fn spawn_rig(
             // Palette colours must reach the screen unchanged.
             bevy::core_pipeline::tonemapping::Tonemapping::None,
             bevy::render::camera::MipBias(DESKTOP_MIP_BIAS),
+            crate::water_ssr::WaterMirror,
         ))
         .id();
     spawn_background(commands, cam, meshes, palette, MAIN_BACKGROUND_LAYER);

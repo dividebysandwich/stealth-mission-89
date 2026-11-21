@@ -237,6 +237,7 @@ effect-water = Riflessjonijiet fl-ilma
     .facts =
         Shaders moderni: il-baħar u l-lagi jirriflettu s-sema fil-mewġ
         Id-dawl tax-xemx u tal-qamar jilma fuq l-ilma
+        Fl-ilma kalm meta tarah b'angolu baxx, jirriflettu fih ukoll il-vapuri, ix-xatt u l-ajruplani (desktop)
 effect-ocean-waves = Oċean simulat
     .facts =
         Bir-riflessi fl-ilma: il-mewġ tal-baħar miftuħ simulat mill-ispettru tar-riħ

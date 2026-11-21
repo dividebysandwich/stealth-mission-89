@@ -237,6 +237,7 @@ effect-water = Frithchaitheamh uisce
     .facts =
         Scáthóirí nua-aimseartha: léiríonn an fharraige agus na lochanna an spéir ina dtonnta
         Glioscarnach sholas na gréine agus na gealaí ar an uisce
+        In uisce ciúin a fheictear ag uillinn íseal, frithchaitear na longa, an cósta agus na haerárthaí freisin (ríomhaire)
 effect-ocean-waves = Aigéan insamhalta
     .facts =
         Le frithchaitheamh uisce: tonnta na farraige móire insamhalta ó speictream na gaoithe

@@ -237,6 +237,7 @@ effect-water = Veden heijastukset
     .facts =
         Modernit varjostimet: meri ja järvet heijastavat taivasta aalloissaan
         Auringon ja kuun valo kimaltelee vedessä
+        Tyynessä vedessä loivassa kulmassa katsottuna heijastuvat myös laivat, ranta ja lentokoneet (tietokone)
 effect-ocean-waves = Simuloitu meri
     .facts =
         Vesiheijastusten kanssa: avomeren aallot simuloituna tuulen spektristä

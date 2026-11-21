@@ -168,6 +168,7 @@ fn spawn_scene(
         bevy::core_pipeline::tonemapping::Tonemapping::None,
         Projection::Perspective(PerspectiveProjection { near: 0.05, far: 600_000.0, ..default() }),
         SceneCamera,
+        crate::water_ssr::WaterMirror,
         SceneEntity,
         WorldAnchor,
         WorldPos(DVec3::ZERO),

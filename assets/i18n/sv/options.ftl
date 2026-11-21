@@ -237,6 +237,7 @@ effect-water = Speglingar i vatten
     .facts =
         Moderna shaders: havet och sjöarna speglar himlen i vågorna
         Solens och månens ljus glittrar på vattnet
+        I lugnt vatten sett i flack vinkel speglas även fartyg, kust och flygplan (dator)
 effect-ocean-waves = Simulerat hav
     .facts =
         Med vattenspeglingar: öppna havets vågor simulerade ur vindens spektrum

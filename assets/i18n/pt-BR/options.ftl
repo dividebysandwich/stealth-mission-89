@@ -237,6 +237,7 @@ effect-water = Reflexos na água
     .facts =
         Shaders modernos: o mar e os lagos refletem o céu em suas ondas
         A luz do sol e da lua cintila na água
+        Na água calma vista em ângulo rasante, os navios, a costa e as aeronaves também se refletem (computador)
 effect-ocean-waves = Oceano simulado
     .facts =
         Com reflexos na água: as ondas do mar aberto simuladas a partir do espectro do vento

@@ -237,6 +237,7 @@ effect-water = Pantulan air
     .facts =
         Shader modern: laut dan danau memantulkan langit di ombaknya
         Cahaya matahari dan bulan berkilauan di air
+        Di air tenang yang dilihat dari sudut landai, kapal, pantai, dan pesawat juga terpantul (desktop)
 effect-ocean-waves = Samudra simulasi
     .facts =
         Dengan pantulan air: ombak laut lepas disimulasikan dari spektrum angin
