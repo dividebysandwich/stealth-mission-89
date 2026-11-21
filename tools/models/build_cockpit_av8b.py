@@ -189,7 +189,7 @@ def material(name, like):
     return m
 
 
-for n, like in (("ded", "adi"), ("trackcam_left", "trackcam")):
+for n, like in (("ded", "adi"), ("screen_rwr", "adi"), ("trackcam_left", "trackcam")):
     material(n, like)
 # Guard covers and red buttons (not a shared material: the game takes its colour from the model).
 red = material("red", "yellow")
@@ -582,6 +582,7 @@ plates = [
     ("black", (75.0, -146.0, 25.0, 132.0)),  # option display unit
     ("dark", (-78.0, -6.0, 156.0, 20.0)),  # caution and warning lights
     ("dark", (-366.0, -140.0, 64.0, 120.0)),  # master modes, master arm, launch flare
+    ("black", (-366.0, -16.0, 64.0, 60.0)),  # RWR scope
     ("black", (-418.0, 46.0, 52.0, 146.0)),  # gear lights, gear handle, brake
     ("dark", (-364.0, 46.0, 60.0, 92.0)),  # flaps
     ("black", (-288.0, 44.0, 184.0, 140.0)),  # armament
@@ -691,6 +692,7 @@ for r, sx, sy in (
 screen("screen_left", scr["left"], BEZEL - 0.006, "trackcam_left")
 screen("screen_right", scr["right"], BEZEL - 0.006, "trackcam")
 screen("adi", scr["adi"], 0.0, round=True)
+screen("screen_rwr", scr["rwr"], PLATE, round=True)
 screen("ded", scr["ded"], PLATE + 0.0005)
 x, y, w, h = scr["ded"]
 frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), UFC_RAISE, UFC_RAISE + PLATE + 0.004)

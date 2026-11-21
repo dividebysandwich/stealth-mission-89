@@ -1470,7 +1470,7 @@ impl PanelLayout {
     ///   five windows down its right edge (DCLT, NVG, MENU, VOL, A/A), one more left.
     /// - The two MFDs either side (128 mm screens in square bezels, the right one 14 mm lower).
     /// - Left of the left MFD: the master mode buttons (NAV, VSTOL, A/G), the striped master arm
-    ///   and the launch flare switch. Right of the right MFD: the engine display panel (the
+    ///   and the launch flare switch, the RWR scope under them. Right of the right MFD: the engine display panel (the
     ///   nozzle angle needle, RPM) and the RWR / ECM lights and switches with the countermeasure
     ///   counts.
     /// - Under the controller: the master caution and warning lights, the standby attitude
@@ -1694,7 +1694,7 @@ impl PanelLayout {
                 MfdUnit { side: MfdSide::Left, screen: rect(-126.0 - w, -124.0, w, h), osbs: true },
                 MfdUnit { side: MfdSide::Right, screen: rect(126.0, -124.0, w, h), osbs: true },
             ],
-            rwr: None,
+            rwr: Some(rect(-362.0, -12.0, 56.0, 56.0)),
             hsi: None,
             tfr: None,
             ded: Some(ded),

@@ -985,9 +985,10 @@ mod tests {
                     "trackcam_third",
                     "label_NEAR",
                 ],
-                PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Av8b | PanelStyle::Ah64 => {
+                PanelStyle::Uh60 | PanelStyle::Ah1z | PanelStyle::Ah64 => {
                     vec!["ded", "trackcam_left", "label_NEAR"]
                 }
+                PanelStyle::Av8b => vec!["screen_rwr", "ded", "trackcam_left", "label_NEAR"],
                 PanelStyle::Rah66 | PanelStyle::Rah66Cpg => {
                     vec!["ded", "trackcam_left", "label_NEAR", "screen_lmpd", "screen_rmpd"]
                 }
