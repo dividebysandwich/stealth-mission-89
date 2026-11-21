@@ -408,6 +408,9 @@ pub const SUPPLY_WAIT: f64 = 5.0 * 60.0;
 pub const SUPPLY_LOW: f64 = 0.6;
 pub const SUPPLY_TRUCKS: usize = 3;
 pub const TECHNICAL_CHANCE: f64 = 0.5;
+/// Supply convoys set off at least this long (s) after each other, so that those to bases
+/// along the same road do not drive in each other.
+pub const SUPPLY_GAP_S: f64 = 45.0;
 /// The enemy's fleet of supply trucks, and how many new ones an hour make up for those lost.
 pub const TRUCK_FLEET: usize = 36;
 pub const TRUCK_REPLACE: f64 = 0.5;

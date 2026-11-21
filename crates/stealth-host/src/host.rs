@@ -1063,11 +1063,13 @@ impl Host {
                 CampaignEvent::ConvoyEnded { id } => sim.end_convoy(*id),
                 CampaignEvent::SupplyConvoyLaunched { side, tag, units, route, .. } => {
                     let kinds = glue::convoy_kinds(*side, units);
-                    // Test aid: `SM89_SUPPLY_ALONG=<m>` starts them that far along the road.
+                    // Test aid: `SM89_SUPPLY_ALONG=<m>` starts them that far along the road
+                    // (each one 900 m short of the last, as they would have driven).
+                    let ahead = sim.convoys().iter().filter(|c| c.supply).count() as f64;
                     let along = std::env::var("SM89_SUPPLY_ALONG")
                         .ok()
-                        .and_then(|v| v.parse().ok())
-                        .unwrap_or(0.0);
+                        .and_then(|v| v.parse::<f64>().ok())
+                        .map_or(0.0, |m| (m - ahead * 900.0).max(0.0));
                     sim.spawn_supply_convoy(*tag, *side == Side::Blue, &kinds, route, along);
                 }
                 CampaignEvent::PlaceCaptured { place, side, members, removed } => {

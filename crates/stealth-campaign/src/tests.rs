@@ -4147,3 +4147,20 @@ fn trucks_that_turn_back_bring_their_loads_back() {
     assert_eq!(c.supply_log.trucks_lost, 0);
     assert!(full >= at_pool);
 }
+
+#[test]
+fn convoys_due_together_set_off_apart() {
+    let mut c = road_campaign();
+    for name in ["Melitopol", "Berdiansk"] {
+        let b = airfield_named(&c, name);
+        run_out(&mut c, b, Munition::SamShort);
+        run_out(&mut c, b, Munition::SamMedium);
+    }
+    let mut at = Vec::new();
+    for _ in 0..tuning::SUPPLY_WAIT as i32 + 120 {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        at.extend(convoys_launched(&ev).iter().map(|_| c.clock));
+    }
+    assert!(at.len() >= 2, "{at:?}");
+    assert!(at.windows(2).all(|w| w[1] - w[0] >= tuning::SUPPLY_GAP_S - 1.0), "{at:?}");
+}

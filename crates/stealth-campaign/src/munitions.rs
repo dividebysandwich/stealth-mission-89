@@ -864,6 +864,15 @@ impl CampaignState {
                 }
             }
             if self.cargo_runs[k].road.is_some() {
+                // One convoy onto the roads at a time (they share them from the entries); the
+                // test aid's empty ones (`supply_now`) at once.
+                let busy = !self.cargo_runs[k].load.is_empty() && self.cargo_runs.iter().any(|r| {
+                    r.state == CargoState::Airborne
+                        && r.road.as_ref().is_some_and(|w| now - w.launched < SUPPLY_GAP_S)
+                });
+                if busy {
+                    continue;
+                }
                 if !self.launch_road(k, ev) {
                     // No way there by road: it flies.
                     if let Some(w) = self.cargo_runs[k].road.take() {
