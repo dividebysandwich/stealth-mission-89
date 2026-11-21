@@ -515,6 +515,9 @@ pub struct Globals {
     pub ocean: Vec4,
     pub ocean_mask: Vec4,
     pub ocean_levels: [Vec4; 4],
+    /// Helicopters' downwash on the water (`rotor_blur::downwash`, with the ocean-waves
+    /// effect): each rotor's hub (xyz, the render world) and radius (w; 0: none).
+    pub downwash: [Vec4; 2],
     /// The ground detail (`FX_DETAIL`): x 1 when drawn, yz the floating origin's x and z modulo
     /// `DETAIL_PERIOD`.
     /// The towns' lights (`FX_CITY`): x the lit windows' strength 0..1 (0: none), y the range
@@ -701,6 +704,7 @@ impl Default for Globals {
             ocean: Vec4::ZERO,
             ocean_mask: Vec4::ZERO,
             ocean_levels: [Vec4::ZERO; 4],
+            downwash: [Vec4::ZERO; 2],
             city: Vec4::ZERO,
             city_origin: Vec4::ZERO,
             ground_detail: Vec4::ZERO,

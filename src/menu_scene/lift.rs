@@ -45,7 +45,7 @@ struct Hover {
     heading: f32,
 }
 
-/// The MH-60R in a high hover over the sea, its sonar's cable down into the water (the model's
+/// The MH-60R in a hover over the sea (its downwash beating the water), its sonar's cable down into the water (the model's
 /// dip slot), a little way off a carrier; the camera low over the waves, circling slowly.
 fn dip(
     mut stage: Stage,
@@ -54,7 +54,7 @@ fn dip(
     mut cam: Camera,
     mut fov: ResMut<SceneFov>,
 ) {
-    const HEIGHT: f64 = 30.0;
+    const HEIGHT: f64 = 18.0;
     if stage.begin(&[stage::AIRCRAFT]) {
         let places = stage.places();
         let deck = places.decks.get(stage.director.pick(places.decks.len().max(1))).copied();

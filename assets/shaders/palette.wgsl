@@ -134,6 +134,9 @@ struct Globals {
     ocean: vec4<f32>,
     ocean_mask: vec4<f32>,
     ocean_levels: array<vec4<f32>, 4>,
+    // Helicopters' downwash on the water (`downwash`): each rotor's hub (xyz) and radius (w,
+    // 0: none).
+    downwash: array<vec4<f32>, 2>,
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
     // The towns' lights (`PALETTE_CITY`): x the lit windows' strength, y the range inside which
@@ -2002,6 +2005,59 @@ fn flat_water_point(frag: vec2<f32>, world: vec3<f32>, face: vec3<f32>) -> vec3<
     return eye + ray * ((eye.y - world.y) / -ray.y);
 }
 
+// A helicopter's downwash on the water under it (`globals.downwash`: the rotor's hub (xyz)
+// and radius (w; 0: none), with the ocean-waves effect): the water roughened round under the
+// rotor, wavelets running out from it in gusts, spray where it hovers low. Fades out when the
+// hub is `WASH_REACH` radii up. The slope it adds (xy) and the spray's whiteness (z).
+const WASH_REACH: f32 = 5.0;
+
+fn downwash(world: vec3<f32>, t: f32, foot: f32) -> vec3<f32> {
+    var out = vec3<f32>(0.0);
+    for (var i = 0u; i < 2u; i++) {
+        let w = globals.downwash[i];
+        let r = w.w;
+        let h = w.y - world.y;
+        let s = 1.0 - h / (WASH_REACH * max(r, 1e-3));
+        if (r <= 0.0 || h <= 0.0 || s <= 0.0) {
+            continue;
+        }
+        let strength = s * sqrt(s);
+        let off = world.xz - w.xz;
+        let d = length(off);
+        // The lower, the farther it spreads.
+        let reach = r * (1.6 + 1.8 * s);
+        if (d >= reach) {
+            continue;
+        }
+        let dir = off / max(d, 1e-3);
+        // Calmer right under the hub, the most round the tips, dying away outwards.
+        let env = smoothstep(0.1 * r, 0.9 * r, d) * (1.0 - smoothstep(0.45 * reach, reach, d));
+        // Gusts running outwards (the pattern drifts out with the wash).
+        let gust = value_noise((off - dir * t * 4.0) / 3.0, 43u);
+        let k1 = TAU / 0.9;
+        let k2 = TAU / 2.4;
+        let fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
+        let fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
+        // Broken into short arcs round the hub, as the gusts beat it.
+        let arcs = value_noise(dir * 3.5 + vec2<f32>(d / 4.0 - t * 1.2, 0.0), 59u);
+        let rings = (0.16 * cos(k1 * (d - 3.0 * t) + gust * 6.0) * fade1
+            + 0.12 * cos(k2 * (d - 4.5 * t) + gust * 4.0) * fade2) * (0.2 + 1.6 * arcs * arcs);
+        // Chop: the slope of fine noise, wildest close in.
+        let q = (off - dir * t * 3.0) / 0.7;
+        let q0 = value_noise(q, 47u);
+        let chop = vec2<f32>(value_noise(q + vec2<f32>(0.2, 0.0), 47u) - q0, value_noise(q + vec2<f32>(0.0, 0.2), 47u) - q0)
+            * 4.0 * fade1;
+        let k = env * strength * (0.4 + 1.2 * gust);
+        let slope = dir * rings * k + chop * k;
+        // Spray: whitish where the wash beats the water hardest, a mean haze of it far out.
+        let fine = value_noise((off - dir * t * 6.0) / 0.5, 53u);
+        let near = smoothstep(0.75, 0.95, gust * 0.6 + fine * 0.6);
+        let spray = mix(near, 0.25, smoothstep(0.2, 1.0, foot)) * env * strength * strength * 0.8;
+        out += vec3<f32>(slope, spray);
+    }
+    return vec3<f32>(out.xy, min(out.z, 0.85));
+}
+
 // `wave`: the point of the sea (from the floating origin) whose waves light this pixel (the
 // waves' mesh: before its displacement).
 fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3<f32>, foot: f32, across: f32, dark: f32) -> vec3<f32> {
@@ -2026,6 +2082,8 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3
 #else
     n = water_normal(p, t, foot, rough);
 #endif
+    let wash = downwash(world, t, foot);
+    n = normalize(n + vec3<f32>(-wash.x, 0.0, -wash.y));
     var r = reflect(v, n);
     r.y = abs(r.y);
     let f = WATER_F0 + (1.0 - WATER_F0) * pow(1.0 - clamp(-dot(v, n), 0.0, 1.0), 5.0);
@@ -2044,6 +2102,7 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3
         + water_glitter(p, r, moon.xyz, across, t, rough) * WATER_GLITTER * far;
     c += (sun_hl * sun.w * sun_colour(sun.y) * lights.x + moon_hl * moon.w * MOON_TINT * lights.y)
         * (1.0 - dark);
+    c = mix(c, foam_white(), wash.z);
     if (foam >= 0.0) {
         return mix(c, foam_white(), ocean_foam(foam, wave + globals.noise.xy, t, foot));
     }

@@ -33,7 +33,8 @@ pub struct RotorBlurPlugin;
 impl Plugin for RotorBlurPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<RotorMaterial>::default())
-            .add_systems(Update, (own_rotor_blur, apply_rotor_blur).chain());
+            .init_resource::<Downwash>()
+            .add_systems(Update, (own_rotor_blur, apply_rotor_blur, downwash).chain());
     }
 }
 
@@ -209,6 +210,10 @@ pub struct RotorDisc {
     pub root: Entity,
     material: Handle<RotorMaterial>,
     blur: f32,
+    /// The hub, the axis and a point on the tips' circle (the part's frame).
+    hub: Vec3,
+    axis: Vec3,
+    tip: Vec3,
 }
 
 /// On a model root: how far its rotors are blurred, 0 (blades) .. 1 (disc). Without it, 1.
@@ -256,6 +261,9 @@ pub fn spawn_disc(
         },
         globals,
     };
+    let hub = from_plane(axis, Vec2::ZERO, shape.offset);
+    let tip = from_plane(axis, Vec2::X * shape.radius, shape.offset);
+    let axis_dir = from_plane(axis, Vec2::ZERO, 1.0) - from_plane(axis, Vec2::ZERO, 0.0);
     let disc = commands
         .spawn((Transform::default(), Visibility::Inherited, bevy::light::NotShadowCaster))
         .id();
@@ -267,7 +275,7 @@ pub fn spawn_disc(
             e.insert((
                 Mesh3d(mesh),
                 MeshMaterial3d(material.clone()),
-                RotorDisc { root, material, blur: 1.0 },
+                RotorDisc { root, material, blur: 1.0, hub, axis: axis_dir, tip },
             ));
         }
     });
@@ -319,5 +327,45 @@ fn apply_rotor_blur(
     for (blade, mut vis) in &mut blades {
         let show = blur(blade.root) < BLADES_HIDDEN;
         vis.set_if_neq(if show { Visibility::Inherited } else { Visibility::Hidden });
+    }
+}
+
+/// The helicopters whose downwash beats the water (`Globals::downwash`, with the ocean-waves
+/// effect): the two main rotors turning lowest over the sea for their size, each its hub (xyz,
+/// the render world) and radius (w; 0: none).
+#[derive(Resource, Default)]
+pub struct Downwash(pub [Vec4; 2]);
+
+/// A rotor's wash reaches the water from this many radii up (palette.wgsl `WASH_REACH`).
+const WASH_REACH: f32 = 5.0;
+
+fn downwash(
+    settings: Res<crate::settings::Settings>,
+    origin: Res<crate::world::FloatingOrigin>,
+    discs: Query<(&RotorDisc, &GlobalTransform)>,
+    mut out: ResMut<Downwash>,
+) {
+    let mut wash = [Vec4::ZERO; 2];
+    if crate::palette_material::ocean(&settings) {
+        // Main rotors turning (not a tail rotor's upright disc), low over the sea (at 0 m).
+        let mut low: Vec<(f32, Vec4)> = discs
+            .iter()
+            .filter(|(d, _)| d.blur > 0.5)
+            .filter_map(|(d, gt)| {
+                let hub = gt.transform_point(d.hub);
+                let axis = gt.affine().transform_vector3(d.axis).normalize_or_zero();
+                let radius = (gt.transform_point(d.tip) - hub).length();
+                let height = hub.y + origin.origin.y as f32;
+                (axis.y.abs() > 0.7 && radius > 0.5 && height < WASH_REACH * radius)
+                    .then(|| (height / radius, hub.extend(radius)))
+            })
+            .collect();
+        low.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (w, (_, v)) in wash.iter_mut().zip(low) {
+            *w = v;
+        }
+    }
+    if out.0 != wash {
+        out.0 = wash;
     }
 }
