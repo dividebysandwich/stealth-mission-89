@@ -1721,17 +1721,19 @@ def flamingo_launcher():
 # ---------------------------------------------------------------------------------- supply trucks
 
 
-def truck_chassis(paint, wheels, frame=OLIVE_DARK, glass=GLASS, cab_len=1.9, axles=(-2.6, -1.3, 2.4)):
+def truck_chassis(paint, wheels, glass=GLASS, cab_len=1.9, axles=(-2.6, -1.3, 2.4)):
     """A 6x6 (two rear axles) truck chassis with a forward-control cab at the front (+y),
-    7.6 m long: frame rails at 0.9-1.2 m, the cab from y 1.9 to 3.8 m."""
+    7.6 m long: frame rails at 0.9-1.2 m, the cab from y 1.9 to 3.8 m; all of it in the
+    vehicle's one colour (the tyres, fuel tank and glass aside)."""
     g = Geo()
+    frame = paint
     g.add(block(-0.55, 0.55, -3.6, 3.6, 0.85, 1.15, frame))
     for sx in (-1, 1):
         for y in axles:
             g.add(wheel((sx * 1.0, y, 0.55), 0.55, 0.4, wheels, n=8))
         # Mudguards over the front wheels and a fuel tank under the frame.
         g.add(block(sx * 1.25 - 0.25 * sx, sx * 1.25, 1.9, 2.9, 1.15, 1.25, frame))
-        g.add(block(sx * 0.6, sx * 1.15, 0.2, 1.3, 0.75, 1.15, STEEL) if sx > 0 else block(-1.15, -0.6, 0.2, 1.3, 0.75, 1.15, STEEL))
+        g.add(block(min(sx * 0.6, sx * 1.15), max(sx * 0.6, sx * 1.15), 0.2, 1.3, 0.75, 1.15, STEEL))
     y0, y1 = 3.8 - cab_len, 3.8
     g.add(block(-1.2, 1.2, y0, y1, 1.15, 2.85, paint, taper=0.06, taper_y=0.08))
     g.add(block(-1.05, 1.05, y1 - 0.02, y1 + 0.02, 1.95, 2.65, glass))
@@ -1751,7 +1753,7 @@ def box_body(paint=VAN_WHITE, length=5.0):
 
 
 def civ_truck_body(cab=CAB_BLUE, box=VAN_WHITE, wheels=RUBBER):
-    return truck_chassis(cab, wheels, frame=STEEL).add(box_body(box))
+    return truck_chassis(cab, wheels).add(box_body(box))
 
 
 def civ_truck():
@@ -1801,7 +1803,7 @@ def pickup_body(paint=VAN_WHITE, wheels=RUBBER, glass=GLASS):
         # The bed's sides.
         g.add(block(sx * 0.9 - 0.06 * sx, sx * 0.9, -2.65, -0.35, 1.05, 1.35, paint) if sx > 0 else block(-0.9, -0.84, -2.65, -0.35, 1.05, 1.35, paint))
     g.add(block(-0.9, 0.9, -2.65, -2.59, 1.05, 1.35, paint))
-    g.add(block(-0.95, 0.95, 2.65, 2.78, 0.5, 0.8, STEEL))
+    g.add(block(-0.95, 0.95, 2.65, 2.78, 0.5, 0.8, paint))
     return g
 
 
