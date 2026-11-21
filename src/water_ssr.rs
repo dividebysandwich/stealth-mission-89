@@ -54,7 +54,13 @@ impl Plugin for WaterSsrPlugin {
             ExtractResourcePlugin::<MirrorFrame>::default(),
         ))
         .init_resource::<MirrorFrame>()
-        .add_systems(PostUpdate, (depth_readable, frame));
+        .add_systems(PostUpdate, frame);
+        // WebGL2 has no pass (its GLSL can't load from a depth texture: building the pipeline
+        // there stops the game).
+        if crate::WEBGL2 {
+            return;
+        }
+        app.add_systems(PostUpdate, depth_readable);
         let Some(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
