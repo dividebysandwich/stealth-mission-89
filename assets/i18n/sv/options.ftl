@@ -39,6 +39,8 @@ options-keep-time-accel = Behåll tidsacceleration
         Bara TIME-knappen och Shift + Z / Shift + X ändrar den
 options-tooltips = Tooltips i cockpit
     .facts = Vad ett reglage eller en skärm i cockpit är, under musen eller en fingertopp i VR
+options-kill-cam = Nedskjutningskamera
+    .facts = Några sekunder av det ditt vapen förstörde (inte lågt, med en robot mot dig eller i VR)
 options-player-labels = Spelarnamn
     .facts = Flerspelare: de andra pilotternas namn över deras flygplan, oavsett avstånd
 options-label-size =

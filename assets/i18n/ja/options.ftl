@@ -39,6 +39,8 @@ options-keep-time-accel = 時間加速を維持
         加速を変えるのは TIME ボタンと Shift + Z / Shift + X のみ
 options-tooltips = コックピットのツールチップ
     .facts = マウスまたは VR の指先の下にある、コックピットの操作部や表示の説明
+options-kill-cam = 撃破カメラ
+    .facts = 武器が破壊したものを数秒表示します (低空、ミサイル接近中、VR では無効)
 options-player-labels = プレイヤー名
     .facts = マルチプレイ：他のパイロットの名前を機体の上に表示、距離に関係なく
 options-label-size =

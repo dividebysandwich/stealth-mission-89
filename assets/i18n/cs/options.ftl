@@ -39,6 +39,8 @@ options-keep-time-accel = Zachovat zrychlení času
         Změní ho jen tlačítko TIME a Shift + Z / Shift + X
 options-tooltips = Tooltipy kokpitu
     .facts = Co je ovladač nebo displej kokpitu, pod myší nebo špičkou prstu ve VR
+options-kill-cam = Kamera zásahu
+    .facts = Několik sekund toho, co vaše zbraň zničila (ne nízko, s raketou na vás ani ve VR)
 options-player-labels = Jména hráčů
     .facts = Hra více hráčů: jména ostatních pilotů nad jejich letadly, na jakoukoli vzdálenost
 options-label-size =

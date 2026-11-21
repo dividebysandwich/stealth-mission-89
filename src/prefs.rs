@@ -132,6 +132,7 @@ pub struct Prefs {
     pub fps_cap: u16,
     pub ui_scale: f32,
     pub radio_ducking: f32,
+    pub kill_cam: bool,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -226,6 +227,7 @@ impl Default for Prefs {
             fps_cap: 0,
             ui_scale: 1.0,
             radio_ducking: crate::sound::DEFAULT_RADIO_DUCKING,
+            kill_cam: false,
         }
     }
 }
@@ -355,6 +357,7 @@ impl Prefs {
             fps_cap: s.fps_cap,
             ui_scale: s.ui_scale,
             radio_ducking: s.radio_ducking,
+            kill_cam: s.kill_cam,
         }
     }
 
@@ -462,6 +465,7 @@ impl Prefs {
         let scales = crate::settings::UI_SCALE_RANGE;
         s.ui_scale = self.ui_scale.clamp(*scales.start(), *scales.end());
         s.radio_ducking = self.radio_ducking.clamp(0.0, 1.0);
+        s.kill_cam |= self.kill_cam;
         if !std::env::args().any(|a| a == "--effects") {
             s.effects = self.effects;
         }
@@ -533,6 +537,7 @@ impl Prefs {
         self.fps_cap = s.fps_cap;
         self.ui_scale = s.ui_scale;
         self.radio_ducking = s.radio_ducking;
+        self.kill_cam = s.kill_cam;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

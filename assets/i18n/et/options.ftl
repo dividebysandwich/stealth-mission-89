@@ -39,6 +39,8 @@ options-keep-time-accel = Hoia aja kiirendus alles
         Seda muudavad ainult nupp TIME ning Shift + Z / Shift + X
 options-tooltips = Cockpiti tooltips
     .facts = Mis on cockpiti juhtelement või ekraan, hiire all või VR-i sõrmeotsas
+options-kill-cam = Tabamuskaamera
+    .facts = Mõni sekund sellest, mille su relv hävitas (mitte madalal, rakett sinu poole ega VR-is)
 options-player-labels = Mängijate nimed
     .facts = Mitmikmäng: teiste pilootide nimed nende lennukite kohal, mis tahes kauguselt
 options-label-size =

@@ -39,6 +39,8 @@ options-keep-time-accel = Išlaikyti laiko spartinimą
         Jį keičia tik mygtukas TIME ir Shift + Z / Shift + X
 options-tooltips = Kabinos paaiškinimai
     .facts = Kas yra kabinos valdiklis ar ekranas, po pele arba VR piršto galiuku
+options-kill-cam = Pataikymo kamera
+    .facts = Kelios sekundės to, ką sunaikino jūsų ginklas (ne žemai, ne kai skrenda raketa į jus ir ne VR)
 options-player-labels = Žaidėjų vardai
     .facts = Daugelio žaidėjų režimas: kitų pilotų vardai virš jų lėktuvų, bet kokiu atstumu
 options-label-size =

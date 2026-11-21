@@ -39,6 +39,8 @@ options-keep-time-accel = Keep time acceleration
         Only the TIME button and Shift + Z / Shift + X change it
 options-tooltips = Cockpit tooltips
     .facts = What a cockpit control or display is, under the mouse or a VR fingertip
+options-kill-cam = Kill camera
+    .facts = A few seconds of what your weapon destroyed (not low, with a missile at you, nor in VR)
 options-player-labels = Player labels
     .facts = Multiplayer: the other pilots' names over their aircraft, however far away
 options-label-size =

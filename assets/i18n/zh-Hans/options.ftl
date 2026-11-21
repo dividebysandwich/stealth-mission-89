@@ -39,6 +39,8 @@ options-keep-time-accel = 保持时间加速
         只有 TIME 按钮和 Shift + Z / Shift + X 能改变它
 options-tooltips = 座舱提示
     .facts = 鼠标或 VR 指尖所指的座舱控件或显示器是什么
+options-kill-cam = 击毁镜头
+    .facts = 你的武器摧毁目标后显示几秒 (低空、有导弹来袭或 VR 中不显示)
 options-player-labels = 玩家名称
     .facts = 多人游戏：其他飞行员的名字显示在其飞机上方，无论多远
 options-label-size =

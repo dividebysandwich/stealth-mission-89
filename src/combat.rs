@@ -165,6 +165,9 @@ pub struct Combat {
     pub sky_ratio: f32,
     /// Things destroyed on the ground in the steps of this frame (they burn, fires.rs).
     pub kills: Vec<Kill>,
+    /// What this player's own weapons destroyed since the kill camera last looked
+    /// (`camera::kill_cam`).
+    pub own_kills: Vec<Victim>,
     /// Map position of the falling wreck (it burns where it lands).
     wreck: Option<(i32, i32)>,
     /// Number of sim frames run this frame.
@@ -188,6 +191,17 @@ pub struct Kill {
     pub x: i32,
     pub y: i32,
     pub vehicle: bool,
+}
+
+/// Something this player's weapon destroyed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Victim {
+    /// A flight unit (`Sim::flights`).
+    Flight(usize),
+    /// A world object (`Sim::objects`).
+    Object(usize),
+    /// A low-level air defence unit (`Sim::units`).
+    Unit(usize),
 }
 
 /// Object type names of vehicles (small fires); everything else burns like a building.
@@ -487,6 +501,7 @@ fn start_combat(
         signal_flares: Vec::new(),
         sam_launches: Vec::new(),
         kills: Vec::new(),
+        own_kills: Vec::new(),
         wreck: None,
         steps: 0,
         sim_waypoint: 0,
@@ -2879,7 +2894,10 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             fx.tiles.set(t.level as usize, t.col, t.row, t.index, t.shape)
         }
         SimEvent::TileRestored(t) => fx.tiles.clear(t.level as usize, t.col, t.row, t.index),
-        SimEvent::GroundDestroyed { object, .. } => {
+        SimEvent::GroundDestroyed { object, by, .. } => {
+            if by == Some(combat.sim.pilot_id()) {
+                combat.own_kills.push(Victim::Object(object));
+            }
             if let Some(o) = combat.sim.objects().get(object) {
                 let name = combat.names.get((o.shape & 0x7F) as usize).map_or("", |n| n.as_str());
                 combat.kills.push(Kill {
@@ -2890,10 +2908,16 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
             }
         }
         // Aircraft on the ground burn at once, airborne ones where the wreck lands.
-        SimEvent::AircraftDestroyed { unit, .. } => {
+        SimEvent::AircraftDestroyed { unit, by, .. } => {
+            if by == Some(combat.sim.pilot_id()) {
+                combat.own_kills.push(Victim::Flight(unit));
+            }
             if let Some(u) = combat.sim.flights().get(unit).filter(|u| u.alt <= 8 && u.x != 0) {
                 combat.kills.push(Kill { x: u.x, y: u.y, vehicle: true });
             }
+        }
+        SimEvent::AaaDestroyed { unit, by } if by == Some(combat.sim.pilot_id()) => {
+            combat.own_kills.push(Victim::Unit(unit));
         }
         SimEvent::MissionEnd(e) => {
             combat.end = Some(end_info(&combat.sim, Some(e)));

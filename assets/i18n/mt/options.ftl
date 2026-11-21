@@ -39,6 +39,8 @@ options-keep-time-accel = Żomm l-aċċelerazzjoni tal-ħin
         Biss il-buttuna TIME u Shift + Z / Shift + X ibiddluha
 options-tooltips = Tooltips tal-kokpit
     .facts = X'inhi kontroll jew display tal-kokpit, taħt il-maws jew ras is-swaba' f'VR
+options-kill-cam = Kamera tal-qerda
+    .facts = Ftit sekondi ta' dak li qered l-arma tiegħek (mhux baxx, b'missila lejk, jew fil-VR)
 options-player-labels = Ismijiet tal-plejers
     .facts = Multiplayer: l-ismijiet tal-piloti l-oħra fuq l-ajruplani tagħhom, kemm jekk ikunu 'l bogħod
 options-label-size =

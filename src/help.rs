@@ -92,6 +92,7 @@ Cockpit and graphics
   --fps-cap <n>                at most n frames a second (OPTIONS > GRAPHICS)
   --no-loading-screen          no loading screen over a flight's start (desktop)
   --loading-screen             the loading screen even with --screenshot or --script
+  --kill-cam                   the kill camera on (OPTIONS > GAME)
   --detail-benchmark           lower the graphics detail to the menu's frame rate (the
                                browser build does this on its first visit)
   --ui-zoom <f>                interface scale (default: fit the window)

@@ -41,6 +41,7 @@ fm-avionics = AVIONICS
 fm-auto-trim = AUTO TRIM
 fm-keep-time-accel = KEEP ACCELERATION
 fm-tooltips = TOOLTIPS
+fm-kill-cam = KILL CAMERA
 fm-atc = AIR TRAFFIC CONTROL
 fm-player-labels = PLAYER LABELS
 fm-label-size = LABEL SIZE

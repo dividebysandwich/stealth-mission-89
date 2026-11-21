@@ -39,6 +39,8 @@ options-keep-time-accel = Zeitraffer beibehalten
         Nur die TIME-Taste und Shift + Z / Shift + X ändern ihn
 options-tooltips = Cockpit-Tooltips
     .facts = Was ein Bedienelement oder Display des Cockpits ist, unter der Maus oder einer VR-Fingerspitze
+options-kill-cam = Abschusskamera
+    .facts = Ein paar Sekunden dessen, was deine Waffe zerstört hat (nicht tief, mit einer Rakete im Anflug oder in VR)
 options-player-labels = Spielernamen
     .facts = Mehrspieler: die Namen der anderen Piloten über ihren Flugzeugen, egal wie weit entfernt
 options-label-size =

@@ -39,6 +39,8 @@ options-keep-time-accel = Zadrži ubrzanje vremena
         Mijenjaju ga samo tipka TIME i Shift + Z / Shift + X
 options-tooltips = Tooltipi kokpita
     .facts = Što je pojedina komanda ili zaslon u kokpitu, pod mišem ili vrhom prsta u VR-u
+options-kill-cam = Kamera pogotka
+    .facts = Nekoliko sekundi onoga što je vaše oružje uništilo (ne nisko, s projektilom prema vama ni u VR-u)
 options-player-labels = Imena igrača
     .facts = Više igrača: imena drugih pilota iznad njihovih zrakoplova, na bilo kojoj udaljenosti
 options-label-size =

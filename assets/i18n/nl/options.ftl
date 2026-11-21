@@ -39,6 +39,8 @@ options-keep-time-accel = Tijdversnelling behouden
         Alleen de TIME-knop en Shift + Z / Shift + X wijzigen haar
 options-tooltips = Cockpit-tooltips
     .facts = Wat een bedieningselement of display in de cockpit is, onder de muis of een vingertop in VR
+options-kill-cam = Neerschietcamera
+    .facts = Een paar seconden van wat je wapen vernietigde (niet laag, met een raket op je af of in VR)
 options-player-labels = Spelersnamen
     .facts = Multiplayer: de namen van de andere piloten boven hun toestel, op elke afstand
 options-label-size =

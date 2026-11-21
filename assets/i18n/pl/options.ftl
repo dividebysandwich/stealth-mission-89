@@ -39,6 +39,8 @@ options-keep-time-accel = Zachowaj przyspieszenie czasu
         Zmieniają je tylko przycisk TIME oraz Shift + Z / Shift + X
 options-tooltips = Tooltipy kokpitu
     .facts = Czym jest element sterowania lub wyświetlacz kokpitu, pod myszą lub pod palcem w VR
+options-kill-cam = Kamera zestrzelenia
+    .facts = Kilka sekund tego, co zniszczyła twoja broń (nie nisko, z rakietą lecącą na ciebie ani w VR)
 options-player-labels = Nazwy graczy
     .facts = Gra wieloosobowa: nazwy innych pilotów nad ich samolotami, z każdej odległości
 options-label-size =

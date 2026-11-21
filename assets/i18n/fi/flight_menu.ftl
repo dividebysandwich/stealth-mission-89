@@ -38,6 +38,7 @@ fm-avionics = AVIONIIKKA
 fm-auto-trim = AUTOTRIMMI
 fm-keep-time-accel = PIDÄ KIIHDYTYS
 fm-tooltips = TYÖKALUVIHJEET
+fm-kill-cam = TUHOAMISKAMERA
 fm-player-labels = PELAAJIEN NIMET
 fm-label-size = NIMIEN KOKO
 fm-seat-height = ISTUIMEN KORKEUS

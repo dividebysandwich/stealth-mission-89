@@ -39,6 +39,8 @@ options-keep-time-accel = 시간 가속 유지
         TIME 버튼과 Shift + Z / Shift + X로만 바꿀 수 있습니다
 options-tooltips = 조종석 툴팁
     .facts = 마우스 아래 또는 VR 손끝에 있는 조종석 조작부나 디스플레이가 무엇인지 표시합니다
+options-kill-cam = 격추 카메라
+    .facts = 무기가 파괴한 것을 몇 초 보여 줍니다 (저공, 미사일 접근 중, VR에서는 안 함)
 options-player-labels = 플레이어 이름
     .facts = 멀티플레이: 다른 조종사의 이름을 기체 위에 표시, 거리와 관계없이
 options-label-size =

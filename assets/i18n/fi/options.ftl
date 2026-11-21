@@ -39,6 +39,8 @@ options-keep-time-accel = Pidä ajan kiihdytys päällä
         Sitä muuttavat vain TIME-painike ja Shift + Z / Shift + X
 options-tooltips = Ohjaamon työkaluvihjeet
     .facts = Mikä ohjaamon säädin tai näyttö on, hiiren tai VR-sormenpään alla
+options-kill-cam = Tuhoamiskamera
+    .facts = Muutama sekunti siitä, minkä aseesi tuhosi (ei matalalla, ohjus perässä eikä VR:ssä)
 options-player-labels = Pelaajien nimet
     .facts = Moninpeli: muiden lentäjien nimet heidän koneidensa yllä, etäisyydestä riippumatta
 options-label-size =

@@ -38,6 +38,7 @@ fm-avionics = AVIONICA
 fm-auto-trim = TRIM AUTO
 fm-keep-time-accel = MANTIENI ACCELERAZIONE
 fm-tooltips = TOOLTIP
+fm-kill-cam = TELECAMERA ABBATTIMENTO
 fm-player-labels = NOMI DEI GIOCATORI
 fm-label-size = DIMENSIONE NOMI
 fm-seat-height = ALTEZZA DEL SEDILE

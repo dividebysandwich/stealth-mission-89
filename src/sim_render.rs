@@ -1992,6 +1992,7 @@ fn own_shadow(
             | crate::camera::View::Weapon
             | crate::camera::View::Free
             | crate::camera::View::Observe
+            | crate::camera::View::FlyBy
     );
     // At an air defence console the aircraft waits unseen (`player::own_model_visibility`).
     let show = a.altitude < 1000.0

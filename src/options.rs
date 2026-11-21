@@ -171,6 +171,7 @@ fn reset_tab(tab: Tab, s: &mut Settings, d: &Settings) {
             s.auto_trim = d.auto_trim;
             s.keep_time_accel = d.keep_time_accel;
             s.tooltips = d.tooltips;
+            s.kill_cam = d.kill_cam;
             s.atc = d.atc;
             s.player_labels = d.player_labels;
             s.player_label_size = d.player_label_size;
@@ -322,6 +323,11 @@ fn flying_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     toggled |= facts(
         ui.checkbox(&mut s.tooltips, t!("options-tooltips")),
         t_lines!("options-tooltips.facts"),
+    )
+    .changed();
+    toggled |= facts(
+        ui.checkbox(&mut s.kill_cam, t!("options-kill-cam")),
+        t_lines!("options-kill-cam.facts"),
     )
     .changed();
     toggled |=

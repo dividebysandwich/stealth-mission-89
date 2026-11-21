@@ -38,6 +38,7 @@ fm-avionics = 항전
 fm-auto-trim = 자동 트림
 fm-keep-time-accel = 가속 유지
 fm-tooltips = 툴팁
+fm-kill-cam = 격추 카메라
 fm-player-labels = 플레이어 이름
 fm-label-size = 이름 크기
 fm-seat-height = 좌석 높이

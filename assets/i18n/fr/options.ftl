@@ -39,6 +39,8 @@ options-keep-time-accel = Garder l'accélération
         Seuls le bouton TIME et Maj + Z / Maj + X la modifient
 options-tooltips = Tooltips du cockpit
     .facts = Ce qu'est une commande ou un écran du cockpit, sous la souris ou un doigt en VR
+options-kill-cam = Caméra de destruction
+    .facts = Quelques secondes de ce que votre arme a détruit (pas à basse altitude, sous missile ni en VR)
 options-player-labels = Noms des joueurs
     .facts = Multijoueur : le nom des autres pilotes au-dessus de leur avion, quelle que soit la distance
 options-label-size =

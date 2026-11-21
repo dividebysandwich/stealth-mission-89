@@ -142,6 +142,10 @@ pub enum Action {
     /// The observer camera round the nearest aircraft, missile or vehicle, then the next
     /// (`camera::ObserveCam`).
     ViewObserve,
+    /// The cockpit view's head turned after the locked target (`ViewState::padlock`).
+    ViewPadlock,
+    /// A camera set ahead of the aircraft's path that watches it fly past (`camera::FlyBy`).
+    ViewFlyBy,
     Zoom,
     Unzoom,
     /// The main view's zoom (held, not a discrete action), as the mouse wheel with the right
@@ -502,6 +506,8 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Shift, K::F6, ViewInverseTactical),
         (Shift, K::F7, ViewFree),
         (Shift, K::F9, ViewObserve),
+        (Shift, K::KeyP, ViewPadlock),
+        (Shift, K::F12, ViewFlyBy),
         (None, K::KeyZ, Zoom),
         (None, K::KeyX, Unzoom),
         (None, K::NumpadMultiply, ViewZoomIn),

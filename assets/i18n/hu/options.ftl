@@ -39,6 +39,8 @@ options-keep-time-accel = Időgyorsítás megtartása
         Csak a TIME gomb és a Shift + Z / Shift + X változtatja meg
 options-tooltips = Pilótafülke-tooltipek
     .facts = Mi a pilótafülke egy kezelőszerve vagy kijelzője, az egér alatt vagy VR-ban egy ujjhegynél
+options-kill-cam = Találatkamera
+    .facts = Néhány másodperc abból, amit a fegyvered elpusztított (nem alacsonyan, rád tartó rakétával és VR-ben sem)
 options-player-labels = Játékosnevek
     .facts = Többjátékos: a többi pilóta neve a gépe fölött, bármilyen távolságból
 options-label-size =

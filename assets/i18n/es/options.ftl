@@ -39,6 +39,8 @@ options-keep-time-accel = Mantener la aceleración del tiempo
         Solo el botón TIME y Shift + Z / Shift + X la cambian
 options-tooltips = Tooltips de la cabina
     .facts = Qué es un mando o una pantalla de la cabina, bajo el ratón o un dedo en VR
+options-kill-cam = Cámara de derribo
+    .facts = Unos segundos de lo que destruyó tu arma (no a baja altura, con un misil hacia ti ni en RV)
 options-player-labels = Nombres de los jugadores
     .facts = Multijugador: los nombres de los demás pilotos sobre sus aviones, a cualquier distancia
 options-label-size =

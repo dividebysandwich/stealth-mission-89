@@ -39,6 +39,8 @@ options-keep-time-accel = Ohrani pospeševanje časa
         Spremenita ga le gumb TIME in Shift + Z / Shift + X
 options-tooltips = Tooltipi kabine
     .facts = Kaj je krmilni element ali zaslon v kabini, pod miško ali konico prsta v VR
+options-kill-cam = Kamera zadetka
+    .facts = Nekaj sekund tega, kar je vaše orožje uničilo (ne nizko, z raketo proti vam niti v VR)
 options-player-labels = Imena igralcev
     .facts = Več igralcev: imena drugih pilotov nad njihovimi letali, na katerikoli razdalji
 options-label-size =

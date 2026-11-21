@@ -55,6 +55,8 @@ grouped by topic, with the mouse (desktop) or the VR controllers.
 | External views | slot / chase / side / missile / tactical / inverse tactical | Shift F1 .. Shift F6 |
 | | free camera (remake): W / S forward / back, A / D left / right, Q / E down / up, Shift faster, Ctrl slower, right mouse button turns, wheel zooms; again to go back | Shift F7 |
 | | observer camera (remake): orbits the nearest aircraft, missile or vehicle, again for the next; the mouse turns it round, the zoom keys and wheel move it in and out | Shift F9 |
+| | padlock (remake): in the cockpit, the head turns after the locked aircraft or ground target, as far as the neck turns; again (or any view key) looks ahead | Shift P |
+| | fly-by camera (remake): set beside the path ahead, it watches the aircraft go past, then waits ahead again | Shift F12 |
 | | main menu scene (remake, desktop): walk / run / jump on the apron, right mouse button turns (fixed keys, the same places on an AZERTY keyboard; a gamepad or a joystick walks with its stick, see 1.1) | W A S D / Shift / Space |
 | View | zoom / unzoom / wide angle | Z / X / C |
 | Time | accelerate / normal | Shift Z / Shift X |

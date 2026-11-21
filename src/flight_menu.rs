@@ -257,6 +257,7 @@ impl Page {
                 AutoTrim,
                 KeepTimeAccel,
                 Tooltips,
+                KillCam,
                 Atc,
                 PlayerLabels,
                 LabelSize,
@@ -444,6 +445,8 @@ enum Item {
     AutoTrim,
     KeepTimeAccel,
     Tooltips,
+    /// A few seconds of what this player's weapon destroyed (`camera::KillCam`).
+    KillCam,
     Atc,
     PlayerLabels,
     LabelSize,
@@ -513,6 +516,7 @@ impl Item {
             Item::AutoTrim => "fm-auto-trim",
             Item::KeepTimeAccel => "fm-keep-time-accel",
             Item::Tooltips => "fm-tooltips",
+            Item::KillCam => "fm-kill-cam",
             Item::Atc => "fm-atc",
             Item::PlayerLabels => "fm-player-labels",
             Item::LabelSize => "fm-label-size",
@@ -563,6 +567,7 @@ impl Item {
             Item::AutoTrim => on(s.auto_trim),
             Item::KeepTimeAccel => on(s.keep_time_accel),
             Item::Tooltips => on(s.tooltips),
+            Item::KillCam => on(s.kill_cam),
             Item::Atc => on(s.atc),
             Item::PlayerLabels => on(s.player_labels),
             Item::LabelSize => format!("< {:.0}% >", s.player_label_size * 100.0),
@@ -609,6 +614,7 @@ impl Item {
             Item::LeaveAircraft => menu.can_leave,
             Item::SwitchSeat => menu.seat != SeatChoice::None,
             Item::CockpitSize | Item::AutoDetail => s.vr,
+            Item::KillCam => !s.vr,
             Item::Fullscreen | Item::FpsCap | Item::Open(Page::Display) => {
                 crate::fullscreen::DISPLAY_OPTIONS && !s.vr
             }
@@ -1519,6 +1525,7 @@ fn navigate(
             stealth_i18n::set_language(s.language);
         }
         Item::Tooltips => s.tooltips = !s.tooltips,
+        Item::KillCam => s.kill_cam = !s.kill_cam,
         Item::Atc => s.atc = !s.atc,
         Item::PlayerLabels => s.player_labels = !s.player_labels,
         Item::Effect(e) => e.toggle(&mut s.effects),

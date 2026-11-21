@@ -38,6 +38,7 @@ fm-avionics = AVIONIKA
 fm-auto-trim = SAMODEJNI TRIM
 fm-keep-time-accel = OHRANI POSPEŠEVANJE
 fm-tooltips = TOOLTIPS
+fm-kill-cam = KAMERA ZADETKA
 fm-player-labels = IMENA IGRALCEV
 fm-label-size = VELIKOST IMEN
 fm-seat-height = VIŠINA SEDEŽA

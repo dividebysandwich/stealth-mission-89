@@ -30,6 +30,9 @@ impl Plugin for CameraPlugin {
             .init_resource::<WeaponCam>()
             .init_resource::<FreeView>()
             .init_resource::<ObserveCam>()
+            .init_resource::<PadlockAim>()
+            .init_resource::<FlyBy>()
+            .init_resource::<KillCam>()
             // The weapon view after the combat step, on the weapon's pose drawn this frame.
             .add_systems(
                 Update,
@@ -37,8 +40,10 @@ impl Plugin for CameraPlugin {
                     track_weapon,
                     place_weapon_camera,
                     place_free_camera,
+                    kill_cam,
                     pick_observed,
                     place_observe_camera,
+                    place_fly_by_camera,
                 )
                     .chain()
                     .after(RigSystems)
@@ -53,7 +58,7 @@ impl Plugin for CameraPlugin {
             )
             .add_systems(
                 Update,
-                (switch_view, update_rig)
+                (switch_view, aim_padlock, update_rig)
                     .chain()
                     .in_set(RigSystems)
                     .after(crate::flight::FlightSystems)
@@ -88,6 +93,9 @@ pub enum View {
     Free,
     /// A camera orbiting another entity (`ObserveCam`), turned about it with the mouse.
     Observe,
+    /// A camera set beside the aircraft's path ahead of it, watching it fly past, then set
+    /// ahead again (`FlyBy`).
+    FlyBy,
 }
 
 /// An entity the observer view can orbit (the simulation's index of what it draws).
@@ -184,6 +192,9 @@ pub const MAX_UNZOOM: i32 = 8;
 #[derive(Resource)]
 pub struct ViewState {
     pub view: View,
+    /// The cockpit view's head turns after the locked target (`Action::ViewPadlock`,
+    /// `PadlockAim`); any other view key ends it.
+    pub padlock: bool,
     pub zoom: i32,
     pub wide: bool,
     /// Mouse wheel zoom (right button held): the cockpit's magnification (1 = none) and the
@@ -194,7 +205,14 @@ pub struct ViewState {
 
 impl Default for ViewState {
     fn default() -> Self {
-        Self { view: View::default(), zoom: 0, wide: false, magnify: 1.0, wheel_zoom: 0.0 }
+        Self {
+            view: View::default(),
+            padlock: false,
+            zoom: 0,
+            wide: false,
+            magnify: 1.0,
+            wheel_zoom: 0.0,
+        }
     }
 }
 
@@ -483,8 +501,38 @@ fn switch_view(
         state.view = View::Cockpit;
     }
     for ActionEvent(a) in actions.read() {
+        // Any view key ends the padlock (its own toggles it).
+        let view_key = matches!(
+            a,
+            Action::ViewCockpit
+                | Action::LookAhead
+                | Action::LookLeft
+                | Action::LookRight
+                | Action::LookRear
+                | Action::ViewChase
+                | Action::ViewSlot
+                | Action::ViewSide
+                | Action::ViewTactical
+                | Action::ViewInverseTactical
+                | Action::ViewMissile
+                | Action::ViewFree
+                | Action::ViewObserve
+                | Action::ViewFlyBy
+        );
+        if view_key {
+            state.padlock = false;
+        }
         match a {
             Action::ViewCockpit | Action::LookAhead => state.view = View::Cockpit,
+            // The head after the locked target, in the cockpit (in VR the headset turns).
+            Action::ViewPadlock if !settings.vr => {
+                state.padlock = !(state.padlock && state.view == View::Cockpit);
+                state.view = View::Cockpit;
+            }
+            Action::ViewFlyBy if !settings.vr => {
+                state.view = View::FlyBy;
+                state.magnify = 1.0;
+            }
             Action::LookLeft => state.view = View::LookLeft,
             Action::LookRight => state.view = View::LookRight,
             Action::LookRear => state.view = View::LookRear,
@@ -922,6 +970,7 @@ fn place_observe_camera(
 #[allow(clippy::too_many_arguments)]
 fn update_rig(
     state: Res<ViewState>,
+    padlock: Res<PadlockAim>,
     settings: Res<crate::settings::Settings>,
     look: Res<HeadLook>,
     orbit: Res<Orbit>,
@@ -961,8 +1010,13 @@ fn update_rig(
         View::Cockpit | View::LookLeft | View::LookRight | View::LookRear => {
             // Looks are head turns in the cockpit (in VR the headset turns).
             let base_pitch = if state.view == View::Cockpit { COCKPIT_DOWN_PITCH } else { 0.0 };
-            let (y, p) =
-                if settings.vr { (0.0, 0.0) } else { (yaw + look.yaw, base_pitch + look.pitch) };
+            let (y, p) = if settings.vr {
+                (0.0, 0.0)
+            } else if state.padlock && state.view == View::Cockpit {
+                (padlock.yaw, padlock.pitch)
+            } else {
+                (yaw + look.yaw, base_pitch + look.pitch)
+            };
             // Angles added, not rotations chained: the horizon stays level looking sideways.
             *head = Transform::from_translation(eye + tracked.pos).with_rotation(
                 Quat::from_rotation_y(y + tracked.yaw)
@@ -1016,8 +1070,9 @@ fn update_rig(
                 .with_rotation(local * world_rot);
             *cam_tf = offset.0;
         }
-        // Placed by `place_weapon_camera`, `place_free_camera` and `place_observe_camera`.
-        View::Weapon | View::Free | View::Observe => {}
+        // Placed by `place_weapon_camera`, `place_free_camera`, `place_observe_camera` and
+        // `place_fly_by_camera`.
+        View::Weapon | View::Free | View::Observe | View::FlyBy => {}
         View::Tactical => {
             // Above and behind in world-up terms: undo the aircraft's roll and pitch.
             let d = 120.0 * 2f32.powf(-state.external_zoom());
@@ -1059,4 +1114,216 @@ fn orbited(
 #[allow(dead_code)]
 pub fn eye_world(a: &Aircraft, pos: &WorldPos, eye: Vec3) -> DVec3 {
     pos.0 + (a.orientation * eye).as_dvec3()
+}
+
+/// Where the padlocked head looks (radians, as `HeadLook`), turned towards the locked target at
+/// `PADLOCK_RATE`, within the neck's reach.
+#[derive(Resource, Default)]
+pub struct PadlockAim {
+    pub yaw: f32,
+    pub pitch: f32,
+}
+
+/// How quickly the padlocked head follows (1/s) and how far it turns (radians): round to
+/// either side to just short of the tail, up over the canopy, down to the panel's edge.
+const PADLOCK_RATE: f32 = 6.0;
+const PADLOCK_YAW: f32 = 2.8;
+const PADLOCK_PITCH: (f32, f32) = (-0.6, 1.5);
+
+/// The padlocked head turns towards the locked target: an aircraft (or another pilot's), a
+/// world object or air defence unit locked on the ground; ahead without a lock.
+#[allow(clippy::too_many_arguments)]
+fn aim_padlock(
+    state: Res<ViewState>,
+    mut aim: ResMut<PadlockAim>,
+    settings: Res<crate::settings::Settings>,
+    combat: Option<Res<crate::combat::Combat>>,
+    observables: Query<(&Observable, &WorldPos)>,
+    aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
+    theater: Option<Res<crate::world::Theater>>,
+    time: Res<Time<Real>>,
+) {
+    if !state.padlock || state.view != View::Cockpit {
+        *aim = PadlockAim { yaw: 0.0, pitch: COCKPIT_DOWN_PITCH };
+        return;
+    }
+    let Ok((a, pos)) = aircraft.single() else { return };
+    let target = combat.as_deref().and_then(|c| {
+        let t = c.sim.targeting();
+        let drawn =
+            |want: Observable| observables.iter().find(|(o, _)| **o == want).map(|(_, p)| p.0);
+        if let Some(i) = t.air {
+            return drawn(Observable::Flight(i));
+        }
+        if let Some(k) = t.pilot {
+            return drawn(Observable::Remote(k));
+        }
+        let o = c.sim.objects().get(t.ground?)?;
+        let mut p = crate::sim_render::map_point(o.x as f64 + 0.5, o.y as f64 + 0.5, 0.0);
+        let hill = theater.as_ref().map_or(0.0, |t| t.hills.ground_m(p.x, -p.z) as f64);
+        p.y = p.y.max(hill) + 3.0;
+        Some(p)
+    });
+    let (yaw, pitch) = match target {
+        Some(t) => {
+            let eye = eye_world(a, pos, settings.cockpit_eye());
+            let local = a.orientation.inverse() * (t - eye).as_vec3();
+            let yaw = (-local.x).atan2(-local.z).clamp(-PADLOCK_YAW, PADLOCK_YAW);
+            let pitch =
+                local.y.atan2(local.x.hypot(local.z)).clamp(PADLOCK_PITCH.0, PADLOCK_PITCH.1);
+            (yaw, pitch)
+        }
+        None => (0.0, COCKPIT_DOWN_PITCH),
+    };
+    let k = 1.0 - (-PADLOCK_RATE * time.delta_secs()).exp();
+    aim.yaw += (yaw - aim.yaw) * k;
+    aim.pitch += (pitch - aim.pitch) * k;
+}
+
+/// The fly-by camera's place (Bevy world) and the aircraft's last position (its path).
+#[derive(Resource, Default)]
+pub struct FlyBy {
+    eye: Option<DVec3>,
+    last: Option<DVec3>,
+    /// How far ahead the camera was set (m).
+    lead: f64,
+}
+
+/// The fly-by camera is set this many seconds of flight ahead (within `FLY_BY_LEAD`), this far
+/// to the side and above the path (m).
+const FLY_BY_SECONDS: f64 = 3.0;
+const FLY_BY_LEAD: (f64, f64) = (60.0, 500.0);
+const FLY_BY_SIDE: f64 = 30.0;
+const FLY_BY_UP: f64 = 6.0;
+
+/// The fly-by view: a camera fixed in the world beside the path ahead, turned after the aircraft;
+/// once the aircraft is well past, set ahead again.
+#[allow(clippy::too_many_arguments)]
+fn place_fly_by_camera(
+    state: Res<ViewState>,
+    mut fly: ResMut<FlyBy>,
+    aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
+    mut head: Query<&mut Transform, (With<HeadAnchor>, Without<EyeCamera>)>,
+    mut eye_cam: Query<&mut Transform, With<EyeCamera>>,
+    mut viewpoint: ResMut<crate::palette::Viewpoint>,
+    theater: Option<Res<crate::world::Theater>>,
+    time: Res<Time>,
+) {
+    let Ok((a, pos)) = aircraft.single() else { return };
+    let last = fly.last.replace(pos.0);
+    if state.view != View::FlyBy {
+        fly.eye = None;
+        return;
+    }
+    let (Ok(mut head), Ok(mut cam_tf)) = (head.single_mut(), eye_cam.single_mut()) else {
+        return;
+    };
+    // The path: the last frame's movement, else the nose.
+    let dt = time.delta_secs_f64();
+    let moved = last.map(|l| pos.0 - l).filter(|d| dt > 0.0 && d.length() > 0.05 * dt);
+    let (dir, speed) = match moved {
+        Some(d) => (d.normalize(), d.length() / dt),
+        None => ((a.orientation * Vec3::NEG_Z).as_dvec3(), 0.0),
+    };
+    let past = fly.eye.is_some_and(|e| {
+        let to = pos.0 - e;
+        to.dot(dir) > 0.0 && to.length() > fly.lead * 1.2 + 40.0
+    });
+    if fly.eye.is_none() || past {
+        let lead = (speed * FLY_BY_SECONDS).clamp(FLY_BY_LEAD.0, FLY_BY_LEAD.1);
+        let side = dir.cross(DVec3::Y).normalize_or(DVec3::X);
+        let mut eye = pos.0 + dir * lead + side * FLY_BY_SIDE + DVec3::Y * FLY_BY_UP;
+        let hill = theater.as_ref().map_or(0.0, |t| t.hills.ground_m(eye.x, -eye.z) as f64);
+        let floor = crate::world::wu_to_bevy(0.0, 0.0, 0.0).y.max(hill) + 2.0;
+        eye.y = eye.y.max(floor);
+        fly.eye = Some(eye);
+        fly.lead = lead;
+    }
+    let Some(eye) = fly.eye else { return };
+    viewpoint.altitude_wu = (eye.y / crate::world::WU) as f32;
+    let world_rot = Transform::IDENTITY.looking_to((pos.0 - eye).as_vec3(), Vec3::Y).rotation;
+    let local = a.orientation.inverse();
+    *head = Transform::from_translation(local * (eye - pos.0).as_vec3())
+        .with_rotation(local * world_rot);
+    *cam_tf = Transform::IDENTITY;
+}
+
+/// The kill camera (OPTIONS > GAME): for `KILL_CAM_SECONDS` after this player's weapon destroys
+/// something, the observer camera on it, then the view before. Not in VR, nor below
+/// `KILL_CAM_LOWEST` over the ground, nor with a missile in the air at the player, nor from the
+/// weapon, free, observer or fly-by views.
+#[derive(Resource, Default)]
+pub struct KillCam {
+    /// Seconds left, and the view to return to.
+    left: Option<(f32, View)>,
+}
+
+const KILL_CAM_SECONDS: f32 = 3.0;
+const KILL_CAM_LOWEST: f32 = 150.0;
+
+#[allow(clippy::too_many_arguments)]
+fn kill_cam(
+    mut kill: ResMut<KillCam>,
+    mut state: ResMut<ViewState>,
+    mut cam: ResMut<ObserveCam>,
+    combat: Option<ResMut<crate::combat::Combat>>,
+    settings: Res<crate::settings::Settings>,
+    observables: Query<(Entity, &Observable)>,
+    aircraft: Query<&Aircraft, With<Player>>,
+    time: Res<Time>,
+) {
+    if let Some((left, back)) = kill.left {
+        // A view key took over.
+        if state.view != View::Observe {
+            kill.left = None;
+        } else if left - time.delta_secs() <= 0.0 {
+            kill.left = None;
+            state.view = back;
+        } else {
+            kill.left = Some((left - time.delta_secs(), back));
+        }
+    }
+    let Some(mut combat) = combat else { return };
+    let Some(victim) = combat.own_kills.drain(..).last() else { return };
+    let Ok(a) = aircraft.single() else { return };
+    let agl = (a.altitude - a.ground_altitude) * crate::world::WU as f32;
+    let threatened = combat.sim.projectiles()[..PLAYER_SLOTS.start].iter().any(|p| p.ttl != 0);
+    let from = matches!(
+        state.view,
+        View::Cockpit
+            | View::LookLeft
+            | View::LookRight
+            | View::LookRear
+            | View::Chase
+            | View::Side
+            | View::Tactical
+    );
+    if !settings.kill_cam || settings.vr || agl < KILL_CAM_LOWEST || threatened || !from {
+        return;
+    }
+    use crate::combat::Victim;
+    let want = match victim {
+        Victim::Flight(i) => Some(Observable::Flight(i)),
+        Victim::Unit(i) => Some(Observable::Unit(i)),
+        Victim::Object(_) => None,
+    };
+    let entity = want.and_then(|w| observables.iter().find(|(_, o)| **o == w).map(|(e, _)| e));
+    let at = match victim {
+        Victim::Object(i) => combat
+            .sim
+            .objects()
+            .get(i)
+            .map(|o| crate::sim_render::map_point(o.x as f64 + 0.5, o.y as f64 + 0.5, 0.0)),
+        _ => None,
+    };
+    if entity.is_none() && at.is_none() {
+        return;
+    }
+    let back = if kill.left.is_some() { kill.left.map_or(state.view, |k| k.1) } else { state.view };
+    info!("kill camera: {victim:?}");
+    cam.target = entity;
+    cam.last = at;
+    kill.left = Some((KILL_CAM_SECONDS, back));
+    state.view = View::Observe;
+    state.padlock = false;
 }

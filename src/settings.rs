@@ -193,6 +193,8 @@ pub struct Settings {
     /// How far the engine and the effects go down while the radio speaks (0: not at all, 1:
     /// silent; `sound::duck_under_radio`).
     pub radio_ducking: f32,
+    /// After this player's weapon destroys something, a few seconds of it (`camera::KillCam`).
+    pub kill_cam: bool,
 }
 
 /// The menus' size range (`Settings::ui_scale`).
@@ -473,6 +475,7 @@ impl Settings {
             fps_cap: get(&a, "--fps-cap").and_then(|c| c.parse().ok()).unwrap_or(0),
             ui_scale: 1.0,
             radio_ducking: crate::sound::DEFAULT_RADIO_DUCKING,
+            kill_cam: a.iter().any(|x| x == "--kill-cam"),
         }
     }
 }

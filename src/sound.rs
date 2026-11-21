@@ -749,7 +749,13 @@ fn external(view: Option<&ViewState>) -> bool {
     view.is_some_and(|v| {
         matches!(
             v.view,
-            View::Chase | View::Side | View::Tactical | View::Weapon | View::Free | View::Observe
+            View::Chase
+                | View::Side
+                | View::Tactical
+                | View::Weapon
+                | View::Free
+                | View::Observe
+                | View::FlyBy
         )
     })
 }

@@ -37,6 +37,7 @@ fm-avionics = AVIONIK
 fm-auto-trim = AUTO-TRIMMUNG
 fm-keep-time-accel = ZEITRAFFER BEHALTEN
 fm-tooltips = TOOLTIPS
+fm-kill-cam = ABSCHUSSKAMERA
 fm-player-labels = SPIELERNAMEN
 fm-label-size = NAMENSGRÖSSE
 fm-seat-height = SITZHÖHE

@@ -39,6 +39,8 @@ options-keep-time-accel = Păstrează accelerarea timpului
         Doar butonul TIME și Shift + Z / Shift + X o schimbă
 options-tooltips = Tooltip-uri din cockpit
     .facts = Ce este o comandă sau un afișaj din cockpit, sub mouse sau sub vârful degetului în VR
+options-kill-cam = Cameră de doborâre
+    .facts = Câteva secunde din ce a distrus arma ta (nu la joasă altitudine, cu rachetă spre tine, nici în VR)
 options-player-labels = Numele jucătorilor
     .facts = Multiplayer: numele celorlalți piloți deasupra aeronavelor lor, la orice distanță
 options-label-size =

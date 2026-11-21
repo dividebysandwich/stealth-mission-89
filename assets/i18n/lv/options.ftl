@@ -39,6 +39,8 @@ options-keep-time-accel = Saglabāt laika paātrinājumu
         To maina tikai poga TIME un Shift + Z / Shift + X
 options-tooltips = Kabīnes tooltips
     .facts = Kas ir kabīnes vadības elements vai displejs, zem peles vai VR pirksta gala
+options-kill-cam = Trāpījuma kamera
+    .facts = Dažas sekundes no tā, ko iznīcināja jūsu ierocis (ne zemu, ne ar raķeti pret jums, ne VR)
 options-player-labels = Spēlētāju vārdi
     .facts = Daudzspēlētāju režīms: citu pilotu vārdi virs viņu lidmašīnām, jebkurā attālumā
 options-label-size =

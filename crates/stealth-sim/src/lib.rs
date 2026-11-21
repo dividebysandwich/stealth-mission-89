@@ -1184,6 +1184,11 @@ impl Sim {
         self.pl.arc
     }
 
+    /// The local pilot's id (`SimEvent`s' `by`).
+    pub fn pilot_id(&self) -> u8 {
+        self.pl.id
+    }
+
     /// Missile launches against the player.
     pub fn launches(&self) -> i32 {
         self.pl.launches

@@ -39,6 +39,8 @@ options-keep-time-accel = Pertahankan akselerasi waktu
         Hanya tombol TIME dan Shift + Z / Shift + X yang mengubahnya
 options-tooltips = Tooltip kokpit
     .facts = Apa itu kontrol atau layar kokpit, di bawah mouse atau ujung jari VR
+options-kill-cam = Kamera penghancuran
+    .facts = Beberapa detik dari apa yang dihancurkan senjata Anda (tidak saat rendah, dikejar rudal, atau di VR)
 options-player-labels = Nama pemain
     .facts = Multiplayer: nama pilot lain di atas pesawat mereka, sejauh apa pun
 options-label-size =

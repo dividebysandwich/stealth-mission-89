@@ -39,6 +39,8 @@ options-keep-time-accel = Coinnigh luasghéarú ama
         Ní athraíonn ach an cnaipe TIME agus Shift + Z / Shift + X é
 options-tooltips = Leideanna uirlise an chockpit
     .facts = Cad is rialú nó scáileán cockpit ann, faoin luch nó faoi bharr méire i VR
+options-kill-cam = Ceamara scriosta
+    .facts = Cúpla soicind den rud a scrios d'arm (ní íseal, le diúracán chugat ná i VR)
 options-player-labels = Ainmneacha imreoirí
     .facts = Ilimreoir: ainmneacha na bpíolótaí eile os cionn a n-aerárthaí, is cuma cé chomh fada uait
 options-label-size =
