@@ -449,9 +449,10 @@ fn stream(
     mut commands: Commands,
     mut fires: ResMut<Fires>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
+    sites: Res<crate::world::StreamSites>,
 ) {
     let Ok(eye) = anchor.single() else { return };
-    let eye = eye.0;
+    let eye = sites.eye(eye.0);
     let fires = &mut *fires;
     for e in fires.dead.drain(..) {
         commands.entity(e).try_despawn();

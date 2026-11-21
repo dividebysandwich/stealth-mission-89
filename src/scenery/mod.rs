@@ -936,15 +936,8 @@ fn stream_blocks(
     // the nearest eye.
     let mut near: HashMap<(usize, i32, i32), (usize, f64)> = HashMap::new();
     let mut wanted: HashMap<(Tier, i32, i32), f64> = HashMap::new();
-    let anchor = ground(anchor.0);
-    let eyes = std::iter::once((anchor, f64::MAX)).chain(
-        sites
-            .points
-            .iter()
-            .chain(&sites.follow)
-            .chain(&sites.pod)
-            .map(|&p| (ground(p), SITE_RADIUS)),
-    );
+    let (anchor, others) = (ground(sites.eye(anchor.0)), sites.others(anchor.0));
+    let eyes = std::iter::once((anchor, f64::MAX)).chain(others.map(|p| (ground(p), SITE_RADIUS)));
     for (eye, max_r) in eyes {
         for (gi, group) in groups.iter().enumerate() {
             let outer = ranges.radius(*group.near.last().unwrap()).min(max_r);

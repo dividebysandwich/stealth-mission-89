@@ -236,6 +236,7 @@ fn drive(
     clock: Res<crate::sea::SeaClock>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
     origin: Res<FloatingOrigin>,
+    sites: Res<crate::world::StreamSites>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<PaletteMaterial>>,
     mut ocean: ResMut<Ocean>,
@@ -277,7 +278,7 @@ fn drive(
     worker.request(clock.0 + time.delta_secs_f64(), params);
 
     // --- the viewpoint, the mask round it
-    let eye = anchor.single().map_or(origin.origin, |p| p.0);
+    let eye = anchor.single().map_or(origin.origin, |p| sites.eye(p.0));
     ocean.eye = DVec2::new(eye.x, eye.z);
     let height = eye.y;
     ocean.grid_on = height < GRID_TOP;

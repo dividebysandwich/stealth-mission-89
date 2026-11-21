@@ -207,16 +207,10 @@ pub(super) fn stream_skin(
     };
     // Around the viewpoint out to the hills' range; around the places streamed in for a
     // camera looking at them from afar (`StreamSites`) as finely as near the viewpoint.
-    let eyes: Vec<(DVec2, f64)> = std::iter::once((ground(anchor.0), STEPS[STEPS.len() - 1].0))
-        .chain(
-            sites
-                .points
-                .iter()
-                .chain(&sites.follow)
-                .chain(&sites.pod)
-                .map(|&p| (ground(p), SITE_RANGE)),
-        )
-        .collect();
+    let eyes: Vec<(DVec2, f64)> =
+        std::iter::once((ground(sites.eye(anchor.0)), STEPS[STEPS.len() - 1].0))
+            .chain(sites.others(anchor.0).map(|p| (ground(p), SITE_RANGE)))
+            .collect();
     // The farmland as `stream_blocks` lays it (its fields under the hills are drawn here): in
     // the blocks whose centre is in its range (by the same measure, so the flat fields and
     // the hills' agree).

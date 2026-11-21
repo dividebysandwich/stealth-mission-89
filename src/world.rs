@@ -480,11 +480,13 @@ pub(crate) struct StreamedCells {
 fn recenter_origin(
     mut origin: ResMut<FloatingOrigin>,
     anchor: Query<&WorldPos, With<WorldAnchor>>,
+    sites: Res<StreamSites>,
 ) {
     let Ok(p) = anchor.single() else { return };
-    // Re-centre when the anchor is more than 2 km away from the origin.
-    if (p.0 - origin.origin).length() > 2000.0 {
-        origin.origin = DVec3::new(p.0.x.round(), 0.0, p.0.z.round());
+    let p = sites.eye(p.0);
+    // Re-centre when the viewpoint is more than 2 km away from the origin.
+    if (p - origin.origin).length() > 2000.0 {
+        origin.origin = DVec3::new(p.x.round(), 0.0, p.z.round());
     }
 }
 
@@ -509,8 +511,25 @@ pub struct StreamSites {
     pub follow: Option<DVec3>,
     /// The ground point the tracking camera (targeting pod) looks at, streamed while it does.
     pub pod: Option<DVec3>,
+    /// The free view's camera (`camera::FreeView`) while it is out: the world streams round it
+    /// as round the anchor, and round the anchor as round a site.
+    pub view: Option<DVec3>,
     /// The tile objects around `points` are spawned.
     pub streamed: bool,
+}
+
+impl StreamSites {
+    /// The viewpoint the world streams round: the free view's camera, else the anchor.
+    pub fn eye(&self, anchor: DVec3) -> DVec3 {
+        self.view.unwrap_or(anchor)
+    }
+
+    /// The places streamed besides the viewpoint (the anchor among them while the free view
+    /// is out).
+    pub fn others(&self, anchor: DVec3) -> impl Iterator<Item = DVec3> + '_ {
+        let points = self.points.iter().chain(&self.follow).chain(&self.pod).copied();
+        points.chain(self.view.map(|_| anchor))
+    }
 }
 
 /// Spawns/despawns tile objects around the anchor and the stream sites, per LOD level.
@@ -536,8 +555,8 @@ fn stream_tiles(
     }
     // Cells wanted: (lod, col, row) -> ships only (beyond the level's own radius).
     let mut wanted: HashMap<(usize, i32, i32), bool> = HashMap::new();
-    let eyes = std::iter::once((anchor.0, true))
-        .chain(sites.points.iter().chain(&sites.follow).chain(&sites.pod).map(|&p| (p, false)));
+    let eyes = std::iter::once((sites.eye(anchor.0), true))
+        .chain(sites.others(anchor.0).map(|p| (p, false)));
     for (eye, ships) in eyes {
         let (east, north, _) = bevy_to_wu(eye);
         for lod in 1..=4usize {

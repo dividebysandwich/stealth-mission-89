@@ -46,6 +46,11 @@ impl Plugin for CameraPlugin {
                     .before(crate::sim_render::SimRenderSystems)
                     .run_if(in_state(crate::settings::AppState::Flight)),
             )
+            // The free view's streaming point stays behind with the flight.
+            .add_systems(
+                OnExit(crate::settings::AppState::Flight),
+                |mut sites: ResMut<crate::world::StreamSites>| sites.view = None,
+            )
             .add_systems(
                 Update,
                 (switch_view, update_rig)
@@ -710,8 +715,12 @@ fn place_free_camera(
     mut head: Query<&mut Transform, (With<HeadAnchor>, Without<EyeCamera>)>,
     mut cam: Query<&mut Transform, With<EyeCamera>>,
     mut viewpoint: ResMut<crate::palette::Viewpoint>,
+    mut sites: ResMut<crate::world::StreamSites>,
 ) {
     if state.view != View::Free {
+        if sites.view.is_some() {
+            sites.view = None;
+        }
         return;
     }
     let (Ok(mut head), Ok(mut cam_tf), Ok((a, pos))) =
@@ -774,6 +783,8 @@ fn place_free_camera(
     let floor = crate::world::wu_to_bevy(0.0, 0.0, 0.0).y + 1.0;
     free.pos.y = free.pos.y.max(floor);
     viewpoint.altitude_wu = (free.pos.y / crate::world::WU) as f32;
+    // The world streams round the camera (`StreamSites::eye`).
+    sites.view = Some(free.pos);
     let local = a.orientation.inverse();
     *head = Transform::from_translation(local * (free.pos - pos.0).as_vec3())
         .with_rotation(local * rot);
