@@ -149,6 +149,11 @@ helicopters carrying troops to take places, and the enemy answering every move y
 
 The main menu chooses what to play. Each choice opens its own screen; **BACK** (or Esc) returns.
 
+The menus also work without a mouse. The arrow keys (or a gamepad's d-pad) light up the first
+button and then go from one control to the next (Tab and Shift Tab too); Enter or Space (the
+gamepad's A) presses the lit one, and Esc (B) goes back. Left and right move a lit slider or list.
+On the debrief, Enter or A continues when no button is lit.
+
 | Button | What it is |
 |---|---|
 | **SINGLE MISSION** | One generated mission in the theater, situation and aircraft you choose (chapter 8). The quickest way into the air. |
@@ -156,7 +161,7 @@ The main menu chooses what to play. Each choice opens its own screen; **BACK** (
 | **DYNAMIC CAMPAIGN** | A whole theater at war, running on in real time: missions from a board, armour columns and helicopter insertions taking ground, an enemy that strikes back (chapter 9). |
 | **MULTIPLAYER** | The dynamic campaign together with up to 64 pilots: join a server or host one (chapter 11). |
 | **OPTIONS** | Your own settings for every game: game, graphics, sound, controls (1.3). |
-| **QUIT** | Back to the desktop. (In the browser version: DOWNLOAD and DISCORD instead.) |
+| **QUIT** | Back to the desktop, after asking. (In the browser version: DOWNLOAD and DISCORD instead.) |
 
 The game also runs in a **VR headset** through any OpenXR runtime: *FLY IN VR* on the mission screen, *IN
 VR* on a saved campaign, or start the game with `--vr` to have the menus in VR headsets too. The menus

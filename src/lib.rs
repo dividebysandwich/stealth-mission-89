@@ -81,6 +81,7 @@ mod meatball;
 #[cfg(all(feature = "dev", target_os = "linux", target_env = "gnu"))]
 mod memory;
 mod menu;
+mod menu_nav;
 mod menu_scene;
 mod mfd;
 mod mission;
@@ -407,7 +408,7 @@ pub fn run() {
             meatball::MeatballPlugin,
             voice::VoicePlugin,
         ))
-        .add_plugins((tts::TtsPlugin, restart::RestartPlugin))
+        .add_plugins((tts::TtsPlugin, restart::RestartPlugin, menu_nav::MenuNavPlugin))
         // The browser's first visit: graphics detail for its frame rate.
         .add_plugins(detail_benchmark::DetailBenchmarkPlugin);
     #[cfg(not(target_arch = "wasm32"))]

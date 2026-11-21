@@ -114,8 +114,13 @@ fn debrief_ui(
     }
     let screen = ctx.content_rect();
     let width = (screen.width() - 32.0).clamp(600.0, 1100.0);
-    let mut done = (keys.just_pressed(KeyCode::Enter) && !crate::fullscreen::alt_enter(&keys))
-        || keys.just_pressed(KeyCode::Escape);
+    // Enter (the gamepad's A, `menu_nav`) continues unless it presses the button that has the
+    // focus; Esc (B) continues.
+    let unfocused = ctx.memory(|m| m.focused().is_none());
+    let mut done = ctx.input(|i| {
+        (i.key_pressed(egui::Key::Enter) && !i.modifiers.alt && unfocused)
+            || i.key_pressed(egui::Key::Escape)
+    }) && !crate::fullscreen::alt_enter(&keys);
     let window = egui::Window::new("Debrief")
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .collapsible(false)

@@ -502,9 +502,8 @@ fn apply_zoom(ctx: &egui::Context, reference: egui::Vec2) {
 /// The zoom that fits `reference` into a window this size, at most the player's interface size
 /// `scale` (None before it has a size).
 fn fit_zoom(window: egui::Vec2, reference: egui::Vec2, scale: f32) -> Option<f32> {
-    (window.min_elem() > 0.0).then(|| {
-        (window.x / reference.x).min(window.y / reference.y).min(scale).max(UI_ZOOM_MIN)
-    })
+    (window.min_elem() > 0.0)
+        .then(|| (window.x / reference.x).min(window.y / reference.y).min(scale).max(UI_ZOOM_MIN))
 }
 
 pub(crate) fn apply_terminal_style(style: &mut egui::Style) {
@@ -1016,8 +1015,18 @@ impl egui::Widget for BigButton {
             return resp;
         }
         let p = ui.painter();
-        let hovered = enabled && resp.hovered();
+        // The keyboard's or the gamepad's focus lights it as the pointer does (`menu_nav`).
+        let focused = enabled && resp.has_focus();
+        let hovered = enabled && (resp.hovered() || focused);
         let pressed = hovered && resp.is_pointer_button_down_on();
+        if focused {
+            p.rect_stroke(
+                rect.expand(3.0),
+                0.0,
+                egui::Stroke::new(1.5, AMBER),
+                egui::StrokeKind::Outside,
+            );
+        }
         let text = match self.fill {
             _ if !enabled => DIM,
             Some(fill) => {
