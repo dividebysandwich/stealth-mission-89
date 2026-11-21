@@ -53,6 +53,7 @@ debrief-title = 임무 디브리핑
 debrief-training = 훈련 임무
 debrief-results = 결과
 debrief-flight-map = 비행 지도
+debrief-fly-again = 다시 비행
 debrief-section-results = 결과
 debrief-accomplished = 달성
 debrief-failed = 실패

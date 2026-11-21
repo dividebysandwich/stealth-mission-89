@@ -7,7 +7,8 @@
 //! Lucide icon each), the highlighted one lit up, every page's BACK the ESC BACK button in the
 //! footer.
 //!
-//! The main page: RESUME, SAVE MISSION, OPTIONS, KEY GUIDE, END MISSION (set apart). SAVE MISSION
+//! The main page: RESUME, SAVE MISSION, LOAD MISSION, RESTART MISSION (asked first,
+//! `restart.rs`), OPTIONS, KEY GUIDE, END MISSION (set apart). SAVE MISSION
 //! saves a single mission's flight as it is (`savegame.rs`) and says SAVED beside it; a loaded
 //! save starts with the menu open. OPTIONS has the pages of the main menu's OPTIONS window (`options.rs`) that
 //! make sense in flight: GAME (cockpit, HUD and avionics style, auto trim, tooltips, the VR cockpit
@@ -134,6 +135,10 @@ pub struct FlightMenu {
     pub can_load: bool,
     pub load_request: bool,
     pub saves: bool,
+    /// RESTART MISSION can fly the mission again from its start (`restart.rs` says so every
+    /// frame), and it was confirmed.
+    pub can_restart: bool,
+    pub restart_request: bool,
     /// Opens the menu (pausing the flight) as soon as it can: a loaded save starts so.
     pub open_on_start: bool,
     /// Opens the menu on its OPTIONS page as soon as it can (the campaign's Ops screen asks);
@@ -194,6 +199,8 @@ enum Page {
     Crew,
     /// END SORTIE?
     ConfirmEnd,
+    /// RESTART MISSION?
+    ConfirmRestart,
     Options,
     Game,
     Graphics,
@@ -211,6 +218,7 @@ impl Page {
                 Resume,
                 SaveMission,
                 LoadMission,
+                Restart,
                 Open(Page::Options),
                 KeyGuide,
                 SwitchSeat,
@@ -229,6 +237,7 @@ impl Page {
             ],
             Page::Crew => &[Resume, Open(Page::Options), KeyGuide, SwitchSeat, Back],
             Page::ConfirmEnd => &[ConfirmEnd, Resume, Back],
+            Page::ConfirmRestart => &[ConfirmRestart, Resume, Back],
             Page::Options => &[
                 Open(Page::Game),
                 Open(Page::Graphics),
@@ -322,7 +331,7 @@ impl Page {
     fn parent(self, home: Page) -> Option<Page> {
         match self {
             Page::Main | Page::Sortie | Page::Crew => None,
-            Page::Options | Page::ConfirmEnd => Some(home),
+            Page::Options | Page::ConfirmEnd | Page::ConfirmRestart => Some(home),
             _ => Some(Page::Options),
         }
     }
@@ -331,6 +340,7 @@ impl Page {
         ts!(match self {
             Page::Main | Page::Sortie | Page::Crew => "fm-menu",
             Page::ConfirmEnd => "fm-end-sortie-confirm",
+            Page::ConfirmRestart => "fm-restart-confirm",
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
             Page::Graphics => "options-tab-graphics",
@@ -389,6 +399,10 @@ enum Item {
     SaveMission,
     /// The list of saves over the menu: the one chosen replaces the flight.
     LoadMission,
+    /// The single mission flown again from its start (asked first, `restart.rs`).
+    Restart,
+    /// RESTART MISSION, asked to be sure.
+    ConfirmRestart,
     /// Opens a page.
     Open(Page),
     KeyGuide,
@@ -460,6 +474,8 @@ impl Item {
             Item::Resume => "fm-resume",
             Item::SaveMission => "fm-save-mission",
             Item::LoadMission => "fm-load-mission",
+            Item::Restart => "fm-restart",
+            Item::ConfirmRestart => "fm-restart-yes",
             Item::KeyGuide => "fm-key-guide",
             Item::EndMission => "fm-end-mission",
             Item::LeaveAircraft => "fm-leave-aircraft",
@@ -546,6 +562,8 @@ impl Item {
             | Item::Resume
             | Item::SaveMission
             | Item::LoadMission
+            | Item::Restart
+            | Item::ConfirmRestart
             | Item::LeaveAircraft
             | Item::SwitchSeat
             | Item::EndMission
@@ -566,6 +584,7 @@ impl Item {
             Item::Bindings => !ops,
             Item::SaveMission => menu.can_save,
             Item::LoadMission => menu.can_load,
+            Item::Restart | Item::ConfirmRestart => menu.can_restart,
             Item::LeaveAircraft => menu.can_leave,
             Item::SwitchSeat => menu.seat != SeatChoice::None,
             Item::CockpitSize | Item::AutoDetail => s.vr,
@@ -591,6 +610,8 @@ impl Item {
             Item::Resume
                 | Item::SaveMission
                 | Item::LoadMission
+                | Item::Restart
+                | Item::ConfirmRestart
                 | Item::Open(_)
                 | Item::KeyGuide
                 | Item::Bindings
@@ -1512,6 +1533,9 @@ fn navigate(
         Item::Resume => close = true,
         Item::SaveMission => menu.save_request = true,
         Item::LoadMission => menu.load_request = true,
+        Item::Restart => go_to(&mut menu, Page::ConfirmRestart),
+        // Stays open (paused) until the flight is set up again.
+        Item::ConfirmRestart => menu.restart_request = true,
         // On the campaign's board: its SAVE & EXIT or DISCONNECT, asking first.
         Item::EndMission if let Some(c) = campaign.as_mut().filter(|c| c.on_board()) => {
             c.ask_exit();
@@ -1734,7 +1758,7 @@ fn draw(
     }
     let (crumb, title) = match menu.page {
         Page::Main | Page::Sortie => ("", main_title),
-        Page::ConfirmEnd => ("", menu.page.title()),
+        Page::ConfirmEnd | Page::ConfirmRestart => ("", menu.page.title()),
         Page::Options => ("", ts!("options-title")),
         page => (ts!("fm-crumb-options"), page.title()),
     };
@@ -1742,6 +1766,7 @@ fn draw(
     let note = match menu.page {
         Page::Main | Page::Sortie if campaign.is_some() => ts!("fm-game-in-progress"),
         Page::ConfirmEnd => ts!("fm-end-sortie-confirm.text"),
+        Page::ConfirmRestart => ts!("fm-restart-confirm.text"),
         Page::Game => ts!("fm-game-note"),
         _ => "",
     };
@@ -1750,7 +1775,10 @@ fn draw(
     draw_frame(c, crumb, title, note, Some((key, back_lit)));
     // The main page's entries and the pages of OPTIONS have an icon; the ones that open
     // another screen (a page, the key guide, the bindings dialog) also have a chevron.
-    let icons = matches!(menu.page, Page::Main | Page::Sortie | Page::ConfirmEnd | Page::Options);
+    let icons = matches!(
+        menu.page,
+        Page::Main | Page::Sortie | Page::ConfirmEnd | Page::ConfirmRestart | Page::Options
+    );
     for (i, (item, r)) in items.iter().zip(item_rects(menu.page)).enumerate() {
         if *item == Item::Back {
             continue;
@@ -1870,7 +1898,11 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
     fill_poly(c, &panel, ink::PANEL);
     let tx = 76.0;
     let crumb_w = if crumb.is_empty() { 0.0 } else { stroke_width(crumb, CRUMB) + 16.0 };
-    let title_size = fit(title, TITLE, 520.0 - crumb_w);
+    // The title's tab ends short of the game's name at the top right.
+    const NAME: &str = "STEALTH MISSION 89";
+    let name_x = W as f32 - 72.0 - stroke_width(NAME, 11.0);
+    let room = name_x - 12.0 - SLANT - 34.0 - tx - crumb_w;
+    let title_size = fit(title, TITLE, room.min(520.0 - crumb_w));
     let tab = tx + crumb_w + stroke_width(title, title_size) + 34.0 + SLANT;
     let tab_shape = [
         Vec2::new(EDGE + CUT, EDGE),
@@ -1901,16 +1933,7 @@ fn draw_frame(c: &mut Canvas, crumb: &str, title: &str, note: &str, back: Option
         stroke_text_at(c, tx, y, crumb, CRUMB, 1.8, ink::NOTE, Align::Left);
     }
     stroke_text_at(c, tx + crumb_w, mid, title, title_size, 3.4, ink::LIT_TEXT, Align::Left);
-    stroke_text_at(
-        c,
-        W as f32 - 72.0,
-        26.0,
-        "STEALTH MISSION 89",
-        11.0,
-        1.6,
-        ink::TEXT,
-        Align::Right,
-    );
+    stroke_text_at(c, W as f32 - 72.0, 26.0, NAME, 11.0, 1.6, ink::TEXT, Align::Right);
     for i in 0..2 {
         slash(c, Vec2::new(W as f32 - 48.0 + 14.0 * i as f32, 36.0), 9.0, 22.0, -12.0, ink::TEXT);
     }
@@ -1989,6 +2012,7 @@ fn icon(item: Item) -> Option<char> {
         Item::Resume => '\u{e13c}', // play
         Item::SaveMission => icon::SAVE,
         Item::LoadMission => icon::LOAD,
+        Item::Restart | Item::ConfirmRestart => icon::RESET,
         Item::Open(Page::Options) => icon::OPTIONS,
         Item::KeyGuide => '\u{e05f}', // book-open
         Item::EndMission | Item::ConfirmEnd => icon::END_SORTIE,
@@ -2213,6 +2237,10 @@ mod tests {
         assert_eq!(item_rects(Page::Crew).len(), Page::Crew.items().len());
         assert!(!Page::Main.items().contains(&Item::LeaveAircraft));
         assert_eq!(Page::ConfirmEnd.items()[0], Item::ConfirmEnd);
+        assert_eq!(Page::ConfirmRestart.items()[0], Item::ConfirmRestart);
+        assert_eq!(Page::ConfirmRestart.back(false, Page::Main), Some(Page::Main));
+        assert!(!Page::Sortie.items().contains(&Item::Restart));
+        assert!(!Item::Restart.enabled(&Settings::from_args(), false, &FlightMenu::default()));
         assert_eq!(Page::ConfirmEnd.back(false, Page::Sortie), Some(Page::Sortie));
         assert_eq!(Page::Options.back(false, Page::Sortie), Some(Page::Sortie));
         assert_eq!(Page::Options.back(true, Page::Sortie), None);

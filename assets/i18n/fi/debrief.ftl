@@ -53,6 +53,7 @@ debrief-title = TEHTÄVÄN PURKU
 debrief-training = HARJOITUSTEHTÄVÄ
 debrief-results = TULOKSET
 debrief-flight-map = LENTOKARTTA
+debrief-fly-again = LENNÄ UUDELLEEN
 debrief-section-results = Tulokset
 debrief-accomplished = SUORITETTU
 debrief-failed = EPÄONNISTUI

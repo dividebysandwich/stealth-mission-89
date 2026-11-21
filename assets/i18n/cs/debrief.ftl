@@ -53,6 +53,7 @@ debrief-title = DEBRIEFING MISE
 debrief-training = CVIČNÁ MISE
 debrief-results = VÝSLEDKY
 debrief-flight-map = MAPA LETU
+debrief-fly-again = LETĚT ZNOVU
 debrief-section-results = Výsledky
 debrief-accomplished = SPLNĚNO
 debrief-failed = NESPLNĚNO

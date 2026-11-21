@@ -107,6 +107,7 @@ mod profile;
 mod radio_menu;
 mod recon;
 mod recorder;
+mod restart;
 mod rockets;
 mod rotor_blur;
 mod rwr;
@@ -403,7 +404,7 @@ pub fn run() {
             meatball::MeatballPlugin,
             voice::VoicePlugin,
         ))
-        .add_plugins(tts::TtsPlugin)
+        .add_plugins((tts::TtsPlugin, restart::RestartPlugin))
         // The browser's first visit: graphics detail for its frame rate.
         .add_plugins(detail_benchmark::DetailBenchmarkPlugin);
     #[cfg(not(target_arch = "wasm32"))]

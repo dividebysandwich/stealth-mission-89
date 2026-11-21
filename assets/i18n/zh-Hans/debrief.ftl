@@ -53,6 +53,7 @@ debrief-title = 任务讲评
 debrief-training = 训练任务
 debrief-results = 结果
 debrief-flight-map = 飞行地图
+debrief-fly-again = 再飞一次
 debrief-section-results = 结果
 debrief-accomplished = 已完成
 debrief-failed = 失败

@@ -53,6 +53,7 @@ debrief-title = DEBRIEFING TAL-MISSJONI
 debrief-training = MISSJONI TA' TAĦRIĠ
 debrief-results = REZULTATI
 debrief-flight-map = MAPPA TAT-TITJIRA
+debrief-fly-again = ITTJAR MILL-ĠDID
 debrief-section-results = Rezultati
 debrief-accomplished = MWETTAQ
 debrief-failed = FALLA

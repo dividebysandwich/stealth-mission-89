@@ -53,6 +53,7 @@ debrief-title = MISIJOS DEBRIFINGAS
 debrief-training = MOKOMOJI MISIJA
 debrief-results = REZULTATAI
 debrief-flight-map = SKRYDŽIO ŽEMĖLAPIS
+debrief-fly-again = SKRISTI DAR KARTĄ
 debrief-section-results = Rezultatai
 debrief-accomplished = ĮVYKDYTA
 debrief-failed = NEPAVYKO

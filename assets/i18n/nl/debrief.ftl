@@ -53,6 +53,7 @@ debrief-title = MISSIE-DEBRIEFING
 debrief-training = TRAININGSMISSIE
 debrief-results = RESULTATEN
 debrief-flight-map = VLUCHTKAART
+debrief-fly-again = OPNIEUW VLIEGEN
 debrief-section-results = Resultaten
 debrief-accomplished = VOLBRACHT
 debrief-failed = MISLUKT

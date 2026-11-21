@@ -53,6 +53,7 @@ debrief-title = DEBRIFING MISIJE
 debrief-training = VADBENA MISIJA
 debrief-results = REZULTATI
 debrief-flight-map = KARTA LETA
+debrief-fly-again = LETI ZNOVA
 debrief-section-results = Rezultati
 debrief-accomplished = IZPOLNJEN
 debrief-failed = NEUSPEŠEN

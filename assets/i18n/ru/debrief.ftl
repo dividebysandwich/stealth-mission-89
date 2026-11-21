@@ -53,6 +53,7 @@ debrief-title = РАЗБОР ПОЛЁТА
 debrief-training = УЧЕБНАЯ МИССИЯ
 debrief-results = ИТОГИ
 debrief-flight-map = КАРТА ПОЛЁТА
+debrief-fly-again = ЛЕТЕТЬ СНОВА
 debrief-section-results = Итоги
 debrief-accomplished = ВЫПОЛНЕНО
 debrief-failed = НЕ ВЫПОЛНЕНО

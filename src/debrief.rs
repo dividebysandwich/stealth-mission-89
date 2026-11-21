@@ -87,11 +87,16 @@ fn debrief_ui(
     mut next: ResMut<NextState<AppState>>,
     mut planner: ResMut<crate::planner::Planner>,
     mut map: Local<MapState>,
+    restart: (Res<crate::restart::LastStart>, ResMut<crate::restart::RestartRequest>),
 ) -> Result {
+    let (last_start, mut restart) = restart;
     let Some(d) = debrief else {
         next.set(AppState::Menu);
         return Ok(());
     };
+    // R: FLY AGAIN.
+    let mut again =
+        keys.just_pressed(KeyCode::KeyR) && last_start.available() && d.career.is_empty();
     if d.is_added() {
         *map = MapState::default();
         // Test aid: the flight map at mid-flight.
@@ -142,6 +147,11 @@ fn debrief_ui(
             ui.add_space(8.0);
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 done |= ui.add(big_button(t!("continue")).icon(icon::CONTINUE).primary()).clicked();
+                // A single mission (not a career sortie) flown again from its start.
+                if last_start.available() && d.career.is_empty() {
+                    again |=
+                        ui.add(big_button(t!("debrief-fly-again")).icon(icon::RESET)).clicked();
+                }
                 if !d.record.samples.is_empty() {
                     let (label, mark) = if map.open {
                         (t!("debrief-results"), icon::RESULTS)
@@ -155,7 +165,9 @@ fn debrief_ui(
             });
         },
     );
-    if done {
+    if again {
+        crate::restart::fly_again(&mut restart, &mut next);
+    } else if done {
         next.set(AppState::Menu);
     }
     Ok(())

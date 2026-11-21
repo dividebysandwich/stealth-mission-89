@@ -53,6 +53,7 @@ debrief-title = MISSIONSNACHBESPRECHUNG
 debrief-training = ÜBUNGSMISSION
 debrief-results = ERGEBNISSE
 debrief-flight-map = FLUGKARTE
+debrief-fly-again = NOCHMAL FLIEGEN
 debrief-section-results = Ergebnisse
 debrief-accomplished = ERFÜLLT
 debrief-failed = GESCHEITERT

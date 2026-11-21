@@ -53,6 +53,7 @@ debrief-title = KÜLDETÉS-KIÉRTÉKELÉS
 debrief-training = GYAKORLÓ KÜLDETÉS
 debrief-results = EREDMÉNYEK
 debrief-flight-map = REPÜLÉSI TÉRKÉP
+debrief-fly-again = ÚJRA REPÜLÉS
 debrief-section-results = Eredmények
 debrief-accomplished = TELJESÍTVE
 debrief-failed = SIKERTELEN

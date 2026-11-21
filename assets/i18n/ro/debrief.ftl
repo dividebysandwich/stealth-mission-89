@@ -53,6 +53,7 @@ debrief-title = DEBRIEFING MISIUNE
 debrief-training = MISIUNE DE INSTRUIRE
 debrief-results = REZULTATE
 debrief-flight-map = HARTA ZBORULUI
+debrief-fly-again = ZBOARĂ DIN NOU
 debrief-section-results = Rezultate
 debrief-accomplished = ÎNDEPLINIT
 debrief-failed = EȘUAT

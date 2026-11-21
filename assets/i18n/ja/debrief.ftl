@@ -53,6 +53,7 @@ debrief-title = ミッションデブリーフィング
 debrief-training = 訓練ミッション
 debrief-results = 結果
 debrief-flight-map = 飛行マップ
+debrief-fly-again = もう一度飛ぶ
 debrief-section-results = 結果
 debrief-accomplished = 達成
 debrief-failed = 失敗

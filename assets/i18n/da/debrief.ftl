@@ -53,6 +53,7 @@ debrief-title = MISSIONSDEBRIEFING
 debrief-training = TRÆNINGSMISSION
 debrief-results = RESULTATER
 debrief-flight-map = FLYVEKORT
+debrief-fly-again = FLYV IGEN
 debrief-section-results = Resultater
 debrief-accomplished = GENNEMFØRT
 debrief-failed = MISLYKKET

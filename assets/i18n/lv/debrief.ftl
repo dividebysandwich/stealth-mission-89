@@ -53,6 +53,7 @@ debrief-title = MISIJAS DEBRĪFINGS
 debrief-training = TRENIŅA MISIJA
 debrief-results = REZULTĀTI
 debrief-flight-map = LIDOJUMA KARTE
+debrief-fly-again = LIDOT VĒLREIZ
 debrief-section-results = Rezultāti
 debrief-accomplished = IZPILDĪTS
 debrief-failed = NEIZPILDĪTS

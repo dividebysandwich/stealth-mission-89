@@ -53,6 +53,7 @@ debrief-title = MISSIOONI DEBRIIFING
 debrief-training = TREENINGMISSIOON
 debrief-results = TULEMUSED
 debrief-flight-map = LENNUKAART
+debrief-fly-again = LENDA UUESTI
 debrief-section-results = Tulemused
 debrief-accomplished = TÄIDETUD
 debrief-failed = EBAÕNNESTUS

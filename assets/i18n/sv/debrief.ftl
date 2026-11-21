@@ -53,6 +53,7 @@ debrief-title = UPPDRAGSDEBRIEF
 debrief-training = ÖVNINGSUPPDRAG
 debrief-results = RESULTAT
 debrief-flight-map = FLYGKARTA
+debrief-fly-again = FLYG IGEN
 debrief-section-results = Resultat
 debrief-accomplished = GENOMFÖRT
 debrief-failed = MISSLYCKAT

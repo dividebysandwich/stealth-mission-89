@@ -53,6 +53,7 @@ debrief-title = DEBRIEF ΑΠΟΣΤΟΛΗΣ
 debrief-training = ΑΠΟΣΤΟΛΗ ΕΚΠΑΙΔΕΥΣΗΣ
 debrief-results = ΑΠΟΤΕΛΕΣΜΑΤΑ
 debrief-flight-map = ΧΑΡΤΗΣ ΠΤΗΣΗΣ
+debrief-fly-again = ΠΕΤΑΞΕ ΞΑΝΑ
 debrief-section-results = Αποτελέσματα
 debrief-accomplished = ΕΠΙΤΕΥΧΘΗΚΕ
 debrief-failed = ΑΠΟΤΥΧΙΑ

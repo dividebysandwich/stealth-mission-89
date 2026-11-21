@@ -53,6 +53,7 @@ debrief-title = DEBRIEF MISI
 debrief-training = MISI LATIHAN
 debrief-results = HASIL
 debrief-flight-map = PETA PENERBANGAN
+debrief-fly-again = TERBANG LAGI
 debrief-section-results = Hasil
 debrief-accomplished = TERCAPAI
 debrief-failed = GAGAL

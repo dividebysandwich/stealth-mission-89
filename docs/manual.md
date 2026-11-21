@@ -1779,6 +1779,7 @@ back a page; on the first page they close the menu.
 | Resume | Closes the menu (as does Esc again). |
 | Save mission | Single missions only, while still in the aircraft: saves the flight as it is (the world, your aircraft, route, stores and the flight's record); LOAD in the single mission screen flies it on (chapter 1.2). Views, MFD pages and the kneeboard start afresh. |
 | Load mission | Single missions only: the list of saves over the menu (LOAD, the pencil to rename, DELETE); the one loaded replaces the flight under way, paused. |
+| Restart mission | Single missions only (not career sorties): asks first, then flies the mission again from its start with the same route, stores, aircraft and realism switches. |
 | Options | The pages of the main menu's OPTIONS (chapter 1.3) that apply in flight, below. |
 | Key guide | The keys as bound, the mouse or the VR controllers. Type to keep only the keys whose description holds the text (any case); Backspace deletes, the field's X or Esc clears it. In VR, a fingertip on the field and the trigger open a keyboard on the screen: touch a key and pull the trigger to type, DONE closes it. |
 | End mission | Ends the flight and goes to the debrief. |
@@ -2763,6 +2764,9 @@ radars came to detecting you (green out of reach, amber close, red detectable), 
 that tracked you and markers where they did, where missiles were fired, where you were hit and
 where you scored. Drag the slider or press *PLAY* to replay the flight. *Radar exposure* sums it
 up. Drag to pan, wheel to zoom; *RESULTS* goes back.
+
+**Fly again.** After a single mission (not a career sortie), *FLY AGAIN* (or **R**) flies the same
+mission again from its start, with the same route, stores and aircraft.
 
 **Tacview.** With *Tacview export* checked in OPTIONS > GAME, every flight is also saved as a Tacview
 recording (`.acmi`) in the game's folder for your files under `tacview` (on Windows

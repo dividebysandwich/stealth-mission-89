@@ -53,6 +53,7 @@ debrief-title = DÍBHRIEFÁIL NA MISEAN
 debrief-training = MISEAN TRAENÁLA
 debrief-results = TORTHAÍ
 debrief-flight-map = MAPA NA hEITILTE
+debrief-fly-again = EITIL ARÍS
 debrief-section-results = Torthaí
 debrief-accomplished = BAINTE AMACH
 debrief-failed = THEIP

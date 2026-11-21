@@ -53,6 +53,7 @@ debrief-title = DÉBRIEFING DE MISSION
 debrief-training = MISSION D'ENTRAÎNEMENT
 debrief-results = RÉSULTATS
 debrief-flight-map = CARTE DU VOL
+debrief-fly-again = VOLER À NOUVEAU
 debrief-section-results = Résultats
 debrief-accomplished = ACCOMPLI
 debrief-failed = ÉCHOUÉ
