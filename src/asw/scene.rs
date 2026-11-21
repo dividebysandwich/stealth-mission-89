@@ -40,8 +40,11 @@ impl SonarScene {
         let mut ui = AswUi { sensor: Some(3), ..Default::default() };
         for &(id, kind, ..) in &SENSORS {
             if kind != Some(BuoyKind::Bt) {
-                let w =
-                    sonar::Waterfall { rng: seed | 1 | ((id as u32) << 20), ..Default::default() };
+                let w = sonar::Waterfall {
+                    rng: seed | 1 | ((id as u32) << 20),
+                    spectral: kind == Some(BuoyKind::Dicass),
+                    ..Default::default()
+                };
                 ui.falls.insert(id, w);
             }
         }
@@ -66,17 +69,20 @@ impl SonarScene {
             }
             let wobble = |k: f32| (t * k).sin() * 2.0;
             let bearing = |b: f32, d: f32| (b + d * t).rem_euclid(360.0) as u16;
+            // A DICASS hears no direction.
+            let omni = kind == Some(BuoyKind::Dicass);
+            let bearing = |b: f32, d: f32| (!omni).then(|| bearing(b, d));
             let mut lines = vec![
                 Line {
                     snr: (6.0 + wobble(0.11) * 2.0) as i8,
-                    bearing: Some(bearing(sub + wobble(0.3) * 0.3, sub_drift)),
-                    freqs: [50, 300],
+                    bearing: bearing(sub + wobble(0.3) * 0.3, sub_drift),
+                    freqs: [50, 13],
                     ..Default::default()
                 },
                 Line {
                     snr: 14,
-                    bearing: Some(bearing(ship, ship_drift)),
-                    freqs: [120, 0],
+                    bearing: bearing(ship, ship_drift),
+                    freqs: [56, 18],
                     ship: true,
                     ..Default::default()
                 },
@@ -87,9 +93,10 @@ impl SonarScene {
                 if since > 1.6 && since < 1.6 + 1.0 / SENSE_HZ as f32 {
                     lines.push(Line {
                         snr: 18,
-                        bearing: Some(bearing(sub, sub_drift)),
+                        bearing: Some((sub + sub_drift * t).rem_euclid(360.0) as u16),
                         range: Some(2400),
                         doppler: 3,
+                        freqs: [stealth_sim::asw::PING_LINE_HZ[(id == 0) as usize], 0],
                         echo: true,
                         ..Default::default()
                     });

@@ -411,6 +411,11 @@ pub fn mark_signal(ui: &mut AswUi, sim: &stealth_sim::Sim, crew: &AswCrew, owner
         ui.note("PUT THE CURSOR ON A TRACE");
         return;
     };
+    // A DICASS's spectrum has no bearings to mark.
+    if ui.falls.get(&sensor).is_some_and(|w| w.spectral) {
+        ui.note("NO BEARING ON AN OMNI SENSOR");
+        return;
+    }
     if let Some(i) = ui.marks.iter().position(|m| {
         m.sensor == sensor && sonar::bearing_off(m.bearing, brg).abs() <= marks::FOLLOW
     }) {

@@ -4228,8 +4228,12 @@ row is how strongly the sensor hears each direction:
 - another sonar's **ping** is a bright dash at its bearing, the whole row lit and a glow ringing on
   under it for some seconds; its **echoes** off submarines are short sharp dashes at their bearings,
   a moment after it; the sensor's own ping a bright row;
-- a sensor that cannot tell direction (a DICASS listening) raises its whole row when it hears
-  something.
+- a **DICASS** cannot tell direction, so its waterfall is a **frequency spectrum** instead (0 to
+  250 Hz across): each contact is a set of thin vertical **tonal lines**, its machinery's hum (50 Hz
+  on a diesel boat, 60 Hz on a nuclear one) and its blade rate (higher the faster it goes) with their
+  harmonics; a ship's or a torpedo's cavitating screws wash broad noise under them. Pings show as
+  lines near 200 Hz (a dipping sonar's) and 220 Hz (a DICASS's), an echo's shifted a little by its
+  Doppler. The cursor there is a frequency, and a DICASS's contacts cannot be marked.
 
 Each waterfall's header has the sensor (B2 DIFAR, DIP AQS-13F), its range from you, its hydrophone
 depth and mode, and the strongest contact: its signal over the noise (SNR) and bearing, and after a

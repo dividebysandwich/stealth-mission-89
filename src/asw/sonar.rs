@@ -6,8 +6,10 @@
 //! still), moving across as its bearing from the sensor changes; another sonar's ping a bright
 //! dash at its bearing ringing on in the water for seconds after it (the reverberation), and its
 //! echoes off the submarines (sharp dashes at their bearings, a moment later: the sound's way
-//! round by them) however quiet they run; the sensor's own ping a bright row. An omnidirectional sensor (a DICASS
-//! listening) raises its whole row: it cannot tell the direction. Each row's header has the
+//! round by them) however quiet they run; the sensor's own ping a bright row. A DICASS cannot
+//! tell direction: its waterfall is a frequency spectrum instead (0 to `FREQ_MAX` Hz across),
+//! each contact its tonal lines (the machinery's hum, the blade rate and their harmonics), a
+//! ship's or a torpedo's cavitation a broad wash under them. Each row's header has the
 //! sensor's kind, number, depth, mode, the strongest contact's signal, bearing, range and
 //! Doppler; touch a header to select the sensor (PING and AUDIO then act on it), its buttons
 //! switch a DICASS between listening and pinging and scuttle a buoy. A BT buoy's header shows
@@ -50,6 +52,18 @@ pub struct Waterfall {
     /// The echoes heard lately (the console's clock, bearing, signal): a mark can be put on one
     /// after it has gone by.
     pub echoes: VecDeque<(f32, u16, i8)>,
+    /// An omnidirectional sensor's (a DICASS): its rows are frequency spectra (0 to `FREQ_MAX`
+    /// Hz across), not bearings.
+    pub spectral: bool,
+}
+
+/// A spectral waterfall's top frequency (Hz): the tonals of the machinery, the blades and their
+/// harmonics, a torpedo's screw, the other sonars' ping lines (`PING_LINE_HZ`) all under it.
+pub const FREQ_MAX: f32 = 250.0;
+
+/// A spectral waterfall's bin's centre frequency (Hz).
+fn bin_hz(k: usize) -> f32 {
+    (k as f32 + 0.5) * FREQ_MAX / BINS as f32
 }
 
 /// The reverberation's time constant (s) after a ping heard: it dies away over a few seconds.
@@ -70,8 +84,17 @@ impl Waterfall {
         self.rng
     }
 
-    /// A row from a report (at `now` on the console's clock): signal strength over bearing.
+    /// A row from a report (at `now` on the console's clock): signal strength over bearing
+    /// (over frequency on a spectral waterfall).
     pub fn push(&mut self, s: &Sample, now: f32) {
+        if self.spectral {
+            let row = self.spectrum(s, now);
+            self.rows.push_front(row.map(|v| v.min(255.0) as u8));
+            self.rows.truncate(ROWS);
+            self.last = s.clone();
+            self.seq = s.seq;
+            return;
+        }
         let mut row = [0f32; BINS];
         let base = 25.0 + s.noise.saturating_sub(40) as f32 * 3.0;
         for v in row.iter_mut() {
@@ -148,6 +171,90 @@ impl Waterfall {
         self.last = s.clone();
         self.seq = s.seq;
     }
+
+    /// An omnidirectional sensor's row: the spectrum it hears. The sea's noise louder at the low
+    /// frequencies; each contact its narrow tonal lines (machinery, blade rate, harmonics) as
+    /// strong as it is heard, a ship's or a torpedo's cavitation a broad wash besides; another
+    /// sonar's ping its line (and the whole row while it rings), an echo the ping's line shifted
+    /// by its Doppler; the sensor's own ping a bright row.
+    fn spectrum(&mut self, s: &Sample, now: f32) -> [f32; BINS] {
+        let mut row = [0f32; BINS];
+        let base = 25.0 + s.noise.saturating_sub(40) as f32 * 3.0;
+        for (k, v) in row.iter_mut().enumerate() {
+            let n = self.noise();
+            let low = 1.0 - bin_hz(k) / FREQ_MAX;
+            *v = base + 30.0 * low * low + (n % 45) as f32 + if n % 23 == 0 { 40.0 } else { 0.0 };
+        }
+        // A line at `hz` (Hz) `strength` high, `sigma` Hz wide, a little unsteady.
+        let line = |row: &mut [f32; BINS], rng: u32, hz: f32, strength: f32, sigma: f32| {
+            let hz = hz + ((rng % 100) as f32 / 100.0 - 0.5) * 0.6;
+            if hz <= 0.0 || hz >= FREQ_MAX + 3.0 * sigma {
+                return;
+            }
+            for (k, v) in row.iter_mut().enumerate() {
+                let d = bin_hz(k) - hz;
+                *v += strength * (-(d * d) / (2.0 * sigma * sigma)).exp();
+            }
+        };
+        if s.heard {
+            self.reverb = 1.0;
+            self.reverb_at = None;
+        } else {
+            self.reverb *= (-1.0 / (stealth_sim::asw::SENSE_HZ as f32 * REVERB_TAU)).exp();
+        }
+        if self.reverb > 0.02 {
+            let r = self.reverb;
+            for v in row.iter_mut() {
+                let n = (self.noise() % 100) as f32 / 100.0;
+                *v += r * 90.0 * (0.6 + 0.4 * n);
+            }
+        }
+        for l in &s.lines {
+            let snr = l.snr.max(0) as f32;
+            if l.echo
+                && let Some(b) = l.bearing
+            {
+                self.echoes.push_back((now, b, l.snr));
+            }
+            let [tone, blade] = l.freqs.map(|f| f as f32);
+            let rng = self.noise();
+            if l.ping || l.echo {
+                let strength = if l.ping { 255.0 } else { (150.0 + snr * 3.0).min(255.0) };
+                line(&mut row, rng, tone + l.doppler as f32 * 0.4, strength, 1.2);
+                continue;
+            }
+            // The sensor's own ping come back: the ping's line, shifted by the Doppler.
+            if l.range.is_some() {
+                let hz = stealth_sim::asw::PING_LINE_HZ[0] as f32 + l.doppler as f32 * 0.4;
+                line(&mut row, rng, hz, (150.0 + snr * 3.0).min(255.0), 1.2);
+            }
+            let strength = (40.0 + snr * 3.0).clamp(20.0, 200.0);
+            // The machinery's hum and its second harmonic; the blade rate and its harmonics.
+            line(&mut row, rng, tone, strength, 0.8);
+            line(&mut row, rng >> 8, tone * 2.0, strength * 0.45, 0.9);
+            for (h, k) in [(1.0, 0.7), (2.0, 0.5), (3.0, 0.3)] {
+                line(&mut row, rng >> (8 + 4 * h as u32), blade * h, strength * k, 0.8);
+            }
+            // Cavitating screws: broadband noise, most of it low.
+            if l.ship || l.torpedo {
+                let wash = strength * if l.torpedo { 0.35 } else { 0.2 };
+                for (k, v) in row.iter_mut().enumerate() {
+                    let n = (self.noise() % 100) as f32 / 100.0;
+                    let low = 1.0 - 0.6 * bin_hz(k) / FREQ_MAX;
+                    *v += wash * low * (0.5 + 0.5 * n);
+                }
+            }
+        }
+        while self.echoes.front().is_some_and(|e| now - e.0 > ECHO_KEEP) {
+            self.echoes.pop_front();
+        }
+        if s.ping {
+            for v in row.iter_mut() {
+                *v += 120.0;
+            }
+        }
+        row
+    }
 }
 
 /// The sensors of the crew shown, in order: its buoys (id, kind, its report), then the
@@ -184,10 +291,11 @@ pub fn record(
     let mut live = Vec::new();
     for b in asw.buoys_of(owner).filter(|b| b.fall <= 0.0) {
         live.push(b.id);
-        let w = ui
-            .falls
-            .entry(b.id)
-            .or_insert_with(|| Waterfall { rng: 0x9E37_79B9 ^ b.id as u32, ..Default::default() });
+        let w = ui.falls.entry(b.id).or_insert_with(|| Waterfall {
+            rng: 0x9E37_79B9 ^ b.id as u32,
+            spectral: b.kind == BuoyKind::Dicass,
+            ..Default::default()
+        });
         if w.seq != b.sample.seq {
             w.push(&b.sample, now);
             marks::follow(&mut ui.marks, b.id, &b.sample, now);
@@ -477,26 +585,34 @@ pub fn paint(
                 }
             }
         }
-        // The listening cursor, and what is near it.
+        // The listening cursor, and what is near it (on a spectrum: the frequency, a tonal
+        // line near it).
+        let spectral = kind == Some(BuoyKind::Dicass);
         if let Some(&brg) = ui.cursor.get(&id).filter(|_| kind != Some(BuoyKind::Bt)) {
             let x = x0 + (x1 - x0) * brg / 360.0;
             cv.stroke(Vec2::new(x, y0), Vec2::new(x, y1), 1.2, YELLOW);
+            let hz = brg / 360.0 * FREQ_MAX;
             let near = falls.and_then(|w| {
-                w.last
-                    .lines
-                    .iter()
-                    .find(|l| l.bearing.is_some_and(|b| bearing_off(b as f32, brg).abs() <= 8.0))
+                w.last.lines.iter().find(|l| {
+                    if spectral {
+                        l.freqs.iter().any(|&f| f > 0 && (f as f32 - hz).abs() <= 3.0)
+                    } else {
+                        l.bearing.is_some_and(|b| bearing_off(b as f32, brg).abs() <= 8.0)
+                    }
+                })
             });
+            let at = if spectral { format!("{hz:.0}HZ") } else { format!("{brg:03.0}") };
             let t = match near {
-                Some(l) => format!("{brg:03.0} {:+}", l.snr),
-                None => format!("{brg:03.0}"),
+                Some(l) => format!("{at} {:+}", l.snr),
+                None => at,
             };
             let tx = if x > x1 - 60.0 { x - 4.0 } else { x + 4.0 };
             let al = if x > x1 - 60.0 { Align::Right } else { Align::Left };
             stroke_text_at(cv, tx, y0 + 7.0, &t, 6.0, 1.0, YELLOW, al);
         }
-        // Its marks: a tick at the top of the waterfall at each, its letter (grey: lost).
-        if kind != Some(BuoyKind::Bt) {
+        // Its marks: a tick at the top of the waterfall at each, its letter (grey: lost). A
+        // spectrum has no bearings to mark.
+        if kind != Some(BuoyKind::Bt) && !spectral {
             for m in ui.marks.iter().filter(|m| m.sensor == id) {
                 let x = x0 + (x1 - x0) * m.bearing / 360.0;
                 let col = if m.lost(ui.t) { GREY } else { CYAN };
@@ -517,16 +633,29 @@ pub fn paint(
                 );
             }
         }
-        // The bearing scale under it (true).
+        // The bearing scale under it (true); a spectrum's frequency scale (Hz).
         if kind != Some(BuoyKind::Bt) {
-            for (deg, label) in [(0, "000"), (90, "090"), (180, "180"), (270, "270"), (360, "360")]
-            {
-                let x = x0 + (x1 - x0) * deg as f32 / 360.0;
+            let ticks: &[(f32, &str)] = if spectral {
+                &[
+                    (0.0, "0"),
+                    (0.2, "50"),
+                    (0.4, "100"),
+                    (0.6, "150"),
+                    (0.8, "200"),
+                    (1.0, "250 HZ"),
+                ]
+            } else {
+                &[(0.0, "000"), (0.25, "090"), (0.5, "180"), (0.75, "270"), (1.0, "360")]
+            };
+            for &(f, label) in ticks {
+                let x = x0 + (x1 - x0) * f;
                 cv.line(x as i32, y1 as i32, x as i32, y1 as i32 + 3, GREY);
-                let align = match deg {
-                    0 => Align::Left,
-                    360 => Align::Right,
-                    _ => Align::Centre,
+                let align = if f <= 0.0 {
+                    Align::Left
+                } else if f >= 1.0 {
+                    Align::Right
+                } else {
+                    Align::Centre
                 };
                 stroke_text_at(cv, x, y1 + 8.0, label, 5.0, 1.0, GREY, align);
             }

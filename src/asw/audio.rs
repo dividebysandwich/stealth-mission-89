@@ -225,9 +225,13 @@ fn follow(
     let p = &link.params;
     let s = &w.last;
     set(&p.sea, SEA * (1.0 + (s.noise as f32 - 45.0).max(0.0) * 0.05));
-    // How far off the cursor's bearing a contact is (an omnidirectional sensor's: none).
+    // How far off the cursor's bearing a contact is (an omnidirectional sensor's: none; a
+    // DICASS's cursor is on its spectrum, a frequency, never a bearing).
+    let spectral = w.spectral;
     let off_line = |l: &stealth_sim::asw::Line, brg: f32| {
-        l.bearing.map_or(0.0, |b| super::sonar::bearing_off(b as f32, brg).abs())
+        l.bearing
+            .filter(|_| !spectral)
+            .map_or(0.0, |b| super::sonar::bearing_off(b as f32, brg).abs())
     };
     let mut k = 0;
     for l in s.lines.iter().filter(|l| !l.ping) {
