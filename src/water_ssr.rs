@@ -183,10 +183,12 @@ fn prepare_pipelines(
     cache: Res<PipelineCache>,
     mut pipelines: ResMut<SpecializedRenderPipelines<MirrorPipeline>>,
     pipeline: Res<MirrorPipeline>,
-    views: Query<(Entity, &ExtractedView, &ViewDepthTexture), With<WaterMirror>>,
+    views: Query<(Entity, &ExtractedView, &Msaa), With<WaterMirror>>,
 ) {
-    for (e, view, depth) in &views {
-        let multisampled = depth.texture.sample_count() > 1;
+    // By the view's MSAA: its depth texture is made after this (`PrepareResources`), so on the
+    // frame MSAA is switched the one here is still the last frame's.
+    for (e, view, msaa) in &views {
+        let multisampled = msaa.samples() > 1;
         let key = MirrorKey { format: view.target_format, multisampled };
         let id = pipelines.specialize(&cache, &pipeline, key);
         commands.entity(e).insert(ViewMirror { pipeline: id, multisampled });
@@ -202,6 +204,10 @@ fn mirror(
 ) {
     let (target, depth, extracted, m) = view.into_inner();
     if !frame.on {
+        return;
+    }
+    // A frame of a switch the pipeline did not see yet.
+    if (depth.texture.sample_count() > 1) != m.multisampled {
         return;
     }
     let Some(render_pipeline) = cache.get_render_pipeline(m.pipeline) else { return };
