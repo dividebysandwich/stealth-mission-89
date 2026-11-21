@@ -162,6 +162,14 @@ pub enum GroundKind {
     Fp7Launcher,
     /// A Flamingo cruise missile launcher at a friendly launch site.
     FlamingoLauncher,
+    /// A civilian box truck hauling the enemy's supplies on the roads (`ground.rs` supply
+    /// convoys).
+    CivTruck,
+    /// An army cargo truck (Ural) hauling supplies.
+    ArmyTruck,
+    /// A pickup with a heavy machine gun in its bed escorting a supply convoy: fires at drones
+    /// close by, inaccurately.
+    Technical,
 }
 
 /// A friendly missile battery: a radar that tracks and the launchers around it that fire on
@@ -276,6 +284,9 @@ impl GroundKind {
             GroundKind::IskanderTel => "Iskander TEL",
             GroundKind::Fp7Launcher => "FP-7 launcher",
             GroundKind::FlamingoLauncher => "Flamingo launcher",
+            GroundKind::CivTruck => "Truck",
+            GroundKind::ArmyTruck => "Ural truck",
+            GroundKind::Technical => "Technical",
         }
     }
 
@@ -309,6 +320,17 @@ impl GroundKind {
             || matches!(self, GroundKind::DroneCenter | GroundKind::Usv)
             || self.missile_launcher()
             || self.armour()
+            || self.truck()
+    }
+
+    /// A supply truck (no gun).
+    pub fn truck(self) -> bool {
+        matches!(self, GroundKind::CivTruck | GroundKind::ArmyTruck)
+    }
+
+    /// Goes with a supply convoy: a truck or its escorting technical.
+    pub fn supply(self) -> bool {
+        self.truck() || self == GroundKind::Technical
     }
 
     /// A ballistic or cruise missile launcher (`strike_missiles.rs`).
@@ -336,7 +358,7 @@ impl GroundKind {
 
     /// Goes with a convoy: armour and the tracked air defence guns.
     pub fn mobile(self) -> bool {
-        self.armour() || matches!(self, GroundKind::Zsu | GroundKind::Gepard)
+        self.armour() || self.supply() || matches!(self, GroundKind::Zsu | GroundKind::Gepard)
     }
 
     /// Muzzle velocity (m/s), slant range (m) and highest target (m) it engages.
@@ -346,6 +368,7 @@ impl GroundKind {
             GroundKind::S60 => (1000.0, 6000.0, 4500.0),
             GroundKind::Manpads => (0.0, 5000.0, 3500.0),
             GroundKind::Gepard => (1175.0, 8000.0, 5000.0),
+            GroundKind::Technical => (840.0, 600.0, 500.0),
             _ => (0.0, 0.0, 0.0),
         }
     }
@@ -742,7 +765,12 @@ impl Sim {
         let mut spent = vec![0; units.len()];
         for (i, u) in units.iter_mut().enumerate() {
             // Only the classic guns fight the player (the friendly ones never do).
-            if u.destroyed || self.aaa_blue(i) || u.kind.unarmed() || u.kind == GroundKind::Gepard {
+            // A supply convoy's technical fires at drones only (`campaign_guns`).
+            if u.destroyed
+                || self.aaa_blue(i)
+                || u.kind.unarmed()
+                || matches!(u.kind, GroundKind::Gepard | GroundKind::Technical)
+            {
                 continue;
             }
             if dry[i] && matches!(u.kind, GroundKind::Zsu | GroundKind::S60) {
@@ -883,7 +911,10 @@ impl Sim {
                 | GroundKind::Bmp2
                 | GroundKind::IskanderTel
                 | GroundKind::Fp7Launcher
-                | GroundKind::FlamingoLauncher => {}
+                | GroundKind::FlamingoLauncher
+                | GroundKind::CivTruck
+                | GroundKind::ArmyTruck
+                | GroundKind::Technical => {}
             }
         }
         self.units = units;

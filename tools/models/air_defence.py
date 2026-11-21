@@ -61,6 +61,11 @@ PARATROOPER = 128
 ISKANDER_TEL = 129
 FP7_LN = 130
 FLAMINGO_LN = 131
+# The enemy's supply trucks on the roads (crates/stealth-sim/src/ground.rs supply convoys): a
+# civilian box truck, an army cargo truck, and the pickup with a machine gun that escorts them.
+CIV_TRUCK = 132
+ARMY_TRUCK = 133
+TECHNICAL = 134
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -80,6 +85,10 @@ NATO = Ramp(0xA9, 0xAF)
 NATO_DARK = Ramp(0xAC, 0xAF)
 LENS = 0xDF
 HOLE = 0x00
+
+# Civilian paint: a blue cab, a white box, a white pickup.
+CAB_BLUE = Ramp(0x68, 0x6F)
+VAN_WHITE = Ramp(0xE0, 0xE6)
 
 TURRET_SLOT, GUN_SLOT, RADAR_SLOT = 21, 22, 16
 # The shooter's pose (`_s23vN`) and his signalling hand's circling (slot 24: the frame).
@@ -1709,6 +1718,123 @@ def flamingo_launcher():
     far(lod1, "aaa_131", [(-1.3, 1.3, -6.5, 12.6, 0.3, 1.3), (-1.3, 1.3, 10.6, 12.6, 1.3, 2.9), (-3.0, 3.0, -6.3, 5.7, 1.4, 2.6)])
 
 
+# ---------------------------------------------------------------------------------- supply trucks
+
+
+def truck_chassis(paint, wheels, frame=OLIVE_DARK, glass=GLASS, cab_len=1.9, axles=(-2.6, -1.3, 2.4)):
+    """A 6x6 (two rear axles) truck chassis with a forward-control cab at the front (+y),
+    7.6 m long: frame rails at 0.9-1.2 m, the cab from y 1.9 to 3.8 m."""
+    g = Geo()
+    g.add(block(-0.55, 0.55, -3.6, 3.6, 0.85, 1.15, frame))
+    for sx in (-1, 1):
+        for y in axles:
+            g.add(wheel((sx * 1.0, y, 0.55), 0.55, 0.4, wheels, n=8))
+        # Mudguards over the front wheels and a fuel tank under the frame.
+        g.add(block(sx * 1.25 - 0.25 * sx, sx * 1.25, 1.9, 2.9, 1.15, 1.25, frame))
+        g.add(block(sx * 0.6, sx * 1.15, 0.2, 1.3, 0.75, 1.15, STEEL) if sx > 0 else block(-1.15, -0.6, 0.2, 1.3, 0.75, 1.15, STEEL))
+    y0, y1 = 3.8 - cab_len, 3.8
+    g.add(block(-1.2, 1.2, y0, y1, 1.15, 2.85, paint, taper=0.06, taper_y=0.08))
+    g.add(block(-1.05, 1.05, y1 - 0.02, y1 + 0.02, 1.95, 2.65, glass))
+    for sx in (-1, 1):
+        g.add(block(sx * 1.2 - 0.02 * sx, sx * 1.21, y1 - 1.0, y1 - 0.15, 1.95, 2.6, glass))
+    # Bumper and the cab's roof deflector.
+    g.add(block(-1.25, 1.25, y1, y1 + 0.2, 0.75, 1.05, frame))
+    return g
+
+
+def box_body(paint=VAN_WHITE, length=5.0):
+    """A closed cargo box on the frame behind the cab."""
+    g = Geo()
+    g.add(block(-1.25, 1.25, -3.6, -3.6 + length, 1.2, 3.6, paint))
+    g.add(block(-1.27, 1.27, -3.62, -3.4, 1.2, 3.62, Ramp(0xE6, 0xEC) if paint is VAN_WHITE else paint))
+    return g
+
+
+def civ_truck_body(cab=CAB_BLUE, box=VAN_WHITE, wheels=RUBBER):
+    return truck_chassis(cab, wheels, frame=STEEL).add(box_body(box))
+
+
+def civ_truck():
+    root, lod0, lod1 = levels(CIV_TRUCK, 12000)
+    mesh_obj("aaa_132_lod0_s1v0", civ_truck_body(), lod0)
+    w = civ_truck_body(BURNT, BURNT, BURNT)
+    mesh_obj("aaa_132_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_132", [(-1.25, 1.25, -3.6, 1.4, 1.2, 3.6), (-1.2, 1.2, 1.9, 3.8, 0.6, 2.85)], VAN_WHITE)
+
+
+def tarp_body(paint=OLIVE, canvas=KHAKI):
+    """An open cargo bed with drop sides and a canvas tilt over hoops."""
+    g = Geo()
+    g.add(block(-1.25, 1.25, -3.6, 1.6, 1.15, 1.35, paint))
+    for sx in (-1, 1):
+        g.add(block(sx * 1.25 - 0.06 * sx, sx * 1.25, -3.6, 1.6, 1.35, 1.95, paint) if sx > 0 else block(-1.25, -1.19, -3.6, 1.6, 1.35, 1.95, paint))
+    g.add(block(-1.25, 1.25, -3.6, -3.54, 1.35, 1.95, paint))
+    g.add(block(-1.22, 1.22, -3.55, 1.55, 1.95, 3.05, canvas, taper=0.12))
+    return g
+
+
+def army_truck_body(paint=OLIVE, canvas=KHAKI, wheels=RUBBER):
+    """An Ural-type cargo truck: long bonnet ahead of the cab, canvas tilt over the bed."""
+    g = truck_chassis(paint, wheels, cab_len=1.6, axles=(-2.6, -1.3, 2.6))
+    g.add(block(-0.9, 0.9, 3.8, 4.6, 1.0, 1.95, paint, taper=0.1))
+    g.add(tarp_body(paint, canvas))
+    return g
+
+
+def army_truck():
+    root, lod0, lod1 = levels(ARMY_TRUCK, 12000)
+    mesh_obj("aaa_133_lod0_s1v0", army_truck_body(), lod0)
+    mesh_obj("aaa_133_lod0_s1v1", army_truck_body(BURNT, BURNT, BURNT), lod0)
+    far(lod1, "aaa_133", [(-1.25, 1.25, -3.6, 1.6, 1.15, 3.05), (-1.2, 1.2, 2.2, 4.6, 0.6, 2.85)])
+
+
+def pickup_body(paint=VAN_WHITE, wheels=RUBBER, glass=GLASS):
+    """A four-door pickup, 5.3 m long, front at +y, its open bed behind the cab."""
+    g = Geo()
+    g.add(block(-0.9, 0.9, -2.65, 2.65, 0.45, 1.05, paint, taper_y=0.05))
+    g.add(block(-0.85, 0.85, -0.3, 1.3, 1.05, 1.8, paint, taper=0.12, taper_y=0.15))
+    g.add(block(-0.75, 0.75, 1.28, 1.32, 1.1, 1.7, glass))
+    for sx in (-1, 1):
+        g.add(block(sx * 0.86 - 0.02 * sx, sx * 0.87, -0.2, 1.2, 1.15, 1.7, glass))
+        for y in (-1.6, 1.6):
+            g.add(wheel((sx * 0.8, y, 0.38), 0.38, 0.28, wheels, n=8))
+        # The bed's sides.
+        g.add(block(sx * 0.9 - 0.06 * sx, sx * 0.9, -2.65, -0.35, 1.05, 1.35, paint) if sx > 0 else block(-0.9, -0.84, -2.65, -0.35, 1.05, 1.35, paint))
+    g.add(block(-0.9, 0.9, -2.65, -2.59, 1.05, 1.35, paint))
+    g.add(block(-0.95, 0.95, 2.65, 2.78, 0.5, 0.8, STEEL))
+    return g
+
+
+def dshk_mount(paint=STEEL):
+    """The pintle on the bed: a post with the gunner's shield ring (yaw part)."""
+    g = Geo()
+    g.add(frustum((0, 0, 0), (0, 0, 0.9), 0.08, 0.06, paint, n=6))
+    g.add(block(-0.35, 0.35, 0.15, 0.2, 0.75, 1.15, OLIVE_DARK))
+    return g
+
+
+def dshk_gun(paint=STEEL):
+    """A DShK heavy machine gun, pivot at its trunnions, pointing +y."""
+    g = Geo()
+    g.add(block(-0.1, 0.1, -0.55, 0.35, -0.1, 0.12, paint))
+    g.add(barrel(0.35, 1.45, 0.035, paint=paint))
+    g.add(frustum((0, 1.2, 0), (0, 1.45, 0), 0.06, 0.06, paint, n=6))
+    g.add(block(-0.04, 0.04, -0.75, -0.55, -0.15, 0.05, paint))
+    g.add(block(-0.12, 0.12, -0.15, 0.1, 0.12, 0.3, OLIVE_DARK))
+    return g
+
+
+def technical():
+    root, lod0, lod1 = levels(TECHNICAL, 12000)
+    intact = mesh_obj("aaa_134_lod0_s1v0", pickup_body(), lod0)
+    mount = part("aaa_134_lod0_s1v0_part1", dshk_mount(), intact, (0, -1.5, 1.05), TURRET_SLOT, 0)
+    part("aaa_134_lod0_s1v0_part2", dshk_gun(), mount, (0, 0.0, 1.0), GUN_SLOT, 1)
+    w = pickup_body(BURNT, BURNT, BURNT)
+    w.add(dshk_gun(BURNT).rotated_z(0.6).transformed(lambda p: p + mklib.v3((0.2, -1.6, 1.2))))
+    mesh_obj("aaa_134_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_134", [(-0.9, 0.9, -2.65, 2.65, 0.4, 1.05), (-0.85, 0.85, -0.3, 1.3, 1.05, 1.8)], VAN_WHITE)
+
+
 def levels(index, near, far_level=True):
     """The root, its detailed level (within `near` model units) and a far level (boxes)."""
     name = "aaa_%03d" % index
@@ -1763,6 +1889,9 @@ def main():
     iskander_tel()
     fp7_launcher()
     flamingo_launcher()
+    civ_truck()
+    army_truck()
+    technical()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,
