@@ -3,6 +3,7 @@
 loadout-none = なし
 loadout-briefed = ブリーフィング通り
     .facts = ミッションがブリーフィングされた時の兵装
+loadout-own = あなた独自の兵装: この機体での同じ種類の次のミッションでも使われます。{ loadout-briefed } でミッションの兵装に戻ります。
 loadout-clear = クリア
     .facts = すべてのハードポイントを空にします
 loadout-done = 完了

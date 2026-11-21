@@ -3,6 +3,7 @@
 loadout-none = Tidak ada
 loadout-briefed = BRIEFING
     .facts = Persenjataan yang direncanakan dalam briefing misi
+loadout-own = Persenjataan Anda sendiri: akan kembali pada misi berikutnya jenis ini dengan pesawat ini. { loadout-briefed } mengembalikan milik misi.
 loadout-clear = KOSONGKAN
     .facts = Semua hardpoint kosong
 loadout-done = SELESAI

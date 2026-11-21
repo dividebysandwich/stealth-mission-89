@@ -3,6 +3,7 @@
 loadout-none = Keine
 loadout-briefed = BRIEFING
     .facts = Die Außenlasten aus dem Missionsbriefing
+loadout-own = Deine eigene Bewaffnung: Sie kommt bei den nächsten Missionen dieser Art mit diesem Flugzeug wieder. { loadout-briefed } stellt die der Mission wieder her.
 loadout-clear = LEEREN
     .facts = Alle Aufhängepunkte leer
 loadout-done = FERTIG

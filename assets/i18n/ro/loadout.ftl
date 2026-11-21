@@ -3,6 +3,7 @@
 loadout-none = Niciuna
 loadout-briefed = BRIEFING
     .facts = Încărcăturile cu care a fost planificată misiunea
+loadout-own = Armamentul tău: revine la următoarele misiuni de acest fel cu acest avion. { loadout-briefed } readuce armamentul misiunii.
 loadout-clear = GOLEȘTE
     .facts = Toate punctele de armare goale
 loadout-done = GATA

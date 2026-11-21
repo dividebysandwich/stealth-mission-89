@@ -3,6 +3,7 @@
 loadout-none = Brak
 loadout-briefed = Z ODPRAWY
     .facts = Podwieszenia przewidziane w odprawie misji
+loadout-own = Twoje własne uzbrojenie: wróci w kolejnych misjach tego rodzaju na tym samolocie. { loadout-briefed } przywraca uzbrojenie misji.
 loadout-clear = OPRÓŻNIĆ
     .facts = Wszystkie punkty podwieszenia puste
 loadout-done = GOTOWE

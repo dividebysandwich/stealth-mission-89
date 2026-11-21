@@ -3,6 +3,7 @@
 loadout-none = 없음
 loadout-briefed = 브리핑대로
     .facts = 임무가 브리핑된 때의 무장
+loadout-own = 직접 고른 무장: 이 기체로 같은 종류의 다음 임무에서도 다시 사용됩니다. { loadout-briefed }로 임무 무장으로 돌아갑니다.
 loadout-clear = 비우기
     .facts = 모든 하드포인트를 비웁니다
 loadout-done = 완료

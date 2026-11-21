@@ -3,6 +3,7 @@
 loadout-none = L-ebda
 loadout-briefed = BRIEFING
     .facts = L-istores li bihom ġiet immirata l-missjoni
+loadout-own = L-armi tiegħek: jerġgħu jiġu fil-missjonijiet li jmiss ta' dan it-tip b'dan l-ajruplan. { loadout-briefed } iġib lura dawk tal-missjoni.
 loadout-clear = SPAĊĊA
     .facts = Kull hardpoint vojt
 loadout-done = OK

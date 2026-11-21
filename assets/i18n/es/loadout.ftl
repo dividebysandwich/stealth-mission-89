@@ -3,6 +3,7 @@
 loadout-none = Ninguno
 loadout-briefed = BRIEFING
     .facts = Las cargas previstas en el briefing de la misión
+loadout-own = Tu propio armamento: volverá en las próximas misiones de este tipo con este avión. { loadout-briefed } devuelve el de la misión.
 loadout-clear = VACIAR
     .facts = Todos los puntos de anclaje vacíos
 loadout-done = HECHO

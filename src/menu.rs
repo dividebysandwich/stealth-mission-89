@@ -279,6 +279,9 @@ fn relaunch_in_vr(state: &MenuState, settings: &crate::settings::Settings) -> st
         cmd.args(["--career", key]);
     }
     if let Some(lo) = &state.loadout {
+        if let Some(Ok(m)) = &state.mission {
+            lo.remember(m);
+        }
         match crate::prefs::save_json(crate::loadout::LOADOUT_FILE, lo) {
             Ok(()) => {
                 if let Some(path) = crate::prefs::config_path(crate::loadout::LOADOUT_FILE) {
@@ -1853,7 +1856,7 @@ pub(crate) fn menu_ui(
     if let Some(Ok(m)) = &state.mission
         && !state.loadout.as_ref().is_some_and(|l| l.fits(m, settings.aircraft))
     {
-        state.loadout = Some(crate::loadout::PlannedLoadout::of(m, settings.aircraft));
+        state.loadout = Some(crate::loadout::PlannedLoadout::remembered(m, settings.aircraft));
     }
 
     // The aircraft preview's picture, once there is one.
@@ -2085,9 +2088,13 @@ pub(crate) fn menu_ui(
                                         .clone()
                                         .unwrap_or_else(|| crate::mission::PlannedRoute::of(m)),
                                 );
-                                commands.insert_resource(state.loadout.clone().unwrap_or_else(
-                                    || crate::loadout::PlannedLoadout::of(m, settings.aircraft),
-                                ));
+                                let loadout = state.loadout.clone().unwrap_or_else(|| {
+                                    crate::loadout::PlannedLoadout::remembered(m, settings.aircraft)
+                                });
+                                // The next missions of this kind on this aircraft start with
+                                // these stores.
+                                loadout.remember(m);
+                                commands.insert_resource(loadout);
                                 match &state.career {
                                     Some(key) => commands
                                         .insert_resource(crate::career::CareerFlight(key.clone())),

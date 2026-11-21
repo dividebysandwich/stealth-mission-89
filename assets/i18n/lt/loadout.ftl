@@ -3,6 +3,7 @@
 loadout-none = Nėra
 loadout-briefed = INSTRUKTAŽAS
     .facts = Krovinys, su kuriuo misija buvo suplanuota instruktaže
+loadout-own = Jūsų pačių ginkluotė: ji vėl bus kituose tokio tipo misijose su šiuo orlaiviu. { loadout-briefed } grąžina misijos ginkluotę.
 loadout-clear = IŠVALYTI
     .facts = Visi pakabos taškai tušti
 loadout-done = GERAI

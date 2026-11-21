@@ -3,6 +3,7 @@
 loadout-none = Žádná
 loadout-briefed = BRIEFING
     .facts = Výzbroj, se kterou byla mise zadána v briefingu
+loadout-own = Vaše vlastní výzbroj: objeví se znovu v dalších misích tohoto druhu s tímto letounem. { loadout-briefed } vrátí výzbroj mise.
 loadout-clear = VYPRÁZDNIT
     .facts = Všechny závěsníky prázdné
 loadout-done = HOTOVO

@@ -3,6 +3,7 @@
 loadout-none = Puudub
 loadout-briefed = BRIIFING
     .facts = Varustus, millega missioon briifiti
+loadout-own = Sinu enda relvastus: see tuleb tagasi selle lennukiga järgmistel seda tüüpi missioonidel. { loadout-briefed } taastab missiooni oma.
 loadout-clear = TÜHJENDA
     .facts = Kõik relvapunktid tühjad
 loadout-done = VALMIS

@@ -3,6 +3,7 @@
 loadout-none = None
 loadout-briefed = BRIEFED
     .facts = The stores the mission was briefed with
+loadout-own = Your own stores: they come again on the next missions of this kind with this aircraft. { loadout-briefed } gives back the mission's.
 loadout-clear = CLEAR
     .facts = Every hardpoint empty
 loadout-done = DONE

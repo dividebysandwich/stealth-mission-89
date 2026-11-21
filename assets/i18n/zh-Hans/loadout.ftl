@@ -3,6 +3,7 @@
 loadout-none = 无
 loadout-briefed = 简报配置
     .facts = 任务简报规定的外挂
+loadout-own = 你自己的挂载: 用这架飞机执行同类任务时会再次使用。{ loadout-briefed } 恢复任务的挂载。
 loadout-clear = 清空
     .facts = 所有挂点都清空
 loadout-done = 完成

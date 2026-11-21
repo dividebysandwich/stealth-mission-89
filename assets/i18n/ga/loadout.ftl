@@ -3,6 +3,7 @@
 loadout-none = Ceann ar bith
 loadout-briefed = BRIEFING
     .facts = Na stóir a pleanáladh sa bhriefing
+loadout-own = Do threalamh féin: tiocfaidh sé arís ar na chéad mhisin eile den chineál seo leis an aerárthach seo. Tugann { loadout-briefed } trealamh an mhisin ar ais.
 loadout-clear = FOLAMH
     .facts = Gach pointe armála folamh
 loadout-done = DÉANTA

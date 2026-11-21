@@ -3,6 +3,7 @@
 loadout-none = Nav
 loadout-briefed = BRĪFINGS
     .facts = Iekārtas, ar kurām misija tika izstrādāta brīfingā
+loadout-own = Jūsu pašu bruņojums: tas atgriezīsies nākamajās šāda veida misijās ar šo lidaparātu. { loadout-briefed } atjauno misijas bruņojumu.
 loadout-clear = NOTĪRĪT
     .facts = Visi piekares punkti tukši
 loadout-done = GATAVS

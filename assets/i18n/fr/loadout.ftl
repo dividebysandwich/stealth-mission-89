@@ -3,6 +3,7 @@
 loadout-none = Aucun
 loadout-briefed = BRIEFING
     .facts = Les emports prévus par le briefing de la mission
+loadout-own = Votre propre armement : il revient pour les prochaines missions de ce type avec cet avion. { loadout-briefed } rétablit celui de la mission.
 loadout-clear = VIDER
     .facts = Tous les points d'emport vides
 loadout-done = OK

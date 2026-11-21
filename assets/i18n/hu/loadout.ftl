@@ -3,6 +3,7 @@
 loadout-none = Nincs
 loadout-briefed = BRIEFING
     .facts = A küldetés briefingje szerinti felszerelés
+loadout-own = A saját fegyverzeted: ezzel a géppel az ilyen típusú következő küldetéseken újra ez lesz. A { loadout-briefed } visszaadja a küldetésé.
 loadout-clear = ÜRÍTÉS
     .facts = Minden fegyverfüggesztő üres
 loadout-done = KÉSZ

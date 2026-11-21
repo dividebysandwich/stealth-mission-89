@@ -3,6 +3,7 @@
 loadout-none = Geen
 loadout-briefed = BRIEFING
     .facts = De stores waarmee de missie is gebriefd
+loadout-own = Je eigen bewapening: die komt terug bij de volgende missies van deze soort met dit toestel. { loadout-briefed } zet die van de missie terug.
 loadout-clear = LEEGMAKEN
     .facts = Elk ophangpunt leeg
 loadout-done = KLAAR

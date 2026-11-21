@@ -3,6 +3,7 @@
 loadout-none = Nema
 loadout-briefed = BRIEFING
     .facts = Teret predviđen briefingom misije
+loadout-own = Vaše vlastito naoružanje: vraća se u sljedećim misijama ove vrste s ovim zrakoplovom. { loadout-briefed } vraća naoružanje misije.
 loadout-clear = ISPRAZNI
     .facts = Svi nosači prazni
 loadout-done = GOTOVO

@@ -3,6 +3,7 @@
 loadout-none = Ingen
 loadout-briefed = BRIEFAD
     .facts = Lasten som uppdraget briefades med
+loadout-own = Din egen beväpning: den kommer igen på nästa uppdrag av det här slaget med det här flygplanet. { loadout-briefed } ger tillbaka uppdragets.
 loadout-clear = RENSA
     .facts = Alla lastpunkter tomma
 loadout-done = KLAR

@@ -3,6 +3,7 @@
 loadout-none = Ingen
 loadout-briefed = BRIEFING
     .facts = Den last, missionen blev briefet med
+loadout-own = Din egen bevæbning: den kommer igen på de næste missioner af denne slags med dette fly. { loadout-briefed } giver missionens tilbage.
 loadout-clear = RYD
     .facts = Alle våbenpunkter tomme
 loadout-done = OK

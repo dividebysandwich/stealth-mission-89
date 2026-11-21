@@ -3,6 +3,7 @@
 loadout-none = Nič
 loadout-briefed = BRIEFING
     .facts = Oborožitev, s katero je bila misija začrtana v briefingu
+loadout-own = Vaša lastna oborožitev: vrne se v naslednjih misijah te vrste s tem letalom. { loadout-briefed } povrne oborožitev misije.
 loadout-clear = POČISTI
     .facts = Vsi nosilci prazni
 loadout-done = KONEC

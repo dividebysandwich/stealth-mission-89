@@ -3,6 +3,7 @@
 loadout-none = Ei mitään
 loadout-briefed = TEHTÄVÄNANTO
     .facts = Aseistus, jolla tehtävä on suunniteltu
+loadout-own = Oma aseistuksesi: se palaa seuraavissa tämänlaisissa tehtävissä tällä koneella. { loadout-briefed } palauttaa tehtävän omat.
 loadout-clear = TYHJENNÄ
     .facts = Kaikki kannattimet tyhjiksi
 loadout-done = VALMIS

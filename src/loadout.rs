@@ -1719,6 +1719,12 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
     }
 }
 
+/// The mission is briefed with its camera or special equipment (a photograph, a drop): its
+/// stores are the briefed ones, not the player's own (`PlannedLoadout::remembered`).
+fn needs_equipment(m: &Mission) -> bool {
+    m.loadout.bays.iter().any(|b| b.weapon == 16 || b.weapon == 18)
+}
+
 /// Weapon types the mission has none of (random shortages).
 fn out_of_stock(m: &Mission, w: u8) -> bool {
     !AIR_TO_AIR.contains(&w) && m.weapon_unavailable.get(w as usize).is_some_and(|&u| u != 0)
@@ -1736,6 +1742,61 @@ pub struct PlannedLoadout {
 
 /// File the menu hands the loadout to the VR process in (`--loadout`).
 pub const LOADOUT_FILE: &str = "loadout.json";
+
+/// The player's own loadouts (`loadouts.json` in the config folder): the stores last flown on
+/// each aircraft for each kind of mission, where they were not the briefed ones.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct Remembered {
+    loadouts: Vec<RememberedLoadout>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct RememberedLoadout {
+    aircraft: AircraftKind,
+    realistic: bool,
+    kind: stealth_mission::MissionKind,
+    stores: Vec<Option<u8>>,
+}
+
+const REMEMBERED_FILE: &str = "loadouts.json";
+
+impl Remembered {
+    fn load() -> Self {
+        crate::prefs::load_json(REMEMBERED_FILE).unwrap_or_default()
+    }
+
+    fn stores(&self, lo: &PlannedLoadout, m: &Mission) -> Option<&Vec<Option<u8>>> {
+        self.loadouts
+            .iter()
+            .find(|r| {
+                r.aircraft == lo.aircraft
+                    && r.realistic == lo.realistic
+                    && r.kind == m.settings.kind
+            })
+            .map(|r| &r.stores)
+    }
+
+    /// Keeps `lo` for the next missions of its kind on its aircraft; the briefed stores forget
+    /// it.
+    fn keep(&mut self, lo: &PlannedLoadout, m: &Mission) {
+        // A mission's camera or special equipment says nothing of the stores for the next.
+        if needs_equipment(m) {
+            return;
+        }
+        self.loadouts.retain(|r| {
+            !(r.aircraft == lo.aircraft && r.realistic == lo.realistic && r.kind == m.settings.kind)
+        });
+        if lo.stores != PlannedLoadout::of(m, lo.aircraft).stores {
+            self.loadouts.push(RememberedLoadout {
+                aircraft: lo.aircraft,
+                realistic: lo.realistic,
+                kind: m.settings.kind,
+                stores: lo.stores.clone(),
+            });
+        }
+    }
+}
 
 impl PlannedLoadout {
     /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado, the
@@ -1878,6 +1939,50 @@ impl PlannedLoadout {
         Self { mission: crate::mission::PlannedRoute::key(m), aircraft, realistic, stores }
     }
 
+    /// The stores the player flew last on this aircraft for this kind of mission (`remember`),
+    /// where every one still fits its station and the mission has it; else the briefed ones.
+    pub fn remembered(m: &Mission, aircraft: AircraftKind) -> Self {
+        Self::with_remembered(m, aircraft, &Remembered::load())
+    }
+
+    fn with_remembered(m: &Mission, aircraft: AircraftKind, kept: &Remembered) -> Self {
+        let mut lo = Self::of(m, aircraft);
+        if let Some(stores) = kept.stores(&lo, m)
+            && !needs_equipment(m)
+            && lo.can_carry(m, stores)
+        {
+            lo.stores = stores.clone();
+        }
+        lo
+    }
+
+    /// Every store fits its station and is in the mission's stocks.
+    fn can_carry(&self, m: &Mission, stores: &[Option<u8>]) -> bool {
+        let lay = self.layout();
+        stores.len() == lay.hardpoints.len()
+            && lay
+                .hardpoints
+                .iter()
+                .zip(stores)
+                .all(|(h, s)| s.is_none_or(|w| h.loads.contains(&w) && !out_of_stock(m, w)))
+    }
+
+    /// The stores differ from the briefed ones (`remembered` gave them, or the player changed
+    /// them).
+    pub fn is_own(&self, m: &Mission) -> bool {
+        self.stores != Self::of(m, self.aircraft).stores
+    }
+
+    /// Flown: these stores come again on the next missions of their kind on this aircraft
+    /// (`remembered`); the briefed ones are forgotten so.
+    pub fn remember(&self, m: &Mission) {
+        let mut kept = Remembered::load();
+        kept.keep(self, m);
+        if let Err(e) = crate::prefs::save_json(REMEMBERED_FILE, &kept) {
+            warn!("{REMEMBERED_FILE}: {e:#}");
+        }
+    }
+
     pub fn fits(&self, m: &Mission, aircraft: AircraftKind) -> bool {
         self.mission == crate::mission::PlannedRoute::key(m)
             && self.aircraft == aircraft
@@ -1987,9 +2092,9 @@ pub fn loadout_ui(
         w.open = false;
         return;
     };
-    let lo = state.loadout.get_or_insert_with(|| PlannedLoadout::of(&m, aircraft));
+    let lo = state.loadout.get_or_insert_with(|| PlannedLoadout::remembered(&m, aircraft));
     if !lo.fits(&m, aircraft) {
-        *lo = PlannedLoadout::of(&m, aircraft);
+        *lo = PlannedLoadout::remembered(&m, aircraft);
     }
     let window = screen_window(ctx, "Loadout", LOADOUT_SIZE);
     let panel =
@@ -1999,6 +2104,10 @@ pub fn loadout_ui(
         split.body_sized(ui, |ui, room| editor(ui, w, lo, &m, room, &|_| None));
         split.footer(ui, |ui| {
             crate::menu::footer_rule(ui);
+            // Own stores come again on the next missions of the kind on this aircraft.
+            if lo.is_own(&m) && !needs_equipment(&m) {
+                ui.label(egui::RichText::new(t!("loadout-own")).small().color(DIM));
+            }
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 if facts(
@@ -2142,7 +2251,7 @@ pub fn editor(
             }
             section(ui, t!("loadout-stores"));
             ui.label(egui::RichText::new(lo.summary()).color(GREEN));
-            if m.loadout.bays.iter().any(|b| b.weapon == 16 || b.weapon == 18) {
+            if needs_equipment(m) {
                 ui.label(egui::RichText::new(t!("loadout-needs-equipment")).small().color(AMBER));
             }
         });
@@ -2332,7 +2441,7 @@ pub fn editor_large(
             if pick != lo.stores[w.selected] {
                 lo.load(w.selected, pick, *mirror);
             }
-            if m.loadout.bays.iter().any(|b| b.weapon == 16 || b.weapon == 18) {
+            if needs_equipment(m) {
                 warn(ui, t!("loadout-needs-equipment"));
             }
             section(ui, t!("loadout-stores"));
@@ -2450,6 +2559,37 @@ mod tests {
             seed,
         )
         .unwrap()
+    }
+
+    /// Stores flown that differ from the briefed ones come again on the next mission of the kind
+    /// on the aircraft, unless one no longer fits; flying the briefed ones forgets them.
+    #[test]
+    fn own_loadouts_are_remembered() {
+        let plain = |seed| Some(mission(seed, false)).filter(|m| !needs_equipment(m));
+        let mut seeds = (1..40).filter_map(plain);
+        let (a, b) = (seeds.next().unwrap(), seeds.next().unwrap());
+        let mut kept = Remembered::default();
+        let mut own = PlannedLoadout::of(&a, AircraftKind::F16);
+        own.stores.iter_mut().for_each(|s| *s = None);
+        let first = own.layout().hardpoints[0].loads[0];
+        own.stores[0] = Some(first);
+        kept.keep(&own, &a);
+        assert_eq!(kept.loadouts.len(), 1);
+        let next = PlannedLoadout::with_remembered(&b, AircraftKind::F16, &kept);
+        assert!(next.fits(&b, AircraftKind::F16));
+        if !out_of_stock(&b, first) {
+            assert_eq!(next.stores, own.stores);
+        }
+        // Not on another aircraft.
+        let other = PlannedLoadout::with_remembered(&b, AircraftKind::A10, &kept);
+        assert_eq!(other.stores, PlannedLoadout::of(&b, AircraftKind::A10).stores);
+        // A store the station can't carry: the briefed ones.
+        kept.loadouts[0].stores[0] = Some(u8::MAX);
+        let next = PlannedLoadout::with_remembered(&b, AircraftKind::F16, &kept);
+        assert_eq!(next.stores, PlannedLoadout::of(&b, AircraftKind::F16).stores);
+        // The briefed stores flown: forgotten.
+        kept.keep(&PlannedLoadout::of(&a, AircraftKind::F16), &a);
+        assert!(kept.loadouts.is_empty());
     }
 
     #[test]
