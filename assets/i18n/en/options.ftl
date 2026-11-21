@@ -90,6 +90,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Smooth edges: 4x MSAA, 2x in VR (costs GPU time)
         Off: hard pixel edges
+options-section-display = Display
+options-fullscreen = Fullscreen
+    .facts = The window fills the screen (also Alt Enter or F11)
+options-vsync = Vertical sync
+    .facts = Frames wait for the screen's refresh: no tearing. Off: as many frames as the computer draws
+options-fps-cap = Frame rate limit
+    .facts = The most frames a second: less power, heat and fan noise (laptops)
+options-fps-cap-off = Off
+options-fps-cap-vr = In VR the headset sets the frame rate
+options-ui-scale = Menu size
+    .facts = The size of the menus and windows, as far as the screen has room. 100%: their own size
 options-auto-detail = Automatic scenery detail (VR)
     .facts =
         In the headset, the range of towns, forests and fields shrinks while frames run late and grows back when there is time to spare

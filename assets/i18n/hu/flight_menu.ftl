@@ -29,6 +29,9 @@ fm-point-lights = PONTFÉNYEK
 fm-time-of-day = NAPSZAK
 fm-sun-moon = NAP ÉS HOLD
 fm-auto-detail = AUTOMATIKUS TÁJDETAIL
+fm-fullscreen = TELJES KÉPERNYŐ
+fm-vsync = FÜGGŐLEGES SZINKRON
+fm-fps-cap = KÉPKOCKASEBESSÉG-KORLÁT
 fm-cockpit = PILÓTAFÜLKE
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = KÉSZ
 fm-pull-trigger = HÚZZA MEG A RAVASZT
 
 fm-effects = EFFEKTEK
+fm-display = MEGJELENÍTÉS
 fm-effect-shake = KAMERARÁZKÓDÁS
 fm-effect-flashes = HARCI VILLANÁSOK
 fm-effect-barrage = ÉJSZAKAI ZÁRÓVONAL

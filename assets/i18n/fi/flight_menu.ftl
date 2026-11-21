@@ -29,6 +29,9 @@ fm-point-lights = PISTEVALOT
 fm-time-of-day = VUOROKAUDENAIKA
 fm-sun-moon = AURINKO JA KUU
 fm-auto-detail = MAISEMAN AUTOM. YKSITYISKOHDAT
+fm-fullscreen = KOKO NÄYTTÖ
+fm-vsync = PYSTYTAHDISTUS
+fm-fps-cap = KUVATAAJUUDEN RAJA
 fm-cockpit = OHJAAMO
 fm-hud = HUD
 fm-avionics = AVIONIIKKA
@@ -61,6 +64,7 @@ fm-key-done = VALMIS
 fm-pull-trigger = PAINA LIPAISINTA
 
 fm-effects = EFEKTIT
+fm-display = NÄYTTÖ
 fm-effect-shake = KAMERAN TÄRINÄ
 fm-effect-flashes = TAISTELUVÄLÄHDYKSET
 fm-effect-barrage = YÖLLINEN SULKUTULI

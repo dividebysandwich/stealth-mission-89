@@ -89,6 +89,17 @@ options-msaa = Kantutjämning (MSAA)
     .facts =
         Mjuka kanter: 4x MSAA, 2x i VR (kostar GPU-tid)
         Av: hårda pixelkanter
+options-section-display = Skärm
+options-fullscreen = Helskärm
+    .facts = Fönstret fyller skärmen (även Alt Enter eller F11)
+options-vsync = Vertikal synkronisering
+    .facts = Bildrutor väntar på skärmens uppdatering: ingen tearing. Av: så många bildrutor som datorn ritar
+options-fps-cap = Bildfrekvensgräns
+    .facts = Högst så många bildrutor per sekund: mindre ström, värme och fläktljud (bärbara)
+options-fps-cap-off = Av
+options-fps-cap-vr = I VR bestämmer headsetet bildfrekvensen
+options-ui-scale = Menystorlek
+    .facts = Storleken på menyer och fönster, så långt skärmen räcker. 100 %: deras egen storlek
 options-auto-detail = Automatisk terrängdetalj (VR)
     .facts =
         I headsetet krymper räckvidden för städer, skogar och fält när bildrutorna släpar efter och växer tillbaka när det finns tid över

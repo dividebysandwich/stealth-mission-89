@@ -89,6 +89,17 @@ options-msaa = 抗锯齿（MSAA）
     .facts =
         平滑边缘：4x MSAA，VR 中为 2x（占用 GPU 时间）
         关闭：边缘为生硬的像素
+options-section-display = 显示
+options-fullscreen = 全屏
+    .facts = 窗口占满屏幕 (也可按 Alt Enter 或 F11)
+options-vsync = 垂直同步
+    .facts = 帧等待屏幕刷新: 无撕裂。关闭: 电脑能画多少帧就画多少帧
+options-fps-cap = 帧率上限
+    .facts = 每秒最多帧数: 更省电、更低温、风扇更安静 (笔记本)
+options-fps-cap-off = 关闭
+options-fps-cap-vr = 在 VR 中由头显决定帧率
+options-ui-scale = 菜单大小
+    .facts = 菜单和窗口的大小 (在屏幕容得下的范围内)。100%: 原始大小
 options-auto-detail = 自动场景细节（VR）
     .facts =
         在头显中，帧率不足时城镇、森林和田野的显示范围会缩小，有余力时再恢复

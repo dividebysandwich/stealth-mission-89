@@ -29,6 +29,9 @@ fm-point-lights = LUZES PONTUAIS
 fm-time-of-day = HORA DO DIA
 fm-sun-moon = SOL E LUA
 fm-auto-detail = DETALHE AUTO DO CENÁRIO
+fm-fullscreen = TELA CHEIA
+fm-vsync = SINCRONIZAÇÃO VERTICAL
+fm-fps-cap = LIMITE DE QUADROS
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIÔNICOS
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = PUXE O GATILHO
 
 fm-effects = EFEITOS
+fm-display = TELA
 fm-effect-shake = TREMOR DA CÂMERA
 fm-effect-flashes = CLARÕES DE COMBATE
 fm-effect-barrage = BARRAGEM NOTURNA

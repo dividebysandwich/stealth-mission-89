@@ -29,6 +29,9 @@ fm-point-lights = PUNKTVEIDA GAISMAS
 fm-time-of-day = DIENNAKTS LAIKS
 fm-sun-moon = SAULE UN MĒNESS
 fm-auto-detail = AUTO AINAVAS DETALIZĀCIJA
+fm-fullscreen = PILNEKRĀNS
+fm-vsync = VERTIKĀLĀ SINHRONIZĀCIJA
+fm-fps-cap = KADRU NOMAIŅAS IEROBEŽOJUMS
 fm-cockpit = KABĪNE
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = GATAVS
 fm-pull-trigger = NOVELCIET SPRŪDU
 
 fm-effects = EFEKTI
+fm-display = DISPLEJS
 fm-effect-shake = KAMERAS DREBĒŠANA
 fm-effect-flashes = KAUJAS UZLIESMOJUMI
 fm-effect-barrage = NAKTS AIZSPROSTA UGUNS

@@ -89,6 +89,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Truf lixxi: 4x MSAA, 2x f'VR (jiswa ħin tal-GPU)
         Off: truf tal-pixels iebsin
+options-section-display = Wiri
+options-fullscreen = Skrin sħiħ
+    .facts = It-tieqa timla l-iskrin (ukoll Alt Enter jew F11)
+options-vsync = Sinkronizzazzjoni vertikali
+    .facts = Il-frejms jistennew l-aġġornament tal-iskrin: ebda tiċrit. Mitfi: daqs kemm frejms jpinġi l-kompjuter
+options-fps-cap = Limitu tar-rata tal-frejms
+    .facts = L-aktar frejms kull sekonda: inqas enerġija, sħana u storbju (laptops)
+options-fps-cap-off = Mitfi
+options-fps-cap-vr = Fil-VR il-headset jiddeċiedi r-rata tal-frejms
+options-ui-scale = Daqs tal-menus
+    .facts = Id-daqs tal-menus u t-twieqi, sakemm l-iskrin għandu spazju. 100%: id-daqs tagħhom
 options-auto-detail = Detall awtomatiku tax-xena (VR)
     .facts =
         Fil-headset, il-medda tal-bliet, tal-foresti u tal-għelieqi tonqos meta l-frames jagħmlu dewmien u terġa' tikber meta jkun hemm ħin żejjed

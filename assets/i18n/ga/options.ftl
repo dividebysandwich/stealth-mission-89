@@ -89,6 +89,17 @@ options-msaa = Frith-ailiasú (MSAA)
     .facts =
         Imill mhíne: MSAA 4x, 2x i VR (cosnaíonn sé am GPU)
         As: imill chrua picteilíní
+options-section-display = Taispeáint
+options-fullscreen = Lánscáileán
+    .facts = Líonann an fhuinneog an scáileán (Alt Enter nó F11 freisin)
+options-vsync = Sioncrónú ingearach
+    .facts = Fanann frámaí le hathnuachan an scáileáin: gan stróiceadh. As: an oiread frámaí agus a tharraingíonn an ríomhaire
+options-fps-cap = Teorainn ráta frámaí
+    .facts = Uasmhéid frámaí sa soicind: níos lú cumhachta, teasa agus torainn (ríomhairí glúine)
+options-fps-cap-off = As
+options-fps-cap-vr = I VR socraíonn an cloigeann an ráta frámaí
+options-ui-scale = Méid na roghchlár
+    .facts = Méid na roghchlár agus na bhfuinneog, a mhéid a bhfuil spás ar an scáileán. 100%: a méid féin
 options-auto-detail = Mionsonraí uathoibríocha na tírdhreacha (VR)
     .facts =
         Sa cheannsraith, laghdaíonn raon na mbailte, na foraoisí agus na bpáirceanna nuair a bhíonn fráma déanach agus fásann sé ar ais nuair a bhíonn am le spáráil

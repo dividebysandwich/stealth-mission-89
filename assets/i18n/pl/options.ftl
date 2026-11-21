@@ -89,6 +89,17 @@ options-msaa = Wygładzanie krawędzi (MSAA)
     .facts =
         Gładkie krawędzie: MSAA 4x, 2x w VR (kosztuje czas GPU)
         Wył.: ostre krawędzie pikseli
+options-section-display = Ekran
+options-fullscreen = Pełny ekran
+    .facts = Okno wypełnia ekran (także Alt Enter lub F11)
+options-vsync = Synchronizacja pionowa
+    .facts = Klatki czekają na odświeżenie ekranu: bez rozrywania. Wył.: tyle klatek, ile komputer narysuje
+options-fps-cap = Limit klatek
+    .facts = Najwyżej tyle klatek na sekundę: mniej energii, ciepła i hałasu (laptopy)
+options-fps-cap-off = Wył.
+options-fps-cap-vr = W VR liczbę klatek ustala gogle
+options-ui-scale = Rozmiar menu
+    .facts = Rozmiar menu i okien, na ile pozwala ekran. 100%: ich własny rozmiar
 options-auto-detail = Automatyczna szczegółowość scenerii (VR)
     .facts =
         W goglach zasięg miast, lasów i pól maleje, gdy klatki się spóźniają, i rośnie z powrotem, gdy jest zapas czasu

@@ -89,6 +89,17 @@ options-msaa = Kantenglättung (MSAA)
     .facts =
         Glatte Kanten: 4x MSAA, 2x in VR (kostet GPU-Zeit)
         Aus: harte Pixelkanten
+options-section-display = Anzeige
+options-fullscreen = Vollbild
+    .facts = Das Fenster füllt den Bildschirm (auch Alt Enter oder F11)
+options-vsync = Vertikale Synchronisation
+    .facts = Bilder warten auf den Bildaufbau des Bildschirms: kein Tearing. Aus: so viele Bilder, wie der Rechner zeichnet
+options-fps-cap = Bildratenbegrenzung
+    .facts = Höchstens so viele Bilder pro Sekunde: weniger Strom, Wärme und Lüfterlärm (Laptops)
+options-fps-cap-off = Aus
+options-fps-cap-vr = In VR bestimmt das Headset die Bildrate
+options-ui-scale = Menügröße
+    .facts = Größe der Menüs und Fenster, soweit der Bildschirm Platz hat. 100 %: ihre eigene Größe
 options-auto-detail = Automatische Szenerie-Details (VR)
     .facts =
         Im Headset schrumpft die Reichweite von Städten, Wäldern und Feldern, solange Bilder zu spät kommen, und wächst wieder, wenn Zeit übrig ist

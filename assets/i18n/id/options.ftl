@@ -89,6 +89,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Tepi halus: MSAA 4x, 2x di VR (memakai waktu GPU)
         Nonaktif: tepi piksel yang kasar
+options-section-display = Tampilan
+options-fullscreen = Layar penuh
+    .facts = Jendela memenuhi layar (juga Alt Enter atau F11)
+options-vsync = Sinkronisasi vertikal
+    .facts = Bingkai menunggu penyegaran layar: tanpa sobekan. Mati: sebanyak bingkai yang digambar komputer
+options-fps-cap = Batas laju bingkai
+    .facts = Paling banyak bingkai per detik: lebih hemat daya, panas dan bising kipas (laptop)
+options-fps-cap-off = Mati
+options-fps-cap-vr = Di VR headset yang menentukan laju bingkai
+options-ui-scale = Ukuran menu
+    .facts = Ukuran menu dan jendela, sejauh layar cukup. 100%: ukuran aslinya
 options-auto-detail = Detail pemandangan otomatis (VR)
     .facts =
         Di headset, jangkauan kota, hutan dan ladang menyusut saat frame terlambat dan pulih saat ada waktu tersisa

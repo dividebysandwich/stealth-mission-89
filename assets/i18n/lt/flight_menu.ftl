@@ -29,6 +29,9 @@ fm-point-lights = TAŠKINIAI ŠVIESTUVAI
 fm-time-of-day = PAROS LAIKAS
 fm-sun-moon = SAULĖ IR MĖNULIS
 fm-auto-detail = AUTOM. APLINKOS DETALUMAS
+fm-fullscreen = VISAS EKRANAS
+fm-vsync = VERTIKALIOJI SINCHRONIZACIJA
+fm-fps-cap = KADRŲ DAŽNIO RIBA
 fm-cockpit = KABINA
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = GERAI
 fm-pull-trigger = PASPAUSKITE AKTYVIKLĮ
 
 fm-effects = EFEKTAI
+fm-display = EKRANAS
 fm-effect-shake = KAMEROS DREBĖJIMAS
 fm-effect-flashes = MŪŠIO BLYKSNIAI
 fm-effect-barrage = NAKTINĖ UŽTVARINĖ UGNIS

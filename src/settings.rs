@@ -181,7 +181,21 @@ pub struct Settings {
     pub hmd_mode: crate::hmd::HmdMode,
     /// The modern HUD's and the helmet display's symbology colour (`Action::HudColour`).
     pub hud_colour: crate::cockpit3d::hud_glass::HudColour,
+    /// The window fills the screen (`fullscreen.rs`; kept in `window.json`, not the
+    /// preferences).
+    pub fullscreen: bool,
+    /// Frames wait for the screen's refresh (off with `--novsync`).
+    pub vsync: bool,
+    /// The most frames a second (0: no limit), on the desktop outside VR.
+    pub fps_cap: u16,
+    /// The menus' size (`menu::apply_ui_zoom`), `UI_SCALE_RANGE`.
+    pub ui_scale: f32,
 }
+
+/// The menus' size range (`Settings::ui_scale`).
+pub const UI_SCALE_RANGE: std::ops::RangeInclusive<f32> = 0.75..=2.0;
+/// The frame rate limits offered (0: none).
+pub const FPS_CAPS: [u16; 7] = [0, 30, 45, 60, 90, 120, 144];
 
 /// Default VR cockpit size.
 pub const DEFAULT_VR_COCKPIT_SCALE: f32 = 1.0;
@@ -451,6 +465,10 @@ impl Settings {
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
             hmd_mode: Default::default(),
             hud_colour: Default::default(),
+            fullscreen: crate::fullscreen::starts_fullscreen(),
+            vsync: !has("--novsync"),
+            fps_cap: get(&a, "--fps-cap").and_then(|c| c.parse().ok()).unwrap_or(0),
+            ui_scale: 1.0,
         }
     }
 }

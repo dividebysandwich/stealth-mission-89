@@ -89,6 +89,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Bløde kanter: 4x MSAA, 2x i VR (koster GPU-tid)
         Fra: hårde pixelkanter
+options-section-display = Skærm
+options-fullscreen = Fuld skærm
+    .facts = Vinduet fylder skærmen (også Alt Enter eller F11)
+options-vsync = Lodret synkronisering
+    .facts = Billeder venter på skærmens opdatering: ingen tearing. Fra: så mange billeder, som computeren tegner
+options-fps-cap = Grænse for billedfrekvens
+    .facts = Højst så mange billeder i sekundet: mindre strøm, varme og blæserstøj (bærbare)
+options-fps-cap-off = Fra
+options-fps-cap-vr = I VR bestemmer headsettet billedfrekvensen
+options-ui-scale = Menustørrelse
+    .facts = Størrelsen på menuer og vinduer, så vidt skærmen har plads. 100 %: deres egen størrelse
 options-auto-detail = Automatisk landskabsdetalje (VR)
     .facts =
         I headsettet skrumper rækkevidden af byer, skove og marker, når billederne kommer for sent, og vokser igen, når der er tid til overs

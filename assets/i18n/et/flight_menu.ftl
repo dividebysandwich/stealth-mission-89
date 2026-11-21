@@ -29,6 +29,9 @@ fm-point-lights = PUNKTVALGUSTID
 fm-time-of-day = KELLAAEG
 fm-sun-moon = PÄIKE JA KUU
 fm-auto-detail = AUTOMAATNE MAASTIKU DETAILSUS
+fm-fullscreen = TÄISEKRAAN
+fm-vsync = VERTIKAALNE SÜNKROONIMINE
+fm-fps-cap = KAADRISAGEDUSE PIIR
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = VALMIS
 fm-pull-trigger = TÕMBA TRIGERIT
 
 fm-effects = EFEKTID
+fm-display = KUVA
 fm-effect-shake = KAAMERA VÄRIN
 fm-effect-flashes = LAHINGUSÄHVATUSED
 fm-effect-barrage = ÖINE TÕKKEKURI

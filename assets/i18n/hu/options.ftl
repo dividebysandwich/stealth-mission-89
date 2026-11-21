@@ -89,6 +89,17 @@ options-msaa = Élsimítás (MSAA)
     .facts =
         Sima élek: 4x MSAA, VR-ban 2x (GPU-időbe kerül)
         Kikapcsolva: kemény pixelélek
+options-section-display = Megjelenítés
+options-fullscreen = Teljes képernyő
+    .facts = Az ablak kitölti a képernyőt (Alt Enter vagy F11 is)
+options-vsync = Függőleges szinkron
+    .facts = A képkockák megvárják a képernyő frissítését: nincs szakadás. Ki: annyi képkocka, amennyit a gép rajzol
+options-fps-cap = Képkockasebesség-korlát
+    .facts = Legfeljebb ennyi képkocka másodpercenként: kevesebb áram, hő és ventilátorzaj (laptopok)
+options-fps-cap-off = Ki
+options-fps-cap-vr = VR-ben a headset szabja meg a képkockasebességet
+options-ui-scale = Menük mérete
+    .facts = A menük és ablakok mérete, amennyire a képernyőn elfér. 100%: a saját méretük
 options-auto-detail = Automatikus tájdetail (VR)
     .facts =
         A headsetben a városok, erdők és mezők látótávolsága csökken, amíg a képkockák késnek, és visszanő, ha van tartalék idő

@@ -29,6 +29,9 @@ fm-point-lights = PUNTLICHTEN
 fm-time-of-day = TIJDSTIP VAN DE DAG
 fm-sun-moon = ZON EN MAAN
 fm-auto-detail = AUTO LANDSCHAPSDETAIL
+fm-fullscreen = VOLLEDIG SCHERM
+fm-vsync = VERTICALE SYNCHRONISATIE
+fm-fps-cap = BEELDSNELHEIDSLIMIET
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONICA
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = HAAL DE TRIGGER OVER
 
 fm-effects = EFFECTEN
+fm-display = WEERGAVE
 fm-effect-shake = CAMERABEVING
 fm-effect-flashes = GEVECHTSFLITSEN
 fm-effect-barrage = NACHTELIJK SPERVUUR

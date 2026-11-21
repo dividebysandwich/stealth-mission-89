@@ -89,6 +89,17 @@ options-msaa = Antialiasing (MSAA)
     .facts =
         Bordes suavizados: MSAA 4x, 2x en VR (consume tiempo de GPU)
         Desactivado: bordes de píxel duros
+options-section-display = Pantalla
+options-fullscreen = Pantalla completa
+    .facts = La ventana ocupa toda la pantalla (también Alt Enter o F11)
+options-vsync = Sincronización vertical
+    .facts = Los fotogramas esperan al refresco de la pantalla: sin cortes. Desactivada: tantos fotogramas como dibuje el ordenador
+options-fps-cap = Límite de fotogramas
+    .facts = Como mucho tantos fotogramas por segundo: menos consumo, calor y ruido (portátiles)
+options-fps-cap-off = Desactivado
+options-fps-cap-vr = En RV el visor marca los fotogramas
+options-ui-scale = Tamaño de los menús
+    .facts = El tamaño de menús y ventanas, hasta donde quepa en la pantalla. 100 %: su tamaño propio
 options-auto-detail = Detalle automático del paisaje (VR)
     .facts =
         En el visor, el alcance de pueblos, bosques y campos se reduce cuando los fotogramas van con retraso y vuelve a crecer cuando sobra tiempo

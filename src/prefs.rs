@@ -128,6 +128,9 @@ pub struct Prefs {
     pub gif_fps: u8,
     pub hmd_mode: crate::hmd::HmdMode,
     pub hud_colour: crate::cockpit3d::hud_glass::HudColour,
+    pub vsync: bool,
+    pub fps_cap: u16,
+    pub ui_scale: f32,
 }
 
 const VR_SCALE_VERSION: u32 = 2;
@@ -218,6 +221,9 @@ impl Default for Prefs {
             gif_fps: crate::gif_recorder::DEFAULT_FRAME_RATE,
             hmd_mode: Default::default(),
             hud_colour: Default::default(),
+            vsync: true,
+            fps_cap: 0,
+            ui_scale: 1.0,
         }
     }
 }
@@ -343,6 +349,9 @@ impl Prefs {
             gif_fps: s.gif_fps,
             hmd_mode: s.hmd_mode,
             hud_colour: s.hud_colour,
+            vsync: s.vsync,
+            fps_cap: s.fps_cap,
+            ui_scale: s.ui_scale,
         }
     }
 
@@ -441,6 +450,14 @@ impl Prefs {
         s.gif_fps = self.gif_fps.clamp(1, 50);
         s.hmd_mode = self.hmd_mode;
         s.hud_colour = self.hud_colour;
+        // --novsync stays off.
+        s.vsync &= self.vsync;
+        if !std::env::args().any(|a| a == "--fps-cap") {
+            s.fps_cap =
+                if crate::settings::FPS_CAPS.contains(&self.fps_cap) { self.fps_cap } else { 0 };
+        }
+        let scales = crate::settings::UI_SCALE_RANGE;
+        s.ui_scale = self.ui_scale.clamp(*scales.start(), *scales.end());
         if !std::env::args().any(|a| a == "--effects") {
             s.effects = self.effects;
         }
@@ -508,6 +525,9 @@ impl Prefs {
         self.gif_fps = s.gif_fps;
         self.hmd_mode = s.hmd_mode;
         self.hud_colour = s.hud_colour;
+        self.vsync = s.vsync;
+        self.fps_cap = s.fps_cap;
+        self.ui_scale = s.ui_scale;
     }
 
     /// The OPTIONS menus' settings of `s`, to compare.

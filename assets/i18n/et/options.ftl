@@ -89,6 +89,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Siledad servad: 4x MSAA, VR-is 2x (koormab GPU-d)
         Väljas: teravad piksliservad
+options-section-display = Kuva
+options-fullscreen = Täisekraan
+    .facts = Aken täidab ekraani (ka Alt Enter või F11)
+options-vsync = Vertikaalne sünkroonimine
+    .facts = Kaadrid ootavad ekraani värskendust: rebenemiseta. Väljas: nii palju kaadreid, kui arvuti joonistab
+options-fps-cap = Kaadrisageduse piir
+    .facts = Kõige rohkem nii palju kaadreid sekundis: vähem voolu, soojust ja ventilaatorimüra (sülearvutid)
+options-fps-cap-off = Väljas
+options-fps-cap-vr = VR-is määrab kaadrisageduse peakomplekt
+options-ui-scale = Menüü suurus
+    .facts = Menüüde ja akende suurus, kuivõrd ekraanile mahub. 100%: nende enda suurus
 options-auto-detail = Automaatne maastiku detailsus (VR)
     .facts =
         Peakomplektis kahaneb linnade, metsade ja põldude kuvamiskaugus, kui kaadrid hilinevad, ja kasvab tagasi, kui aega jätkub

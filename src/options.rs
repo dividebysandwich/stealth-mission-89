@@ -315,10 +315,66 @@ fn gif_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     }
 }
 
+/// The window: fullscreen, vertical sync, the frame rate limit (the desktop's), and the menus'
+/// size: true if one changed.
+fn display_options(ui: &mut egui::Ui, s: &mut Settings) -> bool {
+    section(ui, t!("options-section-display"));
+    let mut toggled = false;
+    if crate::fullscreen::DISPLAY_OPTIONS {
+        toggled |= facts(
+            ui.checkbox(&mut s.fullscreen, t!("options-fullscreen")),
+            t_lines!("options-fullscreen.facts"),
+        )
+        .changed();
+        let forced = std::env::args().any(|a| a == "--novsync");
+        let check = ui.add_enabled(!forced, egui::Checkbox::new(&mut s.vsync, t!("options-vsync")));
+        toggled |= facts(check, t_lines!("options-vsync.facts")).changed();
+        let name = |cap: u16| {
+            if cap == 0 { t!("options-fps-cap-off").to_string() } else { format!("{cap} fps") }
+        };
+        ui.horizontal(|ui| {
+            ui.label(t!("options-fps-cap"));
+            let before = s.fps_cap;
+            let combo = egui::ComboBox::from_id_salt("fps_cap")
+                .selected_text(name(s.fps_cap))
+                .width(110.0)
+                .show_ui(ui, |ui| {
+                    for cap in crate::settings::FPS_CAPS {
+                        ui.selectable_value(&mut s.fps_cap, cap, name(cap));
+                    }
+                });
+            let resp = if s.vr {
+                combo.response.on_hover_text(t!("options-fps-cap-vr"))
+            } else {
+                facts(combo.response, t_lines!("options-fps-cap.facts"))
+            };
+            let _ = resp;
+            toggled |= s.fps_cap != before;
+        });
+    }
+    let range = crate::settings::UI_SCALE_RANGE;
+    let mut percent = s.ui_scale * 100.0;
+    let slider = egui::Slider::new(&mut percent, range.start() * 100.0..=range.end() * 100.0)
+        .step_by(5.0)
+        .fixed_decimals(0)
+        .suffix("%")
+        .text(t!("options-ui-scale"));
+    // Applied once the slider is let go: the window would shrink under the pointer.
+    let resp = facts(ui.add(slider), t_lines!("options-ui-scale.facts"));
+    if resp.changed() {
+        s.ui_scale = percent / 100.0;
+    }
+    if resp.drag_stopped() || (resp.changed() && !resp.dragged()) {
+        toggled = true;
+    }
+    toggled
+}
+
 fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
-    section(ui, t!("options-section-rendering"));
     let s = settings.bypass_change_detection();
-    let mut toggled = switches(
+    let mut toggled = display_options(ui, s);
+    section(ui, t!("options-section-rendering"));
+    toggled |= switches(
         ui,
         [
             (&mut s.modern_shading, "options-shaders"),

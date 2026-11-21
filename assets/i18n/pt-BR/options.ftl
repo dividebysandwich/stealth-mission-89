@@ -89,6 +89,17 @@ options-msaa = Antisserrilhamento (MSAA)
     .facts =
         Bordas suaves: MSAA 4x, 2x em VR (consome tempo de GPU)
         Desligado: bordas de pixel nítidas
+options-section-display = Tela
+options-fullscreen = Tela cheia
+    .facts = A janela ocupa a tela toda (também Alt Enter ou F11)
+options-vsync = Sincronização vertical
+    .facts = Os quadros esperam a atualização da tela: sem cortes. Desligada: tantos quadros quanto o computador desenhar
+options-fps-cap = Limite de quadros
+    .facts = No máximo tantos quadros por segundo: menos energia, calor e ruído (notebooks)
+options-fps-cap-off = Desligado
+options-fps-cap-vr = Em RV o headset define os quadros
+options-ui-scale = Tamanho dos menus
+    .facts = O tamanho dos menus e janelas, até onde a tela couber. 100%: o tamanho deles
 options-auto-detail = Detalhe automático do cenário (VR)
     .facts =
         No headset, o alcance de cidades, florestas e campos diminui quando os quadros atrasam e volta a crescer quando sobra tempo

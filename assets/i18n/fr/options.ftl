@@ -89,6 +89,17 @@ options-msaa = Anticrénelage (MSAA)
     .facts =
         Bords lissés : MSAA 4x, 2x en VR (coûte du temps GPU)
         Désactivé : bords de pixels nets
+options-section-display = Affichage
+options-fullscreen = Plein écran
+    .facts = La fenêtre remplit l'écran (aussi Alt Entrée ou F11)
+options-vsync = Synchronisation verticale
+    .facts = Les images attendent le rafraîchissement de l'écran : pas de déchirure. Désactivée : autant d'images que l'ordinateur en dessine
+options-fps-cap = Limite d'images
+    .facts = Au plus tant d'images par seconde : moins d'énergie, de chaleur et de bruit (portables)
+options-fps-cap-off = Désactivé
+options-fps-cap-vr = En VR, le casque fixe la cadence d'images
+options-ui-scale = Taille des menus
+    .facts = La taille des menus et des fenêtres, dans la limite de l'écran. 100 % : leur taille propre
 options-auto-detail = Détail automatique du décor (VR)
     .facts =
         Dans le casque, la portée des villes, forêts et champs diminue quand les images prennent du retard et revient quand il reste du temps

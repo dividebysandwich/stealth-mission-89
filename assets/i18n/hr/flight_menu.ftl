@@ -29,6 +29,9 @@ fm-point-lights = TOČKASTA SVJETLA
 fm-time-of-day = DOBA DANA
 fm-sun-moon = SUNCE I MJESEC
 fm-auto-detail = AUTO DETALJI OKOLIŠA
+fm-fullscreen = CIJELI ZASLON
+fm-vsync = VERTIKALNA SINKRONIZACIJA
+fm-fps-cap = OGRANIČENJE BROJA SLIČICA
 fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = POVUCITE OKIDAČ
 
 fm-effects = UČINCI
+fm-display = PRIKAZ
 fm-effect-shake = TRESENJE KAMERE
 fm-effect-flashes = BOJNI BLJESKOVI
 fm-effect-barrage = NOĆNA ZAPORNA VATRA

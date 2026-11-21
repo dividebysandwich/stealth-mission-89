@@ -89,6 +89,17 @@ options-msaa = アンチエイリアス（MSAA）
     .facts =
         エッジをなめらかに：4x MSAA、VR では 2x（GPU負荷あり）
         オフ：ピクセルのくっきりしたエッジ
+options-section-display = 画面
+options-fullscreen = フルスクリーン
+    .facts = ウィンドウを画面いっぱいに表示します (Alt Enter または F11 でも切り替え)
+options-vsync = 垂直同期
+    .facts = フレームが画面の更新を待ちます: ティアリングなし。オフ: コンピューターが描けるだけのフレーム
+options-fps-cap = フレームレート上限
+    .facts = 1 秒あたりの最大フレーム数: 消費電力・発熱・ファン音を抑えます (ノート PC)
+options-fps-cap-off = オフ
+options-fps-cap-vr = VR ではヘッドセットがフレームレートを決めます
+options-ui-scale = メニューの大きさ
+    .facts = メニューとウィンドウの大きさ (画面に収まる範囲で)。100%: 本来の大きさ
 options-auto-detail = 地形ディテール自動調整（VR）
     .facts =
         ヘッドセットでは、フレームが遅れている間は街、森、畑の描画距離が縮み、余裕があれば元に戻ります

@@ -29,6 +29,9 @@ fm-point-lights = PUNKTLYS
 fm-time-of-day = TIDSPUNKT PÅ DAGEN
 fm-sun-moon = SOL OG MÅNE
 fm-auto-detail = AUTO LANDSKABSDETALJE
+fm-fullscreen = FULD SKÆRM
+fm-vsync = LODRET SYNKRONISERING
+fm-fps-cap = GRÆNSE FOR BILLEDFREKVENS
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONIK
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = TRÆK I UDLØSEREN
 
 fm-effects = EFFEKTER
+fm-display = SKÆRM
 fm-effect-shake = KAMERARYSTELSER
 fm-effect-flashes = KAMPGLIMT
 fm-effect-barrage = NATLIG SPÆRREILD

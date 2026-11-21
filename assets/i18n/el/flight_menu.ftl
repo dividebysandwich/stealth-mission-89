@@ -29,6 +29,9 @@ fm-point-lights = ΣΗΜΕΙΑΚΑ ΦΩΤΑ
 fm-time-of-day = ΩΡΑ ΗΜΕΡΑΣ
 fm-sun-moon = ΗΛΙΟΣ ΚΑΙ ΣΕΛΗΝΗ
 fm-auto-detail = ΑΥΤΟΜΑΤΗ ΛΕΠΤΟΜΕΡΕΙΑ ΤΟΠΙΟΥ
+fm-fullscreen = ΠΛΗΡΗΣ ΟΘΟΝΗ
+fm-vsync = ΚΑΘΕΤΟΣ ΣΥΓΧΡΟΝΙΣΜΟΣ
+fm-fps-cap = ΟΡΙΟ ΡΥΘΜΟΥ ΚΑΡΕ
 fm-cockpit = ΠΙΛΟΤΗΡΙΟ
 fm-hud = HUD
 fm-avionics = ΗΛΕΚΤΡΟΝΙΚΑ ΠΤΗΣΗΣ
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = ΠΑΤΗΣΤΕ ΤΗ ΣΙΑΓΩΝΑ
 
 fm-effects = ΕΦΕ
+fm-display = ΟΘΟΝΗ
 fm-effect-shake = ΚΟΥΝΗΜΑ ΚΑΜΕΡΑΣ
 fm-effect-flashes = ΑΝΑΛΑΜΠΕΣ ΜΑΧΗΣ
 fm-effect-barrage = ΝΥΧΤΕΡΙΝΟ ΦΡΑΓΜΑ ΠΥΡΟΣ

@@ -89,6 +89,17 @@ options-msaa = Vyhladzovanie hrán (MSAA)
     .facts =
         Hladké hrany: 4x MSAA, vo VR 2x (stojí výkon GPU)
         Vyp: tvrdé pixelové hrany
+options-section-display = Zobrazenie
+options-fullscreen = Celá obrazovka
+    .facts = Okno vyplní obrazovku (aj Alt Enter alebo F11)
+options-vsync = Vertikálna synchronizácia
+    .facts = Snímky čakajú na obnovenie obrazovky: bez trhania. Vypnuté: toľko snímok, koľko počítač vykreslí
+options-fps-cap = Obmedzenie snímkovej frekvencie
+    .facts = Najviac snímok za sekundu: menej energie, tepla a hluku ventilátora (notebooky)
+options-fps-cap-off = Vypnuté
+options-fps-cap-vr = Vo VR určuje snímkovú frekvenciu headset
+options-ui-scale = Veľkosť ponúk
+    .facts = Veľkosť ponúk a okien, pokiaľ má obrazovka miesto. 100 %: ich vlastná veľkosť
 options-auto-detail = Automatický detail krajiny (VR)
     .facts =
         V headsete sa dosah miest, lesov a polí zmenšuje, kým snímky meškajú, a vracia sa, keď je čas nazvyš

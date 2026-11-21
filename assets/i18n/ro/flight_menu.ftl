@@ -29,6 +29,9 @@ fm-point-lights = LUMINI PUNCTUALE
 fm-time-of-day = ORA ZILEI
 fm-sun-moon = SOARE ȘI LUNĂ
 fm-auto-detail = DETALII AUTO PEISAJ
+fm-fullscreen = ECRAN COMPLET
+fm-vsync = SINCRONIZARE VERTICALĂ
+fm-fps-cap = LIMITĂ DE CADRE
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONICĂ
@@ -61,6 +64,7 @@ fm-key-done = GATA
 fm-pull-trigger = APĂSAȚI PE TRĂGACI
 
 fm-effects = EFECTE
+fm-display = AFIȘAJ
 fm-effect-shake = SCUTURAREA CAMEREI
 fm-effect-flashes = FULGERE DE LUPTĂ
 fm-effect-barrage = BARAJ DE NOAPTE

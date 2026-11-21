@@ -89,6 +89,17 @@ options-msaa = Izglađivanje rubova (MSAA)
     .facts =
         Glatki rubovi: 4x MSAA, 2x u VR-u (troši GPU)
         Isključeno: oštri rubovi piksela
+options-section-display = Prikaz
+options-fullscreen = Cijeli zaslon
+    .facts = Prozor ispunjava zaslon (također Alt Enter ili F11)
+options-vsync = Vertikalna sinkronizacija
+    .facts = Sličice čekaju osvježavanje zaslona: bez kidanja. Isključeno: onoliko sličica koliko računalo iscrta
+options-fps-cap = Ograničenje broja sličica
+    .facts = Najviše sličica u sekundi: manje energije, topline i buke ventilatora (prijenosnici)
+options-fps-cap-off = Isključeno
+options-fps-cap-vr = U VR-u broj sličica određuje naglavni uređaj
+options-ui-scale = Veličina izbornika
+    .facts = Veličina izbornika i prozora, koliko zaslon dopušta. 100 %: njihova vlastita veličina
 options-auto-detail = Automatski detalji okoliša (VR)
     .facts =
         U headsetu se domet gradova, šuma i polja smanjuje dok sličice kasne i vraća kad ima viška vremena

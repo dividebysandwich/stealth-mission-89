@@ -29,6 +29,9 @@ fm-point-lights = ポイントライト
 fm-time-of-day = 時刻
 fm-sun-moon = 太陽と月
 fm-auto-detail = 地形ディテール自動調整
+fm-fullscreen = フルスクリーン
+fm-vsync = 垂直同期
+fm-fps-cap = フレームレート上限
 fm-cockpit = コックピット
 fm-hud = HUD
 fm-avionics = アビオニクス
@@ -61,6 +64,7 @@ fm-key-done = 完了
 fm-pull-trigger = トリガーを引いてください
 
 fm-effects = エフェクト
+fm-display = 画面
 fm-effect-shake = カメラの揺れ
 fm-effect-flashes = 戦闘の閃光
 fm-effect-barrage = 夜間阻止射撃

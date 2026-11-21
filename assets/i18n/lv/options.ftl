@@ -89,6 +89,17 @@ options-msaa = Kropļojumu mazināšana (MSAA)
     .facts =
         Gludas malas: 4x MSAA, 2x VR (patērē GPU laiku)
         Izslēgta: asas pikseļu malas
+options-section-display = Displejs
+options-fullscreen = Pilnekrāns
+    .facts = Logs aizpilda ekrānu (arī Alt Enter vai F11)
+options-vsync = Vertikālā sinhronizācija
+    .facts = Kadri gaida ekrāna atsvaidzi: bez plīsumiem. Izslēgts: tik kadru, cik dators uzzīmē
+options-fps-cap = Kadru nomaiņas ierobežojums
+    .facts = Ne vairāk kadru sekundē: mazāk enerģijas, siltuma un ventilatora trokšņa (klēpjdatori)
+options-fps-cap-off = Izslēgts
+options-fps-cap-vr = VR režīmā kadru nomaiņu nosaka austiņas
+options-ui-scale = Izvēlņu izmērs
+    .facts = Izvēlņu un logu izmērs, cik ekrāns atļauj. 100%: to pašu izmērs
 options-auto-detail = Automātiska ainavas detalizācija (VR)
     .facts =
         Austiņās pilsētu, mežu un lauku redzamības rādiuss samazinās, kamēr kadri kavējas, un atkal pieaug, kad ir laika rezerve

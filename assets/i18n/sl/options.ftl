@@ -89,6 +89,17 @@ options-msaa = Glajenje robov (MSAA)
     .facts =
         Gladki robovi: 4x MSAA, 2x v VR (obremeni GPE)
         Izklopljeno: ostri robovi slikovnih pik
+options-section-display = Zaslon
+options-fullscreen = Celozaslonski način
+    .facts = Okno zapolni zaslon (tudi Alt Enter ali F11)
+options-vsync = Navpična sinhronizacija
+    .facts = Sličice počakajo na osvežitev zaslona: brez trganja. Izklopljeno: toliko sličic, kot jih računalnik nariše
+options-fps-cap = Omejitev hitrosti sličic
+    .facts = Največ toliko sličic na sekundo: manj energije, toplote in hrupa (prenosniki)
+options-fps-cap-off = Izklopljeno
+options-fps-cap-vr = V VR hitrost sličic določa naglavni komplet
+options-ui-scale = Velikost menijev
+    .facts = Velikost menijev in oken, kolikor zaslon dopušča. 100 %: njihova lastna velikost
 options-auto-detail = Samodejna podrobnost okolja (VR)
     .facts =
         V očalih se doseg mest, gozdov in polj skrči, ko sličice zamujajo, in se vrne, ko je časa dovolj

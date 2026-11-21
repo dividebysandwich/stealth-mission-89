@@ -29,6 +29,9 @@ fm-point-lights = DAWLIET PUNTWALI
 fm-time-of-day = ĦIN TAL-JUM
 fm-sun-moon = XEMX U QAMAR
 fm-auto-detail = DETALL AWTOMATIKU TAX-XENA
+fm-fullscreen = SKRIN SĦIĦ
+fm-vsync = SINKRONIZZAZZJONI VERTIKALI
+fm-fps-cap = LIMITU TAR-RATA TAL-FREJMS
 fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVJONIKA
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = IĠBED IT-TRIGGER
 
 fm-effects = EFFETTI
+fm-display = WIRI
 fm-effect-shake = TIĦŻIŻA TAL-KAMERA
 fm-effect-flashes = BLALEN TAL-BATTALJA
 fm-effect-barrage = BARRAĠĠ BIL-LEJL

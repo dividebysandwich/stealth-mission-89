@@ -89,6 +89,17 @@ options-msaa = 안티앨리어싱 (MSAA)
     .facts =
         가장자리를 부드럽게: 4x MSAA, VR에서는 2x (GPU 부하 증가)
         끔: 거친 픽셀 가장자리
+options-section-display = 화면
+options-fullscreen = 전체 화면
+    .facts = 창이 화면을 가득 채웁니다 (Alt Enter 또는 F11로도 전환)
+options-vsync = 수직 동기화
+    .facts = 프레임이 화면 갱신을 기다립니다: 화면 찢어짐 없음. 끄면 컴퓨터가 그리는 만큼의 프레임
+options-fps-cap = 프레임 속도 제한
+    .facts = 초당 최대 프레임 수: 전력, 열, 팬 소음이 줄어듭니다 (노트북)
+options-fps-cap-off = 끔
+options-fps-cap-vr = VR에서는 헤드셋이 프레임 속도를 정합니다
+options-ui-scale = 메뉴 크기
+    .facts = 화면에 들어가는 범위에서 메뉴와 창의 크기. 100%: 원래 크기
 options-auto-detail = 지형 디테일 자동 (VR)
     .facts =
         헤드셋에서 프레임이 늦어지면 마을, 숲, 들판의 표시 거리가 줄고 여유가 생기면 다시 늘어납니다

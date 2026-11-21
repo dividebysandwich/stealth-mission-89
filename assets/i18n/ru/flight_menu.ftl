@@ -29,6 +29,9 @@ fm-point-lights = ТОЧЕЧНЫЙ СВЕТ
 fm-time-of-day = ВРЕМЯ СУТОК
 fm-sun-moon = СОЛНЦЕ И ЛУНА
 fm-auto-detail = АВТОДЕТАЛИЗАЦИЯ МЕСТНОСТИ
+fm-fullscreen = ПОЛНЫЙ ЭКРАН
+fm-vsync = ВЕРТИКАЛЬНАЯ СИНХРОНИЗАЦИЯ
+fm-fps-cap = ОГРАНИЧЕНИЕ ЧАСТОТЫ КАДРОВ
 fm-cockpit = КАБИНА
 fm-hud = HUD
 fm-avionics = АВИОНИКА
@@ -61,6 +64,7 @@ fm-key-done = ГОТОВО
 fm-pull-trigger = НАЖМИТЕ КУРОК
 
 fm-effects = ЭФФЕКТЫ
+fm-display = ЭКРАН
 fm-effect-shake = ТРЯСКА КАМЕРЫ
 fm-effect-flashes = ВСПЫШКИ БОЯ
 fm-effect-barrage = НОЧНОЙ ЗАГРАДОГОНЬ

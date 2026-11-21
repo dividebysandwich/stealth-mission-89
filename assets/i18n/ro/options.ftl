@@ -89,6 +89,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Margini netede: MSAA 4x, 2x în VR (consumă timp GPU)
         Oprit: margini dure de pixeli
+options-section-display = Afișaj
+options-fullscreen = Ecran complet
+    .facts = Fereastra umple ecranul (și Alt Enter sau F11)
+options-vsync = Sincronizare verticală
+    .facts = Cadrele așteaptă reîmprospătarea ecranului: fără rupturi. Oprită: câte cadre desenează calculatorul
+options-fps-cap = Limită de cadre
+    .facts = Cel mult atâtea cadre pe secundă: mai puțină energie, căldură și zgomot (laptopuri)
+options-fps-cap-off = Oprit
+options-fps-cap-vr = În VR casca stabilește rata cadrelor
+options-ui-scale = Dimensiunea meniurilor
+    .facts = Dimensiunea meniurilor și ferestrelor, cât permite ecranul. 100%: dimensiunea lor
 options-auto-detail = Detalii automate ale peisajului (VR)
     .facts =
         În cască, raza de afișare a orașelor, pădurilor și câmpurilor scade cât timp cadrele întârzie și crește la loc când rămâne timp

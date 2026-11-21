@@ -29,6 +29,9 @@ fm-point-lights = TOČKASTE LUČI
 fm-time-of-day = ČAS DNEVA
 fm-sun-moon = SONCE IN LUNA
 fm-auto-detail = SAMODEJNA PODROBNOST OKOLJA
+fm-fullscreen = CELOZASLONSKI NAČIN
+fm-vsync = NAVPIČNA SINHRONIZACIJA
+fm-fps-cap = OMEJITEV HITROSTI SLIČIC
 fm-cockpit = KABINA
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = KONEC
 fm-pull-trigger = POVLEČITE SPROŽILEC
 
 fm-effects = UČINKI
+fm-display = ZASLON
 fm-effect-shake = TRESENJE KAMERE
 fm-effect-flashes = BOJNI BLISKI
 fm-effect-barrage = NOČNI ZAPORNI OGENJ

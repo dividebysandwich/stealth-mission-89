@@ -29,6 +29,9 @@ fm-point-lights = 점광원
 fm-time-of-day = 시간대
 fm-sun-moon = 태양과 달
 fm-auto-detail = 지형 디테일 자동
+fm-fullscreen = 전체 화면
+fm-vsync = 수직 동기화
+fm-fps-cap = 프레임 속도 제한
 fm-cockpit = 조종석
 fm-hud = HUD
 fm-avionics = 항전
@@ -61,6 +64,7 @@ fm-key-done = 완료
 fm-pull-trigger = 트리거를 당기세요
 
 fm-effects = 효과
+fm-display = 화면
 fm-effect-shake = 카메라 흔들림
 fm-effect-flashes = 전투 섬광
 fm-effect-barrage = 야간 저지 사격

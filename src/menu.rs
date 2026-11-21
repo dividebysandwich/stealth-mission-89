@@ -456,8 +456,22 @@ const REFLOW_REFERENCE: egui::Vec2 = egui::vec2(800.0, 600.0);
 /// The furthest the menus zoom out to fit a small window (a phone on its side).
 const UI_ZOOM_MIN: f32 = 0.3;
 
+/// The player's interface size (OPTIONS > GRAPHICS, `Settings::ui_scale`), as f32 bits.
+static UI_SCALE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3f80_0000);
+
+/// Sets the player's interface size (1: the screens' own; up to `UI_SCALE_RANGE`'s end where
+/// the window has room).
+pub(crate) fn set_ui_scale(scale: f32) {
+    UI_SCALE.store(scale.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn ui_scale() -> f32 {
+    f32::from_bits(UI_SCALE.load(std::sync::atomic::Ordering::Relaxed))
+}
+
 /// The interface scale: smaller windows than `UI_REFERENCE` (small laptops, a phone or tablet
-/// in the browser) zoom out to fit it, larger ones keep it; `--ui-zoom f` sets it instead.
+/// in the browser) zoom out to fit it, larger ones keep it, or grow to the player's interface
+/// size where they have room; `--ui-zoom f` sets it instead.
 pub(crate) fn apply_ui_zoom(ctx: &egui::Context) {
     apply_zoom(ctx, UI_REFERENCE);
 }
@@ -476,16 +490,18 @@ fn apply_zoom(ctx: &egui::Context, reference: egui::Vec2) {
         .and_then(|w| w[1].parse::<f32>().ok());
     // The window's own size: the content rectangle is in zoomed points.
     let window = ctx.content_rect().size() * ctx.zoom_factor();
-    let Some(z) = arg.or_else(|| fit_zoom(window, reference)) else { return };
+    let Some(z) = arg.or_else(|| fit_zoom(window, reference, ui_scale())) else { return };
     if (ctx.zoom_factor() - z).abs() > 0.005 {
         ctx.set_zoom_factor(z);
     }
 }
 
-/// The zoom that fits `reference` into a window this size (None before it has a size).
-fn fit_zoom(window: egui::Vec2, reference: egui::Vec2) -> Option<f32> {
-    (window.min_elem() > 0.0)
-        .then(|| (window.x / reference.x).min(window.y / reference.y).clamp(UI_ZOOM_MIN, 1.0))
+/// The zoom that fits `reference` into a window this size, at most the player's interface size
+/// `scale` (None before it has a size).
+fn fit_zoom(window: egui::Vec2, reference: egui::Vec2, scale: f32) -> Option<f32> {
+    (window.min_elem() > 0.0).then(|| {
+        (window.x / reference.x).min(window.y / reference.y).min(scale).max(UI_ZOOM_MIN)
+    })
 }
 
 pub(crate) fn apply_terminal_style(style: &mut egui::Style) {
@@ -2269,20 +2285,24 @@ mod tests {
     /// its height, never below the floor.
     #[test]
     fn zoom_fits_the_window() {
-        assert_eq!(fit_zoom(egui::vec2(1920.0, 1080.0), UI_REFERENCE), Some(1.0));
-        assert_eq!(fit_zoom(UI_REFERENCE, UI_REFERENCE), Some(1.0));
-        let phone = fit_zoom(egui::vec2(844.0, 390.0), UI_REFERENCE).unwrap();
+        assert_eq!(fit_zoom(egui::vec2(1920.0, 1080.0), UI_REFERENCE, 1.0), Some(1.0));
+        assert_eq!(fit_zoom(UI_REFERENCE, UI_REFERENCE, 1.0), Some(1.0));
+        let phone = fit_zoom(egui::vec2(844.0, 390.0), UI_REFERENCE, 1.0).unwrap();
         assert!((phone - 390.0 / 768.0).abs() < 1e-4);
-        assert_eq!(fit_zoom(egui::vec2(300.0, 200.0), UI_REFERENCE), Some(UI_ZOOM_MIN));
-        assert_eq!(fit_zoom(egui::Vec2::ZERO, UI_REFERENCE), None);
+        assert_eq!(fit_zoom(egui::vec2(300.0, 200.0), UI_REFERENCE, 1.0), Some(UI_ZOOM_MIN));
+        assert_eq!(fit_zoom(egui::Vec2::ZERO, UI_REFERENCE, 1.0), None);
+        // A larger interface where the window has room for it, never past what fits.
+        assert_eq!(fit_zoom(egui::vec2(2560.0, 1536.0), UI_REFERENCE, 1.5), Some(1.5));
+        assert_eq!(fit_zoom(egui::vec2(1920.0, 1152.0), UI_REFERENCE, 2.0), Some(1.5));
+        assert_eq!(fit_zoom(egui::vec2(1920.0, 1080.0), UI_REFERENCE, 0.75), Some(0.75));
     }
 
     /// The screens that reflow keep the full scale down to 800 x 600 and zoom out below it.
     #[test]
     fn reflow_zoom_starts_below_the_small_window() {
-        assert_eq!(fit_zoom(egui::vec2(1024.0, 600.0), REFLOW_REFERENCE), Some(1.0));
-        assert_eq!(fit_zoom(REFLOW_REFERENCE, REFLOW_REFERENCE), Some(1.0));
-        let phone = fit_zoom(egui::vec2(844.0, 390.0), REFLOW_REFERENCE).unwrap();
+        assert_eq!(fit_zoom(egui::vec2(1024.0, 600.0), REFLOW_REFERENCE, 1.0), Some(1.0));
+        assert_eq!(fit_zoom(REFLOW_REFERENCE, REFLOW_REFERENCE, 1.0), Some(1.0));
+        let phone = fit_zoom(egui::vec2(844.0, 390.0), REFLOW_REFERENCE, 1.0).unwrap();
         assert!((phone - 390.0 / 600.0).abs() < 1e-4);
     }
 }

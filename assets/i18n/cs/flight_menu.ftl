@@ -29,6 +29,9 @@ fm-point-lights = BODOVÁ SVĚTLA
 fm-time-of-day = DENNÍ DOBA
 fm-sun-moon = SLUNCE A MĚSÍC
 fm-auto-detail = AUTO DETAIL KRAJINY
+fm-fullscreen = CELÁ OBRAZOVKA
+fm-vsync = VERTIKÁLNÍ SYNCHRONIZACE
+fm-fps-cap = OMEZENÍ SNÍMKOVÉ FREKVENCE
 fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVIONIKA
@@ -61,6 +64,7 @@ fm-key-done = HOTOVO
 fm-pull-trigger = STISKNĚTE SPOUŠŤ
 
 fm-effects = EFEKTY
+fm-display = ZOBRAZENÍ
 fm-effect-shake = OTŘESY KAMERY
 fm-effect-flashes = ZÁBLESKY BOJE
 fm-effect-barrage = NOČNÍ ZÁTARASOVÁ PALBA

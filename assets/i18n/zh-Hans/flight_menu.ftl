@@ -28,6 +28,9 @@ fm-point-lights = 点光源
 fm-time-of-day = 昼夜变化
 fm-sun-moon = 太阳和月亮
 fm-auto-detail = 自动场景细节
+fm-fullscreen = 全屏
+fm-vsync = 垂直同步
+fm-fps-cap = 帧率上限
 fm-cockpit = 座舱
 fm-hud = HUD
 fm-avionics = 航电
@@ -60,6 +63,7 @@ fm-key-done = 完成
 fm-pull-trigger = 扣动扳机
 
 fm-effects = 特效
+fm-display = 显示
 fm-effect-shake = 镜头抖动
 fm-effect-flashes = 战斗闪光
 fm-effect-barrage = 夜间拦阻射击

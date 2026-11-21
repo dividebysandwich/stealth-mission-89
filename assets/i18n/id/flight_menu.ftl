@@ -29,6 +29,9 @@ fm-point-lights = LAMPU TITIK
 fm-time-of-day = WAKTU HARI
 fm-sun-moon = MATAHARI DAN BULAN
 fm-auto-detail = DETAIL PEMANDANGAN OTOMATIS
+fm-fullscreen = LAYAR PENUH
+fm-vsync = SINKRONISASI VERTIKAL
+fm-fps-cap = BATAS LAJU BINGKAI
 fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AVIONIK
@@ -61,6 +64,7 @@ fm-key-done = SELESAI
 fm-pull-trigger = TARIK PEMICU
 
 fm-effects = EFEK
+fm-display = TAMPILAN
 fm-effect-shake = GUNCANGAN KAMERA
 fm-effect-flashes = KILATAN PERTEMPURAN
 fm-effect-barrage = TEMBAKAN PENGHALANG MALAM

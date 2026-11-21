@@ -28,6 +28,9 @@ fm-point-lights = PUNKTLICHTER
 fm-time-of-day = TAGESZEIT
 fm-sun-moon = SONNE UND MOND
 fm-auto-detail = AUTO-SZENERIEDETAILS
+fm-fullscreen = VOLLBILD
+fm-vsync = VERTIKALE SYNCHRONISATION
+fm-fps-cap = BILDRATENBEGRENZUNG
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONIK
@@ -60,6 +63,7 @@ fm-key-done = FERTIG
 fm-pull-trigger = ABZUG DRÜCKEN
 
 fm-effects = EFFEKTE
+fm-display = ANZEIGE
 fm-effect-shake = KAMERAWACKELN
 fm-effect-flashes = KAMPFBLITZE
 fm-effect-barrage = NÄCHTLICHES SPERRFEUER

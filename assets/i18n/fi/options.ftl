@@ -89,6 +89,17 @@ options-msaa = Reunanpehmennys (MSAA)
     .facts =
         Pehmeät reunat: 4x MSAA, VR:ssä 2x (kuormittaa GPU:ta)
         Pois: kovat pikselireunat
+options-section-display = Näyttö
+options-fullscreen = Koko näyttö
+    .facts = Ikkuna täyttää näytön (myös Alt Enter tai F11)
+options-vsync = Pystytahdistus
+    .facts = Kuvat odottavat näytön päivitystä: ei repeilyä. Pois: niin monta kuvaa kuin tietokone piirtää
+options-fps-cap = Kuvataajuuden raja
+    .facts = Enintään näin monta kuvaa sekunnissa: vähemmän virtaa, lämpöä ja tuuletinmelua (kannettavat)
+options-fps-cap-off = Pois
+options-fps-cap-vr = VR:ssä lasit määräävät kuvataajuuden
+options-ui-scale = Valikkojen koko
+    .facts = Valikkojen ja ikkunoiden koko sikäli kuin näytölle mahtuu. 100 %: niiden oma koko
 options-auto-detail = Maiseman automaattiset yksityiskohdat (VR)
     .facts =
         Lasien kanssa kaupunkien, metsien ja peltojen näkyvyysetäisyys lyhenee, kun ruudunpäivitys myöhästyy, ja kasvaa takaisin, kun aikaa jää yli

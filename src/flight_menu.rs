@@ -205,6 +205,8 @@ enum Page {
     Game,
     Graphics,
     Effects,
+    /// The window's mode, its vertical sync and the frame rate limit.
+    Display,
     Sound,
     Controls,
 }
@@ -242,6 +244,7 @@ impl Page {
                 Open(Page::Game),
                 Open(Page::Graphics),
                 Open(Page::Effects),
+                Open(Page::Display),
                 Open(Page::Sound),
                 Open(Page::Controls),
                 Back,
@@ -289,6 +292,7 @@ impl Page {
                     Back,
                 ]
             }
+            Page::Display => &[Fullscreen, Vsync, FpsCap, Back],
             Page::Effects => {
                 use crate::effects::Effect as E;
                 &[
@@ -345,6 +349,7 @@ impl Page {
             Page::Game => "options-tab-game",
             Page::Graphics => "options-tab-graphics",
             Page::Effects => "fm-effects",
+            Page::Display => "fm-display",
             Page::Sound => "options-tab-sound",
             Page::Controls => "options-tab-controls",
         })
@@ -428,6 +433,10 @@ enum Item {
     CityLightDistance,
     /// How the clouds are drawn (`CloudQuality`).
     Clouds,
+    /// The window's mode, its vertical sync and the frame rate limit (`fullscreen.rs`).
+    Fullscreen,
+    Vsync,
+    FpsCap,
     Cockpit,
     Hud,
     Avionics,
@@ -490,6 +499,9 @@ impl Item {
             Item::TimeOfDay => "fm-time-of-day",
             Item::SunMoon => "fm-sun-moon",
             Item::AutoDetail => "fm-auto-detail",
+            Item::Fullscreen => "fm-fullscreen",
+            Item::Vsync => "fm-vsync",
+            Item::FpsCap => "fm-fps-cap",
             Item::SceneryDistance => "options-scenery-distance",
             Item::CityLightDistance => "options-city-light-distance",
             Item::Cockpit => "fm-cockpit",
@@ -534,6 +546,10 @@ impl Item {
             Item::TimeOfDay => style(!s.continuous_time),
             Item::SunMoon => on(s.sun_moon),
             Item::AutoDetail => on(s.vr_auto_detail),
+            Item::Fullscreen => on(s.fullscreen),
+            Item::Vsync => on(s.vsync),
+            Item::FpsCap if s.fps_cap == 0 => format!("< {} >", ts!("off")),
+            Item::FpsCap => format!("< {} FPS >", s.fps_cap),
             Item::SceneryDistance => format!("< {:.0} KM >", s.scenery_distance / 1000.0),
             Item::CityLightDistance => format!("< {:.0} KM >", s.city_light_distance / 1000.0),
             Item::Clouds => format!("< {} >", s.cloud_quality.name().to_uppercase()),
@@ -588,6 +604,14 @@ impl Item {
             Item::LeaveAircraft => menu.can_leave,
             Item::SwitchSeat => menu.seat != SeatChoice::None,
             Item::CockpitSize | Item::AutoDetail => s.vr,
+            Item::Fullscreen | Item::FpsCap | Item::Open(Page::Display) => {
+                crate::fullscreen::DISPLAY_OPTIONS && !s.vr
+            }
+            Item::Vsync => {
+                crate::fullscreen::DISPLAY_OPTIONS
+                    && !s.vr
+                    && !std::env::args().any(|a| a == "--novsync")
+            }
             Item::LabelSize => s.player_labels,
             Item::PixelSize => crate::palette::pixelized(s),
             Item::Cockpit => s.aircraft.spec().cockpits.len() > 1,
@@ -1470,6 +1494,13 @@ fn navigate(
             s.cloud_quality = all[(i + dir as isize).rem_euclid(all.len() as isize) as usize];
         }
         Item::TimeOfDay => s.continuous_time = !s.continuous_time,
+        Item::Fullscreen => s.fullscreen = !s.fullscreen,
+        Item::Vsync => s.vsync = !s.vsync,
+        Item::FpsCap => {
+            let caps = crate::settings::FPS_CAPS;
+            let i = caps.iter().position(|&c| c == s.fps_cap).unwrap_or(0) as isize;
+            s.fps_cap = caps[(i + dir as isize).rem_euclid(caps.len() as isize) as usize];
+        }
         Item::SunMoon => s.sun_moon = !s.sun_moon,
         Item::Cockpit => s.classic_cockpit = !s.classic_cockpit,
         Item::Hud => s.classic_hud = !s.classic_hud,
@@ -2021,7 +2052,8 @@ fn icon(item: Item) -> Option<char> {
         Item::Open(Page::Game) => '\u{e1de}',     // plane
         Item::Open(Page::Graphics) => '\u{e11d}', // monitor
         Item::Open(Page::Effects) => '\u{e412}',  // sparkles
-        Item::Open(Page::Sound) => '\u{e1ab}',    // volume-2
+        Item::Open(Page::Display) => icon::FIT,
+        Item::Open(Page::Sound) => '\u{e1ab}', // volume-2
         Item::Open(Page::Controls) => icon::KEYS,
         _ => return None,
     })

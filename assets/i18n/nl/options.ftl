@@ -89,6 +89,17 @@ options-msaa = Anti-aliasing (MSAA)
     .facts =
         Gladde randen: 4x MSAA, 2x in VR (kost GPU-tijd)
         Uit: harde pixelranden
+options-section-display = Weergave
+options-fullscreen = Volledig scherm
+    .facts = Het venster vult het scherm (ook Alt Enter of F11)
+options-vsync = Verticale synchronisatie
+    .facts = Beelden wachten op de verversing van het scherm: geen tearing. Uit: zoveel beelden als de computer tekent
+options-fps-cap = Beeldsnelheidslimiet
+    .facts = Hoogstens zoveel beelden per seconde: minder stroom, warmte en ventilatorgeluid (laptops)
+options-fps-cap-off = Uit
+options-fps-cap-vr = In VR bepaalt de headset de beeldsnelheid
+options-ui-scale = Menugrootte
+    .facts = De grootte van menu's en vensters, voor zover het scherm ruimte heeft. 100%: hun eigen grootte
 options-auto-detail = Automatisch landschapsdetail (VR)
     .facts =
         In de headset wordt het bereik van steden, bossen en velden kleiner zolang beelden te laat komen en groeit het terug als er tijd over is

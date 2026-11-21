@@ -29,6 +29,9 @@ fm-point-lights = LUMIÈRES PONCTUELLES
 fm-time-of-day = HEURE DU JOUR
 fm-sun-moon = SOLEIL ET LUNE
 fm-auto-detail = DÉTAIL AUTO DU DÉCOR
+fm-fullscreen = PLEIN ÉCRAN
+fm-vsync = SYNCHRONISATION VERTICALE
+fm-fps-cap = LIMITE D'IMAGES
 fm-cockpit = COCKPIT
 fm-hud = HUD
 fm-avionics = AVIONIQUE
@@ -61,6 +64,7 @@ fm-key-done = OK
 fm-pull-trigger = APPUYEZ SUR LA GÂCHETTE
 
 fm-effects = EFFETS
+fm-display = AFFICHAGE
 fm-effect-shake = SECOUSSES CAMERA
 fm-effect-flashes = ECLAIRS DE COMBAT
 fm-effect-barrage = BARRAGE NOCTURNE

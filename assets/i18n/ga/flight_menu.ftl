@@ -29,6 +29,9 @@ fm-point-lights = SOILSE PHOINTE
 fm-time-of-day = AM DEN LÁ
 fm-sun-moon = GRIAN AGUS GEALACH
 fm-auto-detail = UATH-MHIONSONRAÍ TÍRDHREACHA
+fm-fullscreen = LÁNSCÁILEÁN
+fm-vsync = SIONCRÓNÚ INGEARACH
+fm-fps-cap = TEORAINN RÁTA FRÁMAÍ
 fm-cockpit = CÁBÁN
 fm-hud = HUD
 fm-avionics = AVIONICS
@@ -61,6 +64,7 @@ fm-key-done = DÉANTA
 fm-pull-trigger = TARRAING AN TRIGEAR
 
 fm-effects = ÉIFEACHTAÍ
+fm-display = TAISPEÁINT
 fm-effect-shake = CROITHEADH CEAMARA
 fm-effect-flashes = SPLANCANNA COMHRAIC
 fm-effect-barrage = BARÁISTE OÍCHE

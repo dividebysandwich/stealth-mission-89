@@ -29,6 +29,9 @@ fm-point-lights = ŚWIATŁA PUNKTOWE
 fm-time-of-day = PORA DNIA
 fm-sun-moon = SŁOŃCE I KSIĘŻYC
 fm-auto-detail = AUTOM. SZCZEGÓŁOWOŚĆ SCENERII
+fm-fullscreen = PEŁNY EKRAN
+fm-vsync = SYNCHRONIZACJA PIONOWA
+fm-fps-cap = LIMIT KLATEK
 fm-cockpit = KOKPIT
 fm-hud = HUD
 fm-avionics = AWIONIKA
@@ -61,6 +64,7 @@ fm-key-done = GOTOWE
 fm-pull-trigger = NACISNĄĆ SPUST
 
 fm-effects = EFEKTY
+fm-display = EKRAN
 fm-effect-shake = DRGANIA KAMERY
 fm-effect-flashes = BŁYSKI BITEWNE
 fm-effect-barrage = NOCNY OSTRZAŁ ZAPOROWY

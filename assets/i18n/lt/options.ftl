@@ -89,6 +89,17 @@ options-msaa = Glotninimas (MSAA)
     .facts =
         Glotnūs kraštai: 4x MSAA, 2x VR (naudoja GPU laiką)
         Išjungta: aštrūs pikselių kraštai
+options-section-display = Ekranas
+options-fullscreen = Visas ekranas
+    .facts = Langas užpildo ekraną (taip pat Alt Enter arba F11)
+options-vsync = Vertikalioji sinchronizacija
+    .facts = Kadrai laukia ekrano atnaujinimo: be plyšimų. Išjungta: tiek kadrų, kiek kompiuteris nupiešia
+options-fps-cap = Kadrų dažnio riba
+    .facts = Daugiausia kadrų per sekundę: mažiau energijos, šilumos ir triukšmo (nešiojamieji)
+options-fps-cap-off = Išjungta
+options-fps-cap-vr = VR režime kadrų dažnį nustato šalmas
+options-ui-scale = Meniu dydis
+    .facts = Meniu ir langų dydis, kiek leidžia ekranas. 100 %: jų pačių dydis
 options-auto-detail = Automatinis aplinkos detalumas (VR)
     .facts =
         Ausinėje miestų, miškų ir laukų matomumo atstumas mažėja, kai kadrai vėluoja, ir didėja, kai yra laiko atsargos
