@@ -91,6 +91,7 @@ fm-pixel-size = MÉID PIXEIL
 fm-volume-radio = RAIDIO
 fm-volume-atc = GUTH ATC
 fm-volume-music = CEOL
+fm-radio-ducking = ÍSLIÚ DON RAIDIÓ
 fm-tracking-mouse = BREATHNÚ LEIS AN LUCHÓG I RIANÚ
 fm-effect-pixelize = PIXEALÚ
 fm-effect-sharp-hud = GAN HUD

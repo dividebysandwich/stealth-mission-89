@@ -535,6 +535,7 @@ fn sound_options(ui: &mut egui::Ui, settings: &mut SettingsMut, voices: &mut boo
         (&mut s.voice_volume, "options-volume-radio"),
         (&mut s.atc_volume, "options-volume-atc"),
         (&mut s.music_volume, "options-volume-music"),
+        (&mut s.radio_ducking, "options-radio-ducking"),
     ];
     // The names padded to the longest (the font is monospace).
     let pad = volumes.iter().map(|(_, id)| t!(id).chars().count()).max().unwrap_or(0) + 1;

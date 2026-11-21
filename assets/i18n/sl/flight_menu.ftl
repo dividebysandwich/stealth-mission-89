@@ -91,6 +91,7 @@ fm-pixel-size = VELIKOST PIKSLA
 fm-volume-radio = RADIO
 fm-volume-atc = GLAS ATC
 fm-volume-music = GLASBA
+fm-radio-ducking = UTIŠANJE OB RADIU
 fm-tracking-mouse = POGLED Z MIŠKO PRI SLEDENJU
 fm-effect-pixelize = PIKSELIZACIJA
 fm-effect-sharp-hud = BREZ HUD

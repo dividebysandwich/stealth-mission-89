@@ -91,6 +91,7 @@ fm-pixel-size = PIXELSTORLEK
 fm-volume-radio = RADIO
 fm-volume-atc = ATC-RÖST
 fm-volume-music = MUSIK
+fm-radio-ducking = SÄNKNING VID RADIO
 fm-tracking-mouse = MUSBLICK VID TRACKING
 fm-effect-pixelize = PIXELERING
 fm-effect-sharp-hud = UTAN HUD

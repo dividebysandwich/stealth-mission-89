@@ -55,6 +55,7 @@ fm-volume-rwr = RWR VOLUME
 fm-volume-radio = RADIO
 fm-volume-atc = ATC VOICE
 fm-volume-music = MUSIC
+fm-radio-ducking = RADIO DUCKING
 fm-rwr-tones = RWR TONES
 fm-low-pass = ENGINE LOW-PASS
 fm-head-tracking = HEAD TRACKING

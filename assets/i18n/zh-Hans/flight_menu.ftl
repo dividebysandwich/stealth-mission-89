@@ -90,6 +90,7 @@ fm-pixel-size = 像素大小
 fm-volume-radio = 无线电
 fm-volume-atc = ATC 语音
 fm-volume-music = 音乐
+fm-radio-ducking = 无线电时压低
 fm-tracking-mouse = 追踪时鼠标视角
 fm-effect-pixelize = 像素化
 fm-effect-sharp-hud = 排除 HUD

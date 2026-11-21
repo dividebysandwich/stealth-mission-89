@@ -91,6 +91,7 @@ fm-pixel-size = PIKSEĻA IZMĒRS
 fm-volume-radio = RADIO
 fm-volume-atc = ATC BALSS
 fm-volume-music = MŪZIKA
+fm-radio-ducking = RADIO KLUSINĀŠANA
 fm-tracking-mouse = SKATĪŠANĀS AR PELI SEKOŠANAS LAIKĀ
 fm-effect-pixelize = PIKSELIZĀCIJA
 fm-effect-sharp-hud = BEZ HUD

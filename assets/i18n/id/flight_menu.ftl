@@ -91,6 +91,7 @@ fm-pixel-size = UKURAN PIKSEL
 fm-volume-radio = RADIO
 fm-volume-atc = SUARA ATC
 fm-volume-music = MUSIK
+fm-radio-ducking = REDAM SAAT RADIO
 fm-tracking-mouse = MELIHAT DENGAN MOUSE SAAT TRACKING
 fm-effect-pixelize = PIKSELISASI
 fm-effect-sharp-hud = KECUALIKAN HUD

@@ -91,6 +91,7 @@ fm-pixel-size = PIXELSTØRRELSE
 fm-volume-radio = RADIO
 fm-volume-atc = ATC-STEMME
 fm-volume-music = MUSIK
+fm-radio-ducking = DÆMPNING VED RADIO
 fm-tracking-mouse = MUSEBLIK VED TRACKING
 fm-effect-pixelize = PIXELERING
 fm-effect-sharp-hud = UDEN HUD

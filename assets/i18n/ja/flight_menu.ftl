@@ -91,6 +91,7 @@ fm-pixel-size = ピクセルサイズ
 fm-volume-radio = 無線
 fm-volume-atc = ATC音声
 fm-volume-music = 音楽
+fm-radio-ducking = 無線時の音量低下
 fm-tracking-mouse = トラッキング中のマウス視点
 fm-effect-pixelize = ピクセル化
 fm-effect-sharp-hud = HUDを除外

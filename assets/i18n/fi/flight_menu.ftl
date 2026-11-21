@@ -91,6 +91,7 @@ fm-pixel-size = PIKSELIKOKO
 fm-volume-radio = RADIO
 fm-volume-atc = ATC-ÄÄNI
 fm-volume-music = MUSIIKKI
+fm-radio-ducking = RADION VAIMENNUS
 fm-tracking-mouse = HIIRELLÄ KATSELU SEURANNASSA
 fm-effect-pixelize = PIKSELÖINTI
 fm-effect-sharp-hud = ILMAN HUD:IA

@@ -91,6 +91,7 @@ fm-pixel-size = PIXELMÉRET
 fm-volume-radio = RÁDIÓ
 fm-volume-atc = ATC HANG
 fm-volume-music = ZENE
+fm-radio-ducking = RÁDIÓ ALATTI HALKÍTÁS
 fm-tracking-mouse = EGÉRREL NÉZELŐDÉS KÖVETÉSKOR
 fm-effect-pixelize = PIXELESÍTÉS
 fm-effect-sharp-hud = HUD NÉLKÜL

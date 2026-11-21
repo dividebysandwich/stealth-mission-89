@@ -91,6 +91,7 @@ fm-pixel-size = PIXELGROOTTE
 fm-volume-radio = RADIO
 fm-volume-atc = ATC-STEM
 fm-volume-music = MUZIEK
+fm-radio-ducking = DEMPEN BIJ RADIO
 fm-tracking-mouse = MUISBLIK BIJ TRACKING
 fm-effect-pixelize = PIXELEREN
 fm-effect-sharp-hud = ZONDER HUD

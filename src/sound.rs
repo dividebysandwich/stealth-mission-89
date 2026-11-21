@@ -102,7 +102,7 @@ impl Plugin for SoundPlugin {
             .add_systems(Update, (muffle::preload, music::follow))
             .add_systems(Update, music::start.run_if(in_state(AppState::Menu)))
             .add_systems(OnExit(AppState::Menu), music::leave)
-            .add_systems(OnEnter(AppState::Flight), (muffle::reset, ambient::reset))
+            .add_systems(OnEnter(AppState::Flight), (muffle::reset, ambient::reset, reset_duck))
             .add_systems(
                 Update,
                 (
@@ -119,6 +119,7 @@ impl Plugin for SoundPlugin {
                     thunder,
                     ambient::ambience,
                     remix,
+                    duck_under_radio,
                 )
                     .chain()
                     .run_if(in_state(AppState::Flight)),
@@ -130,7 +131,7 @@ impl Plugin for SoundPlugin {
                     .after(CombatSystems)
                     .run_if(in_state(AppState::Flight)),
             )
-            .add_systems(OnExit(AppState::Flight), stop_all);
+            .add_systems(OnExit(AppState::Flight), (stop_all, reset_duck));
     }
 }
 
@@ -274,6 +275,52 @@ impl Default for SoundLevel {
     }
 }
 
+/// How far the engine and the effects go down under the radio by default.
+pub const DEFAULT_RADIO_DUCKING: f32 = 0.5;
+/// Seconds the ducking takes to go down when a voice starts, and back up after it.
+const DUCK_ATTACK: f32 = 0.2;
+const DUCK_RELEASE: f32 = 0.6;
+
+/// The engine's and the effects' gain under the radio (`f32` bits): 1 while nobody speaks.
+static DUCK: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3f80_0000);
+
+/// Full volume again (a flight left while the radio spoke).
+fn reset_duck() {
+    DUCK.store(1.0f32.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn duck() -> f32 {
+    f32::from_bits(DUCK.load(std::sync::atomic::Ordering::Relaxed))
+}
+
+/// The engine and the effects step aside while a voice is on the radio (the spoken ATC, a
+/// wingman, a coop player): down to `1 - Settings::radio_ducking` quickly, back up slowly.
+fn duck_under_radio(
+    voice: Res<crate::voice::Voice>,
+    settings: Res<crate::settings::Settings>,
+    time: Res<Time<Real>>,
+    mut q: Query<(&Mixed, &mut AudioSink)>,
+) {
+    let depth = settings.radio_ducking.clamp(0.0, 1.0);
+    let speaking = !voice.mix().talking().is_empty();
+    let target = if speaking { 1.0 - depth } else { 1.0 };
+    let now = duck();
+    // The whole depth in the attack's or the release's time.
+    let rate = depth.max(0.05) / if target < now { DUCK_ATTACK } else { DUCK_RELEASE };
+    let step = time.delta_secs() * rate;
+    let next = if target < now { (now - step).max(target) } else { (now + step).min(target) };
+    if (next - now).abs() < 1e-4 {
+        return;
+    }
+    DUCK.store(next.to_bits(), std::sync::atomic::Ordering::Relaxed);
+    // The sounds at a fixed volume follow (the others set theirs every frame).
+    for (m, mut sink) in &mut q {
+        if matches!(m.0, Channel::Engine | Channel::Effects) {
+            sink.set_volume(Volume::Linear(m.1 * m.0.gain(&settings)));
+        }
+    }
+}
+
 /// What a sound is, for its volume (`Settings::*_volume`).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Channel {
@@ -298,12 +345,13 @@ impl Channel {
         }
     }
 
-    /// The channel's volume: the master volume times its own.
+    /// The channel's volume: the master volume times its own (the engine's and the effects'
+    /// lowered while the radio speaks).
     pub fn gain(self, s: &crate::settings::Settings) -> f32 {
         s.master_volume
             * match self {
-                Channel::Engine => s.engine_volume,
-                Channel::Effects => s.effects_volume,
+                Channel::Engine => s.engine_volume * duck(),
+                Channel::Effects => s.effects_volume * duck(),
                 Channel::Warnings => s.warning_volume,
                 Channel::Rwr => s.warning_volume * s.rwr_volume,
                 Channel::Voice => s.voice_volume,

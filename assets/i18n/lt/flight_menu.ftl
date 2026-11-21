@@ -91,6 +91,7 @@ fm-pixel-size = PIKSELIO DYDIS
 fm-volume-radio = RADIJAS
 fm-volume-atc = ATC BALSAS
 fm-volume-music = MUZIKA
+fm-radio-ducking = RADIJO PRISLOPINIMAS
 fm-tracking-mouse = ŽVALGYMASIS PELE SEKANT
 fm-effect-pixelize = PIKSELIZACIJA
 fm-effect-sharp-hud = BE HUD

@@ -91,6 +91,7 @@ fm-pixel-size = ΜΕΓΕΘΟΣ PIXEL
 fm-volume-radio = ΡΑΔΙΟ
 fm-volume-atc = ΦΩΝΗ ATC
 fm-volume-music = ΜΟΥΣΙΚΗ
+fm-radio-ducking = ΧΑΜΗΛΩΜΑ ΣΤΟΝ ΑΣΥΡΜΑΤΟ
 fm-tracking-mouse = ΠΑΝΟΡΑΜΑ ΜΕ ΠΟΝΤΙΚΙ ΣΤΟ TRACKING
 fm-effect-pixelize = ΠΙΞΕΛΟΠΟΙΗΣΗ
 fm-effect-sharp-hud = ΧΩΡΙΣ HUD

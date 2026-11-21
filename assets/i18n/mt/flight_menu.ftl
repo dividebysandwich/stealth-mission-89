@@ -91,6 +91,7 @@ fm-pixel-size = GĦAJNEJN TAL-PIXEL
 fm-volume-radio = RADJU
 fm-volume-atc = ŻEWĠ TAL-ATC
 fm-volume-music = MUŻIKA
+fm-radio-ducking = TTAFFI GĦAR-RADJU
 fm-tracking-mouse = ĦARSA BIL-FEJRA FIT-TRACKING
 fm-effect-pixelize = PIXELIZZAZZJONI
 fm-effect-sharp-hud = MINGĦAJR HUD

@@ -319,6 +319,7 @@ impl Page {
                 Volume(Vol::Radio),
                 Volume(Vol::Atc),
                 Volume(Vol::Music),
+                Ducking,
                 RwrTones,
                 LowPass,
                 Back,
@@ -453,6 +454,8 @@ enum Item {
     /// An atmosphere effect's switch.
     Effect(crate::effects::Effect),
     Volume(Vol),
+    /// How far the engine and effects go down under the radio.
+    Ducking,
     /// Which radar warning tones sound.
     RwrTones,
     LowPass,
@@ -525,6 +528,7 @@ impl Item {
             Item::Volume(Vol::Atc) => "fm-volume-atc",
             Item::Volume(Vol::Music) => "fm-volume-music",
             Item::RwrTones => "fm-rwr-tones",
+            Item::Ducking => "fm-radio-ducking",
             Item::LowPass => "fm-low-pass",
             Item::HeadTracking => "fm-head-tracking",
             Item::TrackingMouse => "fm-tracking-mouse",
@@ -568,6 +572,7 @@ impl Item {
             Item::SeatHeight => format!("< {:+.0} CM >", s.seat_height * 100.0),
             Item::Volume(v) => format!("< {:.0}% >", v.read(s) * 100.0),
             Item::RwrTones => format!("< {} >", s.rwr_tones.flight_name()),
+            Item::Ducking => format!("< {:.0}% >", s.radio_ducking * 100.0),
             Item::LowPass => on(s.engine_low_pass),
             Item::HeadTracking => on(s.head_tracking),
             Item::TrackingMouse => on(s.tracking_mouse_look),
@@ -1519,6 +1524,9 @@ fn navigate(
         Item::Effect(e) => e.toggle(&mut s.effects),
         Item::LowPass => s.engine_low_pass = !s.engine_low_pass,
         Item::RwrTones => s.rwr_tones = s.rwr_tones.step(dir as i32),
+        Item::Ducking => {
+            s.radio_ducking = ((s.radio_ducking * 10.0).round() + dir).clamp(0.0, 10.0) / 10.0;
+        }
         Item::HeadTracking => s.head_tracking = !s.head_tracking,
         Item::TrackingMouse => s.tracking_mouse_look = !s.tracking_mouse_look,
         Item::Bindings => {

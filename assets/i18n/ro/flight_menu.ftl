@@ -91,6 +91,7 @@ fm-pixel-size = DIMENSIUNEA PIXELULUI
 fm-volume-radio = RADIO
 fm-volume-atc = VOCE ATC
 fm-volume-music = MUZICĂ
+fm-radio-ducking = ATENUARE LA RADIO
 fm-tracking-mouse = PRIVIRE CU MOUSE-UL LA TRACKING
 fm-effect-pixelize = PIXELARE
 fm-effect-sharp-hud = FĂRĂ HUD

@@ -91,6 +91,7 @@ fm-pixel-size = 픽셀 크기
 fm-volume-radio = 무선
 fm-volume-atc = ATC 음성
 fm-volume-music = 음악
+fm-radio-ducking = 무선 시 음량 낮춤
 fm-tracking-mouse = 트래킹 중 마우스 시점
 fm-effect-pixelize = 픽셀화
 fm-effect-sharp-hud = HUD 제외

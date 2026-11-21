@@ -91,6 +91,7 @@ fm-pixel-size = PIKSLI SUURUS
 fm-volume-radio = RAADIO
 fm-volume-atc = ATC HÄÄL
 fm-volume-music = MUUSIKA
+fm-radio-ducking = RAADIO SUMMUTUS
 fm-tracking-mouse = HIIREGA VAATAMINE JÄLGIMISEL
 fm-effect-pixelize = PIKSELDAMINE
 fm-effect-sharp-hud = ILMA HUD-ITA

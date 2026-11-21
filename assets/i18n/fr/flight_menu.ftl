@@ -91,6 +91,7 @@ fm-pixel-size = TAILLE DES PIXELS
 fm-volume-radio = RADIO
 fm-volume-atc = VOIX ATC
 fm-volume-music = MUSIQUE
+fm-radio-ducking = ATTÉNUATION RADIO
 fm-tracking-mouse = VUE SOURIS PENDANT LE TRACKING
 fm-effect-pixelize = PIXELISATION
 fm-effect-sharp-hud = SANS HUD
