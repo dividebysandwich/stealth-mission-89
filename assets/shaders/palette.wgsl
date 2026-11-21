@@ -134,9 +134,11 @@ struct Globals {
     ocean: vec4<f32>,
     ocean_mask: vec4<f32>,
     ocean_levels: array<vec4<f32>, 4>,
-    // Helicopters' downwash on the water (`downwash`): each rotor's hub (xyz) and radius (w,
-    // 0: none).
+    // Aircraft stirring the water (`downwash`): each rotor's hub or jet's centre (xyz) and
+    // radius or half span (w, 0: none).
     downwash: array<vec4<f32>, 2>,
+    // Their velocity (xyz, m/s; w 1 for a rotor).
+    wash_vel: array<vec4<f32>, 2>,
     // The ground detail (`PALETTE_DETAIL`): x 1 when drawn, yz the floating origin's x and z
     // modulo DETAIL_PERIOD.
     // The towns' lights (`PALETTE_CITY`): x the lit windows' strength, y the range inside which
@@ -2006,16 +2008,22 @@ fn flat_water_point(frag: vec2<f32>, world: vec3<f32>, face: vec3<f32>) -> vec3<
     return eye + ray * ((eye.y - world.y) / -ray.y);
 }
 
-// A helicopter's downwash on the water under it (`globals.downwash`: the rotor's hub (xyz)
-// and radius (w; 0: none), with the ocean-waves effect): the water roughened round under the
-// rotor, wavelets running out from it in gusts, spray where it hovers low. Fades out when the
-// hub is `WASH_REACH` radii up. The slope it adds (xy) and the spray's whiteness (z).
+// Aircraft low over the water stirring it (`globals.downwash`: a rotor's hub or a jet's
+// centre (xyz) and the rotor's radius or the jet's half span (w; 0: none), `globals.wash_vel`
+// its velocity (xyz) and 1 for a rotor (w); with the ocean-waves effect). Fades out when it is
+// `WASH_REACH` radii up. A rotor in a hover beats the water round under it; on the move, and a
+// jet always, the wash trails behind as a wake. The slope it adds (xy) and the spray's
+// whiteness (z). `p`: the point pinned to the world (from the floating origin).
 const WASH_REACH: f32 = 5.0;
+// How long (s) a wake stays on the water behind, and how fast (m/s) it spreads sideways.
+const WAKE_SECONDS: f32 = 3.0;
+const WAKE_SPREAD: f32 = 7.0;
 
-fn downwash(world: vec3<f32>, t: f32, foot: f32) -> vec3<f32> {
+fn downwash(world: vec3<f32>, p: vec2<f32>, t: f32, foot: f32) -> vec3<f32> {
     var out = vec3<f32>(0.0);
     for (var i = 0u; i < 2u; i++) {
         let w = globals.downwash[i];
+        let wv = globals.wash_vel[i];
         let r = w.w;
         let h = w.y - world.y;
         let s = 1.0 - h / (WASH_REACH * max(r, 1e-3));
@@ -2024,39 +2032,91 @@ fn downwash(world: vec3<f32>, t: f32, foot: f32) -> vec3<f32> {
         }
         let strength = s * sqrt(s);
         let off = world.xz - w.xz;
-        let d = length(off);
-        // The lower, the farther it spreads.
-        let reach = r * (1.6 + 1.8 * s);
-        if (d >= reach) {
-            continue;
+        let speed = length(wv.xz);
+        let ring = select(0.0, 1.0 - smoothstep(8.0, 25.0, speed), wv.w > 0.5);
+        let trail = smoothstep(4.0, 15.0, speed);
+        if (ring > 0.0) {
+            out += hover_wash(off, r, s, strength, t, foot) * ring;
         }
-        let dir = off / max(d, 1e-3);
-        // Calmer right under the hub, the most round the tips, dying away outwards.
-        let env = smoothstep(0.1 * r, 0.9 * r, d) * (1.0 - smoothstep(0.45 * reach, reach, d));
-        // Gusts running outwards (the pattern drifts out with the wash).
-        let gust = value_noise((off - dir * t * 4.0) / 3.0, 43u);
-        let k1 = TAU / 0.9;
-        let k2 = TAU / 2.4;
-        let fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
-        let fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
-        // Broken into short arcs round the hub, as the gusts beat it.
-        let arcs = value_noise(dir * 3.5 + vec2<f32>(d / 4.0 - t * 1.2, 0.0), 59u);
-        let rings = (0.16 * cos(k1 * (d - 3.0 * t) + gust * 6.0) * fade1
-            + 0.12 * cos(k2 * (d - 4.5 * t) + gust * 4.0) * fade2) * (0.2 + 1.6 * arcs * arcs);
-        // Chop: the slope of fine noise, wildest close in.
-        let q = (off - dir * t * 3.0) / 0.7;
-        let q0 = value_noise(q, 47u);
-        let chop = vec2<f32>(value_noise(q + vec2<f32>(0.2, 0.0), 47u) - q0, value_noise(q + vec2<f32>(0.0, 0.2), 47u) - q0)
-            * 4.0 * fade1;
-        let k = env * strength * (0.4 + 1.2 * gust);
-        let slope = dir * rings * k + chop * k;
-        // Spray: whitish where the wash beats the water hardest, a mean haze of it far out.
-        let fine = value_noise((off - dir * t * 6.0) / 0.5, 53u);
-        let near = smoothstep(0.75, 0.95, gust * 0.6 + fine * 0.6);
-        let spray = mix(near, 0.25, smoothstep(0.2, 1.0, foot)) * env * strength * strength * 0.8;
-        out += vec3<f32>(slope, spray);
+        if (trail > 0.0) {
+            out += wake(off, p, wv.xz / max(speed, 1e-3), speed, r, strength, t, foot) * trail;
+        }
     }
     return vec3<f32>(out.xy, min(out.z, 0.85));
+}
+
+// A rotor hovering: the water roughened round under it, wavelets running out from it in
+// gusts, spray where it hovers low (`off`: from the hub).
+fn hover_wash(off: vec2<f32>, r: f32, s: f32, strength: f32, t: f32, foot: f32) -> vec3<f32> {
+    let d = length(off);
+    // The lower, the farther it spreads.
+    let reach = r * (1.6 + 1.8 * s);
+    if (d >= reach) {
+        return vec3<f32>(0.0);
+    }
+    let dir = off / max(d, 1e-3);
+    // Calmer right under the hub, the most round the tips, dying away outwards.
+    let env = smoothstep(0.1 * r, 0.9 * r, d) * (1.0 - smoothstep(0.45 * reach, reach, d));
+    // Gusts running outwards (the pattern drifts out with the wash).
+    let gust = value_noise((off - dir * t * 4.0) / 3.0, 43u);
+    let k1 = TAU / 0.9;
+    let k2 = TAU / 2.4;
+    let fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
+    let fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
+    // Broken into short arcs round the hub, as the gusts beat it.
+    let arcs = value_noise(dir * 3.5 + vec2<f32>(d / 4.0 - t * 1.2, 0.0), 59u);
+    let rings = (0.16 * cos(k1 * (d - 3.0 * t) + gust * 6.0) * fade1
+        + 0.12 * cos(k2 * (d - 4.5 * t) + gust * 4.0) * fade2) * (0.2 + 1.6 * arcs * arcs);
+    // Chop: the slope of fine noise, wildest close in.
+    let q = (off - dir * t * 3.0) / 0.7;
+    let q0 = value_noise(q, 47u);
+    let chop = vec2<f32>(value_noise(q + vec2<f32>(0.2, 0.0), 47u) - q0, value_noise(q + vec2<f32>(0.0, 0.2), 47u) - q0)
+        * 4.0 * fade1;
+    let k = env * strength * (0.4 + 1.2 * gust);
+    let slope = dir * rings * k + chop * k;
+    // Spray: whitish where the wash beats the water hardest, a mean haze of it far out.
+    let fine = value_noise((off - dir * t * 6.0) / 0.5, 53u);
+    let near = smoothstep(0.75, 0.95, gust * 0.6 + fine * 0.6);
+    let spray = mix(near, 0.25, smoothstep(0.2, 1.0, foot)) * env * strength * strength * 0.8;
+    return vec3<f32>(slope, spray);
+}
+
+// The wake behind something flying on (`fwd` its way, `speed` m/s): a strip of churned water
+// spreading sideways as it ages, wavelets running out from the track, a white streak of spray
+// along it where the wash hits.
+fn wake(off: vec2<f32>, p: vec2<f32>, fwd: vec2<f32>, speed: f32, r: f32, strength: f32, t: f32, foot: f32) -> vec3<f32> {
+    let side = vec2<f32>(-fwd.y, fwd.x);
+    let behind = -dot(off, fwd);
+    let across = dot(off, side);
+    let lat = abs(across);
+    // Seconds since it passed here.
+    let age = behind / speed;
+    let width = r * 0.8 + WAKE_SPREAD * max(age, 0.0);
+    if (behind < -0.5 * r || age > WAKE_SECONDS || lat >= width) {
+        return vec3<f32>(0.0);
+    }
+    let env = smoothstep(-0.5 * r, 0.3 * r, behind) * pow(1.0 - age / WAKE_SECONDS, 1.5)
+        * (1.0 - smoothstep(0.35 * width, width, lat));
+    let fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
+    let fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
+    let gust = value_noise(p / 3.0 + vec2<f32>(t * 0.9, -t * 0.6), 43u);
+    // Wavelets running out sideways from the track since it passed.
+    let rings = (0.16 * cos(TAU / 0.9 * (lat - 3.0 * age) + gust * 6.0) * fade1
+        + 0.12 * cos(TAU / 2.4 * (lat - 4.5 * age) + gust * 4.0) * fade2) * (0.4 + gust);
+    // Chop pinned to the water, churning.
+    let q = p / 0.7 + vec2<f32>(t * 1.7, -t * 1.3);
+    let q0 = value_noise(q, 47u);
+    let chop = vec2<f32>(value_noise(q + vec2<f32>(0.2, 0.0), 47u) - q0, value_noise(q + vec2<f32>(0.0, 0.2), 47u) - q0)
+        * 4.0 * fade1;
+    let k = env * strength * (0.5 + gust);
+    let slope = side * sign(across) * rings * k + chop * k;
+    // Spray: a broken white streak along the track, young.
+    let fine = value_noise(p / 0.5 + vec2<f32>(0.0, t * 2.0), 53u) * 0.6
+        + value_noise(vec2<f32>(p.x + p.y, p.x - p.y) / 0.3 + vec2<f32>(t * 3.0, 0.0), 61u) * 0.4;
+    let core = (1.0 - smoothstep(0.0, 0.6 * width, lat)) * (1.0 - smoothstep(0.0, 1.2, age));
+    let near = smoothstep(0.6, 0.9, gust * 0.5 + fine * 0.7) + 0.25;
+    let spray = mix(near, 0.4, smoothstep(0.2, 1.0, foot)) * core * env * strength * strength;
+    return vec3<f32>(slope, spray);
 }
 
 // The share of the picture the screen space reflection takes on calm water seen at a flat
@@ -2099,7 +2159,7 @@ fn water_reflection(rgb: vec3<f32>, world: vec3<f32>, wave: vec2<f32>, dir: vec3
 #else
     n = water_normal(p, t, foot, rough);
 #endif
-    let wash = downwash(world, t, foot);
+    let wash = downwash(world, p, t, foot);
     n = normalize(n + vec3<f32>(-wash.x, 0.0, -wash.y));
     var r = reflect(v, n);
     r.y = abs(r.y);

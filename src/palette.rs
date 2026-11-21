@@ -628,7 +628,8 @@ fn update_globals(
     }
     g.sea = weather.sea_globals();
     (g.ocean, g.ocean_mask, g.ocean_levels) = ocean.globals(origin.origin);
-    g.downwash = downwash.map_or([Vec4::ZERO; 2], |d| d.0);
+    g.downwash = downwash.as_ref().map_or([Vec4::ZERO; 2], |d| d.slots);
+    g.wash_vel = downwash.as_ref().map_or([Vec4::ZERO; 2], |d| d.vel);
     let on = |b: bool| b as u32 as f32;
     // The main view's size while its water mirrors the picture (water_ssr.rs).
     let mirror = window

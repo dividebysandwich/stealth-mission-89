@@ -110,7 +110,11 @@ impl Stage<'_, '_> {
     /// Spawns a flyable aircraft's model, lit, its gear up and its lights on.
     pub fn aircraft(&mut self, kind: AircraftKind) -> Option<Entity> {
         let spec = kind.spec();
-        self.model(AIRCRAFT, spec.model, spec.model_lift, flying())
+        let e = self.model(AIRCRAFT, spec.model, spec.model_lift, flying())?;
+        if let Some(wake) = crate::rotor_blur::WaterWake::of(kind) {
+            self.commands.entity(e).insert(wake);
+        }
+        Some(e)
     }
 
     /// The ground's height (m) under a point (Bevy metres).

@@ -65,7 +65,7 @@ impl Plugin for ExplosionsPlugin {
         .add_systems(OnExit(AppState::Menu), cleanup)
         .add_systems(
             Update,
-            (scene_blasts, simulate)
+            (scene_blasts, water_spray, simulate)
                 .chain()
                 .after(crate::menu_scene::ShotSet)
                 .run_if(resource_exists::<crate::menu_scene::MenuScene>)
@@ -79,6 +79,7 @@ impl Plugin for ExplosionsPlugin {
                 tyre_smoke.run_if(resource_exists::<Combat>),
                 catapult_steam.run_if(resource_exists::<Combat>),
                 downwash,
+                water_spray,
                 vehicle_dust,
                 simulate,
             )
@@ -698,6 +699,78 @@ fn downwash(
         let life = p.range(1.0, 1.8);
         p.puff(at, vel, life, (1.5, 5.0), look, 1.5, 0.3, opacity * k);
     }
+}
+
+/// Spray off the water under aircraft low over it (`Effects::vapour`, `rotor_blur::Downwash`):
+/// below these many radii (a rotor's) or half spans (a jet's) up, puffs a second at full
+/// strength.
+const SPRAY_ROTOR_REACH: f32 = 2.5;
+const SPRAY_JET_REACH: f32 = 2.0;
+const SPRAY_RATE: f32 = 50.0;
+
+/// Spray thrown off the water by the aircraft low over it: a hovering rotor's ring of it (the
+/// own helicopter's comes from `downwash`), and behind anything flying on fast (a jet, a
+/// helicopter in forward flight) a rooster tail of it kicked up from the wake. All aircraft:
+/// the own, the AI's, the other pilots', the menu scenes'.
+fn water_spray(
+    mut p: ResMut<Particles>,
+    time: Res<Time>,
+    settings: Res<crate::settings::Settings>,
+    wash: Option<Res<crate::rotor_blur::Downwash>>,
+) {
+    let dt = time.delta_secs();
+    let Some(wash) = wash else { return };
+    if !settings.effects.vapour || dt <= 0.0 {
+        return;
+    }
+    for s in &wash.sources {
+        let height = s.at.y as f32;
+        let reach = if s.rotor { SPRAY_ROTOR_REACH } else { SPRAY_JET_REACH } * s.radius;
+        let k = (1.0 - height / reach).clamp(0.0, 1.0);
+        if k <= 0.0 {
+            continue;
+        }
+        let flat = Vec3::new(s.vel.x, 0.0, s.vel.z);
+        let speed = flat.length();
+        let ring = if s.rotor && !s.own { 1.0 - smoothstep(8.0, 25.0, speed) } else { 0.0 };
+        let trail = smoothstep(15.0, 80.0, speed);
+        // Puffs this frame (the fraction left over by chance).
+        let count = |p: &mut Particles, rate: f32| {
+            let n = rate * dt;
+            n.floor() as usize + (p.range(0.0, 1.0) < n.fract()) as usize
+        };
+        for _ in 0..count(&mut p, SPRAY_RATE * k * ring) {
+            // Blown out along the water from under the rotor's tips.
+            let angle = p.range(0.0, std::f32::consts::TAU);
+            let out = Vec3::new(angle.cos(), 0.0, angle.sin());
+            let at = s.at.with_y(0.5) + (out * s.radius * p.range(0.6, 1.3)).as_dvec3();
+            let vel = out * p.range(6.0, 11.0) + Vec3::Y * p.range(0.5, 2.0);
+            let life = p.range(1.0, 1.8);
+            p.puff(at, vel, life, (1.5, 5.0), PuffLook::Smoke(1.0), 1.5, 0.3, 0.45 * k * ring);
+        }
+        if trail <= 0.0 {
+            continue;
+        }
+        let fwd = flat / speed;
+        let side = Vec3::new(-fwd.z, 0.0, fwd.x);
+        for _ in 0..count(&mut p, SPRAY_RATE * 2.5 * k * trail) {
+            // Kicked up off the wake just behind it, carried a little way along, falling back.
+            let behind = p.range(0.3, 2.5) * s.radius;
+            let across = p.range(-0.6, 0.6) * s.radius;
+            let at = s.at.with_y(0.5) + (side * across - fwd * behind).as_dvec3();
+            let vel = flat * p.range(0.15, 0.35)
+                + side * across.signum() * p.range(1.0, 4.0)
+                + Vec3::Y * p.range(3.0, 7.0) * (0.5 + 0.5 * k);
+            let life = p.range(1.2, 2.2);
+            let size = (p.range(0.8, 1.5), p.range(3.0, 5.0) + s.radius * 0.3);
+            p.puff(at, vel, life, size, PuffLook::Smoke(1.0), 0.8, -2.5, 0.5 * k * trail);
+        }
+    }
+}
+
+fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
+    let t = ((x - e0) / (e1 - e0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
 }
 
 /// The vehicles on the move this frame (`sim_render` fills it): unit index, the ground behind

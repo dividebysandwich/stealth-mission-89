@@ -53,8 +53,9 @@ layout(std140) uniform Globals {
     vec4 ocean;
     vec4 ocean_mask;
     vec4 ocean_levels[4];
-    // Helicopters' downwash on the water (palette.wgsl `downwash`).
+    // Aircraft stirring the water (palette.wgsl `downwash`, `wash_vel`).
     vec4 downwash[2];
+    vec4 wash_vel[2];
     // The towns' lights (palette.wgsl `city`, `city_origin`).
     vec4 city;
     vec4 city_origin;
@@ -1507,42 +1508,82 @@ vec2 water_light(vec3 world) {
     return vec2(clamp(1.0 - 4.0 * (1.0 - cloud_shadow(world)), 0.0, 1.0), 1.0);
 }
 
-// palette.wgsl `downwash`.
+// palette.wgsl `downwash`, `hover_wash`, `wake`.
 const float WASH_REACH = 5.0;
+const float WAKE_SECONDS = 3.0;
+const float WAKE_SPREAD = 7.0;
 
-vec3 downwash(vec3 world, float t, float foot) {
+vec3 hover_wash(vec2 off, float r, float s, float strength, float t, float foot) {
+    float d = length(off);
+    float reach = r * (1.6 + 1.8 * s);
+    if (d >= reach) { return vec3(0.0); }
+    vec2 dir = off / max(d, 1e-3);
+    float env = smoothstep(0.1 * r, 0.9 * r, d) * (1.0 - smoothstep(0.45 * reach, reach, d));
+    float gust = value_noise((off - dir * t * 4.0) / 3.0, 43u);
+    float k1 = TAU / 0.9;
+    float k2 = TAU / 2.4;
+    float fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
+    float fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
+    float arcs = value_noise(dir * 3.5 + vec2(d / 4.0 - t * 1.2, 0.0), 59u);
+    float rings = (0.16 * cos(k1 * (d - 3.0 * t) + gust * 6.0) * fade1
+        + 0.12 * cos(k2 * (d - 4.5 * t) + gust * 4.0) * fade2) * (0.2 + 1.6 * arcs * arcs);
+    vec2 q = (off - dir * t * 3.0) / 0.7;
+    float q0 = value_noise(q, 47u);
+    vec2 chop = vec2(value_noise(q + vec2(0.2, 0.0), 47u) - q0, value_noise(q + vec2(0.0, 0.2), 47u) - q0)
+        * 4.0 * fade1;
+    float k = env * strength * (0.4 + 1.2 * gust);
+    vec2 slope = dir * rings * k + chop * k;
+    float fine = value_noise((off - dir * t * 6.0) / 0.5, 53u);
+    float near = smoothstep(0.75, 0.95, gust * 0.6 + fine * 0.6);
+    float spray = mix(near, 0.25, smoothstep(0.2, 1.0, foot)) * env * strength * strength * 0.8;
+    return vec3(slope, spray);
+}
+
+vec3 wake(vec2 off, vec2 p, vec2 fwd, float speed, float r, float strength, float t, float foot) {
+    vec2 side = vec2(-fwd.y, fwd.x);
+    float behind = -dot(off, fwd);
+    float across = dot(off, side);
+    float lat = abs(across);
+    float age = behind / speed;
+    float width = r * 0.8 + WAKE_SPREAD * max(age, 0.0);
+    if (behind < -0.5 * r || age > WAKE_SECONDS || lat >= width) { return vec3(0.0); }
+    float env = smoothstep(-0.5 * r, 0.3 * r, behind) * pow(1.0 - age / WAKE_SECONDS, 1.5)
+        * (1.0 - smoothstep(0.35 * width, width, lat));
+    float fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
+    float fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
+    float gust = value_noise(p / 3.0 + vec2(t * 0.9, -t * 0.6), 43u);
+    float rings = (0.16 * cos(TAU / 0.9 * (lat - 3.0 * age) + gust * 6.0) * fade1
+        + 0.12 * cos(TAU / 2.4 * (lat - 4.5 * age) + gust * 4.0) * fade2) * (0.4 + gust);
+    vec2 q = p / 0.7 + vec2(t * 1.7, -t * 1.3);
+    float q0 = value_noise(q, 47u);
+    vec2 chop = vec2(value_noise(q + vec2(0.2, 0.0), 47u) - q0, value_noise(q + vec2(0.0, 0.2), 47u) - q0)
+        * 4.0 * fade1;
+    float k = env * strength * (0.5 + gust);
+    vec2 slope = side * sign(across) * rings * k + chop * k;
+    float fine = value_noise(p / 0.5 + vec2(0.0, t * 2.0), 53u) * 0.6
+        + value_noise(vec2(p.x + p.y, p.x - p.y) / 0.3 + vec2(t * 3.0, 0.0), 61u) * 0.4;
+    float core = (1.0 - smoothstep(0.0, 0.6 * width, lat)) * (1.0 - smoothstep(0.0, 1.2, age));
+    float near = smoothstep(0.6, 0.9, gust * 0.5 + fine * 0.7) + 0.25;
+    float spray = mix(near, 0.4, smoothstep(0.2, 1.0, foot)) * core * env * strength * strength;
+    return vec3(slope, spray);
+}
+
+vec3 downwash(vec3 world, vec2 p, float t, float foot) {
     vec3 outv = vec3(0.0);
     for (uint i = 0u; i < 2u; i++) {
         vec4 w = g.downwash[i];
+        vec4 wv = g.wash_vel[i];
         float r = w.w;
         float h = w.y - world.y;
         float s = 1.0 - h / (WASH_REACH * max(r, 1e-3));
         if (r <= 0.0 || h <= 0.0 || s <= 0.0) { continue; }
         float strength = s * sqrt(s);
         vec2 off = world.xz - w.xz;
-        float d = length(off);
-        float reach = r * (1.6 + 1.8 * s);
-        if (d >= reach) { continue; }
-        vec2 dir = off / max(d, 1e-3);
-        float env = smoothstep(0.1 * r, 0.9 * r, d) * (1.0 - smoothstep(0.45 * reach, reach, d));
-        float gust = value_noise((off - dir * t * 4.0) / 3.0, 43u);
-        float k1 = TAU / 0.9;
-        float k2 = TAU / 2.4;
-        float fade1 = 1.0 - smoothstep(0.08 * 0.9, 0.4 * 0.9, foot);
-        float fade2 = 1.0 - smoothstep(0.08 * 2.4, 0.4 * 2.4, foot);
-        float arcs = value_noise(dir * 3.5 + vec2(d / 4.0 - t * 1.2, 0.0), 59u);
-        float rings = (0.16 * cos(k1 * (d - 3.0 * t) + gust * 6.0) * fade1
-            + 0.12 * cos(k2 * (d - 4.5 * t) + gust * 4.0) * fade2) * (0.2 + 1.6 * arcs * arcs);
-        vec2 q = (off - dir * t * 3.0) / 0.7;
-        float q0 = value_noise(q, 47u);
-        vec2 chop = vec2(value_noise(q + vec2(0.2, 0.0), 47u) - q0, value_noise(q + vec2(0.0, 0.2), 47u) - q0)
-            * 4.0 * fade1;
-        float k = env * strength * (0.4 + 1.2 * gust);
-        vec2 slope = dir * rings * k + chop * k;
-        float fine = value_noise((off - dir * t * 6.0) / 0.5, 53u);
-        float near = smoothstep(0.75, 0.95, gust * 0.6 + fine * 0.6);
-        float spray = mix(near, 0.25, smoothstep(0.2, 1.0, foot)) * env * strength * strength * 0.8;
-        outv += vec3(slope, spray);
+        float speed = length(wv.xz);
+        float ring = wv.w > 0.5 ? 1.0 - smoothstep(8.0, 25.0, speed) : 0.0;
+        float trail = smoothstep(4.0, 15.0, speed);
+        if (ring > 0.0) { outv += hover_wash(off, r, s, strength, t, foot) * ring; }
+        if (trail > 0.0) { outv += wake(off, p, wv.xz / max(speed, 1e-3), speed, r, strength, t, foot) * trail; }
     }
     return vec3(outv.xy, min(outv.z, 0.85));
 }
@@ -1563,7 +1604,7 @@ vec3 water_reflection(vec3 rgb, vec3 world, vec2 wave, vec3 dir, float foot, flo
     } else {
         n = water_normal(p, t, foot, rough);
     }
-    vec3 wash = downwash(world, t, foot);
+    vec3 wash = downwash(world, p, t, foot);
     n = normalize(n + vec3(-wash.x, 0.0, -wash.y));
     vec3 r = reflect(v, n);
     r.y = abs(r.y);

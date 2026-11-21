@@ -356,6 +356,9 @@ fn attach_own_model(
         return;
     };
     commands.entity(model).insert((OwnModel, transform, Visibility::Hidden));
+    if let Some(wake) = crate::rotor_blur::WaterWake::of(settings.aircraft) {
+        commands.entity(model).insert(wake);
+    }
     commands.entity(player).add_child(model);
     let Some(view) = &spec.cockpit_view else { return };
     // The cut box in model units.

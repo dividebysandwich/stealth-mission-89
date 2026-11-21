@@ -330,42 +330,133 @@ fn apply_rotor_blur(
     }
 }
 
-/// The helicopters whose downwash beats the water (`Globals::downwash`, with the ocean-waves
-/// effect): the two main rotors turning lowest over the sea for their size, each its hub (xyz,
-/// the render world) and radius (w; 0: none).
+/// On a fixed-wing aircraft's model root (the own, the AI's, the other pilots', the menu
+/// scenes'): low over the water at speed it leaves a wake on it, and spray close down
+/// (`Downwash`). The radius (m) stands for its half span: how wide the air it pushes down.
+#[derive(Component, Clone, Copy)]
+pub struct WaterWake(pub f32);
+
+impl WaterWake {
+    /// A fixed-wing type's: about its half span (m); a helicopter's rotors stir the water instead.
+    pub fn of(kind: crate::aircraft::AircraftKind) -> Option<Self> {
+        use crate::aircraft::AircraftKind as K;
+        if kind.spec().helicopter {
+            return None;
+        }
+        Some(WaterWake(match kind {
+            K::C5 => 34.0,
+            K::AC130 => 20.0,
+            K::A10 => 8.8,
+            K::AV8B => 4.6,
+            _ => 6.0,
+        }))
+    }
+}
+
+/// Something stirring the water under it: a helicopter's main rotor, or a jet low over it.
+#[derive(Clone, Copy)]
+pub struct WashSource {
+    /// The rotor's hub or the aircraft's centre (world metres, from the map's origin).
+    pub at: bevy::math::DVec3,
+    /// The rotor's radius or the jet's half span (m).
+    pub radius: f32,
+    /// Its velocity (m/s).
+    pub vel: Vec3,
+    /// A rotor (beating the water round under it even in a hover), else a jet's wash.
+    pub rotor: bool,
+    /// The own aircraft's (its rotor wash already raises spray and dust: `explosions::downwash`).
+    pub own: bool,
+}
+
+/// The aircraft stirring the water: those low over the sea (`sources`, for the spray), and for
+/// `Globals::downwash` / `wash_vel` (with the ocean-waves effect) the two lowest for their size,
+/// each its hub or centre (xyz, the render world) and radius (w; 0: none), and its velocity
+/// (xyz, m/s; w 1 for a rotor).
 #[derive(Resource, Default)]
-pub struct Downwash(pub [Vec4; 2]);
+pub struct Downwash {
+    pub slots: [Vec4; 2],
+    pub vel: [Vec4; 2],
+    pub sources: Vec<WashSource>,
+}
 
-/// A rotor's wash reaches the water from this many radii up (palette.wgsl `WASH_REACH`).
-const WASH_REACH: f32 = 5.0;
+/// A rotor's wash reaches the water from this many radii up (palette.wgsl `WASH_REACH`); a
+/// jet's from as many half spans.
+pub const WASH_REACH: f32 = 5.0;
 
+#[allow(clippy::too_many_arguments)]
 fn downwash(
     settings: Res<crate::settings::Settings>,
     origin: Res<crate::world::FloatingOrigin>,
-    discs: Query<(&RotorDisc, &GlobalTransform)>,
+    time: Res<Time>,
+    scenery: Option<Res<crate::scenery::Scenery>>,
+    discs: Query<(Entity, &RotorDisc, &GlobalTransform)>,
+    jets: Query<(Entity, &WaterWake, &GlobalTransform, &InheritedVisibility)>,
+    own: Query<(), With<crate::player::OwnModel>>,
     mut out: ResMut<Downwash>,
+    // Each source's last place (world) and smoothed velocity.
+    mut last: Local<std::collections::HashMap<Entity, (bevy::math::DVec3, Vec3)>>,
 ) {
-    let mut wash = [Vec4::ZERO; 2];
-    if crate::palette_material::ocean(&settings) {
-        // Main rotors turning (not a tail rotor's upright disc), low over the sea (at 0 m).
-        let mut low: Vec<(f32, Vec4)> = discs
-            .iter()
-            .filter(|(d, _)| d.blur > 0.5)
-            .filter_map(|(d, gt)| {
-                let hub = gt.transform_point(d.hub);
-                let axis = gt.affine().transform_vector3(d.axis).normalize_or_zero();
-                let radius = (gt.transform_point(d.tip) - hub).length();
-                let height = hub.y + origin.origin.y as f32;
-                (axis.y.abs() > 0.7 && radius > 0.5 && height < WASH_REACH * radius)
-                    .then(|| (height / radius, hub.extend(radius)))
-            })
-            .collect();
-        low.sort_by(|a, b| a.0.total_cmp(&b.0));
-        for (w, (_, v)) in wash.iter_mut().zip(low) {
-            *w = v;
+    use bevy::math::{DVec2, DVec3};
+    let dt = time.delta_secs();
+    let o = origin.origin;
+    let mut found: Vec<(Entity, DVec3, Vec3, f32, bool, bool)> = Vec::new();
+    // Main rotors turning (not a tail rotor's upright disc).
+    for (e, d, gt) in &discs {
+        if d.blur <= 0.5 {
+            continue;
+        }
+        let hub = gt.transform_point(d.hub);
+        let axis = gt.affine().transform_vector3(d.axis).normalize_or_zero();
+        let radius = (gt.transform_point(d.tip) - hub).length();
+        if axis.y.abs() > 0.7 && radius > 0.5 {
+            found.push((e, hub.as_dvec3() + o, hub, radius, true, own.contains(d.root)));
         }
     }
-    if out.0 != wash {
-        out.0 = wash;
+    for (e, w, gt, vis) in &jets {
+        // The own model is hidden in the cockpit view, but still flies.
+        if vis.get() || own.contains(e) {
+            let c = gt.translation();
+            found.push((e, c.as_dvec3() + o, c, w.0, false, own.contains(e)));
+        }
     }
+    let mut seen = std::collections::HashMap::with_capacity(found.len());
+    let mut sources = Vec::new();
+    let mut low: Vec<(f32, Vec4, Vec4)> = Vec::new();
+    for (e, at, render, radius, rotor, is_own) in found {
+        let vel = match last.get(&e) {
+            Some(&(prev, v)) if dt > 0.0 => {
+                let now = ((at - prev) / dt as f64).as_vec3();
+                // A jump (a teleport, the floating origin's shift is already out): start again.
+                if now.length() > 800.0 { Vec3::ZERO } else { v.lerp(now, (dt * 8.0).min(1.0)) }
+            }
+            Some(&(_, v)) => v,
+            None => Vec3::ZERO,
+        };
+        seen.insert(e, (at, vel));
+        // The sea is at 0 m.
+        let height = at.y as f32;
+        if height <= 0.0 || height >= WASH_REACH * radius {
+            continue;
+        }
+        let water = scenery.as_ref().is_none_or(|s| s.is_water(DVec2::new(at.x, -at.z)));
+        if !water {
+            continue;
+        }
+        sources.push(WashSource { at, radius, vel, rotor, own: is_own });
+        low.push((height / radius, render.extend(radius), vel.extend(rotor as u8 as f32)));
+    }
+    *last = seen;
+    let mut slots = [Vec4::ZERO; 2];
+    let mut vels = [Vec4::ZERO; 2];
+    if crate::palette_material::ocean(&settings) {
+        low.sort_by(|a, b| a.0.total_cmp(&b.0));
+        for (k, (_, s, v)) in low.into_iter().take(2).enumerate() {
+            (slots[k], vels[k]) = (s, v);
+        }
+    }
+    if out.slots != slots || out.vel != vels {
+        out.slots = slots;
+        out.vel = vels;
+    }
+    out.sources = sources;
 }

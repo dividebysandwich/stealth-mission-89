@@ -814,8 +814,7 @@ fn sync_aaa(
                 let m = u.metres();
                 t.roads.deck_height(m[0], m[1], VEHICLE_DECK_REACH).is_some()
             });
-        tf.rotation =
-            if on_deck { Quat::from_rotation_y(-heading) } else { on_slope(at, heading) };
+        tf.rotation = if on_deck { Quat::from_rotation_y(-heading) } else { on_slope(at, heading) };
         vis.set_if_neq(if u.gone { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;
@@ -1310,6 +1309,12 @@ pub(crate) fn sync_objects(
                 continue;
             };
             commands.entity(e).insert(crate::camera::Observable::Flight(i));
+            // Fixed-wing aircraft (and strike missiles, the drones the size of one) leave a
+            // wake low over the water; helicopters' rotors stir it instead.
+            if model != HELICOPTER_MODEL && model != HIND_MODEL {
+                let half_span = if model >= REMAKE_MODELS { 2.5 } else { 6.0 };
+                commands.entity(e).insert(crate::rotor_blur::WaterWake(half_span));
+            }
             if friendly {
                 commands.entity(e).insert(crate::models::LodRange(FRIENDLY_LOD_RANGE));
             }
@@ -2212,6 +2217,11 @@ pub(crate) fn sync_remote_pilots(
                 spec.helicopter,
             );
             commands.entity(e).insert(crate::camera::Observable::Remote(p.id));
+            if let Some(wake) =
+                crate::rotor_blur::WaterWake::of(crate::aircraft::AircraftKind::of_remote(p))
+            {
+                commands.entity(e).insert(wake);
+            }
             vis.planes.insert(p.id, (e, spec.model, dot, muzzle, landing));
         }
         let look = if lights { SPOT_NIGHT } else { SPOT };
