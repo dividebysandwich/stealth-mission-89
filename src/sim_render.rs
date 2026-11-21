@@ -785,7 +785,9 @@ fn sync_aaa(
                     .as_ref()
                     .filter(|_| u.kind.supply())
                     .and_then(|t| t.roads.deck_height(e, n, VEHICLE_DECK_REACH));
-                let at = flat + DVec3::Y * deck.unwrap_or_else(|| ground(flat));
+                // On land a supply truck drives on the road's surface (drawn over the ground).
+                let road = if u.kind.supply() { crate::scenery::ROAD_Y as f64 } else { 0.0 };
+                let at = flat + DVec3::Y * deck.unwrap_or_else(|| ground(flat) + road);
                 let heading = h0 + turn * a as f32;
                 // Driving (a frame's move, at the simulation's rate): dust behind the hull.
                 let gap = combat.frame_gap.max(1.0) / crate::combat::FS as f32;

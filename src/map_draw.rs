@@ -642,6 +642,8 @@ pub enum Layer {
     Guns,
     /// Tanks and infantry fighting vehicles, and the friendly columns' routes.
     Armour,
+    /// The enemy's supply convoys on the roads (trucks, their technicals) and their way on.
+    Supply,
     PulseRadar,
     DopplerRadar,
     MissileRange,

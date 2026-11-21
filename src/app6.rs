@@ -65,6 +65,8 @@ pub enum Icon {
     Armour,
     /// Mechanised infantry: the infantry's cross over the track's oval.
     MechInfantry,
+    /// Supply (a supply convoy's trucks): the sustainment bar across the frame's lower part.
+    Supply,
 }
 
 /// The echelon above the frame.
@@ -273,6 +275,9 @@ fn icon(painter: &egui::Painter, icon: Icon, c: egui::Pos2, hw: f32, hh: f32, li
                 painter.line_segment([at(-1.0, -1.0), at(1.0, 1.0)], line);
                 painter.line_segment([at(-1.0, 1.0), at(1.0, -1.0)], line);
             }
+        }
+        Icon::Supply => {
+            painter.line_segment([at(-1.0, 0.55), at(1.0, 0.55)], line);
         }
         Icon::AirDefenceMissile | Icon::AirDefenceGun => {
             // The air defence dome on the box's floor, the weapon rising from it.

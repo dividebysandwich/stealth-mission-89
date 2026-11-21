@@ -163,11 +163,12 @@ Testing and screenshots
                                open the first mission's briefing on that page
   --campaign-insert            order an insertion against the nearest enemy place
   --convoy-now                 both sides send an armour column at once
-  --convoy-speed <m/s>         the columns drive this fast
+  --supply-now                 the enemy sends a supply convoy to each base it supplies by road
+  --convoy-speed <m/s>         the columns (and supply convoys) drive this fast
   --map-view <x>,<y>,<scale>   frame the war map at map point x, y (map units per point)
   --fp2-strike [m]             an attack drone at the enemy column's Shilka once it drove m
                                (with --convoy-now)
-  --campaign-watch armour|fp2|zsu|nasams
+  --campaign-watch armour|fp2|zsu|nasams|supply|supply-road
                                watch a tank on the move, the attack drone, the column's Shilka,
                                a friendly NASAMS launcher
   --watch-orbit <yaw>,<pitch>,<m>

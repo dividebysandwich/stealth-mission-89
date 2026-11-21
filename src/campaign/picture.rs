@@ -6,7 +6,7 @@
 use bevy_egui::egui;
 use stealth_campaign::{CampaignState, Side, SiteKind};
 use stealth_i18n::t;
-use stealth_sim::aaa::{GroundKind, SamBattery};
+use stealth_sim::aaa::{GroundKind, M_PER_MAP, SamBattery};
 use stealth_sim::{AircraftKind, Sim, fflags, oflags};
 
 use super::unit_view::UnitRef;
@@ -80,6 +80,60 @@ pub struct Vehicle {
     pub heading: Option<f32>,
 }
 
+/// A supply convoy on the road: its vehicles (head first) and its way still to drive to the
+/// base (map units).
+pub struct SupplyConvoy {
+    pub vehicles: Vec<Vehicle>,
+    pub route: Vec<(i32, i32)>,
+}
+
+/// Map units (x east, y south) of a point in metres.
+fn map_of(e: f64, n: f64) -> (i32, i32) {
+    ((e / M_PER_MAP) as i32, 0x8000 - (n / M_PER_MAP) as i32)
+}
+
+/// The supply convoys of the simulation, with their ways on from their heads.
+pub fn supply_convoys(sim: &Sim) -> Vec<SupplyConvoy> {
+    sim.convoys()
+        .iter()
+        .filter(|c| c.supply)
+        .filter_map(|c| {
+            let vehicles: Vec<Vehicle> = c
+                .units
+                .iter()
+                .map(|&k| k as usize)
+                .filter(|&k| sim.units().get(k).is_some_and(|u| !u.destroyed))
+                .map(|k| {
+                    let u = sim.units()[k];
+                    Vehicle {
+                        index: k,
+                        x: u.x,
+                        y: u.y,
+                        kind: u.kind,
+                        blue: sim.aaa_blue(k),
+                        heading: u.fine.map(|f| f.heading),
+                    }
+                })
+                .collect();
+            let head = sim.units()[*c.units.iter().find(|&&k| !sim.units()[k as usize].destroyed)? as usize];
+            let m = head.metres();
+            // The route from the point nearest the head on.
+            let next = c
+                .route
+                .iter()
+                .enumerate()
+                .min_by(|a, b| {
+                    let d = |p: &[f64; 2]| (p[0] - m[0]).hypot(p[1] - m[1]);
+                    d(a.1).total_cmp(&d(b.1))
+                })
+                .map_or(0, |(i, _)| i);
+            let mut route = vec![(head.x, head.y)];
+            route.extend(c.route[next..].iter().map(|p| map_of(p[0], p[1])));
+            Some(SupplyConvoy { vehicles, route })
+        })
+        .collect()
+}
+
 #[derive(Default)]
 pub struct Picture {
     pub friendly: Vec<Aircraft>,
@@ -91,6 +145,10 @@ pub struct Picture {
     pub armour: Vec<Vehicle>,
     /// The friendly convoys' ways still to drive (map units), to the place they attack.
     pub columns: Vec<Vec<(i32, i32)>>,
+    /// The enemy's supply convoys on the roads (always known: the roads are watched).
+    pub supply: Vec<SupplyConvoy>,
+    /// The supply roads cut: where their bridges came down (map units).
+    pub cuts: Vec<(i32, i32)>,
     /// The player in the air.
     pub player: Option<(i32, i32)>,
 }
@@ -212,6 +270,10 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
         if u.destroyed {
             continue;
         }
+        // A supply convoy's vehicles: drawn with their convoy.
+        if u.kind.supply() {
+            continue;
+        }
         // Armour, and the guns with a convoy: the enemy's only while seen.
         let moving = sim.unit_moving(k);
         if u.kind.armour() || moving && u.kind == GroundKind::Zsu {
@@ -257,7 +319,42 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
     for v in state.convoys.iter().filter(|v| v.side == Side::Blue && v.active()) {
         pic.columns.push(v.route_left());
     }
+    pic.supply = supply_convoys(sim);
+    if let Some(net) = sim.road_net() {
+        pic.cuts = state
+            .cut_roads
+            .iter()
+            .filter_map(|&k| net.edges.get(k)?.arch)
+            .map(|(x, y, _)| map_of(x, y))
+            .collect();
+    }
     pic
+}
+
+/// A supply truck (a box over two wheels) or a technical (a box with a gun's stroke); APP-6: a
+/// supply unit or an air defence gun, `k` its size.
+pub(super) fn truck(painter: &egui::Painter, p: egui::Pos2, v: &Vehicle, k: f32) {
+    if app6() {
+        let side = if v.blue { Affiliation::Friend } else { Affiliation::Hostile };
+        let icon = if v.kind.truck() { Icon::Supply } else { Icon::AirDefenceGun };
+        let mut sym = Symbol::new(side, Dimension::Ground, icon);
+        if let Some(h) = v.heading {
+            sym = sym.heading(h);
+        }
+        sym.draw(painter, p, k, 1.0);
+        return;
+    }
+    let col = if v.blue { FRIENDLY_BLUE } else { MISSILE_RED };
+    let stroke = egui::Stroke::new(1.2, col);
+    let r = egui::Rect::from_center_size(p - egui::vec2(0.0, 1.0), egui::vec2(7.0, 4.0));
+    painter.rect_stroke(r, 0.0, stroke, egui::StrokeKind::Middle);
+    if v.kind.truck() {
+        painter.circle_filled(p + egui::vec2(-2.0, 2.5), 1.2, col);
+        painter.circle_filled(p + egui::vec2(2.0, 2.5), 1.2, col);
+    } else {
+        painter.line_segment([p + egui::vec2(0.0, -3.0), p + egui::vec2(3.0, -6.0)], stroke);
+        painter.rect_filled(r, 0.0, col);
+    }
 }
 
 /// A tank or an infantry fighting vehicle: a filled box (crossed for the infantry), its
@@ -436,6 +533,34 @@ pub fn draw(
             if !v.blue {
                 tip.line(t!("mt-in-sight"));
             }
+        }
+    }
+    if layers.shows(Layer::Supply) {
+        // The enemy's supply convoys: their way on to the base, faint, and their vehicles.
+        for s in &pic.supply {
+            let faint = egui::Stroke::new(1.0, MISSILE_RED.gamma_multiply(0.45));
+            let pts: Vec<egui::Pos2> = s.route.iter().map(|&(x, y)| at(x, y)).collect();
+            painter.extend(egui::Shape::dashed_line(&pts, faint, 3.0, 3.0));
+            for v in &s.vehicles {
+                let p = at(v.x, v.y);
+                let ink = lit(UnitRef::Aaa(v.index));
+                scaled(p, &|pa, p| map_draw::marked(pa, ink, || truck(pa, p, v, 0.6)));
+                let kind = if v.kind.truck() { t!("mt-enemy-truck") } else { t!("mt-enemy-technical") };
+                let colour = if v.blue { FRIENDLY_BLUE } else { MISSILE_RED };
+                let v = *v;
+                tips.add(p, kind, v.kind.name(), colour).symbol(move |p, c| truck(p, c, &v, 0.6));
+            }
+        }
+    }
+    if layers.shows(Layer::Supply) {
+        // A cut road: a red cross over its bridge.
+        for &(x, y) in &pic.cuts {
+            let c = at(x, y);
+            let stroke = egui::Stroke::new(2.5 * k.max(1.0), MISSILE_RED);
+            let d = 6.0 * k.max(1.0);
+            painter.line_segment([c + egui::vec2(-d, -d), c + egui::vec2(d, d)], stroke);
+            painter.line_segment([c + egui::vec2(-d, d), c + egui::vec2(d, -d)], stroke);
+            tips.add(c, t!("mt-road-cut"), "", MISSILE_RED);
         }
     }
     for g in &pic.guns {
@@ -639,6 +764,10 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         vehicle(p, c0 - egui::vec2(dx, 0.0), &tank(true), k);
         vehicle(p, c0 + egui::vec2(dx, 0.0), &ifv(false), k);
     });
+    let lorry = Vehicle { kind: GroundKind::ArmyTruck, ..tank(false) };
+    layers.legend(ui, Layer::Supply, t!("pic-supply"), |p, c0| {
+        truck(p, c0, &lorry, if app6() { 0.65 } else { 1.0 });
+    });
     layers.legend(ui, Layer::Guns, t!("pic-guns-known"), |p, c0| {
         if app6() {
             gun(p, c0 - egui::vec2(7.5, 0.0), GroundKind::Zsu, 0.65);
@@ -693,7 +822,7 @@ pub fn pick(
     for g in &pic.guns {
         consider(screen(g.x, g.y), UnitRef::Aaa(g.index), g.kind.name().to_string());
     }
-    for v in &pic.armour {
+    for v in pic.armour.iter().chain(pic.supply.iter().flat_map(|s| &s.vehicles)) {
         consider(screen(v.x, v.y), UnitRef::Aaa(v.index), v.kind.name().to_string());
     }
     for d in &pic.defences {

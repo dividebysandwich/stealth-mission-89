@@ -33,7 +33,7 @@ const FIELD_Y: f32 = 0.08;
 const BELT_Y: f32 = 0.11;
 const BELT: u8 = 0xAC;
 /// Height of road surfaces above the ground overlays (metres).
-const ROAD_Y: f32 = 0.9;
+pub(crate) const ROAD_Y: f32 = 0.9;
 /// The built-up ground of towns and cities: concrete in a few shades, between the fields and
 /// the roads.
 const PAVED_Y: f32 = 0.5;

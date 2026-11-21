@@ -197,6 +197,7 @@ pub fn follow(
     root: Option<Res<crate::camera::XrRoot>>,
     mut cams: Query<(&mut WorldPos, &mut Transform), With<UnitCamera>>,
     time: Res<Time<Real>>,
+    drawn: Option<Res<crate::sim_render::DrawnUnits>>,
 ) {
     let view = &mut *view;
     // The view lives with the Ops screen.
@@ -209,7 +210,14 @@ pub fn follow(
         return;
     };
     match locate(&combat, unit) {
-        Some((p, heading, info)) => {
+        Some((mut p, heading, info)) => {
+            // A ground unit where it is drawn (on the hills, a bridge's deck).
+            if let UnitRef::Aaa(k) = unit
+                && let Some(&(at, _)) = drawn.as_ref().and_then(|d| d.0.get(k))
+                && at != DVec3::ZERO
+            {
+                p = at + DVec3::Y * 2.0;
+            }
             view.last = Some((p, heading));
             view.info = info;
             view.lost = 0.0;

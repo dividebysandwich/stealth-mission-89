@@ -606,6 +606,10 @@ fn begin(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         if std::env::args().any(|a| a == "--convoy-now") {
             host.state.convoys_due();
         }
+        // `--supply-now`: a supply convoy for each base the enemy supplies by road.
+        if std::env::args().any(|a| a == "--supply-now") {
+            host.state.supply_now();
+        }
         if let Some(v) = std::env::args()
             .skip_while(|a| a != "--convoy-speed")
             .nth(1)

@@ -20,6 +20,7 @@ pub use airfield::{GLIDE_PATH_DEG, PapiSite, approach_to};
 pub use network::Rng;
 pub use obstacles::Obstacle;
 mod content;
+pub(crate) use content::ROAD_Y;
 mod fields;
 mod geom;
 mod ground;

@@ -52,6 +52,7 @@ impl MapPreset {
             MapPreset::AirDefence => vec![
                 Insertions,
                 Armour,
+                Supply,
                 Guns,
                 Patriots,
                 PatriotReach,
@@ -77,7 +78,7 @@ impl MapPreset {
                 DefenceReach,
             ],
             MapPreset::Weather => {
-                vec![MissileRange, EngagementRange, DefenceReach, Insertions, Armour, Guns]
+                vec![MissileRange, EngagementRange, DefenceReach, Insertions, Armour, Supply, Guns]
             }
         };
         if self != MapPreset::Weather {
@@ -559,6 +560,26 @@ fn test_watch(
             Some(v) => (UnitRef::Aaa(v.index), v.kind.name().to_string(), false),
             None => return,
         },
+        // A supply convoy's truck: the one nearest a bridge's arch (on the road over it), or
+        // the first; `supply-road` the one furthest from it.
+        Some(w @ ("supply" | "supply-road")) => {
+            let far = w == "supply-road";
+            let arch = sim.road_net().and_then(|n| n.edges.iter().find_map(|e| e.arch));
+            let trucks = pic.supply.iter().flat_map(|s| &s.vehicles).filter(|v| v.kind.truck());
+            let near = |v: &&super::picture::Vehicle| {
+                let m = sim.units()[v.index].metres();
+                arch.map_or(0.0, |(x, y, _)| (m[0] - x).hypot(m[1] - y))
+            };
+            let pick = if far {
+                trucks.max_by(|a, b| near(a).total_cmp(&near(b)))
+            } else {
+                trucks.min_by(|a, b| near(a).total_cmp(&near(b)))
+            };
+            match pick {
+                Some(v) => (UnitRef::Aaa(v.index), v.kind.name().to_string(), true),
+                None => return,
+            }
+        }
         Some("nasams") => match ground(stealth_sim::aaa::GroundKind::NasamsLauncher, true, false) {
             Some(k) => (UnitRef::Aaa(k), "NASAMS".to_string(), true),
             None => return,

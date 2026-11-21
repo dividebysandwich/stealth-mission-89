@@ -189,6 +189,8 @@ pub struct Contact {
     pub y: i32,
     pub name: String,
     pub drones: bool,
+    /// A supply convoy's vehicle (a truck, a technical): on the move.
+    pub vehicle: Option<GroundKind>,
 }
 
 /// The enemy air defences known: those the drones found, and the SAM sites and guns the
@@ -204,25 +206,50 @@ pub fn contacts(sim: &Sim, campaign: Option<&crate::campaign::ActiveCampaign>) -
                 Seen::Aaa(k) => sim.units().get(k as usize)?.kind.name().to_string(),
                 Seen::Object(o) => sim.threat_name(sim.objects().get(o as usize)?.unit_type).into(),
             };
-            Some(Contact { x, y, name, drones: true })
+            Some(Contact { x, y, name, drones: true, vehicle: None })
         })
         .collect();
     if let Some(c) = campaign {
         let pic = crate::campaign::picture::picture(c.state(), sim);
         for s in &pic.sams {
             if !out.iter().any(|o| (o.x, o.y) == (s.x, s.y)) {
-                out.push(Contact { x: s.x, y: s.y, name: s.name.clone(), drones: false });
+                out.push(Contact { x: s.x, y: s.y, name: s.name.clone(), drones: false, vehicle: None });
             }
         }
         for g in &pic.guns {
             if !out.iter().any(|o| (o.x, o.y) == (g.x, g.y)) {
-                out.push(Contact { x: g.x, y: g.y, name: g.kind.name().into(), drones: false });
+                out.push(Contact {
+                    x: g.x,
+                    y: g.y,
+                    name: g.kind.name().into(),
+                    drones: false,
+                    vehicle: None,
+                });
             }
         }
         for v in pic.armour.iter().filter(|v| !v.blue) {
             if !out.iter().any(|o| (o.x, o.y) == (v.x, v.y)) {
-                out.push(Contact { x: v.x, y: v.y, name: v.kind.name().into(), drones: false });
+                out.push(Contact {
+                    x: v.x,
+                    y: v.y,
+                    name: v.kind.name().into(),
+                    drones: false,
+                    vehicle: None,
+                });
             }
+        }
+    }
+    // The enemy's supply convoys on the roads (always known).
+    for s in crate::campaign::picture::supply_convoys(sim) {
+        out.retain(|o| !s.vehicles.iter().any(|v| (o.x, o.y) == (v.x, v.y)));
+        for v in s.vehicles.iter().filter(|v| !v.blue) {
+            out.push(Contact {
+                x: v.x,
+                y: v.y,
+                name: v.kind.name().to_uppercase(),
+                drones: false,
+                vehicle: Some(v.kind),
+            });
         }
     }
     out
@@ -358,9 +385,32 @@ pub(super) fn draw(
             cv.ring(p, 2.5, 1.0, BLUE);
         }
     }
-    // The enemy air defences known: a red diamond, its type.
+    // The enemy's supply convoys' way on, dotted.
+    for s in crate::campaign::picture::supply_convoys(sim).iter().filter(|s| s.vehicles.iter().any(|v| !v.blue)) {
+        let pts: Vec<Vec2> =
+            s.route.iter().map(|&(x, y)| to_screen(&ui, x as f64 + 0.5, y as f64 + 0.5)).collect();
+        for w in pts.windows(2).step_by(2) {
+            cv.stroke(w[0], w[1], 0.8, GREY);
+        }
+    }
+    // The enemy air defences known: a red diamond, its type; a supply convoy's truck a box on
+    // wheels, its technical a filled box.
     for k in &contacts {
         let p = to_screen(&ui, k.x as f64 + 0.5, k.y as f64 + 0.5);
+        if let Some(kind) = k.vehicle {
+            if kind.truck() {
+                cv.frame(p + Vec2::new(-3.5, -3.0), p + Vec2::new(3.5, 1.0), 1.0, RED);
+                cv.circle(p.x - 2.0, p.y + 2.5, 1.1, RED);
+                cv.circle(p.x + 2.0, p.y + 2.5, 1.1, RED);
+            } else {
+                cv.fill_rect(p.x as i32 - 3, p.y as i32 - 2, 7, 4, RED);
+                cv.stroke(p + Vec2::new(0.0, -2.0), p + Vec2::new(3.0, -5.0), 1.0, RED);
+            }
+            if ui.zoom <= 2 {
+                stroke_text_at(cv, p.x + 6.0, p.y - 4.0, &k.name, 5.0, 0.8, RED, Align::Left);
+            }
+            continue;
+        }
         let s = 5.0;
         let pts = [
             p + Vec2::new(0.0, -s),
