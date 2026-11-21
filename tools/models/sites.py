@@ -494,4 +494,5 @@ def main():
         bpy.ops.wm.save_mainfile()
 
 
-main()
+if __name__ == "__main__":
+    main()

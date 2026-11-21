@@ -364,59 +364,31 @@ pub fn tile_model_scale(name: &str, unit: f64) -> f32 {
     }
 }
 
-/// The classic library's vehicles, SAM sites, tall buildings and ships are drawn several times
-/// their real size (a 50 m tank, a 470 m destroyer); next to the trees, aircraft and the
-/// remake's own models (all true to scale) these factors shrink them to about real size.
+/// The classic library's vehicles, tall buildings and ships are drawn several times their real
+/// size (a 50 m tank, a 470 m destroyer); next to the trees, aircraft and the remake's own models
+/// (all true to scale, the SAM sites among them: tools/models/sam_sites.py) these factors shrink
+/// them to about real size.
 /// Render only: the sim's hit tests go by map distances. Per library (shape ids differ between
 /// libraries): (shape, factor).
 const REAL_SCALE: &[(&str, &[(u16, f32)])] = &[
-    // houses, houses2, SA missile, SAM radar, patrol boat, windmill, mobile SAM, tank
-    (
-        "central_europe",
-        &[
-            (26, 0.5),
-            (27, 0.5),
-            (33, 0.25),
-            (38, 0.3),
-            (53, 0.32),
-            (65, 0.45),
-            (76, 0.2),
-            (77, 0.2),
-        ],
-    ),
-    // destroyer, town, SA missile, SAM radar, tanker, missile boat, trawler
-    ("cuba", &[(18, 0.32), (26, 0.5), (33, 0.25), (38, 0.4), (49, 0.66), (53, 0.32), (76, 0.25)]),
-    // mobile Scud, SA missile, SAM radar, destroyer, missile boat, Rep. Guards (tank)
-    ("desert_storm", &[(20, 0.2), (47, 0.25), (52, 0.35), (76, 0.32), (92, 0.32), (96, 0.2)]),
-    // destroyer, town, SA missile, SAM radar, missile boat, armed fishing boat, T-72s
-    ("korea", &[(18, 0.32), (26, 0.5), (33, 0.25), (38, 0.4), (53, 0.32), (76, 0.25), (98, 0.2)]),
-    // oil tanker, village, SA missile, SAM radar, missile boat, destroyer, missile,
-    // mobile SAM, tank
-    (
-        "libya",
-        &[
-            (23, 0.66),
-            (39, 0.5),
-            (44, 0.25),
-            (49, 0.3),
-            (54, 0.32),
-            (69, 0.32),
-            (75, 0.35),
-            (76, 0.2),
-            (77, 0.2),
-        ],
-    ),
-    // SA missile, SAM radar, destroyer
-    ("middle_east", &[(47, 0.25), (52, 0.3), (76, 0.32)]),
-    // SA missile, SAM radar, destroyer, Typhoon, Krivak
-    ("north_cape", &[(31, 0.25), (36, 0.3), (64, 0.32), (75, 0.7), (77, 0.65)]),
-    // oil tanker, village, SA missile, SAM radar, missile boat, destroyer, Aegis cruiser
-    (
-        "persian_gulf",
-        &[(25, 0.66), (40, 0.5), (47, 0.25), (52, 0.3), (69, 0.32), (76, 0.32), (89, 0.37)],
-    ),
-    // destroyer, town, SA missile, SAM radar, missile boat
-    ("vietnam", &[(18, 0.32), (26, 0.5), (33, 0.25), (38, 0.35), (53, 0.32)]),
+    // houses, houses2, patrol boat, windmill, tank
+    ("central_europe", &[(26, 0.5), (27, 0.5), (53, 0.32), (65, 0.45), (77, 0.2)]),
+    // destroyer, town, tanker, missile boat, trawler
+    ("cuba", &[(18, 0.32), (26, 0.5), (49, 0.66), (53, 0.32), (76, 0.25)]),
+    // mobile Scud, destroyer, missile boat, Rep. Guards (tank)
+    ("desert_storm", &[(20, 0.2), (76, 0.32), (92, 0.32), (96, 0.2)]),
+    // destroyer, town, missile boat, armed fishing boat, T-72s
+    ("korea", &[(18, 0.32), (26, 0.5), (53, 0.32), (76, 0.25), (98, 0.2)]),
+    // oil tanker, village, missile boat, destroyer, missile, tank
+    ("libya", &[(23, 0.66), (39, 0.5), (54, 0.32), (69, 0.32), (75, 0.35), (77, 0.2)]),
+    // destroyer
+    ("middle_east", &[(76, 0.32)]),
+    // destroyer, Typhoon, Krivak
+    ("north_cape", &[(64, 0.32), (75, 0.7), (77, 0.65)]),
+    // oil tanker, village, missile boat, destroyer, Aegis cruiser
+    ("persian_gulf", &[(25, 0.66), (40, 0.5), (69, 0.32), (76, 0.32), (89, 0.37)]),
+    // destroyer, town, missile boat
+    ("vietnam", &[(18, 0.32), (26, 0.5), (53, 0.32)]),
 ];
 
 /// The classic model library a theater's tile models come from (tools/theater/regions).
