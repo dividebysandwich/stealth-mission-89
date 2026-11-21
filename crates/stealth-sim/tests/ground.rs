@@ -395,6 +395,10 @@ fn a_supply_convoy_drives_to_its_base_and_leaves_the_world() {
     let route = [a, [a[0] + 3000.0, a[1]]];
     sim.spawn_supply_convoy(9, false, &kinds, &route, 0.0);
     assert_eq!(sim.units().len(), 4);
+    // Driving east, in the right-hand lane: south of the road's middle.
+    run(&mut sim, 5);
+    let lane = a[1] - metres(&sim, 0)[1];
+    assert!((lane - stealth_sim::ground::SUPPLY_LANE).abs() < 0.1, "{lane} m right");
     // A truck is lost on the way.
     sim.units_mut()[2].destroyed = true;
     let ev = run(&mut sim, 200);

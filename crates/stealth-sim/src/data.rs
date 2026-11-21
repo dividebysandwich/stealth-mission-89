@@ -298,6 +298,11 @@ impl TheaterTiles {
         Ok(Self { towns, roads: t.roads, ..Self::from_tilesets(&t.grid, &t.tiles, &t.model_attr) })
     }
 
+    /// The supply roads (theaters with them).
+    pub fn road_net(&self) -> Option<&stealth_mission::roads::RoadNet> {
+        Some(&self.roads).filter(|r| !r.is_empty())
+    }
+
     /// A theater's tile data from its terrain (remake theaters, which the exported classic
     /// data does not have).
     pub fn from_tilesets(

@@ -1071,3 +1071,27 @@ fn truck_strike_odds() {
     }
     eprintln!("{hits}/{n} got through, {others} vehicles beside the truck destroyed too");
 }
+
+/// An FP-2 sent at a supply convoy's truck follows it down the road and gets it.
+#[test]
+fn an_fp2_sent_at_a_moving_truck_follows_it() {
+    let (mut sim, k, _, _) = center();
+    let at = off(&sim, k, 3000.0, 0.0);
+    let a = stealth_sim::ground::metres_of(at.0, at.1);
+    let kinds = [GroundKind::CivTruck, GroundKind::ArmyTruck, GroundKind::CivTruck];
+    sim.spawn_supply_convoy(5, false, &kinds, &[a, [a[0], a[1] + 30_000.0]], 0.0);
+    let head = sim.units().len() - 3;
+    let u = sim.units()[head];
+    launch(&mut sim, UavKind::Fp2, vec![wp((u.x, u.y), 300.0, WpKind::Terminate)]).unwrap();
+    for _ in 0..400 {
+        run(&mut sim, 1);
+        if sim.uavs().is_empty() {
+            break;
+        }
+    }
+    let n = sim.units().len();
+    let hit = (n - 3..n).filter(|&t| sim.units()[t].destroyed).count();
+    assert_eq!(hit, 1, "one truck of the column");
+    // It drove a long way meanwhile: a fixed point would have missed.
+    assert!(sim.convoys().iter().any(|c| c.tag == 5));
+}

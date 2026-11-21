@@ -22,6 +22,9 @@ const ASSAULT_SPEED: f64 = 6.0;
 /// drone's blast takes one truck at a time).
 pub const GAP: f64 = 60.0;
 pub const SUPPLY_GAP: f64 = 100.0;
+/// A supply convoy drives in the right-hand lane: this far (m) right of the road's middle (the
+/// highways are 10 m wide).
+pub const SUPPLY_LANE: f64 = 2.5;
 /// The convoy leaves the road this far (m) before its goal and attacks in line abreast, its
 /// vehicles this far apart, stopping this short of the place's centre.
 const ASSAULT_START: f64 = 2000.0;
@@ -285,6 +288,12 @@ fn point_at(route: &[[f64; 2]], s: f64) -> ([f64; 2], f64) {
     }
 }
 
+/// A point and heading `s` metres along a supply convoy's road, in its right-hand lane.
+fn lane_at(route: &[[f64; 2]], s: f64) -> ([f64; 2], f64) {
+    let (p, h) = point_at(route, s);
+    ([p[0] + h.cos() * SUPPLY_LANE, p[1] - h.sin() * SUPPLY_LANE], h)
+}
+
 /// How far along its route a supply convoy's head drives: until its last vehicle is at the end
 /// of the road, or its head at the gap in a cut road.
 fn supply_end(v: &Convoy, length: f64) -> f64 {
@@ -311,6 +320,11 @@ fn place(u: &mut GroundUnit, p: [f64; 2], heading: f64) {
 impl Sim {
     fn ground(&self) -> Option<&GroundState> {
         self.campaign.as_ref().map(|c| &c.ground)
+    }
+
+    /// The theater's supply roads (none without its tile data).
+    pub fn road_net(&self) -> Option<&stealth_mission::roads::RoadNet> {
+        self.tiles.as_ref()?.road_net()
     }
 
     /// The campaign's convoys on the move.
@@ -426,7 +440,11 @@ impl Sim {
             let gap = if supply { SUPPLY_GAP } else { GAP };
             let along = (kinds.len() - 1) as f64 * gap + start.max(0.0);
             for (i, &kind) in kinds.iter().enumerate() {
-                let (p, heading) = point_at(&route, along - i as f64 * gap);
+                let (p, heading) = if supply {
+                    lane_at(&route, along - i as f64 * gap)
+                } else {
+                    point_at(&route, along - i as f64 * gap)
+                };
                 let mut u = GroundUnit {
                     kind,
                     aim_az: heading as f32,
@@ -771,7 +789,7 @@ impl Sim {
                 if self.units[k].destroyed {
                     continue;
                 }
-                let (p, heading) = point_at(&v.route, v.along - i as f64 * v.gap());
+                let (p, heading) = lane_at(&v.route, v.along - i as f64 * v.gap());
                 place(&mut self.units[k], p, heading);
             }
             return;

@@ -77,6 +77,8 @@ const FUSE: f64 = 10.0;
 /// 60 m; as `aaa_damage` does a bomb's), an interceptor's smaller one about 30 m.
 const BLAST: f64 = 4.0;
 const QUAD_BLAST: f64 = 2.0;
+/// A terminate point this close (map units, ~150 m) to a supply convoy's vehicle follows it.
+const TRACK_SNAP: i32 = 10;
 /// A battery this low (fraction) glides down.
 const EMPTY: f32 = 0.0;
 /// An interceptor locks on to an aircraft this close (m) and this far off its flight path (rad,
@@ -1137,6 +1139,7 @@ impl Sim {
                 steer = Some((u.heading, u.pos[2] + climb * 10.0, p.cruise));
             }
             UavMode::Auto => {
+                self.track_terminate(&mut u);
                 steer = Some(self.uav_auto(&mut u, ground));
                 if u.mode == UavMode::Dive {
                     dive_at = u.target().map(|w| {
@@ -1146,6 +1149,7 @@ impl Sim {
                 }
             }
             UavMode::Dive => {
+                self.track_terminate(&mut u);
                 dive_at = u.target().map(|w| {
                     let m = w.metres();
                     [m[0], m[1], 0.0]
@@ -1302,6 +1306,24 @@ impl Sim {
     pub fn interceptor_targets(&self) -> impl Iterator<Item = usize> + '_ {
         (0..self.flights.len())
             .filter(|&j| self.ai_side(j).is_some() && self.uav_of_flight(j).is_none())
+    }
+
+    /// A terminate point on a supply convoy's vehicle follows it down the road (to the end of
+    /// the dive).
+    fn track_terminate(&self, u: &mut Uav) {
+        if let Some(w) = u.route.get_mut(u.next as usize)
+            && w.kind == WpKind::Terminate
+            && let Some(v) = self
+                .units
+                .iter()
+                .filter(|v| !v.destroyed && v.kind.supply() && v.fine.is_some())
+                .map(|v| (v, crate::math::approx(v.x - w.x, v.y - w.y)))
+                .filter(|&(_, d)| d <= TRACK_SNAP)
+                .min_by_key(|&(_, d)| d)
+                .map(|(v, _)| *v)
+        {
+            (w.x, w.y) = (v.x, v.y);
+        }
     }
 
     /// Auto: the heading, height and speed to its waypoint (and on to the next one past it);
