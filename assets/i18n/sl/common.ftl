@@ -25,6 +25,8 @@ yes = DA
 no = NE
 on = VKLOP
 off = IZKLOP
+loading-title = NALAGANJE
+loading-shaders = Priprava senčilnikov: { $done } od { $total }
 classic = KLASIČNO
 modern = SODOBNO
 

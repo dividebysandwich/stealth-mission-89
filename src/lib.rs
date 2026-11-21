@@ -73,6 +73,7 @@ mod landing_lights;
 mod layout;
 mod lighting;
 mod lightning;
+mod loading;
 mod loadout;
 mod lso;
 mod map_draw;
@@ -295,6 +296,8 @@ pub fn run() {
         app.add_plugins(plugins);
     }
     app.add_plugins(crash_log::CrashLogPlugin);
+    // The render world's pipeline count, and the desktop's loading screen over a flight's start.
+    app.add_plugins(loading::LoadingPlugin);
     // The browser's loading screen until the menu's first scene is up.
     #[cfg(target_arch = "wasm32")]
     app.add_plugins(web_loading::WebLoadingPlugin);

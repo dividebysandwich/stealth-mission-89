@@ -17,6 +17,8 @@ yes = ТАК
 no = НІ
 on = УВІМК.
 off = ВИМК.
+loading-title = ЗАВАНТАЖЕННЯ
+loading-shaders = Підготовка шейдерів: { $done } з { $total }
 classic = КЛАСИЧНИЙ
 modern = СУЧАСНИЙ
 

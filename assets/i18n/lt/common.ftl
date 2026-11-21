@@ -17,6 +17,8 @@ yes = TAIP
 no = NE
 on = ĮJUNGTA
 off = IŠJUNGTA
+loading-title = ĮKELIAMA
+loading-shaders = Ruošiami šešėliavimo moduliai: { $done } iš { $total }
 classic = KLASIKINIS
 modern = MODERNUS
 

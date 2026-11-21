@@ -25,6 +25,8 @@ yes = IVA
 no = LE
 on = ON
 off = OFF
+loading-title = QED JITTELLA
+loading-shaders = Qed jiġu ppreparati x-shaders: { $done } minn { $total }
 classic = KLASSIKU
 modern = MODERN
 

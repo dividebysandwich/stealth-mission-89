@@ -25,6 +25,8 @@ yes = ÁNO
 no = NIE
 on = ZAP
 off = VYP
+loading-title = NAČÍTAVA SA
+loading-shaders = Príprava shaderov: { $done } z { $total }
 classic = KLASICKÝ
 modern = MODERNÝ
 

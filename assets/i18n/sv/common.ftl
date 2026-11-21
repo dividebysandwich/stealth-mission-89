@@ -17,6 +17,8 @@ yes = JA
 no = NEJ
 on = PÅ
 off = AV
+loading-title = LADDAR
+loading-shaders = Förbereder shaders: { $done } av { $total }
 classic = KLASSISK
 modern = MODERN
 

@@ -17,6 +17,8 @@ yes = TAK
 no = NIE
 on = WŁ.
 off = WYŁ.
+loading-title = WCZYTYWANIE
+loading-shaders = Przygotowywanie shaderów: { $done } z { $total }
 classic = KLASYCZNY
 modern = NOWOCZESNY
 

@@ -6,13 +6,10 @@
 //! The browser builds each pipeline on the page's thread (Bevy composes and validates the
 //! shader in the wasm, the browser compiles it at its first draw), a few hundred milliseconds to
 //! seconds each: the scene's first frames would stutter through them. The screen stays until
-//! no new pipeline has come for `QUIET_FRAMES` frames (at most `MAX_PIPELINE_WAIT`).
-
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+//! no new pipeline has come for `QUIET_FRAMES` frames (at most `MAX_PIPELINE_WAIT`), counted by
+//! `loading::Pipelines`.
 
 use bevy::prelude::*;
-use bevy::render::render_resource::{CachedPipelineState, PipelineCache};
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
@@ -30,35 +27,7 @@ impl Plugin for WebLoadingPlugin {
             .add_systems(Update, report.run_if(in_state(AppState::Menu)))
             // Away from the menu before it was up: the flight lays out its own scenery.
             .add_systems(OnExit(AppState::Menu), finish);
-        let pipelines = Pipelines::default();
-        app.insert_resource(pipelines.clone());
-        if let Some(render) = app.get_sub_app_mut(bevy::render::RenderApp) {
-            render.insert_resource(pipelines).add_systems(
-                bevy::render::Render,
-                count_pipelines.in_set(bevy::render::RenderSystems::Cleanup),
-            );
-        }
     }
-}
-
-/// The render world's pipelines, for the main world: how many there are and how many of them
-/// are not built yet.
-#[derive(Resource, Clone, Default)]
-struct Pipelines {
-    total: Arc<AtomicU32>,
-    pending: Arc<AtomicU32>,
-}
-
-fn count_pipelines(cache: Res<PipelineCache>, counts: Res<Pipelines>) {
-    let (mut total, mut pending) = (0, 0);
-    for p in cache.pipelines() {
-        total += 1;
-        pending += matches!(p.state, CachedPipelineState::Queued | CachedPipelineState::Creating(_))
-            as u32;
-    }
-    pending += cache.waiting_pipelines().count() as u32;
-    counts.total.store(total, Ordering::Relaxed);
-    counts.pending.store(pending, Ordering::Relaxed);
 }
 
 /// The scene is drawn with all its pipelines once none has come for this many frames.
@@ -131,7 +100,7 @@ fn report(
     director: Option<Res<crate::menu_scene::director::Director>>,
     mut music: ResMut<crate::sound::MusicHold>,
     time: Res<Time<Real>>,
-    pipelines: Res<Pipelines>,
+    pipelines: Res<crate::loading::Pipelines>,
     mut commands: Commands,
     quiet: Option<ResMut<crate::detail_benchmark::PipelinesQuiet>>,
     bench: Option<Res<crate::detail_benchmark::Bench>>,
@@ -170,8 +139,7 @@ fn report(
             return;
         }
         // Drawn: wait for its pipelines.
-        let total = pipelines.total.load(Ordering::Relaxed);
-        let pending = pipelines.pending.load(Ordering::Relaxed);
+        let (total, pending) = pipelines.counts();
         loading.waited += time.delta_secs();
         if total != loading.pipelines || pending > 0 {
             loading.pipelines = total;

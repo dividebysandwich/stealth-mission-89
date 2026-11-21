@@ -25,6 +25,8 @@ yes = JAH
 no = EI
 on = SEES
 off = VÄLJAS
+loading-title = LAADIMINE
+loading-shaders = Varjutajate ettevalmistamine: { $done } / { $total }
 classic = KLASSIKALINE
 modern = KAASAEGNE
 

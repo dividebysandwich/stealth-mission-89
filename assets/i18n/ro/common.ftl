@@ -25,6 +25,8 @@ yes = DA
 no = NU
 on = PORNIT
 off = OPRIT
+loading-title = SE ÎNCARCĂ
+loading-shaders = Se pregătesc shaderele: { $done } din { $total }
 classic = CLASIC
 modern = MODERN
 

@@ -17,6 +17,8 @@ yes = DA
 no = NE
 on = UKLJUČENO
 off = ISKLJUČENO
+loading-title = UČITAVANJE
+loading-shaders = Priprema shadera: { $done } od { $total }
 classic = KLASIČNO
 modern = MODERNO
 

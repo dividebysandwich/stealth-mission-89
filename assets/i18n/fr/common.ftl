@@ -17,6 +17,8 @@ yes = OUI
 no = NON
 on = ACTIVÉ
 off = DÉSACTIVÉ
+loading-title = CHARGEMENT
+loading-shaders = Préparation des shaders : { $done } sur { $total }
 classic = CLASSIQUE
 modern = MODERNE
 

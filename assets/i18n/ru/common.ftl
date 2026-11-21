@@ -17,6 +17,8 @@ yes = ДА
 no = НЕТ
 on = ВКЛ
 off = ВЫКЛ
+loading-title = ЗАГРУЗКА
+loading-shaders = Подготовка шейдеров: { $done } из { $total }
 classic = КЛАССИЧЕСКИЙ
 modern = СОВРЕМЕННЫЙ
 

@@ -17,6 +17,8 @@ yes = SÍ
 no = NO
 on = ACTIVADO
 off = DESACTIVADO
+loading-title = CARGANDO
+loading-shaders = Preparando sombreadores: { $done } de { $total }
 classic = CLÁSICO
 modern = MODERNO
 

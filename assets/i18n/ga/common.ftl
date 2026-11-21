@@ -23,6 +23,8 @@ yes = IS EA
 no = NÍL
 on = ON
 off = OFF
+loading-title = Á LÓDÁIL
+loading-shaders = Scáthóirí á n-ullmhú: { $done } as { $total }
 classic = CLASAIC
 modern = NUA-AIMSEARTHA
 

@@ -25,6 +25,8 @@ yes = ДА
 no = НЕ
 on = ВКЛ.
 off = ИЗКЛ.
+loading-title = ЗАРЕЖДАНЕ
+loading-shaders = Подготовка на шейдъри: { $done } от { $total }
 classic = КЛАСИЧЕСКИ
 modern = СЪВРЕМЕНЕН
 

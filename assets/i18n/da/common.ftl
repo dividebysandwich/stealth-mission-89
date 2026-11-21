@@ -25,6 +25,8 @@ yes = JA
 no = NEJ
 on = TIL
 off = FRA
+loading-title = INDLÆSER
+loading-shaders = Forbereder shadere: { $done } af { $total }
 classic = KLASSISK
 modern = MODERNE
 

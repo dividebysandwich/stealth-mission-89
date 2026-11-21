@@ -17,6 +17,8 @@ yes = JA
 no = NEIN
 on = AN
 off = AUS
+loading-title = LADEN
+loading-shaders = Shader werden vorbereitet: { $done } von { $total }
 classic = KLASSISCH
 modern = MODERN
 

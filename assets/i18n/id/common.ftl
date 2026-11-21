@@ -25,6 +25,8 @@ yes = YA
 no = TIDAK
 on = AKTIF
 off = NONAKTIF
+loading-title = MEMUAT
+loading-shaders = Menyiapkan shader: { $done } dari { $total }
 classic = KLASIK
 modern = MODERN
 

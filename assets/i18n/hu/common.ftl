@@ -25,6 +25,8 @@ yes = IGEN
 no = NEM
 on = BE
 off = KI
+loading-title = BETÖLTÉS
+loading-shaders = Shaderek előkészítése: { $done } / { $total }
 classic = KLASSZIKUS
 modern = MODERN
 

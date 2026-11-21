@@ -24,6 +24,8 @@ yes = はい
 no = いいえ
 on = オン
 off = オフ
+loading-title = 読み込み中
+loading-shaders = シェーダーを準備中: { $done } / { $total }
 classic = クラシック
 modern = モダン
 

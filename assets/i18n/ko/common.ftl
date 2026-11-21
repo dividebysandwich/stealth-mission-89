@@ -25,6 +25,8 @@ yes = 예
 no = 아니요
 on = 켬
 off = 끔
+loading-title = 불러오는 중
+loading-shaders = 셰이더 준비 중: { $done } / { $total }
 classic = 클래식
 modern = 모던
 

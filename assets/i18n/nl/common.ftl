@@ -17,6 +17,8 @@ yes = JA
 no = NEE
 on = AAN
 off = UIT
+loading-title = LADEN
+loading-shaders = Shaders voorbereiden: { $done } van { $total }
 classic = KLASSIEK
 modern = MODERN
 

@@ -17,6 +17,8 @@ yes = ΝΑΙ
 no = ΟΧΙ
 on = ΕΝΕΡΓΟ
 off = ΑΝΕΝΕΡΓΟ
+loading-title = ΦΟΡΤΩΣΗ
+loading-shaders = Προετοιμασία shader: { $done } από { $total }
 classic = ΚΛΑΣΙΚΟ
 modern = ΜΟΝΤΕΡΝΟ
 

@@ -17,6 +17,8 @@ yes = SIM
 no = NÃO
 on = LIGADO
 off = DESLIGADO
+loading-title = CARREGANDO
+loading-shaders = Preparando shaders: { $done } de { $total }
 classic = CLÁSSICO
 modern = MODERNO
 

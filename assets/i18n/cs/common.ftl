@@ -17,6 +17,8 @@ yes = ANO
 no = NE
 on = ZAPNUTO
 off = VYPNUTO
+loading-title = NAČÍTÁNÍ
+loading-shaders = Příprava shaderů: { $done } z { $total }
 classic = KLASICKÝ
 modern = MODERNÍ
 

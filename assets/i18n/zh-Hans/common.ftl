@@ -23,6 +23,8 @@ yes = 是
 no = 否
 on = 开
 off = 关
+loading-title = 加载中
+loading-shaders = 正在准备着色器: { $done } / { $total }
 classic = 经典
 modern = 现代
 

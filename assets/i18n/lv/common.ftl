@@ -17,6 +17,8 @@ yes = JĀ
 no = NĒ
 on = IESLĒGTS
 off = IZSLĒGTS
+loading-title = IELĀDĒ
+loading-shaders = Sagatavo ēnotājus: { $done } no { $total }
 classic = KLASISKS
 modern = MODERNS
 

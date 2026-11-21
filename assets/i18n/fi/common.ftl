@@ -25,6 +25,8 @@ yes = KYLLÄ
 no = EI
 on = PÄÄLLÄ
 off = POIS
+loading-title = LADATAAN
+loading-shaders = Valmistellaan varjostimia: { $done } / { $total }
 classic = KLASSINEN
 modern = MODERNI
 
