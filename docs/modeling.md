@@ -9,7 +9,7 @@ racks, swing wings, and cockpit buttons and levers.
 
 ![Example models in the game's model viewer](images/modeling/examples.png)
 
-The world models follow DOS-era aesthetics offlat-shaded polygon models, and new models should
+The world models follow DOS-era aesthetics of flat-shaded polygon models, and new models should
 to fit in with them. That means few polygons, flat colours from a 256-colour palette, and no
 textures. The cockpits are the exception. They are ordinary PBR glTF models with normals, UVs
 and textures.
