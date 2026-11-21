@@ -1013,6 +1013,18 @@ pub struct Hotas {
 }
 
 impl Hotas {
+    /// No joystick library and no devices (tests).
+    #[cfg(test)]
+    pub fn empty() -> Self {
+        Self {
+            gilrs: None,
+            devices: HashMap::new(),
+            throttle_applied: None,
+            nozzle_seen: None,
+            zoom_seen: None,
+        }
+    }
+
     fn new() -> Self {
         let mut gilrs = match gilrs::GilrsBuilder::new().with_default_filters(false).build() {
             Ok(g) => Some(g),

@@ -260,7 +260,12 @@ change is saved at once.
   down: drop the locks, left: designate), a countermeasures hat dispenses (up: flare, down: chaff,
   right: decoy, left: ECM) and a throttle's slew stick moves the sensor cursor. Built-in bindings
   show green in the list. Anything you bind or clear yourself overrides them; *CLEAR ALL* turns the
-  built-in layouts off. Only the first of two identical devices gets the layout.
+  built-in layouts off, *DEFAULT JOYSTICK* drops your own joystick bindings and turns the built-in
+  layouts (and the gamepad layout) back on. Only the first of two identical devices gets the layout.
+- **Taken inputs.** A key, mouse button, joystick button or axis can only do one thing: binding it
+  takes it away from whatever had it, and the line under the joysticks says so, e.g.
+  `BRAKES -> ArrowLeft (was: ROLL LEFT)`. **UNDO** beside it puts the bindings back as they were
+  before the last binding, *DEFAULT KEYS*, *DEFAULT JOYSTICK* or *CLEAR ALL*.
 
 ![VR controller mapping](images/controls_vr.png)
 

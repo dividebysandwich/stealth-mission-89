@@ -35,6 +35,9 @@ pub struct InputDialog {
     /// The row a pressed key or joystick button jumped to (highlighted), and whether it is still
     /// to be scrolled into view.
     jump: Option<(ButtonTarget, bool)>,
+    /// UNDO: the mapping before the last binding or reset, and after it (UNDO is offered while
+    /// nothing else changed it).
+    undo: Option<(InputConfig, InputConfig)>,
 }
 
 impl InputDialog {
@@ -50,6 +53,17 @@ impl InputDialog {
         self.status = None;
         self.search.clear();
         self.jump = None;
+        self.undo = None;
+    }
+
+    /// The status of a binding made: what was bound to what, and what lost the input to it.
+    fn bound(&mut self, what: Binding, input: &str, lost: Vec<String>) {
+        let mut text = format!("{} -> {}", what.name().to_uppercase(), input);
+        if !lost.is_empty() {
+            text.push_str("  ");
+            text.push_str(&t!("input-was", what = lost.join(", ").to_uppercase()));
+        }
+        self.status = Some(text);
     }
 
     /// Jumps to the row a key or joystick button pressed this frame is bound to (none while a
@@ -188,6 +202,27 @@ impl Capture {
 mod tests {
     use super::*;
 
+    /// A key or mouse button bound to another action names the action that had it.
+    #[test]
+    fn a_binding_names_what_lost_its_input() {
+        let config = InputConfig::default();
+        let hotas = Hotas::empty();
+        let roll_left = ButtonTarget::Action(Action::RollLeft);
+        let brakes = Binding::Key(ButtonTarget::Action(Action::Brakes));
+        let lost = losing(&config, &hotas, brakes, Taking::Key(Mods::None, KeyCode::ArrowLeft));
+        assert_eq!(lost, vec![Binding::Key(roll_left).name()]);
+        // Its own key again: nothing lost.
+        let lost = losing(
+            &config,
+            &hotas,
+            Binding::Key(roll_left),
+            Taking::Key(Mods::None, KeyCode::ArrowLeft),
+        );
+        assert!(lost.is_empty());
+        let lost = losing(&config, &hotas, brakes, Taking::Mouse(MouseInput::Right));
+        assert_eq!(lost.len(), 1);
+    }
+
     #[test]
     fn trigger_can_be_bound_again_after_release() {
         for code in [0x30002, 0x30005] {
@@ -240,6 +275,51 @@ mod tests {
             assert!(matches!(axis.poll([&d]), Some((_, Found::Axis(42)))));
         }
     }
+}
+
+/// The input a binding takes, to name what else had it.
+enum Taking<'a> {
+    Key(Mods, KeyCode),
+    Mouse(MouseInput),
+    Axis(&'a str, u32),
+    Button(&'a str, Source),
+}
+
+/// The other controls and targets that lose the input to `what` (the built-in layouts' too):
+/// their names, each once.
+fn losing(config: &InputConfig, hotas: &Hotas, what: Binding, input: Taking) -> Vec<String> {
+    let target = match what {
+        Binding::Axis(_) => None,
+        Binding::Button(t) | Binding::Key(t) => Some(t),
+    };
+    let other = |t: ButtonTarget| (Some(t) != target).then(|| Binding::Key(t).name());
+    let mut names: Vec<String> = match input {
+        Taking::Key(mods, key) => config
+            .keys
+            .iter()
+            .filter(|m| m.mods == mods && m.key == key)
+            .filter_map(|m| other(m.target))
+            .collect(),
+        Taking::Mouse(button) => config
+            .mouse
+            .iter()
+            .filter(|m| m.button == button)
+            .filter_map(|m| other(m.target))
+            .collect(),
+        Taking::Axis(device, code) => hotas
+            .axes(config)
+            .filter(|m| m.device == device && m.code == code)
+            .filter(|m| what != Binding::Axis(m.control))
+            .map(|m| m.control.name().to_string())
+            .collect(),
+        Taking::Button(device, source) => hotas
+            .buttons(config)
+            .filter(|m| m.device == device && m.source == source)
+            .filter_map(|m| other(m.target))
+            .collect(),
+    };
+    names.dedup();
+    names
 }
 
 /// "Device: Axis 1", the device name shortened but its ids and number kept.
@@ -367,32 +447,32 @@ pub fn show(
             dialog.status = None;
         } else if let Binding::Key(target) = cap.what {
             if let Some((mods, key)) = pressed_key(keys) {
+                let what = cap.what;
+                let lost = losing(config, hotas, what, Taking::Key(mods, key));
+                let before = config.clone();
                 config.bind_key(target, mods, key);
-                dialog.status = Some(format!(
-                    "{} -> {}",
-                    cap.what.name().to_uppercase(),
-                    crate::input::key_label(mods, key)
-                ));
+                dialog.undo = Some((before, config.clone()));
+                dialog.bound(what, &crate::input::key_label(mods, key), lost);
                 dialog.capture = None;
             }
         } else if let Some((device, input)) = cap.poll(hotas.devices()) {
             let what = cap.what;
-            let label = match (what, input) {
+            let before = config.clone();
+            let (label, lost) = match (what, input) {
                 (Binding::Axis(control), Found::Axis(code)) => {
+                    let lost = losing(config, hotas, what, Taking::Axis(&device, code));
                     config.bind_axis(control, device.clone(), code);
-                    t!("input-axis", n = code & 0xffff)
+                    (t!("input-axis", n = code & 0xffff), lost)
                 }
                 (Binding::Button(target), Found::Button(source)) => {
+                    let lost = losing(config, hotas, what, Taking::Button(&device, source));
                     config.bind_button(target, device.clone(), source);
-                    source.label()
+                    (source.label(), lost)
                 }
                 _ => unreachable!("capture only reports inputs of its binding's kind"),
             };
-            dialog.status = Some(format!(
-                "{} -> {}",
-                what.name().to_uppercase(),
-                binding_label(&device, &label)
-            ));
+            dialog.undo = Some((before, config.clone()));
+            dialog.bound(what, &binding_label(&device, &label), lost);
             dialog.capture = None;
         }
         // Keep polling while nothing else redraws the window.
@@ -487,10 +567,26 @@ pub fn show(
                             }
                         });
                     }
-                    match &dialog.status {
-                        Some(text) => ui.colored_label(AMBER, text),
-                        None => ui.label(egui::RichText::new(t!("input-help")).color(DIM)),
-                    };
+                    // UNDO while the mapping is as the last binding or reset left it.
+                    if dialog.undo.as_ref().is_some_and(|(_, after)| after != &*config) {
+                        dialog.undo = None;
+                    }
+                    ui.horizontal_wrapped(|ui| {
+                        match &dialog.status {
+                            Some(text) => ui.colored_label(AMBER, text),
+                            None => ui.label(egui::RichText::new(t!("input-help")).color(DIM)),
+                        };
+                        if dialog.undo.is_some()
+                            && ui
+                                .button(icon_text(ui, icon::RESET, t!("input-undo")))
+                                .on_hover_text(t!("input-undo.facts"))
+                                .clicked()
+                            && let Some((before, _)) = dialog.undo.take()
+                        {
+                            *config = before;
+                            dialog.status = None;
+                        }
+                    });
                     ui.label(egui::RichText::new(t!("input-preview-help")).color(DIM).small());
                 });
                 preview(ui, stick);
@@ -630,12 +726,11 @@ pub fn show(
                                     && add.hovered()
                                     && let Some(button) = pressed_mouse(ui)
                                 {
+                                    let lost = losing(config, hotas, key, Taking::Mouse(button));
+                                    let before = config.clone();
                                     config.bind_mouse(target, button);
-                                    dialog.status = Some(format!(
-                                        "{} -> {}",
-                                        key.name().to_uppercase(),
-                                        button.label()
-                                    ));
+                                    dialog.undo = Some((before, config.clone()));
+                                    dialog.bound(key, &button.label(), lost);
                                     dialog.capture = None;
                                 }
                                 if ui
@@ -704,19 +799,40 @@ pub fn show(
                     .on_hover_text(t!("input-default-keys.facts"))
                     .clicked()
                 {
+                    let before = config.clone();
                     config.keys = default_key_mappings();
                     config.mouse = crate::hotas::default_mouse_mappings();
+                    dialog.undo = Some((before, config.clone()));
+                    dialog.status = Some(t!("input-default-keys-done").to_string());
+                }
+                // The joysticks' own bindings go, the built-in layouts of known devices are back.
+                if ui
+                    .add(big_button(t!("input-default-joystick")).icon(icon::RESET))
+                    .on_hover_text(t!("input-default-joystick.facts"))
+                    .clicked()
+                {
+                    let before = config.clone();
+                    config.axes.clear();
+                    config.buttons.clear();
+                    config.device_defaults = true;
+                    config.gamepad_defaults = true;
+                    config.cleared_defaults.clear();
+                    dialog.undo = Some((before, config.clone()));
+                    dialog.status = Some(t!("input-default-joystick-done").to_string());
                 }
                 if ui
                     .add(big_button(t!("input-clear-all")).icon(icon::CLEAR))
                     .on_hover_text(t!("input-clear-all.facts"))
                     .clicked()
                 {
+                    let before = config.clone();
                     config.axes.clear();
                     config.buttons.clear();
                     // The built-in layouts too (the checkbox brings them back).
                     config.device_defaults = false;
                     config.cleared_defaults.clear();
+                    dialog.undo = Some((before, config.clone()));
+                    dialog.status = Some(t!("input-clear-all-done").to_string());
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
