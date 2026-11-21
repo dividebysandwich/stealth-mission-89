@@ -118,6 +118,27 @@ impl Stage<'_, '_> {
         ground_at(self.theater.as_deref(), p)
     }
 
+    /// Whether nothing stands in the way from `a` to `b` (Bevy metres): the hills stay `margin`
+    /// metres under the line all along it, and where the line runs low no buildings or trees
+    /// stand under it (the last few metres at `b`, where the target stands, left out).
+    pub fn sight_clear(&self, a: DVec3, b: DVec3, margin: f64) -> bool {
+        let len = a.distance(b);
+        let n = (len / 20.0).ceil().max(2.0) as usize;
+        (1..n).all(|i| {
+            let p = a.lerp(b, i as f64 / n as f64);
+            let agl = p.y - self.ground(p);
+            if p.distance(b) < 30.0 {
+                return agl > -1.0;
+            }
+            agl > margin
+                && (agl > 40.0
+                    || self
+                        .scenery
+                        .as_ref()
+                        .is_none_or(|s| s.unit_clear(DVec2::new(p.x, -p.z), 8.0)))
+        })
+    }
+
     /// The runway ends of the scenery's airfields (aim point, unit direction towards the
     /// approaching aircraft; metres east, north).
     pub fn runway_ends(&self) -> Vec<(DVec2, DVec2)> {

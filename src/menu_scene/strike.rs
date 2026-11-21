@@ -190,13 +190,55 @@ fn strike(
     fov.0 = 45f32.to_radians();
 }
 
+/// A ground target's run: the target on open ground (no town, no woods round it), the heading
+/// the shooter comes in on chosen so that it clears the hills on its way and sees the target
+/// from where it fires (no hill or building in between); the heading, the shooter's start and
+/// the target's place.
+fn ground_run(
+    stage: &Stage,
+    first: f32,
+    agl: f32,
+    speed: f32,
+    ahead: f32,
+    climb: f32,
+) -> (f32, DVec3, DVec3) {
+    let target_at = stage.land();
+    let aim = target_at + DVec3::Y * 1.5;
+    let run = |heading: f32| {
+        let f = stage::forward(heading);
+        let back = enu((-f.x * ahead) as f64, 0.0, (-f.y * ahead) as f64);
+        let start = target_at + back;
+        // As high over the ground as it should be at the start, and over the target too.
+        let start = DVec3::new(start.x, stage.ground(start).max(target_at.y) + agl as f64, start.z);
+        (start, f)
+    };
+    let good = |heading: f32| {
+        let (start, f) = run(heading);
+        // The track to the target (and a little past it) above the hills.
+        let flown = ahead / speed + 1.0;
+        let path_ok = (0..=40).all(|i| {
+            let t = flown * i as f32 / 40.0;
+            let along = f * speed * t;
+            let p = start + enu(along.x as f64, (climb * t) as f64, along.y as f64);
+            p.y - stage.ground(p) > (agl as f64 * 0.4).min(25.0)
+        });
+        // In sight from where it fires and from the camera behind it.
+        let fire = start + enu((f.x * speed * FIRE_AT) as f64, 0.0, (f.y * speed * FIRE_AT) as f64);
+        let eye = stage::behind(fire, heading, 40.0, 0.0, 6.0);
+        path_ok && stage.sight_clear(fire, aim, 3.0) && stage.sight_clear(eye, aim, 3.0)
+    };
+    // Round the compass from the scene's own heading until a run is clear.
+    let heading = (0..24)
+        .map(|i| first + i as f32 * std::f32::consts::TAU / 24.0)
+        .find(|&h| good(h))
+        .unwrap_or(first);
+    (heading, run(heading).0, target_at)
+}
+
 /// The shooter on its way to its target, the target there.
 fn spawn(stage: &mut Stage) {
     let (kind, weapon) = LOADS[stage.director.pick(LOADS.len())];
     let heli = kind.spec().helicopter;
-    let ground = stage.land();
-    let heading = ((stage.director.roll >> 8) % 360) as f32 * 0.0175;
-    let f = stage::forward(heading);
     // Where the shooter is 0 s in, how high and fast, and where the target stands (metres
     // along the track from the start).
     let (agl, speed, ahead) = match weapon {
@@ -208,14 +250,21 @@ fn spawn(stage: &mut Stage) {
         Weapon::Gun if heli => (50.0, 20.0, 900.0),
         Weapon::Gun => (500.0, 150.0, 1300.0),
     };
-    let start = ground + DVec3::Y * agl as f64;
-    let target_at = ground + enu((f.x * ahead) as f64, 0.0, (f.y * ahead) as f64);
-    let target_at = DVec3::new(target_at.x, stage.ground(target_at), target_at.z);
     // Diving at a ground target with the gun.
     let climb = match weapon {
         Weapon::Gun if !heli => -(agl - 60.0) / (ahead / speed),
         _ => 0.0,
     };
+    let first = ((stage.director.roll >> 8) % 360) as f32 * 0.0175;
+    let (heading, start, target_at) = if matches!(weapon, Weapon::AirMissile(_)) {
+        let ground = stage.land();
+        let f = stage::forward(first);
+        let target_at = ground + enu((f.x * ahead) as f64, 0.0, (f.y * ahead) as f64);
+        (first, ground + DVec3::Y * agl as f64, target_at)
+    } else {
+        ground_run(stage, first, agl, speed, ahead, climb)
+    };
+    let f = stage::forward(heading);
     let weave = Weave {
         start,
         heading,
