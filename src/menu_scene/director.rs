@@ -9,7 +9,8 @@
 //! `SM89_MENU_SNAP=<seconds>,...` with `SM89_MENU_SNAP_PNG=<path>` saves `<path>_N.png` at those
 //! times of the held scene's first run, then quits. `SM89_MENU_ROLL=<n>` fixes its random choices (its aircraft, weapon, place);
 //! `SM89_MENU_SHOT_AT=<start>[,<stop>]` starts it that far in and stops its clock at `stop`
-//! (else it plays again from the start at its end).
+//! (else it plays again from the start at its end). In the browser the shot, its start and the
+//! roll are the page's URL parameters of these names.
 
 use bevy::prelude::*;
 use stealth_mission::weather::Sky as SkyKind;
@@ -323,7 +324,7 @@ impl Director {
     }
 
     fn held() -> Option<Self> {
-        let v = std::env::var("SM89_MENU_SHOT").ok()?;
+        let v = test_var("SM89_MENU_SHOT")?;
         let mut it = v.split(',');
         let name = it.next()?.trim();
         let shot = SHOTS.into_iter().find(|s| s.name() == name)?;
@@ -341,12 +342,12 @@ impl Director {
             let theater = theater.unwrap_or_else(|| theater_for(shot.place()));
             Look::roll(theater, sky, hours, phase)
         };
-        let at = std::env::var("SM89_MENU_SHOT_AT").unwrap_or_default();
+        let at = test_var("SM89_MENU_SHOT_AT").unwrap_or_default();
         let mut at = at.split(',').map(|t| t.trim().parse::<f32>().ok());
         let from = at.next().flatten().unwrap_or(0.0);
         let stop = at.next().flatten();
         // `SM89_MENU_ROLL=<n>`: the scene's random choices.
-        let roll = std::env::var("SM89_MENU_ROLL").ok().and_then(|r| r.parse().ok());
+        let roll = test_var("SM89_MENU_ROLL").and_then(|r| r.parse().ok());
         Some(Director {
             shot,
             t: from,
@@ -400,7 +401,7 @@ impl Director {
             // Again from the start.
             self.t = self.from;
             self.spawned = false;
-            if std::env::var("SM89_MENU_ROLL").is_err() {
+            if test_var("SM89_MENU_ROLL").is_none() {
                 self.roll = rand::random();
             }
             return true;
@@ -478,8 +479,22 @@ pub fn one_theater() -> Option<&'static str> {
     *ONE.get_or_init(|| {
         let one =
             cfg!(target_arch = "wasm32") || std::env::var_os("SM89_MENU_ONE_THEATER").is_some();
-        one.then(|| SEA_THEATERS[rand::random_range(0..SEA_THEATERS.len())])
+        // A held scene's theater (`SM89_MENU_SHOT`'s fourth field), else a random one.
+        let held = test_var("SM89_MENU_SHOT").and_then(|v| {
+            let t = v.split(',').nth(3)?.trim().to_string();
+            SEA_THEATERS.into_iter().find(|&x| x == t)
+        });
+        one.then(|| held.unwrap_or_else(|| SEA_THEATERS[rand::random_range(0..SEA_THEATERS.len())]))
     })
+}
+
+/// A test aid's setting: the environment variable, in the browser the page's URL parameter of
+/// that name (`?SM89_MENU_SHOT=dip,13,clear,libya`).
+fn test_var(name: &str) -> Option<String> {
+    #[cfg(target_arch = "wasm32")]
+    return crate::multiplayer_menu::page_parameter(name);
+    #[cfg(not(target_arch = "wasm32"))]
+    std::env::var(name).ok()
 }
 
 /// A scene `place`d so can be shown on `theater`.
