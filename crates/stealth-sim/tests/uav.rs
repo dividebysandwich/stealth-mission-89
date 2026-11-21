@@ -1004,3 +1004,70 @@ fn propeller_drones_climb_better_by_hand_with_the_same_top_speed() {
     let rate = (u.pos[2] - alt) / 5.0;
     assert!((8.0..10.5).contains(&rate) && u.speed > 30.0, "{rate} m/s at {} m/s", u.speed);
 }
+
+/// A supply convoy's technical at map point `at`, its two trucks 100 m apart behind it.
+fn technical_at(sim: &mut Sim, at: (i32, i32)) -> usize {
+    for (dx, kind) in [(0, GroundKind::Technical), (6, GroundKind::CivTruck), (12, GroundKind::ArmyTruck)] {
+        sim.units_mut().push(GroundUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
+    }
+    sim.units().len() - 3
+}
+
+/// The campaign's gun shells in the air.
+fn shells(sim: &Sim) -> usize {
+    sim.ai_shells().count()
+}
+
+#[test]
+fn a_technical_fires_only_at_a_drone_within_600_m() {
+    let (mut sim, k, _, _) = center();
+    let at = off(&sim, k, 4000.0, 0.0);
+    technical_at(&mut sim, at);
+    // A Stork circling 1.5 km off at 500 m: out of the machine gun's reach.
+    let far = off(&sim, k, 2500.0, 0.0);
+    launch(&mut sim, UavKind::Stork, vec![wp(far, 500.0, WpKind::Loiter)]).unwrap();
+    let mut fired = 0;
+    for _ in 0..120 * 15 {
+        sim.step(&idle(), 15);
+        fired += shells(&sim);
+    }
+    assert_eq!(fired, 0, "fired at a drone out of reach");
+    assert_eq!(sim.uavs().len(), 1);
+    // An FP-2 diving at the trucks comes into reach: the technical opens up.
+    launch(&mut sim, UavKind::Fp2, vec![wp(at, 300.0, WpKind::Terminate)]).unwrap();
+    let mut fired = 0;
+    for _ in 0..400 * 15 {
+        sim.step(&idle(), 15);
+        fired += shells(&sim);
+        if sim.uavs().len() < 2 {
+            break;
+        }
+    }
+    assert!(fired > 0, "never fired at the diving FP-2");
+}
+
+/// Balance check (`cargo test -p stealth-sim --test uav truck_strike_odds -- --ignored
+/// --nocapture`): how often an FP-2 gets through to a supply truck with a technical beside it,
+/// from 20 directions.
+#[test]
+#[ignore]
+fn truck_strike_odds() {
+    let (mut hits, mut others) = (0, 0);
+    let n = 20;
+    for t in 0..n {
+        let (mut sim, k, _, _) = center();
+        let a = t as f64 * 0.31;
+        let at = off(&sim, k, 6000.0 * a.cos(), 6000.0 * a.sin());
+        let truck = technical_at(&mut sim, at) + 1;
+        launch(&mut sim, UavKind::Fp2, vec![wp((at.0 + 6, at.1), 300.0, WpKind::Terminate)]).unwrap();
+        for _ in 0..400 {
+            run(&mut sim, 1);
+            if sim.uavs().is_empty() {
+                break;
+            }
+        }
+        hits += sim.units()[truck].destroyed as i32;
+        others += sim.units()[truck - 1].destroyed as i32 + sim.units()[truck + 1].destroyed as i32;
+    }
+    eprintln!("{hits}/{n} got through, {others} vehicles beside the truck destroyed too");
+}

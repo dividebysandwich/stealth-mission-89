@@ -21,6 +21,10 @@ pub struct RoadEdge {
     /// Over a bridge (its own model carries the road; `z` is the deck's height).
     #[serde(default)]
     pub bridge: bool,
+    /// A bridge's span that carries the road on its own model (a target): where it is
+    /// (metres) and its model number. The road is cut while it is down.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arch: Option<(f64, f64, u8)>,
     pub pts: Vec<(f64, f64, f64)>,
 }
 
@@ -161,6 +165,21 @@ impl RoadNet {
         best.map(|(_, z)| z)
     }
 
+    /// The bridge edge whose arch (model `shape`) stands nearest (x, y) within `reach` metres:
+    /// its index.
+    pub fn arch_near(&self, shape: u8, x: f64, y: f64, reach: f64) -> Option<usize> {
+        self.edges
+            .iter()
+            .enumerate()
+            .filter_map(|(k, e)| {
+                let (ax, ay, s) = e.arch?;
+                let d = (ax - x).hypot(ay - y);
+                (s == shape && d <= reach).then_some((k, d))
+            })
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(k, _)| k)
+    }
+
     /// The edges on land as lines of points (metres east, north), for the scenery's highways.
     pub fn land_lines(&self) -> impl Iterator<Item = Vec<(f64, f64)>> + '_ {
         self.edges.iter().filter(|e| !e.bridge).map(|e| e.pts.iter().map(|p| (p.0, p.1)).collect())
@@ -178,6 +197,7 @@ mod tests {
             b,
             name: String::new(),
             bridge,
+            arch: None,
             pts: pts.iter().map(|&(x, y)| (x, y, if bridge { 30.0 } else { 0.0 })).collect(),
         };
         RoadNet {

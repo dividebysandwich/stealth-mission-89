@@ -477,7 +477,8 @@ class Layout:
                     steps = max(1, math.ceil(bridge.length / ROAD_STEP))
                     deck = [(*bridge.point(bridge.length * (1 - j / steps), n), bridge.deck(bridge.length * (1 - j / steps)))
                             for j in range(steps + 1)]
-                    edges.append((e, w, road, True, deck))
+                    # The road arch (its own model, a target): a road cut while it is down.
+                    edges.append((e, w, road, {"arch": bridge.point(kerch.ARCH_S, n), "shape": kerch.ROAD_ARCH}, deck))
                     a, pts = w, [(*bridge.point(0.0, n), 0.0)]
                 elif isinstance(item, str):
                     i = index[item]
@@ -902,8 +903,10 @@ def write_ron(lay, grids, world, model_count, model_attr):
         net = lay.road_net
         nodes = ", ".join("(name: %s, x: %.1f, y: %.1f)" % (ron_str(n), x, y) for n, x, y in net["nodes"])
         edges = ",\n            ".join(
-            "(a: %d, b: %d, name: %s, bridge: %s, pts: [%s])" % (
-                a, b, ron_str(name), "true" if br else "false", ", ".join("(%.1f, %.1f, %.1f)" % p for p in pts))
+            "(a: %d, b: %d, name: %s, bridge: %s,%s pts: [%s])" % (
+                a, b, ron_str(name), "true" if br else "false",
+                " arch: Some((%.1f, %.1f, %d))," % (*br["arch"], br["shape"]) if br else "",
+                ", ".join("(%.1f, %.1f, %.1f)" % p for p in pts))
             for a, b, name, br, pts in net["edges"])
         roads = "\n    roads: (\n        nodes: [%s],\n        edges: [\n            %s\n        ],\n        entries: %s,\n    )," % (
             nodes, edges, ron_list(net["entries"]))
@@ -974,7 +977,8 @@ def write_json(grids, world, launch, road_net=None):
                              ("patrol_fighter", getattr(geo, "PATROL_FIGHTER", None))) if v},
         **({"roads": {
             "nodes": [{"name": n, "x": round(x, 1), "y": round(y, 1)} for n, x, y in road_net["nodes"]],
-            "edges": [{"a": a, "b": b, "name": name, "bridge": br, "pts": [[round(v, 1) for v in p] for p in pts]}
+            "edges": [{"a": a, "b": b, "name": name, "bridge": bool(br), "pts": [[round(v, 1) for v in p] for p in pts],
+                       **({"arch": [round(br["arch"][0], 1), round(br["arch"][1], 1), br["shape"]]} if br else {})}
                       for a, b, name, br, pts in road_net["edges"]],
             "entries": road_net["entries"]}} if road_net else {}),
         "world": world,

@@ -1119,6 +1119,18 @@ pub enum SimEvent {
         #[serde(default)]
         radar: Option<usize>,
     },
+    /// Campaign: supply convoy `tag` is over: it reached its base with `trucks` trucks still
+    /// running (0: all lost, or it turned back) and left the world.
+    SupplyConvoyArrived {
+        tag: u32,
+        trucks: u8,
+    },
+    /// Campaign: `trucks` trucks of supply convoy `tag` turned back at a cut road (their loads
+    /// go back) and left the world.
+    SupplyTurnedBack {
+        tag: u32,
+        trucks: u8,
+    },
     /// A low-level air defence unit was destroyed (`Sim::units` index).
     AaaDestroyed {
         unit: usize,

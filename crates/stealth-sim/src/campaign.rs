@@ -1935,6 +1935,17 @@ impl Sim {
                 }
                 continue;
             }
+            if u.kind == GroundKind::Technical {
+                // Drones only, by slant range, down to the ground (an FP-2 diving at a truck).
+                let me = u.metres_on(&hills);
+                c.aaa_target[k] = (0..sides.len())
+                    .filter(|&j| sides[j] == Some(!blue) && unseen[j] && pos[j][2] > me[2] + 3.0)
+                    .map(|j| (j, len(sub(pos[j], me))))
+                    .filter(|&(_, d)| d < TECHNICAL_REACH)
+                    .min_by(|a, b| a.1.total_cmp(&b.1))
+                    .map(|(j, _)| j);
+                continue;
+            }
             let (_, reach, ceiling) = gun_envelope(u.kind);
             let reach = (reach / M_PER_MAP) as i32;
             let Some((j, _)) = near(u.x, u.y, !blue, reach, false, 15.0, false) else {
@@ -2186,7 +2197,12 @@ impl Sim {
             // A Gepard fires what it has (its refill comes from the stockpile), an enemy gun
             // what its magazine holds.
             let gepard = u.kind == GroundKind::Gepard;
-            let dry = c.magazines && !gepard && c.gun_rounds.get(k).is_some_and(|&n| n <= 0);
+            // A technical's machine gun has the convoy's ammunition boxes (no magazine).
+            let technical = u.kind == GroundKind::Technical;
+            let dry = c.magazines
+                && !gepard
+                && !technical
+                && c.gun_rounds.get(k).is_some_and(|&n| n <= 0);
             if (gepard && u.rounds <= 0) || dry {
                 u.burst = 0;
                 continue;
@@ -2214,12 +2230,13 @@ impl Sim {
             if (flak && u.burst % fs != 0) || (!flak && u.burst & 1 != 0) {
                 continue;
             }
-            let sigma = 0.008 * skill;
+            let sigma = 0.008 * skill * if technical { TECHNICAL_SPREAD } else { 1.0 };
             let (a, e) = (az + jitter(&mut rng) * sigma, el + jitter(&mut rng) * sigma);
             let dir = [a.sin() * e.cos(), a.cos() * e.cos(), e.sin()];
             let ttl = if flak { time } else { reach * 1.3 / v0 };
             if gepard {
                 u.rounds = (u.rounds - 2).max(0);
+            } else if technical {
             } else if c.magazines
                 && let Some(n) = c.gun_rounds.get_mut(k)
             {
@@ -2548,7 +2565,7 @@ impl Sim {
     }
 
     /// A SEAD aircraft's anti-radiation missile destroyed air defence unit `k`.
-    fn aaa_struck(&mut self, k: usize) {
+    pub(crate) fn aaa_struck(&mut self, k: usize) {
         let Some(a) = self.units.get(k).copied().filter(|a| !a.destroyed) else { return };
         let u = &mut self.units[k];
         u.destroyed = true;
@@ -2649,9 +2666,15 @@ fn gun_envelope(kind: GroundKind) -> (f64, f64, f64) {
         GroundKind::S60 => (1000.0, 6000.0, 4500.0),
         GroundKind::Manpads => (0.0, 5000.0, 3500.0),
         GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
+        GroundKind::Technical => (840.0, TECHNICAL_REACH, 500.0),
         _ => (0.0, 0.0, 0.0),
     }
 }
+
+/// A supply convoy's technical: its heavy machine gun fires at drones (only) this close (m,
+/// slant range), this many times less accurately than an air defence gun.
+pub const TECHNICAL_REACH: f64 = 600.0;
+const TECHNICAL_SPREAD: f64 = 4.0;
 
 /// How far a gun or a MANPADS team engages (map units).
 pub fn gun_reach(kind: GroundKind) -> f32 {

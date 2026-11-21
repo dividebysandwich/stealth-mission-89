@@ -18,8 +18,10 @@ use crate::types::SimEvent;
 /// Road march speed (m/s) and cross-country speed in the assault.
 pub const CONVOY_SPEED: f64 = 20.0;
 const ASSAULT_SPEED: f64 = 6.0;
-/// Metres between the column's vehicles.
+/// Metres between the column's vehicles, and between a supply convoy's trucks (wider: a
+/// drone's blast takes one truck at a time).
 pub const GAP: f64 = 60.0;
+pub const SUPPLY_GAP: f64 = 100.0;
 /// The convoy leaves the road this far (m) before its goal and attacks in line abreast, its
 /// vehicles this far apart, stopping this short of the place's centre.
 const ASSAULT_START: f64 = 2000.0;
@@ -65,6 +67,13 @@ pub struct Convoy {
     /// Its vehicles in column order (`Sim::units` indices).
     pub units: Vec<u16>,
     pub mode: ConvoyMode,
+    /// A supply convoy (trucks on the roads): never halts or assaults, its vehicles leave
+    /// the world at the end of the route ([`SimEvent::SupplyConvoyArrived`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub supply: bool,
+    /// Its road was cut ahead of it: the route now ends short of the gap.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub cut: bool,
 }
 
 impl Convoy {
@@ -75,6 +84,11 @@ impl Convoy {
 
     fn length(&self) -> f64 {
         self.route.windows(2).map(|w| dist(w[0], w[1])).sum()
+    }
+
+    /// Metres between its vehicles.
+    pub fn gap(&self) -> f64 {
+        if self.supply { SUPPLY_GAP } else { GAP }
     }
 }
 
@@ -104,6 +118,9 @@ pub struct GroundState {
     pub rng: Option<Rng>,
     /// Road march speed (m/s), 0: [`CONVOY_SPEED`] (a test aid).
     pub speed: f32,
+    /// Roads cut since the last frame (where, metres; reach): [`Sim::cut_supply`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cuts: Vec<([f64; 2], f64)>,
 }
 
 impl GroundState {
@@ -268,6 +285,12 @@ fn point_at(route: &[[f64; 2]], s: f64) -> ([f64; 2], f64) {
     }
 }
 
+/// How far along its route a supply convoy's head drives: until its last vehicle is at the end
+/// of the road, or its head at the gap in a cut road.
+fn supply_end(v: &Convoy, length: f64) -> f64 {
+    if v.cut { length } else { length + (v.units.len() as f64 - 1.0).max(0.0) * v.gap() }
+}
+
 /// Map units (x east, y south) of a point in metres.
 fn map_of(p: [f64; 2]) -> (i32, i32) {
     ((p[0] / M_PER_MAP).round() as i32, 0x8000 - (p[1] / M_PER_MAP).round() as i32)
@@ -353,8 +376,34 @@ impl Sim {
         kinds: &[GroundKind],
         route: &[(i32, i32)],
     ) {
-        let Some(mut c) = self.campaign.take() else { return };
         let route: Vec<[f64; 2]> = route.iter().map(|&(x, y)| metres_of(x, y)).collect();
+        self.spawn_column(tag, blue, kinds, route, false, 0.0);
+    }
+
+    /// Campaign: a supply convoy of `kinds` (trucks and their escort) drives `route` (metres
+    /// east, north, along a road) to the base at its end, its head `along` metres along it
+    /// already (a convoy put back on the road).
+    pub fn spawn_supply_convoy(
+        &mut self,
+        tag: u32,
+        blue: bool,
+        kinds: &[GroundKind],
+        route: &[[f64; 2]],
+        along: f64,
+    ) {
+        self.spawn_column(tag, blue, kinds, route.to_vec(), true, along);
+    }
+
+    fn spawn_column(
+        &mut self,
+        tag: u32,
+        blue: bool,
+        kinds: &[GroundKind],
+        route: Vec<[f64; 2]>,
+        supply: bool,
+        start: f64,
+    ) {
+        let Some(mut c) = self.campaign.take() else { return };
         let n = self.units.len();
         c.aaa_blue.resize(n, false);
         c.aaa_target.resize(n, None);
@@ -374,9 +423,10 @@ impl Sim {
                 .rev()
                 .collect();
             let mut units = Vec::new();
-            let along = (kinds.len() - 1) as f64 * GAP;
+            let gap = if supply { SUPPLY_GAP } else { GAP };
+            let along = (kinds.len() - 1) as f64 * gap + start.max(0.0);
             for (i, &kind) in kinds.iter().enumerate() {
-                let (p, heading) = point_at(&route, along - i as f64 * GAP);
+                let (p, heading) = point_at(&route, along - i as f64 * gap);
                 let mut u = GroundUnit {
                     kind,
                     aim_az: heading as f32,
@@ -419,6 +469,8 @@ impl Sim {
                 along,
                 units,
                 mode: ConvoyMode::March,
+                supply,
+                cut: false,
             });
         }
         self.campaign = Some(c);
@@ -459,6 +511,13 @@ impl Sim {
                 *d = 0;
             }
         }
+        let cuts = std::mem::take(&mut g.cuts);
+        self.campaign = Some(c);
+        for (at, radius) in cuts {
+            self.apply_cut(at, radius);
+        }
+        let Some(mut c) = self.campaign.take() else { return };
+        let g = &mut c.ground;
         let fs = self.fs.max(1);
         let look = self.frame % fs == fs / 2;
         let mut convoys = std::mem::take(&mut g.convoys);
@@ -472,6 +531,7 @@ impl Sim {
         for v in &mut convoys {
             self.drive(v, speed, dt, look);
         }
+        convoys.retain(|v| !self.supply_arrived(v));
         // The vehicles on the move (their convoy not halted) fire and are hit less well.
         let driving: Vec<u32> =
             convoys.iter().filter(|v| v.mode != ConvoyMode::Halt).map(|v| v.tag).collect();
@@ -479,6 +539,134 @@ impl Sim {
         if let Some(c) = self.campaign.as_mut() {
             c.ground.convoys = convoys;
             c.ground.rng = Some(rng);
+        }
+    }
+
+    /// A supply convoy whose last vehicle reached the end of its route (the base, or the gap
+    /// in a cut road) leaves the world and reports its trucks still running: true then.
+    fn supply_arrived(&mut self, v: &Convoy) -> bool {
+        if !v.supply {
+            return false;
+        }
+        let end = supply_end(v, v.length());
+        let lost = v.units.iter().all(|&k| self.units[k as usize].destroyed);
+        if v.along < end && !lost {
+            return false;
+        }
+        let mut trucks = 0u8;
+        for &k in &v.units {
+            let u = &mut self.units[k as usize];
+            if u.destroyed {
+                continue;
+            }
+            trucks += u.kind.truck() as u8;
+            u.destroyed = true;
+            u.gone = true;
+            u.burst = 0;
+            u.tracking = false;
+        }
+        if v.cut {
+            self.emit(SimEvent::SupplyTurnedBack { tag: v.tag, trucks });
+            trucks = 0;
+        }
+        self.emit(SimEvent::SupplyConvoyArrived { tag: v.tag, trucks });
+        true
+    }
+
+    /// Campaign: the road is cut at `at` (metres east, north; a bridge's span came down): the
+    /// supply vehicles within `radius` metres of it are lost with it. A supply convoy still
+    /// short of the gap drives up to it and turns back ([`SimEvent::SupplyTurnedBack`] as it
+    /// gets there); of one strung out across it, the vehicles past it drive on and those short
+    /// of it turn back at once.
+    pub fn cut_supply(&mut self, at: [f64; 2], radius: f64) {
+        if let Some(c) = self.campaign.as_mut() {
+            c.ground.cuts.push((at, radius));
+        }
+    }
+
+    /// A cut road ([`Sim::cut_supply`]) takes effect (in the frame, for its events).
+    fn apply_cut(&mut self, at: [f64; 2], radius: f64) {
+        let Some(mut c) = self.campaign.take() else { return };
+        let mut lost = Vec::new();
+        let mut back: Vec<(u32, Vec<usize>)> = Vec::new();
+        for v in c.ground.convoys.iter_mut().filter(|v| v.supply) {
+            for &k in &v.units {
+                let u = &self.units[k as usize];
+                let m = u.metres();
+                if !u.destroyed && dist([m[0], m[1]], at) < radius {
+                    lost.push(k as usize);
+                }
+            }
+            // Where along its route the gap is, if still ahead of its last vehicle.
+            let mut s = 0.0;
+            let mut gap = None;
+            for w in v.route.windows(2) {
+                let d = dist(w[0], w[1]);
+                let t = if d > 0.0 {
+                    (((at[0] - w[0][0]) * (w[1][0] - w[0][0]) + (at[1] - w[0][1]) * (w[1][1] - w[0][1]))
+                        / (d * d))
+                        .clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                let p = [w[0][0] + (w[1][0] - w[0][0]) * t, w[0][1] + (w[1][1] - w[0][1]) * t];
+                if dist(p, at) < radius && gap.is_none() {
+                    gap = Some(s + d * t);
+                }
+                s += d;
+            }
+            let tail = v.along - (v.units.len() as f64 - 1.0).max(0.0) * v.gap();
+            let Some(g) = gap.filter(|&g| g > tail) else { continue };
+            if v.along > g - radius {
+                // Strung out across the gap: those short of it turn back.
+                let behind: Vec<usize> = v
+                    .units
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, _)| v.along - i as f64 * v.gap() < g - radius)
+                    .map(|(_, &k)| k as usize)
+                    .filter(|&k| !self.units[k].destroyed)
+                    .collect();
+                back.push((v.tag, behind));
+                continue;
+            }
+            {
+                // The column stops `radius` short of the gap.
+                let stop = g - radius;
+                let mut route = Vec::new();
+                let mut s = 0.0;
+                for w in v.route.windows(2) {
+                    let d = dist(w[0], w[1]);
+                    route.push(w[0]);
+                    if s + d >= stop {
+                        route.push(point_at(&v.route, stop).0);
+                        break;
+                    }
+                    s += d;
+                }
+                v.route = route;
+                v.along = v.along.min(stop);
+                v.cut = true;
+            }
+        }
+        self.campaign = Some(c);
+        for k in lost {
+            self.aaa_struck(k);
+        }
+        for (tag, units) in back {
+            let mut trucks = 0u8;
+            for k in units {
+                let u = &mut self.units[k];
+                if u.destroyed {
+                    continue;
+                }
+                trucks += u.kind.truck() as u8;
+                u.destroyed = true;
+                u.gone = true;
+                u.burst = 0;
+                u.tracking = false;
+            }
+            self.emit(SimEvent::SupplyTurnedBack { tag, trucks });
         }
     }
 
@@ -573,6 +761,21 @@ impl Sim {
             return;
         }
         let length = v.length();
+        if v.supply {
+            // Trucks drive on whatever happens, the last one up to the end of the road (the
+            // head up to a cut road's gap).
+            let end = supply_end(v, length);
+            v.along = (v.along + speed * dt).min(end);
+            for (i, &k) in v.units.iter().enumerate() {
+                let k = k as usize;
+                if self.units[k].destroyed {
+                    continue;
+                }
+                let (p, heading) = point_at(&v.route, v.along - i as f64 * v.gap());
+                place(&mut self.units[k], p, heading);
+            }
+            return;
+        }
         if look && v.mode != ConvoyMode::Assault {
             let contact = alive.iter().any(|&k| self.in_contact(k));
             v.mode = if contact { ConvoyMode::Halt } else { ConvoyMode::March };

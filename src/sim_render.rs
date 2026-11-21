@@ -162,6 +162,8 @@ fn unit_model(k: stealth_sim::aaa::GroundKind) -> i32 {
         k => AAA_MODELS + k as i32,
     }
 }
+/// How far off a bridge's road (m) a supply vehicle still drives on its deck.
+const VEHICLE_DECK_REACH: f64 = 20.0;
 const POSITION_WALL_M: f64 = 10.0;
 const POSITION_ROOM_M: f64 = 7.0;
 
@@ -778,7 +780,12 @@ fn sync_aaa(
                     .rem_euclid(std::f32::consts::TAU)
                     - std::f32::consts::PI;
                 let flat = aaa_point([e, n, 0.0]);
-                let at = flat + DVec3::Y * ground(flat);
+                // A supply truck on a bridge drives on its deck.
+                let deck = theater
+                    .as_ref()
+                    .filter(|_| u.kind.supply())
+                    .and_then(|t| t.roads.deck_height(e, n, VEHICLE_DECK_REACH));
+                let at = flat + DVec3::Y * deck.unwrap_or_else(|| ground(flat));
                 let heading = h0 + turn * a as f32;
                 // Driving (a frame's move, at the simulation's rate): dust behind the hull.
                 let gap = combat.frame_gap.max(1.0) / crate::combat::FS as f32;
@@ -799,7 +806,14 @@ fn sync_aaa(
         };
         pos.0 = at;
         drawn.0[i] = (at, heading);
-        tf.rotation = on_slope(at, heading);
+        let on_deck = u.fine.is_some()
+            && u.kind.supply()
+            && theater.as_ref().is_some_and(|t| {
+                let m = u.metres();
+                t.roads.deck_height(m[0], m[1], VEHICLE_DECK_REACH).is_some()
+            });
+        tf.rotation =
+            if on_deck { Quat::from_rotation_y(-heading) } else { on_slope(at, heading) };
         vis.set_if_neq(if u.gone { Visibility::Hidden } else { Visibility::Inherited });
         if let Some(mut s) = state {
             s.0[1] = u.destroyed as i16;
