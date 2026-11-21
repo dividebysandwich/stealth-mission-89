@@ -285,8 +285,7 @@ fn cover_benchmark(
 }
 
 /// The benchmark's screen over the menu (egui, which draws over Bevy's interface): the
-/// heading, a bar going back and forth (how long it takes is not known) and the seconds; it
-/// takes the pointer.
+/// heading, a bar of its progress and the seconds; it takes the pointer.
 fn draw_benchmark_cover(
     mut contexts: bevy_egui::EguiContexts,
     bench: Option<Res<crate::detail_benchmark::Bench>>,
@@ -321,10 +320,8 @@ fn draw_benchmark_cover(
                 egui::Rect::from_center_size(mid + egui::vec2(0.0, 10.0), egui::vec2(420.0, 10.0));
             p.rect_stroke(bar, 0.0, egui::Stroke::new(1.0, colour(DIM)), egui::StrokeKind::Inside);
             let t = bench.running_for();
-            let phase = (t / 1.5).fract();
-            let f = if phase < 0.5 { phase * 2.0 } else { 2.0 - phase * 2.0 };
             let mut fill = bar;
-            fill.set_width(bar.width() * f);
+            fill.set_width(bar.width() * bench.progress());
             p.rect_filled(fill, 0.0, colour(BRIGHT));
             p.text(
                 mid + egui::vec2(0.0, 36.0),

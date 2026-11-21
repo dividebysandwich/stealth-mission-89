@@ -1,9 +1,9 @@
-//! The graphics benchmark: it starts at the LOW preset and climbs (`LEVELS`: LOW, MEDIUM,
-//! HIGH) while the menu's scene keeps the target frame rate, measured for a few seconds behind
-//! the menu at each level; at the first level that is too slow it goes back to the last one that
-//! kept up (LOW if none did). The menu's preferences keep the result, and a notice says if it
-//! is below HIGH (OPTIONS > GRAPHICS raises it again). Starting low keeps a slow device (a
-//! phone) from building and drawing the costliest scene first, which took minutes there.
+//! The graphics benchmark: the menu's scene is measured for a few seconds at a level (`LEVELS`:
+//! LOW, MEDIUM, HIGH) behind the menu. A computer starts at HIGH and steps down until a level
+//! keeps the target frame rate (LOW if none does); a phone or tablet starts at LOW and climbs
+//! while it keeps up, then goes back to the last level that did (at HIGH its first frames took
+//! minutes). The menu's preferences keep the result, and a notice says if it is below HIGH
+//! (OPTIONS > GRAPHICS raises it again). The loading screens show its progress (`progress`).
 //!
 //! In the browser it runs on the first visit (`DONE_FILE`), behind the loading screen
 //! (web_loading.rs), which waits for it: each level builds the scene's pipelines again (new
@@ -15,7 +15,7 @@
 //! yet), behind a screen of its own (`loading.rs`), and again from OPTIONS > GRAPHICS' DETECT.
 //!
 //! `--detail-benchmark` runs it on the desktop too (tests; with `--novsync` and
-//! `SM89_DETAIL_BENCHMARK_FPS=<fps>` to make a fast machine stop lower).
+//! `SM89_DETAIL_BENCHMARK_FPS=<fps>` to make a fast machine step down).
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
@@ -37,9 +37,14 @@ fn not_run() -> bool {
     crate::prefs::load_json::<u32>(DONE_FILE).is_none_or(|v| v < version)
 }
 
-/// A phone or tablet's browser (its user agent says so, or an iPad's "desktop" one with a touch
-/// screen): the HIGH preset's first frames take minutes there.
+/// A phone or tablet (in the browser: its user agent says so, or an iPad's "desktop" one with a
+/// touch screen): the HIGH preset's first frames take minutes there.
 fn mobile() -> bool {
+    static MOBILE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *MOBILE.get_or_init(detect_mobile)
+}
+
+fn detect_mobile() -> bool {
     #[cfg(target_arch = "wasm32")]
     {
         let Some(navigator) = web_sys::window().map(|w| w.navigator()) else { return false };
@@ -51,7 +56,7 @@ fn mobile() -> bool {
         mobile_agent(ua_data_mobile, &agent, navigator.max_touch_points())
     }
     #[cfg(not(target_arch = "wasm32"))]
-    false
+    cfg!(target_os = "android")
 }
 
 /// `mobile()` from the browser's answers: `navigator.userAgentData.mobile` (Chromium), the user
@@ -65,12 +70,12 @@ fn mobile_agent(ua_data_mobile: Option<bool>, agent: &str, touch_points: i32) ->
         || (agent.contains("Macintosh") && touch_points > 1)
 }
 
-/// The benchmark runs from this start into the menu (`first_settings` started it at LOW).
+/// The benchmark runs from this start into the menu (`first_settings` set its first level).
 static STARTS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Called on a start into the menu, before anything is built: if the benchmark runs (a
 /// browser's first visit, a new player on the desktop, `--detail-benchmark`), the settings start
-/// at LOW, its first level.
+/// at its first level (`first_level`).
 pub fn first_settings(s: &mut Settings) {
     let forced = std::env::args().any(|a| a == "--detail-benchmark");
     let not_run = not_run();
@@ -81,15 +86,20 @@ pub fn first_settings(s: &mut Settings) {
         && crate::prefs::load_json::<serde_json::Value>("prefs.json").is_none()
         && !crate::loading::test_run();
     if forced || web_first_visit || desktop_first_run {
-        LEVELS[0].apply(s);
+        LEVELS[first_level(!mobile())].apply(s);
         STARTS.store(true, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
-/// The presets climbed, lowest first.
+/// The presets measured, lowest first.
 const LEVELS: [Preset; 3] = [Preset::Low, Preset::Medium, Preset::High];
 
-/// The frame rate (median frame time) a level must keep to climb to the next.
+/// The level measured first: HIGH stepping down, LOW climbing.
+fn first_level(down: bool) -> usize {
+    if down { LEVELS.len() - 1 } else { 0 }
+}
+
+/// The frame rate (median frame time) a level must keep.
 const TARGET_FPS: f32 = 40.0;
 /// Left out after the scene is up or a change (loading stutter; shader compiles, which can
 /// hold single frames for seconds): this long and this many frames.
@@ -114,10 +124,9 @@ impl Plugin for DetailBenchmarkPlugin {
             notice.run_if(in_state(AppState::Menu)).run_if(resource_exists::<Notice>),
         );
         if STARTS.load(std::sync::atomic::Ordering::Relaxed) {
-            if mobile() {
-                info!("detail benchmark: a phone or tablet");
-            }
-            app.insert_resource(Bench::new());
+            let down = !mobile();
+            info!("detail benchmark: {}", if down { "stepping down" } else { "climbing" });
+            app.insert_resource(Bench::new(down));
         }
     }
 }
@@ -125,12 +134,12 @@ impl Plugin for DetailBenchmarkPlugin {
 /// OPTIONS > GRAPHICS' DETECT was pressed (`request`).
 static REQUESTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Runs the benchmark again from LOW (OPTIONS > GRAPHICS' DETECT).
+/// Runs the benchmark again (OPTIONS > GRAPHICS' DETECT).
 pub fn request() {
     REQUESTED.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
-/// DETECT pressed: LOW, then the benchmark climbs from there.
+/// DETECT pressed: the first level, then the benchmark goes on from there.
 fn start_requested(
     mut commands: Commands,
     bench: Option<Res<Bench>>,
@@ -139,9 +148,10 @@ fn start_requested(
     if !REQUESTED.swap(false, std::sync::atomic::Ordering::Relaxed) || bench.is_some() {
         return;
     }
-    LEVELS[0].apply(&mut settings);
+    let down = !mobile();
+    LEVELS[first_level(down)].apply(&mut settings);
     commands.remove_resource::<Notice>();
-    commands.insert_resource(Bench::new());
+    commands.insert_resource(Bench::new(down));
 }
 
 /// The graphics presets of OPTIONS > GRAPHICS: HIGH is a new player's, MEDIUM and LOW are the
@@ -268,9 +278,16 @@ pub const MAX_TIME: f32 = 45.0;
 #[derive(Resource, Default)]
 pub struct Bench {
     target: f32,
+    /// Stepping down from HIGH (else climbing from LOW).
+    down: bool,
     /// The level being measured, and the highest that kept up (`LEVELS`).
     level: usize,
     good: Option<usize>,
+    /// Levels measured, every frame time at this level (judged by if it never settles), and
+    /// the progress shown (only goes forward).
+    measured: usize,
+    level_frames: Vec<f32>,
+    shown: f32,
     /// Seconds and frames since the scene was up or the last change, then since measuring
     /// began.
     since: f32,
@@ -407,50 +424,97 @@ fn measure(
         bench.restart();
         return;
     }
-    let dt = time.delta_secs();
-    bench.total += dt;
-    if bench.total > MAX_TIME {
-        // This level never settled (pipelines still coming, frames of seconds): the last that
-        // kept up.
-        info!("detail benchmark: out of time at {:?}", LEVELS[bench.level]);
-        bench.settle(&mut settings);
-        return finish(&mut commands, &bench, true);
-    }
-    let Some((m, frames)) = bench.tick(dt, quiet.is_none_or(|q| q.0)) else { return };
     // A frame rate limit below the target is not the computer's slowness.
     let target = match settings.fps_cap {
         0 => bench.target,
         cap => bench.target.min(f32::from(cap) * 0.9),
     };
-    let level = LEVELS[bench.level];
+    let dt = time.delta_secs();
+    bench.total += dt;
+    bench.level_frames.push(dt);
+    if bench.total > MAX_TIME {
+        info!("detail benchmark: out of time at {:?}", LEVELS[bench.level]);
+        bench.conclude(&mut settings, target);
+        return finish(&mut commands, &bench, true);
+    }
+    let measured = bench.tick(dt, quiet.is_none_or(|q| q.0));
+    bench.shown = bench.shown.max(bench.raw_progress());
+    let Some((m, frames)) = measured else { return };
     info!(
-        "detail benchmark: {level:?}, {frames} frames, median {:.1} ms ({:.0} fps)",
+        "detail benchmark: {:?}, {frames} frames, median {:.1} ms ({:.0} fps)",
+        LEVELS[bench.level],
         m * 1000.0,
         1.0 / m
     );
-    if !keeps_up(m, target) {
-        bench.settle(&mut settings);
-        return finish(&mut commands, &bench, true);
-    }
-    bench.good = Some(bench.level);
-    if bench.level + 1 == LEVELS.len() {
-        return finish(&mut commands, &bench, true);
-    }
-    bench.level += 1;
-    let next = LEVELS[bench.level];
-    info!("detail benchmark: up to {next:?}");
-    next.apply(&mut settings);
+    bench.measured += 1;
+    let next = match (keeps_up(m, target), bench.down) {
+        // Stepping down: done at the first level that keeps up, or at LOW.
+        (true, true) => {
+            bench.good = Some(bench.level);
+            None
+        }
+        (false, true) => bench.level.checked_sub(1),
+        // Climbing: on while it keeps up; else back to the last that did.
+        (true, false) => {
+            bench.good = Some(bench.level);
+            Some(bench.level + 1).filter(|&l| l < LEVELS.len())
+        }
+        (false, false) => {
+            bench.settle(&mut settings);
+            None
+        }
+    };
+    let Some(next) = next else { return finish(&mut commands, &bench, true) };
+    bench.level = next;
+    info!("detail benchmark: on to {:?}", LEVELS[next]);
+    LEVELS[next].apply(&mut settings);
     bench.set = Some(Graphics::of(&settings));
+    bench.level_frames.clear();
     bench.restart();
 }
 
 impl Bench {
-    fn new() -> Self {
+    fn new(down: bool) -> Self {
         let target = std::env::var("SM89_DETAIL_BENCHMARK_FPS")
             .ok()
             .and_then(|v| v.parse::<f32>().ok())
             .unwrap_or(TARGET_FPS);
-        Self { target, ..default() }
+        Self { target, down, level: first_level(down), ..default() }
+    }
+
+    /// How far it is (0 to 1; the loading screens' bars): of at most every level measured,
+    /// each settled, then measured.
+    pub fn progress(&self) -> f32 {
+        self.shown
+    }
+
+    fn raw_progress(&self) -> f32 {
+        let step = if self.measuring {
+            let n = self.frames.len() as f32 / MEASURE_FRAMES as f32;
+            let t = (self.since / MEASURE).min(n).max(self.since / MEASURE_MAX);
+            0.3 + 0.7 * t.min(1.0)
+        } else {
+            0.3 * (self.since / SETTLE).min(1.0)
+        };
+        ((self.measured as f32 + step) / LEVELS.len() as f32).min(1.0)
+    }
+
+    /// Stopped before this level was measured (out of time, the menu left): this level if its
+    /// frames so far (stalls and all) keep up, else the last that did (LOW if none did).
+    fn conclude(&mut self, settings: &mut Settings, target_fps: f32) {
+        if !self.level_frames.is_empty() {
+            let m = median(&mut self.level_frames.clone());
+            info!(
+                "detail benchmark: {:?} unsettled, median {:.1} ms over {} frames",
+                LEVELS[self.level],
+                m * 1000.0,
+                self.level_frames.len()
+            );
+            if keeps_up(m, target_fps) && self.good.is_none_or(|g| g < self.level) {
+                self.good = Some(self.level);
+            }
+        }
+        self.settle(settings);
     }
 
     /// Back to the last level that kept up (LOW if none did), if not there.
@@ -526,7 +590,8 @@ fn abandon(mut commands: Commands, bench: Option<ResMut<Bench>>, mut settings: R
     if let Some(mut bench) = bench {
         info!("detail benchmark: left the menu, not finished");
         if bench.set.as_ref().is_none_or(|g| *g == Graphics::of(&settings)) {
-            bench.settle(&mut settings);
+            let target = bench.target;
+            bench.conclude(&mut settings, target);
         }
         commands.remove_resource::<Bench>();
     }
@@ -626,6 +691,43 @@ mod tests {
     fn keeps_up_with_the_target() {
         assert!(keeps_up(1.0 / 60.0, TARGET_FPS));
         assert!(!keeps_up(1.0 / 30.0, TARGET_FPS));
+    }
+
+    /// A level's settling and measuring fill its share of the bar.
+    #[test]
+    fn progress_by_level() {
+        let mut b = Bench::new(true);
+        assert_eq!(b.raw_progress(), 0.0);
+        let mut last = 0.0;
+        while b.tick(1.0 / 60.0, true).is_none() {
+            let p = b.raw_progress();
+            assert!(p >= last - 1e-6 && p <= 1.0 / 3.0 + 1e-6, "{p}");
+            last = p;
+        }
+        assert!(last > 0.32, "{last}");
+        b.measured = 2;
+        assert!((b.raw_progress() - 2.0 / 3.0).abs() < 1e-6);
+    }
+
+    /// Out of time before a level is measured: judged by its frames so far.
+    #[test]
+    fn concludes_by_the_frames_so_far() {
+        let mut s = Settings::from_args();
+        Preset::High.apply(&mut s);
+        let mut b = Bench::new(true);
+        b.level_frames = vec![1.0 / 60.0; 20];
+        b.conclude(&mut s, TARGET_FPS);
+        assert_eq!(Preset::of(&s), Some(Preset::High));
+        let mut b = Bench::new(true);
+        b.level_frames = vec![2.0; 5];
+        b.conclude(&mut s, TARGET_FPS);
+        assert_eq!(Preset::of(&s), Some(Preset::Low));
+        // Climbing: the last level that kept up.
+        let mut b = Bench { level: 2, good: Some(1), ..default() };
+        Preset::High.apply(&mut s);
+        b.level_frames = vec![2.0; 5];
+        b.conclude(&mut s, TARGET_FPS);
+        assert_eq!(Preset::of(&s), Some(Preset::Medium));
     }
 
     /// Back to the last level that kept up; LOW if none did.

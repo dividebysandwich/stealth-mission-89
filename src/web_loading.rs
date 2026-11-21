@@ -52,6 +52,8 @@ struct Loading {
     quiet: u32,
     pipelines: u32,
     done: bool,
+    /// The detail benchmark ran (its progress is shown).
+    bench_seen: bool,
     /// Seconds since the game was up (the music waits `MUSIC_DELAY` more).
     up_for: f32,
 }
@@ -139,6 +141,8 @@ fn report(
             return;
         }
         // Drawn: wait for its pipelines.
+        loading.bench_seen |= bench.is_some();
+        let bench_seen = loading.bench_seen;
         let (total, pending) = pipelines.counts();
         loading.waited += time.delta_secs();
         if total != loading.pipelines || pending > 0 {
@@ -159,8 +163,14 @@ fn report(
             );
             loading.done = true;
             up(&mut commands);
+            return;
         }
-        return;
+        // The benchmark's progress (full once it is done and its last pipelines are built).
+        if !bench_seen {
+            return;
+        }
+        let permille = bench.map_or(1000, |b| (b.progress() * 1000.0) as usize);
+        ("detail", permille, 1000)
     };
     if loading.last != Some(report) {
         loading.last = Some(report);

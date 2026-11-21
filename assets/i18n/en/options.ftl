@@ -114,7 +114,7 @@ options-preset-ultra = Ultra
     .facts = Everything on: shadows, point lights, the best clouds and every effect, 15 km of scenery
 options-preset-custom = (your own)
 options-detect = DETECT
-    .facts = Measures this computer's frame rate from Low upwards and raises the detail as long as the menu runs smoothly (a few seconds)
+    .facts = Measures this computer's frame rate from High and lowers the detail until the menu runs smoothly (a few seconds)
 options-reset = RESET TAB
     .facts = This tab's settings back to their defaults (asks first)
 options-reset-confirm = RESET { $tab }?
@@ -355,7 +355,7 @@ language-offer-question = Browser language: { $language }. Play the game in this
 language-offer-yes = Yes
 language-offer-no = No
 language-offer-never = Do not ask again
-detail-benchmark-lowered = Graphics detail lowered to suit this browser's frame rate. OPTIONS > GRAPHICS can raise it again.
+detail-benchmark-lowered = Graphics detail lowered to suit this device's frame rate. OPTIONS > GRAPHICS can raise it again.
 effect-sunbeams = Sunbeams
     .facts =
         Shafts of sunlight through the gaps of a broken overcast

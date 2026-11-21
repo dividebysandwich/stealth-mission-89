@@ -113,7 +113,7 @@ options-preset-ultra = Ultra
     .facts = Tout activé : ombres, lumières ponctuelles, les meilleurs nuages et tous les effets, 15 km de paysage
 options-preset-custom = (personnalisé)
 options-detect = DÉTECTER
-    .facts = Mesure la cadence de cet ordinateur à partir de Bas et monte les détails tant que le menu reste fluide (quelques secondes)
+    .facts = Mesure la cadence de cet ordinateur depuis Élevé et baisse les détails jusqu'à ce que le menu soit fluide (quelques secondes)
 options-reset = RÉINITIALISER L'ONGLET
     .facts = Les réglages de cet onglet reviennent aux valeurs par défaut (demande d'abord)
 options-reset-confirm = RÉINITIALISER { $tab } ?
@@ -301,7 +301,7 @@ language-offer-question = Langue du navigateur : { $language }. Jouer dans cette
 language-offer-yes = Oui
 language-offer-no = Non
 language-offer-never = Ne plus me demander
-detail-benchmark-lowered = Le niveau de détail graphique a été réduit pour s'adapter à la fréquence d'images de ce navigateur. OPTIONS > GRAPHISMES permet de le relever.
+detail-benchmark-lowered = Le niveau de détail graphique a été réduit pour s'adapter à la fréquence d'images de cet appareil. OPTIONS > GRAPHISMES permet de le relever.
 effect-sunbeams = Rayons de soleil
     .facts =
         Des rayons de soleil passent entre les trouées d'une couverture nuageuse fragmentée
