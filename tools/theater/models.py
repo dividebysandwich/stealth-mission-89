@@ -802,6 +802,23 @@ def abutment(raw, br, s):
     raw.box(min(s, s + sign * 25), max(s, s + sign * 25), kerch.RAIL[0] - 9, kerch.ROAD[0] + 13, -6.0, top, CONCRETE)
 
 
+def approach(raw, br, s, lod):
+    """The embankments up to both decks at end `s` of the bridge: from the deck's height there
+    down into the ground `kerch.RAMP` metres outwards, the road's with its lane lines."""
+    out = -1.0 if s < 1 else 1.0
+    foot = s + out * kerch.RAMP
+    for spec, rail in ((kerch.ROAD, False), (kerch.RAIL, True)):
+        nc, w, _ = spec
+        z = br.deck(s)
+        hw, sw = w / 2, w / 2 + kerch.RAMP_SLOPE
+        top = [(s, nc - hw, z), (foot, nc - hw, -0.6), (foot, nc + hw, -0.6), (s, nc + hw, z)]
+        bottom = [(s, nc - sw, -1.5), (foot, nc - hw - 1.0, -1.5), (foot, nc + hw + 1.0, -1.5), (s, nc + sw, -1.5)]
+        raw.prism(bottom, top, SCRUB, BALLAST if rail else ASPHALT, caps=(False, True))
+        if lod == 0 and not rail:
+            for off in (-7.4, -3.7, 0.0, 3.7, 7.4):
+                raw.line((s, nc + off, z + 0.05), (foot, nc + off, -0.55), MARKING)
+
+
 def island_rings(br):
     """Tuzla island's outline (bridge coordinates): the top ring above the sea and the beach's
     foot below it, as matching convex rings."""
@@ -874,6 +891,7 @@ def viaduct(br, s0, s1, lod):
     for end in (0.0, br.length):
         if s0 - 1e-6 <= end <= s1 + 1e-6:
             abutment(raw, br, end)
+            approach(raw, br, end, lod)
     top, foot = island_rings(br)
     if s1 > br.island[0] - 60 and s0 < br.island[1] + 60:
         ground_piece(raw, top, foot, s0, s1, SCRUB, SAND)

@@ -469,17 +469,29 @@ class Layout:
                 item = items[k]
                 if item == "Kerch bridge":
                     # The deck from its east end to its west end (the roads come from the east).
+                    # From the foot of the east embankment to the foot of the west one.
                     n = kerch.ROAD[0]
-                    e = node("Kerch bridge E", *bridge.point(bridge.length, n))
-                    w = node("Kerch bridge W", *bridge.point(0.0, n))
-                    pts.append((*bridge.point(bridge.length, n), 0.0))
+                    s_e, s_w = bridge.length + kerch.RAMP, -kerch.RAMP
+                    e = node("Kerch bridge E", *bridge.point(s_e, n))
+                    w = node("Kerch bridge W", *bridge.point(s_w, n))
+                    pts.append((*bridge.point(s_e, n), 0.0))
                     edges.append((a, e, road, False, pts))
-                    steps = max(1, math.ceil(bridge.length / ROAD_STEP))
-                    deck = [(*bridge.point(bridge.length * (1 - j / steps), n), bridge.deck(bridge.length * (1 - j / steps)))
-                            for j in range(steps + 1)]
+
+                    def deck_z(s):
+                        if s < 0.0:
+                            return bridge.deck(0.0) * (1 + s / kerch.RAMP)
+                        if s > bridge.length:
+                            return bridge.deck(bridge.length) * (1 - (s - bridge.length) / kerch.RAMP)
+                        return bridge.deck(s)
+
+                    steps = max(1, math.ceil((s_e - s_w) / ROAD_STEP))
+                    along = [s_e + (s_w - s_e) * j / steps for j in range(steps + 1)]
+                    # (The ends of the decks themselves, where the slope changes.)
+                    along = sorted(set(along + [0.0, bridge.length]), reverse=True)
+                    deck = [(*bridge.point(s, n), deck_z(s)) for s in along]
                     # The road arch (its own model, a target): a road cut while it is down.
                     edges.append((e, w, road, {"arch": bridge.point(kerch.ARCH_S, n), "shape": kerch.ROAD_ARCH}, deck))
-                    a, pts = w, [(*bridge.point(0.0, n), 0.0)]
+                    a, pts = w, [(*bridge.point(s_w, n), 0.0)]
                 elif isinstance(item, str):
                     i = index[item]
                     pts.append((nodes[i][1], nodes[i][2], 0.0))

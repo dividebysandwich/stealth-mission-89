@@ -29,6 +29,10 @@ ARCH_DECK = 38.0
 ARCH_RISE = 45.0
 # Pier spacing of the viaduct.
 SPAN = 55.0
+# The embankments that carry the road and the railway up to the decks at both ends: this long
+# (metres along, outwards from the ends), their slopes this wide.
+RAMP = 180.0
+RAMP_SLOPE = 12.0
 
 # Cross-section: (centre n, deck width, girder depth) of the road and the railway bridge.
 ROAD = (20.0, 22.0, 3.2)
