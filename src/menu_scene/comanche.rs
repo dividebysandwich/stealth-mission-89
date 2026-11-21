@@ -132,34 +132,40 @@ fn rcs(
 const ROUNDS_PER_S: f32 = 12.0;
 const BURST: (f32, f32) = (1.6, 3.4);
 
-/// The pod-gun scene's range (m) and the hover's height over the ground.
-const POD_GUN_RANGE: f32 = 1200.0;
-const POD_GUN_HOVER: f64 = 25.0;
+/// The pod-gun scene's picture (pixels).
+const POD_GUN_PICTURE: (u32, u32) = (480, 360);
+/// Daylight (`LightingState::daylight`) under which the pod sees in FLIR, not TV.
+const POD_GUN_FLIR: f32 = 0.3;
+
+/// The pod-gun scene's ranges (m) and hover heights over the ground, the first that sees the
+/// target: low and far, else higher and nearer (over woods the low line meets the treetops).
+const POD_GUN_STATIONS: [(f32, f64); 4] =
+    [(1200.0, 25.0), (1100.0, 45.0), (900.0, 65.0), (700.0, 90.0)];
 
 /// The pod-gun scene's places: the vehicles on open ground (no town, no woods round them), the
-/// Comanche hovering `POD_GUN_RANGE` off on the heading (round the compass from `first`) from
-/// which it sees them, no hill, building or trees in the way, and not hovering in a building;
-/// the heading, the hover and the first vehicle's place.
+/// Comanche hovering off on the heading (round the compass from `first`) and at the station
+/// from which it sees them, no hill, building or trees in the way, and not hovering in a
+/// building; the heading, the hover and the first vehicle's place.
 fn pod_gun_run(stage: &Stage, first: f32) -> (f32, DVec3, DVec3) {
     let target = stage.land();
     let aim = target + DVec3::Y * 1.5;
-    let hover = |heading: f32| {
-        let f = stage::forward(heading) * POD_GUN_RANGE;
+    let hover = |heading: f32, (range, height): (f32, f64)| {
+        let f = stage::forward(heading) * range;
         let at = target - enu(f.x as f64, 0.0, f.y as f64);
-        DVec3::new(at.x, stage.ground(at) + POD_GUN_HOVER, at.z)
+        DVec3::new(at.x, stage.ground(at) + height, at.z)
     };
-    let heading = (0..24)
-        .map(|i| first + i as f32 * std::f32::consts::TAU / 24.0)
-        .find(|&h| {
-            let p = hover(h);
-            stage.clear(p, 20.0) && stage.sight_clear(p - DVec3::Y, aim, 3.0)
+    let pick = POD_GUN_STATIONS.into_iter().find_map(|station| {
+        (0..24).map(|i| first + i as f32 * std::f32::consts::TAU / 24.0).find_map(|h| {
+            let p = hover(h, station);
+            (stage.clear(p, 20.0) && stage.sight_clear(p - DVec3::Y, aim, 3.0)).then_some((h, p))
         })
-        .unwrap_or(first);
-    (heading, hover(heading), target)
+    });
+    let (heading, p) = pick.unwrap_or((first, hover(first, POD_GUN_STATIONS[0])));
+    (heading, p, target)
 }
 
-/// The Comanche hovering low, its pod's picture on the left screen locked on a vehicle; the
-/// gun fires and the rounds burst round it in the picture.
+/// The Comanche hovering low, its pod's picture on the left screen locked on a vehicle (TV by
+/// day, FLIR at night); the gun fires and the rounds burst round it in the picture.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn pod_gun(
     mut stage: Stage,
@@ -179,6 +185,7 @@ fn pod_gun(
         ResMut<Assets<crate::palette_material::PaletteMaterial>>,
     ),
     mut tracer: Local<fx::TracerCache>,
+    (mut flir, lighting): (ResMut<super::SceneFlir>, Res<crate::lighting::LightingState>),
 ) {
     if stage.begin(&[stage::AAA]) {
         let first = (stage.director.roll % 628) as f32 * 0.01;
@@ -206,7 +213,7 @@ fn pod_gun(
             climb: 0.0,
         };
         let cabin = spawn_cabin(&mut stage, Cabin::new(Seat::Cockpit(AircraftKind::RAH66), None));
-        stage.commands.entity(cabin).insert(pod::WantsPod((480, 360), 2.5f32.to_radians()));
+        stage.commands.entity(cabin).insert(pod::WantsPod(POD_GUN_PICTURE, 2.5f32.to_radians()));
         stage
             .commands
             .spawn((ShotEntity, Run { weave, target: target + DVec3::Y * 1.5, fired: 0 }));
@@ -269,6 +276,11 @@ fn pod_gun(
         return;
     }
     screens.picture(MfdSide::Left, true);
+    // At night the TV shows nothing: the pod's thermal picture instead.
+    let night = lighting.daylight < POD_GUN_FLIR;
+    if night {
+        flir.0 = Some(POD_GUN_PICTURE);
+    }
     let range = (r.target - nose).length();
     let firing = (BURST.0..BURST.1).contains(&t);
     if let Some(mut tex) = screens.canvas(Screen::Left) {
@@ -279,7 +291,7 @@ fn pod_gun(
             if firing { "GUN" } else { "TRK" },
             true,
             (&format!("RNG {:.1}", range / 1000.0), &rounds),
-            "TV",
+            if night { "FLIR" } else { "TV" },
         );
         tex.transparent = true;
         tex.dirty = true;
@@ -295,6 +307,7 @@ fn pod_gun(
     }
     let mode = crate::hud::HudMode::Gnd;
     let gun = Some((500u32.saturating_sub(r.fired as u32 * 5), "GUN"));
-    hud.draw(&mut screens, AircraftKind::RAH66, rot, Vec3::ZERO, 25.0, mode, gun, t);
+    let alt = (p.y - stage.ground(p)) as f32;
+    hud.draw(&mut screens, AircraftKind::RAH66, rot, Vec3::ZERO, alt, mode, gun, t);
     close_on(&mut cam, &mut fov, &screens, cabin, gt, p, rot, Screen::Left, 30.0);
 }

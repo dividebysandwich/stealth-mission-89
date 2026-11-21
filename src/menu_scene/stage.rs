@@ -120,10 +120,11 @@ impl Stage<'_, '_> {
 
     /// Whether nothing stands in the way from `a` to `b` (Bevy metres): the hills stay `margin`
     /// metres under the line all along it, and where the line runs low no buildings or trees
-    /// stand under it (the last few metres at `b`, where the target stands, left out).
+    /// stand under it (the last few metres at `b`, where the target stands, left out). Looked
+    /// at every few metres: the trees stand on a 24 m grid, a coarser look stepped past them.
     pub fn sight_clear(&self, a: DVec3, b: DVec3, margin: f64) -> bool {
         let len = a.distance(b);
-        let n = (len / 20.0).ceil().max(2.0) as usize;
+        let n = (len / 4.0).ceil().max(2.0) as usize;
         (1..n).all(|i| {
             let p = a.lerp(b, i as f64 / n as f64);
             let agl = p.y - self.ground(p);
@@ -135,7 +136,7 @@ impl Stage<'_, '_> {
                     || self
                         .scenery
                         .as_ref()
-                        .is_none_or(|s| s.unit_clear(DVec2::new(p.x, -p.z), 8.0)))
+                        .is_none_or(|s| s.unit_clear(DVec2::new(p.x, -p.z), 12.0)))
         })
     }
 
@@ -176,17 +177,23 @@ impl Stage<'_, '_> {
         if let Some(t) = &self.theater {
             // With the scenery there: a clearing (no water, buildings or trees round it).
             let flat = t.hills.is_flat();
-            let good = |p: DVec2| {
-                let open = flat || t.hills.mask(p.x, p.y) > 0.3;
-                open && self.scenery.as_ref().is_none_or(|s| s.unit_clear(p, CLEARING))
+            let good = |p: DVec2, hills: bool, r: f64| {
+                let open = !hills || flat || t.hills.mask(p.x, p.y) > 0.3;
+                open && self.scenery.as_ref().is_none_or(|s| s.unit_clear(p, r))
             };
-            for i in 0..160 {
-                let b = if i < 80 { first } else { base((next() * n as f64) as usize) };
-                let (a, d) = (next() * std::f64::consts::TAU, 3000.0 + next() * 9000.0);
-                let p = b + DVec2::new(a.sin(), a.cos()) * d;
-                if good(p) {
-                    found = p;
-                    break;
+            // Rolling country first; failing that any clearing, then a smaller one (a theater
+            // of islands and towns may have few). Never the open fallback: it may be the sea.
+            'search: for (hills, r) in
+                [(true, CLEARING), (false, CLEARING), (false, CLEARING * 0.4)]
+            {
+                for i in 0..160 {
+                    let b = if i < 80 { first } else { base((next() * n as f64) as usize) };
+                    let (a, d) = (next() * std::f64::consts::TAU, 3000.0 + next() * 9000.0);
+                    let p = b + DVec2::new(a.sin(), a.cos()) * d;
+                    if good(p, hills, r) {
+                        found = p;
+                        break 'search;
+                    }
                 }
             }
         }
