@@ -87,7 +87,7 @@ LENS = 0xDF
 HOLE = 0x00
 
 # Civilian paint: a blue cab, a white box, a white pickup.
-CAB_BLUE = Ramp(0x68, 0x6F)
+CAB_BLUE = Ramp(0xF5, 0xFC)
 VAN_WHITE = Ramp(0xE0, 0xE6)
 
 TURRET_SLOT, GUN_SLOT, RADAR_SLOT = 21, 22, 16
