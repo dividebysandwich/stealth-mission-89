@@ -66,7 +66,10 @@ fn vehicles(stage: &mut Stage, centre: DVec3) -> Vec<(Entity, DVec3)> {
 }
 
 /// A round of gun `gun` (0 the 40 mm, 1 the 105 mm) from the aircraft at `p` turned `rot`
-/// flying `v`, at `aim`: fired, its time of flight back.
+/// flying `v`, at `aim`, fired `ago` seconds before now (on its way since): its time of flight
+/// back. The gun is laid as the fire control lays it: for the shell's drop and for the
+/// aircraft's own speed carried into it (some 100 m/s across the line of fire), so that it
+/// strikes where aimed.
 #[allow(clippy::too_many_arguments)]
 fn fire_at(
     stage: &mut Stage,
@@ -77,23 +80,30 @@ fn fire_at(
     rot: Quat,
     v: Vec3,
     aim: DVec3,
+    ago: f64,
 ) -> f64 {
     let muzzle = p + (rot * C130_MUZZLES[gun]).as_dvec3();
     let speed = stealth_sim::gunship::SHELL_SPEED[gun];
-    let range = (aim - muzzle).length();
-    let tof = range / speed;
-    let lift = DVec3::Y * (0.5 * 9.81 * tof * tof);
-    let dir = (aim + lift - muzzle).normalize();
+    // The flight's time: the muzzle speed relative to the air, the aircraft's speed with it.
+    let carry = v.as_dvec3();
+    let mut tof = (aim - muzzle).length() / speed;
+    for _ in 0..3 {
+        tof = (aim - muzzle - carry * tof).length() / speed;
+    }
+    let lift = DVec3::Y * (0.5 * fx::G * tof * tof);
+    let vel = (aim + lift - muzzle) / tof;
     let calibre = if gun == 0 { Calibre::Mm40 } else { Calibre::Mm105 };
+    let ago = ago.clamp(0.0, tof * 0.95);
     let shell = Shell {
-        vel: dir * speed + v.as_dvec3(),
+        vel: vel - DVec3::Y * (fx::G * ago),
         calibre,
         streak: STREAK[gun],
         glow: Some(GLOW[gun]),
-        age: 0.0,
+        age: ago,
         fuse: None,
     };
-    fx::fire(&mut stage.commands, material, ex, muzzle, v, shell, true);
+    let at = muzzle + vel * ago - DVec3::Y * (0.5 * fx::G * ago * ago);
+    fx::fire(&mut stage.commands, material, ex, at, v, shell, ago < 0.05);
     tof
 }
 
@@ -148,7 +158,7 @@ fn gunship(
             o.fired[gun] += 1;
             let k = (o.fired[gun] * 7 + gun * 3) as f64;
             let spread = DVec3::new((k * 1.3).sin() * 25.0, 0.0, (k * 2.1).cos() * 25.0);
-            fire_at(&mut stage, material.clone(), &mut ex, gun, p, rot, v, o.centre + spread);
+            fire_at(&mut stage, material.clone(), &mut ex, gun, p, rot, v, o.centre + spread, 0.0);
         }
     }
     // Outside the circle a little behind and above the left wing's tip: the gun side, the
@@ -180,8 +190,11 @@ const CONSOLE_YAW: f32 = 0.0;
 /// The guns' magazines at the scene's start.
 const MAGAZINE: [usize; 2] = [212, 44];
 
-/// The 105 mm's shot at the console (it strikes some 3 s later, on the pod's picture).
-const CONSOLE_HOWITZER: f32 = 0.2;
+/// At the console the guns have been firing a while when the scene opens: the 40 mm's first
+/// round went this long (s) before it, so its rounds strike from the first second on; the
+/// 105 mm's shot (it strikes some 3.3 s later, on the pod's picture).
+const CONSOLE_LEAD: f32 = 2.0;
+const CONSOLE_HOWITZER: f32 = -0.3;
 
 /// The console scene: the vehicles (roots, places, wrecked; the pod and the guns on the
 /// first), the rounds on their way (when they strike, the 105 mm's wrecks it).
@@ -231,18 +244,36 @@ fn console(
     if f.vehicles.is_empty() {
         return;
     }
-    // The 40 mm walking in on the vehicle, the 105 mm on it.
+    // The 40 mm walking in on the vehicle, the 105 mm on it: the rounds fired before the
+    // scene opened already on their way (from where the aircraft was then).
     let material = fx::tracer_material(&mut tracer, &mut materials, &palette);
-    let due = [((t / BOFORS_EVERY) as usize).min(10), usize::from(t >= CONSOLE_HOWITZER)];
+    let due = [((t + CONSOLE_LEAD) / BOFORS_EVERY) as usize, usize::from(t >= CONSOLE_HOWITZER)];
     let mark = f.vehicles[0].1;
     for gun in 0..2 {
         while o.fired[gun] < due[gun] {
             o.fired[gun] += 1;
+            let shot = if gun == 1 {
+                CONSOLE_HOWITZER
+            } else {
+                o.fired[0] as f32 * BOFORS_EVERY - CONSOLE_LEAD
+            };
+            let (gp, grot, gv) = on_circle(&o, shot);
             let k = (o.fired[gun] * 7 + gun * 3) as f64;
-            let miss = if gun == 1 { 0.0 } else { (14.0 - 3.0 * o.fired[0] as f64).max(3.0) };
+            let miss = if gun == 1 { 0.0 } else { (14.0 - 3.0 * o.fired[0] as f64).max(2.5) };
             let spread = DVec3::new((k * 1.3).sin() * miss, 0.0, (k * 2.1).cos() * miss);
-            let tof = fire_at(&mut stage, material.clone(), &mut ex, gun, p, rot, v, mark + spread);
-            f.strikes.push((t + tof as f32, gun == 1));
+            let ago = (t - shot).max(0.0) as f64;
+            let tof = fire_at(
+                &mut stage,
+                material.clone(),
+                &mut ex,
+                gun,
+                gp,
+                grot,
+                gv,
+                mark + spread,
+                ago,
+            );
+            f.strikes.push((shot + tof as f32, gun == 1));
         }
     }
     // The 105 mm's strike wrecks it.
@@ -269,7 +300,7 @@ fn console(
     let range = (target - eye).length() as f32;
     let rounds = [MAGAZINE[0] - o.fired[0], MAGAZINE[1] - o.fired[1]];
     // The gun laid: the 105 mm about its shot, else the 40 mm.
-    let gun = usize::from(t < CONSOLE_HOWITZER + 0.6);
+    let gun = usize::from((CONSOLE_HOWITZER - 0.6..CONSOLE_HOWITZER + 0.6).contains(&t));
     let tof = range as f64 / stealth_sim::gunship::SHELL_SPEED[gun];
     if let Some(mut tex) = screens.canvas(Screen::Console(ConsoleScreen::Eo)) {
         let look = crate::gunner::gimbal_look(rot, los);

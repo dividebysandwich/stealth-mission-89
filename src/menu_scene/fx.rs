@@ -23,7 +23,7 @@ pub(super) fn build(app: &mut App) {
     );
 }
 
-const G: f64 = 9.81;
+pub(super) const G: f64 = 9.81;
 
 /// What a missile flies at: a point, or a thing of the scene (its place).
 #[derive(Clone, Copy, Debug)]
