@@ -2139,6 +2139,9 @@ struct Deriv {
     foot: f32,
     ground_dx: vec2<f32>,
     ground_dy: vec2<f32>,
+    // The surface's world position change per pixel across and down the screen.
+    world_dx: vec3<f32>,
+    world_dy: vec3<f32>,
 }
 
 // The colour word: the material's, or the vertex's.
@@ -2171,7 +2174,8 @@ const WIN_FAR: f32 = 0.12;
 // that scrambled the windows).
 const WALL_ANGLES: f32 = 2048.0;
 
-fn city_windows(world: vec3<f32>, face: vec3<f32>, angle: u32) -> vec3<f32> {
+fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32) -> vec3<f32> {
+    let face = deriv.face;
     if (abs(normalize(face).y) > 0.3) {
         return vec3<f32>(0.0);
     }
@@ -2193,8 +2197,12 @@ fn city_windows(world: vec3<f32>, face: vec3<f32>, angle: u32) -> vec3<f32> {
     let h2 = value_hash(ci.y, run, wall ^ 0xA7u);
     let lit = select(0.0, 1.0, h < share);
     let tint = select(WIN_WARM, WIN_COOL, h2 < WIN_COOL_SHARE) * (0.5 + 0.5 * fract(h2 * 7.0));
-    // The window's rectangle in its cell, its edges smoothed over a pixel.
-    let aa = max(fwidth(cell), vec2<f32>(1e-4));
+    // The window's rectangle in its cell, its edges smoothed over a pixel. fwidth(cell) from
+    // the fragment's own derivatives (none here: this runs in non-uniform control flow, which
+    // the browser's WebGPU refuses).
+    let cell_dx = vec2<f32>(dot(deriv.world_dx.xz, t) / WIN_BAY, deriv.world_dx.y / WIN_STOREY);
+    let cell_dy = vec2<f32>(dot(deriv.world_dy.xz, t) / WIN_BAY, deriv.world_dy.y / WIN_STOREY);
+    let aa = max(abs(cell_dx) + abs(cell_dy), vec2<f32>(1e-4));
     let off = abs(fract(cell) - vec2<f32>(0.5, WIN_SILL));
     // Each axis averaged on its own where its cells are under a pixel or two: a wall seen
     // edge on keeps its storeys' bands.
@@ -2229,7 +2237,9 @@ fn background_ground(world: vec3<f32>, deriv: ptr<function, Deriv>) {
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     var deriv: Deriv;
-    deriv.face = cross(dpdx(in.world_position), dpdy(in.world_position));
+    deriv.world_dx = dpdx(in.world_position);
+    deriv.world_dy = dpdy(in.world_position);
+    deriv.face = cross(deriv.world_dx, deriv.world_dy);
     if ((in.warm & 16u) != 0u) {
         deriv.face = vec3<f32>(0.0, 1.0, 0.0);
     }
@@ -2532,7 +2542,7 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #endif
 #ifdef PALETTE_CITY
     if (!is_line && (in.warm & 512u) != 0u && globals.city.x > 0.0 && !recon_view()) {
-        rgb += city_windows(in.world_position, deriv.face, (in.warm >> 16u) & 0x7FFu) * globals.city.x;
+        rgb += city_windows(in.world_position, deriv, (in.warm >> 16u) & 0x7FFu) * globals.city.x;
     }
 #endif
 #ifdef PALETTE_WATER
