@@ -34,6 +34,10 @@ const STEPS: i32 = 64;
 const FIRST: f32 = 0.01;
 const REACH: f32 = 40000.0;
 const REFINE: i32 = 7;
+// A hit is a crossing at most this many halved steps (the step over 2^REFINE) and this share of
+// the distance behind what the picture shows.
+const HIT_STEPS: f32 = 4.0 / 128.0;
+const HIT_SHARE: f32 = 0.004;
 // The ripples' slope (calm water's catspaws: the wobble of what it mirrors).
 const RIPPLE: f32 = 0.035;
 // A reflection darkens a little in the water.
@@ -93,6 +97,40 @@ fn to_uv(clip: vec4<f32>) -> vec3<f32> {
     return vec3<f32>(n.x * 0.5 + 0.5, 0.5 - n.y * 0.5, n.z);
 }
 
+// Halving between the last step in front (`lo`) and one behind what the picture shows (`hi`):
+// where the ray meets it, if it does. A ray that went by behind a thin thing (a tree, a mast
+// kilometres off, where a step is hundreds of metres long) is still far behind it at the
+// crossing: no hit (-1), the march goes on; else smeared down the water, each tree on a far
+// shore mirrored as a long streaky block.
+fn crossing(start: vec3<f32>, r: vec3<f32>, lo_in: f32, hi_in: f32, near: f32, size: vec2<f32>) -> f32 {
+    var lo = lo_in;
+    var hi = hi_in;
+    for (var i = 0; i < REFINE; i++) {
+        let mid = 0.5 * (lo + hi);
+        let cq = params.clip_from_world * vec4<f32>(start + r * mid, 1.0);
+        let uv = to_uv(cq);
+        let sd = depth_at(vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size));
+        if (sd > 0.0 && uv.z < sd) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    let cq = params.clip_from_world * vec4<f32>(start + r * hi, 1.0);
+    let uv = to_uv(cq);
+    let sd = depth_at(vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size));
+    if (sd <= 0.0) {
+        return -1.0;
+    }
+    // How far behind it the ray is there, against the halved step's length (and a share of
+    // the distance: a pixel's depth spans that much far off).
+    let behind = cq.w - near / sd;
+    if (behind > max(2.0, (hi_in - lo_in) * HIT_STEPS + cq.w * HIT_SHARE)) {
+        return -1.0;
+    }
+    return hi;
+}
+
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let px = vec2<i32>(in.position.xy);
@@ -144,12 +182,12 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
             break;
         }
         let sd = depth_at(vec2<i32>(uv.xy * size));
-        // Behind what the picture shows there (reversed depth: smaller is farther), and not
-        // far behind it, at most this step's length (a thin thing in front lets the ray go by).
+        // Behind what the picture shows there (reversed depth: smaller is farther): the ray
+        // crossed it between the last step and this one, or went by behind it.
         if (sd > 0.0 && uv.z < sd) {
-            let behind = cq.w - near / sd;
-            if (behind < max(2.0, (s - last) * 1.5)) {
-                hit = s;
+            let met = crossing(start, r, last, s, near, size);
+            if (met >= 0.0) {
+                hit = met;
                 break;
             }
         }
@@ -177,21 +215,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         let edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
         return vec4<f32>(mix(c.rgb, far.rgb * TINT, weight * smoothstep(0.0, 0.08, edge)), 1.0);
     }
-    // Halving between the last step in front and the hit.
-    var lo = last;
-    var hi = hit;
-    for (var i = 0; i < REFINE; i++) {
-        let mid = 0.5 * (lo + hi);
-        let cq = params.clip_from_world * vec4<f32>(start + r * mid, 1.0);
-        let uv = to_uv(cq);
-        let sd = depth_at(vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size));
-        if (sd > 0.0 && uv.z < sd) {
-            hi = mid;
-        } else {
-            lo = mid;
-        }
-    }
-    let uv = to_uv(params.clip_from_world * vec4<f32>(start + r * hi, 1.0));
+    let uv = to_uv(params.clip_from_world * vec4<f32>(start + r * hit, 1.0));
     let hp = vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size);
     let h = textureLoad(colour, hp, 0);
     // Water in water: nothing to show (the ray went under a wave).
