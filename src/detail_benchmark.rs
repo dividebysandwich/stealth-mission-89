@@ -1,22 +1,21 @@
-//! The browser build's first-visit benchmark: once the menu's first scene is up, the frame times
-//! behind the menu are measured for a few seconds; while the browser can't keep up, the graphics
-//! detail steps down (`STEPS`, the costliest effects for the least look first) and is measured
-//! again. Settings are only ever lowered, and the menu's preferences keep them; a notice says what
-//! changed (OPTIONS > GRAPHICS raises them again). It runs once per browser (`DONE_FILE`), and
-//! stops if the player changes the graphics meanwhile or leaves the menu (then it runs again on
-//! the next visit).
+//! The graphics benchmark: it starts at the LOW preset and climbs (`LEVELS`: LOW, MEDIUM,
+//! HIGH) while the menu's scene keeps the target frame rate, measured for a few seconds behind
+//! the menu at each level; at the first level that is too slow it goes back to the last one that
+//! kept up (LOW if none did). The menu's preferences keep the result, and a notice says if it
+//! is below HIGH (OPTIONS > GRAPHICS raises it again). Starting low keeps a slow device (a
+//! phone) from building and drawing the costliest scene first, which took minutes there.
 //!
-//! In the browser it runs behind the loading screen (web_loading.rs), which waits for it: each
-//! step down builds the scene's pipelines again (new shader variants), seconds of stalls that
-//! are better hidden. It settles only once no pipeline is being built (`PipelinesQuiet`).
+//! In the browser it runs on the first visit (`DONE_FILE`), behind the loading screen
+//! (web_loading.rs), which waits for it: each level builds the scene's pipelines again (new
+//! shader variants), seconds of stalls that are better hidden. It settles only once no pipeline
+//! is being built (`PipelinesQuiet`). It stops if the player changes the graphics meanwhile, or
+//! leaves the menu (then it runs again on the next visit).
 //!
 //! On the desktop it runs on a new player's first start into the menu (no preferences saved
-//! yet), behind a screen of its own (`loading.rs`), and again from OPTIONS > GRAPHICS' DETECT,
-//! which starts it from the HIGH preset. The steps down from HIGH are the MEDIUM and LOW
-//! presets (`Preset`).
+//! yet), behind a screen of its own (`loading.rs`), and again from OPTIONS > GRAPHICS' DETECT.
 //!
 //! `--detail-benchmark` runs it on the desktop too (tests; with `--novsync` and
-//! `SM89_DETAIL_BENCHMARK_FPS=<fps>` to make a fast machine step down).
+//! `SM89_DETAIL_BENCHMARK_FPS=<fps>` to make a fast machine stop lower).
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
@@ -28,17 +27,76 @@ use crate::weather::CloudQuality;
 /// for everyone).
 const DONE_FILE: &str = "detail-benchmark.json";
 const VERSION: u32 = 1;
+/// Phones and tablets run it again from this version (before it, one that timed out kept HIGH,
+/// minutes a frame there).
+const MOBILE_VERSION: u32 = 2;
 
-/// The frame rate (median frame time) below which the detail steps down; very slow (under
-/// `VERY_SLOW_FPS`) steps two at once.
+/// The benchmark has not run in this browser (or on this computer) yet, at this version.
+fn not_run() -> bool {
+    let version = if mobile() { MOBILE_VERSION } else { VERSION };
+    crate::prefs::load_json::<u32>(DONE_FILE).is_none_or(|v| v < version)
+}
+
+/// A phone or tablet's browser (its user agent says so, or an iPad's "desktop" one with a touch
+/// screen): the HIGH preset's first frames take minutes there.
+fn mobile() -> bool {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let Some(navigator) = web_sys::window().map(|w| w.navigator()) else { return false };
+        let ua_data_mobile = js_sys::Reflect::get(&navigator, &"userAgentData".into())
+            .ok()
+            .and_then(|d| js_sys::Reflect::get(&d, &"mobile".into()).ok())
+            .and_then(|m| m.as_bool());
+        let agent = navigator.user_agent().unwrap_or_default();
+        mobile_agent(ua_data_mobile, &agent, navigator.max_touch_points())
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    false
+}
+
+/// `mobile()` from the browser's answers: `navigator.userAgentData.mobile` (Chromium), the user
+/// agent string, the touch points.
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+fn mobile_agent(ua_data_mobile: Option<bool>, agent: &str, touch_points: i32) -> bool {
+    const PHONES: [&str; 6] = ["Mobi", "Android", "iPhone", "iPad", "iPod", "Silk"];
+    ua_data_mobile == Some(true)
+        || PHONES.iter().any(|p| agent.contains(p))
+        // iPadOS' Safari says it is a Mac.
+        || (agent.contains("Macintosh") && touch_points > 1)
+}
+
+/// The benchmark runs from this start into the menu (`first_settings` started it at LOW).
+static STARTS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Called on a start into the menu, before anything is built: if the benchmark runs (a
+/// browser's first visit, a new player on the desktop, `--detail-benchmark`), the settings start
+/// at LOW, its first level.
+pub fn first_settings(s: &mut Settings) {
+    let forced = std::env::args().any(|a| a == "--detail-benchmark");
+    let not_run = not_run();
+    let web_first_visit = cfg!(target_arch = "wasm32") && not_run;
+    // A new player on the desktop: no preferences yet (a player's own settings are kept).
+    let desktop_first_run = crate::fullscreen::DISPLAY_OPTIONS
+        && not_run
+        && crate::prefs::load_json::<serde_json::Value>("prefs.json").is_none()
+        && !crate::loading::test_run();
+    if forced || web_first_visit || desktop_first_run {
+        LEVELS[0].apply(s);
+        STARTS.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// The presets climbed, lowest first.
+const LEVELS: [Preset; 3] = [Preset::Low, Preset::Medium, Preset::High];
+
+/// The frame rate (median frame time) a level must keep to climb to the next.
 const TARGET_FPS: f32 = 40.0;
-const VERY_SLOW_FPS: f32 = 20.0;
 /// Left out after the scene is up or a change (loading stutter; shader compiles, which can
 /// hold single frames for seconds): this long and this many frames.
-const SETTLE: f32 = 2.0;
+const SETTLE: f32 = 1.0;
 const SETTLE_FRAMES: usize = 10;
 /// Then measured for this long and this many frames, or at most `MEASURE_MAX` seconds.
-const MEASURE: f32 = 2.5;
+const MEASURE: f32 = 2.0;
 const MEASURE_FRAMES: usize = 30;
 const MEASURE_MAX: f32 = 8.0;
 
@@ -46,16 +104,6 @@ pub struct DetailBenchmarkPlugin;
 
 impl Plugin for DetailBenchmarkPlugin {
     fn build(&self, app: &mut App) {
-        let forced = std::env::args().any(|a| a == "--detail-benchmark");
-        let settings = app.world().resource::<Settings>();
-        let (initial_state, vr) = (settings.initial_state, settings.vr);
-        let not_run = crate::prefs::load_json::<u32>(DONE_FILE).is_none_or(|v| v < VERSION);
-        let web_first_visit = cfg!(target_arch = "wasm32") && not_run;
-        // A new player on the desktop: no preferences yet (a player's own settings are kept).
-        let desktop_first_run = crate::fullscreen::DISPLAY_OPTIONS
-            && not_run
-            && crate::prefs::load_json::<serde_json::Value>("prefs.json").is_none()
-            && !crate::loading::test_run();
         app.add_systems(
             Update,
             (start_requested, measure).chain().run_if(in_state(AppState::Menu)),
@@ -65,9 +113,10 @@ impl Plugin for DetailBenchmarkPlugin {
             EguiPrimaryContextPass,
             notice.run_if(in_state(AppState::Menu)).run_if(resource_exists::<Notice>),
         );
-        let first =
-            (web_first_visit || desktop_first_run) && initial_state == AppState::Menu && !vr;
-        if forced || first {
+        if STARTS.load(std::sync::atomic::Ordering::Relaxed) {
+            if mobile() {
+                info!("detail benchmark: a phone or tablet");
+            }
             app.insert_resource(Bench::new());
         }
     }
@@ -76,12 +125,12 @@ impl Plugin for DetailBenchmarkPlugin {
 /// OPTIONS > GRAPHICS' DETECT was pressed (`request`).
 static REQUESTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Runs the benchmark again from the HIGH preset (OPTIONS > GRAPHICS' DETECT).
+/// Runs the benchmark again from LOW (OPTIONS > GRAPHICS' DETECT).
 pub fn request() {
     REQUESTED.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
-/// DETECT pressed: the HIGH preset, then the benchmark lowers it if it must.
+/// DETECT pressed: LOW, then the benchmark climbs from there.
 fn start_requested(
     mut commands: Commands,
     bench: Option<Res<Bench>>,
@@ -90,7 +139,7 @@ fn start_requested(
     if !REQUESTED.swap(false, std::sync::atomic::Ordering::Relaxed) || bench.is_some() {
         return;
     }
-    Preset::High.apply(&mut settings);
+    LEVELS[0].apply(&mut settings);
     commands.remove_resource::<Notice>();
     commands.insert_resource(Bench::new());
 }
@@ -210,16 +259,18 @@ pub struct PipelinesQuiet(pub bool);
 #[derive(Resource)]
 pub struct Covered;
 
-/// The benchmark gives up after this long (s; the scene up and measuring).
-const MAX_TIME: f32 = 30.0;
+/// The benchmark gives up after this long (s; the scene up and measuring), at the last level
+/// that kept up.
+pub const MAX_TIME: f32 = 45.0;
 
 /// Running while present (the browser's loading screen waits for it, the desktop's shows while
 /// it runs).
 #[derive(Resource, Default)]
 pub struct Bench {
     target: f32,
-    /// Steps taken (`STEPS`).
-    step: usize,
+    /// The level being measured, and the highest that kept up (`LEVELS`).
+    level: usize,
+    good: Option<usize>,
     /// Seconds and frames since the scene was up or the last change, then since measuring
     /// began.
     since: f32,
@@ -328,16 +379,9 @@ fn median(frames: &mut [f32]) -> f32 {
     frames[frames.len() / 2]
 }
 
-/// How many steps down a median frame time asks for.
-fn steps_for(median: f32, target_fps: f32) -> usize {
-    let fps = 1.0 / median.max(1e-6);
-    if fps >= target_fps {
-        0
-    } else if fps < VERY_SLOW_FPS.min(target_fps / 2.0) {
-        2
-    } else {
-        1
-    }
+/// A median frame time keeps up with the target frame rate.
+fn keeps_up(median: f32, target_fps: f32) -> bool {
+    1.0 / median.max(1e-6) >= target_fps
 }
 
 fn measure(
@@ -358,7 +402,7 @@ fn measure(
         info!("detail benchmark: graphics changed by the player, stopped");
         return finish(&mut commands, &bench, false);
     }
-    bench.set = Some(now.clone());
+    bench.set = Some(now);
     if !page_visible() {
         bench.restart();
         return;
@@ -366,7 +410,10 @@ fn measure(
     let dt = time.delta_secs();
     bench.total += dt;
     if bench.total > MAX_TIME {
-        info!("detail benchmark: out of time at step {}", bench.step);
+        // This level never settled (pipelines still coming, frames of seconds): the last that
+        // kept up.
+        info!("detail benchmark: out of time at {:?}", LEVELS[bench.level]);
+        bench.settle(&mut settings);
         return finish(&mut commands, &bench, true);
     }
     let Some((m, frames)) = bench.tick(dt, quiet.is_none_or(|q| q.0)) else { return };
@@ -375,25 +422,25 @@ fn measure(
         0 => bench.target,
         cap => bench.target.min(f32::from(cap) * 0.9),
     };
-    let n = steps_for(m, target);
+    let level = LEVELS[bench.level];
     info!(
-        "detail benchmark: step {}, {} frames, median {:.1} ms ({:.0} fps)",
-        bench.step,
-        frames,
+        "detail benchmark: {level:?}, {frames} frames, median {:.1} ms ({:.0} fps)",
         m * 1000.0,
         1.0 / m
     );
-    if n == 0 || bench.step >= STEPS {
+    if !keeps_up(m, target) {
+        bench.settle(&mut settings);
         return finish(&mut commands, &bench, true);
     }
-    let mut g = now;
-    for _ in 0..n.min(STEPS - bench.step) {
-        lower(&mut g, bench.step);
-        bench.step += 1;
+    bench.good = Some(bench.level);
+    if bench.level + 1 == LEVELS.len() {
+        return finish(&mut commands, &bench, true);
     }
-    info!("detail benchmark: lowered to step {}: {g:?}", bench.step);
-    g.write(&mut settings);
-    bench.set = Some(g);
+    bench.level += 1;
+    let next = LEVELS[bench.level];
+    info!("detail benchmark: up to {next:?}");
+    next.apply(&mut settings);
+    bench.set = Some(Graphics::of(&settings));
     bench.restart();
 }
 
@@ -404,6 +451,17 @@ impl Bench {
             .and_then(|v| v.parse::<f32>().ok())
             .unwrap_or(TARGET_FPS);
         Self { target, ..default() }
+    }
+
+    /// Back to the last level that kept up (LOW if none did), if not there.
+    fn settle(&mut self, settings: &mut Settings) {
+        let good = self.good.unwrap_or(0);
+        if good != self.level {
+            self.level = good;
+            LEVELS[good].apply(settings);
+            self.set = Some(Graphics::of(settings));
+        }
+        info!("detail benchmark: settled at {:?}", LEVELS[good]);
     }
 
     /// Seconds since the scene was up and the benchmark ran (the desktop's screen shows it).
@@ -450,24 +508,26 @@ impl Bench {
     }
 }
 
-/// Done: remembered; a notice if the detail was lowered.
-fn finish(commands: &mut Commands, bench: &Bench, completed: bool) {
-    if completed {
-        info!("detail benchmark: done at step {}", bench.step);
-    }
-    if let Err(e) = crate::prefs::save_json(DONE_FILE, &VERSION) {
+/// Done: remembered; a notice if it is below HIGH (`noticed`: not stopped by the player).
+fn finish(commands: &mut Commands, bench: &Bench, noticed: bool) {
+    let version = if mobile() { MOBILE_VERSION } else { VERSION };
+    if let Err(e) = crate::prefs::save_json(DONE_FILE, &version) {
         warn!("saving {DONE_FILE}: {e}");
     }
-    if bench.step > 0 && completed {
+    if noticed && bench.level + 1 < LEVELS.len() {
         commands.insert_resource(Notice { shown_for: 0.0 });
     }
     commands.remove_resource::<Bench>();
 }
 
-/// Left the menu before it was done: it runs again on the next visit.
-fn abandon(mut commands: Commands, bench: Option<Res<Bench>>) {
-    if bench.is_some() {
+/// Left the menu before it was done: the last level that kept up (if the settings are still
+/// the benchmark's), and it runs again on the next visit.
+fn abandon(mut commands: Commands, bench: Option<ResMut<Bench>>, mut settings: ResMut<Settings>) {
+    if let Some(mut bench) = bench {
         info!("detail benchmark: left the menu, not finished");
+        if bench.set.as_ref().is_none_or(|g| *g == Graphics::of(&settings)) {
+            bench.settle(&mut settings);
+        }
         commands.remove_resource::<Bench>();
     }
     commands.remove_resource::<Notice>();
@@ -528,9 +588,10 @@ mod tests {
 
     #[test]
     fn measures_after_settling() {
-        // 60 fps: 2 s settling, 2.5 s measured.
+        // 60 fps: `SETTLE` seconds settling, `MEASURE` measured.
         let (n, t) = run(&mut Bench::default(), 1.0 / 60.0);
-        assert!((149..=151).contains(&n), "{n}");
+        let expected = (MEASURE * 60.0) as usize;
+        assert!((expected - 1..=expected + 1).contains(&n), "{n}");
         assert!((t - (SETTLE + MEASURE)).abs() < 0.05, "{t}");
         // 4 fps: the frame counts hold it longer, up to `MEASURE_MAX`.
         let (n, t) = run(&mut Bench::default(), 0.25);
@@ -546,10 +607,41 @@ mod tests {
     }
 
     #[test]
-    fn steps_follow_the_frame_rate() {
-        assert_eq!(steps_for(1.0 / 60.0, TARGET_FPS), 0);
-        assert_eq!(steps_for(1.0 / 30.0, TARGET_FPS), 1);
-        assert_eq!(steps_for(1.0 / 12.0, TARGET_FPS), 2);
+    fn phones_and_tablets() {
+        let pixel = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like \
+                     Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+        let iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15";
+        let mac = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15";
+        let linux = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0";
+        assert!(mobile_agent(None, pixel, 5));
+        assert!(mobile_agent(None, iphone, 5));
+        assert!(mobile_agent(Some(true), linux, 0));
+        // iPadOS' Safari: a Mac with a touch screen.
+        assert!(mobile_agent(None, mac, 5));
+        assert!(!mobile_agent(None, mac, 0));
+        assert!(!mobile_agent(Some(false), linux, 0));
+    }
+
+    #[test]
+    fn keeps_up_with_the_target() {
+        assert!(keeps_up(1.0 / 60.0, TARGET_FPS));
+        assert!(!keeps_up(1.0 / 30.0, TARGET_FPS));
+    }
+
+    /// Back to the last level that kept up; LOW if none did.
+    #[test]
+    fn settles_at_the_last_good_level() {
+        let mut s = Settings::from_args();
+        let mut b = Bench { level: 2, good: Some(1), ..default() };
+        Preset::High.apply(&mut s);
+        b.settle(&mut s);
+        assert_eq!((b.level, Preset::of(&s)), (1, Some(Preset::Medium)));
+        let mut b = Bench { level: 0, ..default() };
+        b.settle(&mut s);
+        assert_eq!(b.level, 0);
+        let mut b = Bench { level: 1, ..default() };
+        b.settle(&mut s);
+        assert_eq!(Preset::of(&s), Some(Preset::Low));
     }
 
     #[test]

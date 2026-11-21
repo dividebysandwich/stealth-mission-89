@@ -495,7 +495,7 @@ fn preset_options(ui: &mut egui::Ui, s: &mut Settings) -> bool {
         if now.is_none() {
             ui.label(egui::RichText::new(t!("options-preset-custom")).color(DIM));
         }
-        // On the desktop: the benchmark from HIGH, behind its screen.
+        // On the desktop: the benchmark climbing from LOW, behind its screen.
         if crate::fullscreen::DISPLAY_OPTIONS
             && !s.vr
             && facts(

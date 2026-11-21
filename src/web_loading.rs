@@ -34,7 +34,7 @@ impl Plugin for WebLoadingPlugin {
 const QUIET_FRAMES: u32 = 8;
 /// The screen goes after this long anyway (s, from the scene's spawn; the detail benchmark gives
 /// up after `detail_benchmark::MAX_TIME`).
-const MAX_PIPELINE_WAIT: f32 = 40.0;
+const MAX_PIPELINE_WAIT: f32 = 55.0;
 
 /// The model files the menu's scenes draw from (besides the theater's own).
 const FILES: [&str; 4] = ["aircraft", "drones", "aaa", "special_targets"];

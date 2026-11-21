@@ -217,6 +217,9 @@ pub fn run() {
     let mut menu_state = menu::MenuState::default();
     if settings.initial_state == settings::AppState::Menu {
         prefs::Prefs::load().apply(&mut menu_state, &mut settings);
+        if !settings.vr {
+            detail_benchmark::first_settings(&mut settings);
+        }
     } else if settings::language_arg().is_none()
         && let Some(l) = prefs::Prefs::load().language
     {
