@@ -19,6 +19,8 @@ on = IESLĒGTS
 off = IZSLĒGTS
 loading-title = IELĀDĒ
 loading-shaders = Sagatavo ēnotājus: { $done } no { $total }
+loading-detect = GRAFIKAS PĀRBAUDE
+loading-detect-time = { $seconds } s
 classic = KLASISKS
 modern = MODERNS
 

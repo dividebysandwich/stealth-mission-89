@@ -25,6 +25,8 @@ on = 开
 off = 关
 loading-title = 加载中
 loading-shaders = 正在准备着色器: { $done } / { $total }
+loading-detect = 正在测试图形
+loading-detect-time = { $seconds } 秒
 classic = 经典
 modern = 现代
 

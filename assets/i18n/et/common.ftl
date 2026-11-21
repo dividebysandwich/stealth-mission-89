@@ -27,6 +27,8 @@ on = SEES
 off = VÄLJAS
 loading-title = LAADIMINE
 loading-shaders = Varjutajate ettevalmistamine: { $done } / { $total }
+loading-detect = GRAAFIKA TESTIMINE
+loading-detect-time = { $seconds } s
 classic = KLASSIKALINE
 modern = KAASAEGNE
 

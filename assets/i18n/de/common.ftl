@@ -19,6 +19,8 @@ on = AN
 off = AUS
 loading-title = LADEN
 loading-shaders = Shader werden vorbereitet: { $done } von { $total }
+loading-detect = GRAFIK WIRD GETESTET
+loading-detect-time = { $seconds } s
 classic = KLASSISCH
 modern = MODERN
 

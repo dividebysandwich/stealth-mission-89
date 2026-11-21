@@ -19,6 +19,8 @@ on = LIGADO
 off = DESLIGADO
 loading-title = CARREGANDO
 loading-shaders = Preparando shaders: { $done } de { $total }
+loading-detect = TESTANDO OS GRÁFICOS
+loading-detect-time = { $seconds } s
 classic = CLÁSSICO
 modern = MODERNO
 

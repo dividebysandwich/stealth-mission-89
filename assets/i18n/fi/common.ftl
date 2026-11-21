@@ -27,6 +27,8 @@ on = PÄÄLLÄ
 off = POIS
 loading-title = LADATAAN
 loading-shaders = Valmistellaan varjostimia: { $done } / { $total }
+loading-detect = TESTATAAN GRAFIIKKAA
+loading-detect-time = { $seconds } s
 classic = KLASSINEN
 modern = MODERNI
 

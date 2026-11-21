@@ -19,6 +19,8 @@ on = ZAPNUTO
 off = VYPNUTO
 loading-title = NAČÍTÁNÍ
 loading-shaders = Příprava shaderů: { $done } z { $total }
+loading-detect = TEST GRAFIKY
+loading-detect-time = { $seconds } s
 classic = KLASICKÝ
 modern = MODERNÍ
 

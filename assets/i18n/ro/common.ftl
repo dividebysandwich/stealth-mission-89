@@ -27,6 +27,8 @@ on = PORNIT
 off = OPRIT
 loading-title = SE ÎNCARCĂ
 loading-shaders = Se pregătesc shaderele: { $done } din { $total }
+loading-detect = SE TESTEAZĂ GRAFICA
+loading-detect-time = { $seconds } s
 classic = CLASIC
 modern = MODERN
 

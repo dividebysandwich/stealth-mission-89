@@ -27,6 +27,8 @@ on = BE
 off = KI
 loading-title = BETÖLTÉS
 loading-shaders = Shaderek előkészítése: { $done } / { $total }
+loading-detect = GRAFIKA TESZTELÉSE
+loading-detect-time = { $seconds } mp
 classic = KLASSZIKUS
 modern = MODERN
 

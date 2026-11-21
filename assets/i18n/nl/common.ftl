@@ -19,6 +19,8 @@ on = AAN
 off = UIT
 loading-title = LADEN
 loading-shaders = Shaders voorbereiden: { $done } van { $total }
+loading-detect = GRAPHICS TESTEN
+loading-detect-time = { $seconds } s
 classic = KLASSIEK
 modern = MODERN
 

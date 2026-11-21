@@ -19,6 +19,8 @@ on = WŁ.
 off = WYŁ.
 loading-title = WCZYTYWANIE
 loading-shaders = Przygotowywanie shaderów: { $done } z { $total }
+loading-detect = TESTOWANIE GRAFIKI
+loading-detect-time = { $seconds } s
 classic = KLASYCZNY
 modern = NOWOCZESNY
 

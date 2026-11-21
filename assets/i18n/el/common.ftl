@@ -19,6 +19,8 @@ on = ΕΝΕΡΓΟ
 off = ΑΝΕΝΕΡΓΟ
 loading-title = ΦΟΡΤΩΣΗ
 loading-shaders = Προετοιμασία shader: { $done } από { $total }
+loading-detect = ΔΟΚΙΜΗ ΓΡΑΦΙΚΩΝ
+loading-detect-time = { $seconds } s
 classic = ΚΛΑΣΙΚΟ
 modern = ΜΟΝΤΕΡΝΟ
 

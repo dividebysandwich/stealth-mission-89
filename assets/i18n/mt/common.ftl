@@ -27,6 +27,8 @@ on = ON
 off = OFF
 loading-title = QED JITTELLA
 loading-shaders = Qed jiġu ppreparati x-shaders: { $done } minn { $total }
+loading-detect = QED TIĠI TTESTJATA L-GRAFIKA
+loading-detect-time = { $seconds } s
 classic = KLASSIKU
 modern = MODERN
 

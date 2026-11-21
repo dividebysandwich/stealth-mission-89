@@ -26,6 +26,8 @@ on = オン
 off = オフ
 loading-title = 読み込み中
 loading-shaders = シェーダーを準備中: { $done } / { $total }
+loading-detect = グラフィックをテスト中
+loading-detect-time = { $seconds } 秒
 classic = クラシック
 modern = モダン
 

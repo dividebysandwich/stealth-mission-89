@@ -472,10 +472,46 @@ fn display_options(ui: &mut egui::Ui, s: &mut Settings) -> bool {
     toggled
 }
 
+/// The detail presets (the one the settings are lit, CUSTOM else) and DETECT: true if one was
+/// chosen.
+fn preset_options(ui: &mut egui::Ui, s: &mut Settings) -> bool {
+    use crate::detail_benchmark::Preset;
+    let now = Preset::of(s);
+    let mut chosen = None;
+    ui.horizontal_wrapped(|ui| {
+        ui.label(t!("options-preset"));
+        for p in Preset::ALL {
+            let button = egui::Button::selectable(now == Some(p), t!(p.name_id()));
+            if facts(ui.add(button), t_lines!(&format!("{}.facts", p.name_id()))).clicked() {
+                chosen = Some(p);
+            }
+        }
+        if now.is_none() {
+            ui.label(egui::RichText::new(t!("options-preset-custom")).color(DIM));
+        }
+        // On the desktop: the benchmark from HIGH, behind its screen.
+        if crate::fullscreen::DISPLAY_OPTIONS
+            && !s.vr
+            && facts(
+                ui.button(crate::menu::icon_text(ui, icon::REFRESH, t!("options-detect"))),
+                t_lines!("options-detect.facts"),
+            )
+            .clicked()
+        {
+            crate::detail_benchmark::request();
+        }
+    });
+    if let Some(p) = chosen {
+        p.apply(s);
+    }
+    chosen.is_some()
+}
+
 fn graphics_options(ui: &mut egui::Ui, settings: &mut SettingsMut) {
     let s = settings.bypass_change_detection();
     let mut toggled = display_options(ui, s);
     section(ui, t!("options-section-rendering"));
+    toggled |= preset_options(ui, s);
     toggled |= switches(
         ui,
         [

@@ -19,6 +19,8 @@ on = ВКЛ
 off = ВЫКЛ
 loading-title = ЗАГРУЗКА
 loading-shaders = Подготовка шейдеров: { $done } из { $total }
+loading-detect = ПРОВЕРКА ГРАФИКИ
+loading-detect-time = { $seconds } с
 classic = КЛАССИЧЕСКИЙ
 modern = СОВРЕМЕННЫЙ
 

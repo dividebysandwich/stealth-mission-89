@@ -27,6 +27,8 @@ on = ВКЛ.
 off = ИЗКЛ.
 loading-title = ЗАРЕЖДАНЕ
 loading-shaders = Подготовка на шейдъри: { $done } от { $total }
+loading-detect = ТЕСТВАНЕ НА ГРАФИКАТА
+loading-detect-time = { $seconds } s
 classic = КЛАСИЧЕСКИ
 modern = СЪВРЕМЕНЕН
 

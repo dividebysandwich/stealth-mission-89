@@ -19,6 +19,8 @@ on = УВІМК.
 off = ВИМК.
 loading-title = ЗАВАНТАЖЕННЯ
 loading-shaders = Підготовка шейдерів: { $done } з { $total }
+loading-detect = ПЕРЕВІРКА ГРАФІКИ
+loading-detect-time = { $seconds } с
 classic = КЛАСИЧНИЙ
 modern = СУЧАСНИЙ
 

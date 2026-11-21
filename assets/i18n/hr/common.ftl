@@ -19,6 +19,8 @@ on = UKLJUČENO
 off = ISKLJUČENO
 loading-title = UČITAVANJE
 loading-shaders = Priprema shadera: { $done } od { $total }
+loading-detect = TESTIRANJE GRAFIKE
+loading-detect-time = { $seconds } s
 classic = KLASIČNO
 modern = MODERNO
 

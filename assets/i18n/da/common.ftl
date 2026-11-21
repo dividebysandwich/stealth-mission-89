@@ -27,6 +27,8 @@ on = TIL
 off = FRA
 loading-title = INDLÆSER
 loading-shaders = Forbereder shadere: { $done } af { $total }
+loading-detect = TESTER GRAFIKKEN
+loading-detect-time = { $seconds } s
 classic = KLASSISK
 modern = MODERNE
 

@@ -19,6 +19,8 @@ on = ĮJUNGTA
 off = IŠJUNGTA
 loading-title = ĮKELIAMA
 loading-shaders = Ruošiami šešėliavimo moduliai: { $done } iš { $total }
+loading-detect = TIKRINAMA GRAFIKA
+loading-detect-time = { $seconds } s
 classic = KLASIKINIS
 modern = MODERNUS
 

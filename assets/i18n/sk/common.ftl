@@ -27,6 +27,8 @@ on = ZAP
 off = VYP
 loading-title = NAČÍTAVA SA
 loading-shaders = Príprava shaderov: { $done } z { $total }
+loading-detect = TEST GRAFIKY
+loading-detect-time = { $seconds } s
 classic = KLASICKÝ
 modern = MODERNÝ
 

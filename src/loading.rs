@@ -36,7 +36,12 @@ impl Plugin for LoadingPlugin {
         }
         app.init_resource::<Cover>()
             .add_systems(OnEnter(AppState::Flight), cover.after(SetupSet::Spawn))
-            .add_systems(Update, lift.run_if(in_state(AppState::Flight)));
+            .add_systems(Update, lift.run_if(in_state(AppState::Flight)))
+            .add_systems(Update, cover_benchmark.run_if(in_state(AppState::Menu)))
+            .add_systems(
+                bevy_egui::EguiPrimaryContextPass,
+                draw_benchmark_cover.run_if(in_state(AppState::Menu)),
+            );
     }
 }
 
@@ -81,9 +86,14 @@ fn cover_wanted() -> bool {
     if std::env::args().any(|a| a == "--loading-screen") {
         return true;
     }
-    const TESTS: [&str; 6] =
-        ["--screenshot", "--script", "--shots", "--shot-time", "--vr", "--no-loading-screen"];
-    !std::env::args().any(|a| TESTS.contains(&a.as_str()))
+    let off = ["--vr", "--no-loading-screen"];
+    !test_run() && !std::env::args().any(|a| off.contains(&a.as_str()))
+}
+
+/// A test run: it takes screenshots or follows a script (no screens over it, no benchmark).
+pub fn test_run() -> bool {
+    const TESTS: [&str; 4] = ["--screenshot", "--script", "--shots", "--shot-time"];
+    std::env::args().any(|a| TESTS.contains(&a.as_str()))
 }
 
 /// The screen's state while it is up.
@@ -138,6 +148,17 @@ fn cover(
     let title = mission
         .map(|m| crate::mission::clean_text(&m.0.briefing.title).to_uppercase())
         .unwrap_or_default();
+    spawn_screen(&mut commands, &font, title, t!("loading-title"), AppState::Flight);
+}
+
+/// The screen: a title over the heading, the bar and a line under it.
+fn spawn_screen(
+    commands: &mut Commands,
+    font: &crate::i18n::UiFont,
+    title: String,
+    heading: &str,
+    state: AppState,
+) {
     commands
         .spawn((
             CoverRoot,
@@ -153,11 +174,11 @@ fn cover(
             },
             BackgroundColor(BG),
             GlobalZIndex(100),
-            DespawnOnExit(AppState::Flight),
+            DespawnOnExit(state),
         ))
         .with_children(|p| {
             p.spawn((Text::new(title), font.at(22.0), TextColor(DIM)));
-            p.spawn((Text::new(t!("loading-title")), font.at(40.0), TextColor(BRIGHT)));
+            p.spawn((Text::new(heading), font.at(40.0), TextColor(BRIGHT)));
             p.spawn((
                 Node { width: px(420), height: px(10), border: UiRect::all(px(1)), ..default() },
                 BorderColor::all(DIM),
@@ -229,4 +250,90 @@ fn lift(
     if std::mem::take(&mut state.paused) && !menu.open {
         time.unpause();
     }
+}
+
+/// The graphics benchmark running in the menu (`detail_benchmark.rs`; a new player's first
+/// start, DETECT): it hears when no pipeline is being built (`PipelinesQuiet`), and the menu
+/// waits under a screen (`draw_benchmark_cover`).
+fn cover_benchmark(
+    mut commands: Commands,
+    bench: Option<Res<crate::detail_benchmark::Bench>>,
+    pipelines: Res<Pipelines>,
+    settings: Res<Settings>,
+    mut state: ResMut<Cover>,
+) {
+    if bench.is_none() || settings.vr {
+        if state.up {
+            state.up = false;
+            commands.remove_resource::<crate::detail_benchmark::PipelinesQuiet>();
+            commands.remove_resource::<crate::detail_benchmark::Covered>();
+        }
+        return;
+    }
+    if !state.up {
+        *state = Cover { up: true, ..default() };
+        commands.insert_resource(crate::detail_benchmark::Covered);
+    }
+    let (total, pending) = pipelines.counts();
+    if total != state.pipelines || pending > 0 {
+        state.pipelines = total;
+        state.quiet = 0;
+    } else {
+        state.quiet += 1;
+    }
+    commands.insert_resource(crate::detail_benchmark::PipelinesQuiet(state.quiet >= QUIET_FRAMES));
+}
+
+/// The benchmark's screen over the menu (egui, which draws over Bevy's interface): the
+/// heading, a bar going back and forth (how long it takes is not known) and the seconds; it
+/// takes the pointer.
+fn draw_benchmark_cover(
+    mut contexts: bevy_egui::EguiContexts,
+    bench: Option<Res<crate::detail_benchmark::Bench>>,
+    settings: Res<Settings>,
+) -> Result {
+    use bevy_egui::egui;
+    let Some(bench) = bench.filter(|_| !settings.vr) else { return Ok(()) };
+    let ctx = contexts.ctx_mut()?;
+    let screen = ctx.content_rect();
+    let [r, g, b, _] = BG.to_srgba().to_u8_array();
+    let colour = |c: Color| {
+        let [r, g, b, _] = c.to_srgba().to_u8_array();
+        egui::Color32::from_rgb(r, g, b)
+    };
+    egui::Area::new(egui::Id::new("benchmark cover"))
+        .order(egui::Order::Tooltip)
+        .fixed_pos(screen.min)
+        .show(ctx, |ui| {
+            let (rect, _) = ui.allocate_exact_size(screen.size(), egui::Sense::click_and_drag());
+            let p = ui.painter();
+            p.rect_filled(rect, 0.0, egui::Color32::from_rgb(r, g, b));
+            let mid = rect.center();
+            let font = |size: f32| egui::FontId::monospace(size);
+            p.text(
+                mid - egui::vec2(0.0, 28.0),
+                egui::Align2::CENTER_CENTER,
+                t!("loading-detect"),
+                font(34.0),
+                colour(BRIGHT),
+            );
+            let bar =
+                egui::Rect::from_center_size(mid + egui::vec2(0.0, 10.0), egui::vec2(420.0, 10.0));
+            p.rect_stroke(bar, 0.0, egui::Stroke::new(1.0, colour(DIM)), egui::StrokeKind::Inside);
+            let t = bench.running_for();
+            let phase = (t / 1.5).fract();
+            let f = if phase < 0.5 { phase * 2.0 } else { 2.0 - phase * 2.0 };
+            let mut fill = bar;
+            fill.set_width(bar.width() * f);
+            p.rect_filled(fill, 0.0, colour(BRIGHT));
+            p.text(
+                mid + egui::vec2(0.0, 36.0),
+                egui::Align2::CENTER_CENTER,
+                t!("loading-detect-time", seconds = t as u32),
+                font(15.0),
+                colour(DIM),
+            );
+        });
+    ctx.request_repaint();
+    Ok(())
 }

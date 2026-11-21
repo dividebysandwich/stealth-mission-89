@@ -19,6 +19,8 @@ on = ATTIVO
 off = DISATTIVO
 loading-title = CARICAMENTO
 loading-shaders = Preparazione degli shader: { $done } di { $total }
+loading-detect = TEST DELLA GRAFICA
+loading-detect-time = { $seconds } s
 classic = CLASSICO
 modern = MODERNO
 

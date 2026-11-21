@@ -19,6 +19,8 @@ on = PÅ
 off = AV
 loading-title = LADDAR
 loading-shaders = Förbereder shaders: { $done } av { $total }
+loading-detect = TESTAR GRAFIKEN
+loading-detect-time = { $seconds } s
 classic = KLASSISK
 modern = MODERN
 

@@ -25,6 +25,8 @@ on = ON
 off = OFF
 loading-title = Á LÓDÁIL
 loading-shaders = Scáthóirí á n-ullmhú: { $done } as { $total }
+loading-detect = AN GHRAFAIC Á TÁSTÁIL
+loading-detect-time = { $seconds } s
 classic = CLASAIC
 modern = NUA-AIMSEARTHA
 

@@ -27,6 +27,8 @@ on = VKLOP
 off = IZKLOP
 loading-title = NALAGANJE
 loading-shaders = Priprava senčilnikov: { $done } od { $total }
+loading-detect = PREIZKUŠANJE GRAFIKE
+loading-detect-time = { $seconds } s
 classic = KLASIČNO
 modern = SODOBNO
 

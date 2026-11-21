@@ -27,6 +27,8 @@ on = AKTIF
 off = NONAKTIF
 loading-title = MEMUAT
 loading-shaders = Menyiapkan shader: { $done } dari { $total }
+loading-detect = MENGUJI GRAFIS
+loading-detect-time = { $seconds } d
 classic = KLASIK
 modern = MODERN
 

@@ -10,6 +10,11 @@
 //! step down builds the scene's pipelines again (new shader variants), seconds of stalls that
 //! are better hidden. It settles only once no pipeline is being built (`PipelinesQuiet`).
 //!
+//! On the desktop it runs on a new player's first start into the menu (no preferences saved
+//! yet), behind a screen of its own (`loading.rs`), and again from OPTIONS > GRAPHICS' DETECT,
+//! which starts it from the HIGH preset. The steps down from HIGH are the MEDIUM and LOW
+//! presets (`Preset`).
+//!
 //! `--detail-benchmark` runs it on the desktop too (tests; with `--novsync` and
 //! `SM89_DETAIL_BENCHMARK_FPS=<fps>` to make a fast machine step down).
 
@@ -43,23 +48,157 @@ impl Plugin for DetailBenchmarkPlugin {
     fn build(&self, app: &mut App) {
         let forced = std::env::args().any(|a| a == "--detail-benchmark");
         let settings = app.world().resource::<Settings>();
-        let web_first_visit = cfg!(target_arch = "wasm32")
-            && crate::prefs::load_json::<u32>(DONE_FILE).is_none_or(|v| v < VERSION);
-        if !forced && !(web_first_visit && settings.initial_state == AppState::Menu && !settings.vr)
-        {
-            return;
+        let (initial_state, vr) = (settings.initial_state, settings.vr);
+        let not_run = crate::prefs::load_json::<u32>(DONE_FILE).is_none_or(|v| v < VERSION);
+        let web_first_visit = cfg!(target_arch = "wasm32") && not_run;
+        // A new player on the desktop: no preferences yet (a player's own settings are kept).
+        let desktop_first_run = crate::fullscreen::DISPLAY_OPTIONS
+            && not_run
+            && crate::prefs::load_json::<serde_json::Value>("prefs.json").is_none()
+            && !crate::loading::test_run();
+        app.add_systems(
+            Update,
+            (start_requested, measure).chain().run_if(in_state(AppState::Menu)),
+        )
+        .add_systems(OnExit(AppState::Menu), abandon)
+        .add_systems(
+            EguiPrimaryContextPass,
+            notice.run_if(in_state(AppState::Menu)).run_if(resource_exists::<Notice>),
+        );
+        let first =
+            (web_first_visit || desktop_first_run) && initial_state == AppState::Menu && !vr;
+        if forced || first {
+            app.insert_resource(Bench::new());
         }
-        let target = std::env::var("SM89_DETAIL_BENCHMARK_FPS")
-            .ok()
-            .and_then(|v| v.parse::<f32>().ok())
-            .unwrap_or(TARGET_FPS);
-        app.insert_resource(Bench { target, ..default() })
-            .add_systems(Update, measure.run_if(in_state(AppState::Menu)))
-            .add_systems(OnExit(AppState::Menu), abandon)
-            .add_systems(
-                EguiPrimaryContextPass,
-                notice.run_if(in_state(AppState::Menu)).run_if(resource_exists::<Notice>),
-            );
+    }
+}
+
+/// OPTIONS > GRAPHICS' DETECT was pressed (`request`).
+static REQUESTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Runs the benchmark again from the HIGH preset (OPTIONS > GRAPHICS' DETECT).
+pub fn request() {
+    REQUESTED.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// DETECT pressed: the HIGH preset, then the benchmark lowers it if it must.
+fn start_requested(
+    mut commands: Commands,
+    bench: Option<Res<Bench>>,
+    mut settings: ResMut<Settings>,
+) {
+    if !REQUESTED.swap(false, std::sync::atomic::Ordering::Relaxed) || bench.is_some() {
+        return;
+    }
+    Preset::High.apply(&mut settings);
+    commands.remove_resource::<Notice>();
+    commands.insert_resource(Bench::new());
+}
+
+/// The graphics presets of OPTIONS > GRAPHICS: HIGH is a new player's, MEDIUM and LOW are the
+/// benchmark's steps down from it, ULTRA turns every costly part on.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Preset {
+    Low,
+    Medium,
+    High,
+    Ultra,
+}
+
+impl Preset {
+    pub const ALL: [Preset; 4] = [Preset::Low, Preset::Medium, Preset::High, Preset::Ultra];
+
+    /// Its name's message.
+    pub fn name_id(self) -> &'static str {
+        match self {
+            Preset::Low => "options-preset-low",
+            Preset::Medium => "options-preset-medium",
+            Preset::High => "options-preset-high",
+            Preset::Ultra => "options-preset-ultra",
+        }
+    }
+
+    /// The preset's graphics and scenery distances.
+    fn graphics(self) -> (Graphics, f32) {
+        let defaults = crate::prefs::Prefs::default();
+        let mut g = Graphics {
+            modern_shading: true,
+            msaa: defaults.msaa,
+            shadows: defaults.shadows,
+            local_lights: defaults.local_lights,
+            cloud_quality: defaults.cloud_quality,
+            effects: crate::effects::Effects::default(),
+        };
+        let distance = crate::settings::DEFAULT_SCENERY_DISTANCE;
+        match self {
+            Preset::High => (g, distance),
+            Preset::Medium | Preset::Low => {
+                let steps = if self == Preset::Medium { 1 } else { STEPS };
+                for step in 0..steps {
+                    lower(&mut g, step);
+                }
+                (g, distance)
+            }
+            Preset::Ultra => {
+                (g.msaa, g.shadows, g.local_lights) = (true, true, true);
+                g.cloud_quality = CloudQuality::Ultra;
+                set_heavy(&mut g.effects, true);
+                (g, ULTRA_DISTANCE)
+            }
+        }
+    }
+
+    pub fn apply(self, s: &mut Settings) {
+        let (g, distance) = self.graphics();
+        let effects = s.effects;
+        g.write(s);
+        // Only the costly effects are the preset's; the looks (retro, shake...) stay.
+        s.effects = effects;
+        for (on, set) in heavy(&g.effects).into_iter().zip(heavy_mut(&mut s.effects)) {
+            *set = on;
+        }
+        s.scenery_distance = distance;
+        s.city_light_distance = distance;
+    }
+
+    /// The preset the settings are, if any (else they are the player's own).
+    pub fn of(s: &Settings) -> Option<Preset> {
+        Preset::ALL.into_iter().find(|p| {
+            let (g, distance) = p.graphics();
+            let now = Graphics::of(s);
+            (now.modern_shading, now.msaa, now.shadows, now.local_lights, now.cloud_quality)
+                == (g.modern_shading, g.msaa, g.shadows, g.local_lights, g.cloud_quality)
+                && heavy(&now.effects) == heavy(&g.effects)
+                && s.scenery_distance == distance
+                && s.city_light_distance == distance
+        })
+    }
+}
+
+/// The ULTRA preset's scenery and city-light distances (m).
+const ULTRA_DISTANCE: f32 = 15_000.0;
+
+/// The costly effects (the ones the benchmark turns off).
+fn heavy(e: &crate::effects::Effects) -> [bool; 8] {
+    [e.mist, e.cloud_shadows, e.ocean, e.glass, e.water, e.ground_detail, e.sunbeams, e.vapour]
+}
+
+fn heavy_mut(e: &mut crate::effects::Effects) -> [&mut bool; 8] {
+    [
+        &mut e.mist,
+        &mut e.cloud_shadows,
+        &mut e.ocean,
+        &mut e.glass,
+        &mut e.water,
+        &mut e.ground_detail,
+        &mut e.sunbeams,
+        &mut e.vapour,
+    ]
+}
+
+fn set_heavy(e: &mut crate::effects::Effects, on: bool) {
+    for f in heavy_mut(e) {
+        *f = on;
     }
 }
 
@@ -74,7 +213,8 @@ pub struct Covered;
 /// The benchmark gives up after this long (s; the scene up and measuring).
 const MAX_TIME: f32 = 30.0;
 
-/// Running while present (the browser's loading screen waits for it).
+/// Running while present (the browser's loading screen waits for it, the desktop's shows while
+/// it runs).
 #[derive(Resource, Default)]
 pub struct Bench {
     target: f32,
@@ -230,7 +370,12 @@ fn measure(
         return finish(&mut commands, &bench, true);
     }
     let Some((m, frames)) = bench.tick(dt, quiet.is_none_or(|q| q.0)) else { return };
-    let n = steps_for(m, bench.target);
+    // A frame rate limit below the target is not the computer's slowness.
+    let target = match settings.fps_cap {
+        0 => bench.target,
+        cap => bench.target.min(f32::from(cap) * 0.9),
+    };
+    let n = steps_for(m, target);
     info!(
         "detail benchmark: step {}, {} frames, median {:.1} ms ({:.0} fps)",
         bench.step,
@@ -253,6 +398,19 @@ fn measure(
 }
 
 impl Bench {
+    fn new() -> Self {
+        let target = std::env::var("SM89_DETAIL_BENCHMARK_FPS")
+            .ok()
+            .and_then(|v| v.parse::<f32>().ok())
+            .unwrap_or(TARGET_FPS);
+        Self { target, ..default() }
+    }
+
+    /// Seconds since the scene was up and the benchmark ran (the desktop's screen shows it).
+    pub fn running_for(&self) -> f32 {
+        self.total
+    }
+
     /// One frame of `dt` seconds: settling (while the pipelines are being built, then
     /// `SETTLE` seconds and `SETTLE_FRAMES` frames), then measuring; once measured, the median
     /// frame time and the frames measured.
@@ -414,5 +572,27 @@ mod tests {
             lower(&mut low, step);
         }
         assert!(!low.effects.glass && !low.modern_shading && !low.shadows);
+    }
+
+    /// A new player's graphics are HIGH; each preset applied is itself, MEDIUM and LOW are the
+    /// benchmark's steps down from HIGH; the looks (retro, shake) are not the presets'.
+    #[test]
+    fn presets() {
+        let mut s = Settings::from_args();
+        crate::prefs::Prefs::default().apply(&mut crate::menu::MenuState::default(), &mut s);
+        assert_eq!(Preset::of(&s), Some(Preset::High));
+        s.effects.scanlines = true;
+        for p in Preset::ALL {
+            p.apply(&mut s);
+            assert_eq!(Preset::of(&s), Some(p), "{p:?}");
+            assert!(s.effects.scanlines);
+        }
+        Preset::High.apply(&mut s);
+        let mut g = Graphics::of(&s);
+        lower(&mut g, 0);
+        g.write(&mut s);
+        assert_eq!(Preset::of(&s), Some(Preset::Medium));
+        s.shadows = true;
+        assert_eq!(Preset::of(&s), None);
     }
 }

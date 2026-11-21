@@ -27,6 +27,8 @@ on = 켬
 off = 끔
 loading-title = 불러오는 중
 loading-shaders = 셰이더 준비 중: { $done } / { $total }
+loading-detect = 그래픽 테스트 중
+loading-detect-time = { $seconds }초
 classic = 클래식
 modern = 모던
 
