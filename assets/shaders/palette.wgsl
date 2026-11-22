@@ -2621,14 +2621,13 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #ifdef PALETTE_CITY
     if (!is_line && (in.warm & 512u) != 0u && globals.city.z > 0.0 && !recon_view()) {
         let win = city_windows(in.world_position, deriv, (in.warm >> 16u) & 0x7FFu, (in.warm & 64u) != 0u);
-        // Blue panes mirroring the sky (not on the glass towers' curtain walls, glass already).
-        if (!(hi == 0xFFu && (lo == 0x90u || lo == 0x91u))) {
-            var pane = WIN_PANE * shade(deriv.face, dir) * (1.0 - dark);
+        // Blue panes mirroring the sky (on the glass towers' curtain walls too: darker and
+        // bluer than the pale glass round them).
+        var pane = WIN_PANE * shade(deriv.face, dir) * (1.0 - dark);
 #ifdef PALETTE_GLASS
-            pane = glass_reflection(pane, deriv.face, dir, dark) * WIN_TINT;
+        pane = glass_reflection(pane, deriv.face, dir, dark) * WIN_TINT;
 #endif
-            rgb = mix(rgb, pane, win.a);
-        }
+        rgb = mix(rgb, pane, win.a);
         rgb += win.rgb * win.a * globals.city.x;
     }
 #endif

@@ -1896,16 +1896,14 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
 #ifndef DOT
     if (!is_line && (v_warm & 512u) != 0u && g.city.z > 0.0 && !recon_view()) {
         vec4 win = city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu, (v_warm & 64u) != 0u);
-        // Blue panes mirroring the sky (palette.wgsl), not on the glass towers' walls.
-        if (!(hi == 0xFFu && (lo == 0x90u || lo == 0x91u))) {
-            vec3 pane = WIN_PANE * shade(face, dir) * (1.0 - dark);
+        // Blue panes mirroring the sky (palette.wgsl), on the glass towers' walls too.
+        vec3 pane = WIN_PANE * shade(face, dir) * (1.0 - dark);
 #ifdef REFLECT
-            if (g.reflections.x != 0.0) {
-                pane = glass_reflection(pane, face, dir, dark) * WIN_TINT;
-            }
-#endif
-            rgb = mix(rgb, pane, win.a);
+        if (g.reflections.x != 0.0) {
+            pane = glass_reflection(pane, face, dir, dark) * WIN_TINT;
         }
+#endif
+        rgb = mix(rgb, pane, win.a);
         rgb += win.rgb * win.a * g.city.x;
     }
 #endif
