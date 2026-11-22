@@ -80,9 +80,24 @@ pub fn plugins(plugins: PluginGroupBuilder) -> PluginGroupBuilder {
     // ahead). `SM89_XR_PIPELINED=0` turns it off.
     if std::env::var("SM89_XR_PIPELINED").is_ok_and(|v| v == "0") {
         info!("OpenXR: no pipelined rendering");
-        return add_xr_plugins(plugins.disable::<PipelinedRenderingPlugin>());
+        return with_extensions(add_xr_plugins(plugins.disable::<PipelinedRenderingPlugin>()));
     }
-    add_xr_plugins(plugins)
+    with_extensions(add_xr_plugins(plugins))
+}
+
+/// The extensions asked for besides the plugins' own: the Steam Frame controller's profile,
+/// when the runtime offers it.
+fn with_extensions(plugins: PluginGroupBuilder) -> PluginGroupBuilder {
+    let ext = crate::cockpit3d::FRAME_CONTROLLER_EXT;
+    let offered = entry()
+        .and_then(|e| e.enumerate_extensions().ok())
+        .is_some_and(|x| x.other.iter().any(|o| o.as_slice() == ext));
+    if !offered {
+        return plugins;
+    }
+    let mut init = bevy_mod_openxr::init::OxrInitPlugin::default();
+    init.exts.raw_mut().other.push(ext.to_vec());
+    plugins.set(init)
 }
 
 pub struct XrPlugin;
@@ -279,9 +294,13 @@ fn create_actions(instance: Res<OxrInstance>, mut commands: Commands) {
 
 fn suggest_bindings(
     actions: Option<Res<XrActions>>,
+    exts: Option<Res<bevy_mod_openxr::exts::OxrEnabledExtensions>>,
     mut out: MessageWriter<OxrSuggestActionBinding>,
 ) {
     let Some(a) = actions else { return };
+    let frame = exts.is_some_and(|e| {
+        e.raw().other.iter().any(|x| x.as_slice() == crate::cockpit3d::FRAME_CONTROLLER_EXT)
+    });
     let both = |s: &str| {
         vec![format!("/user/hand/left/{s}").into(), format!("/user/hand/right/{s}").into()]
     };
@@ -291,7 +310,7 @@ fn suggest_bindings(
     let left = |s: &str| vec![format!("/user/hand/left/{s}").into()];
     // (profile, squeeze, trigger, primary, secondary, thumb, menu)
     type B = Vec<std::borrow::Cow<'static, str>>;
-    let profiles: Vec<(&str, B, B, B, B, B, B)> = vec![
+    let mut profiles: Vec<(&str, B, B, B, B, B, B)> = vec![
         (
             "/interaction_profiles/oculus/touch_controller",
             both("input/squeeze/value"),
@@ -338,6 +357,29 @@ fn suggest_bindings(
             both("input/menu/click"),
         ),
     ];
+    // The Steam Frame's controllers: their buttons as SteamVR remaps the Touch's onto them
+    // (the left hand's four buttons are a d-pad, the right hand's A/B/X/Y), and the right
+    // hand's menu button besides the left hand's view button.
+    if frame {
+        let many =
+            |p: &[&str]| -> B { p.iter().map(|s| format!("/user/hand/{s}").into()).collect() };
+        profiles.push((
+            crate::cockpit3d::FRAME_CONTROLLER_PROFILE,
+            both("input/squeeze/value"),
+            both("input/trigger/value"),
+            many(&["left/input/dpad_down/click", "right/input/a/click"]),
+            many(&[
+                "left/input/dpad_up/click",
+                "left/input/dpad_left/click",
+                "left/input/dpad_right/click",
+                "right/input/b/click",
+                "right/input/x/click",
+                "right/input/y/click",
+            ]),
+            both("input/thumbstick/click"),
+            per_hand("input/view/click", "input/menu/click"),
+        ));
+    }
     for (profile, squeeze, trigger, primary, secondary, thumb, menu) in profiles {
         let mut add = |action: openxr::sys::Action, bindings: B| {
             if !bindings.is_empty() {

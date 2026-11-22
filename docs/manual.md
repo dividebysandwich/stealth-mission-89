@@ -1608,7 +1608,9 @@ light and a **tooltip** names it, says what it does and shows its keys; parts hi
 stick, the throttle or the glare shield can't be pointed at.
 
 With head or eye tracking (chapter 1.4) the view follows your head; **Home** recentres it. In VR
-you simply look around, and press the cockpit's buttons with a fingertip.
+you simply look around, and press the cockpit's buttons with a fingertip. The right controller's
+menu button opens the in-flight menu (and backs out of it like Esc); the left one recentres the
+view.
 
 For comparison, the **classic cockpit** (menu: *Cockpit: Classic*) uses a DOS era panel with
 the 77×60-pixel displays and lit lamps instead of labelled bezel buttons:

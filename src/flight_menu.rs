@@ -799,10 +799,14 @@ fn toggle(
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     boss: Res<crate::boss_key::BossKey>,
     mut kneeboard: Option<ResMut<crate::kneeboard::Kneeboard>>,
+    hands: Option<Res<Hands>>,
 ) {
+    // The right hand's menu button in VR, as Esc (the left hand's recentres the view).
+    let vr_menu = settings.vr
+        && hands.is_some_and(|h| h.hands[1].just_pressed(crate::cockpit3d::BUTTON_MENU));
     // Not behind the boss screen (closing the menu would resume the flight it paused).
-    let pressed =
-        actions.read().filter(|a| a.0 == Action::Menu).count() % 2 == 1 && !boss.showing();
+    let presses = actions.read().filter(|a| a.0 == Action::Menu).count() + vr_menu as usize;
+    let pressed = presses % 2 == 1 && !boss.showing();
     // The bindings dialog takes Esc (it cancels a capture) and every other key: only its DONE
     // closes it. The list of saves takes Esc as BACK.
     if menu.overlay() {
@@ -2245,6 +2249,42 @@ fn vr_end_screen(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// In VR the right controller's menu button opens the flight menu and closes it again; the
+    /// left one (recentring) and the desktop leave it alone.
+    #[test]
+    fn the_right_menu_button_opens_the_menu_in_vr() {
+        use crate::cockpit3d::BUTTON_MENU;
+        let mut app = App::new();
+        let mut settings = Settings::from_args();
+        settings.vr = true;
+        app.insert_resource(settings)
+            .init_resource::<FlightMenu>()
+            .init_resource::<Time<Virtual>>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ViewState>()
+            .init_resource::<crate::boss_key::BossKey>()
+            .init_resource::<Hands>()
+            .add_message::<ActionEvent>()
+            .add_systems(Update, toggle);
+        let press = |app: &mut App, hand: usize| {
+            let mut hands = app.world_mut().resource_mut::<Hands>();
+            hands.hands[hand].buttons = BUTTON_MENU;
+            app.update();
+            let mut hands = app.world_mut().resource_mut::<Hands>();
+            hands.hands[hand].prev_buttons = BUTTON_MENU;
+            hands.hands[hand].buttons = 0;
+            app.update();
+            app.world_mut().resource_mut::<Hands>().hands[hand].prev_buttons = 0;
+            app.world().resource::<FlightMenu>().open
+        };
+        assert!(!press(&mut app, 0), "the left hand opened it");
+        assert!(press(&mut app, 1), "not opened");
+        assert!(app.world().resource::<InputBlock>().0);
+        assert!(!press(&mut app, 1), "not closed");
+        app.world_mut().resource_mut::<Settings>().vr = false;
+        assert!(!press(&mut app, 1), "opened on the desktop");
+    }
 
     /// The VR keyboard fits under the search's list, its keys apart, each found at its middle;
     /// the field's X only counts while there is text.

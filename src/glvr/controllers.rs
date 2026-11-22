@@ -46,11 +46,12 @@ fn err(what: &'static str) -> impl Fn(xr::sys::Result) -> String {
 }
 
 impl Controllers {
-    /// The actions, their suggested bindings (as `crate::xr::suggest_bindings`), attached to
-    /// `session`.
+    /// The actions, their suggested bindings (as `crate::xr::suggest_bindings`; `frame`: the
+    /// Steam Frame controller's profile too), attached to `session`.
     pub fn new<G: xr::Graphics>(
         instance: &xr::Instance,
         session: &xr::Session<G>,
+        frame: bool,
     ) -> Result<Self, String> {
         let path = |s: &str| instance.string_to_path(s).map_err(err("an OpenXR path"));
         let hands = [path("/user/hand/left")?, path("/user/hand/right")?];
@@ -75,7 +76,7 @@ impl Controllers {
         let left = |s: &str| vec![format!("/user/hand/left/{s}")];
         // (profile, squeeze, trigger, primary, secondary, thumb, menu)
         type B = Vec<String>;
-        let profiles: Vec<(&str, B, B, B, B, B, B)> = vec![
+        let mut profiles: Vec<(&str, B, B, B, B, B, B)> = vec![
             (
                 "/interaction_profiles/oculus/touch_controller",
                 both("input/squeeze/value"),
@@ -122,6 +123,25 @@ impl Controllers {
                 both("input/menu/click"),
             ),
         ];
+        if frame {
+            let many = |p: &[&str]| -> B { p.iter().map(|s| format!("/user/hand/{s}")).collect() };
+            profiles.push((
+                crate::cockpit3d::FRAME_CONTROLLER_PROFILE,
+                both("input/squeeze/value"),
+                both("input/trigger/value"),
+                many(&["left/input/dpad_down/click", "right/input/a/click"]),
+                many(&[
+                    "left/input/dpad_up/click",
+                    "left/input/dpad_left/click",
+                    "left/input/dpad_right/click",
+                    "right/input/b/click",
+                    "right/input/x/click",
+                    "right/input/y/click",
+                ]),
+                both("input/thumbstick/click"),
+                per_hand("input/view/click", "input/menu/click"),
+            ));
+        }
         for (profile, sq, tr, pr, se, th, me) in profiles {
             let mut paths: Vec<(xr::Path, usize)> = Vec::new();
             let mut add = |which: usize, bindings: &B| -> Result<(), String> {

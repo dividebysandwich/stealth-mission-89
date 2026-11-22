@@ -153,7 +153,13 @@ pub struct Hands {
 pub const BUTTON_PRIMARY: u8 = 1; // A / X
 pub const BUTTON_SECONDARY: u8 = 2; // B / Y
 pub const BUTTON_THUMB: u8 = 4; // thumbstick click
+/// The menu button: the left hand's recentres, the right hand's opens the flight menu.
 pub const BUTTON_MENU: u8 = 8;
+/// The OpenXR extension with the Steam Frame controller's own interaction profile (its right
+/// hand's menu button is in no other profile), nul-terminated as `openxr::ExtensionSet::other`
+/// holds it, and that profile.
+pub const FRAME_CONTROLLER_EXT: &[u8] = b"XR_VALVE_frame_controller_interaction\0";
+pub const FRAME_CONTROLLER_PROFILE: &str = "/interaction_profiles/valve/frame_controller";
 /// Thumbstick pushed up / down / left / right.
 pub const BUTTON_STICK_UP: u8 = 16;
 pub const BUTTON_STICK_DOWN: u8 = 32;
