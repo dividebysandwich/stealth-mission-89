@@ -88,6 +88,8 @@ pub enum GlowTint {
     CoolWindow = 5,
     Green = 6,
     Blue = 7,
+    /// The city towers' accents.
+    Violet = 8,
 }
 
 /// The packed word of a glowing lamp (`ATTRIBUTE_DOT_COLOUR` of a `FLAG_GLOW` batch): palette

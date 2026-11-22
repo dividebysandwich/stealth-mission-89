@@ -308,6 +308,7 @@ fn glow_colour(word: u32, palette: vec3<f32>) -> vec3<f32> {
         case 5u: { return vec3<f32>(0.75, 0.85, 1.0); }
         case 6u: { return vec3<f32>(0.25, 1.0, 0.35); }
         case 7u: { return vec3<f32>(0.3, 0.45, 1.0); }
+        case 8u: { return vec3<f32>(0.72, 0.35, 1.0); }
         default: { return palette; }
     }
 }

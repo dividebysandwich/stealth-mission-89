@@ -392,8 +392,16 @@ fn building_glow(net: &Network, b: &Building, f: &Frame, g: &mut Geom, share: f6
                 let p = c + along * rng.range(-0.4, 0.4) as f32 * b.l + across * (b.w * 0.5 + 0.5);
                 glow(g, LAMP, GLOW_SIGN, GlowKind::Lamp, tint, p + Vec3::Y * 3.5);
             }
-            if b.kind == Kind::Tower && b.h > 60.0 {
-                beacon(g, c + Vec3::Y * (b.h + 1.0));
+            if b.kind == Kind::Tower {
+                let shape = tower_shape(b, c, d);
+                if b.h > 60.0 {
+                    beacon(g, shape.needle.unwrap_or(c + Vec3::Y * b.h) + Vec3::Y * 1.0);
+                }
+                if density > TOWER_ACCENT_CORE
+                    && kept(hash(b.seed, 0, 0, 29), TOWER_ACCENT_SHARE * share)
+                {
+                    tower_accents(b, &shape, c, g);
+                }
             }
         }
         Kind::Barn | Kind::Shed => {
@@ -432,6 +440,72 @@ fn building_glow(net: &Network, b: &Building, f: &Frame, g: &mut Geom, share: f6
         Kind::Radar => beacon(g, c + Vec3::Y * (b.h + 0.3)),
         Kind::Windsock => beacon(g, c + Vec3::Y * (b.h + 0.4)),
         _ => {}
+    }
+}
+
+/// Towers in the city centres (by the town's density) lit up with accents at night, and their
+/// share; the accents' lamps apart along the crown and up the corners (m), and how far down
+/// the tower the corner strips reach (share of its height).
+const TOWER_ACCENT_CORE: f64 = 0.55;
+const TOWER_ACCENT_SHARE: f64 = 0.7;
+const ACCENT_STEP: f32 = 1.7;
+const ACCENT_CORNER_STEP: f32 = 2.0;
+const ACCENT_REACH: f32 = 0.45;
+const GLOW_ACCENT: u8 = 8;
+
+/// A tower's light accents (a city skyline at night): one colour each (blue the most, white,
+/// violet, the odd green), a line of LEDs round its crown, and on some strips up its top
+/// tier's corners, a band round a lower setback, or a floodlit needle.
+fn tower_accents(b: &Building, shape: &TowerShape, c: Vec3, g: &mut Geom) {
+    let r = hash(b.seed, 0, 0, 31);
+    let tint = [
+        GlowTint::Blue,
+        GlowTint::Blue,
+        GlowTint::Blue,
+        GlowTint::Led,
+        GlowTint::Led,
+        GlowTint::Violet,
+        GlowTint::Violet,
+        GlowTint::Green,
+    ][(r % 8) as usize];
+    let style = (r >> 4) % 4;
+    let lamp = |g: &mut Geom, p: Vec3| glow(g, LAMP, GLOW_ACCENT, GlowKind::Lamp, tint, p);
+    // A line round a footprint at a height, just outside its walls.
+    let outline = |g: &mut Geom, foot: &[Vec3], y: f32| {
+        for i in 0..foot.len() {
+            let (p, q) = (foot[i], foot[(i + 1) % foot.len()]);
+            let out = ((p + q) * 0.5 - c).normalize_or_zero() * 0.3;
+            let n = ((p - q).length() / ACCENT_STEP).ceil().max(1.0) as usize;
+            for k in 0..n {
+                lamp(g, p.lerp(q, k as f32 / n as f32) + out + Vec3::Y * y);
+            }
+        }
+    };
+    let Some((top, y0, y1)) = shape.tiers.last() else { return };
+    outline(g, top, y1 + 0.2);
+    // Corner strips (every corner of a box or cut tier, every other of a round one).
+    if style == 1 || style == 3 {
+        let every = if top.len() > 8 { 2 } else { 1 };
+        let from = y0.max(y1 - b.h * ACCENT_REACH);
+        let n = ((y1 - from) / ACCENT_CORNER_STEP).floor() as usize;
+        for p in top.iter().step_by(every) {
+            let out = (*p - c).normalize_or_zero() * 0.3;
+            for k in 0..n {
+                lamp(g, *p + out + Vec3::Y * (y1 - k as f32 * ACCENT_CORNER_STEP));
+            }
+        }
+    }
+    // A band round the next tier down's roof.
+    if style == 2 && shape.tiers.len() > 1 {
+        let (foot, _, y) = &shape.tiers[shape.tiers.len() - 2];
+        outline(g, foot, y + 0.2);
+    }
+    // The needle floodlit from its base.
+    if let Some(apex) = shape.needle {
+        let n = ((apex.y - y1) / ACCENT_CORNER_STEP).floor() as usize;
+        for k in 1..n {
+            lamp(g, c + Vec3::Y * (y1 + k as f32 * ACCENT_CORNER_STEP));
+        }
     }
 }
 
@@ -623,7 +697,7 @@ mod light_tests {
         for k in [GlowKind::Lamp, GlowKind::Window, GlowKind::Flood] {
             assert!(kind(k) > 0, "no {k:?}");
         }
-        assert!(full.iter().all(|(w, _)| (w >> 14) & 15 <= GlowTint::Blue as u32));
+        assert!(full.iter().all(|(w, _)| (w >> 14) & 15 <= GlowTint::Violet as u32));
         assert!(full.iter().any(|(w, _)| (w >> 14) & 15 == GlowTint::Sodium as u32));
     }
 
@@ -970,15 +1044,81 @@ fn wall_colour(b: &Building) -> u8 {
     if b.kind == Kind::Tower && hash(b.seed, 0, 0, 11) % 3 == 0 { GLASS } else { b.wall }
 }
 
+/// A city tower's shape (by its seed, inside its box, which `obstacles` keeps): tiers bottom
+/// up (footprint, from, to in metres) and a needle's apex over the top. The low ones are
+/// prisms, some with their corners cut; the tall ones also set back in tiers, round, or with
+/// a narrower crown and a needle.
+struct TowerShape {
+    tiers: Vec<(Vec<Vec3>, f32, f32)>,
+    needle: Option<Vec3>,
+}
+
+/// A rectangle with its corners cut by `k` metres (an octagon).
+fn chamfered(c: Vec3, d: Vec2, l: f32, w: f32, k: f32) -> Vec<Vec3> {
+    let r = rect(c, d, l, w);
+    let mut out = Vec::with_capacity(8);
+    for i in 0..4 {
+        let (prev, p, next) = (r[(i + 3) % 4], r[i], r[(i + 1) % 4]);
+        out.push(p + (prev - p).normalize() * k);
+        out.push(p + (next - p).normalize() * k);
+    }
+    out
+}
+
+fn tower_shape(b: &Building, c: Vec3, d: Vec2) -> TowerShape {
+    let h = b.h;
+    let boxed = |s: f32| rect(c, d, b.l * s, b.w * s).to_vec();
+    let cut = |s: f32| chamfered(c, d, b.l * s, b.w * s, 0.22 * b.l.min(b.w) * s);
+    let r = hash(b.seed, 0, 0, 23);
+    // Where the tiers step in (shares of the height).
+    let a = 0.45 + ((r >> 8) % 16) as f32 / 16.0 * 0.2;
+    let k = a + (1.0 - a) * 0.55;
+    let pick = if h < 40.0 { [0, 0, 0, 5][(r % 4) as usize] } else { r % 10 };
+    let mut needle = None;
+    let tiers = match pick {
+        3 | 4 => {
+            vec![(boxed(1.0), 0.0, h * a), (boxed(0.78), h * a, h * k), (boxed(0.56), h * k, h)]
+        }
+        5 => vec![(cut(1.0), 0.0, h)],
+        6 => {
+            let phase = d.y.atan2(d.x) + TAU / 32.0;
+            vec![(ring(c, b.l.min(b.w) * 0.5, 16, phase), 0.0, h)]
+        }
+        7 | 8 => {
+            needle = Some(c + Vec3::Y * (h * 1.18));
+            vec![(boxed(1.0), 0.0, h * 0.88), (cut(0.72), h * 0.88, h)]
+        }
+        9 => vec![(cut(1.0), 0.0, h * 0.72), (cut(0.7), h * 0.72, h)],
+        _ => vec![(boxed(1.0), 0.0, h)],
+    };
+    TowerShape { tiers, needle }
+}
+
+/// A tower's tiers with their windows, flat roofs and its needle.
+fn tower_mesh(b: &Building, c: Vec3, d: Vec2, g: &mut Geom) {
+    let shape = tower_shape(b, c, d);
+    for (foot, y0, y1) in &shape.tiers {
+        walls(b, wall_colour(b), foot, *y0, *y1, g);
+        g.cap(b.roof_colour, foot, *y1);
+    }
+    if let Some(apex) = shape.needle {
+        g.spire(STEEL, &ring(c, 1.4, 4, 0.3), b.h, apex);
+    }
+}
+
 fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     let c = f.at(b.p, 0.0);
     let d = dir2(b.dir);
+    if b.kind == Kind::Tower {
+        tower_mesh(b, c, d, g);
+        return;
+    }
     let along = Vec3::new(d.x, 0.0, d.y);
     let mut rng = Rng::new(b.seed);
     let foot = rect(c, d, b.l, b.w);
     match b.kind {
         Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
-            walls(b, wall_colour(b), &foot, g);
+            walls(b, wall_colour(b), &foot, 0.0, b.h, g);
             let rise = match b.kind {
                 Kind::Shed => b.w * 0.18,
                 Kind::Church => b.w * 0.6,
@@ -1095,14 +1235,15 @@ fn lit_walls(b: &Building) -> bool {
     matches!(b.kind, Kind::Apartment | Kind::Tower) && b.h >= 6.0
 }
 
-/// A building's walls: with windows (`lit_walls`), a house's few windows, or plain.
-fn walls(b: &Building, c: u8, foot: &[Vec3], g: &mut Geom) {
+/// A building's walls from `y0` to `y1`: with windows (`lit_walls`), a house's few windows,
+/// or plain.
+fn walls(b: &Building, c: u8, foot: &[Vec3], y0: f32, y1: f32, g: &mut Geom) {
     if lit_walls(b) {
-        g.window_walls(c, foot, 0.0, b.h);
+        g.window_walls(c, foot, y0, y1);
     } else if b.kind == Kind::House {
-        g.house_walls(c, foot, 0.0, b.h);
+        g.house_walls(c, foot, y0, y1);
     } else {
-        g.walls(c, foot, 0.0, b.h);
+        g.walls(c, foot, y0, y1);
     }
 }
 
@@ -1116,6 +1257,10 @@ fn small(b: &Building) -> bool {
 fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
     let c = f.at(b.p, 0.0);
     let d = dir2(b.dir);
+    if b.kind == Kind::Tower {
+        tower_mesh(b, c, d, g);
+        return;
+    }
     let foot = rect(c, d, b.l, b.w);
     match b.kind {
         Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
@@ -1124,7 +1269,7 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
             }
             match b.roof {
                 Roof::Flat if lit_walls(b) || b.kind == Kind::House => {
-                    walls(b, wall_colour(b), &foot, g);
+                    walls(b, wall_colour(b), &foot, 0.0, b.h, g);
                     g.cap(b.roof_colour, &foot, b.h);
                 }
                 Roof::Flat => g.block(wall_colour(b), b.roof_colour, &foot, 0.0, b.h),
@@ -1134,7 +1279,7 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                         Kind::Church => b.w * 0.6,
                         _ => b.w * 0.42,
                     };
-                    walls(b, b.wall, &foot, g);
+                    walls(b, b.wall, &foot, 0.0, b.h, g);
                     g.gable(b.wall, b.roof_colour, &foot, b.h, rise);
                 }
             }
