@@ -88,6 +88,10 @@ fn tube(
                     alpha_mode: AlphaMode::Blend,
                     double_sided: true,
                     cull_mode: None,
+                    // Drawn after every other see-through thing (sorted by the distance of
+                    // their centres, the HUD's field is at the eye, a searchlight's beam may
+                    // reach back past it): nothing shows on the black.
+                    depth_bias: 1.0e6,
                     ..default()
                 })),
                 Transform::default(),
