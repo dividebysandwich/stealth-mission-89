@@ -590,14 +590,25 @@ pub fn build(a: &Airfield) -> Geom {
         helipad(&mut g, &f, c, d);
     }
     for &p in &a.floods {
-        g.line(STRUCTURE, f.at(p, 0.0), f.at(p, 22.0));
-        g.lamp(FLOOD, f.at(p, 22.3));
+        flood_mast(&mut g, f.at(p, 0.0));
+        g.lamp(FLOOD, f.at(p, 21.7));
         g.lamp(RED, f.at(p, 23.0));
     }
     for b in &a.buildings {
         building(b, &f, &mut g);
     }
     g
+}
+
+/// An apron floodlight mast standing at `foot`: a square steel pole, thinner above, under
+/// a lamp frame (a bare line read as a scratch across the sky by day).
+fn flood_mast(g: &mut Geom, foot: Vec3) {
+    let square = |r: f32| super::geom::ring(foot, r, 4, std::f32::consts::FRAC_PI_4);
+    g.walls(STRUCTURE, &square(0.32), 0.0, 12.0);
+    g.block(STRUCTURE, STRUCTURE, &square(0.22), 12.0, 21.0);
+    // The frame the lamps hang on, with its top rail.
+    g.block(STRUCTURE, STRUCTURE, &rect(foot, Vec2::X, 2.6, 0.5), 21.0, 22.4);
+    g.block(STRUCTURE, STRUCTURE, &square(0.12), 22.4, 22.9);
 }
 
 /// Rubber deposits: the dark streaks the tyres leave where they spin up on touchdown, in the
