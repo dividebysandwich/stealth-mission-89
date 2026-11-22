@@ -14,6 +14,7 @@ hud-target-in-view = KOHDE NÄKYVISSÄ
 hud-aim-at-target = TÄHTÄÄ KOHTEESEEN
 hud-photo = KUVA { $state }
 hud-rearmed = Aseistettu ja tankattu
+hud-observing = Tarkkailu - lopeta tehtävä valikosta
 hud-landed-rearm = Laskeuduttu - aseista tai päätä lento
 hud-divert-accept = Uudelleenohjaus: { $title } - { $key } hyväksyy
 hud-objective-achieved = Tavoite saavutettu
@@ -28,7 +29,6 @@ end-kills = Tuhotut: koneita { $air }, maakohteita { $ground }
 end-time = Tehtävän kesto { $time }
 end-damage = Vauriot: osumia { $hits }
 end-training = Harjoitustehtävä
-end-press-any-key = Paina mitä tahansa näppäintä
 
 ## Alasammutun lentäjän paneeli
 

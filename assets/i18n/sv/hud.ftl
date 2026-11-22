@@ -13,6 +13,7 @@ hud-target-in-view = MÅL I SIKTE
 hud-aim-at-target = RIKTA MOT MÅL
 hud-photo = FOTO { $state }
 hud-rearmed = Ombeväpnad och tankad
+hud-observing = Observerar - avsluta uppdraget från menyn
 hud-landed-rearm = Landad - beväpna om eller avsluta flygningen
 hud-divert-accept = Omdirigering: { $title } - { $key } för att acceptera
 hud-objective-achieved = Målet uppnått
@@ -27,7 +28,6 @@ end-kills = Nedskjutningar: { $air } flygplan, { $ground } markmål
 end-time = Uppdragstid { $time }
 end-damage = Skador: { $hits } träffar
 end-training = Övningsuppdrag
-end-press-any-key = Tryck på valfri tangent
 
 ## Panelen för nedskjuten pilot
 

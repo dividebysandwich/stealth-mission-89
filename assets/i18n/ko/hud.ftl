@@ -14,6 +14,7 @@ hud-target-in-view = 표적 확인
 hud-aim-at-target = 표적 조준
 hud-photo = 사진 { $state }
 hud-rearmed = 재무장 및 재급유 완료
+hud-observing = 관전 중 - 메뉴에서 임무를 종료하십시오
 hud-landed-rearm = 착륙 완료 - 재무장하거나 출격을 종료하십시오
 hud-divert-accept = 임무 전환: { $title } - { $key }로 수락
 hud-objective-achieved = 목표 달성
@@ -28,7 +29,6 @@ end-kills = 격추: 항공기 { $air }대, 지상 표적 { $ground }개
 end-time = 임무 시간: { $time }
 end-damage = 피해: 피격 { $hits }회
 end-training = 훈련 임무
-end-press-any-key = 아무 키나 누르십시오
 
 ## 격추된 조종사 패널
 

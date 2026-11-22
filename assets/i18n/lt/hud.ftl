@@ -14,6 +14,7 @@ hud-target-in-view = TAIKINYS MATOMAS
 hud-aim-at-target = TAIKYKITĖS Į TAIKINĮ
 hud-photo = NUOTRAUKA { $state }
 hud-rearmed = Ginklai ir kuras papildyti
+hud-observing = Stebėjimas - misiją baikite meniu
 hud-landed-rearm = Nusileista - papildykite arba baikite skrydį
 hud-divert-accept = Nukreipimas: { $title } - { $key } priimti
 hud-objective-achieved = Užduotis įvykdyta
@@ -28,7 +29,6 @@ end-kills = Pergalės: orlaivių { $air }, žemės taikinių { $ground }
 end-time = Misijos trukmė: { $time }
 end-damage = Pažeidimai: pataikymų { $hits }
 end-training = Mokomoji misija
-end-press-any-key = Paspauskite bet kurį klavišą
 
 ## Numušto piloto skydelis
 

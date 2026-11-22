@@ -14,6 +14,7 @@ hud-target-in-view = ΣΤΟΧΟΣ ΣΤΟ ΟΠΤΙΚΟ ΠΕΔΙΟ
 hud-aim-at-target = ΣΗΜΑΔΕΨΤΕ ΤΟΝ ΣΤΟΧΟ
 hud-photo = ΦΩΤΟ { $state }
 hud-rearmed = Επανοπλίστηκε και ανεφοδιάστηκε
+hud-observing = Παρατήρηση - τερματίστε την αποστολή από το μενού
 hud-landed-rearm = Προσγειωθήκατε - επανοπλίστε ή τερματίστε την εξόρμηση
 hud-divert-accept = Εκτροπή: { $title } - { $key } για αποδοχή
 hud-objective-achieved = Ο στόχος επιτεύχθηκε
@@ -28,7 +29,6 @@ end-kills = Καταρρίψεις: { $air } αεροσκάφη, { $ground } σ�
 end-time = Διάρκεια αποστολής { $time }
 end-damage = Ζημιές: { $hits } πλήγματα
 end-training = Αποστολή εκπαίδευσης
-end-press-any-key = Πατήστε ένα πλήκτρο
 
 ## Το πάνελ του καταρριφθέντος πιλότου
 

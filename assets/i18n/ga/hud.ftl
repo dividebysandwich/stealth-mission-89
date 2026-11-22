@@ -14,6 +14,7 @@ hud-target-in-view = SPRIOC I RADHARC
 hud-aim-at-target = DIRIGH AR AN SPRIOC
 hud-photo = GRIANGHRAF { $state }
 hud-rearmed = Athairmthe agus athbhreoslaithe
+hud-observing = Ag breathnú - críochnaigh an misean ón roghchlár
 hud-landed-rearm = Tuirlingthe - athairm nó cuir deireadh leis an eitilt
 hud-divert-accept = Atreorú: { $title } - { $key } le glacadh leis
 hud-objective-achieved = Cuspóir bainte amach
@@ -28,7 +29,6 @@ end-kills = Scriosadh: { $air } aerárthach, { $ground } sprioc talún
 end-time = Fad na misean: { $time }
 end-damage = Damáiste: { $hits } buille
 end-training = Misean traenála
-end-press-any-key = Brúigh eochair ar bith
 
 ## Painéal an phíolóta a scaoileadh anuas
 

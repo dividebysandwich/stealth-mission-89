@@ -14,6 +14,7 @@ hud-target-in-view = CEL WIDOCZNY
 hud-aim-at-target = NAKIERUJ NA CEL
 hud-photo = ZDJĘCIE { $state }
 hud-rearmed = Uzbrojono i zatankowano
+hud-observing = Obserwacja - zakończ misję w menu
 hud-landed-rearm = Wylądowano - uzupełnij uzbrojenie lub zakończ lot bojowy
 hud-divert-accept = Zmiana zadania: { $title } - { $key }, aby przyjąć
 hud-objective-achieved = Cel osiągnięty
@@ -33,7 +34,6 @@ end-damage = Uszkodzenia: { $hits ->
    *[other] { $hits } trafienia
 }
 end-training = Misja treningowa
-end-press-any-key = Naciśnij dowolny klawisz
 
 ## Panel zestrzelonego pilota
 

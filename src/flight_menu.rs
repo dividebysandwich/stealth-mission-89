@@ -37,8 +37,12 @@
 //! the mission board (no sortie flown) it is the board's own way out instead, SAVE & EXIT or
 //! DISCONNECT from a server, asking first as the board does.
 //!
-//! In VR the end-of-mission overlay (a 2D overlay on the desktop) is a screen floating in front of
-//! the head, also in the outside views, drawn over the cockpit.
+//! When the mission is over (landed, crashed, ejected, a campaign sortie's end or its landing at
+//! a friendly base) the menu comes up on its MISSION OVER page, the end's title and results above
+//! CONTINUE, REARM & REFUEL and END MISSION (END SORTIE): CONTINUE flies on in an intact aircraft
+//! and only watches the world go on (OBSERVE) once it is lost; REARM only in an intact one. The page
+//! stays up until one is chosen (Esc does not close it); `combat.rs` and the campaign carry the
+//! choice out (`FlightMenu::over`, `over_choice`).
 
 use bevy::audio::{AudioSink, AudioSinkPlayback};
 use bevy::input::ButtonState;
@@ -69,16 +73,7 @@ impl Plugin for FlightMenuPlugin {
             .add_systems(OnExit(AppState::Flight), close_on_exit)
             .add_systems(
                 Update,
-                (
-                    toggle,
-                    spawn_screen,
-                    type_search,
-                    scroll_guide,
-                    navigate,
-                    dialog_overlay,
-                    draw,
-                    vr_end_screen,
-                )
+                (toggle, spawn_screen, type_search, scroll_guide, navigate, dialog_overlay, draw)
                     .chain()
                     .run_if(in_state(AppState::Flight)),
             )
@@ -154,6 +149,31 @@ pub struct FlightMenu {
     /// the move).
     pub seat: SeatChoice,
     pub seat_request: bool,
+    /// The mission is over: the MISSION OVER page is up until a choice (`combat.rs` and the
+    /// campaign set it, the choice clears it).
+    pub over: Option<MissionOver>,
+    /// What was chosen on the MISSION OVER page (END MISSION of a single mission ends it at
+    /// once, `exiting`).
+    pub over_choice: Option<OverChoice>,
+}
+
+/// The MISSION OVER page's content.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MissionOver {
+    /// How the mission ended (the page's title) and its results.
+    pub title: String,
+    pub lines: Vec<String>,
+    /// The aircraft is intact (landed): CONTINUE flies on and it can be rearmed; else CONTINUE
+    /// only observes.
+    pub intact: bool,
+}
+
+/// A choice of the MISSION OVER page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OverChoice {
+    Continue,
+    Rearm,
+    End,
 }
 
 /// What the seat entry of the menu does.
@@ -201,6 +221,8 @@ enum Page {
     ConfirmEnd,
     /// RESTART MISSION?
     ConfirmRestart,
+    /// The mission is over: CONTINUE, REARM or END (`FlightMenu::over`).
+    Over,
     Options,
     Game,
     Graphics,
@@ -240,6 +262,7 @@ impl Page {
             Page::Crew => &[Resume, Open(Page::Options), KeyGuide, SwitchSeat, Back],
             Page::ConfirmEnd => &[ConfirmEnd, Resume, Back],
             Page::ConfirmRestart => &[ConfirmRestart, Resume, Back],
+            Page::Over => &[Continue, Rearm, EndMission],
             Page::Options => &[
                 Open(Page::Game),
                 Open(Page::Graphics),
@@ -336,7 +359,7 @@ impl Page {
 
     fn parent(self, home: Page) -> Option<Page> {
         match self {
-            Page::Main | Page::Sortie | Page::Crew => None,
+            Page::Main | Page::Sortie | Page::Crew | Page::Over => None,
             Page::Options | Page::ConfirmEnd | Page::ConfirmRestart => Some(home),
             _ => Some(Page::Options),
         }
@@ -347,6 +370,7 @@ impl Page {
             Page::Main | Page::Sortie | Page::Crew => "fm-menu",
             Page::ConfirmEnd => "fm-end-sortie-confirm",
             Page::ConfirmRestart => "fm-restart-confirm",
+            Page::Over => "fm-mission-over",
             Page::Options => "options-title",
             Page::Game => "options-tab-game",
             Page::Graphics => "options-tab-graphics",
@@ -421,6 +445,10 @@ enum Item {
     EndMission,
     /// END SORTIE, asked to be sure.
     ConfirmEnd,
+    /// MISSION OVER: fly on, or (the aircraft lost) observe.
+    Continue,
+    /// MISSION OVER: rearm and refuel the landed aircraft and fly on.
+    Rearm,
     Back,
     /// The language of the menus and messages (`options::language_option`).
     Language,
@@ -496,6 +524,8 @@ impl Item {
             Item::LeaveAircraft => "fm-leave-aircraft",
             Item::SwitchSeat => "fm-seat-gunner",
             Item::ConfirmEnd => "fm-end-sortie",
+            Item::Continue => "fm-continue-flying",
+            Item::Rearm => "ops-rearm",
             Item::Back => "back",
             Item::Language => "fm-language",
             Item::Shaders => "fm-shaders",
@@ -594,6 +624,8 @@ impl Item {
             | Item::SwitchSeat
             | Item::EndMission
             | Item::ConfirmEnd
+            | Item::Continue
+            | Item::Rearm
             | Item::Back => String::new(),
         }
     }
@@ -612,6 +644,7 @@ impl Item {
             Item::LoadMission => menu.can_load,
             Item::Restart | Item::ConfirmRestart => menu.can_restart,
             Item::LeaveAircraft => menu.can_leave,
+            Item::Rearm => menu.over.as_ref().is_some_and(|o| o.intact),
             Item::SwitchSeat => menu.seat != SeatChoice::None,
             Item::CockpitSize | Item::AutoDetail => s.vr,
             Item::KillCam => !s.vr,
@@ -654,6 +687,8 @@ impl Item {
                 | Item::SwitchSeat
                 | Item::EndMission
                 | Item::ConfirmEnd
+                | Item::Continue
+                | Item::Rearm
                 | Item::Back
         )
     }
@@ -697,11 +732,8 @@ const KEY_W: f32 = 64.0;
 const KEY_H: f32 = 34.0;
 const KEY_GAP: f32 = 6.0;
 const KEYBOARD_TOP: f32 = GUIDE[3] - 5.0 * (KEY_H + KEY_GAP);
-/// Flight palette colours of the VR end screen: background, bright and dim green (the panel's
-/// lamp greens).
-const BG: u8 = 5;
-const BRIGHT: u8 = 47;
-const DIM: u8 = 45;
+/// MISSION OVER: the top of its entries (the results above them).
+const OVER_TOP: f32 = 250.0;
 /// A VR fingertip touches the screen from this far in front of it to this far behind it
 /// (metres; a finger easily passes through the plane).
 const TOUCH_FRONT: f32 = 0.05;
@@ -760,13 +792,6 @@ fn colours() -> std::sync::Arc<[u32; 256]> {
 #[derive(Component)]
 struct MenuScreen;
 
-#[derive(Component)]
-struct EndScreen;
-
-/// The VR end screen: size (metres) and distance in front of the head.
-const END_SIZE: Vec2 = Vec2::new(0.6, 0.4);
-const END_DISTANCE: f32 = 0.8;
-
 fn close_on_exit(
     mut menu: ResMut<FlightMenu>,
     mut time: ResMut<Time<Virtual>>,
@@ -782,6 +807,8 @@ fn close_on_exit(
     menu.open = false;
     menu.opened_with = None;
     menu.exiting = false;
+    menu.over = None;
+    menu.over_choice = None;
     time.unpause();
     block.0 = false;
 }
@@ -829,6 +856,27 @@ fn toggle(
         Some(crate::campaign::Phase::Crew { .. }) => Page::Crew,
         _ => Page::Main,
     };
+    // The mission is over: MISSION OVER comes up (over any page) and stays until a choice.
+    if menu.over.is_some() && !menu.exiting {
+        if !(menu.open && menu.page == Page::Over) {
+            let pause = campaign.is_none();
+            set_open(&mut menu, true, pause, &settings, &mut time, &mut block, &sinks);
+            menu.guide = false;
+            menu.options_only = false;
+            go_to(&mut menu, Page::Over);
+            menu.cursor = 0;
+            if view.view != View::Cockpit {
+                view.view = View::Cockpit;
+            }
+        }
+        return;
+    }
+    if menu.open && menu.page == Page::Over && !menu.exiting {
+        // Gone without a choice here (the campaign moved on).
+        let pause = campaign.is_none();
+        set_open(&mut menu, false, pause, &settings, &mut time, &mut block, &sinks);
+        return;
+    }
     // Esc in the key guide clears its search, else goes back to the entries; on a page it goes
     // to the page before.
     if pressed && menu.open && menu.guide {
@@ -1010,8 +1058,9 @@ fn item_rects(page: Page) -> Vec<[f32; 4]> {
     let items = page.items();
     let rows = items.iter().filter(|&&i| i != Item::Back).count().max(1) as f32;
     let gap = if items.contains(&Item::EndMission) { END_GAP } else { 0.0 };
-    let pitch = ((BOTTOM - TOP - gap) / rows).min(MAX_PITCH);
-    let mut y = TOP;
+    let top = if page == Page::Over { OVER_TOP } else { TOP };
+    let pitch = ((BOTTOM - top - gap) / rows).min(MAX_PITCH);
+    let mut y = top;
     items
         .iter()
         .map(|item| match item {
@@ -1460,8 +1509,8 @@ fn navigate(
     };
     let item = items[index.min(n - 1)];
     if !item.enabled(&settings, ops, &menu) || !(select || clicked.is_some() || adjust != 0) {
-        // B / the gamepad's East button: back a page, or close the menu.
-        if back {
+        // B / the gamepad's East button: back a page, or close the menu (not MISSION OVER).
+        if back && menu.page != Page::Over {
             match menu.page.back(menu.options_only, menu.home) {
                 Some(parent) => go_to(&mut menu, parent),
                 None => set_open(&mut menu, false, pause, &settings, &mut time, &mut block, &sinks),
@@ -1586,6 +1635,24 @@ fn navigate(
         Item::Restart => go_to(&mut menu, Page::ConfirmRestart),
         // Stays open (paused) until the flight is set up again.
         Item::ConfirmRestart => menu.restart_request = true,
+        // MISSION OVER: a single mission ends at once (EXITING...), a campaign's sortie goes
+        // to its debrief; the others are the flight's or the campaign's to carry out.
+        Item::EndMission if menu.page == Page::Over => {
+            menu.over = None;
+            if pause {
+                menu.exiting = true;
+                save_options(&mut menu, s);
+            } else {
+                menu.over_choice = Some(OverChoice::End);
+                close = true;
+            }
+        }
+        Item::Continue | Item::Rearm => {
+            menu.over = None;
+            menu.over_choice =
+                Some(if item == Item::Rearm { OverChoice::Rearm } else { OverChoice::Continue });
+            close = true;
+        }
         // On the campaign's board: its SAVE & EXIT or DISCONNECT, asking first.
         Item::EndMission if let Some(c) = campaign.as_mut().filter(|c| c.on_board()) => {
             c.ask_exit();
@@ -1806,8 +1873,10 @@ fn draw(
         tex.dirty = true;
         return;
     }
+    let over_title = menu.over.as_ref().map(|o| o.title.to_uppercase());
     let (crumb, title) = match menu.page {
         Page::Main | Page::Sortie => ("", main_title),
+        Page::Over => ("", over_title.as_deref().unwrap_or(menu.page.title())),
         Page::ConfirmEnd | Page::ConfirmRestart => ("", menu.page.title()),
         Page::Options => ("", ts!("options-title")),
         page => (ts!("fm-crumb-options"), page.title()),
@@ -1817,17 +1886,34 @@ fn draw(
         Page::Main | Page::Sortie if campaign.is_some() => ts!("fm-game-in-progress"),
         Page::ConfirmEnd => ts!("fm-end-sortie-confirm.text"),
         Page::ConfirmRestart => ts!("fm-restart-confirm.text"),
+        Page::Over if menu.over.as_ref().is_some_and(|o| !o.intact) => ts!("fm-over-lost"),
         Page::Game => ts!("fm-game-note"),
         _ => "",
     };
     let items = menu.page.items();
     let back_lit = items.get(menu.cursor) == Some(&Item::Back);
-    draw_frame(c, crumb, title, note, Some((key, back_lit)));
+    // MISSION OVER has no BACK (a choice has to be made), its results above the entries.
+    let back = (menu.page != Page::Over).then_some((key, back_lit));
+    draw_frame(c, crumb, title, note, back);
+    let intact = menu.over.as_ref().is_none_or(|o| o.intact);
+    if let Some(o) = menu.over.as_ref().filter(|_| menu.page == Page::Over) {
+        let pitch = ((OVER_TOP - TOP - 12.0) / o.lines.len().max(1) as f32).min(30.0);
+        for (i, l) in o.lines.iter().enumerate() {
+            let y = TOP + pitch * (i as f32 + 0.5);
+            let size = fit(l, 20.0, ROW_X[1] - ROW_X[0] - 40.0);
+            stroke_text_at(c, W as f32 / 2.0, y, l, size, 2.6, ink::TEXT, Align::Centre);
+        }
+    }
     // The main page's entries and the pages of OPTIONS have an icon; the ones that open
     // another screen (a page, the key guide, the bindings dialog) also have a chevron.
     let icons = matches!(
         menu.page,
-        Page::Main | Page::Sortie | Page::ConfirmEnd | Page::ConfirmRestart | Page::Options
+        Page::Main
+            | Page::Sortie
+            | Page::ConfirmEnd
+            | Page::ConfirmRestart
+            | Page::Options
+            | Page::Over
     );
     for (i, (item, r)) in items.iter().zip(item_rects(menu.page)).enumerate() {
         if *item == Item::Back {
@@ -1851,6 +1937,7 @@ fn draw(
             c.stroke(Vec2::new(x0 + cell, y0 + 1.0), Vec2::new(x0 + cell, y1 - 1.0), 1.2, line);
             let glyph = match item {
                 Item::EndMission if let Some(b) = board => Some(b.exit_icon()),
+                Item::Continue if !intact => Some(crate::menu::icon::WATCH),
                 _ => icon(*item),
             };
             draw_icon(c, glyph, Vec2::new(x0 + cell / 2.0, mid), h * 0.3, col);
@@ -1862,6 +1949,7 @@ fn draw(
             Item::EndMission if let Some(b) = board => ts!(b.exit_id()).into(),
             Item::EndMission if campaign.is_some() => ts!("fm-end-sortie").into(),
             Item::SwitchSeat => ts!(menu.seat.label_id()).into(),
+            Item::Continue if !intact => ts!("fm-observe").into(),
             _ => item.label(),
         };
         let label = &*label;
@@ -2066,6 +2154,8 @@ fn icon(item: Item) -> Option<char> {
         Item::Open(Page::Options) => icon::OPTIONS,
         Item::KeyGuide => '\u{e05f}', // book-open
         Item::EndMission | Item::ConfirmEnd => icon::END_SORTIE,
+        Item::Continue => icon::FLY,
+        Item::Rearm => icon::REARM,
         Item::LeaveAircraft => icon::KEYS,
         Item::SwitchSeat => '\u{e1de}',           // plane
         Item::Open(Page::Game) => '\u{e1de}',     // plane
@@ -2152,98 +2242,6 @@ fn draw_search(c: &mut Canvas, text: &str, focused: bool, caret: bool, clear_hov
     let (cx, r) = ((bx0 + bx1) / 2.0, 6.0);
     c.stroke(Vec2::new(cx - r, mid - r), Vec2::new(cx + r, mid + r), 2.4, ink::LIT_TEXT);
     c.stroke(Vec2::new(cx - r, mid + r), Vec2::new(cx + r, mid - r), 2.4, ink::LIT_TEXT);
-}
-
-/// VR: the end-of-mission overlay on a screen in front of the head (a child of the XR tracking
-/// root, so it stays in view in every camera view). Not after END MISSION, which goes straight
-/// to the debrief.
-#[allow(clippy::too_many_arguments)]
-fn vr_end_screen(
-    mut commands: Commands,
-    settings: Res<Settings>,
-    menu: Res<FlightMenu>,
-    combat: Option<Res<crate::combat::Combat>>,
-    roots: Query<Entity, With<EyeCamera>>,
-    cams: Query<(&ChildOf, &Transform), With<Camera>>,
-    screens: Query<(), With<EndScreen>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<crate::cockpit3d::tooltips::TipScreenMaterial>>,
-    mut images: ResMut<Assets<Image>>,
-) {
-    if !settings.vr || menu.exiting || !screens.is_empty() {
-        return;
-    }
-    let Some(end) = combat.as_ref().and_then(|c| c.end.as_ref()) else { return };
-    let Ok(root) = roots.single() else { return };
-    // The head pose in the tracking space: the headset cameras' (the root's children).
-    let eyes: Vec<&Transform> =
-        cams.iter().filter(|(p, _)| p.parent() == root).map(|(_, t)| t).collect();
-    let head = eyes.iter().map(|t| t.translation).sum::<Vec3>() / eyes.len().max(1) as f32;
-    let fwd = eyes.first().map_or(Vec3::NEG_Z, |t| t.forward().as_vec3());
-    let flat = Vec3::new(fwd.x, 0.0, fwd.z).normalize_or(Vec3::NEG_Z);
-    let centre = head + flat * END_DISTANCE - Vec3::Y * 0.05;
-
-    let mut canvas = Canvas::new(W, H);
-    canvas.clear(BG);
-    canvas.frame(Vec2::new(6.0, 6.0), Vec2::new(W as f32 - 7.0, H as f32 - 7.0), 3.0, DIM);
-    // Each line as large as fits the width.
-    let fit = |s: &str, h: f32| h.min((W as f32 - 64.0) / s.chars().count().max(1) as f32);
-    let title = end.title.to_uppercase();
-    stroke_text_at(
-        &mut canvas,
-        W as f32 / 2.0,
-        64.0,
-        &title,
-        fit(&title, 32.0),
-        3.6,
-        BRIGHT,
-        Align::Centre,
-    );
-    for (i, l) in end.lines.iter().enumerate() {
-        let y = 140.0 + 42.0 * i as f32;
-        stroke_text_at(&mut canvas, W as f32 / 2.0, y, l, fit(l, 20.0), 2.6, BRIGHT, Align::Centre);
-    }
-    let hint = ts!("fm-pull-trigger");
-    stroke_text_at(
-        &mut canvas,
-        W as f32 / 2.0,
-        H as f32 - 50.0,
-        hint,
-        20.0,
-        2.6,
-        DIM,
-        Align::Centre,
-    );
-    let tex = CanvasTexture::new(canvas, &mut images, false);
-    if let Some(mut img) = images.get_mut(&tex.image) {
-        img.sampler = bevy::image::ImageSampler::linear();
-    }
-    // Drawn over everything, the cockpit in front of it included (as a VR tooltip): last of
-    // the transparent things, without the depth test.
-    let material = materials.add(bevy::pbr::ExtendedMaterial {
-        base: StandardMaterial {
-            base_color_texture: Some(tex.image.clone()),
-            alpha_mode: AlphaMode::Blend,
-            depth_bias: 1000.0,
-            unlit: true,
-            cull_mode: None,
-            fog_enabled: false,
-            ..default()
-        },
-        extension: crate::cockpit3d::tooltips::OnTop {},
-    });
-    let screen = commands
-        .spawn((
-            EndScreen,
-            tex,
-            Mesh3d(meshes.add(Rectangle::new(END_SIZE.x, END_SIZE.y))),
-            MeshMaterial3d(material),
-            Transform::from_translation(centre).looking_to(flat, Vec3::Y),
-            NotShadowCaster,
-            DespawnOnExit(AppState::Flight),
-        ))
-        .id();
-    commands.entity(root).add_child(screen);
 }
 
 #[cfg(test)]

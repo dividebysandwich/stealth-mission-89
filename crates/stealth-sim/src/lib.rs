@@ -309,6 +309,10 @@ pub struct Sim {
 
     // ---- objectives / end ----
     pub(crate) ended: Option<MissionEnd>,
+    /// The player carries on after the end (`carry_on`): `ended` stays the mission's result
+    /// while the world goes on, until a new end replaces it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) going_on: bool,
     /// Clouds (clear = classic behaviour).
     #[serde(default)]
     pub(crate) weather: stealth_mission::Weather,
@@ -690,6 +694,7 @@ impl Sim {
             acq_range: 0,
             acq_aim: 0,
             ended: None,
+            going_on: false,
             events: Vec::new(),
             event_pilot: Vec::new(),
             event_credit: Vec::new(),
@@ -1015,7 +1020,7 @@ impl Sim {
             self.event_pilot.push(pilot);
             self.event_credit.push(None);
         }
-        if self.ended.is_some() {
+        if self.halted() {
             return Vec::new();
         }
         if fs as i32 != self.fs {
@@ -1595,6 +1600,55 @@ impl Sim {
 
     pub fn mission_end(&self) -> Option<MissionEnd> {
         self.ended
+    }
+
+    /// The mission has ended and the world stands still (not carried on, `carry_on`).
+    pub fn halted(&self) -> bool {
+        self.ended.is_some() && !self.going_on
+    }
+
+    /// The player carries on after the mission's end (`carry_on`).
+    pub fn carried_on(&self) -> bool {
+        self.ended.is_some() && self.going_on
+    }
+
+    /// A single mission goes on after its end: the end stays its result until a new one (the
+    /// next landing, a crash) replaces it. `observe`: the aircraft is lost and the player only
+    /// watches, absent from the world, as a campaign's between sorties.
+    pub fn carry_on(&mut self, observe: bool) {
+        if self.ended.is_none() || self.opts.campaign {
+            return;
+        }
+        self.going_on = true;
+        // A new landing counts once the aircraft has flown again.
+        self.pl.armed_landing = 0;
+        if observe {
+            self.leave_world();
+        }
+    }
+
+    /// A single mission carried on after a landing: the aircraft standing on the base is
+    /// rearmed with `stations`, refuelled and repaired, its countermeasures and gun as at the
+    /// start (`stores`, `gun`).
+    pub fn rearm_landed(
+        &mut self,
+        stations: &[(i32, i32)],
+        select: usize,
+        stores: [i32; 4],
+        gun: i32,
+    ) {
+        self.pl.stores = stores;
+        self.pl.gun_ammo = gun;
+        self.pl.load_side_guns();
+        self.pl.damage = 0;
+        self.pl.hits = 2;
+        self.pl.control_fault = ControlFault::default();
+        self.pl.fire_frames = 0;
+        self.pl.breakup_frames = 0;
+        self.set_loadout(stations);
+        self.select_bay(select);
+        self.pl.armed_landing = 0;
+        self.emit(SimEvent::Resupplied);
     }
 
     /// Theater alarm timer (frames) and whether it is fresh (< 50 s old).

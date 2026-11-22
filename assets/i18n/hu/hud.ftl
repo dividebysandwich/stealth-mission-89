@@ -14,6 +14,7 @@ hud-target-in-view = CÉLPONT LÁTHATÓ
 hud-aim-at-target = CÉLOZD A CÉLPONTOT
 hud-photo = FÉNYKÉP { $state }
 hud-rearmed = Újrafegyverezve és feltankolva
+hud-observing = Megfigyelés - a küldetést a menüben fejezheted be
 hud-landed-rearm = Leszállt - fegyverezz újra, vagy fejezd be a bevetést
 hud-divert-accept = Átirányítás: { $title } - { $key } az elfogadáshoz
 hud-objective-achieved = Cél teljesítve
@@ -28,7 +29,6 @@ end-kills = Lelövések: { $air } gép, { $ground } földi célpont
 end-time = Küldetési idő: { $time }
 end-damage = Sérülés: { $hits } találat
 end-training = Gyakorló küldetés
-end-press-any-key = Nyomj meg egy gombot
 
 ## A lelőtt pilóta panelje
 

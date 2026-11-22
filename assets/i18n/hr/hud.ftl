@@ -14,6 +14,7 @@ hud-target-in-view = CILJ U VIDU
 hud-aim-at-target = ZAUZMITE CILJ
 hud-photo = FOTO { $state }
 hud-rearmed = Naoružan i napunjen gorivom
+hud-observing = Promatranje - misiju završite iz izbornika
 hud-landed-rearm = Sletjeli ste - naoružajte se ili završite borbeni let
 hud-divert-accept = Preusmjeravanje: { $title } - { $key } za prihvat
 hud-objective-achieved = Cilj postignut
@@ -28,7 +29,6 @@ end-kills = Uništeno: zrakoplova { $air }, ciljeva na tlu { $ground }
 end-time = Trajanje misije { $time }
 end-damage = Oštećenja: pogodaka { $hits }
 end-training = Vježbovna misija
-end-press-any-key = Pritisnite bilo koju tipku
 
 ## Ploča oborenog pilota
 

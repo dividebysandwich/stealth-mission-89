@@ -13,6 +13,7 @@ hud-target-in-view = TARGET TERLIHAT
 hud-aim-at-target = BIDIK TARGET
 hud-photo = FOTO { $state }
 hud-rearmed = Persenjataan dan bahan bakar terisi ulang
+hud-observing = Mengamati - akhiri misi dari menu
 hud-landed-rearm = Mendarat - isi ulang persenjataan atau akhiri sorti
 hud-divert-accept = Pengalihan: { $title } - { $key } untuk menerima
 hud-objective-achieved = Sasaran tercapai
@@ -27,7 +28,6 @@ end-kills = Kemenangan: { $air } pesawat, { $ground } target darat
 end-time = Waktu misi { $time }
 end-damage = Kerusakan: { $hits } hantaman
 end-training = Misi latihan
-end-press-any-key = Tekan tombol apa saja
 
 ## Panel pilot yang tertembak jatuh
 

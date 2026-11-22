@@ -6,9 +6,10 @@
 //!   from the simulation and the Ops screen (mission board, war map, players, debrief, log;
 //!   `ops.rs`) is up over the cockpit, parked at a friendly base; the war goes on meanwhile.
 //! * A sortie respawns the aircraft on the chosen base's runway with the mission's stores and
-//!   route, in the aircraft chosen in the briefing. Crashing, ejecting (once the chute is down)
-//!   or ending the sortie from the in-flight menu brings up the debrief and the board again;
-//!   landing at a friendly base offers to rearm.
+//!   route, in the aircraft chosen in the briefing. Crashing or ejecting (once the chute is
+//!   down) brings up the in-flight menu's MISSION OVER page: watch the war go on (OBSERVE; END
+//!   SORTIE in the menu later), or the debrief and the board again, as ending the sortie from the
+//!   menu does. Landing at a friendly base brings it up too: rearm, fly on or end the sortie.
 //! * The campaign clock is real time; the pause menu does not stop it. The sky runs
 //!   `sky_ratio` times faster.
 //!
@@ -45,7 +46,7 @@ use stealth_campaign::{
     PlayerId, Side, Sortie,
 };
 use stealth_host::{Debrief, Host, HostEvent, Rules, Stores, save};
-use stealth_i18n::tf;
+use stealth_i18n::{tf, ts};
 use stealth_mission::Mission;
 use stealth_net::protocol::{PlayerInfo, PlayerStatus, ToServer};
 use stealth_sim::crew::{CrewCmd, Seat};
@@ -266,8 +267,14 @@ pub struct ActiveCampaign {
     pub phase: Phase,
     pub ui: ops::OpsUi,
     pub debrief: Option<SortieDebrief>,
-    /// Landed and stopped at this friendly base: rearm, or end the sortie.
+    /// Landed and stopped at this friendly base: rearm, fly on or end the sortie (the in-flight
+    /// menu's MISSION OVER page).
     pub landed: Option<usize>,
+    /// The sortie is over and the player chose to watch the world go on (the in-flight menu's
+    /// END SORTIE then brings up the debrief).
+    observing: bool,
+    /// The player ended the sortie (END SORTIE): its debrief without asking.
+    ending: bool,
     /// Base the player is parked at between sorties.
     pub parked: Option<usize>,
     /// The aircraft of the next sortie (the briefing's choice).
@@ -368,6 +375,8 @@ impl ActiveCampaign {
             started: false,
             save_timer: 0.0,
             end_timer: None,
+            observing: false,
+            ending: false,
             crash_timer: 0.0,
             divert: None,
             exit: false,
@@ -393,7 +402,7 @@ impl ActiveCampaign {
 
     /// The Ops screen (or the landing prompt) is up.
     pub fn screen_open(&self) -> bool {
-        (self.phase == Phase::Ops && self.end_timer.is_none()) || self.landed.is_some()
+        self.phase == Phase::Ops && self.end_timer.is_none()
     }
 
     /// On the Ops board (not flying a sortie nor at a console): the in-flight menu's END
@@ -566,6 +575,7 @@ pub struct Session<'w, 's> {
     atc: Option<ResMut<'w, crate::atc::AtcState>>,
     input: Res<'w, crate::hotas::InputConfig>,
     own_seat: ResMut<'w, crate::gunner::OwnSeat>,
+    loadout: Option<Res<'w, crate::loadout::PlannedLoadout>>,
 }
 
 /// First frame of the session: the simulation is made to match the campaign.
@@ -678,6 +688,9 @@ fn park(c: &mut ActiveCampaign, s: &mut Session, base: Option<usize>) {
     c.phase = Phase::Ops;
     c.landed = None;
     c.end_timer = None;
+    c.observing = false;
+    c.ending = false;
+    s.menu.over = None;
     c.crash_timer = 0.0;
     let base = base.or(c.parked);
     c.parked = base;
@@ -735,7 +748,10 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     // operations.
     if std::mem::take(&mut s.combat.quit) {
         match c.phase {
+            // Over already (watching the world go on): the debrief.
+            Phase::Sortie if c.end_timer.is_some() => to_board(c, &mut s),
             Phase::Sortie => {
+                c.ending = true;
                 let outcome = if s.combat.sim.csar().is_some() { 0 } else { 7 };
                 c.actions.push(Action::EndSortie { outcome });
             }
@@ -745,6 +761,7 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
         }
     }
     divert_call(c, &mut s);
+    mission_over(c, &mut s);
     // LEAVE AIRCRAFT in the flight menu: in the air on a sortie that is not ending.
     let flying = s.player.single().is_ok_and(|(a, _)| !a.on_ground && a.ended.is_none());
     s.menu.can_leave = c.phase == Phase::Sortie && c.end_timer.is_none() && flying;
@@ -1128,13 +1145,27 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     drain_sim(c, &mut s);
     station_phase(c, &s);
     crew_phase(c, &s);
-    // The debrief comes up a few seconds after the end (the chute is down by then).
+    // A few seconds after the end (the chute is down by then) MISSION OVER asks: watch the
+    // world go on, or the debrief.
     if let Some(t) = c.end_timer.as_mut() {
         *t += dt;
-        if *t > END_SECONDS {
-            let base = c.parked;
-            park(c, &mut s, base);
-            c.ui.open(ops::test_pane().unwrap_or(Some(ops::Pane::Debrief)));
+        if *t > END_SECONDS && !c.observing && s.menu.over.is_none() {
+            // The tests that look at the board's panes go there.
+            let test = match ops::test_pane() {
+                _ if c.ending => Some(crate::flight_menu::OverChoice::End),
+                Some(_) => Some(crate::flight_menu::OverChoice::End),
+                None => crate::combat::test_end_choice(),
+            };
+            match test {
+                Some(choice) => sortie_over(c, &mut s, choice),
+                None => {
+                    // The debrief's title is long: a line under the page's own.
+                    let title = ts!("fm-mission-over").to_string();
+                    let lines = c.debrief.as_ref().map(|d| d.title.tr()).into_iter().collect();
+                    s.menu.over =
+                        Some(crate::flight_menu::MissionOver { title, lines, intact: false });
+                }
+            }
         }
     }
     // The sky's clock.
@@ -1146,6 +1177,67 @@ fn tick(mut c: ResMut<ActiveCampaign>, mut s: Session) {
     if c.save_timer > SAVE_EVERY {
         c.save_timer = 0.0;
         c.save();
+    }
+}
+
+/// The sortie is over: to the debrief and the board.
+fn to_board(c: &mut ActiveCampaign, s: &mut Session) {
+    let base = c.parked;
+    park(c, s, base);
+    c.ui.open(ops::test_pane().unwrap_or(Some(ops::Pane::Debrief)));
+}
+
+/// MISSION OVER chosen after the sortie's end: watch on, or the debrief.
+fn sortie_over(c: &mut ActiveCampaign, s: &mut Session, choice: crate::flight_menu::OverChoice) {
+    if choice == crate::flight_menu::OverChoice::End {
+        to_board(c, s);
+    } else {
+        c.observing = true;
+        s.menu.over = None;
+        s.msgs.show(tf!("hud-observing"));
+    }
+}
+
+/// Landed and stopped at a friendly base: the in-flight menu's MISSION OVER asks to rearm, fly
+/// on or end the sortie; after the sortie's end (`tick`) to watch on or see the debrief. The
+/// choice carried out.
+fn mission_over(c: &mut ActiveCampaign, s: &mut Session) {
+    use crate::flight_menu::{MissionOver, OverChoice};
+    let landed = c.landed.filter(|_| c.phase == Phase::Sortie && c.end_timer.is_none());
+    let choice = match s.menu.over_choice.take() {
+        Some(choice) => Some(choice),
+        None if landed.is_some() && s.menu.over.is_none() => crate::combat::test_end_choice(),
+        None => None,
+    };
+    match (choice, landed) {
+        (Some(OverChoice::Rearm), Some(_)) => {
+            if let Some(loadout) = s.loadout.as_deref().cloned() {
+                c.actions.push(Action::Rearm { loadout });
+            }
+        }
+        (Some(OverChoice::Continue), Some(_)) => {
+            c.landed = None;
+            c.crash_timer = 0.0;
+            if let Ok((mut a, _)) = s.player.single_mut() {
+                a.fly_on();
+            }
+        }
+        (Some(OverChoice::End), Some(_)) => {
+            c.actions.push(Action::EndSortie { outcome: 0 });
+            c.landed = None;
+            c.ending = true;
+        }
+        (Some(choice), None) if c.end_timer.is_some() => sortie_over(c, s, choice),
+        (Some(_), None) => {}
+        // Landed: asked (again after a rearm the base could not give).
+        (None, Some(base)) if s.menu.over.is_none() => {
+            let name = s.combat.sim.place_name(base);
+            let mut lines = vec![ts!("ops-ground-crew").to_string()];
+            lines.extend(c.ui.error.as_ref().map(|e| e.tr()));
+            let title = ts!("ops-landed-at", base = name.to_uppercase());
+            s.menu.over = Some(MissionOver { title, lines, intact: true });
+        }
+        (None, _) => {}
     }
 }
 
@@ -1631,6 +1723,9 @@ fn begin_sortie(c: &mut ActiveCampaign, s: &mut Session, sortie: &Sortie, start:
     c.parked = Some(base);
     c.landed = None;
     c.end_timer = None;
+    c.observing = false;
+    c.ending = false;
+    s.menu.over = None;
     c.crash_timer = 0.0;
     s.msgs.show(sortie.offer.title.tr_flight());
 }

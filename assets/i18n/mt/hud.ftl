@@ -14,6 +14,7 @@ hud-target-in-view = MIRA FIL-VIST
 hud-aim-at-target = IMMIRA LEJN IL-MIRA
 hud-photo = RITRATT { $state }
 hud-rearmed = Armat mill-ġdid u mimli bil-fuel
+hud-observing = Qed tosserva - temm il-missjoni mill-menu
 hud-landed-rearm = Inżilt - erġa' armi jew għalaq it-titjira
 hud-divert-accept = Devjazzjoni: { $title } - { $key } biex taċċetta
 hud-objective-achieved = Għan milħuq
@@ -28,7 +29,6 @@ end-kills = Qtil: { $air } inġenji tal-ajru, { $ground } miri fl-art
 end-time = Ħin tal-missjoni { $time }
 end-damage = Ħsara: { $hits } daqqiet
 end-training = Missjoni ta' taħriġ
-end-press-any-key = Agħfas kwalunkwe buttuna
 
 ## Il-pannell tal-pilota mwaqqa'
 

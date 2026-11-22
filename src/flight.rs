@@ -895,6 +895,14 @@ impl Aircraft {
         self.heli = heli::State::default();
     }
 
+    /// Flies on after the mission's end (carried on, rearmed): ended again by a new landing once
+    /// it has flown, or a crash.
+    pub fn fly_on(&mut self) {
+        self.ended = None;
+        self.has_flown = false;
+        self.stopped_timer = 0.0;
+    }
+
     /// Moves a swing wing towards where its schedule puts it for the Mach number (the classic
     /// model's as well, which only draws it).
     fn sweep_wing(&mut self, k: &FlightConstants, dt: f32) {

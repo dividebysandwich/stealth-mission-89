@@ -177,6 +177,10 @@ pub struct Combat {
     launch_zone: (i32, Option<stealth_sim::dlz::LaunchZone>, ZoneKey),
     pub end: Option<EndInfo>,
     flight_end_timer: f32,
+    /// Carried on after the mission's end with the aircraft lost: the player only watches.
+    pub observing: bool,
+    /// The stores the flight started with (stations, the selected one), for a rearm.
+    start_loadout: (Vec<(i32, i32)>, usize),
     /// Names of the mission world (object type names).
     names: Vec<String>,
     log: bool,
@@ -434,8 +438,9 @@ fn start_combat(
         .filter(|l| l.fits(m, settings.aircraft))
         .map(|l| l.clone())
         .unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft));
-    sim.set_loadout(&loadout.stations());
-    sim.select_bay(loadout.first_choice(m));
+    let start_loadout = (loadout.stations(), loadout.first_choice(m));
+    sim.set_loadout(&start_loadout.0);
+    sim.select_bay(start_loadout.1);
     // An AI wingman of the same aircraft and stores (a campaign's comes with its sortie).
     if settings.wingman && campaign.is_none() {
         let spec = stealth_host::glue::ai_spec(crate::campaign::airframe_of(settings.aircraft));
@@ -528,6 +533,8 @@ fn start_combat(
         launch_zone: (-1, None, ZoneKey::default()),
         end: None,
         flight_end_timer: 0.0,
+        observing: false,
+        start_loadout,
         names,
         log: std::env::args().any(|a| a == "--log-flight" || a == "--log-sim"),
         record: default(),
@@ -560,16 +567,14 @@ impl Combat {
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FlightTeardown;
 
-#[allow(clippy::too_many_arguments)]
 fn stop_combat(
     mut commands: Commands,
     players: Query<Entity, With<Player>>,
-    overlays: Query<Entity, With<EndOverlay>>,
     mut accel: ResMut<TimeAccel>,
 ) {
     commands.remove_resource::<Combat>();
     commands.remove_resource::<ActiveMission>();
-    for e in players.iter().chain(overlays.iter()) {
+    for e in players.iter() {
         commands.entity(e).try_despawn();
     }
     accel.level = 0;
@@ -885,12 +890,19 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     let Ok((mut a, pos)) = player.single_mut() else { return };
     let a = &mut *a;
     let campaign = combat.sim.campaign().is_some();
-    if combat.quit && combat.sim.mission_end().is_none() && !campaign {
-        // Down and waiting for the rescue, an abort is a capture.
-        if !combat.sim.surrender() {
+    if combat.quit && combat.end.is_none() && !campaign {
+        let how = if combat.sim.carried_on() {
+            // Carried on after the end: it stands, unless flown on since (an abort).
             combat.sim.quit();
-        }
-        combat.end = Some(end_info(&combat.sim, None::<MissionEnd>));
+            combat.sim.mission_end()
+        } else {
+            // Down and waiting for the rescue, an abort is a capture.
+            if !combat.sim.surrender() {
+                combat.sim.quit();
+            }
+            None
+        };
+        combat.end = Some(end_info(&combat.sim, how));
     }
     let dt = 1.0 / FS as f32;
     combat.accum += time.delta_secs();
@@ -992,7 +1004,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
     }
     while link.as_deref().is_none_or(|l| !l.is_client())
         && combat.accum >= dt
-        && combat.sim.mission_end().is_none()
+        && !combat.sim.halted()
     {
         if combat.steps >= MAX_STEPS {
             combat.accum = 0.0;
@@ -1068,6 +1080,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         && combat.end.is_none()
         && combat.sim.chute().is_none()
         && !campaign
+        && !combat.observing
     {
         combat.flight_end_timer += time.delta_secs();
         if combat.flight_end_timer > 3.0 {
@@ -2507,100 +2520,130 @@ fn ground_impact(from: DVec3, u: DVec3, ground: &crate::avionics::Terrain) -> Op
     hit
 }
 
-/// The end-of-mission overlay.
-#[derive(Component)]
-struct EndOverlay {
-    timer: f32,
+/// Real seconds from the mission's end to its MISSION OVER page (the end seen first).
+const OVER_DELAY: f32 = 1.5;
+
+/// Test aid: `--end-choice continue|rearm|end` takes that choice at once when the mission is
+/// over (`--shot-debrief` ends it); None puts up the MISSION OVER page.
+pub fn test_end_choice() -> Option<crate::flight_menu::OverChoice> {
+    use crate::flight_menu::OverChoice;
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--shot-debrief") {
+        return Some(OverChoice::End);
+    }
+    let choice = args.iter().position(|a| a == "--end-choice").and_then(|i| args.get(i + 1))?;
+    Some(match choice.as_str() {
+        "continue" => OverChoice::Continue,
+        "rearm" => OverChoice::Rearm,
+        _ => OverChoice::End,
+    })
 }
 
-/// Seconds the overlay stays before returning to the menu (any key, or in VR the trigger or A / X,
-/// after 1 s; at once after END MISSION in the in-flight menu, which shows EXITING... over it).
-const END_SECONDS: f32 = 8.0;
+/// The aircraft came through the mission's end intact: landed (as the simulation or only the
+/// flight model has it), not ejected.
+fn intact(end: Option<MissionEnd>, a: &Aircraft) -> bool {
+    match end {
+        Some(e) if e.outcome == 0 => e.landing_type == 3,
+        Some(e) if e.outcome == 7 => a.ended == Some(FlightEnd::Landed),
+        _ => false,
+    }
+}
 
+/// A single mission's end: after `OVER_DELAY` the in-flight menu's MISSION OVER page (CONTINUE,
+/// REARM, END MISSION), carried out here; END MISSION (there or on the main page) goes to the
+/// debrief.
 #[allow(clippy::too_many_arguments)]
 fn end_overlay(
     mut commands: Commands,
-    combat: Option<Res<Combat>>,
+    combat: Option<ResMut<Combat>>,
     real: Res<Time<Real>>,
-    keys: Res<ButtonInput<KeyCode>>,
-    mut overlay: Query<&mut EndOverlay>,
+    mut since: Local<f32>,
     mut next: ResMut<NextState<AppState>>,
     mission: Option<Res<ActiveMission>>,
-    menu: Res<crate::flight_menu::FlightMenu>,
-    hands: Res<crate::cockpit3d::Hands>,
+    mut menu: ResMut<crate::flight_menu::FlightMenu>,
     settings: Res<crate::settings::Settings>,
-    font: Res<crate::i18n::UiFont>,
+    constants: Res<FlightConstants>,
+    mut player: Query<&mut Aircraft, With<Player>>,
+    mut msgs: ResMut<HudMessages>,
 ) {
-    let Some(end) = combat.as_ref().and_then(|c| c.end.clone()) else { return };
-    let vr_pressed = hands
-        .hands
-        .iter()
-        .any(|h| h.trigger_pulled() || h.just_pressed(crate::cockpit3d::BUTTON_PRIMARY));
-    match overlay.single_mut() {
-        Ok(mut o) => {
-            o.timer += real.delta_secs();
-            if menu.exiting
-                || o.timer > END_SECONDS
-                || (o.timer > 1.0 && (keys.get_just_pressed().next().is_some() || vr_pressed))
-            {
-                if let Some(c) = &combat {
-                    if settings.tacview
-                        && let Some(m) = &mission
-                    {
-                        crate::tacview::export(&c.record, &m.0, &c.data, settings.aircraft.name());
-                    }
-                    commands.insert_resource(crate::debrief::Debrief {
-                        title: end.title.clone(),
-                        report: c.sim.mission_report(),
-                        damage: Some(c.sim.world_damage()),
-                        mission: mission.as_ref().map(|m| m.0.clone()),
-                        career: Vec::new(),
-                        record: c.record.clone(),
-                    });
-                }
-                next.set(AppState::Debrief);
-            }
-        }
-        Err(_) => {
-            info!("mission end: {} / {}", end.title, end.lines.join(" / "));
-            if combat.as_ref().is_some_and(|c| c.log) {
-                println!("mission end: {} / {}", end.title, end.lines.join(" / "));
-            }
-            let mut text = format!("{}\n\n", end.title.to_uppercase());
-            for l in &end.lines {
-                text.push_str(l);
-                text.push('\n');
-            }
-            text.push('\n');
-            text.push_str(tf!("end-press-any-key"));
-            commands
-                .spawn((
-                    EndOverlay { timer: 0.0 },
-                    Node {
-                        position_type: PositionType::Absolute,
-                        width: percent(100),
-                        height: percent(100),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                ))
-                .with_children(|p| {
-                    p.spawn((
-                        Node { padding: UiRect::all(px(24)), ..default() },
-                        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.75)),
-                    ))
-                    .with_children(|p| {
-                        p.spawn((
-                            Text::new(text),
-                            font.at(28.0),
-                            TextColor(Color::srgb(1.0, 0.85, 0.3)),
-                            TextLayout::justify(Justify::Center),
-                        ));
-                    });
-                });
+    use crate::flight_menu::{MissionOver, OverChoice};
+    let Some(mut c) = combat else { return };
+    if c.sim.campaign().is_some() {
+        return;
+    }
+    let Some(end) = c.end.clone() else {
+        *since = 0.0;
+        return;
+    };
+    if *since == 0.0 {
+        info!("mission end: {} / {}", end.title, end.lines.join(" / "));
+        if c.log {
+            println!("mission end: {} / {}", end.title, end.lines.join(" / "));
         }
     }
+    *since += real.delta_secs().max(1e-6);
+    let Ok(mut a) = player.single_mut() else { return };
+    let intact = intact(c.sim.mission_end(), &a);
+    let choice = if menu.exiting {
+        Some(OverChoice::End)
+    } else if let Some(choice) = menu.over_choice.take() {
+        Some(choice)
+    } else if *since > OVER_DELAY && menu.over.is_none() {
+        match test_end_choice() {
+            Some(choice) => Some(choice),
+            None => {
+                let (title, lines) = (end.title.clone(), end.lines.clone());
+                menu.over = Some(MissionOver { title, lines, intact });
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let Some(choice) = choice else { return };
+    let c = &mut *c;
+    match choice {
+        OverChoice::End => {
+            if settings.tacview
+                && let Some(m) = &mission
+            {
+                crate::tacview::export(&c.record, &m.0, &c.data, settings.aircraft.name());
+            }
+            commands.insert_resource(crate::debrief::Debrief {
+                title: end.title,
+                report: c.sim.mission_report(),
+                damage: Some(c.sim.world_damage()),
+                mission: mission.as_ref().map(|m| m.0.clone()),
+                career: Vec::new(),
+                record: c.record.clone(),
+            });
+            next.set(AppState::Debrief);
+            return;
+        }
+        OverChoice::Rearm if intact => {
+            c.sim.carry_on(false);
+            let stores = c.data.stores_init.map(|v| v as i32);
+            let (stations, select) = &c.start_loadout;
+            c.sim.rearm_landed(stations, *select, stores, c.data.gun_ammo_init as i32);
+            a.fuel = constants.fuel;
+            a.damage = FlightDamage::default();
+            a.fly_on();
+            msgs.show(tf!("hud-rearmed"));
+        }
+        OverChoice::Continue | OverChoice::Rearm if intact => {
+            c.sim.carry_on(false);
+            a.fly_on();
+        }
+        OverChoice::Continue | OverChoice::Rearm => {
+            c.sim.carry_on(true);
+            c.observing = true;
+            msgs.show(tf!("hud-observing"));
+        }
+    }
+    info!("mission over: {choice:?} (aircraft intact: {intact})");
+    c.end = None;
+    c.flight_end_timer = 0.0;
+    *since = 0.0;
 }
 
 #[cfg(test)]

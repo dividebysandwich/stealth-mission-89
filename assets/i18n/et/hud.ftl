@@ -14,6 +14,7 @@ hud-target-in-view = SIHTMÄRK NÄHTAVAL
 hud-aim-at-target = SIHI SIHTMÄRGILE
 hud-photo = FOTO { $state }
 hud-rearmed = Uuesti relvastatud ja tangitud
+hud-observing = Vaatlemine - lõpeta missioon menüüst
 hud-landed-rearm = Maandutud - relvasta uuesti või lõpeta lend
 hud-divert-accept = Ümbersuunamine: { $title } - { $key } nõustumiseks
 hud-objective-achieved = Eesmärk täidetud
@@ -28,7 +29,6 @@ end-kills = Hävitatud: õhus { $air }, maal { $ground }
 end-time = Missiooni aeg { $time }
 end-damage = Saadud tabamusi: { $hits }
 end-training = Treeningmissioon
-end-press-any-key = Vajuta suvalist klahvi
 
 ## Alla tulistatud piloodi paneel
 

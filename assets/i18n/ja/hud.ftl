@@ -14,6 +14,7 @@ hud-target-in-view = 目標視界内
 hud-aim-at-target = 目標に照準
 hud-photo = 撮影 { $state }
 hud-rearmed = 再武装・給油完了
+hud-observing = 観戦中 - メニューからミッションを終了
 hud-landed-rearm = 着陸 - 再武装するか出撃を終了
 hud-divert-accept = 任務変更：{ $title } - { $key } で受諾
 hud-objective-achieved = 目標達成
@@ -28,7 +29,6 @@ end-kills = 撃破：航空機{ $air }、地上目標{ $ground }
 end-time = 任務時間 { $time }
 end-damage = 被害：被弾{ $hits }
 end-training = 訓練ミッション
-end-press-any-key = 任意のキーを押してください
 
 ## 墜落したパイロットのパネル
 

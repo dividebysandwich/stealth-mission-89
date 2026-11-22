@@ -16,6 +16,7 @@ hud-target-in-view = TARGET IN VIEW
 hud-aim-at-target = AIM AT TGT
 hud-photo = PHOTO { $state }
 hud-rearmed = Rearmed and refuelled
+hud-observing = Observing - end the mission from the menu
 hud-landed-rearm = Landed - rearm or end the sortie
 hud-divert-accept = Divert: { $title } - { $key } to accept
 hud-objective-achieved = Objective achieved
@@ -30,7 +31,6 @@ end-kills = Kills: { $air } aircraft, { $ground } ground targets
 end-time = Mission time { $time }
 end-damage = Damage: { $hits } hits
 end-training = Training mission
-end-press-any-key = Press any key
 
 ## The downed pilot's panel
 

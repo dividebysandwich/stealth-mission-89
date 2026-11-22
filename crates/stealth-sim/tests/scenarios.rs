@@ -4995,3 +4995,80 @@ fn a_helicopter_wingman_engages_the_designated_vehicle() {
     let (along, right) = wing_offset(&sim, &p);
     assert!(along.hypot(right - 120.0) < 100.0, "{along:.0} {right:.0}");
 }
+
+/// Ploughs into the ground away from a runway at 200 kt: the mission ends crashed.
+fn crash_on_the_ground(sim: &mut Sim, x: i32, y: i32) -> PlayerState {
+    let mut p = player_at(x, y, 0, 0, 200);
+    p.on_ground = true;
+    for _ in 0..30 {
+        sim.step(&p, 15);
+        if sim.mission_end().is_some() {
+            break;
+        }
+    }
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(1));
+    p
+}
+
+/// Carried on after the crash the world goes on with the player absent; the crash stays the
+/// result, and quitting then keeps it.
+#[test]
+fn carrying_on_after_a_crash_observes() {
+    let d = data();
+    let m = mission(d, 3, 0x2345, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (x, y) = sandbox(&mut sim, &m);
+    let p = crash_on_the_ground(&mut sim, x, y);
+    assert!(sim.halted());
+    let tick = sim.mission_tick();
+    for _ in 0..30 {
+        sim.step(&p, 15);
+    }
+    assert_eq!(sim.mission_tick(), tick, "the world stands still at the end");
+    sim.carry_on(true);
+    assert!(sim.carried_on() && !sim.halted());
+    for _ in 0..30 {
+        assert!(sim.step(&p, 15).iter().all(|e| !matches!(e, SimEvent::MissionEnd(_))));
+    }
+    assert!(sim.mission_tick() > tick, "the world goes on");
+    sim.quit();
+    assert!(sim.halted());
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(1));
+}
+
+/// Carried on in the aircraft, a new end replaces the first; quitting after flying again is an
+/// abort, quitting before keeps the end.
+#[test]
+fn carrying_on_flying_ends_again() {
+    let d = data();
+    let m = mission(d, 3, 0x2345, 0);
+    let mut sim = Sim::new(&d.sim, &m);
+    let (x, y) = sandbox(&mut sim, &m);
+    crash_on_the_ground(&mut sim, x, y);
+    sim.carry_on(false);
+    sim.quit();
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(1), "not flown since: the end stands");
+    sim.carry_on(false);
+    let air = player_at(x, y, 2000, 0, 300);
+    for _ in 0..15 {
+        sim.step(&air, 15);
+    }
+    assert!(!sim.halted());
+    sim.quit();
+    assert_eq!(sim.mission_end().map(|e| e.outcome), Some(7), "flown since: an abort");
+    // Flying on again and crashing: a new end.
+    let mut sim = Sim::new(&d.sim, &m);
+    let (x, y) = sandbox(&mut sim, &m);
+    crash_on_the_ground(&mut sim, x, y);
+    sim.carry_on(false);
+    for _ in 0..15 {
+        sim.step(&air, 15);
+    }
+    let mut ground = player_at(x, y, 0, 0, 200);
+    ground.on_ground = true;
+    let mut ended = false;
+    for _ in 0..30 {
+        ended |= sim.step(&ground, 15).iter().any(|e| matches!(e, SimEvent::MissionEnd(_)));
+    }
+    assert!(ended && sim.halted());
+}

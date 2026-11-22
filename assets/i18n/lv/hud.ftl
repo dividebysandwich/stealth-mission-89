@@ -14,6 +14,7 @@ hud-target-in-view = MĒRĶIS REDZAMS
 hud-aim-at-target = TĒMĒT UZ MĒRĶI
 hud-photo = FOTO { $state }
 hud-rearmed = Bruņojums un degviela papildināta
+hud-observing = Vērošana - beidziet misiju izvēlnē
 hud-landed-rearm = Nosēdies - papildiniet bruņojumu vai beidziet lidojumu
 hud-divert-accept = Pārvirzīšana: { $title } - { $key }, lai pieņemtu
 hud-objective-achieved = Uzdevums izpildīts
@@ -28,7 +29,6 @@ end-kills = Uzvaras: { $air } lidmašīnas, { $ground } zemes mērķi
 end-time = Misijas ilgums { $time }
 end-damage = Bojājumi: { $hits } trāpījumi
 end-training = Treniņa misija
-end-press-any-key = Nospiediet jebkuru taustiņu
 
 ## Notriektā pilota panelis
 

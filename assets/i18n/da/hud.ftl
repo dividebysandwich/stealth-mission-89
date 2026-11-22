@@ -14,6 +14,7 @@ hud-target-in-view = MÅL I SYNE
 hud-aim-at-target = SIG PÅ MÅL
 hud-photo = FOTO { $state }
 hud-rearmed = Genbevæbnet og tanket op
+hud-observing = Observerer - afslut missionen fra menuen
 hud-landed-rearm = Landet - genbevæbn eller afslut flyvningen
 hud-divert-accept = Omdirigering: { $title } - { $key } for at acceptere
 hud-objective-achieved = Mål nået
@@ -28,7 +29,6 @@ end-kills = Nedskydninger: { $air } fly, { $ground } jordmål
 end-time = Missionstid { $time }
 end-damage = Skade: { $hits } træffere
 end-training = Træningsmission
-end-press-any-key = Tryk på en vilkårlig tast
 
 ## Den nedskudte pilots panel
 

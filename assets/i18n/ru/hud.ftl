@@ -13,6 +13,7 @@ hud-target-in-view = ЦЕЛЬ В ПОЛЕ ЗРЕНИЯ
 hud-aim-at-target = НАВЕДИТЕ НА ЦЕЛЬ
 hud-photo = СНИМОК { $state }
 hud-rearmed = Перевооружён и заправлен
+hud-observing = Наблюдение - завершите миссию через меню
 hud-landed-rearm = Посадка - перевооружитесь или завершите вылет
 hud-divert-accept = Перенацеливание: { $title } - { $key }, чтобы принять
 hud-objective-achieved = Задача выполнена
@@ -27,7 +28,6 @@ end-kills = Победы: самолётов { $air }, наземных целе
 end-time = Время миссии { $time }
 end-damage = Повреждения: попаданий { $hits }
 end-training = Учебная миссия
-end-press-any-key = Нажмите любую клавишу
 
 ## Панель сбитого пилота
 

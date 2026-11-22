@@ -67,7 +67,7 @@ impl Sim {
     /// End the mission with `outcome` (ignored once ended, or after ejection unless 0 or 8,
     /// captured).
     pub(crate) fn finalize(&mut self, outcome: u8) {
-        if self.ended.is_some() || (self.pl.eject != 0 && outcome != 0 && outcome != 8) {
+        if self.halted() || (self.pl.eject != 0 && outcome != 0 && outcome != 8) {
             return;
         }
         if outcome == 0 && self.pl.eject == 0 {
@@ -97,12 +97,16 @@ impl Sim {
         };
         self.log_event(8, 0);
         self.ended = Some(e);
+        self.going_on = false;
         self.emit(SimEvent::MissionEnd(e));
     }
 
-    /// End the mission from outside (Alt-Q = 7: nothing written).
+    /// End the mission from outside (Alt-Q = 7: nothing written). Carried on after an end, that
+    /// end stands unless the aircraft has flown again since (an abort then).
     pub fn quit(&mut self) {
-        if self.ended.is_none() {
+        let flown_on = self.going_on && !self.pl.absent && self.pl.armed_landing != 0;
+        self.going_on = false;
+        if self.ended.is_none() || flown_on {
             let e = MissionEnd {
                 outcome: 7,
                 landing_type: self.pl.landing_type,

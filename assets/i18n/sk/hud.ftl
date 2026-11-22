@@ -14,6 +14,7 @@ hud-target-in-view = CIEĽ V ZÁBERE
 hud-aim-at-target = NAMIERTE NA CIEĽ
 hud-photo = FOTO { $state }
 hud-rearmed = Prezbrojené a natankované
+hud-observing = Pozorovanie - misiu ukončíte z ponuky
 hud-landed-rearm = Pristáli ste - prezbrojte sa alebo ukončite bojový let
 hud-divert-accept = Presmerovanie: { $title } - { $key } na prijatie
 hud-objective-achieved = Cieľ splnený
@@ -28,7 +29,6 @@ end-kills = Zostrely: { $air } lietadiel, { $ground } pozemných cieľov
 end-time = Čas misie { $time }
 end-damage = Poškodenie: { $hits } zásahov
 end-training = Cvičná misia
-end-press-any-key = Stlačte ľubovoľný kláves
 
 ## Panel zostreleného pilota
 

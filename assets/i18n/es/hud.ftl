@@ -13,6 +13,7 @@ hud-target-in-view = OBJETIVO A LA VISTA
 hud-aim-at-target = APUNTAR AL OBJETIVO
 hud-photo = FOTO { $state }
 hud-rearmed = Rearmado y repostado
+hud-observing = Observando - termine la misión desde el menú
 hud-landed-rearm = En tierra - rearme o termine la salida
 hud-divert-accept = Desvío: { $title } - { $key } para aceptar
 hud-objective-achieved = Objetivo cumplido
@@ -27,7 +28,6 @@ end-kills = Derribos: { $air } aviones, { $ground } objetivos terrestres
 end-time = Duración de la misión { $time }
 end-damage = Daños: { $hits } impactos
 end-training = Misión de entrenamiento
-end-press-any-key = Pulse cualquier tecla
 
 ## El panel del piloto derribado
 

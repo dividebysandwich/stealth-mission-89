@@ -114,7 +114,7 @@ impl Sim {
 
     /// Fires and a breaking airframe run their course (until the pilot has ejected).
     pub(crate) fn update_damage(&mut self) {
-        if !self.opts.realistic_damage || self.pl.eject != 0 || self.ended.is_some() {
+        if !self.opts.realistic_damage || self.pl.eject != 0 || self.halted() {
             return;
         }
         if self.pl.breakup_frames > 0 {

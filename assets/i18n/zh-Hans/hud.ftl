@@ -13,6 +13,7 @@ hud-target-in-view = 目标在视野内
 hud-aim-at-target = 瞄准目标
 hud-photo = 拍照 { $state }
 hud-rearmed = 已重新挂弹并加油
+hud-observing = 观察中 - 从菜单结束任务
 hud-landed-rearm = 已着陆 - 重新挂弹或结束出击
 hud-divert-accept = 改派：{ $title } - 按 { $key } 接受
 hud-objective-achieved = 目标已达成
@@ -27,7 +28,6 @@ end-kills = 击毁：飞机 { $air } 架，地面目标 { $ground } 个
 end-time = 任务时间 { $time }
 end-damage = 受损：被击中 { $hits } 次
 end-training = 训练任务
-end-press-any-key = 按任意键
 
 ## 被击落飞行员的面板
 

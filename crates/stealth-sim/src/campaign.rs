@@ -472,7 +472,7 @@ impl Sim {
     }
 
     /// The active pilot leaves the world: what was after him is called off.
-    fn leave_world(&mut self) {
+    pub(crate) fn leave_world(&mut self) {
         let me = self.pl.id;
         self.pl.absent = true;
         let alone = self.present().is_empty();

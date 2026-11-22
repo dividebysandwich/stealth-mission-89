@@ -14,6 +14,7 @@ hud-target-in-view = ȚINTĂ ÎN VIZOR
 hud-aim-at-target = ÎNDREPTAȚI SPRE ȚINTĂ
 hud-photo = FOTO { $state }
 hud-rearmed = Reînarmat și realimentat
+hud-observing = Observare - încheiați misiunea din meniu
 hud-landed-rearm = Aterizat - reînarmați sau încheiați zborul
 hud-divert-accept = Redirecționare: { $title } - { $key } pentru a accepta
 hud-objective-achieved = Obiectiv îndeplinit
@@ -28,7 +29,6 @@ end-kills = Victorii: { $air } aeronave, { $ground } ținte la sol
 end-time = Durata misiunii { $time }
 end-damage = Avarii: { $hits } lovituri
 end-training = Misiune de instruire
-end-press-any-key = Apăsați orice tastă
 
 ## Panoul pilotului doborât
 

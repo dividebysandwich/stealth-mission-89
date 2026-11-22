@@ -13,6 +13,7 @@ hud-target-in-view = DOEL IN BEELD
 hud-aim-at-target = RICHT OP DOEL
 hud-photo = FOTO { $state }
 hud-rearmed = Herbewapend en bijgetankt
+hud-observing = Toekijken - beëindig de missie via het menu
 hud-landed-rearm = Geland - herbewapen of beëindig de vlucht
 hud-divert-accept = Omleiding: { $title } - { $key } om te accepteren
 hud-objective-achieved = Doel bereikt
@@ -27,7 +28,6 @@ end-kills = Kills: { $air } toestellen, { $ground } gronddoelen
 end-time = Missieduur { $time }
 end-damage = Schade: { $hits } treffers
 end-training = Trainingsmissie
-end-press-any-key = Druk op een toets
 
 ## Het paneel van de neergehaalde piloot
 

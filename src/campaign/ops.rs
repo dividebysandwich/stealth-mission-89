@@ -412,7 +412,6 @@ pub fn ops_ui(
     mut c: ResMut<ActiveCampaign>,
     combat: Res<crate::combat::Combat>,
     mut planner: ResMut<crate::planner::Planner>,
-    loadout: Option<Res<crate::loadout::PlannedLoadout>>,
     mut next: ResMut<NextState<AppState>>,
     mut unit_view: ResMut<super::UnitView>,
     weather: Res<crate::weather::WeatherState>,
@@ -438,36 +437,6 @@ pub fn ops_ui(
         ctx.all_styles_mut(apply_terminal_style);
     }
     let c = &mut *c;
-    // Landed at a friendly base during a sortie: rearm, or end it.
-    if c.phase == Phase::Sortie
-        && let Some(base) = c.landed
-    {
-        let name = combat.sim.place_name(base);
-        let window = egui::Window::new("Landed")
-            .anchor(egui::Align2::CENTER_BOTTOM, egui::vec2(0.0, -40.0))
-            .collapsible(false)
-            .resizable(false)
-            .title_bar(false);
-        let title = t!("ops-landed-at", base = name.to_uppercase());
-        Panel::new(&title).window(window, ctx, |ui| {
-            ui.label(egui::RichText::new(t!("ops-ground-crew")).color(DIM));
-            ui.horizontal(|ui| {
-                if ui.add(big_button(t!("ops-rearm")).icon(icon::REARM)).clicked()
-                    && let Some(loadout) = loadout.as_deref().cloned()
-                {
-                    c.actions.push(Action::Rearm { loadout });
-                }
-                if ui
-                    .add(big_button(t!("ops-end-sortie")).icon(icon::END_SORTIE).primary())
-                    .clicked()
-                {
-                    c.actions.push(Action::EndSortie { outcome: 0 });
-                    c.landed = None;
-                }
-            });
-        });
-        return Ok(());
-    }
     // Test aid: `--campaign-accept map|loadout` opens the first mission's briefing.
     if let Some(page) = briefing::test_accept()
         && !std::mem::replace(&mut c.ui.test_taken, true)
