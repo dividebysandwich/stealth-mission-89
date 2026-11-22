@@ -53,7 +53,7 @@ impl Plugin for SimRenderPlugin {
                         .after(sync_objects)
                         .after(sync_remote_pilots)
                         .run_if(resource_exists::<Combat>),
-                    own_muzzle_flash.run_if(resource_exists::<Combat>),
+                    own_muzzle_flash.before(sync_objects).run_if(resource_exists::<Combat>),
                     own_shadow,
                 )
                     .in_set(SimRenderSystems)
@@ -105,6 +105,9 @@ const SPOT_DRONE_METRES: f32 = 3.0;
 type SpotDot = (Entity, u8);
 /// A tracer's streak behind the round: this many sim frames of its travel.
 const TRACER_FRAMES: f64 = 0.6;
+/// A turret's own rounds are drawn out of its barrel over this far from where the sim starts
+/// them (m).
+const TURRET_TRACER_FADE: f64 = 150.0;
 const CHUTE: u8 = 15;
 /// The canopy's gores (alternating orange and white) and its suspension lines.
 const CANOPY_COLOURS: [u8; 2] = [0xCC, 0xE0];
@@ -251,6 +254,9 @@ pub(crate) struct SimVisuals {
     cms: HashMap<(usize, usize), Cartridge>,
     /// Gun rounds: the dot at the round and its tracer line.
     bullets: Vec<(Entity, Entity)>,
+    /// The own turret gun's muzzle as drawn and where the sim starts its rounds (Bevy world):
+    /// the own rounds are drawn out of the barrel.
+    own_gun: Option<(DVec3, DVec3)>,
     /// The other pilots' rounds (as many as were ever in flight at once).
     other_bullets: Vec<(Entity, Entity)>,
     wreck: Option<Entity>,
@@ -1577,6 +1583,38 @@ pub(crate) fn sync_objects(
         let (a, gap) =
             if k < n { (combat.own_alpha, 1.0) } else { (alpha, combat.frame_gap as f64) };
         place_tracer(b, dot, line, a, gap, &mut q);
+        // The sim starts a turret's rounds under the aircraft's middle: draw them out of the
+        // barrel, the shift fading out over their first metres.
+        if k < n
+            && b.x != 0
+            && let Some((muzzle, origin)) = vis.own_gun
+        {
+            let shift = muzzle - origin;
+            let mut head = None;
+            for e in [dot, line] {
+                if let Ok((mut pos, mut tf, _, _)) = q.get_mut(e) {
+                    let h = *head.get_or_insert(pos.0);
+                    let fade = 1.0 - ((h - origin).length() / TURRET_TRACER_FADE).min(1.0);
+                    pos.0 += shift * fade;
+                    // The streak's tail is nearer the gun: shifted further, it turns a little.
+                    // A round just fired streaks back no further than the gun.
+                    if e == line {
+                        let dir = tf.rotation * Vec3::Z;
+                        let back = (origin - h).as_vec3().dot(dir);
+                        let len = if back >= 0.0 && fade > 0.0 {
+                            tf.scale.z.min(back)
+                        } else {
+                            tf.scale.z
+                        };
+                        let tail = h + (dir * len).as_dvec3();
+                        let fade_t = 1.0 - ((tail - origin).length() / TURRET_TRACER_FADE).min(1.0);
+                        let streak = (tail + shift * fade_t - pos.0).as_vec3();
+                        tf.rotation = Quat::from_rotation_arc(Vec3::Z, streak.normalize_or(dir));
+                        tf.scale.z = streak.length().max(0.01);
+                    }
+                }
+            }
+        }
     }
     // The other pilots' rounds (theirs on the host, flown from their trigger on a client).
     let others = sim.other_rounds();
@@ -2068,10 +2106,26 @@ fn own_muzzle_flash(
     settings: Res<crate::settings::Settings>,
     player: Query<(&Aircraft, &WorldPos), (With<Player>, Without<SimObject>)>,
     mut q: Query<(&mut WorldPos, &mut Visibility), With<SimObject>>,
+    mut sim_vis: ResMut<SimVisuals>,
+    cues: Res<crate::hud::HudCues>,
 ) {
     let vis = &mut *vis;
     let sim = &combat.sim;
+    sim_vis.own_gun = None;
     let Ok((a, pos)) = player.single() else { return };
+    // At the nose of the model as drawn (lifted off the flight model's point), or the turret:
+    // the AH-64's barrel tip where its chin gun points.
+    let spec = settings.aircraft.spec();
+    let nose = match cues.chin_gun {
+        Some((az, el)) if settings.aircraft.apache() => crate::aircraft::apache_muzzle(az, el),
+        _ => spec.muzzle.unwrap_or(Vec3::new(0.0, spec.model_lift, -MUZZLE_AHEAD)),
+    };
+    let muzzle = pos.0 + (a.orientation * nose).as_dvec3();
+    if spec.turret && spec.muzzle.is_some() {
+        // The sim's rounds leave 2 units under the aircraft's point (`Sim::gun_round`).
+        let origin = pos.0 - DVec3::Y * 2.0 * stealth_sim::WU_METRES;
+        sim_vis.own_gun = Some((muzzle, origin));
+    }
     let e = *vis.own_muzzle.get_or_insert_with(|| {
         let globals = assets.palette.globals.clone();
         let material = solid_material(&mut vis.materials, &mut materials, &globals, TRACER);
@@ -2090,10 +2144,7 @@ fn own_muzzle_flash(
     let firing = sim.gun_firing() && sim.has_gun() && !view.first_person();
     let flash = firing && muzzle_flash_on(&time, sim.active_pilot());
     if let Ok((mut wp, mut v)) = q.get_mut(e) {
-        // At the nose of the model as drawn (lifted off the flight model's point), or the turret.
-        let spec = settings.aircraft.spec();
-        let nose = spec.muzzle.unwrap_or(Vec3::new(0.0, spec.model_lift, -MUZZLE_AHEAD));
-        wp.0 = pos.0 + (a.orientation * nose).as_dvec3();
+        wp.0 = muzzle;
         v.set_if_neq(if flash { Visibility::Inherited } else { Visibility::Hidden });
     }
 }

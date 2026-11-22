@@ -153,6 +153,16 @@ pub const APACHE_TADS_SLOT: usize = 9;
 /// The AH-64 model's fuselage datum is this far nose up of the aircraft frame (rad): its
 /// turrets turn square to it.
 pub const APACHE_TILT: f32 = 0.0876;
+/// The AH-64's chin gun turns about this point (apache.py `GUN_PIVOT`, placed) and its barrel
+/// reaches this far out of it (m, to the muzzle brake's end).
+const APACHE_GUN_PIVOT: Vec3 = ah64_point(0.0, 2.572, 0.779);
+const APACHE_BARREL: f32 = 1.41;
+
+/// The AH-64's muzzle (aircraft frame, as `AircraftSpec::muzzle`) with the chin gun pointing
+/// along `azimuth`, `elevation` (as [`apache_gun_values`]).
+pub fn apache_muzzle(azimuth: f32, elevation: f32) -> Vec3 {
+    APACHE_GUN_PIVOT + crate::avionics::pod_dir(azimuth, elevation) * APACHE_BARREL
+}
 
 /// The AH-64's store slot values for its stations' (weapon type, rounds left; a negative type
 /// none): 0 nothing on a station, 1 its empty launcher, 1 + n with n rounds on it, 6 a rocket
