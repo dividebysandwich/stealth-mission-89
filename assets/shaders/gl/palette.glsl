@@ -1651,8 +1651,17 @@ vec3 glow_colour(uint word, vec3 palette) {
 const float WIN_STOREY = 3.0;
 const float WIN_BAY = 3.2;
 const float WIN_HOUSE_BAY = 4.8;
+const float WIN_CURTAIN_BAY = 1.6;
+const uint WIN_FLATS = 0u;
+const uint WIN_HOUSE = 1u;
+const uint WIN_CURTAIN = 2u;
 const vec2 WIN_HALF = vec2(0.4, 0.33);
 const vec2 WIN_HOUSE_HALF = vec2(0.17, 0.25);
+const vec2 WIN_CURTAIN_HALF = vec2(0.46, 0.36);
+const float WIN_CURTAIN_RUN = 9.0;
+const float WIN_CURTAIN_SILL = 0.56;
+const vec2 WIN_CURTAIN_LIT = vec2(0.25, 0.75);
+const float WIN_CURTAIN_COOL = 0.65;
 const float WIN_RUN = 4.0;
 const float WIN_SILL = 0.5;
 const vec2 WIN_LIT = vec2(0.2, 0.65);
@@ -1666,18 +1675,24 @@ const float WIN_GLOW = 1.1;
 const float WIN_FAR = 0.12;
 const vec3 WIN_PANE = vec3(0.025, 0.07, 0.22);
 const vec3 WIN_TINT = vec3(0.45, 0.65, 1.0);
+const vec3 WIN_CURTAIN_PANE = vec3(0.02, 0.09, 0.12);
+const vec3 WIN_CURTAIN_TINT = vec3(0.4, 0.68, 0.8);
 const float WIN_PANE_FAR = 0.6;
 
 const float WALL_ANGLES = 2048.0;
 
-vec4 city_windows(vec3 world, vec3 face, uint angle, bool few) {
+vec4 city_windows(vec3 world, vec3 face, uint angle, uint style) {
     if (abs(normalize(face).y) > 0.3) {
         return vec4(0.0);
     }
-    float bay = few ? WIN_HOUSE_BAY : WIN_BAY;
-    vec2 hw = few ? WIN_HOUSE_HALF : WIN_HALF;
-    vec2 lit_share = few ? WIN_HOUSE_LIT : WIN_LIT;
-    float run_bays = few ? 1.0 : WIN_RUN;
+    bool few = style == WIN_HOUSE;
+    bool curtain = style == WIN_CURTAIN;
+    float bay = curtain ? WIN_CURTAIN_BAY : few ? WIN_HOUSE_BAY : WIN_BAY;
+    vec2 hw = curtain ? WIN_CURTAIN_HALF : few ? WIN_HOUSE_HALF : WIN_HALF;
+    vec2 lit_share = curtain ? WIN_CURTAIN_LIT : few ? WIN_HOUSE_LIT : WIN_LIT;
+    float run_bays = curtain ? WIN_CURTAIN_RUN : few ? 1.0 : WIN_RUN;
+    float sill = curtain ? WIN_CURTAIN_SILL : WIN_SILL;
+    float cool = curtain ? WIN_CURTAIN_COOL : WIN_COOL_SHARE;
     vec3 p = world + g.city_origin.xyz;
     float a = float(angle) / WALL_ANGLES * 6.2831853;
     vec2 nh = vec2(cos(a), sin(a));
@@ -1692,16 +1707,16 @@ vec4 city_windows(vec3 world, vec3 face, uint angle, bool few) {
     float h = value_hash(run, ci.y, wall);
     float h2 = value_hash(ci.y, run, wall ^ 0xA7u);
     float lit = h < share ? 1.0 : 0.0;
-    vec3 tint = (h2 < WIN_COOL_SHARE ? WIN_COOL : WIN_WARM) * (0.5 + 0.5 * fract(h2 * 7.0));
+    vec3 tint = (h2 < cool ? WIN_COOL : WIN_WARM) * (0.5 + 0.5 * fract(h2 * 7.0));
     vec2 aa = max(fwidth(cell), vec2(1e-4));
-    vec2 off = abs(fract(cell) - vec2(0.5, WIN_SILL));
+    vec2 off = abs(fract(cell) - vec2(0.5, sill));
     vec2 k = smoothstep(vec2(0.6), vec2(1.5), aa);
     vec2 inside = vec2(
         1.0 - smoothstep(hw.x - aa.x, hw.x + aa.x, off.x),
         1.0 - smoothstep(hw.y - aa.y, hw.y + aa.y, off.y));
     vec2 cover = mix(inside, 2.0 * hw, k);
     float far = max(k.x, k.y);
-    vec3 light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
+    vec3 light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, cool) * 0.75 * WIN_FAR, far);
     float pane = mix(1.0, WIN_PANE_FAR, far);
     return vec4(light * WIN_GLOW / pane, cover.x * cover.y * pane);
 }
@@ -1895,12 +1910,14 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
 #endif
 #ifndef DOT
     if (!is_line && (v_warm & 512u) != 0u && g.city.z > 0.0 && !recon_view()) {
-        vec4 win = city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu, (v_warm & 64u) != 0u);
-        // Blue panes mirroring the sky (palette.wgsl), on the glass towers' walls too.
-        vec3 pane = WIN_PANE * shade(face, dir) * (1.0 - dark);
+        bool glass = hi == 0xFFu && (lo == 0x90u || lo == 0x91u);
+        uint style = glass ? WIN_CURTAIN : (v_warm & 64u) != 0u ? WIN_HOUSE : WIN_FLATS;
+        vec4 win = city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu, style);
+        // Blue panes mirroring the sky (palette.wgsl), the curtain walls' darker and greener.
+        vec3 pane = (glass ? WIN_CURTAIN_PANE : WIN_PANE) * shade(face, dir) * (1.0 - dark);
 #ifdef REFLECT
         if (g.reflections.x != 0.0) {
-            pane = glass_reflection(pane, face, dir, dark) * WIN_TINT;
+            pane = glass_reflection(pane, face, dir, dark) * (glass ? WIN_CURTAIN_TINT : WIN_TINT);
         }
 #endif
         rgb = mix(rgb, pane, win.a);

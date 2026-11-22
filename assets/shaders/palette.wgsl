@@ -2209,20 +2209,32 @@ struct Deriv {
 // The buildings' windows (`PALETTE_CITY`, `WORD_WINDOWS`): a grid of storeys and bays of blue
 // panes mirroring the sky, lit at night each by a hash of its cell (a share that varies over
 // the walls), warm or cool; where the cells are only a pixel or two the wall shows their
-// average instead of shimmering. Houses (warm bit 6 with the windows' bit 9: `WORD_FURROW_X`)
-// have fewer, smaller ones, apart.
+// average instead of shimmering. Styles (`WIN_FLATS`..): the blocks' punched windows; houses
+// (warm bit 6 with the windows' bit 9: `WORD_FURROW_X`) fewer, smaller ones, apart; the
+// glass-clad towers (their colour 0x90) a curtain wall, a ribbon of glass along each storey
+// between narrow mullions over a spandrel band, lit floor by floor in long office runs.
+const WIN_FLATS: u32 = 0u;
+const WIN_HOUSE: u32 = 1u;
+const WIN_CURTAIN: u32 = 2u;
 const WIN_STOREY: f32 = 3.0;
 const WIN_BAY: f32 = 3.2;
 const WIN_HOUSE_BAY: f32 = 4.8;
+const WIN_CURTAIN_BAY: f32 = 1.6;
 // Half the window's width and height in its cell, and its centre's height in the storey.
 const WIN_HALF: vec2<f32> = vec2<f32>(0.4, 0.33);
 const WIN_HOUSE_HALF: vec2<f32> = vec2<f32>(0.17, 0.25);
+const WIN_CURTAIN_HALF: vec2<f32> = vec2<f32>(0.46, 0.36);
 // Bays lit together.
 const WIN_RUN: f32 = 4.0;
+const WIN_CURTAIN_RUN: f32 = 9.0;
 const WIN_SILL: f32 = 0.5;
+const WIN_CURTAIN_SILL: f32 = 0.56;
 // Lit share of the windows: between these by patches of the walls.
 const WIN_LIT: vec2<f32> = vec2<f32>(0.2, 0.65);
 const WIN_HOUSE_LIT: vec2<f32> = vec2<f32>(0.1, 0.45);
+const WIN_CURTAIN_LIT: vec2<f32> = vec2<f32>(0.25, 0.75);
+// The share of cool (office) light: the curtain walls' more.
+const WIN_CURTAIN_COOL: f32 = 0.65;
 // Patches (cells) and the walls' bins along their normal (metres) of the lit share.
 const WIN_PATCH: f32 = 5.0;
 const WIN_WALL_BIN: f32 = 40.0;
@@ -2238,6 +2250,8 @@ const WIN_FAR: f32 = 0.12;
 const WIN_PANE: vec3<f32> = vec3<f32>(0.025, 0.07, 0.22);
 // The panes' blue tint over what they mirror (mostly the pale horizon).
 const WIN_TINT: vec3<f32> = vec3<f32>(0.45, 0.65, 1.0);
+const WIN_CURTAIN_PANE: vec3<f32> = vec3<f32>(0.02, 0.09, 0.12);
+const WIN_CURTAIN_TINT: vec3<f32> = vec3<f32>(0.4, 0.68, 0.8);
 const WIN_PANE_FAR: f32 = 0.6;
 
 // `angle`: the wall's outward direction in WALL_ANGLES steps from x towards z (the face's
@@ -2246,15 +2260,19 @@ const WIN_PANE_FAR: f32 = 0.6;
 const WALL_ANGLES: f32 = 2048.0;
 
 // The windows at a wall's point: rgb their light at night, a how much of the pixel they cover.
-fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32, few: bool) -> vec4<f32> {
+fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32, style: u32) -> vec4<f32> {
     let face = deriv.face;
     if (abs(normalize(face).y) > 0.3) {
         return vec4<f32>(0.0);
     }
-    let bay = select(WIN_BAY, WIN_HOUSE_BAY, few);
-    let half = select(WIN_HALF, WIN_HOUSE_HALF, few);
-    let lit_share = select(WIN_LIT, WIN_HOUSE_LIT, few);
-    let run_bays = select(WIN_RUN, 1.0, few);
+    let few = style == WIN_HOUSE;
+    let curtain = style == WIN_CURTAIN;
+    let bay = select(select(WIN_BAY, WIN_HOUSE_BAY, few), WIN_CURTAIN_BAY, curtain);
+    let half = select(select(WIN_HALF, WIN_HOUSE_HALF, few), WIN_CURTAIN_HALF, curtain);
+    let lit_share = select(select(WIN_LIT, WIN_HOUSE_LIT, few), WIN_CURTAIN_LIT, curtain);
+    let run_bays = select(select(WIN_RUN, 1.0, few), WIN_CURTAIN_RUN, curtain);
+    let sill = select(WIN_SILL, WIN_CURTAIN_SILL, curtain);
+    let cool = select(WIN_COOL_SHARE, WIN_CURTAIN_COOL, curtain);
     let p = world + globals.city_origin.xyz;
     let a = f32(angle) / WALL_ANGLES * 6.2831853;
     let nh = vec2<f32>(cos(a), sin(a));
@@ -2272,14 +2290,14 @@ fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32, few: bool) -> vec4<f
     let h = value_hash(run, ci.y, wall);
     let h2 = value_hash(ci.y, run, wall ^ 0xA7u);
     let lit = select(0.0, 1.0, h < share);
-    let tint = select(WIN_WARM, WIN_COOL, h2 < WIN_COOL_SHARE) * (0.5 + 0.5 * fract(h2 * 7.0));
+    let tint = select(WIN_WARM, WIN_COOL, h2 < cool) * (0.5 + 0.5 * fract(h2 * 7.0));
     // The window's rectangle in its cell, its edges smoothed over a pixel. fwidth(cell) from
     // the fragment's own derivatives (none here: this runs in non-uniform control flow, which
     // the browser's WebGPU refuses).
     let cell_dx = vec2<f32>(dot(deriv.world_dx.xz, t) / bay, deriv.world_dx.y / WIN_STOREY);
     let cell_dy = vec2<f32>(dot(deriv.world_dy.xz, t) / bay, deriv.world_dy.y / WIN_STOREY);
     let aa = max(abs(cell_dx) + abs(cell_dy), vec2<f32>(1e-4));
-    let off = abs(fract(cell) - vec2<f32>(0.5, WIN_SILL));
+    let off = abs(fract(cell) - vec2<f32>(0.5, sill));
     // Each axis averaged on its own where its cells are under a pixel or two: a wall seen
     // edge on keeps its storeys' bands.
     let k = smoothstep(vec2<f32>(0.6), vec2<f32>(1.5), aa);
@@ -2289,7 +2307,7 @@ fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32, few: bool) -> vec4<f
     );
     let cover = mix(inside, 2.0 * half, k);
     let far = max(k.x, k.y);
-    let light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
+    let light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, cool) * 0.75 * WIN_FAR, far);
     // The panes blend into less of the wall's average than their share (the light as before).
     let pane = mix(1.0, WIN_PANE_FAR, far);
     return vec4<f32>(light * WIN_GLOW / pane, cover.x * cover.y * pane);
@@ -2620,12 +2638,14 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #endif
 #ifdef PALETTE_CITY
     if (!is_line && (in.warm & 512u) != 0u && globals.city.z > 0.0 && !recon_view()) {
-        let win = city_windows(in.world_position, deriv, (in.warm >> 16u) & 0x7FFu, (in.warm & 64u) != 0u);
-        // Blue panes mirroring the sky (on the glass towers' curtain walls too: darker and
-        // bluer than the pale glass round them).
-        var pane = WIN_PANE * shade(deriv.face, dir) * (1.0 - dark);
+        let glass = hi == 0xFFu && (lo == 0x90u || lo == 0x91u);
+        let style = select(select(WIN_FLATS, WIN_HOUSE, (in.warm & 64u) != 0u), WIN_CURTAIN, glass);
+        let win = city_windows(in.world_position, deriv, (in.warm >> 16u) & 0x7FFu, style);
+        // Blue panes mirroring the sky (the curtain walls' darker and greener than the pale
+        // glass of their spandrels).
+        var pane = select(WIN_PANE, WIN_CURTAIN_PANE, glass) * shade(deriv.face, dir) * (1.0 - dark);
 #ifdef PALETTE_GLASS
-        pane = glass_reflection(pane, deriv.face, dir, dark) * WIN_TINT;
+        pane = glass_reflection(pane, deriv.face, dir, dark) * select(WIN_TINT, WIN_CURTAIN_TINT, glass);
 #endif
         rgb = mix(rgb, pane, win.a);
         rgb += win.rgb * win.a * globals.city.x;
