@@ -342,6 +342,11 @@ float density(vec3 q, vec3 apex, vec3 axis, vec4 p) {
     return pow(1.0 - c.x / p.w, 1.5) * (1.0 - c.y * c.y);
 }
 
+// beam.wgsl `fade_to`.
+float fade_to(float t, float l) {
+    return l / 2.5 * (1.0 - pow(1.0 - clamp(t / l, 0.0, 1.0), 2.5));
+}
+
 // A searchlight's beam (negative intensity): beam.wgsl `searchlight`.
 float searchlight(vec3 eye, vec3 d, float exit_s, vec3 apex, vec3 axis, vec4 p) {
     vec3 w = eye - apex;
@@ -352,9 +357,20 @@ float searchlight(vec3 eye, vec3 d, float exit_s, vec3 apex, vec3 axis, vec4 p) 
     float r = length(eye + d * s - apex - axis * t);
     float radius = p.z + p.y * t;
     float inside = max(1.0 - r * r / (radius * radius), 0.0);
-    float path = min(2.0 * radius * sqrt(inside) / max(sqrt(across), 0.05), p.w);
+    float half_s = min(radius * sqrt(inside) / max(sqrt(across), 0.05), p.w);
+    float s0 = max(s - half_s, 0.0);
+    float s1 = min(s + half_s, exit_s);
+    float t0 = dot(w, axis) + b * s0;
+    float t1 = dot(w, axis) + b * s1;
+    float lit;
+    if (abs(t1 - t0) > 0.5) {
+        lit = abs(fade_to(t1, p.w) - fade_to(t0, p.w)) / abs(b);
+    } else {
+        float m = 0.5 * (t0 + t1);
+        lit = (m < 0.0 ? 0.0 : pow(1.0 - clamp(m / p.w, 0.0, 1.0), 1.5)) * (s1 - s0);
+    }
     float lamp = length(eye + d * clamp(dot(apex - eye, d), 0.0, exit_s) - apex) / (2.0 * p.z);
-    return 0.012 * pow(1.0 - t / p.w, 1.5) * inside * path + 0.8 * exp(-lamp * lamp);
+    return 0.012 * inside * lit + 0.8 * exp(-lamp * lamp);
 }
 
 void main() {
@@ -368,9 +384,9 @@ void main() {
     if (gl_FrontFacing) { discard; }
     float exit_s = length(v_world - eye);
     if (p.x < 0.0) {
-        float sa = -p.x * searchlight(eye, d, exit_s, apex, axis, p);
+        float sa = 1.0 - exp(-1.5 * -p.x * searchlight(eye, d, exit_s, apex, axis, p));
         if (sa <= 0.003) { discard; }
-        o_colour = vec4(g.light_info.z == 0.0 ? COLOUR : NVG_BEAM, min(sa, 1.0));
+        o_colour = vec4(g.light_info.z == 0.0 ? COLOUR : NVG_BEAM, sa);
         return;
     }
     float chord = length(vec2(p.w, 2.0 * (p.z + p.y * p.w)));

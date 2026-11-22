@@ -1,8 +1,8 @@
 // A landing light's beam (landing_lights.rs) where the local lights are off: a closed cone from
 // the lamp, additive, drawn where the view ray leaves it with the haze it crossed in it, which
 // fades towards the beam's edge and far end; the lamp glows. A searchlight's beam (barrage.rs,
-// negative intensity) is too long to march: it is lit by how much of the view ray lies in the
-// cone where the ray passes closest to its axis.
+// negative intensity) is too long to march: it is lit by the stretch of the view ray inside the
+// cone, weighted by the beam's fade along it.
 
 #import bevy_pbr::{
     mesh_functions,
@@ -66,9 +66,15 @@ fn density(q: vec3<f32>, apex: vec3<f32>, axis: vec3<f32>, p: vec4<f32>) -> f32 
     return pow(1.0 - c.x / p.w, 1.5) * (1.0 - c.y * c.y);
 }
 
-// A searchlight's light along the view ray (eye, d) up to `exit`: the ray's length inside the
-// cone where it passes closest to the axis, fading towards the beam's edge and far end; and the
-// lamp's glow.
+// The integral of the beam's fade (1 - t / length)^1.5 from its lamp (t 0) to t (m).
+fn fade_to(t: f32, l: f32) -> f32 {
+    return l / 2.5 * (1.0 - pow(1.0 - clamp(t / l, 0.0, 1.0), 2.5));
+}
+
+// A searchlight's light along the view ray (eye, d) up to `exit`: the ray's stretch inside the
+// cone (cut at the eye, where it leaves the cone and at the beam's two ends) weighted by the
+// beam's fade along it, fading towards its edge where the ray passes closest to the axis; and
+// the lamp's glow. The fade reaches nothing at the far end, so the beam has no visible end.
 fn searchlight(eye: vec3<f32>, d: vec3<f32>, exit: f32, apex: vec3<f32>, axis: vec3<f32>, p: vec4<f32>) -> f32 {
     let w = eye - apex;
     let b = dot(d, axis);
@@ -78,9 +84,21 @@ fn searchlight(eye: vec3<f32>, d: vec3<f32>, exit: f32, apex: vec3<f32>, axis: v
     let r = length(eye + d * s - apex - axis * t);
     let radius = p.z + p.y * t;
     let inside = max(1.0 - r * r / (radius * radius), 0.0);
-    let path = min(2.0 * radius * sqrt(inside) / max(sqrt(across), 0.05), p.w);
+    let reach = min(radius * sqrt(inside) / max(sqrt(across), 0.05), p.w);
+    let s0 = max(s - reach, 0.0);
+    let s1 = min(s + reach, exit);
+    // Where those ends are along the beam.
+    let t0 = dot(w, axis) + b * s0;
+    let t1 = dot(w, axis) + b * s1;
+    var lit: f32;
+    if (abs(t1 - t0) > 0.5) {
+        lit = abs(fade_to(t1, p.w) - fade_to(t0, p.w)) / abs(b);
+    } else {
+        let m = 0.5 * (t0 + t1);
+        lit = select(pow(1.0 - clamp(m / p.w, 0.0, 1.0), 1.5), 0.0, m < 0.0) * (s1 - s0);
+    }
     let lamp = length(eye + d * clamp(dot(apex - eye, d), 0.0, exit) - apex) / (2.0 * p.z);
-    return 0.012 * pow(1.0 - t / p.w, 1.5) * inside * path + 0.8 * exp(-lamp * lamp);
+    return 0.012 * inside * lit + 0.8 * exp(-lamp * lamp);
 }
 
 @fragment
@@ -94,11 +112,12 @@ fn fragment(in: VertexOutput, @builtin(front_facing) front: bool) -> @location(0
     }
     let exit = length(in.world - eye);
     if (p.x < 0.0) {
-        let a = -p.x * searchlight(eye, d, exit, in.apex, in.axis, p);
+        // Saturating softly, so the fade towards the far end shows rather than a blunt end.
+        let a = 1.0 - exp(-1.5 * -p.x * searchlight(eye, d, exit, in.apex, in.axis, p));
         if (a <= 0.003) {
             discard;
         }
-        return vec4<f32>(colour.rgb, min(a, 1.0));
+        return vec4<f32>(colour.rgb, a);
     }
     // March back from there across the longest chord the beam has (from the eye when in it).
     let chord = length(vec2<f32>(p.w, 2.0 * (p.z + p.y * p.w)));
