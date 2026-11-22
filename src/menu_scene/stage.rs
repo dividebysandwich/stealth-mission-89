@@ -107,6 +107,15 @@ impl Stage<'_, '_> {
         e
     }
 
+    /// Spawns an airdrop pallet's load under its two cargo canopies, hidden until placed.
+    pub fn cargo_rig(&mut self) -> crate::pallet_chute::CargoRig {
+        let rig = crate::pallet_chute::CargoRig::spawn(&mut self.commands, &self.assets.palette);
+        for e in rig.entities() {
+            self.commands.entity(e).insert(ShotEntity);
+        }
+        rig
+    }
+
     /// Spawns a flyable aircraft's model, lit, its gear up and its lights on.
     pub fn aircraft(&mut self, kind: AircraftKind) -> Option<Entity> {
         let spec = kind.spec();

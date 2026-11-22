@@ -111,7 +111,9 @@ const TURRET_TRACER_FADE: f64 = 150.0;
 const CHUTE: u8 = 15;
 /// The canopy's gores (alternating orange and white) and its suspension lines.
 const CANOPY_COLOURS: [u8; 2] = [0xCC, 0xE0];
-const CANOPY_LINES: u8 = 0xE6;
+pub(crate) const CANOPY_LINES: u8 = 0xE6;
+/// A canopy's rigging lines meet this far above its origin (m, at scale 1).
+pub(crate) const CANOPY_RISERS: f32 = 2.3;
 const SIGNAL_FLARE: u8 = 41;
 /// Seconds a signal flare burns.
 const SIGNAL_FLARE_LIFE: f32 = 25.0;
@@ -1160,8 +1162,17 @@ pub(crate) fn spawn_tracer(commands: &mut Commands, material: Handle<PaletteMate
 /// gores in two colours, open underneath, and the suspension lines down to the risers above
 /// the pilot's head.
 pub(crate) fn spawn_canopy(commands: &mut Commands, assets: &ModelAssets) -> Entity {
+    spawn_canopy_in(commands, &assets.palette, CANOPY_COLOURS)
+}
+
+/// [`spawn_canopy`] with its gores in `colours`.
+pub(crate) fn spawn_canopy_in(
+    commands: &mut Commands,
+    palette: &crate::palette::Palette,
+    colours: [u8; 2],
+) -> Entity {
     const GORES: usize = 24;
-    const RISERS: f32 = 2.3;
+    const RISERS: f32 = CANOPY_RISERS;
     const SKIRT: (f32, f32) = (3.4, 8.6);
     const CROWN: f32 = 2.6;
     // Rings from the skirt up to the apex vent: (radius, height).
@@ -1194,18 +1205,14 @@ pub(crate) fn spawn_canopy(commands: &mut Commands, assets: &ModelAssets) -> Ent
         (
             bevy::mesh::PrimitiveTopology::TriangleList,
             std::mem::take(&mut gores[0]),
-            assets.palette.material(CANOPY_COLOURS[0]),
+            palette.material(colours[0]),
         ),
         (
             bevy::mesh::PrimitiveTopology::TriangleList,
             std::mem::take(&mut gores[1]),
-            assets.palette.material(CANOPY_COLOURS[1]),
+            palette.material(colours[1]),
         ),
-        (
-            bevy::mesh::PrimitiveTopology::LineList,
-            lines,
-            assets.palette.line_material(CANOPY_LINES),
-        ),
+        (bevy::mesh::PrimitiveTopology::LineList, lines, palette.line_material(CANOPY_LINES)),
     ];
     for (topology, positions, material) in parts {
         let part = commands

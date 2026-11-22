@@ -82,12 +82,14 @@ fn dip(
     fov.0 = 45f32.to_radians();
 }
 
-/// A pallet out of the ramp: its velocity, age and canopy.
+/// A pallet out of the ramp (on its rig's load): its velocity, age, tumble, heading and rig.
 #[derive(Component)]
 struct Pallet {
     vel: DVec3,
     age: f32,
-    canopy: Entity,
+    tumble: Quat,
+    heading: Quat,
+    rig: crate::pallet_chute::CargoRig,
 }
 
 /// The camera's stations behind the C-5 (m: behind, to the right, above), the point it looks
@@ -154,34 +156,38 @@ fn airdrop(
     while *dropped < PALLETS && t >= FIRST + *dropped as f32 * EVERY {
         *dropped += 1;
         let at = p + (rot * RAMP).as_dvec3();
-        let canopy = stage.canopy();
-        if let Some(e) = stage.model(stage::AIRCRAFT, "aircraft_011", 0.0, ModelState::default()) {
-            let vel = (v - rot * Vec3::NEG_Z * 4.0).as_dvec3();
-            stage.commands.entity(e).insert((
-                WorldPos(at),
-                Transform::from_rotation(rot),
-                Pallet { vel, age: 0.0, canopy },
-            ));
-        }
+        let rig = stage.cargo_rig();
+        let vel = (v - rot * Vec3::NEG_Z * 4.0).as_dvec3();
+        let ahead = rot * Vec3::NEG_Z;
+        let heading = Quat::from_rotation_y((-ahead.x).atan2(-ahead.z));
+        stage.commands.entity(rig.load).insert((
+            WorldPos(at),
+            Transform::from_rotation(rot),
+            Pallet { vel, age: 0.0, tumble: rot, heading, rig },
+        ));
     }
     let dt = time.delta_secs().min(0.1);
     for (e, mut pal) in &mut pallets {
         pal.age += dt;
-        let open = ((pal.age - 0.8) / 1.2).clamp(0.0, 1.0);
-        // Air drag: small for the pallet, large under the canopy.
+        let open = ((pal.age - crate::pallet_chute::DEPLOY_SECS) / crate::pallet_chute::OPEN_SECS)
+            .clamp(0.0, 1.0);
+        // Air drag: small for the pallet, large under the canopies.
         let k = 0.002 + 0.06 * open as f64;
         let drag = -pal.vel * pal.vel.length() * k;
         pal.vel += (drag - DVec3::Y * 9.81) * dt as f64;
-        let Ok((mut pos, mut tf, _)) = q.get_mut(e) else { continue };
-        pos.0 += pal.vel * dt as f64;
-        let at = pos.0;
-        let tumble = (1.0 - open) * pal.age * 1.5;
-        tf.rotation = tf.rotation.slerp(Quat::from_rotation_x(-tumble), 0.1);
-        let Ok((mut cpos, mut ctf, mut cv)) = q.get_mut(pal.canopy) else { continue };
-        cpos.0 = at;
-        let size = 1.0 - (1.0 - open).powi(3);
-        ctf.scale = Vec3::new(size, 0.4 + 0.6 * size, size) * 1.5;
-        cv.set_if_neq(if open > 0.0 { Visibility::Inherited } else { Visibility::Hidden });
+        let Ok((pos, _, _)) = q.get(e) else { continue };
+        let at = pos.0 + pal.vel * dt as f64;
+        // Tumbling in the slipstream until the canopies take it.
+        let turn = (1.0 - open) * pal.age * 1.5;
+        pal.tumble = pal.tumble.slerp(pal.heading * Quat::from_rotation_x(-turn), 0.1);
+        let pose = crate::pallet_chute::CargoRig::pose(
+            at,
+            pal.tumble,
+            pal.heading,
+            pal.vel.as_vec3(),
+            pal.age,
+        );
+        pal.rig.place(&pose, &mut q);
     }
     let heading = v.x.atan2(-v.z);
     let (back, side, up, at, lens) =
