@@ -114,8 +114,12 @@ pub struct Planner {
     profile: Profile,
     /// The theater's mountains and hills (theater id), for the vertical profile.
     terrain: Option<(String, Relief, Hills)>,
-    /// The vertical profile of the route, and what it was worked out for.
+    /// The vertical profile of the route, and what it was worked out for. While the route
+    /// changes (a point dragged) the last one worked out stays shown till the next is ready.
     vertical: Option<(u64, VerticalProfile)>,
+    /// The vertical profile being worked out on another thread, and what for (one at a time,
+    /// each for the route of the moment it starts: its cost would hold the frames back).
+    working: Option<(u64, Task<VerticalProfile>)>,
     /// The aircraft the route is flown in, and whether in a campaign: its radar signature.
     aircraft: (AircraftKind, bool),
     /// The route point clicked (its card over the map), and where it was drawn last.
@@ -535,6 +539,7 @@ impl MapSource {
 
 /// A site's coverage: where it detects the player flying the profile, and its missile range
 /// (map units).
+#[derive(Clone)]
 struct Ring {
     x: f32,
     y: f32,
@@ -742,13 +747,14 @@ pub fn planner_ui(
     if !planner.open {
         return;
     }
-    let Some(Ok(m)) = state.mission.clone() else {
+    // (Borrowed, not cloned: the whole mission would be copied each frame.)
+    let Some(Ok(m)) = state.mission.as_ref() else {
         planner.open = false;
         return;
     };
-    let route = state.route.get_or_insert_with(|| PlannedRoute::of(&m));
-    if !route.fits(&m) {
-        *route = PlannedRoute::of(&m);
+    let route = state.route.get_or_insert_with(|| PlannedRoute::of(m));
+    if !route.fits(m) {
+        *route = PlannedRoute::of(m);
     }
     planner.fly(aircraft, false);
     (planner.big, planner.inset) = (false, 0.0);
@@ -757,7 +763,7 @@ pub fn planner_ui(
     let note = crate::mission::clean_text(&m.briefing.title).to_ascii_uppercase();
     crate::menu::Panel::new(t!("planner-title")).note(note).window(window, ctx, |ui| {
         let size = ui.available_size();
-        route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
+        route_panel(ui, planner, m, route, &|_| true, None, None, size, true, |ui| {
             ui.add_space(12.0);
             if ui.add(big_button(t!("loadout-done")).icon(icon::DONE).primary()).clicked() {
                 open = false;
@@ -1396,82 +1402,14 @@ fn map_view(
             ));
         }
     }
-    // The route, from the takeoff base.
-    let pts: Vec<egui::Pos2> =
-        route.points.iter().map(|p| to_screen(p.x as f32, p.y as f32)).collect();
+    // Input first, so that a point dragged is drawn where the pointer is now (not where it was
+    // the frame before): the points are taken as they stand, then again once moved.
+    let route_pts = |route: &PlannedRoute| -> Vec<egui::Pos2> {
+        route.points.iter().map(|p| to_screen(p.x as f32, p.y as f32)).collect()
+    };
+    let pts = route_pts(route);
     let base = to_screen(m.takeoff.position.x as f32, m.takeoff.position.y as f32);
     let legs: Vec<egui::Pos2> = std::iter::once(base).chain(pts.iter().copied()).collect();
-    painter.add(egui::Shape::line(legs.clone(), egui::Stroke::new(2.0, BRIGHT)));
-    for (i, &p) in pts.iter().enumerate() {
-        let (colour, r) = match route.points[i].kind {
-            RouteKind::Nav => (GREEN, 5.0),
-            RouteKind::Primary => (egui::Color32::from_rgb(255, 255, 80), 7.0),
-            RouteKind::Secondary => (AMBER, 7.0),
-            RouteKind::Land => (egui::Color32::from_rgb(90, 160, 255), 7.0),
-        };
-        painter.circle(
-            p,
-            r,
-            egui::Color32::BLACK.gamma_multiply(0.5),
-            egui::Stroke::new(2.0, colour),
-        );
-        painter.text(
-            p + egui::vec2(9.0, -9.0),
-            egui::Align2::LEFT_BOTTOM,
-            point_label(&route.points, i),
-            egui::FontId::monospace(13.0),
-            colour,
-        );
-        let tip = match route.points[i].kind {
-            RouteKind::Nav => {
-                tips.add(p, t!("mt-nav-point"), point_label(&route.points, i), colour)
-            }
-            RouteKind::Primary => {
-                target_tip(&mut tips, p, t!("sim-primary-target"), &m.primary, colour)
-            }
-            RouteKind::Secondary => {
-                target_tip(&mut tips, p, t!("mt-secondary-target"), &m.secondary, colour)
-            }
-            RouteKind::Land => tips.add(
-                p,
-                t!("mt-landing-base"),
-                crate::mission::clean_text(&m.landing.name),
-                colour,
-            ),
-        };
-        let (from, a) = match i {
-            0 => (t!("planner-base").to_string(), (m.takeoff.position.x, m.takeoff.position.y)),
-            _ => {
-                (point_label(&route.points, i - 1), (route.points[i - 1].x, route.points[i - 1].y))
-            }
-        };
-        let b = &route.points[i];
-        let km = (((b.x - a.0) as f64).powi(2) + ((b.y - a.1) as f64).powi(2)).sqrt() / PER_KM;
-        tip.line(t!("mt-leg", km = format!("{km:.0}"), from = from.as_str(), time = leg_time(km)))
-            .symbol(move |p, c| {
-                p.circle(
-                    c,
-                    r,
-                    egui::Color32::BLACK.gamma_multiply(0.5),
-                    egui::Stroke::new(2.0, colour),
-                );
-            });
-    }
-    if !airfield_tips {
-        let owner = m
-            .world
-            .objects
-            .get(m.takeoff.object_index as usize)
-            .map_or(crate::app6::Affiliation::Friend, |o| map_draw::affiliation_of(o.flags));
-        tips.add(
-            base,
-            t!("mt-takeoff-base"),
-            crate::mission::clean_text(&m.takeoff.name),
-            FRIENDLY_BLUE,
-        )
-        .symbol(move |p, c| map_draw::place_symbol(p, c, owner, true, false));
-    }
-
     // Input.
     let reach = if planner.big { 20.0 } else { 9.0 };
     let hit_point = |pos: egui::Pos2| {
@@ -1554,6 +1492,80 @@ fn map_view(
         planner.selected = None;
     }
     planner.selected = planner.selected.filter(|&i| i < route.points.len());
+    // The route, from the takeoff base.
+    let pts = route_pts(route);
+    let legs: Vec<egui::Pos2> = std::iter::once(base).chain(pts.iter().copied()).collect();
+    painter.add(egui::Shape::line(legs, egui::Stroke::new(2.0, BRIGHT)));
+    for (i, &p) in pts.iter().enumerate() {
+        let (colour, r) = match route.points[i].kind {
+            RouteKind::Nav => (GREEN, 5.0),
+            RouteKind::Primary => (egui::Color32::from_rgb(255, 255, 80), 7.0),
+            RouteKind::Secondary => (AMBER, 7.0),
+            RouteKind::Land => (egui::Color32::from_rgb(90, 160, 255), 7.0),
+        };
+        painter.circle(
+            p,
+            r,
+            egui::Color32::BLACK.gamma_multiply(0.5),
+            egui::Stroke::new(2.0, colour),
+        );
+        painter.text(
+            p + egui::vec2(9.0, -9.0),
+            egui::Align2::LEFT_BOTTOM,
+            point_label(&route.points, i),
+            egui::FontId::monospace(13.0),
+            colour,
+        );
+        let tip = match route.points[i].kind {
+            RouteKind::Nav => {
+                tips.add(p, t!("mt-nav-point"), point_label(&route.points, i), colour)
+            }
+            RouteKind::Primary => {
+                target_tip(&mut tips, p, t!("sim-primary-target"), &m.primary, colour)
+            }
+            RouteKind::Secondary => {
+                target_tip(&mut tips, p, t!("mt-secondary-target"), &m.secondary, colour)
+            }
+            RouteKind::Land => tips.add(
+                p,
+                t!("mt-landing-base"),
+                crate::mission::clean_text(&m.landing.name),
+                colour,
+            ),
+        };
+        let (from, a) = match i {
+            0 => (t!("planner-base").to_string(), (m.takeoff.position.x, m.takeoff.position.y)),
+            _ => {
+                (point_label(&route.points, i - 1), (route.points[i - 1].x, route.points[i - 1].y))
+            }
+        };
+        let b = &route.points[i];
+        let km = (((b.x - a.0) as f64).powi(2) + ((b.y - a.1) as f64).powi(2)).sqrt() / PER_KM;
+        tip.line(t!("mt-leg", km = format!("{km:.0}"), from = from.as_str(), time = leg_time(km)))
+            .symbol(move |p, c| {
+                p.circle(
+                    c,
+                    r,
+                    egui::Color32::BLACK.gamma_multiply(0.5),
+                    egui::Stroke::new(2.0, colour),
+                );
+            });
+    }
+    if !airfield_tips {
+        let owner = m
+            .world
+            .objects
+            .get(m.takeoff.object_index as usize)
+            .map_or(crate::app6::Affiliation::Friend, |o| map_draw::affiliation_of(o.flags));
+        tips.add(
+            base,
+            t!("mt-takeoff-base"),
+            crate::mission::clean_text(&m.takeoff.name),
+            FRIENDLY_BLUE,
+        )
+        .symbol(move |p, c| map_draw::place_symbol(p, c, owner, true, false));
+    }
+
     planner.selected_at =
         planner.selected.map(|i| to_screen(route.points[i].x as f32, route.points[i].y as f32));
     if let Some(at) = planner.selected_at {
@@ -1800,11 +1812,11 @@ struct VerticalProfile {
     top: f32,
     /// The ground under each column (altitude units).
     ground: Vec<f32>,
-    /// Row by row from the bottom: the best radar score plus the EMV there (over 100: detected);
-    /// NaN under the ground.
-    heat: Vec<f32>,
-    /// The highest of them.
-    max: f32,
+    /// The colour of each grid point, row by row from the bottom: by the best radar score plus
+    /// the EMV there (over 100: detected, up to the highest); clear under the ground.
+    colours: Vec<egui::Color32>,
+    /// The detection's mesh, and the plot it was laid out for (drawn from it each frame).
+    mesh: Option<(egui::Rect, Arc<egui::Mesh>)>,
 }
 
 /// Height (altitude units) of a point `f` of the way up the profile: on a square-root scale,
@@ -1819,8 +1831,9 @@ fn profile_frac(alt: f32, top: f32) -> f32 {
 }
 
 impl VerticalProfile {
+    /// `grid`: the mission's terrain grid.
     fn new(
-        m: &Mission,
+        grid: &[u8],
         sig: &Signature,
         pts: &[RoutePoint],
         rings: &[Ring],
@@ -1890,7 +1903,7 @@ impl VerticalProfile {
                         rcs: sig.rcs,
                         low_level_ft: sig.low_level_ft,
                         aspect: None,
-                        grid: &m.world.grid,
+                        grid,
                         relief: None,
                         hills: None,
                     };
@@ -1907,7 +1920,8 @@ impl VerticalProfile {
             }
         }
         let max = heat.iter().copied().filter(|h| !h.is_nan()).fold(0.0, f32::max);
-        Self { marks, top, ground, heat, max }
+        let colours = heat.iter().map(|&h| heat_colour(h, max)).collect();
+        Self { marks, top, ground, colours, mesh: None }
     }
 }
 
@@ -1964,6 +1978,8 @@ fn vertical_view(
         let (relief, hills) =
             (stealth_host::theater::relief(&id), stealth_host::theater::hills(&id));
         planner.terrain = Some((id.clone(), relief, hills));
+        // (Another theater's profile is not shown while this one's is worked out.)
+        (planner.vertical, planner.working) = (None, None);
     }
     let pts = with_base(m, &route.points);
     let sig = Signature::of(m, planner.aircraft);
@@ -1978,12 +1994,30 @@ fn vertical_view(
         }
         h.finish()
     };
+    // Worked out on another thread, one at a time: while a point is dragged the route changes
+    // every frame, and working it out on this one (tens of milliseconds) held the point back.
+    // The last profile stays shown till the next is ready.
+    if let Some((k, task)) = &mut planner.working
+        && let Some(done) = bevy::tasks::futures::check_ready(task)
+    {
+        planner.vertical = Some((*k, done));
+        planner.working = None;
+    }
     if planner.vertical.as_ref().is_none_or(|(k, _)| *k != key)
+        && planner.working.is_none()
         && let Some((_, relief, hills)) = planner.terrain.as_ref()
     {
-        planner.vertical = Some((key, VerticalProfile::new(m, &sig, &pts, rings, relief, hills)));
+        let (grid, rings) = (m.world.grid.clone(), rings.to_vec());
+        let (relief, hills) = (relief.clone(), hills.clone());
+        let task = AsyncComputeTaskPool::get()
+            .spawn(async move { VerticalProfile::new(&grid, &sig, &pts, &rings, &relief, &hills) });
+        planner.working = Some((key, task));
     }
-    let Some((_, v)) = planner.vertical.as_ref() else { return };
+    // Each frame till the profile of the route's moment is shown.
+    if planner.working.is_some() || planner.vertical.as_ref().is_none_or(|(k, _)| *k != key) {
+        ui.ctx().request_repaint();
+    }
+    let Some((_, v)) = planner.vertical.as_mut() else { return };
 
     let plot = egui::Rect::from_min_max(
         rect.min + egui::vec2(52.0, 36.0),
@@ -1998,25 +2032,28 @@ fn vertical_view(
     let minor_line = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(22));
 
     // Detection: each grid point's colour, blended between them.
-    let mut heat = egui::Mesh::default();
-    for r in 0..PROFILE_ROWS {
-        let y = plot.bottom() - plot.height() * r as f32 / (PROFILE_ROWS - 1) as f32;
-        for c in 0..PROFILE_COLS {
-            heat.colored_vertex(
-                egui::pos2(col_x(c), y),
-                heat_colour(v.heat[r * PROFILE_COLS + c], v.max),
-            );
+    // (Laid out once for the plot: its 10,000 points and 20,000 triangles are not remade each frame.)
+    if v.mesh.as_ref().is_none_or(|(p, _)| *p != plot) {
+        let mut heat = egui::Mesh::default();
+        for r in 0..PROFILE_ROWS {
+            let y = plot.bottom() - plot.height() * r as f32 / (PROFILE_ROWS - 1) as f32;
+            for c in 0..PROFILE_COLS {
+                heat.colored_vertex(egui::pos2(col_x(c), y), v.colours[r * PROFILE_COLS + c]);
+            }
         }
-    }
-    for r in 0..PROFILE_ROWS as u32 - 1 {
-        for c in 0..PROFILE_COLS as u32 - 1 {
-            let i = r * PROFILE_COLS as u32 + c;
-            let up = i + PROFILE_COLS as u32;
-            heat.add_triangle(i, i + 1, up + 1);
-            heat.add_triangle(i, up + 1, up);
+        for r in 0..PROFILE_ROWS as u32 - 1 {
+            for c in 0..PROFILE_COLS as u32 - 1 {
+                let i = r * PROFILE_COLS as u32 + c;
+                let up = i + PROFILE_COLS as u32;
+                heat.add_triangle(i, i + 1, up + 1);
+                heat.add_triangle(i, up + 1, up);
+            }
         }
+        v.mesh = Some((plot, Arc::new(heat)));
     }
-    painter.add(heat);
+    if let Some((_, heat)) = &v.mesh {
+        painter.add(egui::Shape::mesh(heat.clone()));
+    }
 
     // A faint grid over the detection: the labelled heights and distances, and fainter lines
     // between them.
