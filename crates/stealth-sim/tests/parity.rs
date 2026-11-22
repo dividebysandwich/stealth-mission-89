@@ -287,7 +287,7 @@ fn single_player_parity() {
         0xade78a138f8d0210,
         0x3e06c766325121fa,
         0x3053710436c79053,
-        0x47045c5ea57d8b89,
+        0xcc2ab195a7125cd3,
         0x9c65d6e390fe582b,
         0x6204b36206eebdaf,
         0x1ea12cc91d8ee45d,
@@ -324,7 +324,7 @@ fn single_player_parity() {
 fn ai_flight_parity() {
     const GOLDEN: &[u64] = &[
         0xd3b91c4fb2c9e2e7,
-        0x65011c4aa2f6fdf3,
+        0xfbe43a839afe59f3,
         0x7bd690fe1aa44370,
         0x22890021c3f0f1e2,
         0x91367a8bd06a5a90,

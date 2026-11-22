@@ -16,6 +16,9 @@ pub const GRAVITY: f64 = 32.174;
 /// a chute) sheds it within seconds and lands well behind the aircraft on a short, steep arc.
 pub const SLICK_TERMINAL: f64 = 1100.0;
 pub const RETARDED_TERMINAL: f64 = 250.0;
+/// A supply pod or airdrop pallet under its cargo canopies brakes its drift within seconds and
+/// comes down slowly (ft/s).
+pub const CARGO_TERMINAL: f64 = 50.0;
 /// Bombs leave the bay this far below the aircraft (ft).
 pub const RELEASE_DROP: f64 = 20.0;
 /// Longest fall predicted (s).
@@ -28,7 +31,7 @@ pub fn drag(spec: i32, fix_classic_bugs: bool) -> Option<f64> {
     let terminal = match spec {
         30 => SLICK_TERMINAL,
         29 => RETARDED_TERMINAL,
-        38 if fix_classic_bugs => RETARDED_TERMINAL,
+        38 if fix_classic_bugs => CARGO_TERMINAL,
         _ => return None,
     };
     Some(GRAVITY / (terminal * terminal))
