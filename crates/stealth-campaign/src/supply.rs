@@ -57,12 +57,21 @@ impl CampaignState {
                 f.ledger.aircraft += cost;
                 true
             };
-            // Helicopters first: the offensive runs on them.
+            // Helicopters first: the offensive runs on them; the friendly side's fighters
+            // first while it is short of them (its air cover).
+            let fighters_first = side == Side::Blue && f.fighters < BLUE_FIGHTER_FLOOR;
+            if fighters_first {
+                for _ in 0..nf {
+                    buy(f, true);
+                }
+            }
             for _ in 0..nh {
                 buy(f, false);
             }
-            for _ in 0..nf {
-                buy(f, true);
+            if !fighters_first {
+                for _ in 0..nf {
+                    buy(f, true);
+                }
             }
             // What the stores hold beyond the reserve goes on aircraft too, helicopters and
             // fighters in turn.
@@ -77,11 +86,26 @@ impl CampaignState {
     }
 
     /// Materiel a side gets an hour: a base amount, its places and their intact cities (the
-    /// enemy's more for more players, to pay for its tempo).
+    /// enemy's more for more players, to pay for its tempo; the friendly side's alike, and
+    /// more while only one or two players are on to fly its war).
     pub fn income(&self, side: Side) -> f64 {
         let (places, cities) = self.producers(side);
         let income = INCOME_BASE + INCOME_PLACE * places as f64 + INCOME_CITY * cities as f64;
-        if side == Side::Red { income * self.pace() } else { income }
+        match side {
+            Side::Red => income * self.pace(),
+            _ => income * self.pace() * self.few_players_bonus(),
+        }
+    }
+
+    /// The friendly AI's extra income while few players are on: `BLUE_FEW_PLAYERS` with one,
+    /// gone with `BLUE_FEW_PLAYERS_UNTIL` (1 when the AI does not fly the boards).
+    fn few_players_bonus(&self) -> f64 {
+        if !self.ai_missions_on() {
+            return 1.0;
+        }
+        let n = if self.setup.crew_scaling { self.crew.level } else { self.crew.online as f64 };
+        let fade = ((BLUE_FEW_PLAYERS_UNTIL - n) / (BLUE_FEW_PLAYERS_UNTIL - 1.0)).clamp(0.0, 1.0);
+        1.0 + (BLUE_FEW_PLAYERS - 1.0) * fade
     }
 
     /// What a side's income comes from: the places it holds, the intact cities among them.

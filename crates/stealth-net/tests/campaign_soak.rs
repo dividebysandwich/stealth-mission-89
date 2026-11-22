@@ -4,7 +4,7 @@
 //!
 //! `cargo test --release -p stealth-net --test campaign_soak -- --ignored --nocapture`, with
 //! `SOAK_THEATER` (central_europe), `SOAK_HOURS` (campaign-clock hours of sim time, 3),
-//! `SOAK_SEED` (1).
+//! `SOAK_SEED` (1), `SOAK_CREW` (players online for the enemy's tempo, none flying; 1).
 
 use std::collections::BTreeMap;
 
@@ -51,6 +51,19 @@ impl Track {
     }
 }
 
+/// A ground unit's class for the losses table.
+fn ground_class(k: stealth_sim::aaa::GroundKind) -> &'static str {
+    use stealth_sim::aaa::GroundKind as G;
+    match k {
+        G::PatriotRadar | G::PatriotLauncher | G::NasamsRadar | G::NasamsLauncher => "sam",
+        G::Gepard | G::Zsu | G::Zsu572 | G::S60 => "aaa",
+        G::Manpads => "manpads",
+        k if k.armour() => "armour",
+        k if k.supply() => "supply",
+        _ => "other",
+    }
+}
+
 fn env<T: std::str::FromStr>(k: &str, d: T) -> T {
     std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d)
 }
@@ -87,11 +100,19 @@ fn campaign_soak() {
     let sim_data = theater::sim_data(setup.theater, &code).unwrap();
     let mut sim = host.new_sim(&sim_data);
     host.begin(&mut sim);
+    // `SOAK_CREW`: players online (none flying), as the enemy's tempo counts them.
+    host.state.set_crew(env("SOAK_CREW", 1usize));
     let relief = sim.relief();
     let hills = sim.hills();
     let dt = 1.0 / FS as f64;
     let frames = (hours * 3600.0 * FS as f64) as u64;
     let mut tracks: BTreeMap<u32, Track> = BTreeMap::new();
+    let mut ground_losses: BTreeMap<(&str, &str, String), usize> = BTreeMap::new();
+    let mut ground_log: Vec<String> = Vec::new();
+    let mut supply_log: Vec<String> = Vec::new();
+    let mut friendly_fire: Vec<String> = Vec::new();
+    // Ground units a gun's round is on its way to kill (target, shooter).
+    let mut gun_kills: BTreeMap<usize, usize> = BTreeMap::new();
     let mut by_unit: BTreeMap<usize, u32> = BTreeMap::new();
     let mut t = 0.0f64;
     let mut log: Vec<String> = Vec::new();
@@ -150,6 +171,22 @@ fn campaign_soak() {
         threats.clear();
         for m in sim.ai_missiles().iter().filter(|m| m.ground.is_none()) {
             threats.entry(m.target).or_default().push(m.spec);
+            // A missile after an aircraft of its own side.
+            if let Some(f) = sim.campaign_flight(m.target)
+                && f.blue == m.blue
+                && sim.flights()[m.target].flags & fflags::EXISTS != 0
+                && friendly_fire.len() < 20
+                && !friendly_fire.iter().any(|l: &String| l.contains(&format!("tag {} ", f.tag)))
+            {
+                friendly_fire.push(format!(
+                    "{t:6.0}s {} missile {} after its own side's tag {} ({:?} {})",
+                    if m.blue { "blue" } else { "red" },
+                    m.spec,
+                    f.tag,
+                    f.role,
+                    sim.aircraft_name(sim.flights()[m.target].spec)
+                ));
+            }
         }
         shelled.clear();
         for (target, _) in sim.ai_shell_targets() {
@@ -316,6 +353,77 @@ fn campaign_soak() {
         }
         host.refills(&mut sim, dt as f32);
         host.take_sim_events(&mut sim);
+        // Ground units lost, by side and class, and what got them: a ground gun's round, else
+        // the nearest enemy aircraft (within 8 km) by role, else something else (missiles,
+        // drones, ships).
+        for e in &events {
+            if let SimEvent::GroundShot { from, to, kill: true, .. } = e.event {
+                gun_kills.insert(to, from);
+            }
+        }
+        for e in &events {
+            let SimEvent::AaaDestroyed { unit, by } = e.event else { continue };
+            let Some(u) = sim.units().get(unit).copied() else { continue };
+            let blue = sim.aaa_blue(unit);
+            let cause = if by.is_some() {
+                "player".to_string()
+            } else if let Some(from) = gun_kills.remove(&unit) {
+                format!("gun {:?}", sim.units()[from].kind)
+            } else {
+                (0..sim.flights().len())
+                    .filter(|&i| sim.flights()[i].flags & fflags::EXISTS != 0)
+                    .filter_map(|i| Some((i, sim.campaign_flight(i)?)))
+                    .filter(|(_, f)| f.blue != blue)
+                    .map(|(i, f)| {
+                        let a = sim.flights()[i];
+                        let d = ((a.x - u.x) as f64).hypot((a.y - u.y) as f64);
+                        (d, format!("air {:?} {}", f.role, a.spec))
+                    })
+                    .filter(|(d, _)| *d < 512.0)
+                    .min_by(|a, b| a.0.total_cmp(&b.0))
+                    .map_or("other".to_string(), |(_, c)| c)
+            };
+            let side = if blue { "blue" } else { "red" };
+            *ground_losses.entry((side, ground_class(u.kind), cause)).or_insert(0) += 1;
+        }
+        if frame % (FS as u64 * 3600) == 0 {
+            let mut line = format!("{:5.0} min:", t / 60.0);
+            for blue in [true, false] {
+                let mut n: BTreeMap<&str, usize> = BTreeMap::new();
+                for k in 0..sim.units().len() {
+                    let u = sim.units()[k];
+                    if !u.destroyed && sim.aaa_blue(k) == blue {
+                        *n.entry(ground_class(u.kind)).or_insert(0) += 1;
+                    }
+                }
+                line += &format!("  {}: {n:?}", if blue { "blue" } else { "red" });
+            }
+            let st = &host.state;
+            for side in [Side::Blue, Side::Red] {
+                let f = st.forces(side);
+                line += &format!(
+                    "\n           {side:?} fighters {} helis {} materiel {:.0} ({:?})",
+                    f.fighters, f.helicopters, f.materiel, f.ledger
+                );
+            }
+            let flyable = st.board.iter().filter(|o| o.kind.ai_flown()).count();
+            let queue: Vec<String> = st
+                .ai_schedule(Side::Blue)
+                .iter()
+                .take(3)
+                .filter_map(|(id, at)| {
+                    let o = st.board.iter().find(|o| o.id == *id)?;
+                    Some(format!("{:?}@{:.0}s base {}", o.kind, at - st.clock, o.base))
+                })
+                .collect();
+            line += &format!(
+                "\n           board {} (AI {flyable}), open blue AI {}, player bases {:?}, next {queue:?}",
+                st.board.len(),
+                st.ai_missions.iter().filter(|m| m.side == Side::Blue && m.open()).count(),
+                st.player_bases()
+            );
+            ground_log.push(line);
+        }
         for e in &events {
             match &e.event {
                 SimEvent::AircraftCrashed { unit } => {
@@ -328,6 +436,21 @@ fn campaign_soak() {
                 }
                 SimEvent::CampaignFlightDestroyed { unit, tag, by_player, radar, .. } => {
                     if let Some(tr) = tracks.get_mut(tag) {
+                        if tr.role == Some(Role::Supply) {
+                            let u = sim.flights()[*unit];
+                            supply_log.push(format!(
+                                "{t:6.0}s {} supply {tag} down at ({}, {}) after {:.0}s missiles {:?} shells {}",
+                                if tr.blue { "blue" } else { "red" },
+                                u.x,
+                                u.y,
+                                t - tr.first,
+                                threats.get(unit).cloned().unwrap_or_default(),
+                                shelled.get(unit).copied().unwrap_or(0),
+                            ));
+                            if supply_log.len() <= 6 {
+                                supply_log.extend(tr.trail.iter().rev().take(4).rev().map(|l| format!("    | {l}")));
+                            }
+                        }
                         tr.destroyed = true;
                         let u = sim.flights()[*unit];
                         let agl = u.alt - relief.height(u.x, u.y).max(hills.ground_alt(u.x, u.y));
@@ -656,6 +779,29 @@ fn campaign_soak() {
             .collect();
         println!("{side:?} {name}{prod}: {}", items.join(", "));
     }
+    println!("\n== Ground units standing (hourly)");
+    for l in &ground_log {
+        println!("{l}");
+    }
+    println!("\n== Ground units lost (side, class, cause)");
+    for ((side, class, cause), n) in &ground_losses {
+        println!("{side:4} {class:8} {n:4}  {cause}");
+    }
+    println!("\n== Missiles after their own side's aircraft");
+    for l in &friendly_fire {
+        println!("{l}");
+    }
+    println!("\n== Supply helicopters shot down");
+    for l in &supply_log {
+        println!("{l}");
+    }
+    println!("\n== New sites at the end");
+    for d in &host.state.deployments {
+        println!(
+            "#{} {:?} {} by {:?} built {} delivered {:?} ai {:?} open since {:.0} crates {:?}",
+            d.id, d.kind, d.name, d.by, d.built, d.delivered, d.ai, d.open_since, d.crates
+        );
+    }
     println!("\n== News");
     for n in &news {
         println!("{n}");
@@ -687,9 +833,27 @@ fn campaign_soak() {
             println!("     {n}");
         }
     }
-    println!("\n== Flights seen");
+    println!("\n== Flights seen (shot down, landed, still up)");
+    let mut fates: BTreeMap<String, [usize; 3]> = BTreeMap::new();
+    for tr in tracks.values() {
+        let key = format!(
+            "{} {:?} {}",
+            if tr.blue { "Blue" } else { "Red" },
+            tr.role,
+            sim.aircraft_name(tr.spec)
+        );
+        let k = if tr.destroyed {
+            0
+        } else if tr.end.is_some() {
+            1
+        } else {
+            2
+        };
+        fates.entry(key).or_default()[k] += 1;
+    }
     for (k, n) in counts {
-        println!("{n:4} {k}");
+        let f = fates.get(&k).copied().unwrap_or_default();
+        println!("{n:4} {k}  ({} / {} / {})", f[0], f[1], f[2]);
     }
     println!("{t:.0} s simulated");
 }

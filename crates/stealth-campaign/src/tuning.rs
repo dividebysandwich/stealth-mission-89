@@ -107,6 +107,9 @@ pub const SCRAMBLE_RANGE: i32 = 0x1400;
 pub const AI_CAP_TRIGGER: i32 = 0xA00;
 pub const AI_CAP_STATION: i32 = 0x200;
 pub const AI_CAP_RESPAWN: f64 = 5.0 * 60.0;
+/// A place under air attack (`Place::air_hits`) is guarded by the CAP of the nearest airfield
+/// within this distance of it (120 km).
+pub const AI_CAP_REACH: i32 = 0x1E00;
 /// Patriot batteries defend friendly airfields at least this far behind the front (60 km), at
 /// most this many (plus one per ROE level), standing this far from the airfield (4-6 km).
 pub const PATRIOT_REAR: i32 = 0xF00;
@@ -177,6 +180,11 @@ pub const MATERIEL_MAX: f64 = 400.0;
 pub const INCOME_BASE: f64 = 20.0;
 pub const INCOME_PLACE: f64 = 1.0;
 pub const INCOME_CITY: f64 = 5.0;
+/// The friendly side's income (its AI flies the war the players do not) is this many times
+/// more with one player on, the bonus shrinking to nothing with this many (on top of the
+/// players' tempo, which it follows like the enemy's).
+pub const BLUE_FEW_PLAYERS: f64 = 2.0;
+pub const BLUE_FEW_PLAYERS_UNTIL: f64 = 3.0;
 /// A destroyed city costs its side this much at once (stores and factories gone).
 pub const CITY_LOSS: f64 = 30.0;
 /// What the AI pays: repairs by kind of site, a gun or MANPADS team, a fighter sortie (patrol,
@@ -371,8 +379,15 @@ pub const AI_MISSION_COST: f64 = 10.0;
 /// Aircraft of a flight: a recon flies alone, every other mission a pair.
 pub const AI_RECON_AIRCRAFT: usize = 1;
 pub const AI_FLIGHT_AIRCRAFT: usize = 2;
-/// The helicopters go for targets this close to their base (40 km).
+/// The helicopters go for targets this close to their base (40 km), and this far (80 km) while
+/// the friendly fighters are out.
 pub const AI_HELO_RANGE: i32 = 0xA00;
+pub const AI_HELO_REACH: i32 = 0x1400;
+/// Below this many fighters the friendly side buys fighters before helicopters (its air cover).
+pub const BLUE_FIGHTER_FLOOR: u32 = 6;
+/// An offer whose last AI flight was shot down to the last aircraft for nothing waits this
+/// long (s) before the AI tries it again.
+pub const AI_FAILED_WAIT: f64 = 60.0 * 60.0;
 /// A heavy air defence (the offer's threat: a SAM site weighs `SAM_THREAT`, a gun 1), and
 /// heavy fighter opposition (enemy aircraft in the air within `AIR_THREAT_RANGE`, 64 km).
 pub const HEAVY_SAM_THREAT: i32 = 2 * SAM_THREAT;

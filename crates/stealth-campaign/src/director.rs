@@ -891,9 +891,9 @@ impl CampaignState {
         });
     }
 
-    /// A friendly airfield with enemy aircraft close scrambles a CAP of one or two fighters
-    /// (two against two or more); none while its CAP flies, nor for a while after one of its
-    /// fighters was shot down.
+    /// A friendly airfield with enemy aircraft close to it, or to a friendly place whose units
+    /// they are killing, scrambles a CAP of one or two fighters (two against two or more);
+    /// none while its CAP flies, nor for a while after one of its fighters was shot down.
     pub(crate) fn friendly_cap(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         let now = self.clock;
         // Fighters gone from the air without landing: shot down (the simulation reports that a
@@ -909,19 +909,36 @@ impl CampaignState {
             self.cap_report(tag, true);
         }
         self.cap_lockout.retain(|l| l.1 > now);
-        for base in self.bases(Side::Blue) {
+        // What the CAPs guard: each airfield itself, and the places whose units enemy aircraft
+        // are killing (from the nearest airfield in reach).
+        let bases = self.bases(Side::Blue);
+        let mut guard: Vec<(ObjectId, i32, i32)> =
+            bases.iter().filter_map(|&b| self.site(b).map(|s| (b, s.x, s.y))).collect();
+        for p in self.places.iter().filter(|p| p.owner == Side::Blue) {
+            if p.air_struck_at.is_none_or(|t| now - t > PRESSURE_MEMORY) {
+                continue;
+            }
+            let nearest = bases
+                .iter()
+                .filter_map(|&b| self.site(b).map(|s| (b, dist(s.x - p.x, s.y - p.y))))
+                .filter(|&(_, d)| d <= AI_CAP_REACH)
+                .min_by_key(|&(_, d)| d);
+            if let Some((b, _)) = nearest {
+                guard.push((b, p.x, p.y));
+            }
+        }
+        for (base, gx, gy) in guard {
             if self.caps.iter().any(|c| c.base == base)
                 || self.cap_lockout.iter().any(|l| l.0 == base)
             {
                 continue;
             }
-            let Some(s) = self.site(base) else { continue };
-            let (bx, by, name) = (s.x, s.y, s.name.clone());
+            let Some(name) = self.site(base).map(|s| s.name.clone()) else { continue };
             let threats: Vec<(i32, i32, i32)> = view
                 .flights
                 .iter()
                 .filter(|f| f.side == Side::Red)
-                .map(|f| (f.x, f.y, dist(f.x - bx, f.y - by)))
+                .map(|f| (f.x, f.y, dist(f.x - gx, f.y - gy)))
                 .filter(|t| t.2 <= AI_CAP_TRIGGER)
                 .collect();
             let Some(&(tx, ty, d)) = threats.iter().min_by_key(|t| t.2) else { continue };
@@ -932,10 +949,10 @@ impl CampaignState {
                 continue;
             }
             self.take_fighters(Side::Blue, n as u32);
-            // The orbit: out from the airfield towards the threat.
+            // The orbit: out from what it guards towards the threat.
             let r = AI_CAP_STATION.min(d);
             let d = d.max(1);
-            let (x, y) = (bx + (tx - bx) * r / d, by + (ty - by) * r / d);
+            let (x, y) = (gx + (tx - gx) * r / d, gy + (ty - gy) * r / d);
             let tags: Vec<u32> = (0..n).map(|_| self.id()).collect();
             for &tag in &tags {
                 let task = FighterTask::Cap;

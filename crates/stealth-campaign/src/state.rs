@@ -192,7 +192,7 @@ impl Site {
     }
 }
 
-fn is_zero(v: &u8) -> bool {
+pub(crate) fn is_zero(v: &u8) -> bool {
     *v == 0
 }
 

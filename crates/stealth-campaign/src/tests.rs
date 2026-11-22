@@ -4214,3 +4214,124 @@ fn the_command_builds_air_defence_where_units_die_to_air_attack() {
     c.tick(1.0, &view, &[]);
     assert_eq!(own(&c), 1, "the place is covered now");
 }
+
+/// While only one player is on, the friendly side's AI earns `BLUE_FEW_PLAYERS` times its
+/// income; with three the bonus is gone and both sides follow the players' tempo alike.
+#[test]
+fn the_friendly_ai_earns_more_while_few_players_are_on() {
+    let mut c = ai_campaign();
+    let (places, cities) = c.producers(Side::Blue);
+    let base = tuning::INCOME_BASE
+        + tuning::INCOME_PLACE * places as f64
+        + tuning::INCOME_CITY * cities as f64;
+    assert!((c.income(Side::Blue) - base * tuning::BLUE_FEW_PLAYERS).abs() < 1e-9);
+    c.crew.level = 3.0;
+    assert!((c.income(Side::Blue) - base * c.pace()).abs() < 1e-9);
+    // Without the AI flying the boards (an older campaign), as before.
+    let mut old = campaign("central_europe", 3);
+    old.tick(1.0, &WorldView::default(), &[]);
+    assert!((old.income(Side::Blue) - base).abs() < 1e-9);
+}
+
+/// With no fighters left the friendly AI's queue does not stall behind a jet mission: its
+/// helicopters fly what they reach.
+#[test]
+fn the_friendly_ai_flies_its_helicopters_while_its_fighters_are_out() {
+    let mut c = ai_campaign();
+    c.blue.fighters = 0;
+    // A close air support offer 60 km from its base: beyond the helicopters' usual reach.
+    let k = c.board.iter().position(|o| ai_flown(o.kind)).expect("an offer");
+    let b = c.site(c.board[k].base).unwrap();
+    let (bx, by) = (b.x, b.y);
+    let o = &mut c.board[k];
+    o.kind = MissionKind::Cas;
+    o.objective = Objective::Cas { place: 0, aaa: Vec::new() };
+    (o.x, o.y) = (bx + tuning::AI_HELO_RANGE * 3 / 2, by);
+    let id = o.id;
+    // (The same board all along, before the hourly purchase of aircraft.)
+    c.board_at = f64::MAX;
+    for _ in 0..40 * 60 {
+        c.tick(1.0, &WorldView::default(), &[]);
+    }
+    let blue: Vec<&AiMission> = c.ai_missions.iter().filter(|m| m.side == Side::Blue).collect();
+    assert!(blue.iter().any(|m| m.offer.id == id), "{:?}", c.ai_schedule(Side::Blue));
+    assert!(blue.iter().all(|m| m.airframe.helicopter()), "{blue:?}");
+}
+
+/// A flight shot down to the last aircraft for nothing: the AI does not send the next one at
+/// that offer for `AI_FAILED_WAIT`.
+#[test]
+fn the_ai_waits_before_it_tries_an_offer_that_cost_a_whole_flight() {
+    let mut c = ai_campaign();
+    let mut launched = None;
+    for _ in 0..30 * 60 {
+        let ev = c.tick(1.0, &WorldView::default(), &[]);
+        launched = ev.iter().find_map(|e| match e {
+            CampaignEvent::AiMissionLaunched { id, side: Side::Blue, .. } => Some(*id),
+            _ => None,
+        });
+        if launched.is_some() {
+            break;
+        }
+    }
+    let id = launched.expect("a friendly AI flight");
+    // Its other aircraft up too, then all shot down.
+    for _ in 0..60 {
+        c.tick(1.0, &WorldView::default(), &[]);
+    }
+    let m = c.ai_missions.iter().find(|m| m.id == id).unwrap().clone();
+    let lost: Vec<Report> = m
+        .tags
+        .iter()
+        .map(|&tag| Report::FlightDestroyed { tag, side: Side::Blue, x: 0, y: 0, by: None })
+        .collect();
+    c.tick(1.0, &WorldView::default(), &lost);
+    let m = c.ai_missions.iter().find(|m| m.id == id).expect("remembered").clone();
+    assert!(m.wiped_out() && !m.open());
+    let offer = c.board.iter().find(|o| o.id == m.offer.id).expect("still on the board").clone();
+    if let Some(at) = c.ai_launch_at(&offer) {
+        assert!(at >= m.ended.unwrap() + tuning::AI_FAILED_WAIT, "{at} {:?}", m.ended);
+    }
+    for _ in 0..40 * 60 {
+        c.tick(1.0, &WorldView::default(), &[]);
+    }
+    assert!(!c.ai_missions.iter().any(|x| x.offer.id == offer.id && x.open()));
+}
+
+/// Enemy aircraft over a friendly place whose units they are killing scramble a CAP from the
+/// nearest airfield, its orbit over the place.
+#[test]
+fn a_place_under_air_attack_gets_air_cover() {
+    let mut c = ai_campaign();
+    let bases: Vec<(ObjectId, i32, i32)> =
+        c.bases(Side::Blue).into_iter().filter_map(|b| c.site(b).map(|s| (b, s.x, s.y))).collect();
+    let near_base = |x: i32, y: i32| bases.iter().map(|b| dist(b.1 - x, b.2 - y)).min().unwrap();
+    let k = c
+        .places
+        .iter()
+        .position(|p| {
+            let d = near_base(p.x, p.y);
+            p.owner == Side::Blue && d > tuning::AI_CAP_TRIGGER + 0x200 && d <= tuning::AI_CAP_REACH
+        })
+        .expect("a friendly place away from the airfields");
+    let (x, y) = (c.places[k].x, c.places[k].y);
+    let base = bases.iter().min_by_key(|b| dist(b.1 - x, b.2 - y)).unwrap().0;
+    let view = WorldView {
+        flights: vec![FlightView { x: x + 0x100, y, side: Side::Red, tag: 7 }],
+        ..WorldView::default()
+    };
+    let ev = c.tick(1.0, &view, &[]);
+    assert!(caps_from(&ev, base).is_empty(), "nothing lost there yet");
+    c.places[k].air_hits = 1;
+    c.places[k].air_struck_at = Some(c.clock);
+    let ev = c.tick(1.0, &view, &[]);
+    assert!(!caps_from(&ev, base).is_empty());
+    let at = ev
+        .iter()
+        .find_map(|e| match e {
+            CampaignEvent::LaunchFighters { x, y, .. } => Some((*x, *y)),
+            _ => None,
+        })
+        .unwrap();
+    assert!(dist(at.0 - x, at.1 - y) <= tuning::AI_CAP_STATION, "{at:?}");
+}

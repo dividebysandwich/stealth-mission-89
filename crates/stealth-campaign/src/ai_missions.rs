@@ -95,9 +95,17 @@ pub struct AiMission {
     /// An ASW flight's submarine was sunk.
     #[serde(default)]
     pub sub_sunk: bool,
+    /// Its aircraft shot down.
+    #[serde(default, skip_serializing_if = "crate::state::is_zero")]
+    pub lost: u8,
 }
 
 impl AiMission {
+    /// Every aircraft of it was shot down and it achieved nothing.
+    pub fn wiped_out(&self) -> bool {
+        !self.achieved && self.lost as usize >= self.tags.len() && !self.tags.is_empty()
+    }
+
     pub fn open(&self) -> bool {
         self.state == AiMissionState::Enroute
     }
@@ -151,6 +159,17 @@ pub fn ai_flown(kind: MissionKind) -> bool {
             | MissionKind::Logistics
             | MissionKind::FleetDefence
     )
+}
+
+/// Why an AI flight did not take off.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Short {
+    /// Not enough of the aircraft it needs.
+    Aircraft,
+    /// Not enough materiel.
+    Materiel,
+    /// Nothing to fly it from, or to.
+    Offer,
 }
 
 /// The ground missions (the rest fight in the air).
@@ -272,6 +291,10 @@ impl CampaignState {
             .filter_map(|o| {
                 let since = match self.ai_mission_for(o.id) {
                     Some(m) if m.open() => return None,
+                    // A flight lost to the last man for nothing: not again for a while.
+                    Some(m) if m.wiped_out() => {
+                        m.ended.unwrap_or(m.launched).max(o.posted) + AI_FAILED_WAIT
+                    }
                     Some(m) => m.ended.unwrap_or(m.launched).max(o.posted),
                     None => o.posted,
                 };
@@ -434,8 +457,11 @@ impl CampaignState {
                 self.end_ai_mission(k);
             }
         }
-        self.ai_missions
-            .retain(|m| m.open() || m.ended.is_some_and(|t| now - t < AI_MISSION_MEMORY));
+        // (One shot down to the last aircraft is kept for its wait.)
+        self.ai_missions.retain(|m| {
+            let memory = if m.wiped_out() { AI_FAILED_WAIT } else { AI_MISSION_MEMORY };
+            m.open() || m.ended.is_some_and(|t| now - t < memory)
+        });
         // The aircraft whose turn it is take off.
         for m in self.ai_missions.iter_mut().filter(|m| m.open()) {
             let up: Vec<u32> = (0..m.tags.len())
@@ -467,7 +493,7 @@ impl CampaignState {
                 continue;
             }
             if let Some(o) = self.board.iter().find(|o| o.id == id).cloned() {
-                self.launch_ai(Side::Blue, &o, view);
+                let _ = self.launch_ai(Side::Blue, &o, view);
             }
         }
         // The offers whose turn it is (the queue's first; the next ones come later).
@@ -478,9 +504,13 @@ impl CampaignState {
                 }
                 let board = if side == Side::Blue { &self.board } else { &self.red_board };
                 let Some(o) = board.iter().find(|o| o.id == id).cloned() else { continue };
-                if !self.launch_ai(side, &o, view) {
-                    // Not enough aircraft or materiel: the ones after it wait too.
-                    break;
+                match self.launch_ai(side, &o, view) {
+                    Ok(()) => {}
+                    // Short of the aircraft it needs: the friendly side flies the next ones
+                    // meanwhile (its helicopters while its fighters are out).
+                    Err(Short::Aircraft) if side == Side::Blue => {}
+                    // Not enough materiel (or the enemy's): the ones after it wait too.
+                    Err(_) => break,
                 }
             }
         }
@@ -527,34 +557,42 @@ impl CampaignState {
 
     /// Flight of the AI for offer `o` of `side`'s board, if the side has the aircraft and the
     /// materiel for it.
-    fn launch_ai(&mut self, side: Side, o: &MissionOffer, view: &WorldView) -> bool {
+    fn launch_ai(&mut self, side: Side, o: &MissionOffer, view: &WorldView) -> Result<(), Short> {
         let from = match side {
             Side::Blue => Some(o.base).filter(|&b| self.player_bases().contains(&b)),
             _ => self.nearest_base(side, o.x, o.y),
         };
-        let Some(from) = from else { return false };
-        let Some(b) = self.site(from) else { return false };
+        let Some(from) = from else { return Err(Short::Offer) };
+        let Some(b) = self.site(from) else { return Err(Short::Offer) };
         let d = dist(b.x - o.x, b.y - o.y);
         if side == Side::Red && d > RAID_RANGE {
-            return false;
+            return Err(Short::Offer);
         }
         // A cargo aircraft is the jets' to catch.
         let close = d <= AI_HELO_RANGE && !matches!(o.objective, Objective::Cargo { .. });
-        let airframe = match side {
-            Side::Blue => AiAirframe::Blue(pick_blue(
-                o.kind,
-                o.threat,
-                self.air_threat(side, o.x, o.y, view),
-                close,
-            )),
+        let air = self.air_threat(side, o.x, o.y, view);
+        let mut airframe = match side {
+            Side::Blue => AiAirframe::Blue(pick_blue(o.kind, o.threat, air, close)),
             _ => AiAirframe::Red(pick_red(o.kind, close)),
         };
-        let Some(target) = self.ai_target(o) else { return false };
+        let Some(target) = self.ai_target(o) else { return Err(Short::Offer) };
         let n = if o.kind == MissionKind::Recon { AI_RECON_AIRCRAFT } else { AI_FLIGHT_AIRCRAFT };
         let f = self.forces(side);
+        if f.materiel < AI_MISSION_COST {
+            return Err(Short::Materiel);
+        }
+        // The friendly side short of fighters: its helicopters fly what they can reach.
+        if side == Side::Blue && !airframe.helicopter() && (f.fighters as usize) < n {
+            let heli = pick_blue(o.kind, o.threat, air, true);
+            if !heli.helicopter() || d > AI_HELO_REACH || (f.helicopters as usize) < n {
+                return Err(Short::Aircraft);
+            }
+            airframe = AiAirframe::Blue(heli);
+        }
+        let f = self.forces(side);
         let pool = if airframe.helicopter() { f.helicopters } else { f.fighters };
-        if (pool as usize) < n || f.materiel < AI_MISSION_COST {
-            return false;
+        if (pool as usize) < n {
+            return Err(Short::Aircraft);
         }
         self.pay(side, AI_MISSION_COST, Spend::Operations);
         let f = self.forces_mut(side);
@@ -582,6 +620,7 @@ impl CampaignState {
             achieved: false,
             photographed: false,
             sub_sunk: false,
+            lost: 0,
         });
         if side == Side::Blue {
             self.note(text!(
@@ -591,7 +630,7 @@ impl CampaignState {
                 count = n as i64
             ));
         }
-        true
+        Ok(())
     }
 
     /// What a flight on an offer goes for (None: nothing left to go for).
@@ -647,6 +686,7 @@ impl CampaignState {
             return;
         }
         m.alive[k] = false;
+        m.lost += !landed as u8;
         let (side, heli, pooled) = (m.side, m.airframe.helicopter(), m.pooled[k]);
         if landed && pooled {
             self.aircraft_back(side, !heli as u32, heli as u32);
@@ -995,6 +1035,7 @@ impl CampaignState {
                             achieved: false,
                             photographed: false,
                             sub_sunk: false,
+                            lost: 0,
                         });
                         self.ai_missions.len() - 1
                     }
