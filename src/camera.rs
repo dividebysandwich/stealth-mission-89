@@ -842,7 +842,7 @@ fn place_free_camera(
 
 /// The observer view key: orbits the nearest observable entity to the view, or, already
 /// observing, the next nearest after the one observed (to the player's aircraft). Test aid:
-/// `--observe launcher|missile|unit:N|flight:N` observes that one as soon as it is drawn.
+/// `--observe launcher|missile|wingman|unit:N|flight:N` observes that one as soon as it is drawn.
 #[allow(clippy::too_many_arguments)]
 fn pick_observed(
     mut actions: MessageReader<ActionEvent>,
@@ -887,6 +887,9 @@ fn pick_observed(
                         }
                         ("missile", Observable::Flight(i)) => {
                             sim.ballistic_missile(i) || sim.cruise_missile(i)
+                        }
+                        ("wingman", Observable::Flight(i)) => {
+                            sim.wingman_of(sim.active_pilot()) == Some(i)
                         }
                         (w, Observable::Unit(i)) => w.strip_prefix("unit:") == Some(&i.to_string()),
                         (w, Observable::Flight(i)) => {
