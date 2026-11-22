@@ -17,6 +17,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
 import glbio  # noqa: E402
+import jsonfmt  # noqa: E402
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 
@@ -158,7 +159,7 @@ def main():
         data.pop("water_shapes", None)
         # Only a theater with water needs them.
         data["ground"] = ground if any(t[6] for g in ground for t in g) else []
-        open(path, "w").write(json.dumps(data, separators=(",", ":")))
+        jsonfmt.write(path, data)
         wet = sum(any(t[6] for t in g) for g in ground)
         tris = sum(len(g) for g in ground)
         print(f"{theater}: {wet} of {len(shapes)} shapes have water, {tris} flat triangles")

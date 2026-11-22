@@ -25,6 +25,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools", "models"))
 
 import common  # noqa: E402
+import jsonfmt  # noqa: E402
 import kerch  # noqa: E402
 from glbio import append, read, subset, write  # noqa: E402
 
@@ -1021,8 +1022,7 @@ def write_json(grids, world, launch, road_net=None):
         "tiles": [[[list(o) for o in t] for t in lv] for lv in grids["tiles"]],
         "grid_size": [1024, 256, 64, 16, 4],
     }
-    with open(os.path.join(ROOT, "assets", "mission", "theaters", geo.ID + ".json"), "w") as f:
-        json.dump(td, f, separators=(",", ":"))
+    jsonfmt.write(os.path.join(ROOT, "assets", "mission", "theaters", geo.ID + ".json"), td)
 
 
 def main():
