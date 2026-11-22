@@ -1,6 +1,7 @@
 pub mod airlift;
 pub mod asw;
 pub mod drones;
+pub mod free_flight;
 mod generator;
 pub mod gunship;
 pub mod hills;
@@ -140,6 +141,10 @@ pub struct MissionSettings {
     /// Takes off and lands on land bases only, never a carrier (the cargo jet).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub land_bases: bool,
+    /// Free flight (single missions): no enemy anywhere, a route over random places
+    /// ([`free_flight`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub free_flight: bool,
 }
 
 fn clear_sky() -> Option<Sky> {
@@ -163,6 +168,7 @@ impl Default for MissionSettings {
             moon: None,
             helicopter: false,
             land_bases: false,
+            free_flight: false,
         }
     }
 }
@@ -615,7 +621,9 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
         column: None,
         hunt: None,
     };
-    if s.kind == MissionKind::DroneDefense {
+    if s.free_flight {
+        free_flight::for_free_flight(&mut m, data);
+    } else if s.kind == MissionKind::DroneDefense {
         drones::defend(&mut m, data, th)?;
     } else if s.kind == MissionKind::Strike && !th.launch_sites.is_empty() {
         drones::crossing(&mut m, th);

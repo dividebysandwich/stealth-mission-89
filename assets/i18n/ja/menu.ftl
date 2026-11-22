@@ -124,6 +124,13 @@ opponents-3 = エリート
     .facts =
         最強の敵パイロットと SAM クルー
         最も難しい設定
+opponents-free = フリーフライト
+    .facts =
+        敵はいない、味方機のみ
+        ランダムな地点を巡るルート、または好きな場所へ
+ff-title = フリーフライト
+ff-summary = 敵はどこにもいない。味方の航空機と部隊のみ。好きな所へ飛ぼう。
+ff-objective = 推奨ルート：{ $route }、その後 { $base } へ帰投。
 
 ## Weather
 

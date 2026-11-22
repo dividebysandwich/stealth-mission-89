@@ -708,11 +708,14 @@ fn draw(
                 GREEN,
                 orders.done[0],
             );
-            w.objective(
-                &ts!("kb-secondary", objective = b.secondary_objective.as_str()),
-                WHITE,
-                orders.done[1],
-            );
+            // A free flight has no secondary objective.
+            if !b.secondary_objective.is_empty() {
+                w.objective(
+                    &ts!("kb-secondary", objective = b.secondary_objective.as_str()),
+                    WHITE,
+                    orders.done[1],
+                );
+            }
             w.heading(ts!("kb-times"));
             w.para(&b.depart_line, WHITE);
             w.para(&b.land_line, WHITE);
@@ -744,8 +747,10 @@ fn draw(
                 _ => b.armament.join(", "),
             };
             w.para(&stores, WHITE);
-            w.heading(ts!("kb-roe"));
-            w.para(&b.roe_text, GREY);
+            if !b.roe_text.is_empty() {
+                w.heading(ts!("kb-roe"));
+                w.para(&b.roe_text, GREY);
+            }
         }
         Page::Route => {
             let mut y = TABS + 40.0;

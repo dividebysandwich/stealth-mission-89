@@ -124,6 +124,13 @@ opponents-3 = Elita
     .facts =
         Najbolji neprijateljski piloti i posluga SAM-ova
         Najteža razina
+opponents-free = Slobodan let
+    .facts =
+        Bez neprijateljskih snaga, samo prijateljski zrakoplovi
+        Letite rutom preko nasumičnih mjesta ili kamo želite
+ff-title = Slobodan let
+ff-summary = Nigdje neprijateljskih snaga: samo prijateljski zrakoplovi i postrojbe. Letite kamo želite.
+ff-objective = Predložena ruta: { $route }, zatim natrag u { $base }.
 
 ## Vrijeme
 

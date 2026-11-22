@@ -124,6 +124,13 @@ opponents-3 = Elită
     .facts =
         Cei mai buni piloți inamici și echipaje SAM
         Cea mai grea setare
+opponents-free = Zbor liber
+    .facts =
+        Fără forțe inamice, doar avioane prietene
+        Zburați un traseu peste locuri aleatorii sau oriunde doriți
+ff-title = Zbor liber
+ff-summary = Nicăieri forțe inamice: doar avioane și unități prietene. Zburați oriunde doriți.
+ff-objective = Traseu sugerat: { $route }, apoi înapoi la { $base }.
 
 ## Vremea
 

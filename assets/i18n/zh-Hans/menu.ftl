@@ -124,6 +124,13 @@ opponents-3 = 精英
     .facts =
         最优秀的敌方飞行员和 SAM 机组
         最难的设置
+opponents-free = 自由飞行
+    .facts =
+        没有敌军，只有友军飞机
+        沿随机地点的航线飞行，或随意飞往任何地方
+ff-title = 自由飞行
+ff-summary = 任何地方都没有敌军：只有友军飞机和部队。想飞到哪里就飞到哪里。
+ff-objective = 建议航线：{ $route }，然后返回 { $base }。
 
 ## 天气
 

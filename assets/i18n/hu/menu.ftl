@@ -124,6 +124,13 @@ opponents-3 = Elit
     .facts =
         A legjobb ellenséges pilóták és SAM-kezelők
         A legnehezebb fokozat
+opponents-free = Szabad repülés
+    .facts =
+        Nincsenek ellenséges erők, csak baráti gépek
+        Repülj egy útvonalat véletlen helyek fölött, vagy bárhová
+ff-title = Szabad repülés
+ff-summary = Sehol nincsenek ellenséges erők: csak baráti repülőgépek és egységek. Repülj, amerre kedved tartja.
+ff-objective = Javasolt útvonal: { $route }, majd vissza ide: { $base }.
 
 ## Időjárás
 

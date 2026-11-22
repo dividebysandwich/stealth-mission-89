@@ -124,6 +124,13 @@ opponents-3 = Elitas
     .facts =
         Geriausi priešo lakūnai ir SAM įgulos
         Sunkiausias nustatymas
+opponents-free = Laisvas skrydis
+    .facts =
+        Jokių priešo pajėgų, tik savi lėktuvai
+        Skriskite maršrutu virš atsitiktinių vietų arba kur norite
+ff-title = Laisvas skrydis
+ff-summary = Niekur nėra priešo pajėgų: tik savi lėktuvai ir daliniai. Skriskite kur norite.
+ff-objective = Siūlomas maršrutas: { $route }, tada atgal į { $base }.
 
 ## Oras
 

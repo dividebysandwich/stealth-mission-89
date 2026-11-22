@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         L-aqwa piloti u ekwipaġġi SAM tal-għadu
         L-aktar issettjar diffiċli
+opponents-free = Titjira ħielsa
+    .facts =
+        L-ebda forza għadwa, ajruplani ħbieb biss
+        Ittajjar rotta fuq postijiet każwali, jew kull fejn trid
+ff-title = Titjira Ħielsa
+ff-summary = L-ebda forza għadwa mkien: ajruplani u unitajiet ħbieb biss. Ittajjar fejn trid.
+ff-objective = Rotta proposta: { $route }, imbagħad lura lejn { $base }.
 
 ## Temp
 

@@ -124,6 +124,13 @@ opponents-3 = Elita
     .facts =
         Najlepsi wrodzy piloci i obsługi SAM
         Najtrudniejszy poziom
+opponents-free = Lot swobodny
+    .facts =
+        Brak sił wroga, tylko sojusznicze samoloty
+        Leć trasą nad losowymi miejscami albo dokądkolwiek
+ff-title = Lot swobodny
+ff-summary = Nigdzie nie ma sił wroga: tylko sojusznicze samoloty i jednostki. Leć, dokąd chcesz.
+ff-objective = Proponowana trasa: { $route }, potem powrót do { $base }.
 
 ## Pogoda
 

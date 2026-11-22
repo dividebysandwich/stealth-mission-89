@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         Os melhores pilotos e operadores de SAM inimigos
         Nível mais difícil
+opponents-free = Voo livre
+    .facts =
+        Sem forças inimigas, só aeronaves aliadas
+        Voe uma rota sobre lugares aleatórios, ou para onde quiser
+ff-title = Voo livre
+ff-summary = Nenhuma força inimiga em lugar algum: só aeronaves e unidades aliadas. Voe para onde quiser.
+ff-objective = Rota sugerida: { $route }, depois volte para { $base }.
 
 ## Meteorologia
 

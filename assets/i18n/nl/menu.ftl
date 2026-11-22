@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         De beste vijandelijke piloten en SAM-bemanningen
         Moeilijkste instelling
+opponents-free = Vrije vlucht
+    .facts =
+        Geen vijandelijke troepen, alleen eigen vliegtuigen
+        Vlieg een route over willekeurige plaatsen, of waarheen je wilt
+ff-title = Vrije vlucht
+ff-summary = Nergens vijandelijke troepen: alleen eigen vliegtuigen en eenheden. Vlieg waarheen je wilt.
+ff-objective = Voorgestelde route: { $route }, daarna terug naar { $base }.
 
 ## Weer
 

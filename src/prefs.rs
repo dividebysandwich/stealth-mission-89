@@ -42,6 +42,8 @@ pub struct Prefs {
     pub roe: u8,
     pub kind: MissionKind,
     pub opponents: u8,
+    /// Single missions: free flight (no enemy).
+    pub free_flight: bool,
     pub lockheed: bool,
     pub friendly_fire: bool,
     pub airframe_losses: bool,
@@ -146,6 +148,7 @@ impl Default for Prefs {
             roe: menu.roe,
             kind: menu.kind,
             opponents: menu.opponents,
+            free_flight: menu.free_flight,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
             airframe_losses: menu.airframe_losses,
@@ -278,6 +281,7 @@ impl Prefs {
             roe: menu.roe,
             kind: menu.kind,
             opponents: menu.opponents,
+            free_flight: menu.free_flight,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
             airframe_losses: menu.airframe_losses,
@@ -367,6 +371,7 @@ impl Prefs {
         menu.roe = self.roe.min(2);
         menu.kind = self.kind;
         menu.opponents = self.opponents.min(3);
+        menu.free_flight = self.free_flight;
         menu.lockheed = self.lockheed;
         menu.friendly_fire = self.friendly_fire;
         menu.airframe_losses = self.airframe_losses;

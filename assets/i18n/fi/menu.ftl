@@ -124,6 +124,13 @@ opponents-3 = Eliitti
     .facts =
         Vihollisen parhaat lentäjät ja SAM-miehistöt
         Vaikein taso
+opponents-free = Vapaa lento
+    .facts =
+        Ei vihollisjoukkoja, vain omia koneita
+        Lennä reitti satunnaisten paikkojen yli tai minne haluat
+ff-title = Vapaa lento
+ff-summary = Vihollisjoukkoja ei ole missään: vain omia koneita ja yksiköitä. Lennä minne haluat.
+ff-objective = Ehdotettu reitti: { $route }, sitten takaisin kohteeseen { $base }.
 
 ## Sää
 

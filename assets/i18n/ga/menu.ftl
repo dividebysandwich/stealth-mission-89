@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         Na píolótaí agus na criúnna SAM naimhdeacha is fearr
         An socrú is deacra
+opponents-free = Saoreitilt
+    .facts =
+        Gan fórsaí namhaid, aerárthaí cairdiúla amháin
+        Eitil bealach thar áiteanna randamacha, nó áit ar bith is mian leat
+ff-title = Saoreitilt
+ff-summary = Níl fórsaí namhaid in áit ar bith: aerárthaí agus aonaid chairdiúla amháin. Eitil áit ar bith is mian leat.
+ff-objective = Bealach molta: { $route }, ansin ar ais go { $base }.
 
 ## Aimsir
 

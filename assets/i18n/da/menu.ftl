@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         Fjendens bedste piloter og SAM-besætninger
         Sværeste indstilling
+opponents-free = Fri flyvning
+    .facts =
+        Ingen fjendtlige styrker, kun venlige fly
+        Flyv en rute over tilfældige steder, eller hvorhen du vil
+ff-title = Fri flyvning
+ff-summary = Ingen fjendtlige styrker nogen steder: kun venlige fly og enheder. Flyv hvorhen du vil.
+ff-objective = Foreslået rute: { $route }, derefter tilbage til { $base }.
 
 ## Vejr
 

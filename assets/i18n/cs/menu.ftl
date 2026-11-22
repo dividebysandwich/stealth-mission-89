@@ -124,6 +124,13 @@ opponents-3 = Elita
     .facts =
         Nejlepší nepřátelští piloti a posádky SAM
         Nejtěžší nastavení
+opponents-free = Volný let
+    .facts =
+        Žádné nepřátelské síly, jen spojenecká letadla
+        Trasa přes náhodná místa, nebo kamkoli chcete
+ff-title = Volný let
+ff-summary = Nikde žádné nepřátelské síly: jen spojenecká letadla a jednotky. Leťte, kam chcete.
+ff-objective = Navržená trasa: { $route }, pak zpět na { $base }.
 
 ## Počasí
 

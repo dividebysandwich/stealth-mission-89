@@ -124,6 +124,13 @@ opponents-3 = Elit
     .facts =
         Pilot musuh dan awak SAM terbaik
         Pengaturan tersulit
+opponents-free = Terbang bebas
+    .facts =
+        Tanpa pasukan musuh, hanya pesawat kawan
+        Terbangi rute di atas tempat acak, atau ke mana saja
+ff-title = Terbang Bebas
+ff-summary = Tidak ada pasukan musuh di mana pun: hanya pesawat dan unit kawan. Terbanglah ke mana saja.
+ff-objective = Rute yang disarankan: { $route }, lalu kembali ke { $base }.
 
 ## Cuaca
 

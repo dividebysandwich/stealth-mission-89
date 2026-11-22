@@ -68,6 +68,11 @@ pub fn opponents_facts(o: u8) -> &'static [&'static str] {
     tr_lines(&format!("opponents-{}.facts", o.min(3)))
 }
 
+/// The single mission's free flight (no enemy): its facts.
+pub fn free_flight_facts() -> &'static [&'static str] {
+    tr_lines("opponents-free.facts")
+}
+
 fn sky_id(sky: Sky) -> String {
     format!("sky-{}", sky.name().to_ascii_lowercase())
 }

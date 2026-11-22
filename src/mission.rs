@@ -35,7 +35,12 @@ pub struct PlannedRoute {
 impl PlannedRoute {
     /// The mission's own route: midpoint, primary, secondary, landing base.
     pub fn of(m: &Mission) -> Self {
-        let kinds = [RouteKind::Nav, RouteKind::Primary, RouteKind::Secondary, RouteKind::Land];
+        // A free flight's places are only points to fly over.
+        let kinds = if m.settings.free_flight {
+            [RouteKind::Nav, RouteKind::Nav, RouteKind::Nav, RouteKind::Land]
+        } else {
+            [RouteKind::Nav, RouteKind::Primary, RouteKind::Secondary, RouteKind::Land]
+        };
         Self {
             mission: Self::key(m),
             points: m
@@ -117,6 +122,10 @@ pub fn settings_for(s: &mut MissionSettings, aircraft: crate::aircraft::Aircraft
 /// cargo jet's as an airdrop and a delivery, the gunship's as an enemy column to destroy, the
 /// Seahawk's as a submarine hunt from a carrier.
 pub fn for_aircraft(m: &mut Mission, data: &GameData, aircraft: crate::aircraft::AircraftKind) {
+    // A free flight is the same for every aircraft.
+    if m.settings.free_flight {
+        return;
+    }
     if aircraft.spec().transport() {
         stealth_mission::insertion::for_helicopter(m);
     } else if aircraft.airlifter() {
@@ -212,6 +221,11 @@ pub fn from_args(app: &mut App) {
     let data = MissionData::load().expect("mission data");
     let mut settings = settings(theater, roe, kind, opponents, lockheed, weather, cloud_cover);
     settings.wind = crate::settings::wind_arg(&args);
+    // `--free-flight`: no enemy, a route over random places (single missions).
+    if args.iter().any(|a| a == "--free-flight") {
+        settings.free_flight = true;
+        settings.opponents = 0;
+    }
     // `--start-hour <0-23>`: takeoff time.
     settings.start_hour = get("--start-hour").and_then(|s| s.parse::<u8>().ok()).map(|h| h.min(23));
     // `--moon <0-7>`: the moon's phase in eighths (0 new, 4 full).

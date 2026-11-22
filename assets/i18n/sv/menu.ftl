@@ -124,6 +124,13 @@ opponents-3 = Elit
     .facts =
         Fiendens bästa piloter och SAM-besättningar
         Svåraste nivån
+opponents-free = Fri flygning
+    .facts =
+        Inga fientliga styrkor, bara egna flygplan
+        Flyg en rutt över slumpvisa platser, eller vart du vill
+ff-title = Fri flygning
+ff-summary = Inga fientliga styrkor någonstans: bara egna flygplan och förband. Flyg vart du vill.
+ff-objective = Föreslagen rutt: { $route }, sedan tillbaka till { $base }.
 
 ## Väder
 

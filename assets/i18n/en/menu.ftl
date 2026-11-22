@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         Best enemy pilots and SAM crews
         Hardest setting
+opponents-free = Free flight
+    .facts =
+        No enemy forces, only friendly aircraft
+        Fly a route over random places, or anywhere you like
+ff-title = Free Flight
+ff-summary = No enemy forces anywhere: only friendly aircraft and units. Fly wherever you like.
+ff-objective = Suggested route: { $route }, then back to { $base }.
 
 ## Weather
 

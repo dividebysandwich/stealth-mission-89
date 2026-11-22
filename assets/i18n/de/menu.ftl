@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         Die besten feindlichen Piloten und SAM-Besatzungen
         Schwerste Stufe
+opponents-free = Freier Flug
+    .facts =
+        Keine feindlichen Kräfte, nur eigene Flugzeuge
+        Eine Route über zufällige Orte fliegen, oder wohin du willst
+ff-title = Freier Flug
+ff-summary = Nirgends feindliche Kräfte: nur eigene Flugzeuge und Einheiten. Flieg, wohin du willst.
+ff-objective = Vorgeschlagene Route: { $route }, dann zurück nach { $base }.
 
 ## Wetter
 

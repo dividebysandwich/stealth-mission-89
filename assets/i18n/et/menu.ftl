@@ -124,6 +124,13 @@ opponents-3 = Eliit
     .facts =
         Vaenlase parimad piloodid ja SAM-meeskonnad
         Kõige raskem raskusaste
+opponents-free = Vaba lend
+    .facts =
+        Vaenlase vägesid pole, ainult omad lennukid
+        Lenda marsruut juhuslike kohtade kohal või kuhu soovid
+ff-title = Vaba lend
+ff-summary = Vaenlase vägesid pole kusagil: ainult omad lennukid ja üksused. Lenda kuhu soovid.
+ff-objective = Soovitatud marsruut: { $route }, siis tagasi { $base }.
 
 ## Ilm
 

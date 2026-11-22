@@ -66,6 +66,8 @@ pub struct MenuState {
     pub roe: u8,
     pub kind: MissionKind,
     pub opponents: u8,
+    /// Single missions: free flight, no enemy at all (the opponents' choice beyond Elite).
+    pub free_flight: bool,
     pub lockheed: bool,
     /// A hosted coop campaign's friendly fire.
     pub friendly_fire: bool,
@@ -137,6 +139,7 @@ impl MenuState {
         let s = &m.settings;
         (self.theater, self.roe, self.kind, self.opponents) =
             (s.theater, s.roe, s.kind, s.opponents);
+        self.free_flight = s.free_flight;
         self.lockheed = s.plane == stealth_mission::Plane::Lockheed;
         (self.weather, self.cloud_cover, self.wind) = (s.weather, s.cloud_cover, s.wind);
         (self.start_hour, self.moon) = (s.start_hour, s.moon);
@@ -156,6 +159,7 @@ impl Default for MenuState {
             roe: 1,
             kind: MissionKind::Strike,
             opponents: 1,
+            free_flight: false,
             lockheed: false,
             friendly_fire: false,
             airframe_losses: false,
@@ -257,6 +261,7 @@ fn relaunch_in_vr(state: &MenuState, settings: &crate::settings::Settings) -> st
     ])
     .args(["--roe", &state.roe.to_string(), "--kind", &state.kind.id().to_string()])
     .args(["--opponents", &state.opponents.to_string()])
+    .args(state.free_flight.then_some("--free-flight"))
     .args(["--weather", state.weather.map_or("random", Sky::name)]);
     if let Some(c) = state.cloud_cover {
         cmd.args(["--cloud-cover", &c.to_string()]);
@@ -1314,6 +1319,23 @@ pub(crate) fn opponent_options(ui: &mut egui::Ui, opponents: &mut u8) {
     dropdown(ui, "opponents", opponents, options);
 }
 
+/// The single mission's opponents: the four levels, then free flight (no enemy at all).
+fn single_opponent_options(ui: &mut egui::Ui, opponents: &mut u8, free_flight: &mut bool) {
+    section(ui, t!("section-opponents"));
+    let mut choice = if *free_flight { FREE_FLIGHT } else { *opponents };
+    let options = (0..4)
+        .map(|o| (o, crate::i18n::opponents_name(o), crate::i18n::opponents_facts(o)))
+        .chain([(FREE_FLIGHT, t!("opponents-free"), crate::i18n::free_flight_facts())]);
+    dropdown(ui, "opponents", &mut choice, options);
+    *free_flight = choice == FREE_FLIGHT;
+    if !*free_flight {
+        *opponents = choice;
+    }
+}
+
+/// [`single_opponent_options`]' free flight entry.
+const FREE_FLIGHT: u8 = 4;
+
 pub(crate) fn situation_options(ui: &mut egui::Ui, roe: &mut u8) {
     section(ui, t!("section-situation"));
     let options = (0..3).map(|r| (r, crate::i18n::roe_name(r), crate::i18n::roe_facts(r)));
@@ -1907,6 +1929,10 @@ pub(crate) fn menu_ui(
             mission_settings.start_hour = state.start_hour;
             mission_settings.moon = state.moon;
             mission_settings.wind = state.wind;
+            if state.free_flight {
+                mission_settings.free_flight = true;
+                mission_settings.opponents = 0;
+            }
             crate::mission::settings_for(&mut mission_settings, settings.aircraft);
             let aircraft = settings.aircraft;
             state.mission = Some(
@@ -1946,6 +1972,7 @@ pub(crate) fn menu_ui(
         state.roe,
         state.kind,
         state.opponents,
+        state.free_flight,
         state.lockheed,
         state.weather,
         state.cloud_cover,
@@ -2002,8 +2029,13 @@ pub(crate) fn menu_ui(
                         group(ui, t!("group-mission"), |ui| {
                             theater_options(ui, &mut state.theater, theaters);
                             situation_options(ui, &mut state.roe);
-                            opponent_options(ui, &mut state.opponents);
-                            mission_options(ui, &mut state);
+                            let state = &mut *state;
+                            single_opponent_options(
+                                ui,
+                                &mut state.opponents,
+                                &mut state.free_flight,
+                            );
+                            mission_options(ui, state);
                         });
                     });
                     split.lists(ui, theaters, mission);
@@ -2236,6 +2268,7 @@ pub(crate) fn menu_ui(
             state.roe,
             state.kind,
             state.opponents,
+            state.free_flight,
             state.lockheed,
             state.weather,
             state.cloud_cover,
@@ -2286,7 +2319,15 @@ fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
         (t!("summary-theater"), crate::i18n::theater_name(state.theater).to_string(), GREEN),
         (t!("summary-situation"), crate::i18n::roe_name(state.roe).to_string(), GREEN),
         (t!("summary-mission"), crate::i18n::kind_name(state.kind).to_string(), GREEN),
-        (t!("summary-opponents"), crate::i18n::opponents_name(state.opponents).to_string(), GREEN),
+        (
+            t!("summary-opponents"),
+            if m.settings.free_flight {
+                t!("opponents-free").to_string()
+            } else {
+                crate::i18n::opponents_name(state.opponents).to_string()
+            },
+            GREEN,
+        ),
         (
             t!("summary-time"),
             t!(

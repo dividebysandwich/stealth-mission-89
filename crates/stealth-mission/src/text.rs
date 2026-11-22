@@ -86,7 +86,7 @@ fn fill(template: &str, vars: &[(&str, &str)]) -> String {
 
 /// Message `id` in the player's language with `vars`; None in English or where the language
 /// lacks it (the data files' English is used).
-fn translated(id: &str, vars: &[(&str, &str)]) -> Option<String> {
+pub(crate) fn translated(id: &str, vars: &[(&str, &str)]) -> Option<String> {
     let l = stealth_i18n::language();
     if l == stealth_i18n::Language::En || !stealth_i18n::exists_in(l, id) {
         return None;
@@ -110,7 +110,7 @@ fn object_name(name: &str) -> String {
 }
 
 /// A briefing label in the player's language (`english` from the data files).
-fn label(id: &str, english: &str) -> String {
+pub(crate) fn label(id: &str, english: &str) -> String {
     translated(id, &[]).unwrap_or_else(|| english.to_string())
 }
 

@@ -124,6 +124,13 @@ opponents-3 = Elite
     .facts =
         Labākie ienaidnieka piloti un SAM apkalpes
         Grūtākais līmenis
+opponents-free = Brīvais lidojums
+    .facts =
+        Nav ienaidnieka spēku, tikai savējo lidmašīnas
+        Lidojiet maršrutu pāri nejaušām vietām vai kur vēlaties
+ff-title = Brīvais lidojums
+ff-summary = Nekur nav ienaidnieka spēku: tikai savējo lidmašīnas un vienības. Lidojiet, kur vēlaties.
+ff-objective = Ieteiktais maršruts: { $route }, tad atpakaļ uz { $base }.
 
 ## Laikapstākļi
 

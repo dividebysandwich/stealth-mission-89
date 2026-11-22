@@ -124,6 +124,13 @@ opponents-3 = 엘리트
     .facts =
         최고의 적 조종사와 SAM 승무원
         가장 어려운 설정
+opponents-free = 자유 비행
+    .facts =
+        적 없음, 아군 항공기만
+        무작위 지점을 도는 경로, 또는 원하는 곳으로
+ff-title = 자유 비행
+ff-summary = 어디에도 적이 없습니다. 아군 항공기와 부대만 있습니다. 원하는 곳으로 비행하십시오.
+ff-objective = 추천 경로: { $route }, 그 후 { $base }(으)로 귀환.
 
 ## 날씨
 

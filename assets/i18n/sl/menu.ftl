@@ -124,6 +124,13 @@ opponents-3 = Elita
     .facts =
         Najboljši sovražni piloti in posadke SAM
         Najtežja stopnja
+opponents-free = Prosti let
+    .facts =
+        Brez sovražnih sil, le prijateljska letala
+        Letite po poti nad naključnimi kraji ali kamor želite
+ff-title = Prosti let
+ff-summary = Nikjer ni sovražnih sil: le prijateljska letala in enote. Letite, kamor želite.
+ff-objective = Predlagana pot: { $route }, nato nazaj v { $base }.
 
 ## Vreme
 
