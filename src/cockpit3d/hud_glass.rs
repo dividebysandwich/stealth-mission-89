@@ -15,6 +15,9 @@ use bevy::shader::ShaderRef;
 
 const SHADER: &str = "shaders/hud_glass.wgsl";
 
+/// The HUD glass's transparent sort bias (view depth units, larger draws later).
+const GLASS_BIAS: f32 = 1.0e5;
+
 /// Pixelize leaves the HUD sharp: the glass then takes the picture's alpha away where it draws
 /// (the alpha 0 of what the pass keeps as it is, pixelize.wgsl), instead of adding to it. It
 /// is part of the pipeline: a blend state.
@@ -235,6 +238,13 @@ impl Material for HudGlassMaterial {
         AlphaMode::Blend
     }
 
+    /// Sorted after every blended thing of the world: the billboard clouds' batch sits at the
+    /// eye and drew over the glass (which writes no depth). Below the helmet display and the
+    /// night vision tube (`goggles.rs`, 1e6).
+    fn depth_bias(&self) -> f32 {
+        GLASS_BIAS
+    }
+
     fn enable_prepass() -> bool {
         false
     }
@@ -287,6 +297,11 @@ impl Material for HmdMaterial {
 
     fn alpha_mode(&self) -> AlphaMode {
         AlphaMode::Blend
+    }
+
+    /// Over the HUD glass, under the night vision tube (`goggles.rs`, 1e6).
+    fn depth_bias(&self) -> f32 {
+        2.0 * GLASS_BIAS
     }
 
     fn enable_prepass() -> bool {
