@@ -71,14 +71,15 @@ impl WindLevel {
         }
     }
 
-    /// Odds (percent) of [`WindLevel::ALL`] under a sky.
+    /// Odds (percent) of [`WindLevel::ALL`] under a sky: calm and light air most of the
+    /// time, strong winds and gales rare outside storms.
     pub fn odds(sky: Sky) -> [u8; 5] {
         match sky {
-            Sky::Clear => [25, 40, 25, 9, 1],
-            Sky::Scattered => [15, 40, 30, 13, 2],
-            Sky::Broken => [10, 30, 38, 18, 4],
-            Sky::Overcast => [5, 25, 40, 23, 7],
-            Sky::Storm => [0, 10, 30, 40, 20],
+            Sky::Clear => [38, 45, 14, 3, 0],
+            Sky::Scattered => [30, 46, 19, 5, 0],
+            Sky::Broken => [22, 44, 26, 7, 1],
+            Sky::Overcast => [16, 42, 30, 10, 2],
+            Sky::Storm => [0, 22, 40, 28, 10],
         }
     }
 }
@@ -139,7 +140,8 @@ impl Wind {
     /// A wind of `level` from `from_deg`, its speed, gusts and turbulence picked by `seed`.
     pub fn of_level(level: WindLevel, from_deg: f32, seed: u64) -> Self {
         let (lo, hi) = level.knots();
-        let kt = lo + (hi - lo) * unit(seed, 1);
+        // Skewed to the lower end of the band: the top of each is the rarer wind.
+        let kt = lo + (hi - lo) * unit(seed, 1).powf(1.5);
         let (glo, ghi) = level.gusts();
         let gust = glo + (ghi - glo) * unit(seed, 2);
         let base = match level {
@@ -414,6 +416,19 @@ mod tests {
         assert!(storms > clear * 2.0, "storms {storms} clear {clear}");
         let w = Weather { seed: 9, ..Default::default() };
         assert_eq!(Wind::roll(Some(WindLevel::Gale), &w, 0).level(), WindLevel::Gale);
+    }
+
+    #[test]
+    fn calm_and_light_winds_are_the_common_ones() {
+        let mut count = [0u32; 5];
+        for seed in 0..4000u32 {
+            let sky = [Sky::Clear, Sky::Scattered, Sky::Broken, Sky::Overcast][seed as usize % 4];
+            let w = Weather { seed, sky, ..Default::default() };
+            count[Wind::roll(None, &w, 3).level() as usize] += 1;
+        }
+        let share = |a: usize, b: usize| count[a..=b].iter().sum::<u32>() as f32 / 4000.0;
+        assert!(share(0, 1) > 0.65, "{count:?}");
+        assert!(share(3, 4) < 0.1, "{count:?}");
     }
 
     #[test]
