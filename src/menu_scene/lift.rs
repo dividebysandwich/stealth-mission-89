@@ -225,6 +225,8 @@ fn sling(
     const HOVER: f32 = 12.0;
     const DESCENT: f32 = 4.0;
     const SPEED: f32 = 7.0;
+    /// The hook's height over the wheels (uh60.py: the belly 0.58 m up, the model lifted).
+    const BELLY: f32 = 0.6;
     if stage.begin(&[stage::AIRCRAFT]) {
         let ground = stage.land();
         let heading = (stage.director.roll % 628) as f32 * 0.01;
@@ -271,12 +273,14 @@ fn sling(
     let (off, bank, pitch) = sway(t);
     let base = l.ground + enu((f.x * along) as f64, top + up as f64, (f.y * along) as f64);
     let p = base + DVec3::new(off.x as f64 * 0.5, off.y as f64, off.z as f64 * 0.5);
+    let rotation = stage::attitude(l.heading, flare + pitch * 0.5, bank * 0.5);
     if let Ok((mut wp, mut tf, _)) = q.get_mut(e) {
         wp.0 = p;
-        tf.rotation = stage::attitude(l.heading, flare + pitch * 0.5, bank * 0.5);
+        tf.rotation = rotation;
     }
-    // The hook under the cabin; hooked up, the crate swings under it.
-    let hook = p - DVec3::Y * 1.0;
+    // The hook in the cabin's belly under the mast (the model stands on its wheels at the
+    // root); hooked up, the crate swings under it.
+    let hook = p + (rotation * Vec3::Y * BELLY).as_dvec3();
     let crate_mid = l.ground + DVec3::Y * (top * 0.5);
     if t >= HOOK && l.swing.is_none() {
         l.swing = Some(crate::sling::Swing::new(crate_mid, hook));
