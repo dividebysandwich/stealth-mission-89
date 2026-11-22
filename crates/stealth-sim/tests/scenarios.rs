@@ -4009,6 +4009,121 @@ fn sites_shoot_down_some_jsows() {
     assert!(fired > 0 && downed > 0, "{fired} fired, {downed} down");
 }
 
+/// A Maverick fired from 3000 ft at a target `range` map units northeast with a Tor (SA-15)
+/// site at index 3 beside it: the Tor's missiles fired at the Maverick and whether it was shot
+/// down.
+fn maverick_at_a_tor(range: i32) -> (usize, bool) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { realistic_guidance: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(5, 2)]);
+    let t = 5;
+    let diag = (range as f64 / std::f64::consts::SQRT_2).round() as i32;
+    {
+        let o = &mut sim.objects_mut()[t];
+        o.x = mx + diag;
+        o.y = my - diag;
+        o.flags = 0;
+    }
+    place_site(&mut sim, 3, 26, mx + diag + 12, my - diag + 6);
+    let mut p = player_at(mx, my, 3000, 0x2000, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    p.cmd.lock_object = Some(t as u16);
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    let locked = (0..96).map(|k| -k * 64).any(|pitch| {
+        p.pitch = pitch as i16;
+        let angle = pitch as f64 * std::f64::consts::TAU / 65536.0;
+        p.climb_rate = (450.0 * 27.0 / 16.0 * angle.sin()).round() as i32;
+        sim.step(&p, 15);
+        sim.targeting().lock_valid
+    });
+    assert!(locked, "no lock from {range}");
+    p.cmd.fire = true;
+    let (mut fired, mut down) = (0, false);
+    for _ in 0..15 * 60 {
+        for e in sim.step(&p, 15) {
+            match e {
+                SimEvent::MissileLaunched { slot, launcher: Launcher::Site(3), .. }
+                    if sim.projectiles()[slot].intercept.is_some() =>
+                {
+                    fired += 1
+                }
+                SimEvent::WeaponShotDown { spec, .. } => {
+                    assert_eq!(spec, 27, "the Maverick");
+                    down = true;
+                }
+                _ => {}
+            }
+        }
+        p.cmd = Commands::default();
+    }
+    (fired, down)
+}
+
+/// The Tor defends against missiles: it fires at Mavericks coming its way and shoots some down.
+#[test]
+fn tor_shoots_down_some_mavericks() {
+    let shots: Vec<_> = (0..6).map(|k| maverick_at_a_tor(180 + k * 25)).collect();
+    println!("{shots:?}");
+    let fired = shots.iter().filter(|s| s.0 > 0).count();
+    let down = shots.iter().filter(|s| s.1).count();
+    assert!(fired >= 4 && down > 0, "{shots:?}");
+}
+
+/// An SA-2 site does not shoot at missiles: only the Tor does.
+#[test]
+fn other_sites_let_mavericks_through() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { realistic_guidance: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(5, 2)]);
+    let t = 5;
+    {
+        let o = &mut sim.objects_mut()[t];
+        o.x = mx + 150;
+        o.y = my - 150;
+        o.flags = 0;
+    }
+    place_site(&mut sim, 3, 1, mx + 162, my - 144);
+    let mut p = player_at(mx, my, 3000, 0x2000, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    p.cmd.lock_object = Some(t as u16);
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    assert!((0..96).map(|k| -k * 64).any(|pitch| {
+        p.pitch = pitch as i16;
+        let angle = pitch as f64 * std::f64::consts::TAU / 65536.0;
+        p.climb_rate = (450.0 * 27.0 / 16.0 * angle.sin()).round() as i32;
+        sim.step(&p, 15);
+        sim.targeting().lock_valid
+    }));
+    p.cmd.fire = true;
+    for _ in 0..15 * 60 {
+        for e in sim.step(&p, 15) {
+            if let SimEvent::MissileLaunched { slot, .. } = e {
+                assert!(
+                    sim.projectiles()[slot].intercept.is_none(),
+                    "an SA-2 fired at the Maverick"
+                );
+            }
+        }
+        p.cmd = Commands::default();
+    }
+}
+
 /// A paratroop drop: the C-5 at `ft` over a sandbox at 130 kt heading north, its ramp down, two
 /// sticks aboard, the mission's primary target moved `north` map units ahead as the drop zone.
 /// Returns the simulation, the input, the drop zone and the events of the green light.

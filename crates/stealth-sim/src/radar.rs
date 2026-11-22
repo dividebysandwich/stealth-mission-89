@@ -447,6 +447,7 @@ impl Sim {
         }
         for &k in present {
             self.activate(k);
+            self.point_defence();
             self.pl.sweep_anim = s16(self.pl.sweep_anim - 1);
             if self.pl.sweep_anim < 0 {
                 self.pl.egr = None;
@@ -463,7 +464,7 @@ impl Sim {
 
     /// Site `i`'s radar is off the air for now: calm sites take turns, fewer the hotter the
     /// war and after an alarm.
-    fn site_silent(&self, i: usize) -> bool {
+    pub(crate) fn site_silent(&self, i: usize) -> bool {
         let o = self.objects[i];
         let k = if self.alarm_last < 0x80 { 2 * self.roe + 1 } else { 2 * self.roe + 3 };
         let ph = (-((s16(self.frame) >> 10) * i as i32)) & 7;

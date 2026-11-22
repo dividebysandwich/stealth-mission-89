@@ -11,6 +11,11 @@
 //! The pilot's site radars see these weapons as they sweep (the MALD as far as their missiles
 //! reach, the small JSOW much closer) and fire at them ([`Sim::standoff_sweep`]); a missile fired
 //! at one flies its own pursuit ([`Sim::intercept_frame`]) and may knock it down.
+//!
+//! The Tor (SA-15) also defends against the pilot's guided air-to-ground missiles (HARM,
+//! Maverick, Hellfire, SLAM-ER, the anti-ship missiles) and stand-off weapons coming its way or
+//! passing near it ([`Sim::point_defence`]), every half second, not only as it sweeps. It sees
+//! the missiles flown by realistic guidance (their exact flight).
 
 use serde::{Deserialize, Serialize};
 
@@ -67,6 +72,22 @@ const SAM_FUZE: f64 = 120.0;
 const SAM_KILL_JSOW_PCT: i32 = 65;
 const SAM_KILL_MALD_PCT: i32 = 80;
 const SAM_SECS: i32 = 60;
+/// The Tor's missile (missile table index).
+const SA15: i32 = 44;
+/// Tor point defence: how far it sees an incoming weapon (m), how close the weapon's path must
+/// pass it to be engaged (m), seconds between its looks, its chance (percent) to fire on a look
+/// that finds one, and its missile's chance to kill a missile.
+const TOR_SEE_M: f64 = 12_000.0;
+const TOR_GUARD_M: f64 = 3_000.0;
+const TOR_LOOK_SECS: f64 = 0.5;
+const TOR_FIRE_PCT: i32 = 70;
+const TOR_KILL_PCT: i32 = 70;
+/// The Tor's missile, launched vertically, tips over towards its target with its gas jets at
+/// once: its seconds straight up and its turn rate (degrees/s).
+const TOR_BOOST_SECS: f64 = 0.25;
+const TOR_TURN_DEG: f64 = 60.0;
+/// Metres per world unit.
+const M_PER_WU: f64 = crate::aaa::M_PER_MAP / 32.0;
 
 /// A JSOW or a MALD in flight.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -342,6 +363,92 @@ impl Sim {
         }
     }
 
+    /// A weapon of the pilot's the air defences can shoot down: a JSOW or a MALD, or a guided
+    /// air-to-ground missile, in flight under exact guidance.
+    fn interceptable(&self, m: &Projectile) -> bool {
+        m.ttl != 0
+            && m.flight.is_some()
+            && (m.glide.is_some() || (4..=6).contains(&self.missile(m.spec).class))
+    }
+
+    /// The Tor sites defend against the active pilot's guided missiles and stand-off weapons:
+    /// each looks every half second (when its radar is on) for one coming at it or passing
+    /// within [`TOR_GUARD_M`], and may fire at it. One missile at a time at each weapon.
+    pub(crate) fn point_defence(&mut self) {
+        let fine = ROUND_FINE as f64;
+        let weapons: Vec<(usize, V3, V3)> = Self::own_slots()
+            .filter_map(|s| {
+                let m = &self.proj[s];
+                if !self.interceptable(m) || m.drop != 0 {
+                    return None;
+                }
+                let f = m.flight?;
+                let p = [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine];
+                let v = [f.vx as f64 / fine, f.vy as f64 / fine, f.vz as f64 / fine];
+                Some((s, p, v))
+            })
+            .collect();
+        if weapons.is_empty() {
+            return;
+        }
+        let look = ((self.fs.max(1) as f64 * TOR_LOOK_SECS) as i32).max(1);
+        let id = self.pl.id;
+        for i in 0..self.ground_units {
+            let o = self.objects[i];
+            if o.unit_type == 0
+                || o.flags & (oflags::DESTROYED | oflags::NEUTRAL) != 0
+                || self.site_missile(o.unit_type) != SA15
+                || (self.frame + i as i32).rem_euclid(look) != 0
+                || self.site_silent(i)
+            {
+                continue;
+            }
+            let site =
+                [(o.x * 32 + 16) as f64, (o.y * 32 + 16) as f64, self.hill_alt(o.x, o.y) as f64];
+            for &(s, p, v) in &weapons {
+                let chased = (0..ENEMY_SLOTS).any(|k| {
+                    self.proj[k].ttl != 0
+                        && self.proj[k].intercept == Some(s as u8)
+                        && self.proj_pilot[k] == id
+                });
+                if chased {
+                    continue;
+                }
+                let r = [site[0] - p[0], site[1] - p[1], site[2] - p[2]];
+                if len(r) * M_PER_WU > TOR_SEE_M {
+                    continue;
+                }
+                // Coming its way: closing, its path passing near.
+                let speed = v[0].hypot(v[1]);
+                if speed < 1.0 {
+                    continue;
+                }
+                let along = (r[0] * v[0] + r[1] * v[1]) / speed;
+                let across = (r[0] * v[1] - r[1] * v[0]).abs() / speed;
+                if along <= 0.0 || across * M_PER_WU > TOR_GUARD_M {
+                    continue;
+                }
+                if self.rng.random(100) >= TOR_FIRE_PCT {
+                    break;
+                }
+                let own = self.enemy_slot(i);
+                let k = if self.proj[own].ttl == 0 {
+                    Some(own)
+                } else {
+                    (0..ENEMY_SLOTS).find(|&k| self.proj[k].ttl == 0)
+                };
+                if let Some(k) = k
+                    && self.may_launch(SA15, (o.x, o.y, 0))
+                    && self.site_ready(i)
+                {
+                    self.launch_intercept(k, i, s);
+                    self.site_fired(i);
+                }
+                break;
+            }
+        }
+    }
+
     /// Site `i` fires missile slot `k` at the stand-off weapon in own slot `s`.
     fn launch_intercept(&mut self, k: usize, i: usize, s: usize) {
         let o = self.objects[i];
@@ -393,11 +500,16 @@ impl Sim {
         let v = [f.vx as f64 / fine, f.vy as f64 / fine, f.vz as f64 / fine];
         let mut d = if len(v) > 1.0 { norm(v) } else { [0.0, 0.0, 1.0] };
         let speed = (len(v) + 1_500.0 * dt).min(SAM_SPEED);
+        let (boost, turn) = if m.spec == SA15 {
+            (TOR_BOOST_SECS, TOR_TURN_DEG)
+        } else {
+            (SAM_BOOST_SECS, SAM_TURN_DEG)
+        };
         let s = m.intercept.map_or(usize::MAX, |s| s as usize);
         let target = self
             .proj
             .get(s)
-            .filter(|t| t.ttl != 0 && t.glide.is_some())
+            .filter(|t| self.interceptable(t))
             .and_then(|t| t.flight.map(|tf| (t, tf)));
         let mut killed = None;
         if let Some((t, tf)) = target {
@@ -406,18 +518,26 @@ impl Sim {
             let r = [tp[0] - p[0], tp[1] - p[1], tp[2] - p[2]];
             let dist = len(r);
             if dist < SAM_FUZE + speed * dt {
-                let mald = t.glide.is_some_and(|g| g.mald);
-                let pct = if mald { SAM_KILL_MALD_PCT } else { SAM_KILL_JSOW_PCT };
+                let pct = match t.glide {
+                    Some(g) if g.mald => SAM_KILL_MALD_PCT,
+                    Some(_) => SAM_KILL_JSOW_PCT,
+                    None => TOR_KILL_PCT,
+                };
                 if self.rng.random(100) < pct {
                     killed = Some((s, tp));
                 }
                 // Fuzed: hit or miss, it is spent.
                 self.proj[k].ttl = 1;
-            } else if f.t as f64 >= SAM_BOOST_SECS * fs {
-                let tgo = dist / speed.max(1.0);
+            } else if f.t as f64 >= boost * fs {
+                // The Tor's missile flies a collision course at its full speed.
+                let tgo = if m.spec == SA15 {
+                    collision_secs(r, tv, SAM_SPEED).unwrap_or(dist / SAM_SPEED)
+                } else {
+                    dist / speed.max(1.0)
+                };
                 let lead = [tp[0] + tv[0] * tgo, tp[1] + tv[1] * tgo, tp[2] + tv[2] * tgo];
                 let want = norm([lead[0] - p[0], lead[1] - p[1], lead[2] - p[2]]);
-                d = turn_toward(d, want, SAM_TURN_DEG.to_radians() * dt);
+                d = turn_toward(d, want, turn.to_radians() * dt);
             }
         }
         p = [p[0] + d[0] * speed * dt, p[1] + d[1] * speed * dt, p[2] + d[2] * speed * dt];
@@ -458,6 +578,24 @@ impl Sim {
             .map(|s| (s, self.proj[s]))
             .collect()
     }
+}
+
+/// Seconds until an interceptor flying at `speed` from the origin meets a target at `r` moving
+/// at `v` (None: it cannot catch it).
+fn collision_secs(r: V3, v: V3, speed: f64) -> Option<f64> {
+    // |r + v t| = speed t: (v.v - s^2) t^2 + 2 r.v t + r.r = 0.
+    let a = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] - speed * speed;
+    let b = 2.0 * (r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+    let c = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+    if a.abs() < 1e-9 {
+        return (b < 0.0).then(|| -c / b);
+    }
+    let disc = b * b - 4.0 * a * c;
+    if disc < 0.0 {
+        return None;
+    }
+    let q = disc.sqrt();
+    [(-b - q) / (2.0 * a), (-b + q) / (2.0 * a)].into_iter().filter(|&t| t > 0.0).reduce(f64::min)
 }
 
 /// Sets a projectile's map position and attitude from its exact flight (`p` wu, `d` its
