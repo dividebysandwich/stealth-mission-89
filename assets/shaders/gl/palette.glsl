@@ -1664,12 +1664,15 @@ const vec3 WIN_COOL = vec3(0.7, 0.82, 1.0);
 const float WIN_COOL_SHARE = 0.3;
 const float WIN_GLOW = 1.1;
 const float WIN_FAR = 0.12;
+const vec3 WIN_PANE = vec3(0.025, 0.07, 0.22);
+const vec3 WIN_TINT = vec3(0.45, 0.65, 1.0);
+const float WIN_PANE_FAR = 0.6;
 
 const float WALL_ANGLES = 2048.0;
 
-vec3 city_windows(vec3 world, vec3 face, uint angle, bool few) {
+vec4 city_windows(vec3 world, vec3 face, uint angle, bool few) {
     if (abs(normalize(face).y) > 0.3) {
-        return vec3(0.0);
+        return vec4(0.0);
     }
     float bay = few ? WIN_HOUSE_BAY : WIN_BAY;
     vec2 hw = few ? WIN_HOUSE_HALF : WIN_HALF;
@@ -1699,7 +1702,8 @@ vec3 city_windows(vec3 world, vec3 face, uint angle, bool few) {
     vec2 cover = mix(inside, 2.0 * hw, k);
     float far = max(k.x, k.y);
     vec3 light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
-    return cover.x * cover.y * light * WIN_GLOW;
+    float pane = mix(1.0, WIN_PANE_FAR, far);
+    return vec4(light * WIN_GLOW / pane, cover.x * cover.y * pane);
 }
 #endif
 
@@ -1890,8 +1894,19 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
     }
 #endif
 #ifndef DOT
-    if (!is_line && (v_warm & 512u) != 0u && g.city.x > 0.0 && !recon_view()) {
-        rgb += city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu, (v_warm & 64u) != 0u) * g.city.x;
+    if (!is_line && (v_warm & 512u) != 0u && g.city.z > 0.0 && !recon_view()) {
+        vec4 win = city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu, (v_warm & 64u) != 0u);
+        // Blue panes mirroring the sky (palette.wgsl), not on the glass towers' walls.
+        if (!(hi == 0xFFu && (lo == 0x90u || lo == 0x91u))) {
+            vec3 pane = WIN_PANE * shade(face, dir) * (1.0 - dark);
+#ifdef REFLECT
+            if (g.reflections.x != 0.0) {
+                pane = glass_reflection(pane, face, dir, dark) * WIN_TINT;
+            }
+#endif
+            rgb = mix(rgb, pane, win.a);
+        }
+        rgb += win.rgb * win.a * g.city.x;
     }
 #endif
     float dl = length(dir);

@@ -524,7 +524,8 @@ pub struct Globals {
     /// `DETAIL_PERIOD`.
     /// The towns' lights (`FX_CITY`): x the lit windows' strength 0..1 (0: none), y the range
     /// (metres) inside which the buildings' walls show their windows, so the window lamps of
-    /// the lights tier only show beyond it.
+    /// the lights tier only show beyond it; z 1 while the walls show their windows (their
+    /// panes by day).
     pub city: Vec4,
     /// The floating origin (xyz, metres): the windows' pattern stays put on the walls.
     pub city_origin: Vec4,

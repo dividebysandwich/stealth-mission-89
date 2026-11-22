@@ -623,8 +623,10 @@ fn update_globals(
         let night = (palette.lights_on() as u32 as f32)
             * ((CITY_DUSK - lighting.daylight) / CITY_DUSK).clamp(CITY_DUSK_LEAST, 1.0);
         let near = budget.as_ref().map_or(0.0, |b| b.town_radius(&settings) as f32);
-        g.city = Vec4::new(night, near, 0.0, 0.0);
+        g.city = Vec4::new(night, near, 1.0, 0.0);
         g.city_origin = origin.origin.as_vec3().extend(0.0);
+    } else {
+        g.city = Vec4::ZERO;
     }
     g.sea = weather.sea_globals();
     (g.ocean, g.ocean_mask, g.ocean_levels) = ocean.globals(origin.origin);
