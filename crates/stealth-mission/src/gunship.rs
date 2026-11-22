@@ -162,15 +162,15 @@ pub fn for_gunship(m: &mut Mission, data: &GameData) {
         }
         found
     };
-    let (quiet, ((ux, uy), caught)) =
-        match (quiet, catch(if quiet { QUIET_SAM } else { FRONT_SAM.0 })) {
-            (q, Some(c)) => (q, c),
-            (true, None) => match catch(FRONT_SAM.0) {
-                Some(c) => (false, c),
-                None => return,
-            },
-            (false, None) => return,
-        };
+    let need = if quiet { QUIET_SAM } else { FRONT_SAM.0 };
+    let (quiet, need, ((ux, uy), caught)) = match (quiet, catch(need)) {
+        (q, Some(c)) => (q, need, c),
+        (true, None) => match catch(FRONT_SAM.0) {
+            Some(c) => (false, FRONT_SAM.0, c),
+            None => return,
+        },
+        (false, None) => return,
+    };
     let at = |along: f64, side: f64| {
         let along = along + caught;
         (
@@ -178,8 +178,11 @@ pub fn for_gunship(m: &mut Mission, data: &GameData) {
             (pp.1 as f64 + uy * along + ux * side).round() as i32,
         )
     };
+    // It sets off from a little behind its place, unless that brings it into a SAM's reach.
+    let back = at(-COLUMN_BACK, 0.0);
+    let clear = caught == 0.0 && nearest(back, &sams) >= need && !water(back);
     let mut route = vec![
-        at(if caught > 0.0 { 0.0 } else { -COLUMN_BACK }, 0.0),
+        if clear { back } else { at(0.0, 0.0) },
         at(COLUMN_AHEAD * 0.35, COLUMN_AHEAD * 0.35 * bend),
         at(COLUMN_AHEAD * 0.7, COLUMN_AHEAD * 0.35 * bend),
         at(COLUMN_AHEAD, 0.0),
