@@ -66,6 +66,9 @@ pub struct BeamMaterial {
 
 /// A beam's light, warm white.
 const BEAM_COLOUR: Vec3 = Vec3::new(1.0, 0.95, 0.85);
+/// Through the goggles: the tube's green (linear), not its white-hot highlight, which the beams'
+/// additive light would otherwise reach (gl/effects.glsl `NVG_BEAM` must say the same).
+const NVG_BEAM: Vec3 = Vec3::new(0.0707, 0.6995, 0.0290);
 
 impl BeamMaterial {
     pub fn new(params: Vec4) -> Self {
@@ -327,16 +330,10 @@ fn dim(
 /// in the goggles' green like everything else.
 fn goggles(
     hud: Option<Res<crate::hud::HudState>>,
-    state: Res<LightingState>,
     mut materials: ResMut<Assets<BeamMaterial>>,
     mut last: Local<Option<Vec4>>,
 ) {
-    let colour = if hud.is_some_and(|h| h.nvg) {
-        crate::weather::nvg_color(BEAM_COLOUR, state.daylight)
-    } else {
-        BEAM_COLOUR
-    }
-    .extend(1.0);
+    let colour = if hud.is_some_and(|h| h.nvg) { NVG_BEAM } else { BEAM_COLOUR }.extend(1.0);
     // A new material (a searchlight's) starts warm white: look at them all while it differs.
     if *last == Some(colour) && materials.iter().all(|(_, m)| m.colour == colour) {
         return;

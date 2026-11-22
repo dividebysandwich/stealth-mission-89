@@ -327,6 +327,8 @@ void main() {
 
 #ifdef BEAM
 const vec3 COLOUR = vec3(1.0, 0.95, 0.85);
+// Through the goggles the tube's green, not its white-hot highlight (landing_lights.rs `NVG_BEAM`).
+const vec3 NVG_BEAM = vec3(0.0707, 0.6995, 0.0290);
 const int STEPS = 16;
 
 vec2 beam_coords(vec3 q, vec3 apex, vec3 axis, vec4 p) {
@@ -368,7 +370,7 @@ void main() {
     if (p.x < 0.0) {
         float sa = -p.x * searchlight(eye, d, exit_s, apex, axis, p);
         if (sa <= 0.003) { discard; }
-        o_colour = vec4(nvg(COLOUR), min(sa, 1.0));
+        o_colour = vec4(g.light_info.z == 0.0 ? COLOUR : NVG_BEAM, min(sa, 1.0));
         return;
     }
     float chord = length(vec2(p.w, 2.0 * (p.z + p.y * p.w)));
@@ -382,7 +384,7 @@ void main() {
     float r = length(eye + d * s - apex);
     float a = p.x * (0.03 * sum * ds + 0.8 * exp(-r * r / 0.5));
     if (a <= 0.003) { discard; }
-    o_colour = vec4(nvg(COLOUR), min(a, 1.0));
+    o_colour = vec4(g.light_info.z == 0.0 ? COLOUR : NVG_BEAM, min(a, 1.0));
 }
 #endif
 
