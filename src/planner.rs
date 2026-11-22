@@ -114,8 +114,12 @@ pub struct Planner {
     profile: Profile,
     /// The theater's mountains and hills (theater id), for the vertical profile.
     terrain: Option<(String, Relief, Hills)>,
-    /// The vertical profile of the route, and what it was worked out for.
+    /// The vertical profile of the route, and what it was worked out for. While the route
+    /// changes (a point dragged) the last one worked out stays shown till the next is ready.
     vertical: Option<(u64, VerticalProfile)>,
+    /// The vertical profile being worked out on another thread, and what for (one at a time,
+    /// each for the route of the moment it starts: its cost would hold the frames back).
+    working: Option<(u64, Task<VerticalProfile>)>,
     /// The aircraft the route is flown in, and whether in a campaign: its radar signature.
     aircraft: (AircraftKind, bool),
     /// How far along the route (map units) the vertical profile was clicked or dragged to: the
@@ -539,6 +543,7 @@ impl MapSource {
 
 /// A site's coverage: where it detects the player flying the profile, and its missile range
 /// (map units).
+#[derive(Clone)]
 struct Ring {
     x: f32,
     y: f32,
@@ -746,13 +751,14 @@ pub fn planner_ui(
     if !planner.open {
         return;
     }
-    let Some(Ok(m)) = state.mission.clone() else {
+    // (Borrowed, not cloned: the whole mission would be copied each frame.)
+    let Some(Ok(m)) = state.mission.as_ref() else {
         planner.open = false;
         return;
     };
-    let route = state.route.get_or_insert_with(|| PlannedRoute::of(&m));
-    if !route.fits(&m) {
-        *route = PlannedRoute::of(&m);
+    let route = state.route.get_or_insert_with(|| PlannedRoute::of(m));
+    if !route.fits(m) {
+        *route = PlannedRoute::of(m);
     }
     planner.fly(aircraft, false);
     (planner.big, planner.inset) = (false, 0.0);
@@ -761,7 +767,7 @@ pub fn planner_ui(
     let note = crate::mission::clean_text(&m.briefing.title).to_ascii_uppercase();
     crate::menu::Panel::new(t!("planner-title")).note(note).window(window, ctx, |ui| {
         let size = ui.available_size();
-        route_panel(ui, planner, &m, route, &|_| true, None, None, size, true, |ui| {
+        route_panel(ui, planner, m, route, &|_| true, None, None, size, true, |ui| {
             ui.add_space(12.0);
             if ui.add(big_button(t!("loadout-done")).icon(icon::DONE).primary()).clicked() {
                 open = false;
@@ -1405,12 +1411,100 @@ fn map_view(
             ));
         }
     }
-    // The route, from the takeoff base.
-    let pts: Vec<egui::Pos2> =
-        route.points.iter().map(|p| to_screen(p.x as f32, p.y as f32)).collect();
+    // Input first, so that a point dragged is drawn where the pointer is now (not where it was
+    // the frame before): the points are taken as they stand, then again once moved.
+    let route_pts = |route: &PlannedRoute| -> Vec<egui::Pos2> {
+        route.points.iter().map(|p| to_screen(p.x as f32, p.y as f32)).collect()
+    };
+    let pts = route_pts(route);
     let base = to_screen(m.takeoff.position.x as f32, m.takeoff.position.y as f32);
     let legs: Vec<egui::Pos2> = std::iter::once(base).chain(pts.iter().copied()).collect();
-    painter.add(egui::Shape::line(legs.clone(), egui::Stroke::new(2.0, BRIGHT)));
+    // Input.
+    let reach = if planner.big { 20.0 } else { 9.0 };
+    let hit_point = |pos: egui::Pos2| {
+        pts.iter()
+            .enumerate()
+            .map(|(i, &p)| (i, p.distance(pos)))
+            .filter(|(_, d)| *d < reach)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(i, _)| i)
+    };
+    // Leg i ends at route point i (leg 0 starts at the base).
+    let hit_leg = |pos: egui::Pos2| {
+        (1..legs.len()).map(|i| i - 1).find(|&i| {
+            let (a, b) = (legs[i], legs[i + 1]);
+            let ab = b - a;
+            let t = ((pos - a).dot(ab) / ab.length_sq().max(1e-3)).clamp(0.0, 1.0);
+            (a + ab * t).distance(pos) < if planner.big { 12.0 } else { 6.0 }
+        })
+    };
+    if let Some(pos) = resp.hover_pos().filter(|_| editable) {
+        if hit_point(pos).is_some_and(|i| route.points[i].kind == RouteKind::Nav) {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+        } else if hit_leg(pos).is_some() {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+        }
+    }
+    // A drag starts once the pointer has moved a little: what it grabs is where the button went
+    // down (where the grab cursor was shown).
+    if resp.drag_started()
+        && editable
+        && let Some(pos) = ui.input(|i| i.pointer.press_origin()).or(resp.interact_pointer_pos())
+    {
+        planner.drag = hit_point(pos)
+            .filter(|&i| route.points[i].kind == RouteKind::Nav)
+            .map(|i| (i, pts[i] - pos));
+    }
+    match planner.drag {
+        Some((i, offset)) => {
+            if resp.dragged()
+                && let Some(pos) = resp.interact_pointer_pos()
+            {
+                let p = to_map(pos + offset);
+                route.points[i].x = p.x.clamp(0x100 as f32, 0x7F00 as f32) as i32;
+                route.points[i].y = p.y.clamp(0x100 as f32, 0x7F00 as f32) as i32;
+            }
+        }
+        // Wheel zoom around the cursor; a drag that grabbed no point pans.
+        None => view.pan_zoom(ui, &resp, &mut planner.centre, &mut planner.scale),
+    }
+    if resp.drag_stopped() {
+        planner.drag = None;
+    }
+    if resp.clicked()
+        && let Some(pos) = resp.interact_pointer_pos()
+    {
+        // A point: its card; a leg: a new point there; elsewhere: the card closes.
+        planner.selected = hit_point(pos);
+        if planner.selected.is_none()
+            && editable
+            && let Some(i) = hit_leg(pos)
+            && route.points.len() < MAX_POINTS
+        {
+            let p = to_map(pos);
+            route
+                .points
+                .insert(i, RoutePoint { x: p.x as i32, y: p.y as i32, kind: RouteKind::Nav });
+            planner.selected = Some(i);
+        }
+    }
+    if resp.drag_started() && planner.drag.is_some() {
+        planner.selected = planner.drag.map(|d| d.0);
+    }
+    if resp.secondary_clicked()
+        && editable
+        && let Some(pos) = resp.interact_pointer_pos()
+        && let Some(i) = hit_point(pos).filter(|&i| route.points[i].kind == RouteKind::Nav)
+        && route.points.len() > 2
+    {
+        route.points.remove(i);
+        planner.selected = None;
+    }
+    planner.selected = planner.selected.filter(|&i| i < route.points.len());
+    // The route, from the takeoff base.
+    let pts = route_pts(route);
+    let legs: Vec<egui::Pos2> = std::iter::once(base).chain(pts.iter().copied()).collect();
+    painter.add(egui::Shape::line(legs, egui::Stroke::new(2.0, BRIGHT)));
     for (i, &p) in pts.iter().enumerate() {
         let (colour, r) = match route.points[i].kind {
             RouteKind::Nav => (GREEN, 5.0),
@@ -1494,88 +1588,6 @@ fn map_view(
         .symbol(move |p, c| map_draw::place_symbol(p, c, owner, true, false));
     }
 
-    // Input.
-    let reach = if planner.big { 20.0 } else { 9.0 };
-    let hit_point = |pos: egui::Pos2| {
-        pts.iter()
-            .enumerate()
-            .map(|(i, &p)| (i, p.distance(pos)))
-            .filter(|(_, d)| *d < reach)
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-            .map(|(i, _)| i)
-    };
-    // Leg i ends at route point i (leg 0 starts at the base).
-    let hit_leg = |pos: egui::Pos2| {
-        (1..legs.len()).map(|i| i - 1).find(|&i| {
-            let (a, b) = (legs[i], legs[i + 1]);
-            let ab = b - a;
-            let t = ((pos - a).dot(ab) / ab.length_sq().max(1e-3)).clamp(0.0, 1.0);
-            (a + ab * t).distance(pos) < if planner.big { 12.0 } else { 6.0 }
-        })
-    };
-    if let Some(pos) = resp.hover_pos().filter(|_| editable) {
-        if hit_point(pos).is_some_and(|i| route.points[i].kind == RouteKind::Nav) {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
-        } else if hit_leg(pos).is_some() {
-            ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
-        }
-    }
-    // A drag starts once the pointer has moved a little: what it grabs is where the button went
-    // down (where the grab cursor was shown).
-    if resp.drag_started()
-        && editable
-        && let Some(pos) = ui.input(|i| i.pointer.press_origin()).or(resp.interact_pointer_pos())
-    {
-        planner.drag = hit_point(pos)
-            .filter(|&i| route.points[i].kind == RouteKind::Nav)
-            .map(|i| (i, pts[i] - pos));
-    }
-    match planner.drag {
-        Some((i, offset)) => {
-            if resp.dragged()
-                && let Some(pos) = resp.interact_pointer_pos()
-            {
-                let p = to_map(pos + offset);
-                route.points[i].x = p.x.clamp(0x100 as f32, 0x7F00 as f32) as i32;
-                route.points[i].y = p.y.clamp(0x100 as f32, 0x7F00 as f32) as i32;
-            }
-        }
-        // Wheel zoom around the cursor; a drag that grabbed no point pans.
-        None => view.pan_zoom(ui, &resp, &mut planner.centre, &mut planner.scale),
-    }
-    if resp.drag_stopped() {
-        planner.drag = None;
-    }
-    if resp.clicked()
-        && let Some(pos) = resp.interact_pointer_pos()
-    {
-        // A point: its card; a leg: a new point there; elsewhere: the card closes.
-        planner.selected = hit_point(pos);
-        if planner.selected.is_none()
-            && editable
-            && let Some(i) = hit_leg(pos)
-            && route.points.len() < MAX_POINTS
-        {
-            let p = to_map(pos);
-            route
-                .points
-                .insert(i, RoutePoint { x: p.x as i32, y: p.y as i32, kind: RouteKind::Nav });
-            planner.selected = Some(i);
-        }
-    }
-    if resp.drag_started() && planner.drag.is_some() {
-        planner.selected = planner.drag.map(|d| d.0);
-    }
-    if resp.secondary_clicked()
-        && editable
-        && let Some(pos) = resp.interact_pointer_pos()
-        && let Some(i) = hit_point(pos).filter(|&i| route.points[i].kind == RouteKind::Nav)
-        && route.points.len() > 2
-    {
-        route.points.remove(i);
-        planner.selected = None;
-    }
-    planner.selected = planner.selected.filter(|&i| i < route.points.len());
     planner.selected_at =
         planner.selected.map(|i| to_screen(route.points[i].x as f32, route.points[i].y as f32));
     if let Some(at) = planner.selected_at {
@@ -1822,11 +1834,11 @@ struct VerticalProfile {
     top: f32,
     /// The ground under each column (altitude units).
     ground: Vec<f32>,
-    /// Row by row from the bottom: the best radar score plus the EMV there (over 100: detected);
-    /// NaN under the ground.
-    heat: Vec<f32>,
-    /// The highest of them.
-    max: f32,
+    /// The colour of each grid point, row by row from the bottom: by the best radar score plus
+    /// the EMV there (over 100: detected, up to the highest); clear under the ground.
+    colours: Vec<egui::Color32>,
+    /// The detection's mesh, and the plot it was laid out for (drawn from it each frame).
+    mesh: Option<(egui::Rect, Arc<egui::Mesh>)>,
 }
 
 /// Height (altitude units) of a point `f` of the way up the profile: on a square-root scale,
@@ -1841,8 +1853,9 @@ fn profile_frac(alt: f32, top: f32) -> f32 {
 }
 
 impl VerticalProfile {
+    /// `grid`: the mission's terrain grid.
     fn new(
-        m: &Mission,
+        grid: &[u8],
         sig: &Signature,
         pts: &[RoutePoint],
         rings: &[Ring],
@@ -1912,7 +1925,7 @@ impl VerticalProfile {
                         rcs: sig.rcs,
                         low_level_ft: sig.low_level_ft,
                         aspect: None,
-                        grid: &m.world.grid,
+                        grid,
                         relief: None,
                         hills: None,
                     };
@@ -1929,7 +1942,8 @@ impl VerticalProfile {
             }
         }
         let max = heat.iter().copied().filter(|h| !h.is_nan()).fold(0.0, f32::max);
-        Self { marks, top, ground, heat, max }
+        let colours = heat.iter().map(|&h| heat_colour(h, max)).collect();
+        Self { marks, top, ground, colours, mesh: None }
     }
 }
 
@@ -2089,6 +2103,8 @@ fn vertical_view(
         let (relief, hills) =
             (stealth_host::theater::relief(&id), stealth_host::theater::hills(&id));
         planner.terrain = Some((id.clone(), relief, hills));
+        // (Another theater's profile is not shown while this one's is worked out.)
+        (planner.vertical, planner.working) = (None, None);
     }
     let pts = with_base(m, &route.points);
     let sig = Signature::of(m, planner.aircraft);
@@ -2103,12 +2119,30 @@ fn vertical_view(
         }
         h.finish()
     };
+    // Worked out on another thread, one at a time: while a point is dragged the route changes
+    // every frame, and working it out on this one (tens of milliseconds) held the point back.
+    // The last profile stays shown till the next is ready.
+    if let Some((k, task)) = &mut planner.working
+        && let Some(done) = bevy::tasks::futures::check_ready(task)
+    {
+        planner.vertical = Some((*k, done));
+        planner.working = None;
+    }
     if planner.vertical.as_ref().is_none_or(|(k, _)| *k != key)
+        && planner.working.is_none()
         && let Some((_, relief, hills)) = planner.terrain.as_ref()
     {
-        planner.vertical = Some((key, VerticalProfile::new(m, &sig, &pts, rings, relief, hills)));
+        let (grid, rings) = (m.world.grid.clone(), rings.to_vec());
+        let (relief, hills) = (relief.clone(), hills.clone());
+        let task = AsyncComputeTaskPool::get()
+            .spawn(async move { VerticalProfile::new(&grid, &sig, &pts, &rings, &relief, &hills) });
+        planner.working = Some((key, task));
     }
-    let Some((_, v)) = planner.vertical.as_ref() else { return };
+    // Each frame till the profile of the route's moment is shown.
+    if planner.working.is_some() || planner.vertical.as_ref().is_none_or(|(k, _)| *k != key) {
+        ui.ctx().request_repaint();
+    }
+    let Some((_, v)) = planner.vertical.as_mut() else { return };
 
     let plot = egui::Rect::from_min_max(
         rect.min + egui::vec2(52.0, 36.0),
@@ -2137,25 +2171,28 @@ fn vertical_view(
     let minor_line = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(22));
 
     // Detection: each grid point's colour, blended between them.
-    let mut heat = egui::Mesh::default();
-    for r in 0..PROFILE_ROWS {
-        let y = plot.bottom() - plot.height() * r as f32 / (PROFILE_ROWS - 1) as f32;
-        for c in 0..PROFILE_COLS {
-            heat.colored_vertex(
-                egui::pos2(col_x(c), y),
-                heat_colour(v.heat[r * PROFILE_COLS + c], v.max),
-            );
+    // (Laid out once for the plot: its 10,000 points and 20,000 triangles are not remade each frame.)
+    if v.mesh.as_ref().is_none_or(|(p, _)| *p != plot) {
+        let mut heat = egui::Mesh::default();
+        for r in 0..PROFILE_ROWS {
+            let y = plot.bottom() - plot.height() * r as f32 / (PROFILE_ROWS - 1) as f32;
+            for c in 0..PROFILE_COLS {
+                heat.colored_vertex(egui::pos2(col_x(c), y), v.colours[r * PROFILE_COLS + c]);
+            }
         }
-    }
-    for r in 0..PROFILE_ROWS as u32 - 1 {
-        for c in 0..PROFILE_COLS as u32 - 1 {
-            let i = r * PROFILE_COLS as u32 + c;
-            let up = i + PROFILE_COLS as u32;
-            heat.add_triangle(i, i + 1, up + 1);
-            heat.add_triangle(i, up + 1, up);
+        for r in 0..PROFILE_ROWS as u32 - 1 {
+            for c in 0..PROFILE_COLS as u32 - 1 {
+                let i = r * PROFILE_COLS as u32 + c;
+                let up = i + PROFILE_COLS as u32;
+                heat.add_triangle(i, i + 1, up + 1);
+                heat.add_triangle(i, up + 1, up);
+            }
         }
+        v.mesh = Some((plot, Arc::new(heat)));
     }
-    painter.add(heat);
+    if let Some((_, heat)) = &v.mesh {
+        painter.add(egui::Shape::mesh(heat.clone()));
+    }
 
     // A faint grid over the detection: the labelled heights and distances, and fainter lines
     // between them.
