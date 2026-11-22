@@ -57,8 +57,10 @@ fn calibre(gun: GroundGun, kind: GroundKind) -> Calibre {
     match gun {
         GroundGun::Tank => Calibre::Tank,
         GroundGun::Cannon => Calibre::Cannon,
-        // The Gepard's 35 mm; the Shilka's 23 mm.
-        GroundGun::Flak if kind == GroundKind::Gepard => Calibre::Cannon,
+        // The Gepard's 35 mm and the ZSU-57-2's 57 mm; the Shilka's 23 mm.
+        GroundGun::Flak if matches!(kind, GroundKind::Gepard | GroundKind::Zsu572) => {
+            Calibre::Cannon
+        }
         GroundGun::Flak => Calibre::Small,
     }
 }

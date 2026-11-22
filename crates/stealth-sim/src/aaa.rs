@@ -170,6 +170,10 @@ pub enum GroundKind {
     /// A pickup with a heavy machine gun in its bed escorting a supply convoy: fires at drones
     /// close by, inaccurately.
     Technical,
+    /// ZSU-57-2: two S-60 guns (57 mm, timed shells) in an open turret on a tracked hull,
+    /// optically laid. Some of the S-60 batteries have them instead, and so do some of the
+    /// enemy's columns.
+    Zsu572,
 }
 
 /// A friendly missile battery: a radar that tracks and the launchers around it that fire on
@@ -287,6 +291,7 @@ impl GroundKind {
             GroundKind::CivTruck => "Truck",
             GroundKind::ArmyTruck => "Ural truck",
             GroundKind::Technical => "Technical",
+            GroundKind::Zsu572 => "ZSU-57-2",
         }
     }
 
@@ -358,20 +363,42 @@ impl GroundKind {
 
     /// Goes with a convoy: armour and the tracked air defence guns.
     pub fn mobile(self) -> bool {
-        self.armour() || self.supply() || matches!(self, GroundKind::Zsu | GroundKind::Gepard)
+        self.armour() || self.supply() || self.tracked_gun()
+    }
+
+    /// A tracked air defence gun (an anti-aircraft tank).
+    pub fn tracked_gun(self) -> bool {
+        matches!(self, GroundKind::Zsu | GroundKind::Gepard | GroundKind::Zsu572)
+    }
+
+    /// Fires 57 mm shells with a timed fuse that burst in flak puffs.
+    pub fn flak(self) -> bool {
+        matches!(self, GroundKind::S60 | GroundKind::Zsu572)
+    }
+
+    /// The enemy's air defence guns that fire from a magazine (resupplied in a campaign).
+    pub fn magazine_gun(self) -> bool {
+        self == GroundKind::Zsu || self.flak()
     }
 
     /// Muzzle velocity (m/s), slant range (m) and highest target (m) it engages.
     fn gun(self) -> (f64, f64, f64) {
         match self {
             GroundKind::Zsu => (970.0, 2500.0, 2000.0),
-            GroundKind::S60 => (1000.0, 6000.0, 4500.0),
+            GroundKind::S60 | GroundKind::Zsu572 => (1000.0, 6000.0, 4500.0),
             GroundKind::Manpads => (0.0, 5000.0, 3500.0),
             GroundKind::Gepard => (1175.0, 8000.0, 5000.0),
             GroundKind::Technical => (840.0, 600.0, 500.0),
             _ => (0.0, 0.0, 0.0),
         }
     }
+}
+
+/// The guns of a 57 mm battery at (x, y): S-60s, or about one time in three ZSU-57-2s. Picked
+/// by the spot (which is random already), so the placements' random draws stay as they were.
+pub fn flak_battery(x: i32, y: i32) -> GroundKind {
+    let h = (x as u32).wrapping_mul(0x9E37_79B1) ^ (y as u32).wrapping_mul(0x85EB_CA77);
+    if (h >> 16).is_multiple_of(3) { GroundKind::Zsu572 } else { GroundKind::S60 }
 }
 
 /// The way air defence unit `k` stands (rad, clockwise from north): each its own, spread by the
@@ -671,8 +698,9 @@ impl Sim {
             }
             if war > 0 {
                 let (bx, by) = (o.x + rng.random(120) - 60, o.y + rng.random(120) - 60);
+                let kind = flak_battery(bx, by);
                 for _ in 0..2 + rng.random(3) {
-                    around(&mut rng, &mut units, bx, by, GroundKind::S60, 3, 8);
+                    around(&mut rng, &mut units, bx, by, kind, 3, 8);
                 }
             }
         }
@@ -690,8 +718,9 @@ impl Sim {
             }
             if rng.random(3) < war {
                 let (bx, by) = (x + rng.random(100) - 50, y + rng.random(100) - 50);
+                let kind = flak_battery(bx, by);
                 for _ in 0..2 + rng.random(2) {
-                    around(&mut rng, &mut units, bx, by, GroundKind::S60, 3, 8);
+                    around(&mut rng, &mut units, bx, by, kind, 3, 8);
                 }
             }
         }
@@ -773,7 +802,7 @@ impl Sim {
             {
                 continue;
             }
-            if dry[i] && matches!(u.kind, GroundKind::Zsu | GroundKind::S60) {
+            if dry[i] && u.kind.magazine_gun() {
                 u.burst = 0;
                 continue;
             }
@@ -896,6 +925,27 @@ impl Sim {
                             flak: true,
                             pilot,
                         });
+                    }
+                }
+                GroundKind::Zsu572 => {
+                    // A pair: one shell from each barrel, the guns a little apart.
+                    if u.cooldown == 0 {
+                        u.cooldown = fs + rng.random(fs);
+                        let sigma = 0.010 * skill;
+                        let fuse = t * (1.0 + Self::aaa_gauss(&mut rng) * 0.03);
+                        let side = [az.cos(), -az.sin(), 0.0];
+                        for s in [-0.35, 0.35] {
+                            let a = az + Self::aaa_gauss(&mut rng) * sigma;
+                            let e = el + Self::aaa_gauss(&mut rng) * sigma;
+                            spent[i] += crate::munitions::S60_ROUNDS;
+                            fired.push(Shell {
+                                pos: add(add(from, [0.0, 0.0, 2.2]), mul(side, s)),
+                                vel: mul(direction(a, e), v0),
+                                ttl: ((fuse * fs as f64) as i32).max(1),
+                                flak: true,
+                                pilot,
+                            });
+                        }
                     }
                 }
                 GroundKind::PatriotLauncher
@@ -1133,6 +1183,15 @@ impl Sim {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn about_one_flak_battery_in_three_has_zsu572s() {
+        let n = (0..60)
+            .flat_map(|x| (0..60).map(move |y| (x * 97 + 40, y * 131 + 40)))
+            .filter(|&(x, y)| flak_battery(x, y) == GroundKind::Zsu572)
+            .count();
+        assert!((1000..1400).contains(&n), "{n} of 3600");
+    }
 
     #[test]
     fn lead_meets_a_crossing_target() {

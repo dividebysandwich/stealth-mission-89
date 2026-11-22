@@ -547,7 +547,7 @@ impl Sim {
             if d > reach {
                 continue;
             }
-            armour |= u.kind.armour() || matches!(u.kind, GroundKind::Zsu | GroundKind::Gepard);
+            armour |= u.kind.armour() || u.kind.tracked_gun();
             let (lo, hi) = SIDE_GUN_DAMAGE[gun][class];
             let dmg = lo as i32 + self.rng.random((hi - lo) as i32 + 1);
             let wear = self.side_gun_wear[k] as i32 + dmg;

@@ -1931,6 +1931,16 @@ fn s60_bursts_flak() {
     assert!(ev.iter().any(|e| matches!(e, SimEvent::Flak { .. })));
 }
 
+/// The ZSU-57-2 fires the S-60's shells, two at a time.
+#[test]
+fn zsu572_bursts_flak_in_pairs() {
+    let flak = |k| {
+        aaa_duel(k, 160, 8000, 255).iter().filter(|e| matches!(e, SimEvent::Flak { .. })).count()
+    };
+    let (zsu572, s60) = (flak(aaa::GroundKind::Zsu572), flak(aaa::GroundKind::S60));
+    assert!(zsu572 > s60 * 3 / 2, "ZSU-57-2 {zsu572}, S-60 {s60}");
+}
+
 #[test]
 fn manpads_need_to_see_the_player() {
     let fired = |ev: &[SimEvent]| {

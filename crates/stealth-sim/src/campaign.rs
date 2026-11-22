@@ -914,8 +914,9 @@ impl Sim {
                 }
                 if war > 0 {
                     let (bx, by) = (x + rng.random(120) - 60, y + rng.random(120) - 60);
+                    let kind = crate::aaa::flak_battery(bx, by);
                     for _ in 0..2 + rng.random(3) {
-                        put(GroundKind::S60, spot(&mut rng, bx, by, 3, 8));
+                        put(kind, spot(&mut rng, bx, by, 3, 8));
                     }
                 }
                 put(GroundKind::Manpads, spot(&mut rng, x, y, 15, 80));
@@ -1008,8 +1009,9 @@ impl Sim {
                 add(&mut rng, GroundKind::Zsu, x, y, 10, 50);
             }
             let (bx, by) = (x + rng.random(60) - 30, y + rng.random(60) - 30);
+            let kind = crate::aaa::flak_battery(bx, by);
             for _ in 0..2 + rng.random(2) {
-                add(&mut rng, GroundKind::S60, bx, by, 3, 8);
+                add(&mut rng, kind, bx, by, 3, 8);
             }
             add(&mut rng, GroundKind::Manpads, x, y, 15, 60);
             c.aaa_blue.resize(self.units.len(), false);
@@ -2242,7 +2244,7 @@ impl Sim {
             if u.burst == 0 {
                 u.cooldown = fs * 2 + rng.random(fs * 3);
             }
-            let flak = u.kind == GroundKind::S60;
+            let flak = u.kind.flak();
             if (flak && u.burst % fs != 0) || (!flak && u.burst & 1 != 0) {
                 continue;
             }
@@ -2679,7 +2681,7 @@ pub fn garrison_kinds(blue: bool) -> (GroundKind, GroundKind) {
 fn gun_envelope(kind: GroundKind) -> (f64, f64, f64) {
     match kind {
         GroundKind::Zsu => (970.0, 2500.0, 2000.0),
-        GroundKind::S60 => (1000.0, 6000.0, 4500.0),
+        GroundKind::S60 | GroundKind::Zsu572 => (1000.0, 6000.0, 4500.0),
         GroundKind::Manpads => (0.0, 5000.0, 3500.0),
         GroundKind::Gepard => (1175.0, 3500.0, 3000.0),
         GroundKind::Technical => (840.0, TECHNICAL_REACH, 500.0),

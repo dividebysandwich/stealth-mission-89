@@ -163,6 +163,7 @@ fn unit_model(k: stealth_sim::aaa::GroundKind) -> i32 {
         K::CivTruck => AAA_MODELS + 22,
         K::ArmyTruck => AAA_MODELS + 23,
         K::Technical => AAA_MODELS + 24,
+        K::Zsu572 => AAA_MODELS + 25,
         stealth_sim::aaa::GroundKind::Usv => USV_MODEL,
         k => AAA_MODELS + k as i32,
     }

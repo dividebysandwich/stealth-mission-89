@@ -217,7 +217,7 @@ impl Host {
         }
         // The convoys go on from where they were; those that stopped stand there.
         for (id, side, units, route, moving) in self.state.convoys_to_place() {
-            sim.spawn_convoy(id, side == Side::Blue, &glue::convoy_kinds(side, &units), &route);
+            sim.spawn_convoy(id, side == Side::Blue, &glue::convoy_kinds(id, side, &units), &route);
             if !moving {
                 sim.end_convoy(id);
             }
@@ -1057,12 +1057,12 @@ impl Host {
                     }
                 }
                 CampaignEvent::ConvoyLaunched { id, side, units, route } => {
-                    let kinds = glue::convoy_kinds(*side, units);
+                    let kinds = glue::convoy_kinds(*id, *side, units);
                     sim.spawn_convoy(*id, *side == Side::Blue, &kinds, route);
                 }
                 CampaignEvent::ConvoyEnded { id } => sim.end_convoy(*id),
                 CampaignEvent::SupplyConvoyLaunched { side, tag, units, route, .. } => {
-                    let kinds = glue::convoy_kinds(*side, units);
+                    let kinds = glue::convoy_kinds(*tag, *side, units);
                     // Test aid: `SM89_SUPPLY_ALONG=<m>` starts them that far along the road
                     // (each one 900 m short of the last, as they would have driven).
                     let ahead = sim.convoys().iter().filter(|c| c.supply).count() as f64;

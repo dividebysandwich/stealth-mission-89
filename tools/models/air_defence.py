@@ -1,6 +1,7 @@
 """Builds the remake's ground units in Blender: the low-level air defences (ZSU-23-4 Shilka, S-60 gun,
-MANPADS team, and the friendly Patriot launcher and radar, the Gepard, the drone command center and
-the NASAMS launcher and Sentinel radar, and a carrier's catapult officer)
+MANPADS team, ZSU-57-2 (a contributed model, assets-src/blend/zsu572.blend), and the friendly
+Patriot launcher and radar, the Gepard, the drone command center and the NASAMS launcher and
+Sentinel radar, and a carrier's catapult officer)
 and the armour (T-90A and BMP-2 for the red side, Leopard 2A6 and M2A2 Bradley for the blue), for
 the air defence option and the campaign (crates/stealth-sim/src/aaa.rs):
 
@@ -66,6 +67,8 @@ FLAMINGO_LN = 131
 CIV_TRUCK = 132
 ARMY_TRUCK = 133
 TECHNICAL = 134
+# The ZSU-57-2: twin 57 mm guns on a tracked hull, in the S-60 batteries and the enemy's columns.
+ZSU572 = 135
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -1837,6 +1840,75 @@ def technical():
     far(lod1, "aaa_134", [(-0.9, 0.9, -2.65, 2.65, 0.4, 1.05), (-0.85, 0.85, -0.3, 1.3, 1.05, 1.8)], VAN_WHITE)
 
 
+# ------------------------------------------------------------------------------------ ZSU-57-2
+
+# Contributed model (assets-src/blend/zsu572.blend): the hull, its open-topped turret and the twin
+# guns, modelled at half size with the guns towards -y. Turned round and doubled to metres here.
+ZSU572_BLEND = os.path.join(ROOT, "assets-src", "blend", "zsu572.blend")
+ZSU572_SCALE = 2.0
+# Pivots in the contributed file's frame: the turret ring's centre, the guns' trunnions in the
+# turret's front.
+ZSU572_TURRET = (0.0, 0.0, 0.85)
+ZSU572_TRUNNION = (0.0, -0.35, 1.105)
+
+
+def zsu572_metres(p):
+    """A point of zsu572.blend in this model's metres (nose +y)."""
+    return mklib.v3((-p[0] * ZSU572_SCALE, -p[1] * ZSU572_SCALE, p[2] * ZSU572_SCALE))
+
+
+def zsu572_parts(paint=OLIVE, steel=STEEL, rubber=RUBBER):
+    """The contributed hull, turret and guns in metres, each about its pivot (the turret's ring
+    centre, the guns' trunnions); their materials `pal_NNN` take the builder's paints."""
+    names = ["Hull and Tracks", "Turret", "Guns"]
+    paints = {162: paint, 234: steel, 238: rubber}
+    with bpy.data.libraries.load(ZSU572_BLEND) as (src, dst):
+        dst.objects = list(names)
+    obs = {ob.name: ob for ob in dst.objects}
+    # Their world matrices (the hull's scale, the parents') only once they are in a scene.
+    for ob in dst.objects:
+        bpy.context.scene.collection.objects.link(ob)
+    bpy.context.view_layer.update()
+    turret_at, trunnion_at = zsu572_metres(ZSU572_TURRET), zsu572_metres(ZSU572_TRUNNION)
+    out = []
+    for name, pivot in zip(names, (mklib.v3((0, 0, 0)), turret_at, trunnion_at)):
+        ob = obs[name]
+        me = ob.data
+        mats = list(me.materials)
+        g = Geo()
+        for f in me.polygons:
+            pts = [zsu572_metres(ob.matrix_world @ me.vertices[i].co) - pivot for i in f.vertices]
+            # Turning round keeps the winding (a rotation), so the faces still point out.
+            g.face(pts, paints[int(mats[f.material_index].name[4:7])])
+        out.append(g)
+    for ob in dst.objects:
+        me = ob.data
+        bpy.data.objects.remove(ob)
+        if me.users == 0:
+            bpy.data.meshes.remove(me)
+    for m in list(bpy.data.materials):
+        if m.users == 0:
+            bpy.data.materials.remove(m)
+    hull, turret, guns = out
+    return hull, turret, guns, turret_at, trunnion_at - turret_at
+
+
+def zsu572():
+    root, lod0, lod1 = levels(ZSU572, 16000)
+    hull, turret, guns, turret_at, trunnion = zsu572_parts()
+    intact = mesh_obj("aaa_135_lod0_s1v0", hull, lod0)
+    t = part("aaa_135_lod0_s1v0_part1", turret, intact, turret_at, TURRET_SLOT, 0)
+    part("aaa_135_lod0_s1v0_part2", guns, t, trunnion, GUN_SLOT, 1)
+    # The wreck: burnt hull, the turret knocked askew, the guns drooping.
+    hull, turret, guns, turret_at, trunnion = zsu572_parts(BURNT, BURNT, BURNT)
+    w = hull
+    w.add(turret.add(guns.rotated_x(-0.12).transformed(lambda p: p + trunnion)).rotated_z(-0.35)
+          .transformed(lambda p: p + turret_at + mklib.v3((0.15, -0.1, -0.08))))
+    mesh_obj("aaa_135_lod0_s1v1", w, lod0)
+    far(lod1, "aaa_135", [(-1.75, 1.75, -3.1, 3.2, 0.2, 1.7), (-1.25, 1.25, -1.5, 1.8, 1.7, 2.75),
+                          (-0.35, 0.35, 1.8, 6.4, 2.1, 2.3)])
+
+
 def levels(index, near, far_level=True):
     """The root, its detailed level (within `near` model units) and a far level (boxes)."""
     name = "aaa_%03d" % index
@@ -1894,6 +1966,7 @@ def main():
     civ_truck()
     army_truck()
     technical()
+    zsu572()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,

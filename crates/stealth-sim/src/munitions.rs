@@ -6,7 +6,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::Sim;
-use crate::aaa::GroundKind;
 use crate::ai_loadout::{AiLoadout, FighterTask};
 use crate::campaign::{CampaignFlight, Role};
 use crate::math::approx;
@@ -328,9 +327,7 @@ impl Sim {
         }
         for (k, &n) in c.gun_rounds.iter().enumerate() {
             let Some(u) = self.units.get(k) else { continue };
-            if u.destroyed
-                || c.aaa_blue.get(k).copied().unwrap_or(false)
-                || !matches!(u.kind, GroundKind::Zsu | GroundKind::S60)
+            if u.destroyed || c.aaa_blue.get(k).copied().unwrap_or(false) || !u.kind.magazine_gun()
             {
                 continue;
             }

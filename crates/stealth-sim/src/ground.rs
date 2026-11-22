@@ -153,7 +153,7 @@ pub enum GroundGun {
     Tank,
     /// An infantry fighting vehicle's autocannon (25 or 30 mm).
     Cannon,
-    /// An air defence gun's (23 or 35 mm).
+    /// An air defence gun's (23, 35 or 57 mm).
     Flak,
 }
 
@@ -194,7 +194,7 @@ struct Shot {
 /// infantry fighting vehicle with a hit and another tank with one or two; it takes about a
 /// dozen autocannon hits on an infantry fighting vehicle and 20 to 30 on a tank.
 fn shot(a: GroundKind, b: GroundKind) -> Option<Shot> {
-    let light = matches!(b, GroundKind::Zsu | GroundKind::Gepard);
+    let light = b.tracked_gun();
     if a.tank() {
         // The T-90's autoloader is a little slower than the Leopard's loader.
         let reload = if a == GroundKind::T90 { 7.5 } else { 6.0 };
@@ -228,6 +228,26 @@ fn shot(a: GroundKind, b: GroundKind) -> Option<Shot> {
             interval: if a == GroundKind::Bradley { 0.3 } else { 0.25 },
             reload: 3.0,
             hit: (0.6, 0.2),
+            damage,
+            knockout: 0.0,
+        });
+    }
+    // The ZSU-57-2's 57 mm: fewer, heavier rounds, in clips of four.
+    if a == GroundKind::Zsu572 && !b.tank() {
+        let damage = if b.carrier() {
+            (10, 18)
+        } else if light {
+            (25, 40)
+        } else {
+            (40, 60)
+        };
+        return Some(Shot {
+            gun: GroundGun::Flak,
+            reach: 1500.0,
+            rounds: (2, 4),
+            interval: 0.25,
+            reload: 3.5,
+            hit: (0.5, 0.15),
             damage,
             knockout: 0.0,
         });
@@ -869,9 +889,7 @@ impl Sim {
             let a = self.units[i];
             let Some(c) = self.campaign.as_mut() else { break };
             let g = &mut c.ground;
-            if a.destroyed
-                || !(a.kind.armour() || matches!(a.kind, GroundKind::Zsu | GroundKind::Gepard))
-            {
+            if a.destroyed || !(a.kind.armour() || a.kind.tracked_gun()) {
                 g.burst[i] = 0;
                 continue;
             }
@@ -1047,6 +1065,13 @@ mod tests {
         assert_eq!(shot(GroundKind::Bmp2, GroundKind::Leopard2).unwrap().gun, GroundGun::Cannon);
         assert!(shot(GroundKind::Zsu, GroundKind::Leopard2).is_none());
         assert!(shot(GroundKind::S60, GroundKind::Bradley).is_none());
+        assert!(shot(GroundKind::Zsu572, GroundKind::Leopard2).is_none());
+        // The ZSU-57-2's 57 mm hits an IFV harder than the Shilka's 23 mm.
+        let (zsu572, zsu) = (
+            shot(GroundKind::Zsu572, GroundKind::Bradley).unwrap(),
+            shot(GroundKind::Zsu, GroundKind::Bradley).unwrap(),
+        );
+        assert!(zsu572.damage.0 > zsu.damage.1);
     }
 
     /// Hits it takes to knock out a `b` with `a`'s gun, on average.

@@ -52,8 +52,9 @@ pub fn terrain(setup: &CampaignSetup, data: &GameData, classic: bool) -> stealth
     )
 }
 
-/// The simulation's vehicles of a side's convoy.
-pub fn convoy_kinds(side: Side, units: &[ConvoyUnit]) -> Vec<GroundKind> {
+/// The simulation's vehicles of a side's convoy `id`: every other enemy column is covered by
+/// a ZSU-57-2 instead of a Shilka.
+pub fn convoy_kinds(id: u32, side: Side, units: &[ConvoyUnit]) -> Vec<GroundKind> {
     let blue = side == Side::Blue;
     let (tank, ifv) = stealth_sim::campaign::garrison_kinds(blue);
     units
@@ -62,6 +63,7 @@ pub fn convoy_kinds(side: Side, units: &[ConvoyUnit]) -> Vec<GroundKind> {
             ConvoyUnit::Tank => tank,
             ConvoyUnit::Carrier => ifv,
             ConvoyUnit::Escort if blue => GroundKind::Gepard,
+            ConvoyUnit::Escort if id % 2 == 1 => GroundKind::Zsu572,
             ConvoyUnit::Escort => GroundKind::Zsu,
             ConvoyUnit::CivTruck => GroundKind::CivTruck,
             ConvoyUnit::ArmyTruck => GroundKind::ArmyTruck,

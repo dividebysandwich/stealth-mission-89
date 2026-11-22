@@ -3085,7 +3085,7 @@ infantry behind their armour and an autocannon in their turret. Both kinds have 
 each other in Ukraine.
 
 **A COLUMN** is seven vehicles, head first: two tanks, an IFV, an anti-aircraft tank (a Gepard on your side,
-a Shilka on the enemy's), two more IFVs and a tank. Each side has at most one column on the move at a time.
+a Shilka or, in every other column, a ZSU-57-2 on the enemy's), two more IFVs and a tank. Each side has at most one column on the move at a time.
 Your side sends one 25 minutes after its last one ended; the enemy every 45, 35, 25 or 20 minutes from Green
 to Elite. A column costs its side 15 materiel. The log announces it: *Intelligence: enemy armour column
 leaves Bakhmut for Kostiantynivka*.
@@ -3144,7 +3144,7 @@ Each vehicle destroyed counts as a ground kill (20 points).
 | **SEAD** | When your Patriots or Gepards shoot down its aircraft, at most every 30 / 20 / 15 / 10 min | Two aircraft with anti-radiation missiles, escorted, against that battery. DEFEND it. |
 | **Patrols** | Every 6 min (3 with the AWACS up) | Fighters from the airfields near the front, at most 2 to 4 in the air by the situation, sent at the insertions and raids, else over its own place you struck last (for 30 minutes), else at the friendly place nearest the front. |
 | **AWACS** | Every 90 min, for an hour | Orbits behind the front; its patrols go up twice as often and are sent straight at you. Shoot it down (AWACS). |
-| **Forward batteries** | Checked every 10 min, when nothing is on the board near your bases | Two Shilkas, two or three S-60 guns and a MANPADS team 15-35 km from a friendly base near the front, at most two batteries: *CAS - battery*. |
+| **Forward batteries** | Checked every 10 min, when nothing is on the board near your bases | Two Shilkas, two or three S-60 guns (or ZSU-57-2s) and a MANPADS team 15-35 km from a friendly base near the front, at most two batteries: *CAS - battery*. |
 | **Drone waves** (Ukraine) | Every 80 / 55 / 40 / 30 min, warned 3 min ahead | Six Geran-2s at a friendly city (else an airfield) within 300 km of an enemy base; the first one through destroys it. DEFEND (DRONE DEFENSE) it (chapter 10.3). |
 
 Your own side defends too: an airfield scrambles one or two fighters when enemy aircraft come within 40 km,
@@ -4011,6 +4011,7 @@ missiles defend the enemy's airfields, the targets and the towns.
 |---|---|---|---|
 | **ZSU-23-4 Shilka** | 1-3 around each enemy airfield and target | Its Gun Dish radar (on the RWR as **A**: your EMV counts as against a SAM), or by eye | 2.5 km, below 2000 m. Fires bursts of 23 mm tracers |
 | **S-60** | Batteries of 2-4 guns at airfields and targets (not in a cold war) | By eye only | 6 km, below 4500 m. Its 57 mm shells burst in black puffs around you |
+| **ZSU-57-2** | One battery in three has these tracked twin S-60s instead of the towed guns | By eye only | As the S-60, two shells at a time |
 | **MANPADS team** | In and around the towns | By eye only | 5 km, below 3500 m. Fires an SA-14 (IR) at most once a minute; no radar warning |
 
 Seeing by eye takes daylight or moonlight (about 8 km by day, 4 km under a full moon, 2 km on a
@@ -4048,7 +4049,8 @@ columns drive between the places (chapter 9.7). Your targeting pod tracks them a
 |---|---|---|---|
 | <img src="images/units/gnd_t90.png" width="200"> | **T-90** | Enemy | Main battle tank. 125 mm gun, 3 km. Two or three in each garrison, three in each column. |
 | <img src="images/units/gnd_bmp2.png" width="200"> | **BMP-2** | Enemy | Infantry fighting vehicle. 30 mm autocannon, 2 km. Its infantry takes the places its column reaches. |
-| <img src="images/units/gnd_shilka.png" width="200"> | **ZSU-23-4 Shilka** | Enemy | One in each column, besides those at the airfields and targets (13.3). |
+| <img src="images/units/gnd_shilka.png" width="200"> | **ZSU-23-4 Shilka** | Enemy | One in every other column, besides those at the airfields and targets (13.3). |
+| | **ZSU-57-2** | Enemy | Twin 57 mm guns in an open turret: one in the other columns, and in some of the S-60 batteries (13.3). Against vehicles out to 1.5 km. |
 | <img src="images/units/gnd_leopard2.png" width="200"> | **Leopard 2** | Friendly | Main battle tank. 120 mm gun, 3 km. |
 | <img src="images/units/gnd_bradley.png" width="200"> | **M2 Bradley** | Friendly | Infantry fighting vehicle. 25 mm autocannon, 2 km. |
 | <img src="images/units/gnd_gepard.png" width="200"> | **Gepard** | Friendly | Anti-aircraft tank: two at each friendly airfield, one in each column, and the sites you build (chapter 9.13). |

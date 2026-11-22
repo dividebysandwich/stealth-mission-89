@@ -276,7 +276,7 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
         }
         // Armour, and the guns with a convoy: the enemy's only while seen.
         let moving = sim.unit_moving(k);
-        if u.kind.armour() || moving && u.kind == GroundKind::Zsu {
+        if u.kind.armour() || moving && matches!(u.kind, GroundKind::Zsu | GroundKind::Zsu572) {
             let blue = sim.aaa_blue(k);
             if blue || sim.unit_seen_by(k, true) {
                 let heading = moving.then(|| u.fine.map(|f| f.heading)).flatten();

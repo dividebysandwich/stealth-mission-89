@@ -397,7 +397,7 @@ fn fire(
             b.units.resize(units.len(), Gun::default());
             for (i, u) in units.iter().enumerate() {
                 let p = crate::sim_render::map_point(u.x as f64 + 0.5, u.y as f64 + 0.5, 0.0);
-                let gun = matches!(u.kind, GroundKind::Zsu | GroundKind::S60 | GroundKind::Gepard);
+                let gun = u.kind.magazine_gun() || u.kind == GroundKind::Gepard;
                 let blue = combat.as_deref().is_some_and(|c| c.sim.aaa_blue(i));
                 if gun && !u.destroyed && p.distance(eye) < GUN_RANGE && threat(p, blue) {
                     guns.push((p.distance(eye), sites.len() + i, None));
