@@ -4912,3 +4912,86 @@ fn a_helicopter_wingman_lifts_off_and_lands_with_its_lead() {
     let (along, right) = wing_offset(&sim, &p);
     assert!(along.abs() < 10.0 && (15.0..30.0).contains(&right), "{along:.0} {right:.0}");
 }
+
+/// A helicopter's wingman (an AH-64) joining from behind catches up with its lead hovering and
+/// with him flying faster than the AI's helicopters fly, and holds his height.
+#[test]
+fn a_helicopter_wingman_catches_up_with_a_hovering_or_fast_lead() {
+    let d = data();
+    for knots in [0, 120] {
+        let (m, mut sim) = aaa_mission(d);
+        let (mx, my) = sandbox(&mut sim, &m);
+        let me = sim.active_pilot();
+        sim.request_wingman(me, stealth_sim::ai_missions::AH64);
+        let mut p = player_at(mx, my, 60, 0x4000, knots);
+        wing_step(&mut sim, &mut p);
+        let (along, _) = wing_offset(&sim, &p);
+        assert!(along < -1000.0, "joined at {along:.0}");
+        for _ in 0..15 * 90 {
+            wing_step(&mut sim, &mut p);
+        }
+        let (along, right) = wing_offset(&sim, &p);
+        assert!(
+            (-100.0..10.0).contains(&along) && (90.0..150.0).contains(&right),
+            "{knots} kt: {along:.0} {right:.0}"
+        );
+        let u = sim.flights()[sim.wingman_of(me).unwrap()];
+        assert!((50..70).contains(&u.alt), "{knots} kt: at {}", u.alt);
+    }
+}
+
+/// A helicopter wingman over the rolling hills holds its lead's height over the ground and
+/// never flies into them.
+#[test]
+fn a_helicopter_wingman_keeps_clear_of_the_hills() {
+    use stealth_sim::hills::{DIM, Hills};
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    let hills = Hills::from_bytes(vec![255; DIM * DIM]).unwrap();
+    sim.set_hills(hills.clone());
+    let relief = sim.relief();
+    let ground = |x, y| relief.height(x, y).max(hills.ground_alt(x, y));
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::AH64);
+    // Low over the highest hills (300 m, 615 altitude units).
+    let mut p = player_at(mx, my, 700, 0x4000, 80);
+    let mut lowest = i32::MAX;
+    for f in 0..15 * 180 {
+        let ev = wing_step(&mut sim, &mut p);
+        assert!(!ev.iter().any(|e| matches!(e, SimEvent::AircraftCrashed { .. })), "{ev:?}");
+        let u = sim.flights()[sim.wingman_of(me).expect("still there")];
+        if f > 15 * 20 {
+            lowest = lowest.min(u.alt - ground(u.x, u.y));
+        }
+    }
+    assert!(lowest >= 30, "{lowest} over the ground");
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(along.hypot(right - 120.0) < 150.0, "{along:.0} {right:.0}");
+}
+
+/// Told to engage the point its lead's targeting pod designates, a helicopter wingman fires
+/// on the vehicle there and comes back to its station.
+#[test]
+fn a_helicopter_wingman_engages_the_designated_vehicle() {
+    use stealth_sim::wingman::{WingCmd, WingOrder, WingReply};
+    let (mut sim, mut p, (mx, my)) = rocket_range(20, 60, &[(aaa::GroundKind::Bmp2, 0, -320)]);
+    sim.set_loadout(&[(20, 4), (21, 2), (20, 4), (21, 2)]);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::AH64);
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+    }
+    assert_eq!(sim.wing(me).map(|w| w.ground), Some(4));
+    p.pod = Some(PodAim { heading: 0, pitch: 0, ground: Some((mx, my - 320)) });
+    wing_step(&mut sim, &mut p);
+    assert_eq!(sim.wing_command(me, WingCmd::Engage), WingReply::Engaging);
+    for _ in 0..15 * 60 {
+        wing_step(&mut sim, &mut p);
+    }
+    assert!(sim.units()[0].destroyed);
+    let w = sim.wing(me).unwrap();
+    assert_eq!((w.order, w.ground), (WingOrder::Formation, 3));
+    let (along, right) = wing_offset(&sim, &p);
+    assert!(along.hypot(right - 120.0) < 100.0, "{along:.0} {right:.0}");
+}

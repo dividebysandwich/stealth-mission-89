@@ -1823,6 +1823,12 @@ right, a little back) or **in trail** (behind you); a helicopter's wingman keeps
 formation it fights off enemy aircraft that come near you, and if it carries HARMs it fires one at
 a SAM site that launches at you, then rejoins.
 
+A helicopter's wingman lifts off beside you and keeps about 120 m off your right side (300 m in
+trail). It flies as high over the ground as you do, never lower than about 20 m, and stays with you
+in a hover. It catches up even when you fly faster than the AI's helicopters usually go. It takes
+on enemy aircraft only with Stingers, and only those that come within about 4 km. *Engage my
+target* sends it after the vehicle or point your targeting pod marks.
+
 Press **\\** for the radio menu (beside the HUD, in the headset too), then a number:
 
 | Key | Call | What it does |

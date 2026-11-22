@@ -34,12 +34,27 @@ const SPREAD_HELI: (f64, f64) = (120.0, 40.0);
 const TRAIL_HELI: (f64, f64) = (0.0, 300.0);
 /// Within this (m) of its station it keeps it as a formation pilot does (jet, helicopter).
 const SNAP_JET: f64 = 1500.0;
-const SNAP_HELI: f64 = 400.0;
+const SNAP_HELI: f64 = 250.0;
 /// How fast it closes on its station there (1/s), at most this part of its lead's speed and
-/// this much more (m/s).
+/// this much more (m/s: a jet, a helicopter).
 const STATION_GAIN: f64 = 0.8;
 const CLOSE_MAX: f64 = 0.15;
 const CLOSE_MIN: f64 = 10.0;
+const CLOSE_MIN_HELI: f64 = 15.0;
+/// A helicopter wingman farther off flies for where its station will be this long (s, at
+/// most) on, this much faster than its lead per wu off it (1/s), up to this part over its own
+/// top speed or its lead's (it catches up with a lead faster than the AI's helicopters fly).
+const HELI_LEAD_S: f64 = 20.0;
+const HELI_CLOSE_GAIN: f64 = 0.05;
+const HELI_DASH: f64 = 1.25;
+/// It holds its lead's height over the ground, at least this high (altitude units) over the
+/// ground under it and these far ahead (m), climbing and sinking at most this fast (units/s).
+const HELI_MIN_AGL: i32 = 40;
+const HELI_LOOK: [f64; 3] = [0.0, 150.0, 400.0];
+const HELI_CLIMB: f64 = 40.0;
+/// A helicopter wingman goes for an enemy aircraft only this close to it (map units, unless
+/// told to engage it), and only with missiles to fire at it.
+pub(crate) const HELI_AIR_REACH: i32 = 0x100;
 /// It joins up from this far (m) behind its station, once its lead is this high (ft over the
 /// ground: a jet, a helicopter).
 const JOIN_BACK: f64 = 1500.0;
@@ -210,11 +225,12 @@ struct Lead {
 /// The air-to-air missiles, HARMs and ground attacks a wingman carries for its lead's stores
 /// (weapon type, rounds per station).
 fn wing_stores(sim: &Sim, bays: &[(i32, i32)]) -> (AiLoadout, u8, u8) {
-    let (mut radar, mut ir, mut harms, mut ground) = (0, 0, 0u8, 0u8);
+    let (mut radar, mut ir, mut stingers, mut harms, mut ground) = (0, 0, 0, 0u8, 0u8);
     for &(w, n) in bays.iter().filter(|b| b.0 >= 0 && b.1 > 0) {
         match w {
             1 => radar += n,
-            0 | 21 => ir += n,
+            0 => ir += n,
+            21 => stingers += n,
             2 => harms = harms.saturating_add(n as u8),
             // The camera, tanks, cargo, paratroopers, decoys and jammers attack nothing.
             16 | 17 | 18 | 27 | 28 | 29 => {}
@@ -229,6 +245,7 @@ fn wing_stores(sim: &Sim, bays: &[(i32, i32)]) -> (AiLoadout, u8, u8) {
     let mut l = AiLoadout::default();
     l.stores[0] = Store { missile: AIM120, count: radar, seeker: Seeker::Radar };
     l.stores[1] = Store { missile: AIM9, count: ir, seeker: Seeker::Ir };
+    l.stores[2] = Store { missile: STINGER_SPEC, count: stingers, seeker: Seeker::Ir };
     (l, harms, ground)
 }
 
@@ -458,19 +475,23 @@ impl Sim {
         if dx.hypot(dy) > snap {
             return;
         }
+        // A helicopter holds its lead's height over the ground under it.
+        let z = if heli { self.heli_wing_alt(&u, w) } else { z };
         let dt = 1.0 / self.fs.max(1) as f64;
         let k = (STATION_GAIN * dt).min(1.0);
         let h = (l.heading as u16) as f64 * std::f64::consts::TAU / 65536.0;
-        // Where it was before the AI moved it this frame (along its own heading at its speed),
-        // then where its lead's motion takes the station this frame, and onto it.
+        // Where it was before the AI moved it this frame (along its own heading at its speed;
+        // a helicopter close to its station the AI leaves where it is), then where its lead's
+        // motion takes the station this frame, and onto it.
         let hu = (u.heading as u16) as f64 * std::f64::consts::TAU / 65536.0;
-        let own = u.speed as f64 * dt;
+        let own = if heli { 0.0 } else { u.speed as f64 * dt };
         let (px, py) = (u.wx as f64 - hu.sin() * own, u.wy as f64 + hu.cos() * own);
         let (dx, dy) = (x - px, y - py);
         let mv = l.speed * dt;
         // Closing at most a fraction of its lead's speed (from beside him after the take-off,
         // out to its station).
-        let most = (l.speed * CLOSE_MAX + CLOSE_MIN * WU_PER_M) * dt;
+        let close = if heli { CLOSE_MIN_HELI } else { CLOSE_MIN };
+        let most = (l.speed * CLOSE_MAX + close * WU_PER_M) * dt;
         let c = (dx.hypot(dy) * k).max(1e-9);
         let k = k * (most / c).min(1.0);
         let nx = px + h.sin() * mv + dx * k;
@@ -479,7 +500,12 @@ impl Sim {
         u.wy = ny.round() as i32;
         u.x = (u.wx >> 5) & 0xFFFF;
         u.y = (u.wy >> 5) & 0xFFFF;
-        u.alt += ((z - u.alt) as f64 * k).round() as i32;
+        u.alt += if heli {
+            let climb = HELI_CLIMB * dt;
+            ((z - u.alt) as f64 * (k * 4.0).min(1.0)).clamp(-climb, climb).round() as i32
+        } else {
+            ((z - u.alt) as f64 * k).round() as i32
+        };
         let turn = s16(l.heading - u.heading);
         u.heading = s16(u.heading + (turn as f64 * (k * 4.0).min(1.0)).round() as i32);
         u.pitch = l.pitch;
@@ -487,6 +513,91 @@ impl Sim {
         u.speed = (l.speed.round() as i32).max(1);
         u.flags |= fflags::AIRBORNE;
         u.flags &= !fflags::RTB;
+        self.flights[i] = u;
+    }
+
+    /// The height (viewZ) a helicopter wingman `u` flies at: its lead's over the ground, at
+    /// least [`HELI_MIN_AGL`] over the ground under it and just ahead.
+    fn heli_wing_alt(&self, u: &FlightUnit, w: &Wing) -> i32 {
+        let p = &self.pilot_ref(w.lead as usize).p;
+        let agl = (p.view_z - self.ground_z(p.mx, p.my)).max(0);
+        let h = (u.heading as u16) as f64 * std::f64::consts::TAU / 65536.0;
+        let ahead = HELI_LOOK
+            .iter()
+            .map(|&m| {
+                let d = m / crate::aaa::M_PER_MAP;
+                self.ground_z(
+                    u.x + (h.sin() * d).round() as i32,
+                    u.y - (h.cos() * d).round() as i32,
+                )
+            })
+            .max()
+            .unwrap_or(0);
+        (self.ground_z(u.x, u.y) + agl).max(ahead + HELI_MIN_AGL)
+    }
+
+    /// Flight unit `i` is a helicopter wingman flying formation on its lead (up, no enemy
+    /// aircraft to go for, no strike).
+    pub(crate) fn heli_wing_flies(&self, i: usize) -> bool {
+        let Some(f) = self.campaign.as_ref().and_then(|c| c.flights.get(i).copied().flatten())
+        else {
+            return false;
+        };
+        let Some(w) = f.wing else { return false };
+        let u = &self.flights[i];
+        w.phase == WingPhase::Air
+            && matches!(w.order, WingOrder::Formation | WingOrder::Cover)
+            && f.role == Role::Fighter
+            && f.target.is_none()
+            && u.flags & fflags::TAKEOFF == 0
+            && self.aircraft_kind(u.spec) == AircraftKind::Helicopter
+    }
+
+    /// One frame of helicopter wingman `i` in formation: far from its station it flies for
+    /// where the station will be, faster than its lead, low over the ground as he is; close to
+    /// it [`Sim::keep_station`] keeps it there.
+    pub(crate) fn fly_wing_helo(&mut self, i: usize) {
+        let Some(w) = self.campaign.as_ref().and_then(|c| c.flights[i]).and_then(|f| f.wing) else {
+            return;
+        };
+        let mut u = self.flights[i];
+        let max = self.ac_type(u.spec).max_speed as f64;
+        let dt = 1.0 / self.fs.max(1) as f64;
+        let l = self.lead(w.lead);
+        let (sx, sy, _) = self.station(&l, w.form, u.spec, 0.0);
+        let (dx, dy) = (sx - u.wx as f64, sy - u.wy as f64);
+        let d = dx.hypot(dy);
+        u.flags |= fflags::AIRBORNE;
+        u.flags &= !fflags::RTB;
+        if d <= SNAP_HELI * WU_PER_M {
+            self.flights[i] = u;
+            return;
+        }
+        // For where the station will be by the time it gets there (lead pursuit).
+        let hl = (l.heading as u16) as f64 * std::f64::consts::TAU / 65536.0;
+        let vmax = max.max(l.speed) * HELI_DASH;
+        let ahead = (d / vmax.max(1.0)).min(HELI_LEAD_S);
+        let (ax, ay) = (dx + hl.sin() * l.speed * ahead, dy - hl.cos() * l.speed * ahead);
+        let want = (l.speed + d * HELI_CLOSE_GAIN).clamp(1.0, vmax);
+        let acc = max / 6.0 * dt;
+        let speed = u.speed as f64 + (want - u.speed as f64).clamp(-acc, acc);
+        u.speed = (speed.round() as i32).max(1);
+        let brg = s16((ax.atan2(-ay) / std::f64::consts::TAU * 65536.0).round() as i32);
+        let most = (0x2000 as f64 * dt).round() as i32;
+        let turn = s16(brg - u.heading).clamp(-most, most);
+        u.heading = s16(u.heading + turn);
+        let h = (u.heading as u16) as f64 * std::f64::consts::TAU / 65536.0;
+        let mv = u.speed as f64 * dt;
+        u.wx = (u.wx as f64 + h.sin() * mv).round() as i32;
+        u.wy = (u.wy as f64 - h.cos() * mv).round() as i32;
+        u.x = (u.wx >> 5) & 0xFFFF;
+        u.y = (u.wy >> 5) & 0xFFFF;
+        let climb = HELI_CLIMB * dt;
+        let z = self.heli_wing_alt(&u, &w);
+        u.alt += ((z - u.alt) as f64).clamp(-climb, climb).round() as i32;
+        // Nose down with speed, banked into its turns.
+        u.pitch = -(u.speed * 0x600 / (max as i32).max(1)).min(0x900);
+        u.bank = (s16(brg - u.heading) * 2).clamp(-0x1800, 0x1800) * (u.speed > 20) as i32;
         self.flights[i] = u;
     }
 
@@ -760,8 +871,12 @@ impl Sim {
     fn wing_engage(&mut self, lead: u8, i: usize, w: &Wing) -> WingReply {
         let back = self.pl.id as usize;
         self.activate(lead as usize);
+        // A helicopter without air-to-air missiles leaves the air lock to its lead.
+        let missiles = self.campaign.as_ref().and_then(|c| c.flights[i]).map(|f| f.loadout);
+        let heli = self.aircraft_kind(self.flights[i].spec) == AircraftKind::Helicopter;
+        let air_ok = !heli || missiles.is_some_and(|l| l.missiles() > 0);
         let air = Some(self.pl.air_lock)
-            .filter(|&j| j >= 0 && self.wing_enemy(j as usize))
+            .filter(|&j| air_ok && j >= 0 && self.wing_enemy(j as usize))
             .map(|j| j as usize);
         let ground = self.valid_gnd();
         let point = self.pl.spi.or_else(|| self.pl.last_input.pod.and_then(|p| p.ground));

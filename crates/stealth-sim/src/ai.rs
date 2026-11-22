@@ -79,6 +79,9 @@ impl Sim {
                 crate::AircraftKind::Helicopter if alive && self.supply_run(i).is_some() => {
                     self.fly_supply(i)
                 }
+                crate::AircraftKind::Helicopter if alive && self.heli_wing_flies(i) => {
+                    self.fly_wing_helo(i)
+                }
                 crate::AircraftKind::Helicopter if alive => self.fly_helo(i),
                 _ => self.fly(i),
             }

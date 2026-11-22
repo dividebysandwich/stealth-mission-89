@@ -2083,6 +2083,17 @@ impl Sim {
                 if let Some((_, _, Some(j))) = wing {
                     f.target = Some(j);
                 }
+                // A helicopter wingman: only what comes close (or it was told to engage), and
+                // only with missiles to fire.
+                if f.wing.is_some() && self.aircraft_kind(u.spec) == AircraftKind::Helicopter {
+                    let told = wing.and_then(|w| w.2);
+                    f.target = f.target.filter(|&j| {
+                        f.loadout.missiles() > 0
+                            && (Some(j) == told
+                                || approx(xy[j].0 - u.x, xy[j].1 - u.y)
+                                    < crate::wingman::HELI_AIR_REACH)
+                    });
+                }
                 if cap {
                     let landing = u.flags & (fflags::FINAL | fflags::ROLLOUT) != 0;
                     if f.target.is_some() {
