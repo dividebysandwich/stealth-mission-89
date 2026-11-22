@@ -118,6 +118,9 @@ pub struct Planner {
     vertical: Option<(u64, VerticalProfile)>,
     /// The aircraft the route is flown in, and whether in a campaign: its radar signature.
     aircraft: (AircraftKind, bool),
+    /// How far along the route (map units) the vertical profile was clicked or dragged to: the
+    /// aircraft is shown there on the map.
+    scrub: Option<f32>,
     /// The route point clicked (its card over the map), and where it was drawn last.
     selected: Option<usize>,
     selected_at: Option<egui::Pos2>,
@@ -133,10 +136,11 @@ impl Planner {
     }
 
     /// The next route shown is fitted to the view again (a new campaign sortie: its route
-    /// key is the campaign's).
+    /// key is the campaign's), with no aircraft on it.
     pub fn refit(&mut self) {
         self.fitted = None;
         self.drag = None;
+        self.scrub = None;
     }
 
     /// The route is flown in `kind` (`campaign`: a campaign sortie): the radar coverage and
@@ -767,6 +771,7 @@ pub fn planner_ui(
     if !open || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         planner.open = false;
         planner.drag = None;
+        planner.scrub = None;
     }
 }
 
@@ -991,6 +996,7 @@ pub fn route_screen(
     // Under a briefing step's panel: the map alone, to look at.
     if !chrome {
         planner.selected = None;
+        planner.scrub = None;
         ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
             ui.set_clip_rect(rect);
             map_view(
@@ -1058,6 +1064,8 @@ pub fn route_screen(
             if *profile {
                 let size = egui::vec2(ui.available_width(), ui.available_height());
                 vertical_view(ui, planner, m, route, &rings, size);
+            } else {
+                planner.scrub = None;
             }
         },
     );
@@ -1199,7 +1207,8 @@ pub fn route_screen(
             planner.zoom(1.0 / 0.7);
         }
         if shell::square_button(ui, icon::FIT, t!("map-fit")).clicked() {
-            planner.refit();
+            // (Only the view: the aircraft shown on the route stays.)
+            planner.fitted = None;
         }
     });
     // The clicked point's card, above it.
@@ -1456,6 +1465,19 @@ fn map_view(
                     egui::Stroke::new(2.0, colour),
                 );
             });
+    }
+    // The aircraft where the vertical profile was clicked, turned along its leg.
+    if let Some(d) = planner.scrub
+        && let Some((at, dir)) = route_at(&with_base(m, &route.points), d)
+    {
+        let size = if planner.big { 13.5 } else { 10.0 };
+        aircraft_marker(
+            &painter,
+            to_screen(at.x, at.y),
+            dir,
+            size,
+            planner.aircraft.0.spec().helicopter,
+        );
     }
     if !airfield_tips {
         let owner = m
@@ -1932,8 +1954,111 @@ fn heat_colour(s: f32, max: f32) -> egui::Color32 {
     }
 }
 
+/// Where a point `d` along the route (map units from its first point) is, and the direction
+/// (unit vector, map axes) of the leg it is on; the route's end past its length.
+fn route_at(pts: &[RoutePoint], d: f32) -> Option<(egui::Vec2, egui::Vec2)> {
+    let mut left = d.max(0.0);
+    let mut end = None;
+    for w in pts.windows(2) {
+        let a = egui::vec2(w[0].x as f32, w[0].y as f32);
+        let b = egui::vec2(w[1].x as f32, w[1].y as f32);
+        let len = (b - a).length();
+        if len <= 0.0 {
+            continue;
+        }
+        let dir = (b - a) / len;
+        if left <= len {
+            return Some((a + dir * left, dir));
+        }
+        left -= len;
+        end = Some((b, dir));
+    }
+    end
+}
+
+/// An aircraft seen from above, nose along `dir`, `size` screen points from its centre to its
+/// nose: a helicopter's body, tail and rotor, or an aeroplane's fuselage, wings and tailplanes.
+fn aircraft_marker(
+    painter: &egui::Painter,
+    at: egui::Pos2,
+    dir: egui::Vec2,
+    size: f32,
+    helicopter: bool,
+) {
+    let dir = dir.normalized();
+    let side = egui::vec2(-dir.y, dir.x);
+    // A point of the drawing (x forward, y to the side, in sizes) on the screen.
+    let to = |[x, y]: [f32; 2]| at + (dir * x + side * y) * size;
+    let mirrored =
+        |p: &[[f32; 2]]| -> Vec<[f32; 2]> { p.iter().rev().map(|&[x, y]| [x, -y]).collect() };
+    let mut parts: Vec<Vec<[f32; 2]>> = Vec::new();
+    let mut blades: Vec<([f32; 2], [f32; 2])> = Vec::new();
+    if helicopter {
+        parts.push(vec![
+            [0.75, 0.0],
+            [0.5, 0.2],
+            [0.0, 0.24],
+            [-0.3, 0.12],
+            [-0.3, -0.12],
+            [0.0, -0.24],
+            [0.5, -0.2],
+        ]);
+        parts.push(vec![[-0.3, 0.05], [-0.95, 0.04], [-0.95, -0.04], [-0.3, -0.05]]);
+        parts.push(vec![[-0.9, 0.22], [-1.05, 0.22], [-1.05, -0.22], [-0.9, -0.22]]);
+        // The rotor's blades, crossed over the body.
+        let r = 0.85 * std::f32::consts::FRAC_1_SQRT_2;
+        blades.push(([0.1 - r, -r], [0.1 + r, r]));
+        blades.push(([0.1 - r, r], [0.1 + r, -r]));
+    } else {
+        parts.push(vec![
+            [1.0, 0.0],
+            [0.55, 0.1],
+            [-0.8, 0.09],
+            [-0.95, 0.0],
+            [-0.8, -0.09],
+            [0.55, -0.1],
+        ]);
+        let wing = [[0.25, 0.08], [-0.35, 0.95], [-0.6, 0.95], [-0.3, 0.08]];
+        let tail = [[-0.65, 0.08], [-0.95, 0.4], [-1.05, 0.4], [-0.9, 0.08]];
+        parts.push(mirrored(&wing));
+        parts.push(wing.to_vec());
+        parts.push(mirrored(&tail));
+        parts.push(tail.to_vec());
+    }
+    let ink = egui::Color32::WHITE;
+    let black = egui::Color32::BLACK;
+    let rotor = helicopter.then(|| (to([0.1, 0.0]), size * 0.85));
+    let polygon = |part: &[[f32; 2]], fill, stroke| {
+        painter.add(egui::Shape::convex_polygon(
+            part.iter().map(|&p| to(p)).collect(),
+            fill,
+            stroke,
+        ));
+    };
+    // The outline under the whole drawing, then its fill.
+    for part in &parts {
+        polygon(part, black, egui::Stroke::new(2.0, black));
+    }
+    for &(a, b) in &blades {
+        painter.line_segment([to(a), to(b)], egui::Stroke::new(2.5, black));
+    }
+    if let Some((c, r)) = rotor {
+        painter.circle_stroke(c, r, egui::Stroke::new(2.5, black));
+    }
+    for part in &parts {
+        polygon(part, ink, egui::Stroke::NONE);
+    }
+    for &(a, b) in &blades {
+        painter.line_segment([to(a), to(b)], egui::Stroke::new(1.0, ink));
+    }
+    if let Some((c, r)) = rotor {
+        painter.circle_stroke(c, r, egui::Stroke::new(1.0, ink.gamma_multiply(0.7)));
+    }
+}
+
 /// The route's vertical profile under the map: the ground along it, the radar detection over
-/// it, the route points and the profile's flying height.
+/// it, the route points and the profile's flying height. A left click or drag on it puts the
+/// aircraft on the map at that distance along the route (a right click takes it off).
 fn vertical_view(
     ui: &mut egui::Ui,
     planner: &mut Planner,
@@ -1942,7 +2067,7 @@ fn vertical_view(
     rings: &[Ring],
     size: egui::Vec2,
 ) {
-    let (resp, painter) = ui.allocate_painter(size, egui::Sense::hover());
+    let (resp, painter) = ui.allocate_painter(size, egui::Sense::click_and_drag());
     let rect = resp.rect;
     let painter = painter.with_clip_rect(rect);
     let mut sky = egui::Mesh::default();
@@ -1993,6 +2118,20 @@ fn vertical_view(
     let col_x = |c: usize| plot.left() + plot.width() * c as f32 / (PROFILE_COLS - 1) as f32;
     let alt_y = |alt: f32| plot.bottom() - plot.height() * profile_frac(alt, v.top);
     let dist_x = |d: f32| plot.left() + plot.width() * d / length;
+    // The aircraft follows the pointer while the left button is down on the profile.
+    if resp.is_pointer_button_down_on()
+        && ui.input(|i| i.pointer.primary_down())
+        && let Some(pos) = resp.interact_pointer_pos()
+    {
+        let d = ((pos.x - plot.left()) / plot.width()).clamp(0.0, 1.0) * length;
+        if planner.scrub != Some(d) {
+            planner.scrub = Some(d);
+            // (The map above was drawn before this frame's input.)
+            ui.ctx().request_repaint();
+        }
+    } else if resp.secondary_clicked() {
+        planner.scrub = None;
+    }
     let font = egui::FontId::proportional(11.0);
     let grid_line = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(45));
     let minor_line = egui::Stroke::new(1.0, egui::Color32::from_white_alpha(22));
@@ -2122,6 +2261,22 @@ fn vertical_view(
         BRIGHT,
     );
 
+    // The aircraft: where it is along the route, at the coverage's flying height.
+    if let Some(d) = planner.scrub.map(|d| d.min(length)) {
+        let x = dist_x(d);
+        let white = egui::Color32::WHITE;
+        painter.vline(x, plot.y_range(), egui::Stroke::new(1.5, white.gamma_multiply(0.8)));
+        let f = d / length * (PROFILE_COLS - 1) as f32;
+        let i = (f as usize).min(PROFILE_COLS - 2);
+        let g = v.ground[i] + (v.ground[i + 1] - v.ground[i]) * (f - i as f32).clamp(0.0, 1.0);
+        painter.circle(
+            egui::pos2(x, alt_y(g + feet)),
+            4.0,
+            egui::Color32::BLACK,
+            egui::Stroke::new(2.0, white),
+        );
+    }
+
     // Where the pointer is: the distance and height.
     if let Some(pos) = resp.hover_pos().filter(|p| plot.contains(*p)) {
         painter.vline(
@@ -2136,5 +2291,28 @@ fn vertical_view(
         let anchor = if right { egui::Align2::LEFT_BOTTOM } else { egui::Align2::RIGHT_BOTTOM };
         let off = if right { egui::vec2(8.0, -6.0) } else { egui::vec2(-8.0, -6.0) };
         painter.text(pos + off, anchor, text, font, BRIGHT);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pt(x: i32, y: i32) -> RoutePoint {
+        RoutePoint { x, y, kind: RouteKind::Nav }
+    }
+
+    #[test]
+    fn route_at_follows_the_legs() {
+        let route = [pt(0, 0), pt(100, 0), pt(100, 50)];
+        assert!(route_at(&route[..1], 10.0).is_none());
+        let (at, dir) = route_at(&route, 40.0).unwrap();
+        assert_eq!((at, dir), (egui::vec2(40.0, 0.0), egui::vec2(1.0, 0.0)));
+        // Past the corner: on the second leg, heading south (map y runs south).
+        let (at, dir) = route_at(&route, 120.0).unwrap();
+        assert_eq!((at, dir), (egui::vec2(100.0, 20.0), egui::vec2(0.0, 1.0)));
+        // Past the end: the last point.
+        let (at, _) = route_at(&route, 999.0).unwrap();
+        assert_eq!(at, egui::vec2(100.0, 50.0));
     }
 }
