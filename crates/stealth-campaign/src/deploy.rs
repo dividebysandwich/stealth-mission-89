@@ -116,33 +116,7 @@ impl CampaignState {
         if let Some(why) = self.deploy_refusal(x, y, kind, &[]) {
             return Err(Text::raw(why));
         }
-        let name = self
-            .places
-            .iter()
-            .min_by_key(|p| dist(p.x - x, p.y - y))
-            .map_or(String::new(), |p| p.name.clone());
-        let id = self.id();
-        let now = self.clock;
-        let loads = loads(kind);
-        let d = Deployment {
-            id,
-            x,
-            y,
-            kind,
-            name,
-            by: Some(player),
-            posted: now,
-            expires: now + DEPLOY_TIMEOUT,
-            loads,
-            delivered: Vec::new(),
-            ai: Vec::new(),
-            open_since: now,
-            built: false,
-            seen: false,
-            base: self.supply_base(x, y),
-            crates: vec![CrateState::AtBase; loads as usize],
-            unit: None,
-        };
+        let d = self.new_deployment(x, y, kind, Some(player));
         let who = self.player_name(player).unwrap_or("A pilot");
         let loads = if d.loads == 1 { "1 load".to_string() } else { format!("{} loads", d.loads) };
         let text =
@@ -151,6 +125,112 @@ impl CampaignState {
         self.note(text.clone());
         self.board_at = f64::MIN;
         Ok(vec![CampaignEvent::Message(text)])
+    }
+
+    /// The friendly command's own air defence: at the place its units are being lost to enemy
+    /// aircraft (`Place::air_hits`), with no missile battery or new site near it, while
+    /// materiel is plentiful, it pays for a new Gepard (a NASAMS battery when there is more)
+    /// whose cargo goes on the board like a player's designation.
+    pub(crate) fn auto_air_defence(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
+        let materiel = self.blue.materiel;
+        if !self.ai_missions_on() || materiel < AUTO_SITE_MATERIEL {
+            return;
+        }
+        let air_defence = |k: DefenceKind| {
+            matches!(k, DefenceKind::Gepard | DefenceKind::Nasams | DefenceKind::Patriot)
+        };
+        let own = self
+            .deployments
+            .iter()
+            .filter(|d| d.by.is_none() && d.side() == Side::Blue && air_defence(d.kind))
+            .count();
+        let open = self.deployments.iter().filter(|d| !d.built && !d.kind.launch_site()).count();
+        if own >= AUTO_SITES_MAX || open + 1 >= DEPLOY_OPEN_MAX {
+            return;
+        }
+        let now = self.clock;
+        let covered = |s: &Self, x: i32, y: i32| {
+            s.deployments
+                .iter()
+                .filter(|d| d.side() == Side::Blue && air_defence(d.kind))
+                .any(|d| dist(d.x - x, d.y - y) <= AUTO_SITE_COVER)
+                || s.patriot_sites().iter().any(|p| dist(p.1 - x, p.2 - y) <= AUTO_SITE_COVER)
+        };
+        // The place hit hardest.
+        let Some(place) = self
+            .places
+            .iter()
+            .filter(|p| p.owner == Side::Blue && p.air_hits >= AUTO_SITE_HITS)
+            .filter(|p| p.air_struck_at.is_some_and(|t| now - t <= PRESSURE_MEMORY))
+            .filter(|p| !covered(self, p.x, p.y))
+            .max_by_key(|p| p.air_hits)
+            .map(|p| (p.x, p.y))
+        else {
+            return;
+        };
+        let (kind, cost) = if materiel >= AUTO_SITE_NASAMS_MATERIEL {
+            (DefenceKind::Nasams, AUTO_SITE_COST_NASAMS)
+        } else {
+            (DefenceKind::Gepard, AUTO_SITE_COST_GEPARD)
+        };
+        // A spot round the place, its nearest free one.
+        let foot = footprint(kind);
+        let spot = ((DEPLOY_PLACE_CLEAR + foot + 8)..AUTO_SITE_COVER / 2)
+            .step_by(16)
+            .flat_map(|r| (0..16).map(move |k| (r, k)))
+            .map(|(r, k)| {
+                let t = k as f64 / 16.0 * std::f64::consts::TAU;
+                (place.0 + (t.cos() * r as f64) as i32, place.1 + (t.sin() * r as f64) as i32)
+            })
+            .find(|&(x, y)| self.deploy_refusal(x, y, kind, &view.units).is_none());
+        let Some((x, y)) = spot else { return };
+        if !self.pay(Side::Blue, cost, Spend::Operations) {
+            return;
+        }
+        let d = self.new_deployment(x, y, kind, None);
+        let text = text!("cl-ai-site-ordered", site = d.label());
+        self.deployments.push(d);
+        self.note(text.clone());
+        self.board_at = f64::MIN;
+        ev.push(CampaignEvent::Message(text));
+    }
+
+    /// A new site at (x, y) waiting for its cargo (designated by `by`, else by its side's
+    /// command).
+    pub(crate) fn new_deployment(
+        &mut self,
+        x: i32,
+        y: i32,
+        kind: DefenceKind,
+        by: Option<PlayerId>,
+    ) -> Deployment {
+        let name = self
+            .places
+            .iter()
+            .min_by_key(|p| dist(p.x - x, p.y - y))
+            .map_or(String::new(), |p| p.name.clone());
+        let id = self.id();
+        let now = self.clock;
+        let loads = loads(kind);
+        Deployment {
+            id,
+            x,
+            y,
+            kind,
+            name,
+            by,
+            posted: now,
+            expires: now + DEPLOY_TIMEOUT,
+            loads,
+            delivered: Vec::new(),
+            ai: Vec::new(),
+            open_since: now,
+            built: false,
+            seen: false,
+            base: self.supply_base_for(kind.side(), x, y),
+            crates: vec![CrateState::AtBase; loads as usize],
+            unit: None,
+        }
     }
 
     /// A player fast-tracks new site `id`: the friendly side pays for the loads not in yet, the

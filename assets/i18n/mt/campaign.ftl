@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } laqat { $target }
 cl-sead-hit = Inġenji tal-ajru SEAD tal-għadu laqtu l-batterija SAM qrib { $place }
 cl-infra-hit = Ajruplani tal-għadu laqtu l-pożizzjoni tagħna { $site }
 cl-site-destroyed = Il-pożizzjoni tagħna { $site } inqerdet
+cl-ai-site-ordered = Il-kmand jordna pożizzjoni ġdida { $site } kontra l-attakki mill-ajru: il-merkanzija tagħha qiegħda fuq il-bord
 cl-site-fast-tracked = { $who } ħaffef il-bini ta' { $site } għal { $cost } materiel: lest għall-ġlied
 cl-target-generic = il-mira
 cl-target-airfield = l-ajrudrom ta' { $place }

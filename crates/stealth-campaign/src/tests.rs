@@ -4164,3 +4164,53 @@ fn convoys_due_together_set_off_apart() {
     assert!(at.len() >= 2, "{at:?}");
     assert!(at.windows(2).all(|w| w[1] - w[0] >= tuning::SUPPLY_GAP_S - 1.0), "{at:?}");
 }
+
+/// Enemy aircraft keep killing the units by a friendly place: with materiel to spare the
+/// command orders a Gepard there (and pays for it), its cargo goes on the board; a kill with
+/// no enemy aircraft near does not count, and no second site goes up beside the first.
+#[test]
+fn the_command_builds_air_defence_where_units_die_to_air_attack() {
+    let mut c = ai_campaign();
+    let k = c
+        .places
+        .iter()
+        .position(|p| {
+            p.owner == Side::Blue
+                && c.deploy_refusal(p.x, p.y + 0x100, DefenceKind::Gepard, &[]).is_none()
+        })
+        .expect("a friendly place with room");
+    let (x, y) = (c.places[k].x, c.places[k].y);
+    let mut view = WorldView {
+        units: vec![GroundView::gun(x + 0x40, y, Side::Blue, false)],
+        ..WorldView::default()
+    };
+    c.blue.materiel = 50.0;
+    c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: None }]);
+    assert_eq!(c.places[k].air_hits, 0, "nothing in the air near it");
+    view.flights = vec![FlightView { x: x + 0x60, y, side: Side::Red, tag: 7 }];
+    for _ in 0..tuning::AUTO_SITE_HITS {
+        c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: None }]);
+    }
+    assert_eq!(c.places[k].air_hits, tuning::AUTO_SITE_HITS);
+    let own = |c: &CampaignState| {
+        c.deployments.iter().filter(|d| d.by.is_none() && d.side() == Side::Blue).count()
+    };
+    assert_eq!(own(&c), 0, "not while materiel is short");
+    c.blue.materiel = 150.0;
+    let ev = c.tick(1.0, &view, &[]);
+    let d = c.deployments.iter().find(|d| d.by.is_none()).expect("a site ordered").clone();
+    assert_eq!(d.kind, DefenceKind::Gepard);
+    assert!(dist(d.x - x, d.y - y) <= tuning::AUTO_SITE_COVER);
+    assert!(c.blue.materiel < 150.0 - tuning::AUTO_SITE_COST_GEPARD + 1.0, "{}", c.blue.materiel);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(_))));
+    c.board_at = f64::MIN;
+    c.tick(1.0, &view, &[]);
+    assert!(
+        c.board
+            .iter()
+            .any(|o| matches!(o.objective, Objective::Logistics { site, .. } if site == d.id))
+    );
+    c.blue.materiel = 300.0;
+    c.tick(1.0, &view, &[]);
+    assert_eq!(own(&c), 1, "the place is covered now");
+}

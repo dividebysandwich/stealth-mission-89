@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } csapást mért { $target }
 cl-sead-hit = Ellenséges SEAD-gépek eltalálták a SAM-üteget: { $place }
 cl-infra-hit = Ellenséges gépek eltalálták állásunkat ({ $site })
 cl-site-destroyed = Állásunk megsemmisült ({ $site })
+cl-ai-site-ordered = A parancsnokság új állást rendel el a légitámadások ellen ({ $site }): a rakománya a táblán van
 cl-site-fast-tracked = { $who } { $cost } hadianyagért felgyorsította a(z) { $site } építését: harcra kész
 cl-target-generic = a célpontra
 cl-target-airfield = a repülőtérre: { $place }

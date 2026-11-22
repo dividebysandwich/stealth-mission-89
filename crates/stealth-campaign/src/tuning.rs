@@ -302,6 +302,23 @@ pub const DEPLOY_LOADS_NASAMS: u8 = 2;
 pub const DEPLOY_TIMEOUT: f64 = 24.0 * 3600.0;
 pub const DEPLOY_OPEN_MAX: usize = 3;
 pub const DEPLOY_AI_WAIT: f64 = 30.0 * 60.0;
+/// A unit destroyed with an enemy aircraft this close (map units, 8 km) was hit from the air,
+/// and so was its side's place within this distance of it (12 km).
+pub const AIR_ATTACK_RANGE: i32 = 0x200;
+pub const AIR_ATTACK_PLACE: i32 = 0x300;
+/// The friendly command orders air defence sites of its own where enemy aircraft keep killing
+/// its units: at a place that lost this many in a row to air attack, while it has this much
+/// materiel (a NASAMS battery from the second amount on, a Gepard below) and pays the site's
+/// cost; none within this distance (map units, 12 km) of another friendly missile battery or
+/// new site, at most this many of its own standing or waiting, and always leaving the players
+/// room to designate one.
+pub const AUTO_SITE_HITS: u8 = 3;
+pub const AUTO_SITE_MATERIEL: f64 = 100.0;
+pub const AUTO_SITE_NASAMS_MATERIEL: f64 = 200.0;
+pub const AUTO_SITE_COST_GEPARD: f64 = 20.0;
+pub const AUTO_SITE_COST_NASAMS: f64 = 40.0;
+pub const AUTO_SITE_COVER: i32 = 0x300;
+pub const AUTO_SITES_MAX: usize = 4;
 /// Materiel a load of cargo not in yet costs when a player fast-tracks a site's construction.
 pub const DEPLOY_FAST_TRACK_COST: f64 = 20.0;
 /// Map units: the unit stands this far north of its helipad; a Gepard's, a Patriot battery's

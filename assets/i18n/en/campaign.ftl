@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } hit { $target }
 cl-sead-hit = Enemy SEAD aircraft hit the SAM battery near { $place }
 cl-infra-hit = Enemy aircraft hit our { $site }
 cl-site-destroyed = The { $site } is destroyed
+cl-ai-site-ordered = Command orders a new { $site } against the air attacks: its cargo is on the board
 cl-site-fast-tracked = { $who } fast-tracked the { $site } for { $cost } materiel: ready for action
 cl-target-generic = the target
 cl-target-airfield = the { $place } airfield

@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } menghantam { $target }
 cl-sead-hit = Pesawat SEAD musuh menghantam baterai SAM dekat { $place }
 cl-infra-hit = Pesawat musuh mengenai situs kita { $site }
 cl-site-destroyed = Situs kita { $site } hancur
+cl-ai-site-ordered = Komando memerintahkan situs baru { $site } melawan serangan udara: kargonya ada di papan
 cl-site-fast-tracked = { $who } mempercepat pembangunan { $site } dengan { $cost } materiel: siap tempur
 cl-target-generic = target
 cl-target-airfield = pangkalan udara { $place }

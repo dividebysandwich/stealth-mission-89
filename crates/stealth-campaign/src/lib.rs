@@ -626,6 +626,7 @@ impl CampaignState {
         self.forward_batteries(view, &mut ev);
         self.run_resupply(view, &mut ev);
         self.run_deployments(view, &mut ev);
+        self.auto_air_defence(view, &mut ev);
         self.run_munitions(dt.max(0.0), &mut ev);
         self.run_ai_missions(view, &mut ev);
         if self.check_outcome(&mut ev) {

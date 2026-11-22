@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } έπληξε: { $target }
 cl-sead-hit = Εχθρικά αεροσκάφη SEAD έπληξαν τη συστοιχία SAM κοντά σε { $place }
 cl-infra-hit = Εχθρικά αεροσκάφη έπληξαν τη θέση μας { $site }
 cl-site-destroyed = Η θέση μας { $site } καταστράφηκε
+cl-ai-site-ordered = Η διοίκηση διατάζει νέα θέση { $site } κατά των αεροπορικών επιθέσεων: το φορτίο της είναι στον πίνακα
 cl-site-fast-tracked = { $who } επίσπευσε την κατασκευή: { $site } για { $cost } υλικό, έτοιμο για μάχη
 cl-target-generic = ο στόχος
 cl-target-airfield = το αεροδρόμιο { $place }

@@ -232,6 +232,13 @@ pub struct Place {
     /// When it last changed hands (campaign time): the map marks it taken or lost for a while.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub captured_at: Option<f64>,
+    /// When the other side's aircraft last destroyed one of its units, and how many they
+    /// destroyed in a row, each within `PRESSURE_MEMORY` of the last: its owner sends air
+    /// cover and builds air defences there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub air_struck_at: Option<f64>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub air_hits: u8,
 }
 
 impl Place {
@@ -1726,6 +1733,8 @@ impl CampaignState {
                         defences: Vec::new(),
                         intel_until: None,
                         struck_at: None,
+                        air_struck_at: None,
+                        air_hits: 0,
                         guns_lost: 0,
                         armour_lost: 0,
                         armour_repair_at: None,

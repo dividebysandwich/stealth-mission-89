@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } a lovit { $target }
 cl-sead-hit = Aeronave SEAD inamice au lovit bateria SAM de lângă { $place }
 cl-infra-hit = Avioane inamice au lovit poziția noastră { $site }
 cl-site-destroyed = Poziția noastră { $site } a fost distrusă
+cl-ai-site-ordered = Comandamentul ordonă o nouă poziție { $site } împotriva atacurilor aeriene: încărcătura ei este pe tablă
 cl-site-fast-tracked = { $who } a grăbit construcția { $site } pentru { $cost } materiale: gata de luptă
 cl-target-generic = ținta
 cl-target-airfield = aerodromul { $place }

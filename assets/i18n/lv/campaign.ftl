@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } trāpīja mērķim: { $target }
 cl-sead-hit = Ienaidnieka SEAD lidmašīnas trāpīja SAM baterijai ({ $place })
 cl-infra-hit = Ienaidnieka lidmašīnas trāpīja mūsu pozīcijai { $site }
 cl-site-destroyed = Mūsu pozīcija { $site } ir iznīcināta
+cl-ai-site-ordered = Pavēlniecība pavēl izveidot jaunu pozīciju { $site } pret uzlidojumiem: tās krava ir uz tāfeles
 cl-site-fast-tracked = { $who } paātrināja { $site } celtniecību par { $cost } materiālajiem resursiem: gatavs kaujai
 cl-target-generic = mērķis
 cl-target-airfield = lidlauks { $place }

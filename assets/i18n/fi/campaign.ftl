@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } iski: { $target }
 cl-sead-hit = Vihollisen SEAD-koneet osuivat SAM-patteriin, paikka { $place }
 cl-infra-hit = Vihollisen koneet osuivat asemaamme { $site }
 cl-site-destroyed = Asemamme { $site } on tuhottu
+cl-ai-site-ordered = Johto määrää uuden aseman { $site } ilmahyökkäyksiä vastaan: sen lasti on taululla
 cl-site-fast-tracked = { $who } kiirehti kohteen { $site } rakentamista { $cost } materiaalilla: valmiina toimintaan
 cl-target-generic = kohde
 cl-target-airfield = lentokenttä { $place }

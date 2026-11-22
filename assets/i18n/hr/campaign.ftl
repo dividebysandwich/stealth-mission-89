@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } su pogodili cilj: { $target }
 cl-sead-hit = Neprijateljski SEAD zrakoplovi pogodili su SAM bitnicu { $place }
 cl-infra-hit = Neprijateljski zrakoplovi pogodili su naš položaj { $site }
 cl-site-destroyed = Naš položaj { $site } je uništen
+cl-ai-site-ordered = Zapovjedništvo naređuje novi položaj { $site } protiv zračnih napada: njegov teret je na ploči
 cl-site-fast-tracked = { $who } je ubrzao izgradnju { $site } za { $cost } materijala: spremno za borbu
 cl-target-generic = cilj
 cl-target-airfield = aerodrom { $place }

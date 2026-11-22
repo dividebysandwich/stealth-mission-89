@@ -63,6 +63,7 @@ cl-raid-hit = { $raid }: { $target } 타격
 cl-sead-hit = 적 SEAD 항공기가 { $place } 인근 SAM 포대를 타격
 cl-infra-hit = 적기가 아군 { $site }을(를) 타격
 cl-site-destroyed = 아군 { $site }이(가) 파괴되었다
+cl-ai-site-ordered = 사령부가 공습에 대비해 새 { $site } 배치를 명령했다: 화물은 게시판에 있다
 cl-site-fast-tracked = { $who }이(가) 물자 { $cost }(으)로 { $site } 건설을 앞당겼습니다: 작전 준비 완료
 cl-target-generic = 표적
 cl-target-airfield = { $place } 비행장

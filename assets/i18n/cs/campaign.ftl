@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } zasáhl: { $target }
 cl-sead-hit = Nepřátelské letouny SEAD zasáhly baterii SAM { $place }
 cl-infra-hit = Nepřátelské letouny zasáhly naše stanoviště { $site }
 cl-site-destroyed = Naše stanoviště { $site } je zničeno
+cl-ai-site-ordered = Velení nařizuje nové stanoviště { $site } proti náletům: jeho náklad je na tabuli
 cl-site-fast-tracked = { $who } urychlil stavbu { $site } za { $cost } materiálu: připraveno k boji
 cl-target-generic = cíl
 cl-target-airfield = letiště { $place }

@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } ramte { $target }
 cl-sead-hit = Fjendtlige SEAD-fly har ramt SAM-batteriet ved { $place }
 cl-infra-hit = Fjendtlige fly ramte vores stilling { $site }
 cl-site-destroyed = Vores stilling { $site } er ødelagt
+cl-ai-site-ordered = Kommandoen beordrer en ny { $site } mod luftangrebene: dens last er på tavlen
 cl-site-fast-tracked = { $who } fremskyndede opførelsen af { $site } for { $cost } materiel: klar til kamp
 cl-target-generic = målet
 cl-target-airfield = flyvepladsen { $place }

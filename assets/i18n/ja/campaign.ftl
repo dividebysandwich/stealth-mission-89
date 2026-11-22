@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } が { $target } を攻撃
 cl-sead-hit = 敵SEAD機が { $place } 付近のSAM部隊を攻撃した
 cl-infra-hit = 敵機が味方の { $site } に命中
 cl-site-destroyed = 味方の { $site } が破壊された
+cl-ai-site-ordered = 司令部が航空攻撃に備えて新しい { $site } を命じた: その貨物はボードに掲載中
 cl-site-fast-tracked = { $who } が { $cost } の物資で { $site } の建設を前倒しした：作戦可能
 cl-target-generic = 目標
 cl-target-airfield = { $place } 飛行場

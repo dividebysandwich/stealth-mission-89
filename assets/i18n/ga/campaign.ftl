@@ -63,6 +63,7 @@ cl-raid-hit = Bhuail { $raid } an sprioc: { $target }
 cl-sead-hit = Bhuail aerárthaigh SEAD namhad an ceallra SAM gar do { $place }
 cl-infra-hit = Bhuail aerárthaí an namhad ár láithreán { $site }
 cl-site-destroyed = Tá ár láithreán { $site } scriosta
+cl-ai-site-ordered = Ordaíonn an cheannasaíocht láithreán nua { $site } in aghaidh na n-ionsaithe aeir: tá a lasta ar an gclár
 cl-site-fast-tracked = Bhrostaigh { $who } tógáil { $site } ar { $cost } trealamh: réidh don chath
 cl-target-generic = an sprioc
 cl-target-airfield = aerfort: { $place }

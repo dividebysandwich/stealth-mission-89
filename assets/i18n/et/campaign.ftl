@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } tabas: { $target }
 cl-sead-hit = Vaenlase SEAD-lennukid tabasid SAM-patareid { $place }
 cl-infra-hit = Vaenlase lennukid tabasid meie positsiooni { $site }
 cl-site-destroyed = Meie positsioon { $site } on hävitatud
+cl-ai-site-ordered = Juhatus käsib rajada uue positsiooni { $site } õhurünnakute vastu: selle last on tahvlil
 cl-site-fast-tracked = { $who } kiirendas objekti { $site } ehitust { $cost } materjali eest: lahinguvalmis
 cl-target-generic = sihtmärk
 cl-target-airfield = lennuväli { $place }

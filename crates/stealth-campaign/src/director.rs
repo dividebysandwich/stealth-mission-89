@@ -719,6 +719,7 @@ impl CampaignState {
     /// replaced.
     fn gun_lost(&mut self, index: u32, view: &WorldView) {
         let Some(a) = view.units.get(index as usize) else { return };
+        self.air_attacked(a, view);
         // A convoy's losses are its own (`run_convoys`).
         if a.convoy != 0 {
             return;
@@ -753,6 +754,33 @@ impl CampaignState {
                 p.guns_repair_at = Some(self.clock + REPAIR_GUN);
             }
         }
+    }
+
+    /// Unit `a` was destroyed: with an enemy aircraft close by, its side's place near it is
+    /// under air attack.
+    fn air_attacked(&mut self, a: &crate::GroundView, view: &WorldView) {
+        let side = a.side;
+        let from_air = view
+            .flights
+            .iter()
+            .any(|f| f.side == side.enemy() && dist(f.x - a.x, f.y - a.y) <= AIR_ATTACK_RANGE);
+        if !from_air || side == Side::Neutral {
+            return;
+        }
+        let now = self.clock;
+        let Some(p) = self
+            .places
+            .iter_mut()
+            .filter(|p| p.owner == side && dist(p.x - a.x, p.y - a.y) <= AIR_ATTACK_PLACE)
+            .min_by_key(|p| dist(p.x - a.x, p.y - a.y))
+        else {
+            return;
+        };
+        if p.air_struck_at.is_none_or(|t| now - t > PRESSURE_MEMORY) {
+            p.air_hits = 0;
+        }
+        p.air_hits = p.air_hits.saturating_add(1);
+        p.air_struck_at = Some(now);
     }
 
     pub(crate) fn expire_intel(&mut self, ev: &mut Vec<CampaignEvent>) {

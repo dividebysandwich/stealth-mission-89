@@ -63,6 +63,7 @@ cl-raid-hit = { $raid } trafiły cel: { $target }
 cl-sead-hit = Samoloty SEAD wroga trafiły baterię SAM ({ $place })
 cl-infra-hit = Wrogie samoloty trafiły nasze stanowisko { $site }
 cl-site-destroyed = Nasze stanowisko { $site } zniszczone
+cl-ai-site-ordered = Dowództwo zarządza nowe stanowisko { $site } przeciw nalotom: jego ładunek jest na tablicy
 cl-site-fast-tracked = { $who } przyspieszył budowę { $site } za { $cost } zasobów: gotowe do walki
 cl-target-generic = cel
 cl-target-airfield = lotnisko { $place }
