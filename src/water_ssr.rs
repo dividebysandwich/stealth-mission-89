@@ -99,11 +99,12 @@ fn frame(
     f.sea = -o.y as f32;
 }
 
-/// The view's matrices and the ripples (water_ssr.wgsl `Params`).
+/// The view's matrices (from positions relative to the eye) and the ripples (water_ssr.wgsl
+/// `Params`).
 #[derive(Clone, Copy, ShaderType)]
 struct Params {
-    clip_from_world: Mat4,
-    world_from_clip: Mat4,
+    clip_from_eye: Mat4,
+    eye_from_clip: Mat4,
     eye: Vec4,
     forward: Vec4,
     ripple: Vec4,
@@ -217,15 +218,20 @@ fn mirror(
         return;
     }
     let Some(render_pipeline) = cache.get_render_pipeline(m.pipeline) else { return };
-    let view_from_world = extracted.world_from_view.affine().inverse();
-    let clip_from_world = extracted
-        .clip_from_world
-        .unwrap_or_else(|| extracted.clip_from_view * Mat4::from(view_from_world));
     let size = extracted.viewport.zw().as_vec2();
+    // Relative to the eye, multiplied out in f64: kilometres from the floating origin the f32
+    // world matrices lose the pixels' rays to rounding (metres off on the far water, in bands
+    // that jump from pixel column to column).
+    let eye = extracted.world_from_view.translation();
+    let clip_from_world = extracted.clip_from_world.map(|m| m.as_dmat4()).unwrap_or_else(|| {
+        extracted.clip_from_view.as_dmat4()
+            * Mat4::from(extracted.world_from_view.affine()).as_dmat4().inverse()
+    });
+    let clip_from_eye = clip_from_world * bevy::math::DMat4::from_translation(eye.as_dvec3());
     let params = Params {
-        clip_from_world,
-        world_from_clip: clip_from_world.inverse(),
-        eye: extracted.world_from_view.translation().extend(extracted.clip_from_view.w_axis.z),
+        clip_from_eye: clip_from_eye.as_mat4(),
+        eye_from_clip: clip_from_eye.inverse().as_mat4(),
+        eye: eye.extend(extracted.clip_from_view.w_axis.z),
         forward: extracted.world_from_view.forward().extend(0.0),
         ripple: Vec4::new(frame.origin.x, frame.origin.y, frame.time, size.x),
         size: size.extend(extracted.clip_from_view.y_axis.y).extend(frame.sea),

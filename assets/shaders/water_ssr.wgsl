@@ -7,9 +7,11 @@
 
 #import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput
 
+// Positions are relative to the eye (the world matrices lose a pixel's ray to rounding
+// kilometres from the floating origin).
 struct Params {
-    clip_from_world: mat4x4<f32>,
-    world_from_clip: mat4x4<f32>,
+    clip_from_eye: mat4x4<f32>,
+    eye_from_clip: mat4x4<f32>,
     // The eye (xyz), the near plane (w); the view's forward direction.
     eye: vec4<f32>,
     forward: vec4<f32>,
@@ -42,6 +44,11 @@ const HIT_SHARE: f32 = 0.004;
 const RIPPLE: f32 = 0.035;
 // A reflection darkens a little in the water.
 const TINT: vec3<f32> = vec3<f32>(0.86, 0.9, 0.92);
+
+// The distance along the view of a (reversed, infinite) depth.
+fn view_depth(d: f32) -> f32 {
+    return params.eye.w / d;
+}
 
 fn depth_at(px: vec2<i32>) -> f32 {
 #ifdef MULTISAMPLED
@@ -102,12 +109,12 @@ fn to_uv(clip: vec4<f32>) -> vec3<f32> {
 // kilometres off, where a step is hundreds of metres long) is still far behind it at the
 // crossing: no hit (-1), the march goes on; else smeared down the water, each tree on a far
 // shore mirrored as a long streaky block.
-fn crossing(start: vec3<f32>, r: vec3<f32>, lo_in: f32, hi_in: f32, near: f32, size: vec2<f32>) -> f32 {
+fn crossing(start: vec3<f32>, r: vec3<f32>, lo_in: f32, hi_in: f32, size: vec2<f32>) -> f32 {
     var lo = lo_in;
     var hi = hi_in;
     for (var i = 0; i < REFINE; i++) {
         let mid = 0.5 * (lo + hi);
-        let cq = params.clip_from_world * vec4<f32>(start + r * mid, 1.0);
+        let cq = params.clip_from_eye * vec4<f32>(start + r * mid, 1.0);
         let uv = to_uv(cq);
         let sd = depth_at(vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size));
         if (sd > 0.0 && uv.z < sd) {
@@ -116,7 +123,7 @@ fn crossing(start: vec3<f32>, r: vec3<f32>, lo_in: f32, hi_in: f32, near: f32, s
             lo = mid;
         }
     }
-    let cq = params.clip_from_world * vec4<f32>(start + r * hi, 1.0);
+    let cq = params.clip_from_eye * vec4<f32>(start + r * hi, 1.0);
     let uv = to_uv(cq);
     let sd = depth_at(vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size));
     if (sd <= 0.0) {
@@ -124,7 +131,7 @@ fn crossing(start: vec3<f32>, r: vec3<f32>, lo_in: f32, hi_in: f32, near: f32, s
     }
     // How far behind it the ray is there, against the halved step's length (and a share of
     // the distance: a pixel's depth spans that much far off).
-    let behind = cq.w - near / sd;
+    let behind = cq.w - view_depth(sd);
     if (behind > max(2.0, (hi_in - lo_in) * HIT_STEPS + cq.w * HIT_SHARE)) {
         return -1.0;
     }
@@ -145,23 +152,22 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     }
     let size = params.size.xy;
     let ndc = vec2<f32>(in.uv.x * 2.0 - 1.0, 1.0 - in.uv.y * 2.0);
-    // The point from its distance along the view (near / depth) on the pixel's ray: the
-    // inverse projection alone is metres off kilometres out.
-    let on_near = params.world_from_clip * vec4<f32>(ndc, 1.0, 1.0);
-    let ray = normalize(on_near.xyz / on_near.w - params.eye.xyz);
-    let p = params.eye.xyz + ray * (params.eye.w / d0 / max(dot(ray, params.forward.xyz), 1e-4));
+    // The point (from the eye) from its distance along the view (`view_depth`) on the pixel's
+    // ray: the inverse projection alone is metres off kilometres out.
+    let on_near = params.eye_from_clip * vec4<f32>(ndc, 1.0, 1.0);
+    let ray = normalize(on_near.xyz / on_near.w);
+    let p = ray * (view_depth(d0) / max(dot(ray, params.forward.xyz), 1e-4));
     // Only the sea (what else leaves its alpha under 1, cloud sheets cut out by their coverage,
     // is far above it).
-    if (abs(p.y - params.size.w) > 2.0) {
+    if (abs(p.y + params.eye.y - params.size.w) > 2.0) {
         return vec4<f32>(c.rgb, 1.0);
     }
-    let eye = params.eye.xyz;
     let near = params.eye.w;
-    let v = normalize(p - eye);
-    let dist = length(p - eye);
+    let v = normalize(p);
+    let dist = length(p);
     // The water a pixel covers (m), along the view (the longer way at a flat angle).
     let foot = dist * 2.0 / (params.size.z * size.y) / max(-v.y, 0.02);
-    let n = ripple_normal(p.xz + params.ripple.xy, params.ripple.z, foot);
+    let n = ripple_normal(p.xz + params.eye.xz + params.ripple.xy, params.ripple.z, foot);
     var r = reflect(v, n);
     r.y = max(r.y, 0.002);
     // Off the water a little (its own pixels never meet the ray).
@@ -173,7 +179,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     var hit = -1.0;
     for (var i = 0; i < STEPS; i++) {
         let q = start + r * s;
-        let cq = params.clip_from_world * vec4<f32>(q, 1.0);
+        let cq = params.clip_from_eye * vec4<f32>(q, 1.0);
         if (cq.w <= near) {
             break;
         }
@@ -185,7 +191,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         // Behind what the picture shows there (reversed depth: smaller is farther): the ray
         // crossed it between the last step and this one, or went by behind it.
         if (sd > 0.0 && uv.z < sd) {
-            let met = crossing(start, r, last, s, near, size);
+            let met = crossing(start, r, last, s, size);
             if (met >= 0.0) {
                 hit = met;
                 break;
@@ -197,7 +203,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     if (hit < 0.0) {
         // Nothing near: what the picture shows far off in the mirrored direction, if it is the
         // background there (the sky, the hills on the horizon, the clouds) or past the reach.
-        let inf = params.clip_from_world * vec4<f32>(r, 0.0);
+        let inf = params.clip_from_eye * vec4<f32>(r, 0.0);
         if (inf.w <= 0.0) {
             return vec4<f32>(c.rgb, 1.0);
         }
@@ -208,14 +214,14 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
         let fp = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.9999)) * size);
         // (The sky dome and the far scenery stand beyond the march's reach.)
         let fd = depth_at(fp);
-        if (fd > 0.0 && near / fd < REACH) {
+        if (fd > 0.0 && view_depth(fd) < REACH) {
             return vec4<f32>(c.rgb, 1.0);
         }
         let far = textureLoad(colour, fp, 0);
         let edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
         return vec4<f32>(mix(c.rgb, far.rgb * TINT, weight * smoothstep(0.0, 0.08, edge)), 1.0);
     }
-    let uv = to_uv(params.clip_from_world * vec4<f32>(start + r * hit, 1.0));
+    let uv = to_uv(params.clip_from_eye * vec4<f32>(start + r * hit, 1.0));
     let hp = vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size);
     let h = textureLoad(colour, hp, 0);
     // Water in water: nothing to show (the ray went under a wave).
