@@ -5,7 +5,8 @@ builder (tools/theater/build.sh), so exporting the whole master would lose its c
     blender -b assets-src/blend/<file>.blend --python-exit-code 1 --python tools/models/export.py -- /tmp/<file>.glb
     python3 tools/models/splice_model.py <file> <NNN> /tmp/<file>.glb
 
-The model keeps its place in the file (the model viewer's `--model` index).
+The model keeps its place in the file (the model viewer's `--model` index); a model the file
+does not have yet is added in order of its number.
 """
 
 import os
@@ -24,8 +25,9 @@ def main():
     b, bbin = read(fresh)
     name = "%s_%03d" % (stem, number)
     roots = [a["nodes"][r]["name"] for r in a["scenes"][a.get("scene", 0)]["nodes"]]
-    if name not in roots:
-        raise SystemExit("%s: no model %s" % (path, name))
+    added = name not in roots
+    if added:
+        roots = sorted(roots + [name], key=lambda r: int(r.rsplit("_", 1)[1]))
     if not any(n["name"] == name for n in b["nodes"]):
         raise SystemExit("%s: no model %s" % (fresh, name))
     a, abin = subset(a, abin, lambda i: i != number)
@@ -35,7 +37,7 @@ def main():
     scene = out["scenes"][0]["nodes"]
     scene.sort(key=lambda r: roots.index(out["nodes"][r]["name"]))
     write(path, out, blob)
-    print("%s: %s replaced" % (path, name))
+    print("%s: %s %s" % (path, name, "added" if added else "replaced"))
 
 
 main()

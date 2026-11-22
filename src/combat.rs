@@ -205,6 +205,26 @@ pub enum Victim {
 }
 
 /// Object type names of vehicles (small fires); everything else burns like a building.
+/// The world's names, where a tile model's slot names it: the modern SAM models go unnamed in
+/// the theater files (their names would crowd towns out of the name table) and are called by
+/// their target role, like the classic SAM models.
+fn shape_names(w: &stealth_mission::MissionWorld) -> Vec<String> {
+    use stealth_mission::Role;
+    let mut names = w.names.clone();
+    for (n, role) in names.iter_mut().zip(&w.roles) {
+        if n.is_empty() {
+            *n = match role {
+                Some(Role::SamRadar) => "SAM Radar",
+                Some(Role::SamMissile) => "SA Missile",
+                Some(Role::MobileSam) => "Mobile SAM",
+                _ => continue,
+            }
+            .to_string();
+        }
+    }
+    names
+}
+
 fn is_vehicle(name: &str) -> bool {
     let n = name.to_ascii_lowercase();
     ["mobile", "tanks", "boat", "airplane", "ss missile", "scud", "trawler", "trail"]
@@ -465,7 +485,7 @@ fn start_combat(
             .collect(),
         route.anchors(),
     );
-    let names = m.world.names.clone();
+    let names = shape_names(&m.world);
     commands.insert_resource(Combat {
         prior_tiles,
         campaign_events: Vec::new(),

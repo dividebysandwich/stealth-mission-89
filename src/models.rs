@@ -392,10 +392,11 @@ const REAL_SCALE: &[(&str, &[(u16, f32)])] = &[
 ];
 
 /// The red SAM sites' tile models per library (tools/theater/libraries `sa_missile`,
-/// `sam_radar`, `mobile_sam`): their intact vehicles (`_s1v0`) are hot in the FLIR picture like
-/// the units, not just warm like the buildings round them.
+/// `sam_radar`, `mobile_sam`, and Central Europe's SA-15/17/22 models): their intact vehicles
+/// (`_s1v0`) are hot in the FLIR picture like the units, not just warm like the buildings round
+/// them.
 const HOT_TILES: &[(&str, &[u16])] = &[
-    ("central_europe", &[33, 38, 76]),
+    ("central_europe", &[33, 38, 76, 83, 87, 88, 89, 90]),
     ("cuba", &[33, 38]),
     ("desert_storm", &[47, 52]),
     ("korea", &[33, 38]),

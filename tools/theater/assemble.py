@@ -151,6 +151,23 @@ SAM_TYPES = [RADARS.index(r) for r in geo.SAM_RADARS]
 MOBILE_SAM_TYPES = [RADARS.index(r) for r in geo.MOBILE_SAM_RADARS]
 BOAT_TYPES = [RADARS.index(r) for r in geo.BOAT_RADARS]
 OTH_TYPE = RADARS.index("oth")
+# SAM systems with models of their own (when the library has them): the kinds a site of that
+# radar type places instead of the generic radar, fixed site launchers and mobile launchers.
+SITE_KINDS = {
+    "sa17": {"sam_radar": "sa17_radar", "sa_missile": "sa17_launcher", "mobile_sam": "sa17_launcher"},
+    "sa22": {"sam_radar": "sa22_radar", "sa_missile": "sa22_unit", "mobile_sam": "sa22_unit"},
+    "sa15": {"sam_radar": "sa15_radar"},
+}
+
+
+def site_kinds(unit_type):
+    """The kinds a SAM site of radar type `unit_type` places instead of the generic ones."""
+    return {k: v for k, v in SITE_KINDS.get(RADARS[unit_type], {}).items() if K(v) is not None}
+
+
+def radar_shape(unit_type):
+    """The model of a SAM site's radar (its world object)."""
+    return K(site_kinds(unit_type).get("sam_radar", "sam_radar"))
 
 
 def wu(x_m):
@@ -198,14 +215,15 @@ class Layout:
         u = UNIT_WU[lod]
         return (c * 4096 + 2048) * u * geo.WU, (r * 4096 + 2048) * u * geo.WU
 
-    def template(self, name, c1, r1, main=True):
+    def template(self, name, c1, r1, main=True, kinds=None):
         """A LOD1 template in cell (c1, r1); returns the placements by shape. Kinds the
         theater has no model for are left out, and so are the objects that would stand in
-        water (but not the main one if `main`); models of a coarser level go on that level."""
+        water (but not the main one if `main`); models of a coarser level go on that level.
+        `kinds` replaces some of its kinds (a SAM system's own models)."""
         out = []
         cx, cy = self.centre_m(1, c1, r1)
         for k, (dx, dy, kind) in enumerate(TEMPLATES[name]):
-            shape = K(kind)
+            shape = K((kinds or {}).get(kind, kind))
             if shape is None or ((k > 0 or not main) and not self.dry(cx + dx, cy + dy)):
                 continue
             if LEVEL.get(shape, 1) == 1:
@@ -297,8 +315,9 @@ class Layout:
                 if cell is None:
                     print("no room for the SAM site of", name)
                     continue
-                radar = self.template("sam", *cell)[0][1]
-                self.ground_units.append((name, radar, self.rng.choice(SAM_TYPES), 0))
+                ut = self.rng.choice(SAM_TYPES)
+                radar = self.template("sam", *cell, kinds=site_kinds(ut))[0][1]
+                self.ground_units.append((name, radar, ut, 0))
 
         for name, lon, lat, friendly in geo.AIRSTRIPS:
             x, y = geo.ll(lon, lat)
@@ -428,11 +447,12 @@ class Layout:
             if cell is None:
                 print("no room for", kind, name)
                 continue
-            placed = self.template(kind, *cell)
+            # A mobile SAM battery (its radar in the middle): its type, its models.
+            ut = self.rng.choice(MOBILE_SAM_TYPES) if TEMPLATES[kind][0][2] == "sam_radar" else None
+            placed = self.template(kind, *cell, kinds=site_kinds(ut) if ut is not None else None)
             for shape, t in placed:
-                if shape == SAM_RADAR:
-                    # Mobile SAMs: SA-17 (Buk-M2) or SA-15 (Tor-M2).
-                    self.ground_units.append((name, t, self.rng.choice(MOBILE_SAM_TYPES), 0))
+                if ut is not None and shape == radar_shape(ut):
+                    self.ground_units.append((name, t, ut, 0))
                 if shape == OTH:
                     self.ground_units.append((name, t, OTH_TYPE, 0))
 
@@ -564,8 +584,9 @@ class Layout:
                 px, py = x + math.cos(ang) * (t[4] + 4000), y + math.sin(ang) * (t[4] + 4000)
                 cell = self.site_cell(px, py, "sam")
                 if cell:
-                    radar = self.template("sam", *cell)[0][1]
-                    self.ground_units.append((name, radar, self.rng.choice(SAM_TYPES), 0))
+                    ut = self.rng.choice(SAM_TYPES)
+                    radar = self.template("sam", *cell, kinds=site_kinds(ut))[0][1]
+                    self.ground_units.append((name, radar, ut, 0))
                     break
 
     def on_river(self, x, y):
@@ -763,7 +784,8 @@ def flights():
 
 def build_world(lay):
     models = {m["index"]: m for m in LIBRARY["models"]}
-    fixed = {i: m["name"] for i, m in models.items()}
+    # (The modern SAM models go unnamed: their names would crowd towns out of the name table.)
+    fixed = {i: m["name"] for i, m in models.items() if not m.get("unnamed")}
     # The names of the special target models standing in for a target.
     fixed.update({92: "Special Object 1", 93: "Special Object 2"})
     # The Crimean bridge's arches are bridges to strike, like the library's (by role: their
@@ -772,7 +794,8 @@ def build_world(lay):
     names = [""] * 128
     for i, n in fixed.items():
         names[i] = n
-    free = [i for i in range(1, 128) if i not in fixed]
+    # (A shape's slot names it, so the unnamed models' slots stay empty.)
+    free = [i for i in range(1, 128) if i not in models and i not in fixed and i not in arches]
     index = {}
 
     def name_id(n):
@@ -789,7 +812,7 @@ def build_world(lay):
                     object_idx=shape)
 
     for name, t, ut, fl in lay.ground_units:
-        objects.append(obj(name, t, ut, fl, OTH if ut == OTH_TYPE else SAM_RADAR))
+        objects.append(obj(name, t, ut, fl, OTH if ut == OTH_TYPE else radar_shape(ut)))
     for t, ut, shape in lay.boat_units:
         objects.append(obj("", t, ut, 8, shape))
     guc = len(objects)

@@ -24,7 +24,12 @@
   "houses": 26,
   "houses2": 27,
   "land": 0,
-  "sea": 20
+  "sea": 20,
+  "sa17_launcher": 87,
+  "sa17_radar": 88,
+  "sa22_unit": 89,
+  "sa22_radar": 90,
+  "sa15_radar": 83
  },
  "keep": [
   0,
@@ -48,9 +53,14 @@
   73,
   76,
   77,
+  83,
   84,
   85,
   86,
+  87,
+  88,
+  89,
+  90,
   91
  ],
  "models": [
@@ -151,6 +161,13 @@
    "class": 14
   },
   {
+   "index": 83,
+   "name": "SA-15 Battery",
+   "role": "SamRadar",
+   "class": 8,
+   "unnamed": true
+  },
+  {
    "index": 84,
    "name": "Airplane",
    "role": "ParkedAircraft",
@@ -167,6 +184,34 @@
    "name": "SS Missile",
    "role": "SsMissile",
    "class": 7
+  },
+  {
+   "index": 87,
+   "name": "SA-17 Launcher",
+   "role": "SamMissile",
+   "class": 7,
+   "unnamed": true
+  },
+  {
+   "index": 88,
+   "name": "SA-17 Radar",
+   "role": "SamRadar",
+   "class": 8,
+   "unnamed": true
+  },
+  {
+   "index": 89,
+   "name": "SA-22",
+   "role": "SamMissile",
+   "class": 7,
+   "unnamed": true
+  },
+  {
+   "index": 90,
+   "name": "SA-22 Battery",
+   "role": "SamRadar",
+   "class": 8,
+   "unnamed": true
   }
  ]
 }

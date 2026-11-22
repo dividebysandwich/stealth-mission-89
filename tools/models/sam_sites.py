@@ -20,6 +20,12 @@ headquarters and armour). Per family of theaters:
   erected (a contributed model, assets-src/blend/s300_tel.blend); the 64N6 "Big Bird" on its semitrailer (turning) and the 5N63 "Flap Lid" fire control
   radar on its MAZ-543. Central Europe's mobile launcher is the 9K330 Tor (SA-15), search
   antenna turning.
+- The modern systems in Central Europe's library, for the theaters built on it, whose sites
+  pick their models by radar type (tools/theater/assemble.py `SITE_KINDS`): `sa17_launcher`
+  the Buk-M2's 9A317 TELAR, `sa17_radar` its 9S18M1 "Snow Drift" (turning) with the 9S470M1
+  command post; `sa22_unit` the Pantsir-S1 (missiles and twin 30 mm guns, search array
+  turning), `sa22_radar` a Pantsir with the battery's command post; `sa15_radar` a Tor beside
+  its 9S737 Ranzhir command post.
 - The Persian Gulf (Iranian Hawks): the M192 triple launcher with three MIM-23s; the AN/MPQ-50
   pulse acquisition radar (turning), the AN/MPQ-46 illuminator and the battery control van.
 
@@ -722,6 +728,296 @@ def tor_unit(p):
             "lights": {}}
 
 
+def ranzhir(paint, dark):
+    """The 9S737 Ranzhir battery command post: an MT-LBu-like tracked carrier with its shelter,
+    the antenna mast folded up at the rear."""
+    g = tor_hull(paint, dark)
+    g.add(block(-1.45, 1.45, -3.6, 1.6, 1.85, 3.2, paint, taper=0.05, taper_y=0.05))
+    g.add(frustum((0.9, -3.3, 3.2), (0.9, -3.3, 6.4), 0.09, 0.06, STEEL, n=4))
+    g.add(block(0.5, 1.3, -3.7, -2.9, 6.4, 6.6, dark))
+    return g
+
+
+RANZHIR_AT = (12.0, 5.0)
+RANZHIR_HEADING = 210.0
+
+
+def tor_battery(p):
+    """A Tor battery's centre: a TLAR beside the Ranzhir command post."""
+    unit = tor_unit(p)
+    rng = random.Random(737)
+    unit["intact"].add(turned(ranzhir(p.camo, p.camo_dark), RANZHIR_HEADING, (*RANZHIR_AT, 0.0)))
+    unit["destroyed"].add(turned(wreck_of(ranzhir(p.camo, p.camo_dark), tilt=-2.0), RANZHIR_HEADING, (*RANZHIR_AT, 0.0)))
+    unit["destroyed"].add(moved(scorch(4.0, rng), (*RANZHIR_AT, 0.0)))
+    lines = Geo()
+    lines.line((1.6, -1.0, 0.05), (RANZHIR_AT[0] - 1.5, RANZHIR_AT[1] - 1.0, 0.05), CABLE)
+    unit["lines"] = lines
+    mast = turned_point((0.9, -3.3, 6.7), RANZHIR_HEADING, (*RANZHIR_AT, 0.0))
+    unit["lights"] = {RED_LIGHT: [tuple(mast)]}
+    return unit
+
+
+# ------------------------------------------------------------------- 9K317M Buk-M2 (SA-17)
+
+def m317(paint=WHITE):
+    """The 9M317 missile, 5.55 m long, 0.4 m across, tail at y = 0: its long-chord, low wings
+    along the body and the tail controls."""
+    g = frustum((0, 0, 0), (0, 4.5, 0), 0.2, 0.2, paint, n=8)
+    g.add(frustum((0, 4.5, 0), (0, 5.15, 0), 0.2, 0.12, paint, n=8, caps=False))
+    g.add(frustum((0, 5.15, 0), (0, 5.55, 0), 0.12, 0.01, paint, n=8, caps=False))
+    g.add(frustum((0, -0.1, 0), (0, 0.0, 0), 0.14, 0.18, DARK, n=8))
+    g.add(cross_fins(0.2, 0.43, 3.7, 2.5, 3.2, 1.6, paint))
+    g.add(cross_fins(0.2, 0.43, 0.75, 0.75, 0.4, 0.4, paint))
+    return g
+
+
+def buk_hull(paint, dark):
+    """The GM-569 tracked chassis, 9.3 m long and 3.25 m wide over the tracks, nose to +y: the
+    crew cab at the front, the engine at the rear."""
+    g = Geo()
+    prof = [(-4.6, 0.55), (-4.65, 1.8), (3.3, 1.85), (4.7, 1.15), (4.5, 0.55)]
+    g.add(mklib.side_prism(prof, -1.1, 1.1, paint))
+    for sx in (-1, 1):
+        x0, x1 = sorted((sx * 1.1, sx * 1.62))
+        g.add(block(x0, x1, -4.6, 4.3, 1.2, 1.85, paint))
+        g.add(ad.running_gear(sx * 1.37, 0.5, [3.3, 2.1, 0.9, -0.3, -1.5, -2.7], 0.33,
+                              (4.2, 1.0, 0.3), (-4.25, 0.8, 0.3), dark, rollers=(2.7, 0.3, -2.1),
+                              track=TYRE, hub=STEEL))
+    g.add(block(-1.55, 1.55, 1.9, 3.4, 1.85, 2.55, paint, taper=0.06, taper_y=0.15))
+    g.add(cab_glass(-1.4, 1.4, 3.25, 2.0, 2.4))
+    # Exhaust grille at the rear.
+    g.add(block(-0.9, 0.9, -4.5, -3.3, 1.85, 1.95, dark))
+    return g
+
+
+def buk_turret(paint, dark, burnt=False):
+    """The 9A317's turret (origin at its ring): the 9S35M2 fire control radar's array on the
+    front, the launcher with its four missiles raised over it (towards +y)."""
+    g = block(-1.4, 1.4, -1.9, 1.5, 0.0, 0.9, paint, taper=0.1, taper_y=0.08)
+    g.add(block(-0.9, 0.9, -1.6, 0.6, 0.9, 1.25, dark))
+    arr = panel(2.3, 1.7, 0.4, paint, APERTURE, lines=DARK.lo, nx=6, nz=4)
+    g.add(moved(arr.rotated_x(math.radians(12)), (0.0, 1.75, 1.35)))
+    g.add(block(-0.5, 0.5, 1.2, 1.6, 0.9, 1.3, dark))
+    # The launcher: the beam with four rails, on two arms from the turret's back.
+    rails = block(-1.25, 1.25, -1.6, -0.9, -0.2, 0.1, paint)
+    rails.add(block(-1.25, 1.25, 2.4, 3.0, -0.2, 0.1, paint))
+    for x in (-0.99, -0.33, 0.33, 0.99):
+        rails.add(block(x - 0.07, x + 0.07, -1.6, 3.8, 0.1, 0.2, dark))
+        if not burnt:
+            rails.add(moved(m317(), (x, -1.4, 0.42)))
+    el = math.radians(25.0 if not burnt else 4.0)
+    pivot = v3((0.0, -1.5, 1.25))
+    g.add(moved(rails.rotated_x(el), pivot))
+    for sx in (-1, 1):
+        g.add(block(sx * 1.2 - 0.12, sx * 1.2 + 0.12, -1.9, -1.1, 0.4, 1.35, dark))
+    g.add(beam((0, -0.4, 0.9), pivot + v3((0, 1.5 * math.cos(el), 1.5 * math.sin(el) - 0.2)), 0.2, STEEL))
+    return g
+
+
+BUK_TURRET = (0.0, -1.1, 1.85)
+
+
+def buk_launcher(p):
+    """The 9A317 TELAR."""
+    rng = random.Random(317)
+    intact = buk_hull(p.camo, p.camo_dark).add(moved(buk_turret(p.camo, p.camo_dark), BUK_TURRET))
+    wreck = wreck_of(buk_hull(p.camo, p.camo_dark), sink=0.3)
+    wreck.add(moved(buk_turret(p.camo, p.camo_dark, burnt=True).recolour(BURNT).rotated_z(math.radians(20)),
+                    v3(BUK_TURRET) + v3((0.3, -0.2, -0.45))))
+    wreck.add(turned(m317(BURNT), 70, (-3.2, 2.4, 0.25)))
+    wreck.add(turned(m317(BURNT), 160, (2.8, -3.5, 0.25)))
+    wreck.add(scorch(5.5, rng))
+    return {"ground": Geo(), "lines": Geo(), "intact": intact, "destroyed": wreck,
+            "hull": buk_hull(p.camo, p.camo_dark).add(moved(buk_turret(p.camo, p.camo_dark), BUK_TURRET)),
+            "lights": {}}
+
+
+def snow_drift_antenna(p):
+    """The 9S18M1's antenna (origin at the mast's top): a wide truncated reflector facing +y,
+    tilted back, the feed on its arm, the IFF bar on top."""
+    g = frustum((0, 0, -0.3), (0, 0, 0.3), 0.3, 0.25, STEEL, n=6)
+    refl = Geo()
+    n, w, h = 8, 6.2, 2.0
+    for k in range(n):
+        x0, x1 = -w / 2 + w * k / n, -w / 2 + w * (k + 1) / n
+        y0, y1 = 0.5 * (x0 / (w / 2)) ** 2, 0.5 * (x1 / (w / 2)) ** 2
+        refl.face2([(x0, -y0, 0), (x1, -y1, 0), (x1, -y1, h), (x0, -y0, h)], p.camo)
+    refl.add(block(-w / 2, w / 2, -0.7, -0.5, -0.1, 0.1, STEEL))
+    refl = refl.rotated_x(math.radians(-15))
+    g.add(moved(refl, (0, 0.2, 0.2)))
+    g.add(block(-2.0, 2.0, -0.6, -0.35, 2.25, 2.5, p.camo_dark))
+    g.add(beam((0, 0.1, 0.3), (0, 2.0, 1.0), 0.12, STEEL))
+    g.add(block(-0.3, 0.3, 1.85, 2.3, 0.85, 1.25, DARK))
+    return g
+
+
+SNOW_DRIFT_PIVOT = (0.0, -3.0, 4.6)
+
+
+def snow_drift(p):
+    """The 9S18M1 target acquisition radar on its GM-567 chassis: the equipment shelter on the
+    deck and the antenna's mast at the rear."""
+    g = buk_hull(p.camo, p.camo_dark)
+    g.add(block(-1.5, 1.5, -2.0, 1.8, 1.85, 3.4, p.camo, taper=0.05, taper_y=0.05))
+    g.add(frustum((0, -3.0, 1.85), (0, -3.0, 4.3), 0.35, 0.3, p.camo_dark, n=8))
+    for sx in (-1, 1):
+        g.add(beam((sx * 0.9, -3.9, 1.9), (0, -3.0, 3.6), 0.12, STEEL))
+    return g
+
+
+def command_post_470(p):
+    """The 9S470M1 command post: a tall shelter on the GM-579 chassis, whip antennas at the
+    rear."""
+    g = buk_hull(p.camo, p.camo_dark)
+    g.add(block(-1.55, 1.55, -4.3, 1.8, 1.85, 3.7, p.camo, taper=0.05, taper_y=0.05))
+    g.add(block(-0.5, 0.5, -3.5, -2.5, 3.7, 3.95, p.camo_dark))
+    for x in (-1.2, 1.2):
+        g.add(frustum((x, -4.0, 3.7), (x, -4.0, 7.2), 0.05, 0.03, STEEL, n=4))
+    return g
+
+
+CP_AT = (-14.0, -4.0)
+CP_HEADING = 160.0
+
+
+def buk_radar(p):
+    """A Buk battalion's centre: the Snow Drift with its antenna turning, the command post."""
+    rng = random.Random(18)
+    intact = snow_drift(p)
+    intact.add(turned(command_post_470(p), CP_HEADING, (*CP_AT, 0.0)))
+    lines = Geo()
+    lines.line((-1.6, -1.0, 0.05), (CP_AT[0] + 1.5, CP_AT[1] + 1.5, 0.05), CABLE)
+    ant = snow_drift_antenna(p)
+    wreck = wreck_of(snow_drift(p))
+    wreck.add(lying(ant, -60, (-5.0, -6.5, 0.0)))
+    wreck.add(turned(wreck_of(command_post_470(p), tilt=-3.0), CP_HEADING, (*CP_AT, 0.0)))
+    wreck.add(scorch(7.0, rng))
+    cp_top = turned_point((1.2, -4.0, 7.3), CP_HEADING, (*CP_AT, 0.0))
+    return {"ground": Geo(), "lines": lines, "intact": intact, "destroyed": wreck,
+            "parts": [(ant, SNOW_DRIFT_PIVOT, 16)],
+            "hull": snow_drift(p).add(moved(ant, SNOW_DRIFT_PIVOT)),
+            "lights": {RED_LIGHT: [(0.0, -3.4, 7.3), tuple(cp_top)], WHITE_LIGHT: [(-12.5, -4.0, 3.9)]}}
+
+
+# ----------------------------------------------------------------- 96K6 Pantsir-S1 (SA-22)
+
+def kamaz_6560(paint, dark, burnt=False):
+    """The KamAZ-6560 8x8, 11 m long and 2.5 m wide, nose to +y: the cab, the crew module
+    behind it and the flat bed for the combat module at the rear, outrigger jacks down."""
+    g = Geo()
+    tyre = BURNT if burnt else TYRE
+    for y in (3.6, 2.15, -2.2, -3.65):
+        for sx in (-1, 1):
+            g.add(wheel((sx * 1.0, y, 0.62), 0.62, 0.48, tyre, n=8))
+    g.add(block(-0.55, 0.55, -5.5, 5.0, 0.8, 1.25, dark))
+    for sx in (-1, 1):
+        x0, x1 = sorted((sx * 0.7, sx * 1.27))
+        g.add(block(x0, x1, -5.4, 2.9, 1.25, 1.4, dark))
+    g.add(truck_cab(paint, -1.25, 1.25, 3.0, 5.4, 1.25, 3.3, glass=not burnt))
+    g.add(block(-1.25, 1.25, -0.4, 2.9, 1.4, 3.25, paint, taper=0.03, taper_y=0.03))
+    g.add(block(-1.27, 1.27, -5.6, -0.4, 1.4, 1.95, paint))
+    for x, y in ((-1.5, -5.2), (1.5, -5.2), (-1.5, -0.8), (1.5, -0.8)):
+        g.add(jack(x, y, 1.6, STEEL))
+    return g
+
+
+def pantsir_turret(paint, dark, burnt=False):
+    """The combat module (origin at its ring): the turret with the tracking radar's round
+    antenna on its front, on either side a 2A38M twin 30 mm gun under a block of six 57E6
+    missile containers, raised towards +y."""
+    g = block(-1.05, 1.05, -1.5, 1.4, 0.0, 1.5, paint, taper=0.1, taper_y=0.1)
+    g.add(block(-0.8, 0.8, -1.4, 0.2, 1.5, 1.85, dark))
+    g.add(moved(dish(0.6, 0.3, dark, APERTURE).rotated_x(math.radians(8)), (0.0, 1.45, 0.85)))
+    g.add(moved(dish(0.18, 0.1, dark, APERTURE), (0.75, 1.45, 1.25)))
+    el = math.radians(15.0 if not burnt else 2.0)
+    for sx in (-1, 1):
+        side = Geo()
+        # The gun: its receiver and two barrels.
+        side.add(block(-0.22, 0.22, -0.8, 0.9, -0.35, 0.1, dark))
+        for dx in (-0.1, 0.1):
+            side.add(frustum((dx, 0.9, -0.15), (dx, 3.3, -0.15), 0.05, 0.035, STEEL, n=6))
+        # The missiles: six containers, three across and two high.
+        pack = Geo()
+        for i in range(3):
+            for j in range(2):
+                x, z = (i - 1) * 0.25, 0.3 + j * 0.25
+                pack.add(frustum((x, -1.2, z), (x, 2.0, z), 0.12, 0.12, paint, n=6))
+                pack.add(frustum((x, 2.0, z), (x, 2.03, z), 0.1, 0.1, DARK, n=6))
+        side.add(moved(pack, (sx * 0.15, 0.0, 0.05)))
+        g.add(moved(side.rotated_x(el), (sx * 1.45, 0.1, 0.9)))
+        g.add(block(sx * 1.05 - 0.15, sx * 1.05 + 0.15, -0.4, 0.6, 0.6, 1.2, dark))
+    return g
+
+
+def pantsir_search(paint):
+    """The search radar's array on the turret's back (origin at its post's foot), facing +y."""
+    g = frustum((0, 0, 0), (0, 0, 0.5), 0.2, 0.16, STEEL, n=6)
+    a = panel(2.3, 1.2, 0.25, paint, APERTURE, lines=DARK.lo, nx=6, nz=3)
+    g.add(moved(a.rotated_x(math.radians(18)), (0, 0.0, 1.1)))
+    return g
+
+
+PANTSIR_TURRET = (0.0, -3.3, 1.95)
+PANTSIR_SEARCH = (0.0, -0.9, 1.85)
+
+
+def pantsir_unit(p):
+    """The Pantsir-S1 on its KamAZ-6560, the search array turning."""
+    rng = random.Random(96)
+    intact = kamaz_6560(p.camo, p.camo_dark).add(moved(pantsir_turret(p.camo, p.camo_dark), PANTSIR_TURRET))
+    search_at = v3(PANTSIR_TURRET) + v3(PANTSIR_SEARCH)
+    wreck = wreck_of(kamaz_6560(p.camo, p.camo_dark, burnt=True), tilt=2.0, roll=-4.0, sink=0.3)
+    wreck.add(moved(pantsir_turret(p.camo, p.camo_dark, burnt=True).recolour(BURNT).rotated_z(math.radians(30)),
+                    v3(PANTSIR_TURRET) + v3((-0.2, 0.3, -0.4))))
+    wreck.add(lying(pantsir_search(p.camo), 100, (2.9, -6.0, 0.0)))
+    wreck.add(scorch(5.0, rng))
+    return {"ground": Geo(), "lines": Geo(), "intact": intact, "destroyed": wreck,
+            "parts": [(pantsir_search(p.camo), tuple(search_at), 16)],
+            "hull": kamaz_6560(p.camo, p.camo_dark).add(moved(pantsir_turret(p.camo, p.camo_dark), PANTSIR_TURRET))
+            .add(moved(pantsir_search(p.camo), search_at)),
+            "lights": {}}
+
+
+def pantsir_command(p):
+    """The battery command post: a shelter on a KamAZ truck, its mast at the rear."""
+    g = Geo()
+    for y in (2.6, -1.2, -2.6):
+        for sx in (-1, 1):
+            g.add(wheel((sx * 1.0, y, 0.55), 0.55, 0.45, TYRE, n=8))
+    g.add(block(-0.55, 0.55, -3.6, 3.9, 0.7, 1.1, p.camo_dark))
+    g.add(truck_cab(p.camo, -1.25, 1.25, 2.0, 4.3, 1.1, 3.1))
+    g.add(block(-1.25, 1.25, -3.8, 1.8, 1.1, 3.4, p.camo, taper=0.03, taper_y=0.03))
+    g.add(frustum((0, -3.4, 3.4), (0, -3.4, 8.0), 0.1, 0.06, STEEL, n=4))
+    for x, y in ((-2.5, -6.0), (2.5, -6.0), (0.0, -0.5)):
+        g.line((0, -3.4, 7.0), (x, y, 0.05), CABLE)
+    return g
+
+
+PCP_AT = (13.0, 2.0)
+PCP_HEADING = 250.0
+
+
+def pantsir_battery(p):
+    """A Pantsir battery's centre: a Pantsir beside the command post."""
+    unit = pantsir_unit(p)
+    rng = random.Random(97)
+    cp = pantsir_command(p)
+    lines = Geo()
+    for c, segs in cp.lines.items():
+        for a, b in segs:
+            lines.line(turned_point(a, PCP_HEADING, (*PCP_AT, 0.0)), turned_point(b, PCP_HEADING, (*PCP_AT, 0.0)), c)
+    cp.lines = {}
+    unit["intact"].add(turned(cp, PCP_HEADING, (*PCP_AT, 0.0)))
+    burnt = pantsir_command(p)
+    burnt.lines = {}
+    unit["destroyed"].add(turned(wreck_of(burnt, tilt=-2.0), PCP_HEADING, (*PCP_AT, 0.0)))
+    unit["destroyed"].add(moved(scorch(4.5, rng), (*PCP_AT, 0.0)))
+    unit["lines"] = lines
+    mast = turned_point((0.0, -3.4, 8.1), PCP_HEADING, (*PCP_AT, 0.0))
+    unit["lights"] = {RED_LIGHT: [tuple(mast)], WHITE_LIGHT: [tuple(turned_point((1.3, 0.0, 2.9), PCP_HEADING, (*PCP_AT, 0.0)))]}
+    return unit
+
+
 # ----------------------------------------------------------------------------- MIM-23 Hawk
 
 def hawk(paint=WHITE):
@@ -867,9 +1163,9 @@ def last_dot(root):
     return 0xBF
 
 
-def build(name, unit, dists):
+def build(name, unit, dists, dot=None):
     root = bpy.data.objects[name]
-    dot = last_dot(root)
+    dot = dot if dot is not None else last_dot(root)
     for c in list(root.children):
         mklib.delete_tree(c)
     ground = unit["ground"].scaled(K)
@@ -921,12 +1217,21 @@ def build(name, unit, dists):
 # Switch distances (world units) of the detailed level, its copy and the dot; the radar sites
 # keep their copy longer (the classic libraries had some launchers with odd or single levels).
 DISTS = {"sa_missile": (1024, 2048, 32769), "sam_radar": (1024, 4096, 32769), "mobile_sam": (1024, 2048, 32769)}
+# The modern systems' models (Central Europe's library, for Ukraine, Suwalki and the Gulf of
+# Finland, whose sites pick them by their radar type in tools/theater/assemble.py): built into
+# unused roots of the master, which get the attributes of a SAM model with its own wreck
+# (0x20) and the dot of the classic kind they stand in for.
+MODERN = {"sa17_launcher": "sa_missile", "sa17_radar": "sam_radar", "sa22_unit": "sa_missile",
+          "sa22_radar": "sam_radar", "sa15_radar": "sam_radar"}
+MODERN_ATTR = 0xA3
+DISTS.update({k: DISTS[v] for k, v in MODERN.items()})
 
 SA2 = {"sa_missile": sa2_launcher, "sam_radar": fan_song_site}
 S300 = {"sa_missile": s300_launcher, "sam_radar": s300_radar}
 HAWK = {"sa_missile": hawk_launcher, "sam_radar": hawk_radar}
 THEATERS = {
-    "central_europe": (FOREST, dict(S300, mobile_sam=tor_unit)),
+    "central_europe": (FOREST, dict(S300, mobile_sam=tor_unit, sa17_launcher=buk_launcher, sa17_radar=buk_radar,
+                                    sa22_unit=pantsir_unit, sa22_radar=pantsir_battery, sa15_radar=tor_battery)),
     "north_cape": (FOREST, S300),
     "cuba": (FOREST, SA2),
     "korea": (FOREST, SA2),
@@ -939,10 +1244,13 @@ THEATERS = {
 
 
 def models(theater):
-    """{root name: (builder, switch distances)} of a theater's SAM models."""
+    """{root name: (builder, switch distances, the root standing in for its dot and attributes
+    or None)} of a theater's SAM models."""
     paints, kinds = THEATERS[theater]
     lib = json.load(open(os.path.join(ROOT, "tools", "theater", "libraries", f"{theater}.json")))["kinds"]
-    return {f"{theater}_{lib[kind]:03d}": ((lambda f=f: f(paints)), DISTS[kind]) for kind, f in kinds.items()}
+    return {f"{theater}_{lib[kind]:03d}": ((lambda f=f: f(paints)), DISTS[kind],
+                                           f"{theater}_{lib[MODERN[kind]]:03d}" if kind in MODERN else None)
+            for kind, f in kinds.items()}
 
 
 def main():
@@ -952,8 +1260,13 @@ def main():
             continue
         mklib.load_palette(os.path.join(ROOT, "assets", "palettes", f"tod_{theater}.ron"))
         bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, "assets-src", "blend", f"{theater}.blend"))
-        for name, (unit, dists) in models(theater).items():
-            build(name, unit(), dists)
+        for name, (unit, dists, like) in models(theater).items():
+            dot = None
+            if like:
+                root = bpy.data.objects[name]
+                root["attr"] = MODERN_ATTR
+                dot = last_dot(bpy.data.objects[like])
+            build(name, unit(), dists, dot)
         bpy.ops.wm.save_mainfile()
 
 
