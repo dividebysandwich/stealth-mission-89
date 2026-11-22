@@ -208,7 +208,8 @@ struct VertexOutput {
     // dot; bit 3: the hills' ground; bit 4: lit as flat ground; bit 5: hot (a unit, a fire or a
     // dot light: white in the FLIR picture); bits 6 and 7: a field's crop rows run along x or
     // along z (the ground detail's furrows); bit 8: the scenery's ground (`WORD_GROUND`); bit 9:
-    // a wall with windows (`WORD_WINDOWS`); bits 16..26: its direction (`WORD_WALL_ANGLE`).
+    // a wall with windows (`WORD_WINDOWS`; with bit 6 a house's few); bits 16..26: its direction
+    // (`WORD_WALL_ANGLE`).
     @location(7) @interpolate(flat) warm: u32,
 #ifdef DOT_COLOUR
     @location(8) @interpolate(flat) dot_colour: u32,
@@ -2208,16 +2209,20 @@ struct Deriv {
 // Lit windows on the buildings' walls at night (`PALETTE_CITY`, `WORD_WINDOWS`): a grid of
 // storeys and bays, each window lit or dark by a hash of its cell (a share that varies over
 // the walls), warm or cool; where the cells are only a pixel or two the wall glows with their
-// average instead of shimmering.
+// average instead of shimmering. Houses (warm bit 6 with the windows' bit 9: `WORD_FURROW_X`)
+// have fewer, smaller ones, apart.
 const WIN_STOREY: f32 = 3.0;
 const WIN_BAY: f32 = 3.2;
+const WIN_HOUSE_BAY: f32 = 4.8;
 // Half the window's width and height in its cell, and its centre's height in the storey.
 const WIN_HALF: vec2<f32> = vec2<f32>(0.4, 0.33);
+const WIN_HOUSE_HALF: vec2<f32> = vec2<f32>(0.17, 0.25);
 // Bays lit together.
 const WIN_RUN: f32 = 4.0;
 const WIN_SILL: f32 = 0.5;
 // Lit share of the windows: between these by patches of the walls.
 const WIN_LIT: vec2<f32> = vec2<f32>(0.2, 0.65);
+const WIN_HOUSE_LIT: vec2<f32> = vec2<f32>(0.1, 0.45);
 // Patches (cells) and the walls' bins along their normal (metres) of the lit share.
 const WIN_PATCH: f32 = 5.0;
 const WIN_WALL_BIN: f32 = 40.0;
@@ -2234,25 +2239,29 @@ const WIN_FAR: f32 = 0.12;
 // that scrambled the windows).
 const WALL_ANGLES: f32 = 2048.0;
 
-fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32) -> vec3<f32> {
+fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32, few: bool) -> vec3<f32> {
     let face = deriv.face;
     if (abs(normalize(face).y) > 0.3) {
         return vec3<f32>(0.0);
     }
+    let bay = select(WIN_BAY, WIN_HOUSE_BAY, few);
+    let half = select(WIN_HALF, WIN_HOUSE_HALF, few);
+    let lit_share = select(WIN_LIT, WIN_HOUSE_LIT, few);
+    let run_bays = select(WIN_RUN, 1.0, few);
     let p = world + globals.city_origin.xyz;
     let a = f32(angle) / WALL_ANGLES * 6.2831853;
     let nh = vec2<f32>(cos(a), sin(a));
     let t = vec2<f32>(-nh.y, nh.x);
-    let cell = vec2<f32>(dot(p.xz, t) / WIN_BAY, p.y / WIN_STOREY);
+    let cell = vec2<f32>(dot(p.xz, t) / bay, p.y / WIN_STOREY);
     let ci = vec2<i32>(floor(cell));
     // Walls of one facing apart: by their distance along the normal.
     let wall = u32(i32(floor(dot(p.xz, nh) / WIN_WALL_BIN)) + 0x4000) * 4u + u32(dot(nh, vec2<f32>(1.0, 2.0)) + 3.0);
     let quarter = vec2<i32>(floor(cell / WIN_PATCH));
-    let share = mix(WIN_LIT.x, WIN_LIT.y, value_hash(quarter.x, quarter.y, wall ^ 0x51u));
+    let share = mix(lit_share.x, lit_share.y, value_hash(quarter.x, quarter.y, wall ^ 0x51u));
     // Lit in runs (an office, a flat) of a few bays sharing their light, staggered storey by
     // storey, not window by window.
-    let stagger = i32(value_hash(0, ci.y, wall ^ 0x3Cu) * WIN_RUN);
-    let run = i32(floor(f32(ci.x + stagger) / WIN_RUN));
+    let stagger = i32(value_hash(0, ci.y, wall ^ 0x3Cu) * run_bays);
+    let run = i32(floor(f32(ci.x + stagger) / run_bays));
     let h = value_hash(run, ci.y, wall);
     let h2 = value_hash(ci.y, run, wall ^ 0xA7u);
     let lit = select(0.0, 1.0, h < share);
@@ -2260,18 +2269,18 @@ fn city_windows(world: vec3<f32>, deriv: Deriv, angle: u32) -> vec3<f32> {
     // The window's rectangle in its cell, its edges smoothed over a pixel. fwidth(cell) from
     // the fragment's own derivatives (none here: this runs in non-uniform control flow, which
     // the browser's WebGPU refuses).
-    let cell_dx = vec2<f32>(dot(deriv.world_dx.xz, t) / WIN_BAY, deriv.world_dx.y / WIN_STOREY);
-    let cell_dy = vec2<f32>(dot(deriv.world_dy.xz, t) / WIN_BAY, deriv.world_dy.y / WIN_STOREY);
+    let cell_dx = vec2<f32>(dot(deriv.world_dx.xz, t) / bay, deriv.world_dx.y / WIN_STOREY);
+    let cell_dy = vec2<f32>(dot(deriv.world_dy.xz, t) / bay, deriv.world_dy.y / WIN_STOREY);
     let aa = max(abs(cell_dx) + abs(cell_dy), vec2<f32>(1e-4));
     let off = abs(fract(cell) - vec2<f32>(0.5, WIN_SILL));
     // Each axis averaged on its own where its cells are under a pixel or two: a wall seen
     // edge on keeps its storeys' bands.
     let k = smoothstep(vec2<f32>(0.6), vec2<f32>(1.5), aa);
     let inside = vec2<f32>(
-        1.0 - smoothstep(WIN_HALF.x - aa.x, WIN_HALF.x + aa.x, off.x),
-        1.0 - smoothstep(WIN_HALF.y - aa.y, WIN_HALF.y + aa.y, off.y),
+        1.0 - smoothstep(half.x - aa.x, half.x + aa.x, off.x),
+        1.0 - smoothstep(half.y - aa.y, half.y + aa.y, off.y),
     );
-    let cover = mix(inside, 2.0 * WIN_HALF, k);
+    let cover = mix(inside, 2.0 * half, k);
     let far = max(k.x, k.y);
     let light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
     return cover.x * cover.y * light * WIN_GLOW;
@@ -2602,7 +2611,8 @@ fn shade_fragment(in: VertexOutput, deriv: Deriv) -> vec4<f32> {
 #endif
 #ifdef PALETTE_CITY
     if (!is_line && (in.warm & 512u) != 0u && globals.city.x > 0.0 && !recon_view()) {
-        rgb += city_windows(in.world_position, deriv, (in.warm >> 16u) & 0x7FFu) * globals.city.x;
+        let few = (in.warm & 64u) != 0u;
+        rgb += city_windows(in.world_position, deriv, (in.warm >> 16u) & 0x7FFu, few) * globals.city.x;
     }
 #endif
 #ifdef PALETTE_WATER

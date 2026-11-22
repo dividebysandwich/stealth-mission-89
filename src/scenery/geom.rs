@@ -36,6 +36,9 @@ pub const FURROW_Z: u16 = 0x200;
 pub const GROUND: u16 = 0x400;
 /// A building's wall with windows (`palette_material::WORD_WINDOWS`), lit at night.
 pub const WINDOWS: u16 = 0x800;
+/// With `WINDOWS`: a house's walls, fewer and smaller windows, apart (`FURROW_X`'s bit, as
+/// walls have no furrows: `palette_material::WORD_FURROW_X` in the colour word).
+pub const FEW_WINDOWS: u16 = FURROW_X;
 
 /// A window wall's outward direction in a solid key's bits 16.. (`WALL_ANGLES` steps of the
 /// angle from Bevy x towards z): the shader lays the windows along it, exactly (its own
@@ -138,6 +141,11 @@ impl Geom {
     /// Walls with windows lit at night (`WINDOWS`).
     pub fn window_walls(&mut self, c: u8, foot: &[Vec3], y0: f32, y1: f32) {
         self.walls_bits(c, WINDOWS, foot, y0, y1);
+    }
+
+    /// A house's walls: a few windows (`FEW_WINDOWS`).
+    pub fn house_walls(&mut self, c: u8, foot: &[Vec3], y0: f32, y1: f32) {
+        self.walls_bits(c, WINDOWS | FEW_WINDOWS, foot, y0, y1);
     }
 
     fn walls_bits(&mut self, c: u8, bits: u16, foot: &[Vec3], y0: f32, y1: f32) {

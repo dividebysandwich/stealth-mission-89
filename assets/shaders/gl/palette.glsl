@@ -181,7 +181,8 @@ flat out float v_fog_f;
 // Bit 0: warm object or dot light (FLIR); bit 1: aircraft; bit 2: spotting dot; bit 3: the
 // hills' ground; bit 4: lit as flat ground (the hills' skirts); bit 5: hot (FLIR: a unit, a
 // fire or a dot light); bits 6 and 7: a field's crop rows run along x or along z (DETAIL); bit
-// 8: the scenery's ground (WORD_GROUND); bit 9: a wall with windows (WORD_WINDOWS).
+// 8: the scenery's ground (WORD_GROUND); bit 9: a wall with windows (WORD_WINDOWS; with bit 6
+// a house's few).
 flat out uint v_warm;
 #ifdef CLOUD
 // Smoke volumes, in the plume's local space (unit radius, y 0..1): position (w: noise offset),
@@ -1649,10 +1650,13 @@ vec3 glow_colour(uint word, vec3 palette) {
 // palette.wgsl `city_windows`.
 const float WIN_STOREY = 3.0;
 const float WIN_BAY = 3.2;
+const float WIN_HOUSE_BAY = 4.8;
 const vec2 WIN_HALF = vec2(0.4, 0.33);
+const vec2 WIN_HOUSE_HALF = vec2(0.17, 0.25);
 const float WIN_RUN = 4.0;
 const float WIN_SILL = 0.5;
 const vec2 WIN_LIT = vec2(0.2, 0.65);
+const vec2 WIN_HOUSE_LIT = vec2(0.1, 0.45);
 const float WIN_PATCH = 5.0;
 const float WIN_WALL_BIN = 40.0;
 const vec3 WIN_WARM = vec3(1.0, 0.62, 0.28);
@@ -1663,21 +1667,25 @@ const float WIN_FAR = 0.12;
 
 const float WALL_ANGLES = 2048.0;
 
-vec3 city_windows(vec3 world, vec3 face, uint angle) {
+vec3 city_windows(vec3 world, vec3 face, uint angle, bool few) {
     if (abs(normalize(face).y) > 0.3) {
         return vec3(0.0);
     }
+    float bay = few ? WIN_HOUSE_BAY : WIN_BAY;
+    vec2 hw = few ? WIN_HOUSE_HALF : WIN_HALF;
+    vec2 lit_share = few ? WIN_HOUSE_LIT : WIN_LIT;
+    float run_bays = few ? 1.0 : WIN_RUN;
     vec3 p = world + g.city_origin.xyz;
     float a = float(angle) / WALL_ANGLES * 6.2831853;
     vec2 nh = vec2(cos(a), sin(a));
     vec2 t = vec2(-nh.y, nh.x);
-    vec2 cell = vec2(dot(p.xz, t) / WIN_BAY, p.y / WIN_STOREY);
+    vec2 cell = vec2(dot(p.xz, t) / bay, p.y / WIN_STOREY);
     ivec2 ci = ivec2(floor(cell));
     uint wall = uint(int(floor(dot(p.xz, nh) / WIN_WALL_BIN)) + 0x4000) * 4u + uint(dot(nh, vec2(1.0, 2.0)) + 3.0);
     ivec2 patch_ = ivec2(floor(cell / WIN_PATCH));
-    float share = mix(WIN_LIT.x, WIN_LIT.y, value_hash(patch_.x, patch_.y, wall ^ 0x51u));
-    int stagger = int(value_hash(0, ci.y, wall ^ 0x3Cu) * WIN_RUN);
-    int run = int(floor(float(ci.x + stagger) / WIN_RUN));
+    float share = mix(lit_share.x, lit_share.y, value_hash(patch_.x, patch_.y, wall ^ 0x51u));
+    int stagger = int(value_hash(0, ci.y, wall ^ 0x3Cu) * run_bays);
+    int run = int(floor(float(ci.x + stagger) / run_bays));
     float h = value_hash(run, ci.y, wall);
     float h2 = value_hash(ci.y, run, wall ^ 0xA7u);
     float lit = h < share ? 1.0 : 0.0;
@@ -1686,9 +1694,9 @@ vec3 city_windows(vec3 world, vec3 face, uint angle) {
     vec2 off = abs(fract(cell) - vec2(0.5, WIN_SILL));
     vec2 k = smoothstep(vec2(0.6), vec2(1.5), aa);
     vec2 inside = vec2(
-        1.0 - smoothstep(WIN_HALF.x - aa.x, WIN_HALF.x + aa.x, off.x),
-        1.0 - smoothstep(WIN_HALF.y - aa.y, WIN_HALF.y + aa.y, off.y));
-    vec2 cover = mix(inside, 2.0 * WIN_HALF, k);
+        1.0 - smoothstep(hw.x - aa.x, hw.x + aa.x, off.x),
+        1.0 - smoothstep(hw.y - aa.y, hw.y + aa.y, off.y));
+    vec2 cover = mix(inside, 2.0 * hw, k);
     float far = max(k.x, k.y);
     vec3 light = mix(lit * tint, share * mix(WIN_WARM, WIN_COOL, WIN_COOL_SHARE) * 0.75 * WIN_FAR, far);
     return cover.x * cover.y * light * WIN_GLOW;
@@ -1883,7 +1891,7 @@ vec4 shade_fragment(vec3 face, float sky_px, float foot, vec2 gdx, vec2 gdy) {
 #endif
 #ifndef DOT
     if (!is_line && (v_warm & 512u) != 0u && g.city.x > 0.0 && !recon_view()) {
-        rgb += city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu) * g.city.x;
+        rgb += city_windows(v_world, face, (v_warm >> 16u) & 0x7FFu, (v_warm & 64u) != 0u) * g.city.x;
     }
 #endif
     float dl = length(dir);

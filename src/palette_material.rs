@@ -752,7 +752,8 @@ pub const TAG_DOT_FAR: u32 = 1 << 31;
 /// `TAG_DOT_SPOT` or `TAG_DOT`.
 pub const TAG_HILLS: u32 = 1 << 16;
 /// Bits of a per-vertex colour word: a field's crop rows run east-west (`WORD_FURROW_X`) or
-/// north-south (`WORD_FURROW_Z`), for the ground detail (`scenery::geom::FURROW_X`).
+/// north-south (`WORD_FURROW_Z`), for the ground detail (`scenery::geom::FURROW_X`). With
+/// `WORD_WINDOWS`, `WORD_FURROW_X` marks a house's few windows (`scenery::geom::FEW_WINDOWS`).
 pub const WORD_FURROW_X: u32 = 1 << 17;
 pub const WORD_FURROW_Z: u32 = 1 << 18;
 /// Bit of a per-vertex colour word: the scenery's ground (laid on the hills too), which takes

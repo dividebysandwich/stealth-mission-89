@@ -978,11 +978,7 @@ fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     let foot = rect(c, d, b.l, b.w);
     match b.kind {
         Kind::House | Kind::Apartment | Kind::Shed | Kind::Barn | Kind::Church | Kind::Tower => {
-            if lit_walls(b) {
-                g.window_walls(wall_colour(b), &foot, 0.0, b.h);
-            } else {
-                g.walls(wall_colour(b), &foot, 0.0, b.h);
-            }
+            walls(b, wall_colour(b), &foot, g);
             let rise = match b.kind {
                 Kind::Shed => b.w * 0.18,
                 Kind::Church => b.w * 0.6,
@@ -1093,10 +1089,21 @@ fn building_mesh(b: &Building, f: &Frame, g: &mut Geom) {
     }
 }
 
-/// Buildings whose walls show lit windows at night (`geom::WINDOWS`): the blocks of flats and
-/// the towers, several storeys of rooms.
+/// Buildings whose walls show rows of windows (`geom::WINDOWS`): the blocks of flats and the
+/// towers, several storeys of rooms.
 fn lit_walls(b: &Building) -> bool {
     matches!(b.kind, Kind::Apartment | Kind::Tower) && b.h >= 6.0
+}
+
+/// A building's walls: with windows (`lit_walls`), a house's few windows, or plain.
+fn walls(b: &Building, c: u8, foot: &[Vec3], g: &mut Geom) {
+    if lit_walls(b) {
+        g.window_walls(c, foot, 0.0, b.h);
+    } else if b.kind == Kind::House {
+        g.house_walls(c, foot, 0.0, b.h);
+    } else {
+        g.walls(c, foot, 0.0, b.h);
+    }
 }
 
 /// Houses, sheds and barns: the town tier thins them first.
@@ -1116,8 +1123,8 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                 return;
             }
             match b.roof {
-                Roof::Flat if lit_walls(b) => {
-                    g.window_walls(wall_colour(b), &foot, 0.0, b.h);
+                Roof::Flat if lit_walls(b) || b.kind == Kind::House => {
+                    walls(b, wall_colour(b), &foot, g);
                     g.cap(b.roof_colour, &foot, b.h);
                 }
                 Roof::Flat => g.block(wall_colour(b), b.roof_colour, &foot, 0.0, b.h),
@@ -1127,11 +1134,7 @@ fn low_building(b: &Building, f: &Frame, g: &mut Geom) {
                         Kind::Church => b.w * 0.6,
                         _ => b.w * 0.42,
                     };
-                    if lit_walls(b) {
-                        g.window_walls(b.wall, &foot, 0.0, b.h);
-                    } else {
-                        g.walls(b.wall, &foot, 0.0, b.h);
-                    }
+                    walls(b, b.wall, &foot, g);
                     g.gable(b.wall, b.roof_colour, &foot, b.h, rise);
                 }
             }
