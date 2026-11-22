@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use stealth_campaign::weather::Forecast;
 use stealth_campaign::{
     AiAirframe, Aircraft, CampaignEvent, CampaignSetup, CampaignState, Command, DefenceKind,
-    DefenceStock, FighterTask, Objective, PlaceId, PlayerId, Report, RoutePoint, Side, Sortie,
-    SortieEnd, SortieRecord,
+    DefenceStock, FighterTask, LeftCargo, Objective, PlaceId, PlayerId, Report, RoutePoint, Side,
+    Sortie, SortieEnd, SortieRecord,
 };
 use stealth_i18n::{Text, text};
 use stealth_mission::{GameData, Mission};
@@ -1024,6 +1024,22 @@ impl Host {
                     let task = glue::ai_task(*target);
                     sim.hand_over(player.0, *tag, spec, task, *from as usize, *home, true);
                     sim.set_cas_units(*tag, &glue::cas_units(&self.state, *tag));
+                }
+                CampaignEvent::CargoLeft { player, tag, aircraft, from, cargo, hooked } => {
+                    let from = *from as usize;
+                    let (pickup, drop, unit) = match *cargo {
+                        LeftCargo::Site { id, x, y, .. } => {
+                            let (pickup, drop) =
+                                crate::cargo::cargo_run(sim, &self.state, id, *tag, x, y);
+                            (pickup, drop, stealth_sim::supply::NO_UNIT)
+                        }
+                        LeftCargo::Resupply { aaa } => {
+                            (None, sim.supply_drop(from, aaa as usize), aaa as u16)
+                        }
+                    };
+                    let pickup = pickup.filter(|_| !*hooked);
+                    let spec = glue::ai_spec(*aircraft);
+                    sim.hand_over_supply(player.0, *tag, spec, from, unit, pickup, drop, *hooked);
                 }
                 CampaignEvent::SupplyLaunched { from, aaa, tag, .. } => {
                     let (at, _) = crate::cargo::supply_crate(sim, *from as usize, *tag);

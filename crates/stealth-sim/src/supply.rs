@@ -110,13 +110,66 @@ impl Sim {
         pickup: Option<(i32, i32)>,
         tag: u32,
     ) -> usize {
+        let drop = self.supply_drop(from, unit);
+        self.launch_supply(from, unit as u16, pickup, drop, tag, true)
+    }
+
+    /// Where a resupply helicopter from base `from` hovers for its drop at AAA unit `unit`
+    /// (world units): beside the unit, on its way in from the base's helipad.
+    pub fn supply_drop(&self, from: usize, unit: usize) -> (i32, i32) {
         let pad = self.helipad(from);
         let at = self.units.get(unit).map_or(pad, unit_centre);
-        // It hovers beside the unit, on its way in.
         let (dx, dy) = ((pad.0 - at.0) as f64, (pad.1 - at.1) as f64);
         let d = dx.hypot(dy).max(1.0);
-        let drop = (at.0 + (dx / d * STANDOFF) as i32, at.1 + (dy / d * STANDOFF) as i32);
-        self.launch_supply(from, unit as u16, pickup, drop, tag, true)
+        (at.0 + (dx / d * STANDOFF) as i32, at.1 + (dy / d * STANDOFF) as i32)
+    }
+
+    /// Campaign: pilot `id` in the air leaves his helicopter (AI type `spec`) to the AI on a
+    /// cargo or resupply run: from where it is it flies on as cargo helicopter `tag` (home base
+    /// `from`) to the crate at `pickup` (None: the load is aboard, or `hooked` under it), sets
+    /// the load down at `drop` for AAA unit `unit` (`NO_UNIT`: a new site's helipad) and flies
+    /// home. His sortie ends ([`OUTCOME_HANDED_OVER`]). False: he is not
+    /// in the air.
+    #[allow(clippy::too_many_arguments)]
+    pub fn hand_over_supply(
+        &mut self,
+        id: u8,
+        tag: u32,
+        spec: i32,
+        from: usize,
+        unit: u16,
+        pickup: Option<(i32, i32)>,
+        drop: (i32, i32),
+        hooked: bool,
+    ) -> bool {
+        if !self.opts.campaign || !self.pilot_in_the_air(id) {
+            return false;
+        }
+        let p = self.pilot_input(id);
+        let i = self.supply_flight(from, unit, pickup, drop, tag, true);
+        let speed = (p.velocity as f64 / 27.0 * crate::ai_missions::KNOT
+            / crate::campaign::M_PER_WU)
+            .round() as i32;
+        let u = &mut self.flights[i];
+        u.spec = spec;
+        u.wx = p.x;
+        u.wy = 0x10_0000 - p.y;
+        u.x = (u.wx >> 5) & 0xFFFF;
+        u.y = (u.wy >> 5) & 0xFFFF;
+        // The AI flies at viewZ, the pilot at the true altitude.
+        u.alt = crate::math::view_z(p.altitude).max(1);
+        u.heading = s16(p.heading as i32);
+        u.pitch = s16(p.pitch as i32);
+        u.bank = s16(p.roll as i32);
+        u.speed = speed.max(1);
+        u.flags = fflags::EXISTS | fflags::AIRBORNE;
+        if let Some(Some(f)) = self.campaign.as_mut().and_then(|c| c.flights.get_mut(i))
+            && let Some(run) = f.supply.as_mut()
+        {
+            run.hooked = hooked && pickup.is_none();
+        }
+        self.end_sortie_pilot(id, OUTCOME_HANDED_OVER);
+        true
     }
 
     /// Campaign: a friendly UH-60 lifts off from the helipad of base `from` to sling the crate
@@ -149,6 +202,22 @@ impl Sim {
     /// A resupply or cargo helicopter off the pad of base `from`, by its crate at `pickup`,
     /// towards its drop (world units) for AAA unit `unit` (`NO_UNIT`: a helipad).
     fn launch_supply(
+        &mut self,
+        from: usize,
+        unit: u16,
+        pickup: Option<(i32, i32)>,
+        drop: (i32, i32),
+        tag: u32,
+        blue: bool,
+    ) -> usize {
+        let i = self.supply_flight(from, unit, pickup, drop, tag, blue);
+        self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
+        i
+    }
+
+    /// A resupply or cargo helicopter on the pad of base `from`, about to lift off (see
+    /// [`Sim::launch_supply`]).
+    fn supply_flight(
         &mut self,
         from: usize,
         unit: u16,
@@ -217,7 +286,6 @@ impl Sim {
             missile: None,
             salvo: None,
         });
-        self.emit(SimEvent::AircraftTakeoff { unit: i, base: from });
         i
     }
 

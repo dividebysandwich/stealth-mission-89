@@ -687,6 +687,120 @@ fn an_ai_helicopter_supplies_a_designated_gepard_site() {
     }));
 }
 
+/// A player hooks the crate for a new Gepard site under his UH-60 and leaves the helicopter to
+/// the AI on the way: it flies on from where it is with the crate still slung, sets it down by
+/// the site's helipad and the site is built (it neither turns home nor loses the crate).
+#[test]
+fn a_helicopter_left_to_the_ai_delivers_its_slung_crate() {
+    use stealth_campaign::{
+        CampaignEvent, CrateState, DefenceKind, LeftCargo, MissionKind, Objective, Side,
+    };
+    let code = "central_europe";
+    let s = setup(code);
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, code).unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 0.1, &[]);
+    let me = PlayerId(0);
+    let aaa = stealth_host::glue::world_view(&sim).units;
+    let base = host
+        .state
+        .places
+        .iter()
+        .find(|p| p.owner == Side::Blue && p.airfield.is_some())
+        .map(|p| (p.x, p.y))
+        .unwrap();
+    // A few kilometres out, so the hand-over happens on the way.
+    let (x, y) = (60..200)
+        .flat_map(|r| (0..16).map(move |k| (r, k)))
+        .map(|(r, k)| {
+            let t = k as f64 / 16.0 * std::f64::consts::TAU;
+            (
+                base.0 + (t.cos() * r as f64 * 32.0) as i32,
+                base.1 + (t.sin() * r as f64 * 32.0) as i32,
+            )
+        })
+        .find(|&(x, y)| host.state.deploy_refusal(x, y, DefenceKind::Gepard, &aaa).is_none())
+        .expect("a free spot");
+    host.designate_site(&mut sim, me, x, y, DefenceKind::Gepard).unwrap();
+    host.state.board_at = f64::MIN;
+    host.tick(&mut sim, 0.1, &[]);
+    let offer = host
+        .state
+        .board
+        .iter()
+        .find(|o| o.kind == MissionKind::Logistics)
+        .cloned()
+        .expect("a cargo offer");
+    let Objective::Logistics { site, leg } = offer.objective else { panic!() };
+    let ev = host.take_mission(&mut sim, me, offer.id, None, Aircraft::UH60, None).unwrap();
+    let mut st = ev
+        .iter()
+        .find_map(|e| match e {
+            HostEvent::SortieStarted { start, .. } => Some(start.clone()),
+            _ => None,
+        })
+        .expect("sortie started");
+    // In the air over its base, with the crate hooked.
+    st.altitude = 300;
+    st.on_ground = false;
+    st.gear_up = true;
+    st.velocity = 40 * 27;
+    for _ in 0..30 {
+        let ev = sim.step_pilots(&[(me.0, st.clone())], 15);
+        host.tick(&mut sim, 1.0 / 15.0, &ev);
+    }
+    host.hook_crate(&mut sim, me, site, leg).unwrap();
+    assert_eq!(host.state.deployment(site).unwrap().crate_state(leg), CrateState::Carried(me));
+    let out = host.leave_aircraft(&mut sim, me).unwrap();
+    let tag = out
+        .iter()
+        .find_map(|e| match e {
+            HostEvent::Campaign(CampaignEvent::CargoLeft { tag, cargo, hooked, .. }) => {
+                assert!(
+                    matches!(cargo, LeftCargo::Site { id, leg: l, .. } if *id == site && *l == leg)
+                );
+                assert!(*hooked);
+                Some(*tag)
+            }
+            _ => None,
+        })
+        .expect("left as a cargo run");
+    assert!(host.state.sortie(me).is_none());
+    let i = (0..sim.flights().len())
+        .find(|&i| sim.campaign_flight(i).is_some_and(|f| f.tag == tag))
+        .expect("its helicopter");
+    let run = sim.campaign_flight(i).and_then(|f| f.supply).expect("a cargo run");
+    assert!(run.hooked && run.pickup.is_none() && !run.delivered);
+    let at = (sim.flights()[i].wx, sim.flights()[i].wy);
+    assert_eq!(at, (st.x, 0x10_0000 - st.y), "from where he left it");
+    let d = host.state.deployment(site).unwrap();
+    assert!(d.ai.contains(&(leg, tag)) && !d.crate_waiting(leg));
+    let mut built = false;
+    for _ in 0..15 * 1200 {
+        let ev = sim.step_pilots(&[], 15);
+        let mut ev2 = host.take_sim_events(&mut sim);
+        ev2.extend(ev);
+        for e in host.tick(&mut sim, 1.0 / 15.0, &ev2) {
+            match e {
+                HostEvent::Campaign(CampaignEvent::SiteBuilt { id, .. }) if id == site => {
+                    built = true
+                }
+                HostEvent::Campaign(CampaignEvent::CargoLaunched { .. }) => {
+                    panic!("its crate went back to the base")
+                }
+                _ => {}
+            }
+        }
+        if built {
+            break;
+        }
+    }
+    assert!(built, "{:?}", host.state.deployment(site));
+}
+
 /// A player designates a NASAMS site and fast-tracks it: its Sentinel radar and three
 /// launchers of six AIM-120s stand by the helipad, mannable, with their stockpile; a loaded
 /// save has them again, stockpile and all.

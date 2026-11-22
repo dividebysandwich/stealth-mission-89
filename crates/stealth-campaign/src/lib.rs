@@ -539,6 +539,26 @@ pub enum CampaignEvent {
         target: AiTarget,
         home: bool,
     },
+    /// A player left his helicopter to the AI on a cargo or resupply run: it is the cargo
+    /// helicopter `tag` from now on (home base `from`), carrying `cargo` on from where it is
+    /// (`hooked`: the crate hangs under it; else it fetches it first, or has the load aboard).
+    CargoLeft {
+        player: PlayerId,
+        tag: u32,
+        aircraft: Aircraft,
+        from: ObjectId,
+        cargo: LeftCargo,
+        hooked: bool,
+    },
+}
+
+/// What a helicopter handed to the AI goes on to deliver.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum LeftCargo {
+    /// Load `leg` of new site `id`, its helipad at map point (`x`, `y`).
+    Site { id: u32, leg: u8, x: i32, y: i32 },
+    /// A new stockpile for AAA unit `aaa`.
+    Resupply { aaa: u32 },
 }
 
 fn blue() -> Side {

@@ -31,7 +31,7 @@ const CAS_RADIUS: i32 = 0x140;
 /// A recon flight photographs its object this close (map units, 1.5 km).
 const RECON_RANGE: i32 = 0x60;
 /// Knots in metres a second.
-const KNOT: f64 = 0.514_444;
+pub(crate) const KNOT: f64 = 0.514_444;
 
 /// What an AI flight of a mission goes for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

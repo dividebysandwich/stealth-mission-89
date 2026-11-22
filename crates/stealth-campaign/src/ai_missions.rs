@@ -6,7 +6,7 @@
 
 use crate::state::*;
 use crate::tuning::*;
-use crate::{CampaignEvent, Report, WorldView};
+use crate::{CampaignEvent, LeftCargo, Report, WorldView};
 use serde::{Deserialize, Serialize};
 use stealth_i18n::{Text, text};
 
@@ -952,6 +952,11 @@ impl CampaignState {
             return Err(text!("ce-airlift-no-handover"));
         }
         let held = self.ai_missions.iter().position(|m| m.controlled.contains(&Some(player)));
+        if held.is_none()
+            && let Some(ev) = self.leave_cargo(player, &s)
+        {
+            return Ok(ev);
+        }
         let (k, tag) = match held {
             Some(k) => {
                 let m = &mut self.ai_missions[k];
@@ -1014,6 +1019,55 @@ impl CampaignState {
             from: m.from,
             target: m.target,
             home,
+        }])
+    }
+
+    /// A player leaving his helicopter with a crate under it, or on a cargo or resupply run not
+    /// yet delivered: it goes on as an AI cargo helicopter and brings the load in. None: no
+    /// cargo to take on.
+    fn leave_cargo(&mut self, player: PlayerId, s: &Sortie) -> Option<Vec<CampaignEvent>> {
+        let carried =
+            self.deployments.iter().find_map(|d| d.carried_by(player).map(|leg| (d.id, leg)));
+        let (cargo, hooked) = match (carried, &s.offer.objective) {
+            (Some((id, leg)), _) => {
+                let d = self.deployment(id)?;
+                (LeftCargo::Site { id, leg, x: d.x, y: d.y }, true)
+            }
+            (None, &Objective::Logistics { site, leg })
+                if !s.progress.delivered
+                    && self.deployment(site).is_some_and(|d| d.crate_waiting(leg)) =>
+            {
+                let d = self.deployment(site)?;
+                (LeftCargo::Site { id: site, leg, x: d.x, y: d.y }, false)
+            }
+            (None, &Objective::Resupply { request }) => {
+                let r = self.supply_requests.iter().find(|r| r.id == request)?;
+                (matches!(r.state, SupplyState::Open { .. }))
+                    .then_some((LeftCargo::Resupply { aaa: r.aaa }, false))?
+            }
+            _ => return None,
+        };
+        let tag = self.id();
+        match cargo {
+            LeftCargo::Site { id, leg, .. } => {
+                let d = self.deployments.iter_mut().find(|d| d.id == id)?;
+                d.set_crate(leg, CrateState::AtBase);
+                d.ai.push((leg, tag));
+            }
+            LeftCargo::Resupply { .. } => {
+                let Objective::Resupply { request } = s.offer.objective else { return None };
+                let r = self.supply_requests.iter_mut().find(|r| r.id == request)?;
+                r.state = SupplyState::Ai { tag };
+            }
+        }
+        self.board_at = f64::MIN;
+        Some(vec![CampaignEvent::CargoLeft {
+            player,
+            tag,
+            aircraft: s.aircraft,
+            from: s.base,
+            cargo,
+            hooked,
         }])
     }
 
