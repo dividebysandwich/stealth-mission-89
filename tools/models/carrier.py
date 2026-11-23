@@ -174,6 +174,9 @@ CATAPULTS = (
 )
 # (offset to starboard, half width, paint role) of a track's strips (m).
 TRACK_STRIPS = ((0.0, 0.2, BLACK_ROLE), (-0.36, 0.16, HULL_ROLE), (0.36, 0.16, HULL_ROLE))
+# The tracks at night: the grey and black ramps go darker than the deck then, these fixed
+# colours (black, the dim grey) keep the groove and its steel strips apart from it.
+TRACK_NIGHT = {BLACK_ROLE: 0, HULL_ROLE: 8}
 # The source's own bow tracks (its hull-grey paint this close to theirs, m) give way to these.
 SOURCE_TRACK_M = 1.5
 
@@ -294,7 +297,7 @@ def build_models():
     ship = faces(body, frame, PAINTS)
     ship.add(hangar(frame))
     day = faces(marks, frame, MARK_DAY, 0.06, source_track).add(catapult_tracks(frame, MARK_DAY, 0.1))
-    night = faces(marks, frame, MARK_NIGHT, 0.06, source_track).add(catapult_tracks(frame, MARK_NIGHT, 0.1))
+    night = faces(marks, frame, MARK_NIGHT, 0.06, source_track).add(catapult_tracks(frame, TRACK_NIGHT, 0.1))
     lights = {LIGHT: deck_lights(frame, marks)}
     for name, ob in src.items():
         if name.startswith("nimitz_lights_"):
