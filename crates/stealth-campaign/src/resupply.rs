@@ -142,11 +142,15 @@ impl CampaignState {
             if now - since < SUPPLY_AI_WAIT {
                 continue;
             }
-            let (x, y) = (r.x, r.y);
+            let (x, y, id) = (r.x, r.y, r.id);
             let Some(from) = self.supply_base(x, y) else {
                 self.supply_requests[k].state = SupplyState::Open { since: now };
                 continue;
             };
+            // Gunships first past enemy guns; not into a SAM site's reach for a while.
+            if !self.helo_may_go((id, 0), from, (x, y), now - since - SUPPLY_AI_WAIT, view) {
+                continue;
+            }
             let tag = self.id();
             let r = &mut self.supply_requests[k];
             r.state = SupplyState::Ai { tag };
@@ -157,6 +161,7 @@ impl CampaignState {
             self.board_at = f64::MIN;
             ev.push(CampaignEvent::Message(text));
             ev.push(CampaignEvent::SupplyLaunched { id, from, aaa, tag });
+            self.escort_helo(tag, from, (x, y), view, ev);
         }
     }
 
@@ -175,6 +180,7 @@ impl CampaignState {
         else {
             return;
         };
+        self.helo_done(tag, ev);
         if delivered {
             let id = self.supply_requests[k].id;
             self.resupplied(id, None, ev);

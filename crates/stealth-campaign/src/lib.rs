@@ -34,6 +34,7 @@ pub mod ground;
 pub mod missile_strikes;
 mod missions;
 mod munitions;
+mod protect;
 mod record;
 mod resupply;
 mod roads;
@@ -59,6 +60,7 @@ pub use crew::{Crew, crew_scale};
 pub use deploy::{fast_track_cost, footprint, loads};
 pub use flow::{Due, Operation, WarEvent, divertible};
 pub use munitions::{CargoRun, CargoState, Munition, Stock, spec as munition_spec};
+pub use protect::{HeloCover, HeloEscort};
 pub use record::PilotRecord;
 pub use state::*;
 

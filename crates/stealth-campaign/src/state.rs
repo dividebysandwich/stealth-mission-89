@@ -1112,6 +1112,11 @@ pub struct CampaignState {
     /// The sides as they started the war (`balance`; an older save measures them on load).
     #[serde(default)]
     pub start: crate::StartBalance,
+    /// Gunships gone ahead of friendly helicopter runs, fighters flying with them (`protect`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub helo_cover: Vec<crate::HeloCover>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub helo_escorts: Vec<crate::HeloEscort>,
     /// What moved the front lately (`momentum`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub war_log: Vec<crate::WarEvent>,
@@ -1799,6 +1804,8 @@ impl CampaignState {
             patriots_lost: Vec::new(),
             crew: crate::Crew::default(),
             start: Default::default(),
+            helo_cover: Vec::new(),
+            helo_escorts: Vec::new(),
             war_log: Vec::new(),
             outcome: None,
             blue: Forces::start(FIGHTERS_START),

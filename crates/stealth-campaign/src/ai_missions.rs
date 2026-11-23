@@ -563,6 +563,17 @@ impl CampaignState {
             _ => self.nearest_base(side, o.x, o.y),
         };
         let Some(from) = from else { return Err(Short::Offer) };
+        self.launch_ai_from(side, o, view, from)
+    }
+
+    /// The same from base `from`.
+    pub(crate) fn launch_ai_from(
+        &mut self,
+        side: Side,
+        o: &MissionOffer,
+        view: &WorldView,
+        from: ObjectId,
+    ) -> Result<(), Short> {
         let Some(b) = self.site(from) else { return Err(Short::Offer) };
         let d = dist(b.x - o.x, b.y - o.y);
         if side == Side::Red && d > RAID_RANGE {

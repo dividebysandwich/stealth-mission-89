@@ -433,7 +433,7 @@ impl CargoRun {
 }
 
 /// How close the line from `a` to `b` passes to `p` (map units).
-fn segment_dist(a: (i32, i32), b: (i32, i32), p: (i32, i32)) -> i32 {
+pub(crate) fn segment_dist(a: (i32, i32), b: (i32, i32), p: (i32, i32)) -> i32 {
     let (ax, ay, bx, by) = (a.0 as f64, a.1 as f64, b.0 as f64, b.1 as f64);
     let (dx, dy) = (bx - ax, by - ay);
     let len2 = (dx * dx + dy * dy).max(1.0);
@@ -1059,8 +1059,9 @@ impl CampaignState {
         }
     }
 
-    /// Cargo flight `k` (just up) to a base near the front gets an escort: a pair of fighters
-    /// from that base meets it and flies with it until it lands (if the side has them).
+    /// Cargo flight `k` (just up) to a base near the front, or one the other side hunts, gets
+    /// an escort: a pair of fighters from that base (else from the one it left) meets it and
+    /// flies with it until it lands (if the side has them).
     fn escort_cargo(&mut self, k: usize, ev: &mut Vec<CampaignEvent>) {
         let r = self.cargo_runs[k].clone();
         let Some(to) = self.site(r.to).map(|s| (s.x, s.y)) else { return };
@@ -1069,11 +1070,13 @@ impl CampaignState {
             .iter()
             .filter(|p| p.owner == r.side.enemy())
             .any(|p| dist(p.x - to.0, p.y - to.1) <= CARGO_ESCORT_RANGE);
-        // Its base's fighters take off (a bombed one has none to send).
-        let up = self.bases(r.side).contains(&r.to);
+        let board = if r.side == Side::Blue { &self.red_board } else { &self.board };
+        let hunted = board.iter().any(|o| o.objective == Objective::Cargo { tag: r.tag });
+        // Its base's fighters take off (a bombed one has none to send), else the base it left.
+        let bases = self.bases(r.side);
+        let Some(from) = [r.to, r.from].into_iter().find(|b| bases.contains(b)) else { return };
         let n = CARGO_ESCORTS as u32;
-        if !front
-            || !up
+        if !(front || hunted)
             || self.forces(r.side).fighters < n
             || self.forces(r.side).materiel < n as f64 * SORTIE_COST
         {
@@ -1090,7 +1093,7 @@ impl CampaignState {
             ev.push(CampaignEvent::LaunchFighters {
                 tag,
                 side: r.side,
-                from: r.to,
+                from,
                 x,
                 y,
                 task: crate::FighterTask::Patrol,

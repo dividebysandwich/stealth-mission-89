@@ -342,6 +342,17 @@ pub const AUTO_SITE_COST_GEPARD: f64 = 20.0;
 pub const AUTO_SITE_COST_NASAMS: f64 = 40.0;
 pub const AUTO_SITE_COVER: i32 = 0x300;
 pub const AUTO_SITES_MAX: usize = 4;
+/// Cover for the friendly side's supply and cargo helicopters (`protect.rs`): enemy guns and
+/// MANPADS this close to the way there (map units, 6 km: an S-60's reach) send a pair of
+/// gunships ahead, the helicopter following this long after them (s); a live enemy SAM site
+/// this close to the way (8 km: its reach at helicopters) holds it, and so do guns with no
+/// gunships to send, at most this long (s); enemy fighters about the way send this many
+/// fighters to fly with it.
+pub const HELO_GUN_CLEAR: i32 = 0x180;
+pub const HELO_SAM_CLEAR: i32 = 0x200;
+pub const HELO_COVER_LEAD: f64 = 4.0 * 60.0;
+pub const HELO_HOLD_MAX: f64 = 30.0 * 60.0;
+pub const HELO_ESCORTS: usize = 2;
 /// Materiel a load of cargo not in yet costs when a player fast-tracks a site's construction.
 pub const DEPLOY_FAST_TRACK_COST: f64 = 20.0;
 /// Map units: the unit stands this far north of its helipad; a Gepard's, a Patriot battery's

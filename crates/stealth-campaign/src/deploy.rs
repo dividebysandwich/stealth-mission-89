@@ -359,6 +359,11 @@ impl CampaignState {
             }
             let (x, y) = (d.x, d.y);
             let Some(from) = d.base.or_else(|| self.supply_base_for(side, x, y)) else { continue };
+            // The friendly side's: gunships first past enemy guns, not by a SAM site for a while.
+            let waited = now - d.open_since - wait;
+            if side == Side::Blue && !self.helo_may_go((id, leg), from, (x, y), waited, view) {
+                continue;
+            }
             let tag = self.id();
             let d = &mut self.deployments[k];
             d.ai.push((leg, tag));
@@ -373,6 +378,9 @@ impl CampaignState {
             }
             self.board_at = f64::MIN;
             ev.push(CampaignEvent::CargoLaunched { id, from, x, y, tag, side });
+            if side == Side::Blue {
+                self.escort_helo(tag, from, (x, y), view, ev);
+            }
         }
     }
 
@@ -385,9 +393,12 @@ impl CampaignState {
             _ => return,
         };
         let now = self.clock;
-        let Some(d) = self.deployments.iter_mut().find(|d| d.ai.iter().any(|a| a.1 == tag)) else {
+        if !self.deployments.iter().any(|d| d.ai.iter().any(|a| a.1 == tag)) {
             return;
-        };
+        }
+        self.helo_done(tag, ev);
+        let d =
+            self.deployments.iter_mut().find(|d| d.ai.iter().any(|a| a.1 == tag)).expect("found");
         let k = d.ai.iter().position(|a| a.1 == tag).expect("found");
         let (leg, _) = d.ai.remove(k);
         let id = d.id;

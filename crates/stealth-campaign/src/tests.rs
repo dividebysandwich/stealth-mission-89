@@ -4434,3 +4434,101 @@ fn an_outnumbered_friendly_side_gets_help() {
     assert_eq!(d.start.held[0] as usize, d.held(Side::Blue));
 }
 
+/// The battery of `battery_view` with the AI flying the boards, its resupply requested and
+/// due: the campaign, the view and the supply base's position.
+fn due_resupply(view: impl Fn((i32, i32), (i32, i32)) -> WorldView) -> (CampaignState, WorldView) {
+    let (mut c, _, at) = battery_view();
+    c.rules = Some(CampaignRules::default());
+    let base = c.supply_base(at.0, at.1).unwrap();
+    let b = c.site(base).map(|s| (s.x, s.y)).unwrap();
+    let view = view(b, at);
+    request(&mut c, at);
+    c.tick(1.0, &view, &[]);
+    (c, view)
+}
+
+fn supply_launched(ev: &[CampaignEvent]) -> Option<u32> {
+    ev.iter().find_map(|e| match e {
+        CampaignEvent::SupplyLaunched { tag, .. } => Some(*tag),
+        _ => None,
+    })
+}
+
+/// Enemy guns by the way to a battery: a pair of gunships goes ahead of its resupply
+/// helicopter, which follows `HELO_COVER_LEAD` after them.
+#[test]
+fn gunships_go_ahead_of_a_resupply_past_enemy_guns() {
+    let (mut c, view) = due_resupply(|b, at| {
+        let mid = ((b.0 + at.0) / 2, (b.1 + at.1) / 2 + 0x40);
+        WorldView {
+            units: vec![
+                GroundView::gun(at.0, at.1, Side::Blue, true),
+                GroundView::gun(mid.0, mid.1, Side::Red, true),
+            ],
+            ..Default::default()
+        }
+    });
+    let ev = c.tick(tuning::SUPPLY_AI_WAIT, &view, &[]);
+    assert_eq!(supply_launched(&ev), None, "the helicopter waits for its cover");
+    assert_eq!(c.helo_cover.len(), 1);
+    let m = c.ai_missions.iter().find(|m| m.id == c.helo_cover[0].mission).expect("gunships");
+    assert_eq!((m.side, m.offer.kind), (Side::Blue, MissionKind::Cas));
+    assert!(matches!(&m.offer.objective, Objective::Cas { aaa, .. } if aaa == &vec![1]));
+    assert!(m.airframe.helicopter(), "{:?}", m.airframe);
+    let ev = c.tick(tuning::HELO_COVER_LEAD, &view, &[]);
+    assert!(supply_launched(&ev).is_some(), "the helicopter follows them");
+    assert!(c.helo_cover.is_empty());
+}
+
+/// A SAM site by the way holds the resupply helicopter, for `HELO_HOLD_MAX` at most.
+#[test]
+fn a_resupply_waits_while_a_sam_site_covers_the_way() {
+    let (mut c, view) = due_resupply(|_, at| WorldView {
+        units: vec![GroundView::gun(at.0, at.1, Side::Blue, true)],
+        ..Default::default()
+    });
+    let at = (view.units[0].x, view.units[0].y);
+    let sam = c
+        .sites
+        .iter()
+        .position(|s| s.kind == SiteKind::Sam && s.alive() && c.owner(s.object) == Some(Side::Red))
+        .unwrap();
+    (c.sites[sam].x, c.sites[sam].y) = (at.0 + 0x100, at.1);
+    let ev = c.tick(tuning::SUPPLY_AI_WAIT, &view, &[]);
+    assert_eq!(supply_launched(&ev), None);
+    let ev = c.tick(tuning::HELO_HOLD_MAX - 60.0, &view, &[]);
+    assert_eq!(supply_launched(&ev), None);
+    let ev = c.tick(61.0, &view, &[]);
+    assert!(supply_launched(&ev).is_some(), "it flies in the end");
+}
+
+/// Enemy fighters about the way: a pair of fighters flies with the resupply helicopter and
+/// comes home when it has delivered.
+#[test]
+fn fighters_fly_with_a_resupply_when_enemy_fighters_are_about() {
+    let (mut c, view) = due_resupply(|b, at| WorldView {
+        units: vec![GroundView::gun(at.0, at.1, Side::Blue, true)],
+        flights: vec![FlightView { x: b.0 + 0x400, y: b.1, side: Side::Red, tag: 999 }],
+        ..Default::default()
+    });
+    let ev = c.tick(tuning::SUPPLY_AI_WAIT, &view, &[]);
+    let tag = supply_launched(&ev).expect("launched");
+    let escorts: Vec<u32> = ev
+        .iter()
+        .filter_map(|e| match *e {
+            CampaignEvent::LaunchFighters { tag: f, escort, .. } if escort == Some(tag) => Some(f),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(escorts.len(), tuning::HELO_ESCORTS);
+    let flights = escorts
+        .iter()
+        .map(|&f| FlightView { x: 0, y: 0, side: Side::Blue, tag: f })
+        .chain(view.flights.iter().copied())
+        .collect();
+    let view = WorldView { flights, ..view };
+    let ev = c.tick(1.0, &view, &[Report::SupplyDelivered { tag }]);
+    for f in escorts {
+        assert!(ev.contains(&CampaignEvent::Recall { tag: f }), "{f} recalled: {ev:?}");
+    }
+}
