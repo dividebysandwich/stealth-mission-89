@@ -22,6 +22,14 @@ pub const WU_PER_M: f64 = 256.0 / 304.0 * 4.0;
 pub const DECK_WU: f64 = 68.0;
 pub const DECK_ALT: i32 = 68;
 pub const AI_DECK_ALT: i32 = stealth_mission::CARRIER_AI_ALT as i32;
+/// The flight deck's height over the waterline in nimitz.blend (m; carrier.py `DECK_M`).
+pub const DECK_M: f64 = 17.17;
+
+/// A height over the waterline under the flight deck (nimitz.blend m) in altitude units:
+/// carrier.py stretches the ship's sides to put its flight deck at `DECK_WU`.
+pub fn deck_height(z: f64) -> f64 {
+    z * DECK_WU / DECK_M
+}
 
 /// The landing box (map units, half breadth and half length round the carrier's world object):
 /// the ship's deck, and what the easy landing mode adds to it. The sim's `objectives` and the

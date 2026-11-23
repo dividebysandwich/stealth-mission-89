@@ -10,8 +10,8 @@ the theater builder's output would be lost):
     python3 tools/models/splice_model.py <theater> <NNN> /tmp/<theater>.glb
 
 The ship is "USS Nimitz class aircraft carrier" by Larcenie Grant (CC BY 4.0,
-https://skfb.ly/pvWrZ), reduced to assets-src/blend/nimitz.blend by tools/models/nimitz.py:
-the hull, flight deck, island and masts, the deck's painted lines and the light fixtures. It is
+https://skfb.ly/pvWrZ), converted to assets-src/blend/nimitz.blend by tools/models/nimitz.py in
+full detail above the waterline, with the deck's painted lines and the light fixtures. It is
 drawn at the game's carrier size, about 1.5 times its real one: 256 model units bow to stern
 with the flight deck 17 up, which is what landing on it, its deck altitude and the take-off
 spawn expect (stealth_sim::catapult `WU_PER_M`, `DECK_WU` and `LANDING_BOX`). Lengths and
@@ -57,6 +57,7 @@ CARRIERS = {
 }
 
 LENGTH_UNITS = 256.0
+LENGTH_M = 304.0  # nimitz.blend's bow to stern (m): LENGTH_UNITS for it (catapult::WU_PER_M)
 DECK = 17.0  # flight deck height (model units)
 DECK_M = 17.17  # its height above the waterline in nimitz.blend (m)
 MAX_DIST = 32769
@@ -90,8 +91,8 @@ HANGAR_PAINT = Ramp(236, 239)
 class Frame:
     """nimitz.blend's metres (bow +y, starboard +x, waterline z 0) to model units."""
 
-    def __init__(self, length_m):
-        self.u = LENGTH_UNITS / length_m
+    def __init__(self):
+        self.u = LENGTH_UNITS / LENGTH_M
         self.h = DECK / DECK_M
 
     def __call__(self, p):
@@ -106,14 +107,15 @@ def load():
     return {ob.name: ob for ob in dst.objects}
 
 
-def faces(ob, frame, paints, lift=0.0):
-    """Geo of a source mesh's faces, each painted by its material's role."""
+def faces(ob, frame, paints, lift=0.0, skip=None):
+    """Geo of a source mesh's faces, each painted by its material's role (but those `skip`
+    takes: role, middle (m))."""
     g = Geo()
     me = ob.data
     roles = [int(m.name[4:7]) for m in me.materials]
     for p in me.polygons:
         paint = paints.get(roles[p.material_index])
-        if paint is None:
+        if paint is None or (skip and skip(roles[p.material_index], p.center)):
             continue
         pts = [frame(me.vertices[i].co) + Vector((0, 0, lift)) for i in p.vertices]
         g.face(pts, paint)
@@ -151,10 +153,10 @@ def landing_lines(marks):
     return lines
 
 
-# The catapults' tracks (m: the shuttle's start, the track's forward end): the bow's two as the
-# source paints them, the waist's two along the angled deck (the source paints only the bow's).
-# Keep in step with stealth_sim::catapult's `TRACKS`. Each is a dark groove between steel strips,
-# drawn over the source's thin paint so it shows from the cockpit.
+# The catapults' tracks (m: the shuttle's start, the track's forward end): the bow's two where
+# the source paints them, the waist's two along the angled deck (the source paints only the
+# bow's). Keep in step with stealth_sim::catapult's `TRACKS`. Each is a dark groove between steel
+# strips, all four alike: the source's own paint of the bow's two is left out (`source_track`).
 CATAPULTS = (
     ((16.7, 28.2), (5.8, 148.0)),
     ((-5.1, 27.7), (-5.1, 148.0)),
@@ -163,6 +165,21 @@ CATAPULTS = (
 )
 # (offset to starboard, half width, paint role) of a track's strips (m).
 TRACK_STRIPS = ((0.0, 0.2, BLACK_ROLE), (-0.36, 0.16, HULL_ROLE), (0.36, 0.16, HULL_ROLE))
+# The source's own bow tracks (its hull-grey paint this close to theirs, m) give way to these.
+SOURCE_TRACK_M = 1.5
+
+
+def source_track(role, c):
+    """Whether a deck mark (its role, middle) is the source's paint of a bow catapult's track."""
+    if role != HULL_ROLE:
+        return False
+    for a, b in CATAPULTS[:2]:
+        a, b = Vector(a), Vector(b)
+        d = b - a
+        t = max(0.0, min(1.0, (c.xy - a).dot(d) / d.length_squared))
+        if (a + d * t - c.xy).length < SOURCE_TRACK_M:
+            return True
+    return False
 
 
 def catapult_tracks(frame, paints, lift):
@@ -252,12 +269,11 @@ def build(blend):
     bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, "assets-src", "blend", f"{blend}.blend"))
     src = load()
     body, marks = src["nimitz"], src["nimitz_marks"]
-    ys = [v.co.y for v in body.data.vertices]
-    frame = Frame(max(ys) - min(ys))
+    frame = Frame()
     ship = faces(body, frame, PAINTS)
     ship.add(hangar(frame))
-    day = faces(marks, frame, MARK_DAY, lift=0.06).add(catapult_tracks(frame, MARK_DAY, 0.1))
-    night = faces(marks, frame, MARK_NIGHT, lift=0.06).add(catapult_tracks(frame, MARK_NIGHT, 0.1))
+    day = faces(marks, frame, MARK_DAY, 0.06, source_track).add(catapult_tracks(frame, MARK_DAY, 0.1))
+    night = faces(marks, frame, MARK_NIGHT, 0.06, source_track).add(catapult_tracks(frame, MARK_NIGHT, 0.1))
     lights = {LIGHT: deck_lights(frame, marks)}
     for name, ob in src.items():
         if name.startswith("nimitz_lights_"):

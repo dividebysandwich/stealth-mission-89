@@ -148,6 +148,8 @@ pub const PHALANX_MODEL: i32 = AAA_MODELS + 15;
 const USV_MODEL: i32 = AAA_MODELS + 16;
 pub const SUB_MODEL: i32 = AAA_MODELS + 17;
 const PARATROOPER_MODEL: i32 = AAA_MODELS + 18;
+/// The Phalanx on its pedestal alone, on a carrier's own sponsons.
+const PHALANX_DECK_MODEL: i32 = AAA_MODELS + 26;
 /// A paratrooper's canopy against the pilot's, and the seconds it takes to blossom.
 const TROOP_CANOPY: f32 = 0.8;
 const TROOP_OPEN_SECS: f32 = 1.0;
@@ -874,7 +876,12 @@ fn sync_aaa(
     if av.mounts.len() < naval.mounts.len() || av.subs.len() < surfaced.len() {
         let file = library.load(&server, "aaa");
         while av.mounts.len() < naval.mounts.len() {
-            let Some(e) = spawn_model(&mut commands, &assets, &file, PHALANX_MODEL, false) else {
+            let on_carrier = sim
+                .objects()
+                .get(naval.mounts[av.mounts.len()].ship as usize)
+                .is_some_and(|o| o.flags & stealth_sim::oflags::CARRIER != 0);
+            let model = if on_carrier { PHALANX_DECK_MODEL } else { PHALANX_MODEL };
+            let Some(e) = spawn_model(&mut commands, &assets, &file, model, false) else {
                 break;
             };
             commands.entity(e).insert(crate::models::LodRange(AAA_LOD_RANGE));

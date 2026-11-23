@@ -4,8 +4,8 @@
 //!   missile slot and fly here, not as the classic missiles do: up off the water, down to skim
 //!   the sea to their ship, a pop-up and dive at the end. A hit sinks an escort; the carrier
 //!   takes it.
-//! - The ships' Phalanx close-in weapon systems: two mounts on each carrier, one on each of its
-//!   escorts. A mount engages the nearest threat in its reach (a sea-skimmer, an attack boat)
+//! - The ships' Phalanx close-in weapon systems: three mounts on each carrier, one on each of
+//!   its escorts. A mount engages the nearest threat in its reach (a sea-skimmer, an attack boat)
 //!   with bursts of its 20 mm gun; every second of fire may knock the threat down. Its rounds
 //!   are drawn as tracers.
 //!
@@ -54,13 +54,12 @@ const CIWS_KILL_BOAT_PCT: i32 = 2;
 const TRACER_SECS: f64 = 1.6;
 /// A tracer every this many frames a mount fires.
 const TRACER_EVERY: i32 = 2;
-/// Mounts on the carrier (nimitz.blend metres: starboard aft sponson, port bow sponson), the
-/// height their sponsons stand at (ft: some 2 m under the flight deck), and on an escort. The
-/// gun and its radome rise above the deck, so each stands outboard of the deck's edge (x 28.2 at
-/// y -122, -18.2 at y 112) by its barrels' reach (some 1.3 m), its sponson running back under
-/// the deck to the hull (tools/models/air_defence.py `phalanx_base`).
-const CARRIER_MOUNTS: [(f64, f64); 2] = [(29.8, -122.0), (-19.8, 112.0)];
-const CARRIER_MOUNT_ALT: f64 = crate::catapult::DECK_WU - 7.0;
+/// Mounts on the carrier (nimitz.blend metres: the middles of the source's own Phalanx mounts on
+/// the deck-edge sponsons, port and starboard of the bow and low on the port quarter, and the
+/// sponson floor each stands on; tools/models/nimitz.py `CIWS` leaves those out for these).
+const CARRIER_MOUNTS: [(f64, f64, f64); 3] =
+    [(-22.5, 89.4, 14.64), (22.9, 89.3, 14.64), (-15.5, -147.0, 9.44)];
+/// The mount on an escort (ft).
 const ESCORT_MOUNT_ALT: f64 = 30.0;
 
 /// The fleet's blasts go off this high (viewZ): above where a blast hurts the ground units round
@@ -188,7 +187,7 @@ impl Sim {
         out
     }
 
-    /// Places the fleet's mounts (once, at the start or on the first threat): two on each
+    /// Places the fleet's mounts (once, at the start or on the first threat): three on each
     /// carrier, one on each escort.
     pub(crate) fn arm_fleet(&mut self) {
         if self.naval.armed {
@@ -213,11 +212,12 @@ impl Sim {
             };
             if g.flags & oflags::CARRIER != 0 {
                 let (pe, pn) = crate::catapult::pivot(g.x, g.y);
-                for (x, y) in CARRIER_MOUNTS {
+                for (x, y, z) in CARRIER_MOUNTS {
                     let k = crate::catapult::WU_PER_M * s;
                     // Out from the side it stands on (the bow north for `s` 1, south for -1).
                     let out = std::f64::consts::FRAC_PI_2 * x.signum() * s;
-                    put([(pe + x * k) * WU_M, (pn + y * k) * WU_M, CARRIER_MOUNT_ALT * FT_M], out);
+                    let alt = crate::catapult::deck_height(z);
+                    put([(pe + x * k) * WU_M, (pn + y * k) * WU_M, alt * FT_M], out);
                 }
             } else {
                 let [e, n] = crate::asw::object_metres(&g);

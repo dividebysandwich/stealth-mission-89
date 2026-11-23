@@ -1,27 +1,26 @@
 """Converts the Sketchfab "USS Nimitz class aircraft carrier" by Larcenie Grant (CC BY 4.0,
-https://skfb.ly/pvWrZ, 98k polygons, textured) into the game's low-poly source mesh
+https://skfb.ly/pvWrZ, 98k polygons, textured) into the game's source mesh
 assets-src/blend/nimitz.blend, which tools/models/carrier.py builds the theaters' carriers from:
 
     blender -b --factory-startup --python-exit-code 1 --python tools/models/nimitz.py -- "<dir>/carrier(baked).gltf"
 
 (The download's glTF names three textures `<name>_png.png`; link them to `<name>.png` first.)
 
-Each face takes the colour of its texture (or material) at its middle, snapped to a paint role:
-its material is `pal_NNN` of the role's colour byte (`role`; carrier.py maps them to paints).
-The light fixtures become points (`nimitz_lights_NNN`, NNN the light's colour), the small
-clutter (rails, stanchions, small gear: loose parts under `CLUTTER_M`) goes, the hull below
-`KEEL_M` under the waterline goes. Flat areas are merged; the hull, deck, island and masts
-keep the rest of their shape, and every smaller fitting is collapsed on its own to a budget
-proportional to its size squared (about its area on screen), the factor solved so they come to
-`SMALL_TRIS` together: simplified, none of them lost. The hull is cut at the waterline after
-that, red below and grey above. The flight deck's painted lines are kept whole in
-`nimitz_marks` (their roles: the day colours). Two things the source draws in ways the game
-cannot: the island's window panes are decals (`WINDOW_DECAL_U`) painted barely darker than the
-wall, so they become their own faces in the classic window colour (`WINDOW`, the airfield
-towers' glass: dark by day, amber at night); and the deck-edge walkways are gratings of tiny
-bars facing down, so each becomes a solid floor traced from the bars' footprint (`walkways`),
-and the plates the others stand on face down only, so they get an upward twin (`two_sided`).
-Lights left floating by the clutter cut (`LIGHT_REACH_M` from the ship) go.
+The ship keeps its full detail: every part of it above the waterline, down to the rails and
+gratings. Only the hull below `KEEL_M` under the waterline goes, and the source's three Phalanx
+mounts on the deck-edge sponsons (`CIWS`): the game draws its own there, their guns following
+what they fight (crates/stealth-sim/src/naval.rs `CARRIER_MOUNTS`). Each face takes the colour
+of its texture (or material) at its middle, snapped to a paint role: its material is `pal_NNN`
+of the role's colour byte (`role`; carrier.py maps them to paints). Flat areas of one role are
+merged (`FLAT_DEG`), which changes no shape. The light fixtures also become points
+(`nimitz_lights_NNN`, NNN the light's colour). The hull is cut at the waterline, red below and
+grey above. The flight deck's painted lines are kept whole in `nimitz_marks` (their roles: the
+day colours). Two things the source draws in ways the game cannot: the island's window panes
+are decals (`WINDOW_DECAL_U`) painted barely darker than the wall, so they become their own
+faces in the classic window colour (`WINDOW`, the airfield towers' glass: dark by day, amber at
+night); and the deck-edge walkways are gratings of tiny bars facing down (the game culls back
+faces), so each also gets a solid floor traced from the bars' footprint (`walkways`), and the
+plates the others stand on face down only, so they get an upward twin.
 
 Output frame: metres, bow along +y, starboard +x, the hull's centreline at x = 0, the ship's
 middle at y = 0, the waterline (the top of the red antifouling) at z = 0.
@@ -54,16 +53,17 @@ GRATING_Z = (16.3, 16.9)
 WALKWAY_Z = (15.5, 16.9)
 GRID_M = 0.5
 LIGHT_REACH_M = 1.5
-# Loose parts smaller than this (largest extent, m) are dropped; up on the island and its masts
-# (`HIGH_M` over the flight deck) smaller ones count: the yards and antennas.
-CLUTTER_M, CLUTTER_HIGH_M, HIGH_M = 2.0, 1.0, 6.0
 KEEL_M = 2.5  # hull kept this far under the waterline
-SMALL_TRIS = 3000  # triangles of all the parts that are not kept whole
-MIN_TRIS = 12, 40, 8.0  # the least a part keeps: 8 per metre of size, within 12..40 (domes stay round)
-# The island and its masts (parts at least KEEP_M big, standing on the flight deck) and the
-# hull, deck and sponsons (at least BIG_M) keep every triangle: collapsing boxy, detailed
-# structure wrecks it, and the big parts are cheap.
-KEEP_M, BIG_M = 8.0, 40.0
+# Parts at least this big (m) with faces at walkway height facing down get upward twins (the
+# gratings' bars are smaller: the floors under them stand in).
+PLATE_PART_M = 2.0
+FLAT_DEG = 1.0  # neighbouring faces of one role this close to coplanar are merged
+# The source's Phalanx mounts (m: middle, the sponson floor they stand on): the bow's two, and
+# the one on the low sponson at the port quarter. Its parts within `CIWS_REACH_M` of the
+# middle, up to `CIWS_HIGH_M` over the floor, go. naval.rs `CARRIER_MOUNTS` stands the game's
+# there.
+CIWS = ((-22.5, 89.4, 14.64), (22.9, 89.3, 14.64), (-15.5, -147.0, 9.44))
+CIWS_REACH_M, CIWS_HIGH_M = 1.7, 3.3
 LIGHTS = {"red light": 146, "white light": 148, "yellow light": 19, "blue light": 9}
 LIGHT_MERGE_M = 2.0
 
@@ -173,70 +173,25 @@ def tris(ob):
     return sum(len(p.vertices) - 2 for p in ob.data.polygons)
 
 
-def least(size):
-    lo, hi, per_m = MIN_TRIS
-    return min(hi, max(lo, per_m * size))
-
-
-def decimate(ob, deck_z):
-    """Flat areas merged (colours kept apart); the parts not kept whole are collapsed to their
-    share of SMALL_TRIS (proportional to their size squared, at least `least`, at most what
-    they have)."""
+def merge_flat(ob):
+    """Neighbouring faces of one role within FLAT_DEG of coplanar merged into one."""
+    before = tris(ob)
     bpy.context.view_layer.objects.active = ob
     m = ob.modifiers.new("planar", "DECIMATE")
     m.decimate_type = "DISSOLVE"
-    m.angle_limit = math.radians(2.0)
+    m.angle_limit = math.radians(FLAT_DEG)
     m.delimit = {"MATERIAL", "NORMAL"}
     bpy.ops.object.modifier_apply(modifier=m.name)
-    before = tris(ob)
-    bpy.ops.object.select_all(action="DESELECT")
-    ob.select_set(True)
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.mesh.separate(type="LOOSE")
-    bpy.ops.object.mode_set(mode="OBJECT")
-    parts = list(bpy.context.selected_objects)
-    sizes = []
-    for o in parts:
-        vs = [v.co for v in o.data.vertices]
-        sizes.append(max(max(v[i] for v in vs) - min(v[i] for v in vs) for i in range(3)))
-    have = [tris(o) for o in parts]
-    keep_all = []
-    for o, s in zip(parts, sizes):
-        lo = min(v.co.z for v in o.data.vertices)
-        keep_all.append(s >= BIG_M or (s >= KEEP_M and lo > deck_z - 1.0))
-    kept_tris = sum(n for n, kept in zip(have, keep_all) if kept)
-    target = kept_tris + SMALL_TRIS
+    print(f"body: {before} -> {tris(ob)} triangles (flat areas merged)")
 
-    def share(k, n, s, kept):
-        return n if kept else min(n, max(least(s), k * s * s))
 
-    def total(k):
-        return sum(share(k, n, s, kept) for n, s, kept in zip(have, sizes, keep_all))
-
-    lo, hi = 0.0, 1e4
-    for _ in range(60):
-        mid = (lo + hi) / 2
-        lo, hi = (mid, hi) if total(mid) < target else (lo, mid)
-    k = lo
-    for o, n, s, kept in zip(parts, have, sizes, keep_all):
-        budget = share(k, n, s, kept)
-        if budget < n:
-            bpy.context.view_layer.objects.active = o
-            m = o.modifiers.new("collapse", "DECIMATE")
-            m.decimate_type = "COLLAPSE"
-            m.ratio = budget / n
-            m.use_collapse_triangulate = True
-            bpy.ops.object.modifier_apply(modifier=m.name)
-    bpy.ops.object.select_all(action="DESELECT")
-    for o in parts:
-        o.select_set(True)
-    keep = max(parts, key=lambda o: len(o.data.polygons))
-    bpy.context.view_layer.objects.active = keep
-    bpy.ops.object.join()
-    keep.name = keep.data.name = "nimitz"
-    print(f"body: {len(parts)} parts, {before} -> {tris(keep)} triangles ({kept_tris} in parts kept whole, "
-          f"k {k:.3f} per m^2)")
+def is_ciws(lo, hi):
+    """Whether a part (its bounds) belongs to one of the source's Phalanx mounts."""
+    for x, y, z in CIWS:
+        if (lo.z > z - 0.2 and hi.z < z + CIWS_HIGH_M
+                and max(abs(lo.x - x), abs(hi.x - x), abs(lo.y - y), abs(hi.y - y)) < CIWS_REACH_M):
+            return True
+    return False
 
 
 def waterline(ob):
@@ -307,20 +262,16 @@ def walkways(grating):
     return strips
 
 
-def two_sided(ob):
-    """Upward twins of the faces at walkway height that face down only."""
-    me = ob.data
-    bm = bmesh.new()
-    bm.from_mesh(me)
-    down = [f for f in bm.faces if f.normal.z < -0.9 and WALKWAY_Z[0] < f.calc_center_median().z < WALKWAY_Z[1]]
-    for f in down:
-        # Own vertices (bmesh takes a face over the same ones for a duplicate), a millimetre up.
+def two_sided(bm, faces):
+    """Upward twins of `faces` (a millimetre up, on their own vertices: bmesh takes no second
+    face over the same ones)."""
+    out = []
+    for f in faces:
         vs = [bm.verts.new(v.co + Vector((0, 0, 0.001))) for v in reversed(f.verts)]
         g = bm.faces.new(vs)
         g.material_index = f.material_index
-    bm.to_mesh(me)
-    bm.free()
-    return len(down)
+        out.append(g)
+    return out
 
 
 def floors_object(strips):
@@ -396,19 +347,27 @@ def main():
                and GRATING_Z[0] < f.calc_center_median().z < GRATING_Z[1]]
     floors = walkways(grating)
     skip = set(windows)
-    rest = [f for f in bm.faces if mat_of[f] not in LIGHTS and mat_of[f] != "paint bump" and f not in skip]
-    # Clutter: small loose parts, and the hull deep under water.
-    body = []
-    dropped = 0
+    rest = [f for f in bm.faces if mat_of[f] != "paint bump" and f not in skip]
+    # The hull deep under water and the source's Phalanx mounts go; the plates at walkway
+    # height facing down only get upward twins.
+    body, plates = [], []
+    under = ciws = 0
     for part in islands(bm, rest):
         lo, hi = extent(part)
-        size = max(hi - lo)
-        least = CLUTTER_HIGH_M if lo.z > deck_z + HIGH_M else CLUTTER_M
-        if size < least or hi.z < -KEEL_M:
-            dropped += len(part)
+        if hi.z < -KEEL_M:
+            under += len(part)
+            continue
+        if is_ciws(lo, hi):
+            ciws += len(part)
             continue
         body += part
-    print(f"deck z {deck_z:.2f}; dropped {dropped} faces of clutter; body {len(body)}, marks {len(marks)}")
+        if max(hi - lo) >= PLATE_PART_M:
+            plates += [f for f in part if f.normal.z < -0.9 and WALKWAY_Z[0] < f.calc_center_median().z < WALKWAY_Z[1]]
+    for f, g in zip(plates, two_sided(bm, plates)):
+        roles[g] = roles[f]
+        body.append(g)
+    print(f"deck z {deck_z:.2f}; dropped {under} faces under water, {ciws} of the Phalanx mounts; "
+          f"body {len(body)} ({len(plates)} plates made two-sided), marks {len(marks)}")
 
     for o in list(bpy.data.objects):
         bpy.data.objects.remove(o)
@@ -419,16 +378,14 @@ def main():
             v.co += f.normal * WINDOW_LIFT_M
     windows_ob = mesh_object("nimitz_windows", bm, windows, roles)
     bm.free()
-    decimate(body_ob, deck_z)
-    body_ob = bpy.data.objects["nimitz"]
+    merge_flat(body_ob)
     floors_ob = floors_object(floors)
     bpy.ops.object.select_all(action="DESELECT")
     for o in (body_ob, windows_ob, floors_ob):
         o.select_set(True)
     bpy.context.view_layer.objects.active = body_ob
     bpy.ops.object.join()
-    twins = two_sided(body_ob)
-    print(f"windows {len(windows)} panes, walkway floors {len(floors)} strips, {twins} plates made two-sided")
+    print(f"windows {len(windows)} panes, walkway floors {len(floors)} strips")
     waterline(body_ob)
     tris2 = tris(body_ob)
     # Painted lines: face up (most of the source's face down, and the game culls back faces);
@@ -446,7 +403,7 @@ def main():
     mtris = tris(marks_ob)
     print(f"body {tris2} triangles; marks {mtris} triangles")
 
-    # Lights whose fittings went with the clutter would float: keep those on the ship.
+    # Lights off the ship (none expected now that every fitting stays) would float.
     from mathutils.bvhtree import BVHTree
     tree = BVHTree.FromObject(body_ob, bpy.context.evaluated_depsgraph_get())
     for c in list(lights):

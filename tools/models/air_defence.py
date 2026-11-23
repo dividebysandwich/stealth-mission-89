@@ -69,6 +69,8 @@ ARMY_TRUCK = 133
 TECHNICAL = 134
 # The ZSU-57-2: twin 57 mm guns on a tracked hull, in the S-60 batteries and the enemy's columns.
 ZSU572 = 135
+# The Phalanx mount on its pedestal alone: on a carrier, its sponsons are the ship's.
+PHALANX_DECK = 136
 
 # Model units per metre (a unit is WU / 8 = 0.061 m).
 K = 8.0 * 1_048_576 / 512_000
@@ -1441,6 +1443,13 @@ def phalanx_base(paint=HAZE, under=HAZE_DARK):
     for x in (-1.6, 1.6):
         g.face2([(x, -13.0, -0.35), (x, 1.0, -0.35), (x, -13.0, -4.5)], under)
     g.face2([(-1.6, 1.0, -0.35), (1.6, 1.0, -0.35), (1.6, -13.0, -4.5), (-1.6, -13.0, -4.5)], under)
+    g.add(phalanx_pedestal(paint))
+    return g
+
+
+def phalanx_pedestal(paint=HAZE):
+    """The Mk 15 mount's pedestal and training base (from the deck at 0 to its top at 1.15)."""
+    g = Geo()
     g.add(frustum((0, 0, 0), (0, 0, 0.9), 0.75, 0.7, paint, n=12))
     g.add(frustum((0, 0, 0.9), (0, 0, 1.15), 0.95, 0.95, paint, n=12))
     return g
@@ -1473,12 +1482,19 @@ def phalanx_gun(paint=HAZE, light=HAZE_LIGHT):
     return g
 
 
-def phalanx():
-    root, lod0, _ = levels(PHALANX, 32769, far_level=False)
-    base = mesh_obj("aaa_125_lod0_s1v0", phalanx_base(), lod0)
-    turret = part("aaa_125_lod0_s1v0_part1", phalanx_turret(), base, (0, 0, 1.15), TURRET_SLOT, 0)
-    part("aaa_125_lod0_s1v0_part2", phalanx_gun(), turret, (0, 0.0, 1.15), GUN_SLOT, 1)
-    mesh_obj("aaa_125_lod0_s1v1", phalanx_base(BURNT), lod0)
+def phalanx(index=PHALANX, base_geo=phalanx_base):
+    """The Phalanx on its own sponson (an escort's), or (`phalanx_deck`) on its pedestal alone."""
+    root, lod0, _ = levels(index, 32769, far_level=False)
+    name = "aaa_%03d_lod0" % index
+    base = mesh_obj(name + "_s1v0", base_geo(), lod0)
+    turret = part(name + "_s1v0_part1", phalanx_turret(), base, (0, 0, 1.15), TURRET_SLOT, 0)
+    part(name + "_s1v0_part2", phalanx_gun(), turret, (0, 0.0, 1.15), GUN_SLOT, 1)
+    mesh_obj(name + "_s1v1", base_geo(BURNT), lod0)
+
+
+def phalanx_deck():
+    """The Phalanx on a carrier's sponson (the ship draws the sponson)."""
+    phalanx(PHALANX_DECK, phalanx_pedestal)
 
 
 def usv_hull(paint=HULL_BLACK, deck=OLIVE_DARK):
@@ -1967,6 +1983,7 @@ def main():
     army_truck()
     technical()
     zsu572()
+    phalanx_deck()
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,
