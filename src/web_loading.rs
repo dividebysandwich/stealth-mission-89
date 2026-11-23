@@ -98,6 +98,7 @@ fn report(
     server: Res<AssetServer>,
     cockpits: Option<Res<crate::cockpit3d::CockpitModelsPub>>,
     theater: Option<Res<crate::world::Theater>>,
+    shapes: Option<Res<crate::world::ShapeHandles>>,
     scenery: Option<Res<crate::scenery::Scenery>>,
     director: Option<Res<crate::menu_scene::director::Director>>,
     mut music: ResMut<crate::sound::MusicHold>,
@@ -119,6 +120,15 @@ fn report(
         FILES.iter().map(|f| library.load(&server, f).untyped()).collect();
     if let Some(t) = &theater {
         handles.push(library.load(&server, &t.id).untyped());
+    }
+    // The models the theater's refer to (the carriers'), once followed.
+    let files: std::collections::BTreeSet<&str> =
+        shapes.iter().flat_map(|s| s.models.iter().map(|m| m.0.as_str())).collect();
+    for f in files
+        .into_iter()
+        .filter(|f| !FILES.contains(f) && theater.as_ref().is_none_or(|t| t.id != *f))
+    {
+        handles.push(library.load(&server, f).untyped());
     }
     if let Some(c) = &cockpits {
         handles.extend(c.handles());

@@ -543,6 +543,30 @@ impl ModelLibrary {
             .or_insert_with(|| server.load(format!("models/{stem}.glb")))
             .clone()
     }
+
+    /// Loads a file and the files its models refer to (`model_ref`): true once all are loaded.
+    pub fn load_with_refs(
+        &mut self,
+        server: &AssetServer,
+        gltfs: &Assets<Gltf>,
+        nodes: &Assets<GltfNode>,
+        stem: &str,
+    ) -> bool {
+        let Some(g) = gltfs.get(&self.load(server, stem)) else { return false };
+        let files: std::collections::BTreeSet<String> =
+            g.named_nodes.values().filter_map(|n| model_ref(nodes.get(n)?)).map(|r| r.0).collect();
+        files.iter().all(|f| gltfs.get(&self.load(server, f)).is_some())
+    }
+}
+
+/// The model drawn for a model of a file that refers to another file's, by its root node's
+/// `ref` extra (a model name `<file>_<NNN>`: every theater's carriers are carrier.glb's ship,
+/// tools/models/carrier.py): (file, number).
+pub fn model_ref(node: &GltfNode) -> Option<(String, u16)> {
+    let extras = node.extras.as_ref().filter(|x| x.value.contains("\"ref\""))?;
+    let v: serde_json::Value = serde_json::from_str(&extras.value).ok()?;
+    let (file, number) = v["ref"].as_str()?.rsplit_once('_')?;
+    Some((file.to_string(), number.parse().ok()?))
 }
 
 /// Everything needed to instantiate glTF nodes.
@@ -1062,5 +1086,36 @@ mod tests {
         assert!(top > 10.0 && top < 400.0, "{top}");
         assert!(mountain.contains(up * (top - 1.0)) && !mountain.contains(up * (top + 1.0)));
         assert_eq!(mountain.top(bevy::math::Vec3::new(1e5, 0.0, 0.0), up), None);
+    }
+
+    /// The JSON part of a model file (None without the assets).
+    fn glb_json(stem: &str) -> Option<serde_json::Value> {
+        let data = std::fs::read(crate::asset_path::asset(&format!("models/{stem}.glb"))).ok()?;
+        let n = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+        serde_json::from_slice(&data[20..20 + n]).ok()
+    }
+
+    /// Every model that refers to another file's (the theaters' carriers) has nothing of its own
+    /// and names a model there.
+    #[test]
+    fn model_refs_name_models() {
+        let mut refs = 0;
+        for id in stealth_host::theater::THEATERS.iter().map(|t| t.0) {
+            let Some(j) = glb_json(id) else { return };
+            for node in j["nodes"].as_array().unwrap() {
+                let Some(r) = node["extras"]["ref"].as_str() else { continue };
+                let name = node["name"].as_str().unwrap();
+                assert!(node.get("children").is_none() && node.get("mesh").is_none(), "{name}");
+                let (file, _) = r.rsplit_once('_').unwrap();
+                let target = glb_json(file).unwrap_or_else(|| panic!("{name}: no {file}.glb"));
+                let model = target["nodes"].as_array().unwrap().iter().find(|n| n["name"] == r);
+                let model = model.unwrap_or_else(|| panic!("{name}: no {r}"));
+                assert!(model["children"].as_array().is_some_and(|c| !c.is_empty()), "{r}");
+                assert_eq!(node["extras"]["attr"], model["extras"]["attr"], "{name}");
+                refs += 1;
+            }
+        }
+        // The carriers: two each in six theaters, one in Cuba's and Korea's.
+        assert_eq!(refs, 14);
     }
 }

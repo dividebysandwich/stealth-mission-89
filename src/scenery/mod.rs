@@ -406,6 +406,7 @@ fn build_scenery(
 ) {
     // Wait until the tile streaming has loaded the theater's models.
     let loaded = assets.terrain.ready(&theater.id)
+        && handles.followed()
         && library.files.get("special_targets").is_some_and(|h| assets.gltfs.get(h).is_some());
     if !loaded {
         return;
@@ -678,13 +679,12 @@ fn request(
     if theater.as_ref().is_none_or(|(k, _)| *k != key) {
         *theater = Some((key.clone(), Theater::load(id)));
     }
-    let loaded = [id, "special_targets"]
-        .map(|f| library.load(server, f))
-        .iter()
-        .all(|h| assets.gltfs.get(h).is_some());
+    let loaded = assets.gltfs.get(&library.load(server, "special_targets")).is_some()
+        && library.load_with_refs(server, &assets.gltfs, &assets.nodes, id);
     let Some((_, t)) = theater.as_ref().filter(|_| loaded) else { return };
     let day = crate::palette::load_theater_palettes(id).day;
-    let source = LayoutSource::gather(t, &ShapeHandles::for_map(t), assets, &library.files, &day);
+    let handles = ShapeHandles::for_map(t, assets, &library.files);
+    let source = LayoutSource::gather(t, &handles, assets, &library.files, &day);
     cache.making.push((key, make_layout(source)));
     *theater = None;
 }
@@ -834,7 +834,13 @@ pub fn map_scenery(
         return MapScenery::default();
     };
     let layout = cache.get_or_make(&layout_key(&theater.id), || {
-        LayoutSource::gather(theater, &ShapeHandles::for_map(theater), assets, files, day)
+        LayoutSource::gather(
+            theater,
+            &ShapeHandles::for_map(theater, assets, files),
+            assets,
+            files,
+            day,
+        )
     });
     let (ground, net) = (&layout.ground, &layout.net);
     let mut out = MapScenery::default();

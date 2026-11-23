@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 
+use bevy::gltf::Gltf;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use serde::Deserialize;
@@ -52,16 +53,53 @@ pub(crate) fn insert_theater(
 
 /// Model file and index for each tile shape (the shape handle table): theater models, then the
 /// mission's special target models (special_targets.glb) appended after them, plus Desert Storm's two
-/// fixed PHOTO substitutions.
+/// fixed PHOTO substitutions. A theater model that refers to another file's (`models::model_ref`:
+/// the carriers) is that model once followed (`follow`).
 #[derive(Resource, Clone, Default)]
 pub struct ShapeHandles {
     pub models: Vec<(String, u16)>,
+    followed: bool,
 }
 
 impl ShapeHandles {
-    /// The theater's own shapes, without a mission's substitutions (the map pictures).
-    pub fn for_map(theater: &Theater) -> Self {
-        Self::new(theater, None, &mut TileOverrides::default())
+    /// The theater's own shapes, without a mission's substitutions (the map pictures), followed
+    /// to the models they refer to (the files loaded: `ModelLibrary::load_with_refs`).
+    pub fn for_map(
+        theater: &Theater,
+        assets: &ModelAssets,
+        files: &HashMap<String, Handle<Gltf>>,
+    ) -> Self {
+        let mut handles = Self::new(theater, None, &mut TileOverrides::default());
+        handles.follow(&theater.id, assets, files);
+        handles
+    }
+
+    /// The theater's models that refer to another file's model are drawn by that one: true once
+    /// done (the theater's file loaded).
+    pub fn follow(
+        &mut self,
+        id: &str,
+        assets: &ModelAssets,
+        files: &HashMap<String, Handle<Gltf>>,
+    ) -> bool {
+        if self.followed {
+            return true;
+        }
+        let Some(g) = files.get(id).and_then(|h| assets.gltfs.get(h)) else { return false };
+        for m in self.models.iter_mut().filter(|m| m.0 == id) {
+            let name = format!("{id}_{:03}", m.1);
+            let node = g.named_nodes.get(name.as_str()).and_then(|n| assets.nodes.get(n));
+            if let Some(r) = node.and_then(crate::models::model_ref) {
+                *m = r;
+            }
+        }
+        self.followed = true;
+        true
+    }
+
+    /// Whether the models referred to are followed (`follow`).
+    pub fn followed(&self) -> bool {
+        self.followed
     }
 
     fn new(
@@ -93,7 +131,7 @@ impl ShapeHandles {
                 }
             }
         }
-        Self { models }
+        Self { models, followed: false }
     }
 
     pub fn model(&self, shape: usize) -> Option<(&str, String)> {
@@ -543,15 +581,21 @@ fn stream_tiles(
     anchor: Query<&WorldPos, With<WorldAnchor>>,
     mut streamed: ResMut<StreamedCells>,
     mut overrides: ResMut<TileOverrides>,
-    handles: Res<ShapeHandles>,
+    mut handles: ResMut<ShapeHandles>,
     mut sites: ResMut<StreamSites>,
     mut raised: Local<HashMap<(bool, u8), Option<f32>>>,
 ) {
     let Ok(anchor) = anchor.single() else { return };
-    let file = library.load(&server, &theater.id);
     let photo = library.load(&server, "special_targets");
     if assets.gltfs.get(&photo).is_none() || !assets.terrain.ready(&theater.id) {
         return; // models still loading or being refined (terrain.rs)
+    }
+    // The models the theater's refer to (the carriers').
+    if !handles.followed()
+        && !(library.load_with_refs(&server, &assets.gltfs, &assets.nodes, &theater.id)
+            && handles.follow(&theater.id, &assets, &library.files))
+    {
+        return;
     }
     // Cells wanted: (lod, col, row) -> ships only (beyond the level's own radius).
     let mut wanted: HashMap<(usize, i32, i32), bool> = HashMap::new();
@@ -623,7 +667,7 @@ fn stream_tiles(
                 None => (o.shape, false),
             };
             let Some((model_file, name)) = handles.model(shape as usize) else { continue };
-            let gltf = if model_file == "special_targets" { &photo } else { &file };
+            let Some(gltf) = library.files.get(model_file) else { continue };
             let Some(e) = assets.spawn(&mut commands, gltf, &name, lod as u32, false) else {
                 continue;
             };

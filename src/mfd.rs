@@ -1320,32 +1320,45 @@ impl GeometrySource<'_> {
     }
 }
 
-/// Flat map geometry of a theater's models (`<id>_NNN` nodes of its loaded glTF file).
+/// Flat map geometry of a theater's models (`<id>_NNN` nodes of its glTF file, or the models they
+/// refer to: `models::model_ref`), once the files are loaded (`ModelLibrary::load_with_refs`).
 pub(crate) fn map_models(
     id: &str,
-    g: &Gltf,
+    files: &HashMap<String, Handle<Gltf>>,
+    gltfs: &Assets<Gltf>,
     nodes: &Assets<GltfNode>,
     meshes: &Assets<GltfMesh>,
     mesh_data: &Assets<Mesh>,
-) -> HashMap<u8, MapModel> {
-    let src = GeometrySource {
-        nodes,
-        meshes,
-        mesh_data,
-        material_names: g.named_materials.iter().map(|(n, h)| (h.id(), n.to_string())).collect(),
-    };
-    let mut models = HashMap::new();
+) -> Option<HashMap<u8, MapModel>> {
+    let g = gltfs.get(files.get(id)?)?;
+    let mut material_names: HashMap<AssetId<GltfMaterial>, String> =
+        g.named_materials.iter().map(|(n, h)| (h.id(), n.to_string())).collect();
+    let mut shapes = Vec::new();
     for shape in 0..=255u8 {
         let name = format!("{}_{:03}", id, shape);
         let Some(handle) = g.named_nodes.get(name.as_str()) else { continue };
-        let attr = nodes
-            .get(handle)
+        let node = nodes.get(handle);
+        let attr = node
             .and_then(|n| n.extras.as_ref())
             .and_then(|x| serde_json::from_str::<serde_json::Value>(&x.value).ok())
             .and_then(|v| v["attr"].as_u64())
             .unwrap_or(0) as u8;
+        let handle = match node.and_then(crate::models::model_ref) {
+            Some((file, number)) => {
+                let r = gltfs.get(files.get(&file)?)?;
+                material_names
+                    .extend(r.named_materials.iter().map(|(n, h)| (h.id(), n.to_string())));
+                r.named_nodes.get(format!("{file}_{number:03}").as_str())?.clone()
+            }
+            None => handle.clone(),
+        };
+        shapes.push((shape, attr, handle));
+    }
+    let src = GeometrySource { nodes, meshes, mesh_data, material_names };
+    let mut models = HashMap::new();
+    for (shape, attr, handle) in shapes {
         let (mut tris, mut lines) = (Vec::new(), Vec::new());
-        src.collect(handle, Mat4::IDENTITY, &mut tris, &mut lines);
+        src.collect(&handle, Mat4::IDENTITY, &mut tris, &mut lines);
         // Painter's order: coplanar primitives were lifted along their normal by list position.
         tris.sort_by(|a, b| {
             let h = |t: &Vec<Vec3>| t.iter().map(|p| p.y).sum::<f32>();
@@ -1364,7 +1377,7 @@ pub(crate) fn map_models(
             },
         );
     }
-    models
+    Some(models)
 }
 
 /// Extracts the map geometry of the theater models once they are loaded.
@@ -1383,11 +1396,11 @@ fn build_map_geometry(
     if raster.geometry_theater == theater.id || !terrain.ready(&theater.id) {
         return;
     }
-    let Some(g) = library.files.get(&theater.id).and_then(|h| gltfs.get(h)) else { return };
-    let models = map_models(&theater.id, g, &nodes, &meshes, &mesh_data);
-    if models.is_empty() {
+    let Some(models) = map_models(&theater.id, &library.files, &gltfs, &nodes, &meshes, &mesh_data)
+        .filter(|m| !m.is_empty())
+    else {
         return;
-    }
+    };
     raster.models = models;
     raster.geometry_theater = theater.id.clone();
     raster.valid = false;

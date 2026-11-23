@@ -1,9 +1,9 @@
-"""Builds the aircraft carrier (a Nimitz-class ship) into every theater master that has one, and
-saves them:
+"""Builds the aircraft carrier (a Nimitz-class ship) once, into its own model file
+assets/models/carrier.glb, and makes each theater master's carrier a reference to it:
 
-    blender -b --python-exit-code 1 --python tools/models/carrier.py
+    blender -b --python-exit-code 1 --python tools/models/carrier.py [-- theater...]
 
-then splices each carrier model into its theater file (never export the theater masters whole,
+then splices each referring node into its theater file (never export the theater masters whole,
 the theater builder's output would be lost):
 
     blender -b assets-src/blend/<theater>.blend --python-exit-code 1 --python tools/models/export.py -- /tmp/<theater>.glb
@@ -18,12 +18,15 @@ spawn expect (stealth_sim::catapult `WU_PER_M`, `DECK_WU` and `LANDING_BOX`). Le
 breadths scale alike (`U` units per metre); heights scale by `H` up to the flight deck (its
 height above the water fixed at 17) and by `U` above it, so the island keeps its proportions.
 
-Each carrier node keeps its name, its root's `attr` and the way it faces (bow along +y or -y),
-and gets one detail level drawn at every distance (the ship and a dark hangar inside it). Children of the detail level: the wake behind
-the stern (`_lines_pal_057`), the red masthead light, `_s10v1` the deck and island lights (lights
-on), `_s11v0` / `_s11v1` the deck's painted lines by day and lit at night. The collision hull
-(`planes`) is the convex hull of the ship up to the flight deck, in the glTF frame the game tests
-the pilot's eye in (Q14 normals, inside when n.p + d < 0).
+carrier.glb holds two models: `carrier_000` with the bow north (+y) and `carrier_001` the same
+meshes turned about (its detail level's node turned half round). A theater's carrier node keeps
+its name and its root's `attr`, loses its children and gets `ref`, the name of the model drawn
+for it (the game's `world::ShapeHandles` follows it). Each model has one detail level drawn at
+every distance (the ship and a dark hangar inside it). Children of the detail level: the wake
+behind the stern (`_lines_pal_057`), the red masthead light, `_s10v1` the deck and island lights
+(lights on), `_s11v0` / `_s11v1` the deck's painted lines by day and lit at night. The collision
+hull (`planes`) is the convex hull of the ship up to the flight deck, in the detail level's glTF
+frame the game tests the pilot's eye in (Q14 normals, inside when n.p + d < 0).
 """
 
 import math
@@ -44,16 +47,22 @@ from mklib import Geo, Ramp  # noqa: E402
 
 SOURCE = os.path.join(ROOT, "assets-src", "blend", "nimitz.blend")
 
-# The carrier nodes per theater master (both former carrier models of each theater).
+OUT = os.path.join(ROOT, "assets", "models", "carrier.glb")
+# The models of carrier.glb by the way the bow points (+1 north, -1 south).
+MODELS = {1: "carrier_000", -1: "carrier_001"}
+ATTR = 165  # the classic carriers' attribute byte
+
+# The carrier nodes per theater master (both former carrier models of each theater; the Cuba and
+# Korea files ship only 075) and the way their ships face (the former models' bows).
 CARRIERS = {
-    "libya": ["libya_063", "libya_087"],
-    "persian_gulf": ["persian_gulf_073", "persian_gulf_087"],
-    "desert_storm": ["desert_storm_073", "desert_storm_087"],
-    "middle_east": ["middle_east_073", "middle_east_087"],
-    "north_cape": ["north_cape_061", "north_cape_072"],
-    "vietnam": ["vietnam_075", "vietnam_090"],
-    "cuba": ["cuba_075", "cuba_090"],
-    "korea": ["korea_075", "korea_090"],
+    "libya": (-1, ["libya_063", "libya_087"]),
+    "persian_gulf": (1, ["persian_gulf_073", "persian_gulf_087"]),
+    "desert_storm": (1, ["desert_storm_073", "desert_storm_087"]),
+    "middle_east": (1, ["middle_east_073", "middle_east_087"]),
+    "north_cape": (-1, ["north_cape_061", "north_cape_072"]),
+    "vietnam": (-1, ["vietnam_075", "vietnam_090"]),
+    "cuba": (-1, ["cuba_075", "cuba_090"]),
+    "korea": (1, ["korea_075", "korea_090"]),
 }
 
 LENGTH_UNITS = 256.0
@@ -219,14 +228,13 @@ def wake(stern):
     return g
 
 
-def planes(geo, flip):
+def planes(geo):
     """Collision planes of the ship up to the flight deck (glTF frame: x, z up, -y)."""
     bm = bmesh.new()
     for pts, _ in geo.faces:
         for p in pts:
             if p.z <= DECK + 0.01:
-                q = flip(p)
-                bm.verts.new((q.x, q.z, -q.y))
+                bm.verts.new((p.x, p.z, -p.y))
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.5)
     bmesh.ops.convex_hull(bm, input=bm.verts)
     # Merge the hull's nearly coplanar facets: a few dozen planes are enough.
@@ -245,16 +253,6 @@ def planes(geo, flip):
     return out
 
 
-def orientation(lod):
-    """+1 if the old model's bow points along +y (its wake trails to -y, reaching farther from
-    the middle than the bow), else -1."""
-    ys = []
-    for ob in [lod] + list(lod.children_recursive):
-        if ob.type == "MESH":
-            ys += [(ob.matrix_world @ v.co).y for v in ob.data.vertices]
-    return 1 if -min(ys) > max(ys) else -1
-
-
 def group(lod, name, conds):
     g = bpy.data.objects.new(name, None)
     g["conds"] = conds
@@ -264,9 +262,32 @@ def group(lod, name, conds):
     return g
 
 
-def build(blend):
-    mklib.load_palette(os.path.join(ROOT, "assets", "palettes", f"tod_{blend}.ron"))
-    bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, "assets-src", "blend", f"{blend}.blend"))
+def turned(root, name):
+    """A copy of the model `root` named `name`, sharing its meshes, its detail level turned half
+    round (the bow the other way)."""
+
+    def copy(ob, parent):
+        c = ob.copy()
+        c.name = name + ob.name[len(root.name):]
+        for col in ob.users_collection:
+            col.objects.link(c)
+        c.parent = parent
+        for k in list(ob.children):
+            if k is not c:
+                copy(k, c)
+        return c
+
+    new = copy(root, None)
+    for lod in new.children:
+        lod.rotation_euler.z = math.pi
+    return new
+
+
+def build_models():
+    """The ship, both ways round, in carrier.glb."""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    # The colours of the materials as seen in Blender; the game paints by colour index.
+    mklib.load_palette(os.path.join(ROOT, "assets", "palettes", "tod_cuba.ron"))
     src = load()
     body, marks = src["nimitz"], src["nimitz_marks"]
     frame = Frame()
@@ -283,41 +304,55 @@ def build(blend):
     stern = min(p.y for f, _ in ship.faces for p in f)
     trail = wake(stern)
     radius = math.ceil(max(heli.radius(ship), max(Vector(p).length for segs in trail.lines.values() for s in segs for p in s)))
-    for name in CARRIERS[blend]:
+    for ob in src.values():
+        bpy.data.objects.remove(ob)
+
+    root = bpy.data.objects.new(MODELS[1], None)
+    bpy.context.scene.collection.objects.link(root)
+    root["attr"] = ATTR
+    root["lod_dists"] = [MAX_DIST]
+    # One detail level, drawn at every distance.
+    lod = heli.mesh_with_lines(root, f"{root.name}_lod0", ship)
+    lod["max_dist"] = MAX_DIST
+    lod["radius"] = radius
+    lod["planes"] = planes(ship)
+    for c, segs in trail.lines.items():
+        ln = f"{lod.name}_lines_pal_{c:03}"
+        mklib.link_child(lod, ln, mklib.lines_mesh(ln, segs, c))
+    dn = f"{lod.name}_dots_pal_{RED:03}"
+    mklib.link_child(lod, dn, mklib.points_mesh(dn, masthead, RED))
+    heli.lights(lod, 10, lights)
+    for value, geo in ((0, day), (1, night)):
+        g = group(lod, f"{lod.name}_s11v{value}", [[11, value]])
+        mn = f"{g.name}_marks"
+        mklib.link_child(g, mn, mklib.faces_mesh(mn, geo))
+    turned(root, MODELS[-1])
+    print(f"{OUT}: {len(ship.faces)} faces, {len(day.faces)} marks, {len(lod['planes'])} planes, radius {radius}")
+    bpy.ops.export_scene.gltf(
+        filepath=OUT, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
+        export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,
+        use_mesh_edges=True, use_mesh_vertices=True,
+    )
+
+
+def refer(blend):
+    """The theater master's carriers become references to carrier.glb's models."""
+    bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, "assets-src", "blend", f"{blend}.blend"))
+    bow, names = CARRIERS[blend]
+    for name in names:
         root = bpy.data.objects[name]
-        old = bpy.data.objects[f"{name}_lod0"]
-        bow = orientation(old)
-        flip = (lambda p: Vector(p)) if bow > 0 else (lambda p: Vector((-p[0], -p[1], p[2])))
-        # One detail level, drawn at every distance.
         for c in list(root.children):
             mklib.delete_tree(c)
-        root["lod_dists"] = [MAX_DIST]
-        lod = heli.mesh_with_lines(root, f"{name}_lod0", ship.transformed(flip))
-        lod["max_dist"] = MAX_DIST
-        lod["radius"] = radius
-        lod["planes"] = planes(ship, flip)
-        for c, segs in trail.transformed(flip).lines.items():
-            ln = f"{lod.name}_lines_pal_{c:03}"
-            mklib.link_child(lod, ln, mklib.lines_mesh(ln, segs, c))
-        dn = f"{lod.name}_dots_pal_{RED:03}"
-        mklib.link_child(lod, dn, mklib.points_mesh(dn, [flip(p) for p in masthead], RED))
-        heli.lights(lod, 10, {c: [flip(p) for p in pts] for c, pts in lights.items()})
-        for value, geo in ((0, day), (1, night)):
-            g = group(lod, f"{lod.name}_s11v{value}", [[11, value]])
-            mn = f"{g.name}_marks"
-            mklib.link_child(g, mn, mklib.faces_mesh(mn, geo.transformed(flip)))
-        print(f"{name}: bow {'+' if bow > 0 else '-'}y, {len(ship.faces)} faces, {len(day.faces)} marks, "
-              f"{len(lod['planes'])} planes, radius {radius}")
-    for ob in src.values():
-        data = ob.data
-        bpy.data.objects.remove(ob)
-        if data is not None and data.users == 0:
-            bpy.data.meshes.remove(data)
+        if "lod_dists" in root:
+            del root["lod_dists"]
+        root["ref"] = MODELS[bow]
+        print(f"{name}: {MODELS[bow]}")
     for m in list(bpy.data.materials):
         if m.users == 0 and not m.name.startswith("pal_"):
             bpy.data.materials.remove(m)
     bpy.ops.wm.save_mainfile()
 
 
+build_models()
 for blend in sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else CARRIERS:
-    build(blend)
+    refer(blend)

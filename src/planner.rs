@@ -351,8 +351,15 @@ pub fn prepare_map(
         planner.theater = Some(Theater::load(&id));
         planner.gltf = Some(library.load(&server, &id));
     }
-    let Some(g) = planner.gltf.as_ref().and_then(|h| assets.gltfs.get(h)) else { return };
-    let models = map_models(&id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
+    if !library.load_with_refs(&server, &assets.gltfs, &assets.nodes, &id) {
+        return;
+    }
+    let files = &library.files;
+    let Some(models) =
+        map_models(&id, files, &assets.gltfs, &assets.nodes, &assets.meshes, &assets.mesh_data)
+    else {
+        return;
+    };
     let Some(theater) = planner.theater.take() else { return };
     let source = MapSource::new(theater, models, &assets, &library.files, &mut layouts);
     let image = Arc::new(source.render(THEATER, MAP_PX, MAP_PX));
@@ -401,10 +408,22 @@ pub fn export_maps(
         };
         export.loading = Some((Theater::load(id), library.load(&server, id)));
     }
-    let Some((_, handle)) = export.loading.as_ref() else { return };
-    let Some(g) = assets.gltfs.get(handle) else { return };
+    let Some((theater, _)) = export.loading.as_ref() else { return };
+    if !library.load_with_refs(&server, &assets.gltfs, &assets.nodes, &theater.id) {
+        return;
+    }
     let Some((theater, _)) = export.loading.take() else { return };
-    let models = map_models(&theater.id, g, &assets.nodes, &assets.meshes, &assets.mesh_data);
+    let files = &library.files;
+    let Some(models) = map_models(
+        &theater.id,
+        files,
+        &assets.gltfs,
+        &assets.nodes,
+        &assets.meshes,
+        &assets.mesh_data,
+    ) else {
+        return;
+    };
     let path = export.dir.join(format!("{}.png", theater.id));
     let source = MapSource::new(
         theater,
