@@ -73,7 +73,7 @@ impl CampaignState {
         let mins = |t: f64| (t / 60.0).round() as i64;
         let fx = match kind {
             SiteKind::Airfield => {
-                let every = self.paced(RAID_EVERY[skill]);
+                let every = self.offensive_paced(RAID_EVERY[skill]);
                 self.raid_at = self.raid_at.max(now + STRUCK_AIRFIELD_DELAY - every);
                 Some(text!(
                     "cl-fx-airfield",
@@ -83,8 +83,8 @@ impl CampaignState {
                 ))
             }
             SiteKind::City => {
-                let insert = self.paced(ENEMY_INSERT_EVERY[skill]);
-                let convoy = self.paced(ENEMY_CONVOY_EVERY[skill]);
+                let insert = self.offensive_paced(ENEMY_INSERT_EVERY[skill]);
+                let convoy = self.offensive_paced(ENEMY_CONVOY_EVERY[skill]);
                 self.enemy_insert_at = self.enemy_insert_at.max(now + STRUCK_CITY_DELAY - insert);
                 let c = &mut self.convoy_at[1];
                 *c = c.max(now + STRUCK_CITY_DELAY - convoy);

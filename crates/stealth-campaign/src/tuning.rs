@@ -11,12 +11,13 @@ pub const FRONT_RANGE: i32 = 0x2600;
 pub const FRONT_PLACES: usize = 3;
 /// Offers on the board at most.
 pub const BOARD_SIZE: usize = 12;
-/// Coop scaling: the enemy's tempo for n players is n^CREW_EXPONENT (1.5 for two, 1.9 for
-/// three, 2.3 for four), at most CREW_SCALE_MAX. The count it follows rises by one player in
-/// CREW_RISE seconds, falls by one in CREW_FALL. Each player beyond the first adds CREW_OFFERS
-/// to the board, CREW_OFFERS_MAX at most.
-pub const CREW_EXPONENT: f64 = 0.6;
-pub const CREW_SCALE_MAX: f64 = 4.0;
+/// Coop scaling: up to CREW_FREE players the enemy keeps its tempo (the players push it back);
+/// beyond, it grows with the crew, n / CREW_FREE (1.5 for twelve, 2 for sixteen), at most
+/// CREW_SCALE_MAX. The count it follows rises by one player in CREW_RISE seconds, falls by one
+/// in CREW_FALL. Each player beyond the first adds CREW_OFFERS to the board, CREW_OFFERS_MAX at
+/// most.
+pub const CREW_FREE: f64 = 8.0;
+pub const CREW_SCALE_MAX: f64 = 3.0;
 pub const CREW_RISE: f64 = 3.0 * 60.0;
 pub const CREW_FALL: f64 = 10.0 * 60.0;
 pub const CREW_OFFERS: usize = 2;
@@ -181,10 +182,24 @@ pub const INCOME_BASE: f64 = 20.0;
 pub const INCOME_PLACE: f64 = 1.0;
 pub const INCOME_CITY: f64 = 5.0;
 /// The friendly side's income (its AI flies the war the players do not) is this many times
-/// more with one player on, the bonus shrinking to nothing with this many (on top of the
-/// players' tempo, which it follows like the enemy's).
-pub const BLUE_FEW_PLAYERS: f64 = 2.0;
-pub const BLUE_FEW_PLAYERS_UNTIL: f64 = 3.0;
+/// more with up to BLUE_FEW_PLAYERS_FULL players on, the bonus shrinking to nothing with
+/// BLUE_FEW_PLAYERS_UNTIL (on top of the players' tempo, which it follows like the enemy's).
+pub const BLUE_FEW_PLAYERS: f64 = 1.5;
+pub const BLUE_FEW_PLAYERS_FULL: f64 = 2.0;
+pub const BLUE_FEW_PLAYERS_UNTIL: f64 = 4.0;
+/// A theater that starts the friendly side outnumbered (the enemy's places and cities weighed
+/// as income against its own, beyond UNDERDOG_EVEN times as many) helps it by the ratio to the
+/// power UNDERDOG_EXP, at most UNDERDOG_MAX: its income, its fighters and their purchases, and
+/// the enemy's offensive slower by the root. Losing ground helps it again: COMEBACK for all its
+/// places lost (in proportion), at most COMEBACK_MAX, on its income, its offensive and repairs.
+pub const UNDERDOG_EVEN: f64 = 1.25;
+pub const UNDERDOG_EXP: f64 = 0.5;
+pub const UNDERDOG_MAX: f64 = 2.5;
+/// Each friendly place's garrison has this many more tanks and MANPADS teams for every step of
+/// that beyond 1 (rounded down).
+pub const UNDERDOG_GARRISON: f64 = 1.4;
+pub const COMEBACK: f64 = 2.5;
+pub const COMEBACK_MAX: f64 = 2.0;
 /// A destroyed city costs its side this much at once (stores and factories gone).
 pub const CITY_LOSS: f64 = 30.0;
 /// What the AI pays: repairs by kind of site, a gun or MANPADS team, a fighter sortie (patrol,
@@ -376,6 +391,8 @@ pub const CONVOY_INSERTION_WAIT: f64 = 30.0 * 60.0;
 pub const AI_MISSION_WAIT: f64 = 5.0 * 60.0;
 pub const AI_MISSIONS_MAX: usize = 4;
 pub const AI_MISSION_COST: f64 = 10.0;
+/// Close air support offers on the enemy's board at most (on friendly places and convoys).
+pub const RED_CAS_OFFERS: usize = 2;
 /// Aircraft of a flight: a recon flies alone, every other mission a pair.
 pub const AI_RECON_AIRCRAFT: usize = 1;
 pub const AI_FLIGHT_AIRCRAFT: usize = 2;

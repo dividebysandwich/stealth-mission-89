@@ -1797,3 +1797,21 @@ fn a_low_helicopter_slips_past_the_manpads() {
     assert!(!fired_at(40), "a missile at the low helicopter");
     assert!(fired_at(1200), "none at the high one");
 }
+
+/// An outnumbered friendly side's places hold more tanks and MANPADS teams; the enemy's do not.
+#[test]
+fn an_outnumbered_side_garrisons_its_places_stronger() {
+    let count = |extra: u8, blue: bool| {
+        let (_, mut sim) = campaign();
+        quiet(&mut sim);
+        sim.set_blue_garrison(extra);
+        let to = find(&sim, 0x001, Some("Tabor"));
+        let t = sim.objects()[to];
+        sim.place_defences(t.x, t.y, false, blue);
+        let n = |k: GroundKind| sim.units().iter().filter(|u| u.kind == k && !u.destroyed).count();
+        (n(GroundKind::Leopard2) + n(GroundKind::T90), n(GroundKind::Manpads))
+    };
+    let (tanks, manpads) = count(0, true);
+    assert_eq!(count(2, true), (tanks + 2, manpads + 2));
+    assert_eq!(count(2, false), count(0, false));
+}

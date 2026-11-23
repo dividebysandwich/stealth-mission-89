@@ -206,7 +206,7 @@ impl CampaignState {
         }
         let skill = (self.setup.opponents as usize).min(3);
         let now = self.clock;
-        let every = self.paced(DRONES_EVERY[skill]);
+        let every = self.offensive_paced(DRONES_EVERY[skill]);
         if now - self.drones_at < every {
             return;
         }

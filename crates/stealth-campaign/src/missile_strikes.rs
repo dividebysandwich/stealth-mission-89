@@ -173,7 +173,7 @@ impl CampaignState {
                 }
                 continue;
             }
-            if now - at < self.paced(every) {
+            if now - at < self.offensive_paced(every) {
                 continue;
             }
             // The TELs fire from a site the enemy's logistics built: a new one goes up when none

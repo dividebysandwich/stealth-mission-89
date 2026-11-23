@@ -1109,6 +1109,9 @@ pub struct CampaignState {
     /// The players flying the war, for the enemy's tempo (`crew`).
     #[serde(default)]
     pub crew: crate::Crew,
+    /// The sides as they started the war (`balance`; an older save measures them on load).
+    #[serde(default)]
+    pub start: crate::StartBalance,
     /// What moved the front lately (`momentum`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub war_log: Vec<crate::WarEvent>,
@@ -1795,6 +1798,7 @@ impl CampaignState {
             sead_at: f64::MIN,
             patriots_lost: Vec::new(),
             crew: crate::Crew::default(),
+            start: Default::default(),
             war_log: Vec::new(),
             outcome: None,
             blue: Forces::start(FIGHTERS_START),
@@ -1836,6 +1840,9 @@ impl CampaignState {
             munition_log: Default::default(),
             terrain: Terrain::default(),
         };
+        c.start = c.measure_start();
+        // An outnumbered friendly side starts with more fighters.
+        c.blue.fighters = c.fighters_start(Side::Blue);
         c.note(text!("cl-campaign-started"));
         c
     }

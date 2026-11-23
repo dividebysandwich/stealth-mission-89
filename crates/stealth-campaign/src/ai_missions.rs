@@ -804,7 +804,18 @@ impl CampaignState {
                 0,
             );
         }
-        self.red_board = offers;
+        // No more close air support at once than the friendly board would hold: those on the
+        // board longest (their flights out or due), then the nearest their bases.
+        let dist_of = |c: &CampaignState, o: &MissionOffer| {
+            c.site(o.base).map_or(i32::MAX, |s| dist(s.x - o.x, s.y - o.y))
+        };
+        let (mut cas, rest): (Vec<_>, Vec<_>) =
+            offers.into_iter().partition(|o| o.kind == MissionKind::Cas);
+        cas.sort_by(|a, b| {
+            a.posted.total_cmp(&b.posted).then(dist_of(self, a).cmp(&dist_of(self, b)))
+        });
+        cas.truncate(RED_CAS_OFFERS);
+        self.red_board = rest.into_iter().chain(cas).collect();
     }
 
     /// A strike of the enemy's board on a friendly airfield that is due (its raid takes off

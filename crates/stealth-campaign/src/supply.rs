@@ -33,9 +33,13 @@ impl CampaignState {
         self.resupply_at = self.clock;
         let skill = (self.setup.opponents as usize).min(3);
         for side in [Side::Blue, Side::Red] {
-            let (most_f, most_h) = (2 * self.fighters_start(side), 2 * HELICOPTERS_START);
+            let (most_f, most_h) = self.aircraft_limits(side);
             let (nf, nh) = match side {
-                Side::Blue => (RESUPPLY_FIGHTERS, RESUPPLY_HELICOPTERS),
+                Side::Blue => {
+                    let underdog = self.underdog();
+                    let more = |n: u32| (n as f64 * underdog).round() as u32;
+                    (more(RESUPPLY_FIGHTERS), more(RESUPPLY_HELICOPTERS))
+                }
                 _ => {
                     let pace = self.pace();
                     let more = |n: u32| (n as f64 * pace).round() as u32;
@@ -86,25 +90,29 @@ impl CampaignState {
     }
 
     /// Materiel a side gets an hour: a base amount, its places and their intact cities (the
-    /// enemy's more for more players, to pay for its tempo; the friendly side's alike, and
-    /// more while only one or two players are on to fly its war).
+    /// enemy's more for more players, to pay for its tempo; the friendly side's alike, more
+    /// while only one or two players are on to fly its war, and more when it is outnumbered:
+    /// `friendly_relief`).
     pub fn income(&self, side: Side) -> f64 {
         let (places, cities) = self.producers(side);
         let income = INCOME_BASE + INCOME_PLACE * places as f64 + INCOME_CITY * cities as f64;
         match side {
             Side::Red => income * self.pace(),
-            _ => income * self.pace() * self.few_players_bonus(),
+            _ => income * self.pace() * self.few_players_bonus() * self.friendly_relief(),
         }
     }
 
-    /// The friendly AI's extra income while few players are on: `BLUE_FEW_PLAYERS` with one,
-    /// gone with `BLUE_FEW_PLAYERS_UNTIL` (1 when the AI does not fly the boards).
+    /// The friendly AI's extra income while few players are on: `BLUE_FEW_PLAYERS` with up to
+    /// `BLUE_FEW_PLAYERS_FULL`, gone with `BLUE_FEW_PLAYERS_UNTIL` (1 when the AI does not fly
+    /// the boards).
     fn few_players_bonus(&self) -> f64 {
         if !self.ai_missions_on() {
             return 1.0;
         }
         let n = if self.setup.crew_scaling { self.crew.level } else { self.crew.online as f64 };
-        let fade = ((BLUE_FEW_PLAYERS_UNTIL - n) / (BLUE_FEW_PLAYERS_UNTIL - 1.0)).clamp(0.0, 1.0);
+        let fade = ((BLUE_FEW_PLAYERS_UNTIL - n)
+            / (BLUE_FEW_PLAYERS_UNTIL - BLUE_FEW_PLAYERS_FULL))
+            .clamp(0.0, 1.0);
         1.0 + (BLUE_FEW_PLAYERS - 1.0) * fade
     }
 
@@ -119,14 +127,19 @@ impl CampaignState {
         (self.held(side), cities)
     }
 
-    /// The most fighters a side keeps (twice what it started with), and helicopters.
+    /// The most fighters a side keeps (twice what it started with), and helicopters (an
+    /// outnumbered friendly side more of both).
     pub fn aircraft_limits(&self, side: Side) -> (u32, u32) {
-        (2 * self.fighters_start(side), 2 * HELICOPTERS_START)
+        let helicopters = match side {
+            Side::Blue => (HELICOPTERS_START as f64 * self.underdog()).round() as u32,
+            _ => HELICOPTERS_START,
+        };
+        (2 * self.fighters_start(side), 2 * helicopters)
     }
 
-    fn fighters_start(&self, side: Side) -> u32 {
+    pub(crate) fn fighters_start(&self, side: Side) -> u32 {
         match side {
-            Side::Blue => FIGHTERS_START,
+            Side::Blue => (FIGHTERS_START as f64 * self.underdog()).round() as u32,
             _ => FIGHTERS_START + ENEMY_FIGHTERS_PER_SKILL * self.setup.opponents.min(3) as u32,
         }
     }

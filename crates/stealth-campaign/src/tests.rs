@@ -511,7 +511,8 @@ fn patriots_stand_in_the_rear() {
 /// Ticks until the enemy orders its first insertion; the order's place.
 fn enemy_order(c: &mut CampaignState) -> PlaceId {
     c.tick(1.0, &WorldView::default(), &[]);
-    c.tick(tuning::ENEMY_INSERT_EVERY[c.setup.opponents as usize], &WorldView::default(), &[]);
+    let every = c.offensive_paced(tuning::ENEMY_INSERT_EVERY[c.setup.opponents as usize]);
+    c.tick(every, &WorldView::default(), &[]);
     let ins = c.insertions.iter().find(|i| i.side == Side::Red).expect("an enemy insertion");
     assert_eq!(c.places[ins.place as usize].owner, Side::Blue);
     ins.place
@@ -615,7 +616,8 @@ fn an_insertion_without_helicopters_is_called_off() {
 /// Ticks until the enemy's first raid takes off: the raid's id, target and tags.
 fn raid(c: &mut CampaignState) -> (u32, ObjectId, Vec<u32>) {
     c.tick(1.0, &WorldView::default(), &[]);
-    c.tick(tuning::RAID_EVERY[c.setup.opponents as usize], &WorldView::default(), &[]);
+    let every = c.offensive_paced(tuning::RAID_EVERY[c.setup.opponents as usize]);
+    c.tick(every, &WorldView::default(), &[]);
     assert!(c.raids.iter().any(|r| r.open()), "a raid ordered");
     // The escort takes off first.
     let ev = c.tick(tuning::RAID_LEAD - tuning::RAID_ESCORT_LEAD + 1.0, &WorldView::default(), &[]);
@@ -1373,7 +1375,7 @@ fn the_enemy_awacs_is_worth_shooting_down() {
 fn drone_waves_hit_ukraine() {
     let mut c = campaign("ukraine", 9);
     c.tick(1.0, &WorldView::default(), &[]);
-    c.tick(tuning::DRONES_EVERY[1], &WorldView::default(), &[]);
+    c.tick(c.offensive_paced(tuning::DRONES_EVERY[1]), &WorldView::default(), &[]);
     let r = c.raids.iter().find(|r| r.drones).expect("a drone wave").clone();
     assert_eq!(c.owner(r.target), Some(Side::Blue));
     c.tick(tuning::BOARD_REFRESH, &WorldView::default(), &[]);
@@ -2679,24 +2681,31 @@ fn sorties_get_unique_callsigns_by_mission() {
 
 #[test]
 fn the_crew_sets_the_enemys_pace() {
-    assert_eq!(crew_scale(1.0), 1.0);
-    assert!((crew_scale(2.0) - 1.516).abs() < 0.01);
-    assert!((crew_scale(4.0) - 2.297).abs() < 0.01);
+    // Up to eight players the enemy keeps its tempo; beyond, it follows the crew.
+    for n in [1.0, 2.0, 4.0, 8.0] {
+        assert_eq!(crew_scale(n), 1.0, "{n} players");
+    }
+    assert!((crew_scale(12.0) - 1.5).abs() < 1e-9);
+    assert!((crew_scale(16.0) - 2.0).abs() < 1e-9);
     assert_eq!(crew_scale(64.0), tuning::CREW_SCALE_MAX);
     let mut c = campaign("central_europe", 3);
     assert_eq!(c.pace(), 1.0);
-    // Four players: the count rises one player per CREW_RISE, the pace with it.
+    // Four players: the count rises one player per CREW_RISE; more offers, the same enemy.
     c.set_crew(4);
     c.tick(tuning::CREW_RISE, &WorldView::default(), &[]);
     assert!((c.crew.level - 2.0).abs() < 1e-9);
     c.tick(2.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
     assert_eq!(c.crew.level, 4.0);
-    assert_eq!(c.pace(), crew_scale(4.0));
+    assert_eq!(c.pace(), 1.0);
     assert_eq!(c.board_size(), tuning::BOARD_SIZE + 3 * tuning::CREW_OFFERS);
+    // Sixteen: twice the tempo.
+    c.set_crew(16);
+    c.tick(12.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
+    assert_eq!(c.pace(), 2.0);
     // One drops out for a minute: the pace hardly moves.
-    c.set_crew(3);
+    c.set_crew(15);
     c.tick(60.0, &WorldView::default(), &[]);
-    assert!(c.crew.level > 3.8);
+    assert!(c.crew.level > 15.8);
     // Saved with the campaign; an older save plays as one player.
     let d: CampaignState = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
     assert_eq!(d.crew, c.crew);
@@ -2723,15 +2732,16 @@ fn more_players_draw_more_enemy_patrols() {
         }
         c.patrols.iter().filter(|p| p.1 == Side::Red).count()
     };
-    let (one, four) = (patrols(1), patrols(4));
-    assert!(four >= one + 3, "{one} patrols alone, {four} for four");
-    // Four: a pace of 2.3, 1.3 steps of 2 more each.
+    let (one, four, sixteen) = (patrols(1), patrols(4), patrols(16));
+    assert_eq!(four, one, "four players meet the enemy as one does");
+    assert!(sixteen >= one + 2, "{one} patrols alone, {sixteen} for sixteen");
+    // Sixteen: a pace of 2, one step of 2 more.
     let mut c = campaign("central_europe", 3);
     let roe = 1;
     assert_eq!(c.patrol_cap(), tuning::PATROLS + roe);
-    c.set_crew(4);
-    c.tick(3.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
-    assert_eq!(c.patrol_cap(), tuning::PATROLS + roe + 3);
+    c.set_crew(16);
+    c.tick(15.0 * tuning::CREW_RISE, &WorldView::default(), &[]);
+    assert_eq!(c.patrol_cap(), tuning::PATROLS + roe + 2);
 }
 
 #[test]
@@ -2861,7 +2871,7 @@ fn a_struck_airfield_holds_back_the_enemys_raids_and_the_debrief_says_so() {
         &[Report::ObjectDestroyed { object: airfield, by: Some(P0) }],
     );
     // No raid for the delay, whatever its interval says.
-    let every = tuning::RAID_EVERY[1];
+    let every = c.offensive_paced(tuning::RAID_EVERY[1]);
     assert!(c.raid_at >= c.clock + tuning::STRUCK_AIRFIELD_DELAY - every - 2.0);
     let record = finished(&c.apply(P0, Command::EndSortie { end: SortieEnd::Landed }).unwrap());
     assert!(
@@ -3292,6 +3302,29 @@ fn the_enemy_flies_its_own_board_and_strikes_what_it_scouted() {
                 .any(|o| matches!(o.objective, Objective::Strike { place: p, .. } if p == place))
         );
     }
+}
+
+/// Friendly units at every place of the enemy's front: its board holds no more than
+/// `RED_CAS_OFFERS` close air support missions, and keeps the ones it posted first.
+#[test]
+fn the_enemy_board_holds_a_few_close_air_support_missions() {
+    let mut c = ai_campaign();
+    let front = c.front(Side::Red);
+    assert!(front.len() > tuning::RED_CAS_OFFERS, "{} front places", front.len());
+    let units: Vec<GroundView> = front
+        .iter()
+        .map(|&p| GroundView::gun(c.places[p as usize].x, c.places[p as usize].y, Side::Blue, true))
+        .collect();
+    let view = WorldView { units, ..Default::default() };
+    c.rebuild_red_board(&view);
+    let cas = |c: &CampaignState| {
+        c.red_board.iter().filter(|o| o.kind == MissionKind::Cas).map(|o| o.id).collect::<Vec<_>>()
+    };
+    let first = cas(&c);
+    assert_eq!(first.len(), tuning::RED_CAS_OFFERS);
+    c.tick(60.0, &view, &[]);
+    c.rebuild_red_board(&view);
+    assert_eq!(cas(&c), first, "the same ones stay");
 }
 
 #[test]
@@ -4215,17 +4248,23 @@ fn the_command_builds_air_defence_where_units_die_to_air_attack() {
     assert_eq!(own(&c), 1, "the place is covered now");
 }
 
-/// While only one player is on, the friendly side's AI earns `BLUE_FEW_PLAYERS` times its
-/// income; with three the bonus is gone and both sides follow the players' tempo alike.
+/// While one or two players are on, the friendly side's AI earns `BLUE_FEW_PLAYERS` times its
+/// income; with four the bonus is gone and both sides follow the players' tempo alike.
 #[test]
 fn the_friendly_ai_earns_more_while_few_players_are_on() {
     let mut c = ai_campaign();
     let (places, cities) = c.producers(Side::Blue);
-    let base = tuning::INCOME_BASE
+    let base = (tuning::INCOME_BASE
         + tuning::INCOME_PLACE * places as f64
-        + tuning::INCOME_CITY * cities as f64;
+        + tuning::INCOME_CITY * cities as f64)
+        * c.friendly_relief();
+    assert!((c.income(Side::Blue) - base * tuning::BLUE_FEW_PLAYERS).abs() < 1e-9);
+    c.crew.level = 2.0;
     assert!((c.income(Side::Blue) - base * tuning::BLUE_FEW_PLAYERS).abs() < 1e-9);
     c.crew.level = 3.0;
+    let half = 1.0 + (tuning::BLUE_FEW_PLAYERS - 1.0) / 2.0;
+    assert!((c.income(Side::Blue) - base * half).abs() < 1e-9);
+    c.crew.level = 4.0;
     assert!((c.income(Side::Blue) - base * c.pace()).abs() < 1e-9);
     // Without the AI flying the boards (an older campaign), as before.
     let mut old = campaign("central_europe", 3);
@@ -4335,3 +4374,63 @@ fn a_place_under_air_attack_gets_air_cover() {
         .unwrap();
     assert!(dist(at.0 - x, at.1 - y) <= tuning::AI_CAP_STATION, "{at:?}");
 }
+
+/// Theaters that start the friendly side far outnumbered help it; the even ones hardly.
+#[test]
+fn an_outnumbered_friendly_side_gets_help() {
+    let mut seen = Vec::new();
+    for code in [
+        "libya",
+        "persian_gulf",
+        "north_cape",
+        "central_europe",
+        "vietnam",
+        "middle_east",
+        "desert_storm",
+        "cuba",
+        "korea",
+        "ukraine",
+        "gulf_of_finland",
+        "suwalki",
+    ] {
+        let c = campaign(code, 0);
+        seen.push(format!(
+            "{code}: {:?} underdog {:.2} fighters {} limits {:?}",
+            c.start,
+            c.underdog(),
+            c.blue.fighters,
+            c.aircraft_limits(Side::Blue)
+        ));
+    }
+    let all = seen.join("\n");
+    println!("{all}");
+    let of = |code: &str| campaign(code, 0).underdog();
+    for even in ["central_europe", "gulf_of_finland", "suwalki"] {
+        assert!(of(even) < 1.1, "{all}");
+    }
+    for outnumbered in ["korea", "cuba", "libya"] {
+        assert!(of(outnumbered) > 1.5, "{all}");
+    }
+    assert_eq!(campaign("central_europe", 0).garrison_extra(), 0);
+    assert!(campaign("korea", 0).garrison_extra() >= 2);
+    let mut c = campaign("korea", 0);
+    let k = c.underdog();
+    assert_eq!(c.blue.fighters, (tuning::FIGHTERS_START as f64 * k).round() as u32);
+    // Ground lost: help on top, the enemy's offensive slower, repairs faster.
+    assert_eq!(c.comeback(), 1.0);
+    let every = c.offensive_paced(3600.0);
+    let p = c.places.iter().position(|p| p.owner == Side::Blue).unwrap();
+    c.places[p].owner = Side::Red;
+    assert!(c.comeback() > 1.0 && c.comeback() <= tuning::COMEBACK_MAX);
+    assert!(c.offensive_paced(3600.0) > every);
+    assert!(c.repair_relief(Side::Blue) > 1.0);
+    assert_eq!(c.repair_relief(Side::Red), 1.0);
+    // An older save without the start measures it on load.
+    let mut v = serde_json::to_value(&c).unwrap();
+    v.as_object_mut().unwrap().remove("start");
+    let mut d: CampaignState = serde_json::from_value(v).unwrap();
+    assert_eq!(d.underdog(), 1.0);
+    d.after_load();
+    assert_eq!(d.start.held[0] as usize, d.held(Side::Blue));
+}
+

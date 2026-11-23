@@ -1,5 +1,5 @@
-//! Coop scaling: the more players fly the war, the faster the enemy's tempo, the more
-//! fighters it puts up and the more it earns to pay for them. Never their skill: each
+//! Coop scaling: a big crew (more than `CREW_FREE` players) meets a faster enemy tempo, more
+//! fighters up and more income to pay for them; a smaller one fights the enemy as it is. Never their skill: each
 //! player's own fights stay as hard as the opponents' level says.
 
 use serde::{Deserialize, Serialize};
@@ -23,9 +23,9 @@ impl Default for Crew {
     }
 }
 
-/// The enemy's tempo for `players` players: sub-linear (players work together), 1 for one.
+/// The enemy's tempo for `players` players: 1 up to `CREW_FREE`, in proportion beyond.
 pub fn crew_scale(players: f64) -> f64 {
-    players.max(1.0).powf(CREW_EXPONENT).min(CREW_SCALE_MAX)
+    (players / CREW_FREE).clamp(1.0, CREW_SCALE_MAX)
 }
 
 impl CampaignState {

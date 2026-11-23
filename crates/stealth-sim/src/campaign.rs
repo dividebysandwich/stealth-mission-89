@@ -351,6 +351,10 @@ pub struct CampaignSim {
     pub(crate) site_rounds: Vec<i32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) gun_rounds: Vec<i32>,
+    /// Tanks and MANPADS teams each friendly place has beyond its usual garrison (an
+    /// outnumbered friendly side's, `Sim::set_blue_garrison`).
+    #[serde(default)]
+    pub(crate) blue_garrison: u8,
 }
 
 /// Metres (east, north, up) of a flight unit.
@@ -421,6 +425,7 @@ impl Sim {
             magazines: false,
             site_rounds: Vec::new(),
             gun_rounds: Vec::new(),
+            blue_garrison: 0,
         }
     }
 
@@ -824,8 +829,17 @@ impl Sim {
     /// of `SimOptions::air_defence`; friendly ones Gepards at airfields (a player can man them)
     /// and Stinger teams. Replaces the other side's guns there, in the wrecks' slots (the list
     /// does not grow with every capture until it is full and new units are cut off).
+    /// Campaign: each friendly place's garrison gets `extra` more tanks and MANPADS teams from
+    /// now on (its side outnumbered in the theater).
+    pub fn set_blue_garrison(&mut self, extra: u8) {
+        if let Some(c) = self.campaign.as_mut() {
+            c.blue_garrison = extra;
+        }
+    }
+
     pub fn place_defences(&mut self, x: i32, y: i32, airfield: bool, blue: bool) {
         let Some(mut c) = self.campaign.take() else { return };
+        let extra = if blue { c.blue_garrison as usize } else { 0 };
         let mut rng = c.rng;
         c.aaa_blue.resize(self.units.len(), false);
         c.aaa_target.resize(self.units.len(), None);
@@ -944,11 +958,16 @@ impl Sim {
                 put(GroundKind::Manpads, cell);
             }
         }
-        // The garrison: two tanks (three at an airfield) and an infantry fighting vehicle.
+        // The garrison: two tanks (three at an airfield) and an infantry fighting vehicle, and
+        // an outnumbered side's more tanks and MANPADS teams.
         let (tank, ifv) = garrison_kinds(blue);
         let (tx, ty, lo, hi) = around(25, 80);
         for kind in [tank, tank, ifv].into_iter().chain(airfield.then_some(tank)) {
             put(kind, spot(&mut rng, tx, ty, lo, hi));
+        }
+        for _ in 0..extra {
+            put(tank, spot(&mut rng, tx, ty, lo, hi));
+            put(GroundKind::Manpads, spot(&mut rng, x, y, 15, 80));
         }
         c.rng = rng;
         c.aaa_target.resize(self.units.len(), None);

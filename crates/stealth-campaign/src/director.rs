@@ -687,6 +687,7 @@ impl CampaignState {
             }
             ev.push(CampaignEvent::Repaired { object });
         }
+        let relief: Vec<f64> = self.places.iter().map(|p| self.repair_relief(p.owner)).collect();
         for k in 0..self.places.len() {
             let p = &self.places[k];
             if p.guns_lost == 0 || !p.guns_repair_at.is_some_and(|t| now >= t) {
@@ -697,7 +698,7 @@ impl CampaignState {
             }
             let p = &mut self.places[k];
             p.guns_lost -= 1;
-            p.guns_repair_at = (p.guns_lost > 0).then_some(now + REPAIR_GUN);
+            p.guns_repair_at = (p.guns_lost > 0).then_some(now + REPAIR_GUN / relief[k]);
             ev.push(CampaignEvent::GunRepaired { place: k as PlaceId });
         }
         for k in 0..self.places.len() {
@@ -710,7 +711,7 @@ impl CampaignState {
             }
             let p = &mut self.places[k];
             p.armour_lost -= 1;
-            p.armour_repair_at = (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR);
+            p.armour_repair_at = (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR / relief[k]);
             ev.push(CampaignEvent::ArmourRepaired { place: k as PlaceId });
         }
     }
@@ -745,13 +746,14 @@ impl CampaignState {
             .filter(|&(_, d)| d <= AAA_RANGE)
             .min_by_key(|&(_, d)| d);
         if let Some((k, _)) = near {
+            let relief = self.repair_relief(a.side);
             let p = &mut self.places[k];
             if a.vehicle.is_some() {
                 p.armour_lost = p.armour_lost.saturating_add(1);
-                p.armour_repair_at = Some(self.clock + REPAIR_ARMOUR);
+                p.armour_repair_at = Some(self.clock + REPAIR_ARMOUR / relief);
             } else {
                 p.guns_lost = p.guns_lost.saturating_add(1);
-                p.guns_repair_at = Some(self.clock + REPAIR_GUN);
+                p.guns_repair_at = Some(self.clock + REPAIR_GUN / relief);
             }
         }
     }
@@ -1112,7 +1114,7 @@ impl CampaignState {
     pub(crate) fn enemy_offensive(&mut self, view: &WorldView, ev: &mut Vec<CampaignEvent>) {
         let skill = (self.setup.opponents as usize).min(3);
         let now = self.clock;
-        let insert_every = self.paced(ENEMY_INSERT_EVERY[skill]);
+        let insert_every = self.offensive_paced(ENEMY_INSERT_EVERY[skill]);
         if now - self.enemy_insert_at >= insert_every {
             self.credit_cap_cover();
             // One of the weakest places for what it is worth (an airfield and a city weigh
@@ -1146,7 +1148,7 @@ impl CampaignState {
                 _ => self.enemy_insert_at = now - insert_every + 60.0,
             }
         }
-        let raid_every = self.paced(RAID_EVERY[skill]);
+        let raid_every = self.offensive_paced(RAID_EVERY[skill]);
         if now - self.raid_at >= raid_every {
             self.credit_cap_cover();
             let ready = self.forces(Side::Red).fighters as usize >= RAID_AIRCRAFT + RAID_ESCORTS

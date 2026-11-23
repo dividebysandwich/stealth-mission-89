@@ -22,6 +22,7 @@
 //! reports give the same campaign, and a snapshot is all a joining client needs.
 
 mod ai_missions;
+mod balance;
 mod convoy;
 mod crew;
 mod deploy;
@@ -52,6 +53,7 @@ pub const WING_TAG: u32 = 0xE5C1_0000;
 pub use ai_missions::{
     AiAirframe, AiMission, AiMissionState, AiTarget, RedJob, ai_flown, pick_blue, pick_red,
 };
+pub use balance::StartBalance;
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
 pub use deploy::{fast_track_cost, footprint, loads};
@@ -653,6 +655,10 @@ impl CampaignState {
     /// Insertions in flight start over, sorties end as aborted.
     pub fn after_load(&mut self) -> Vec<CampaignEvent> {
         self.ground_everything();
+        // An older save: the sides as they stand now count as the start.
+        if self.start == StartBalance::default() {
+            self.start = self.measure_start();
+        }
         let lead = self.clock + tuning::INSERTION_LEAD;
         for ins in &mut self.insertions {
             if ins.state == InsertionState::Enroute {

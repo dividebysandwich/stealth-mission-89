@@ -198,6 +198,7 @@ impl Host {
         for &o in &world.intel {
             sim.set_intel(o as usize, true);
         }
+        sim.set_blue_garrison(self.state.garrison_extra());
         for p in &self.state.places {
             if p.owner != Side::Neutral {
                 let blue = p.owner == Side::Blue;
