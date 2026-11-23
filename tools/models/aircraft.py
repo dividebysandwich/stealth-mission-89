@@ -777,11 +777,13 @@ A6_BODY = [
     (4.05, 1.81, -1.01, 1.06, 0.30, 1.40), (4.63, 1.77, -1.00, 1.05, 0.30, 1.43), (5.13, 1.67, -1.00, 1.05, 0.30, 1.45),
     (5.88, 1.54, -0.98, 1.03, 0.30, 1.48), (6.38, 1.40, -0.95, 1.02, 0.30, 1.49), (6.88, 1.27, -0.91, 1.00, 0.30, 1.50),
     (7.40, 1.22, -0.84, 0.98, 0.30, 1.48), (7.90, 1.20, -0.76, 0.96, 0.30, 1.45), (8.50, 1.17, -0.63, 0.91, 0.30, 1.36),
-    (8.92, 1.16, -0.56, 0.87, 0.30, 1.22), (9.66, 1.15, -0.52, 0.80, 0.32, 0), (11.20, 1.07, -0.36, 0.68, 0.36, 0),
+    (8.75, 1.165, -0.585, 0.89, 0.30, 1.28), (8.92, 1.16, -0.56, 0.87, 0.30, 1.22), (9.06, 1.16, -0.555, 0.855, 0.305, 1.16),
+    (9.20, 1.16, -0.55, 0.84, 0.31, 1.10), (9.33, 1.157, -0.54, 0.83, 0.312, 1.04), (9.66, 1.15, -0.52, 0.80, 0.32, 0), (11.20, 1.07, -0.36, 0.68, 0.36, 0),
     (12.40, 1.10, -0.23, 0.55, 0.44, 0), (12.94, 1.08, -0.16, 0.48, 0.46, 0), (14.00, 1.02, 0.00, 0.38, 0.51, 0),
     (15.40, 0.92, 0.22, 0.23, 0.57, 0), (16.38, 0.80, 0.62, 0.06, 0.71, 0)]
-# The nacelles run back into the round boom between these stations.
-A6_FADE = (7.40, 8.92)
+# The nacelles run back into the round boom between these stations: full to the tailpipes, the
+# boom narrowing behind them.
+A6_FADE = (8.60, 9.45)
 # The round section's points: degrees up from the widest point.
 A6_ANGLES = (90, 70, 50, 32, 14, 0, -18, -38, -58, -76, -90)
 # The glass: the canopy's panes (tools/models/a6_canopy.json: the two eye-shaped front panes, the
@@ -808,7 +810,9 @@ A6_LIP = (2.20, 0.95)
 # how far in each of the section's points under the widest one is drawn there.
 A6_SCALLOP_S = (1.13, 2.33)
 A6_SCALLOP = (0.72, 0.52, 0.40, 0.35)
-A6_EXHAUST = (0.95, -0.33, 0.30)
+# The tailpipes, straight aft on the nacelles' axes where they start to narrow (`a6_lobe`): from
+# deep inside the nacelle, uncovered as it runs back into the boom, to the exit; the exit's radius.
+A6_EXHAUST = (8.30, 9.30, 0.26)
 A6_WING_Z = 0.36
 # Streamwise sections (x, s of the leading edge, of the trailing edge, z, thickness).
 A6_WING = [(0.80, 3.25, 8.52, A6_WING_Z, 0.34), (2.04, 4.85, 8.66, A6_WING_Z, 0.28), (8.00, 7.96, 9.33, 0.38, 0.12),
@@ -876,6 +880,14 @@ def a6_half(s, top, bottom, hw, zc, nac):
             rx_, rz_ = right[5 + i]
             right[5 + i] = (x + (rx_ - x) * k, z + (rz_ - z) * k)
     return right
+
+
+def a6_lobe(s):
+    """The nacelle lobe's centre (x, z) and half height at s, as `a6_half` places it."""
+    r = next((a, b) for a, b in zip(A6_BODY, A6_BODY[1:]) if a[0] <= s <= b[0])
+    t = (s - r[0][0]) / (r[1][0] - r[0][0])
+    nac, bottom = (r[0][i] + (r[1][i] - r[0][i]) * t for i in (5, 2))
+    return nac - 0.50, -0.44 * -bottom, 0.50 * -bottom
 
 
 def a6_section(*r):
@@ -1038,11 +1050,12 @@ def a6():
     for sx in (-1, 1):
         # The intakes' mouths just ahead of the nacelles' front faces, the exhausts at their ends.
         g.add(a6_intake(sx))
-        ex, ez, er = A6_EXHAUST
-        g.add(frustum(tuple(a6_p(sx * ex, 8.60, ez)), tuple(a6_p(sx * (ex + 0.04), 9.12, ez)), er + 0.03, er, DARK,
-                      n=10, caps=False))
-        g.face([a6_p(sx * (ex + 0.03) + (er - 0.03) * math.cos(a), 9.04, ez + (er - 0.03) * math.sin(a))
-                for a in (2 * math.pi * k / 10 for k in range(10))], BLACK, a6_p(sx * ex, 8.2, ez))
+        s0, s1, er = A6_EXHAUST
+        x1, z1, _ = a6_lobe(A6_FADE[0] + 0.2)
+        g.add(frustum(tuple(a6_p(sx * x1, s0, z1)), tuple(a6_p(sx * x1, s1, z1)), er + 0.02, er, DARK, n=12,
+                      caps=False))
+        g.face([a6_p(sx * x1 + (er - 0.03) * math.cos(a), s1 - 0.06, z1 + (er - 0.03) * math.sin(a))
+                for a in (2 * math.pi * k / 12 for k in range(12))], BLACK, a6_p(sx * x1, s0, z1))
     # The refuelling probe ahead of the windscreen.
     g.add(frustum(tuple(a6_p(0, 1.75, 1.02)), tuple(a6_p(0, 1.05, 1.72)), 0.05, 0.045, p, n=6))
     g.add(frustum(tuple(a6_p(0, 1.08, 1.72)), tuple(a6_p(0, 0.55, 1.72)), 0.045, 0.04, p, n=6))

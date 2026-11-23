@@ -1143,7 +1143,7 @@ static A6: AircraftSpec = AircraftSpec {
     muzzle: None,
     sight: None,
     // Between the two exhausts on the fuselage's sides, under the wing's trailing edge.
-    exhaust: a6_point(0.0, 9.0, -0.33),
+    exhaust: a6_point(0.0, 9.3, -0.25),
     nozzles: &[],
     nozzle_radius: 0.0,
     nozzle_rect: None,
