@@ -819,6 +819,10 @@ pub struct PanelParams<'w, 's> {
     pub settings: Res<'w, crate::settings::Settings>,
     /// The A-6's panel (`intruder`).
     pub intruder: Res<'w, crate::intruder::IntruderPanel>,
+    pub computer: Res<'w, crate::intruder::computer::Computer>,
+    pub scan: Res<'w, crate::intruder::terrain::TerrainScan>,
+    pub stream: Res<'w, crate::intruder::vdi::Stream>,
+    pub ground_radar: Res<'w, crate::ground_radar::GroundRadar>,
 }
 
 impl PanelParams<'_, '_> {
@@ -1177,24 +1181,58 @@ impl PanelParams<'_, '_> {
     /// The A-6's displays (`intruder`): the pilot's vertical and horizontal ones, the
     /// bombardier/navigator's direct view radar indicator and his sensor scope's overlay.
     pub fn draw_vdi(&self, c: &mut Canvas, fonts: &Fonts) {
-        let (_, pitch, roll) = self.aircraft.single().map_or((0.0, 0.0, 0.0), |a| a.euler());
-        crate::intruder::vdi::draw(c, fonts, &self.intruder, pitch, roll);
+        use crate::intruder::vdi;
+        let flight = self.aircraft.single().map_or(vdi::Flight::default(), |a| {
+            let (heading, pitch, roll) = a.euler();
+            let path = a.orientation.inverse() * a.path_dir().normalize_or(Vec3::NEG_Z);
+            // Where it goes against the nose, level: the drift aside and the climb.
+            let level = Aircraft::from_euler(0.0, pitch, roll) * path;
+            vdi::Flight {
+                heading,
+                pitch,
+                roll,
+                drift: level.x.atan2(-level.z),
+                climb: level.y.clamp(-1.0, 1.0).asin(),
+                height: ((a.altitude - a.ground_altitude) as f64 * crate::world::WU) as f32,
+                alt: self.positions.single().map_or(0.0, |p| p.0.y as f32),
+                stream: self.stream.0,
+                blink: crate::hud::blink(&self.time),
+            }
+        });
+        vdi::draw(c, fonts, &self.intruder, &flight, &self.computer, &self.scan);
+        crate::intruder::dump_png(c, &vdi::colours(), "vdi");
+    }
+
+    /// What the A-6's round scopes show of the flight.
+    fn scene(&self) -> crate::intruder::scope::Scene<'_> {
+        let a = self.aircraft.single().ok();
+        let pos = self.positions.single().map_or(bevy::math::DVec3::ZERO, |p| p.0);
+        crate::intruder::scope::Scene {
+            own: bevy::math::DVec2::new(pos.x, -pos.z),
+            heading: a.map_or(0.0, |a| a.euler().0),
+            alt: pos.y as f32,
+            climb: a
+                .map_or(0.0, |a| a.path_dir().normalize_or(Vec3::NEG_Z).y.clamp(-1.0, 1.0).asin()),
+            computer: &self.computer,
+            radar: &self.ground_radar,
+            scan: &self.scan,
+        }
     }
 
     pub fn draw_phd(&self, c: &mut Canvas, fonts: &Fonts) {
-        let heading = self.aircraft.single().map_or(0.0, |a| a.euler().0);
-        let t = self.time.elapsed_secs();
-        crate::intruder::scope::draw_phd(c, fonts, &self.intruder, heading, t);
+        use crate::intruder::scope;
+        scope::draw_phd(c, fonts, &self.intruder, &self.scene());
+        crate::intruder::dump_png(c, &scope::phd_colours(), "phd");
     }
 
     pub fn draw_dvri(&self, c: &mut Canvas, fonts: &Fonts) {
-        let heading = self.aircraft.single().map_or(0.0, |a| a.euler().0);
-        let t = self.time.elapsed_secs();
-        crate::intruder::scope::draw_dvri(c, fonts, &self.intruder, heading, t);
+        use crate::intruder::scope;
+        scope::draw_dvri(c, fonts, &self.intruder, &self.scene());
+        crate::intruder::dump_png(c, &scope::dvri_colours(), "dvri");
     }
 
     pub fn draw_sensor(&self, c: &mut Canvas, fonts: &Fonts) {
-        crate::intruder::scope::draw_sensor(c, fonts, &self.intruder);
+        crate::intruder::scope::draw_sensor(c, fonts, &self.computer);
     }
 }
 

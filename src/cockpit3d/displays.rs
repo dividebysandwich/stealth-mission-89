@@ -738,7 +738,11 @@ pub(super) fn update_displays(
             CanvasRole::Hud => {
                 tex.canvas.px.fill(0);
                 if let Some(frame) = d.hud.frame(d.mfd.state.camera_shown()) {
-                    if tex.canvas.w == 320 {
+                    if settings.aircraft == crate::aircraft::AircraftKind::A6 {
+                        // The A-6's optical sight: reticles, no symbols.
+                        let (panel, computer) = (&d.panel.intruder, &d.panel.computer);
+                        crate::intruder::sight::draw(&mut tex.canvas, &frame, panel, computer);
+                    } else if tex.canvas.w == 320 {
                         crate::hud::draw(&mut tex.canvas, &art, &fonts, &frame);
                     } else {
                         crate::hud::modern::draw(&mut tex.canvas, &frame);
@@ -844,12 +848,17 @@ pub(super) fn update_displays(
                 crate::intruder::draw_control(c, &fonts, r, key, &d.panel.intruder, k) || backlit
             }
             Face::Item(Elem::Light(light)) => {
-                let on = crate::intruder::lit(light, &d.panel.intruder);
+                let on = crate::intruder::lit(
+                    light,
+                    &d.panel.intruder,
+                    &d.panel.computer,
+                    d.panel.cm.ecm,
+                );
                 crate::intruder::draw_light(c, &fonts, r, light, on);
                 on
             }
             Face::Item(Elem::Readout(readout)) => {
-                let text = crate::intruder::readout(readout, &d.panel.intruder);
+                let text = crate::intruder::readout(readout, &d.panel.intruder, &d.panel.computer);
                 crate::intruder::draw_readout(c, r, &text);
                 backlit
             }

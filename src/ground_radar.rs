@@ -651,6 +651,8 @@ fn tile_objects(theater: &crate::world::Theater) -> Vec<(DVec2, (i32, i32))> {
 fn sweep(
     time: Res<Time>,
     state: Res<MfdState>,
+    settings: Res<crate::settings::Settings>,
+    panel: Res<crate::intruder::IntruderPanel>,
     mut radar: ResMut<GroundRadar>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     combat: Option<Res<crate::combat::Combat>>,
@@ -658,8 +660,12 @@ fn sweep(
     scenery: Option<Res<crate::scenery::Scenery>>,
 ) {
     let flying = aircraft.single().ok().filter(|(a, _)| !a.on_ground && a.ended.is_none());
-    let (Some((a, pos)), Some(combat), true) = (flying, combat, state.modern && state.av.gm_on())
-    else {
+    // The A-6's search radar has its own power switch and range knob (`intruder`).
+    let intruder = (settings.aircraft == crate::aircraft::AircraftKind::A6
+        && panel.search_power == crate::intruder::Power::On)
+        .then(|| panel.search_range.miles() as f64 * 1852.0);
+    let on = intruder.is_some() || (state.modern && state.av.gm_on());
+    let (Some((a, pos)), Some(combat), true) = (flying, combat, on) else {
         if radar.on {
             radar.on = false;
             radar.clear();
@@ -673,7 +679,7 @@ fn sweep(
         radar.tiles_theater = Some(t.id.clone());
     }
     let own = DVec2::new(pos.0.x, -pos.0.z);
-    let range = state.av.gm_range_km() as f64 * 1000.0;
+    let range = intruder.unwrap_or(state.av.gm_range_km() as f64 * 1000.0);
     let hills = theater.as_ref().map(|t| t.hills.clone()).unwrap_or_default();
     let relief = combat.sim.relief();
     let ground = TheaterGround { hills: &hills, relief: &relief, scenery: scenery.as_deref() };

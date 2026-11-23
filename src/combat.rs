@@ -437,10 +437,16 @@ fn start_combat(
     };
     let mut sim = Sim::with_water(&data, m, opts, water);
     // The stores chosen in the menu, else the briefed ones on this aircraft.
-    let loadout = loadout
+    let mut loadout = loadout
         .filter(|l| l.fits(m, settings.aircraft))
         .map(|l| l.clone())
         .unwrap_or_else(|| crate::loadout::PlannedLoadout::of(m, settings.aircraft));
+    // Test aid `--stores 2,2,-,36`: the weapon on each station (`-` none), whatever fits.
+    if let Some(list) = std::env::args().skip_while(|a| a != "--stores").nth(1) {
+        for (s, w) in loadout.stores.iter_mut().zip(list.split(',')) {
+            *s = w.trim().parse().ok();
+        }
+    }
     let start_loadout = (loadout.stations(), loadout.first_choice(m));
     sim.set_loadout(&start_loadout.0);
     sim.select_bay(start_loadout.1);
@@ -548,6 +554,16 @@ impl Combat {
     /// Drops the locks at the next simulation frame (the targeting pod's snowplow).
     pub fn clear_target(&mut self) {
         self.pending.clear_target = true;
+    }
+
+    /// Steps to the next weapon at the next simulation frame (the A-6's station switches).
+    pub fn step_weapon(&mut self) {
+        self.pending.next_bay = true;
+    }
+
+    /// Designates a ground point (map units) at the next simulation frame.
+    pub fn designate_at(&mut self, x: i32, y: i32) {
+        self.pending.designate_at = Some((x, y));
     }
 
     /// A saved game's simulation and flight record (`savegame.rs`) in place of the ones the
@@ -926,7 +942,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
                 a,
                 pos,
                 controls.gun,
-                controls.fire,
+                controls.fire && !mfd.master_safe,
                 collision.0,
                 &hud,
                 &mfd,
@@ -1016,8 +1032,17 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         combat.accum -= dt;
         combat.steps += 1;
         let cmd = std::mem::take(&mut combat.pending);
-        let mut ps =
-            player_state(a, pos, controls.gun, controls.fire, collision.0, &hud, &mfd, &view, cmd);
+        let mut ps = player_state(
+            a,
+            pos,
+            controls.gun,
+            controls.fire && !mfd.master_safe,
+            collision.0,
+            &hud,
+            &mfd,
+            &view,
+            cmd,
+        );
         // The AH-64's gunner fires whatever the pilot's master mode (`gunner`).
         ps.mode_weapons &= !settings.gunner_cockpit;
         ps.engine = a.engine_report(settings.aircraft.spec().helicopter);

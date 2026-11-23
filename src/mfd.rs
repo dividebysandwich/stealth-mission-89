@@ -143,6 +143,11 @@ pub struct MfdState {
     /// Modern avionics: the MFDs show `av`'s formats.
     pub modern: bool,
     pub av: crate::avionics::AvionicsState,
+    /// The A-6's armament panel (`intruder::computer`): its release switch and interval
+    /// counter set the stick of bombs (bombs a release, feet between them) instead of the
+    /// weapons page, and its master arm switch holds the trigger while it is off.
+    pub panel_ripple: Option<(u8, u16)>,
+    pub master_safe: bool,
     /// Bombing mode CCRP (else CCIP), mirrored from the HUD for the weapons page's button.
     pub ccrp: bool,
     /// The HUD is in A-A, mirrored from the HUD (the targeting pod's CZ is off).
@@ -159,6 +164,8 @@ pub struct MfdState {
 impl Default for MfdState {
     fn default() -> Self {
         Self {
+            panel_ripple: None,
+            master_safe: false,
             left: LeftMfd::Map,
             right: RightMfd::Ord,
             map_zoom: 2,
@@ -233,7 +240,9 @@ impl MfdState {
     /// The SMS page's ripple for the simulation: bombs per release and their spacing (ft);
     /// (0, 0) for single bombs and with the classic avionics.
     pub fn ripple(&self) -> (u8, u16) {
-        if self.modern && self.av.ripple > 1 {
+        if let Some(r) = self.panel_ripple {
+            r
+        } else if self.modern && self.av.ripple > 1 {
             (self.av.ripple, self.av.ripple_ft())
         } else {
             (0, 0)

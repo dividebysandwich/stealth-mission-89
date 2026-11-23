@@ -8,10 +8,15 @@
 //! 45 degrees (`Key::kind`: `twist`), the toggle switches and knobs show their position
 //! (`IntruderPanel::position`).
 //!
-//! This is the panel only: what the lights show and what the displays draw is provisional
-//! (`lit`, `readout`, the test patterns), the avionics behind them are to come.
+//! Behind the panel: `computer` (the attack-navigation computer and the panel's hold on the
+//! weapons, the radar and the landing system), `terrain` (the track radar's view of the
+//! ground ahead) and `sight` (the pilot's optical sight). `SM89_A6_PNG=<dir>` writes the
+//! displays out as they are drawn.
 
+pub mod computer;
 pub mod scope;
+pub mod sight;
+pub mod terrain;
 pub mod vdi;
 
 use bevy::prelude::*;
@@ -26,14 +31,56 @@ pub struct IntruderPlugin;
 impl Plugin for IntruderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<IntruderPanel>()
+            .init_resource::<computer::Computer>()
+            .init_resource::<terrain::TerrainScan>()
+            .init_resource::<vdi::Stream>()
             .add_message::<PressKey>()
-            .add_systems(OnEnter(AppState::Flight), reset);
+            .add_systems(OnEnter(AppState::Flight), reset)
+            .add_systems(
+                Update,
+                (computer::drive, computer::compute, terrain::scan, stream)
+                    .chain()
+                    .after(crate::combat::CombatSystems)
+                    .run_if(in_state(AppState::Flight)),
+            );
     }
 }
 
 /// A new flight: the panel as the crew finds it.
 fn reset(mut panel: ResMut<IntruderPanel>) {
     *panel = IntruderPanel::default();
+}
+
+/// The ground's pattern on the vertical display streams with the flight.
+fn stream(
+    time: Res<Time>,
+    aircraft: Query<&crate::flight::Aircraft, With<crate::flight::Player>>,
+    mut stream: ResMut<vdi::Stream>,
+) {
+    let Ok(a) = aircraft.single() else { return };
+    let v = a.path_dir().normalize_or_zero() * a.ground_knots().max(a.knots() * 0.3) * 0.5144;
+    let height = ((a.altitude - a.ground_altitude) as f64 * crate::world::WU) as f32;
+    stream.advance(Vec2::new(v.x, -v.z), height, time.delta_secs());
+}
+
+/// Test aid `SM89_A6_PNG=<dir>`: a display's canvas written as `<name>.png` in its own
+/// colours, about once a second.
+pub fn dump_png(c: &Canvas, colours: &[u32; 256], name: &'static str) {
+    use std::sync::Mutex;
+    static LAST: Mutex<Vec<(&'static str, std::time::Instant)>> = Mutex::new(Vec::new());
+    let Ok(dir) = std::env::var("SM89_A6_PNG") else { return };
+    let Ok(mut last) = LAST.lock() else { return };
+    let now = std::time::Instant::now();
+    match last.iter_mut().find(|l| l.0 == name) {
+        Some(l) if now.duration_since(l.1).as_secs_f32() < 1.0 => return,
+        Some(l) => l.1 = now,
+        None => last.push((name, now)),
+    }
+    let px: Vec<u8> =
+        c.px.iter().flat_map(|i| colours[*i as usize].to_le_bytes().into_iter().take(3)).collect();
+    if let Some(img) = image::RgbImage::from_raw(c.pw() as u32, c.ph() as u32, px) {
+        let _ = img.save(format!("{dir}/{name}.png"));
+    }
 }
 
 /// Presses an A-6 control (scripts: `press=Intruder(Flight(Land))`), in whichever seat it is.
@@ -101,6 +148,16 @@ pub enum Clearance {
     Ft1000,
 }
 
+impl Clearance {
+    pub fn feet(self) -> u16 {
+        match self {
+            Clearance::Ft200 => 200,
+            Clearance::Ft500 => 500,
+            Clearance::Ft1000 => 1000,
+        }
+    }
+}
+
 /// The track radar's function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum TrackFunction {
@@ -116,6 +173,15 @@ pub enum DisplayScale {
     Mi5,
     #[default]
     Mi10,
+}
+
+impl DisplayScale {
+    pub fn miles(self) -> u8 {
+        match self {
+            DisplayScale::Mi5 => 5,
+            DisplayScale::Mi10 => 10,
+        }
+    }
 }
 
 /// The flight mode buttons of the bombardier/navigator's mode panel: one is in at a time.
@@ -150,6 +216,18 @@ pub enum PullG {
     G4,
     G3_5,
     G3,
+}
+
+impl PullG {
+    pub fn g(self) -> f32 {
+        match self {
+            PullG::G5 => 5.0,
+            PullG::G4_5 => 4.5,
+            PullG::G4 => 4.0,
+            PullG::G3_5 => 3.5,
+            PullG::G3 => 3.0,
+        }
+    }
 }
 
 /// A station's select switch.
@@ -533,6 +611,9 @@ pub struct IntruderPanel {
     /// quantity, action and CLEAR presses so far.
     pub addresses: u16,
     pub key_presses: u16,
+    /// The number last keyed (1 to 9, 0), until the computer takes it.
+    #[serde(default)]
+    pub entry: Option<u8>,
 }
 
 impl Default for IntruderPanel {
@@ -564,6 +645,7 @@ impl Default for IntruderPanel {
             amti: false,
             addresses: 0,
             key_presses: 0,
+            entry: None,
         }
     }
 }
@@ -626,9 +708,11 @@ impl IntruderPanel {
             Key::Amti => self.amti = !self.amti,
             Key::Address(a) => self.addresses |= 1 << a as u16,
             Key::Release => self.addresses = 0,
-            Key::Clear | Key::Quantity(_) | Key::Action(_) => {
-                self.key_presses = self.key_presses.wrapping_add(1)
+            Key::Quantity(n) => {
+                self.key_presses = self.key_presses.wrapping_add(1);
+                self.entry = QUANTITY_LABELS.get(n as usize).and_then(|l| l.parse().ok());
             }
+            Key::Clear | Key::Action(_) => self.key_presses = self.key_presses.wrapping_add(1),
         }
     }
 
@@ -722,12 +806,26 @@ impl Light {
     }
 }
 
-/// Whether an advisory light is lit. Provisional: only the attack lights, with an attack mode
-/// button in; the avionics are to drive the others.
-pub fn lit(light: Light, panel: &IntruderPanel) -> bool {
+/// Whether an advisory light is lit: ATTACK with an attack button in, IN RANGE from the
+/// computer's solution, COMPUTER with the computer off or with no target to attack, PLATFORM
+/// in the test only, RESELECT with an attack on and no station to release, the radar's lock
+/// lights by what the lock is on, ECM while the jammer radiates.
+pub fn lit(light: Light, panel: &IntruderPanel, computer: &computer::Computer, ecm: bool) -> bool {
+    let test = panel.flight == FlightMode::Test;
     match light {
-        Light::VdiAttack | Light::DvriAttack => panel.attack.is_some(),
-        _ => false,
+        Light::VdiAttack | Light::DvriAttack => panel.attack.is_some() || test,
+        Light::VdiInRange => computer.in_range || test,
+        Light::VdiPlatform => test,
+        Light::VdiComputer | Light::DvriComputer => {
+            panel.flight == FlightMode::Off
+                || test
+                || (panel.attack.is_some() && computer.target.is_none())
+        }
+        Light::Reselect | Light::DvriReselect => computer.reselect || test,
+        Light::DvriEcm => ecm,
+        Light::DvriTrack => computer.lock || computer.discrete,
+        Light::DvriGroundLock => computer.designated && !computer.discrete,
+        Light::DvriDiscreteLock => computer.discrete,
     }
 }
 
@@ -745,12 +843,26 @@ pub enum Readout {
     Storage,
 }
 
-/// What a readout shows. Provisional but for the interval counter.
-pub fn readout(r: Readout, panel: &IntruderPanel) -> String {
+/// What a readout shows: the interval counter; the range to the target in tenths of a
+/// nautical mile and the seconds to it (to the release, with one coming); the keyboard's
+/// storage, by the address key that is in: the target's bearing and range, else the route's
+/// point steered to.
+pub fn readout(r: Readout, panel: &IntruderPanel, computer: &computer::Computer) -> String {
+    let tenths = (computer.range / 185.2).round().clamp(0.0, 9999.0) as u32;
     match r {
         Readout::Interval => format!("{:03}", panel.interval.min(INTERVAL_MAX)),
+        Readout::DvriRange | Readout::PhdRange if computer.target.is_some() => {
+            format!("{tenths:04}")
+        }
         Readout::DvriRange | Readout::PhdRange => "0000".to_string(),
-        Readout::PhdTime => "000".to_string(),
+        Readout::PhdTime => {
+            let secs = computer.release.unwrap_or(computer.time).clamp(0.0, 999.0);
+            format!("{:03}", if computer.target.is_some() { secs as u32 } else { 0 })
+        }
+        Readout::Storage if panel.address_in(Address::Target) && computer.target.is_some() => {
+            let brg = computer.bearing.to_degrees().rem_euclid(360.0) as u32 % 360;
+            format!("{brg:03}{:03}", (tenths / 10).min(999))
+        }
         Readout::Storage => "N00000".to_string(),
     }
 }
