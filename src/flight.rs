@@ -988,7 +988,7 @@ fn step_flight(
     // `gunner::crew_autopilot`.)
     let mut parked = FlightControls::default();
     if manning.as_deref().is_some_and(|m| m.gunner()) && k.heli.is_none() {
-        parked.throttle = Some(gunner.orbit_throttle);
+        parked.throttle = gunner.orbit_throttle;
     }
     let controls = if manning.is_some() { &parked } else { &*controls };
     // Sub-steps (at most 1/60 s classic, 1/120 s modern) keep accelerated test runs accurate.

@@ -80,13 +80,17 @@ pub struct GunnerState {
     /// The trigger held at another's console (sent with the aim).
     trigger: bool,
     /// The AI's orbit: the speed it holds (knots), the throttle it sets (`flight::step_flight`
-    /// flies with it) and its speed hold's integral part.
+    /// flies with it, None until set: the lever stays where it was) and its speed hold's
+    /// integral part.
     orbit_speed: f32,
-    pub orbit_throttle: f32,
+    pub orbit_throttle: Option<f32>,
     throttle_trim: f32,
     /// A helicopter's autopilot in the gunner's seat: the height over the ground it holds
     /// (altitude units).
     height: Option<f32>,
+    /// A jet's autopilot cruises on with the pilot in the other seat (its speed and altitude
+    /// set on taking over).
+    cruising: bool,
     /// `--seat gunner@<s>` done.
     test_seat: bool,
     /// Another's AH-64: the station whose missiles he selected (None: the chin gun), and the
@@ -130,6 +134,12 @@ const SPEED_INTEGRAL: f32 = 0.004;
 const ORBIT_DEPRESSION: f32 = 0.70;
 /// The orbit clears what stands ahead by this much at least (altitude units, ~500 ft).
 const ORBIT_CLEARANCE: f32 = 300.0;
+/// A jet flying on with its pilot in the other seat (EA-18G, A-6) cruises at least this fast
+/// (knots): the speed just after take-off would leave it hanging on its wing, sinking in the
+/// autopilot's turns.
+const CRUISE_LEAST: f32 = 320.0;
+/// It raises the gear and flaps once this high over the ground (altitude units, ~150 ft).
+const CRUISE_CLEAN: f32 = 90.0;
 /// A helicopter's autopilot in the gunner's seat holds at least this height over the ground,
 /// and clears what stands on it by up to this much (altitude units, ~50 and ~100 ft).
 const HEIGHT_LEAST: f32 = 30.0;
@@ -440,6 +450,8 @@ fn orbit(
         if a.orbit.take().is_some() {
             a.autopilot_alt = 0.0;
         }
+        state.cruising = false;
+        state.orbit_throttle = None;
         return;
     }
     // The EA-18G with its pilot in the back seat (the A-6 with its pilot in the right one): its
@@ -449,12 +461,20 @@ fn orbit(
         settings.aircraft,
         crate::aircraft::AircraftKind::EA18G | crate::aircraft::AircraftKind::A6
     ) {
-        let first = !a.autopilot();
-        if first {
-            a.autopilot_alt = crate::flight::view_z(a.altitude).max(1.0);
+        // (Also when the pilot had engaged the autopilot himself: the speed is set here.)
+        if !state.cruising || !a.autopilot() {
+            state.cruising = true;
+            if !a.autopilot() {
+                a.autopilot_alt = crate::flight::view_z(a.altitude).max(1.0);
+            }
             let stall = a.stall_speed / 27.0;
-            state.orbit_speed = a.knots().max(stall * ORBIT_STALL_MARGIN);
+            state.orbit_speed = a.knots().max(stall * ORBIT_STALL_MARGIN).max(CRUISE_LEAST);
             state.throttle_trim = (a.set_thrust / 100.0).clamp(0.0, 1.0);
+        }
+        // Cleaned up once clear of the ground (just off the runway).
+        if a.altitude - a.ground_altitude > CRUISE_CLEAN {
+            a.gear_down = false;
+            a.flaps = false;
         }
         if let Some(t) = a.terrain_ahead {
             let clear = crate::flight::view_z(t.top.max(t.ground) + ORBIT_CLEARANCE);
@@ -463,7 +483,7 @@ fn orbit(
         let err = state.orbit_speed - a.knots();
         let dt = time.delta_secs();
         state.throttle_trim = (state.throttle_trim + err * SPEED_INTEGRAL * dt).clamp(0.0, 1.0);
-        state.orbit_throttle = (state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0);
+        state.orbit_throttle = Some((state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0));
         return;
     }
     // The point the pod holds (not while it is slewed), else where the orbit was, else here.
@@ -491,7 +511,7 @@ fn orbit(
     let err = state.orbit_speed - a.knots();
     let dt = time.delta_secs();
     state.throttle_trim = (state.throttle_trim + err * SPEED_INTEGRAL * dt).clamp(0.0, 1.0);
-    state.orbit_throttle = (state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0);
+    state.orbit_throttle = Some((state.throttle_trim + err * SPEED_GAIN).clamp(0.0, 1.0));
     let v = (state.orbit_speed * 0.514_444).max(40.0);
     let radius = (v * v / (9.81 * ORBIT_BANK.tan())).max(ORBIT_LEAST);
     // High enough over the point to see it under the wing.

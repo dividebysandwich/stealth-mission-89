@@ -29,6 +29,10 @@ pub const CLEARANCE: f32 = 65.0 * WU as f32;
 /// Look-ahead: this much flight time, at least `MIN_AHEAD` metres.
 const AHEAD_SECS: f32 = 20.0;
 const MIN_AHEAD: f32 = 3000.0;
+/// Slower than this (knots), or with the gear down, the autopilot climbs over the terrain but
+/// does not dive down to the clearance: just off the runway the steepest dive is more than the
+/// wing can pull out of.
+const DESCENT_LEAST_KNOTS: f32 = 250.0;
 /// Sample spacing (metres) at the aircraft, growing with the distance.
 const SPACING: f32 = 20.0;
 const SPACING_GROWTH: f32 = 0.02;
@@ -195,7 +199,10 @@ pub(super) fn scan(
     if !k.terrain_following {
         return;
     }
-    let gamma = command(&profile, speed);
+    let mut gamma = command(&profile, speed);
+    if a.gear_down || a.knots() < DESCENT_LEAST_KNOTS {
+        gamma = gamma.max(0.0);
+    }
     if following {
         a.tf_gamma = Some(gamma);
     }
