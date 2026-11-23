@@ -1,9 +1,10 @@
-//! 70 mm rockets: the Hydra 70 (unguided) and the APKWS (the same rocket with a laser seeker),
-//! fired from 7- or 19-tube pods.
+//! Rockets: the 70 mm Hydra 70 (unguided) and the APKWS (the same rocket with a laser seeker),
+//! fired from 7- or 19-tube pods, and the unguided 5 in Zuni from the four-tube LAU-10: fewer,
+//! heavier and longer ranged, with a bigger warhead ([`Motor`], [`Warhead`]).
 //!
 //! A press of the fire button with a rocket selected fires a pair, one from each side's pod in
 //! turn; holding the trigger ripples on, a pair every `RIPPLE_SECS`. A rocket leaves its tube
-//! along the aircraft's nose, its motor burns for `BURN_SECS`, then it coasts and falls; it goes
+//! along the aircraft's nose, its motor burns for its [`Motor::burn`], then it coasts and falls; it goes
 //! off where it meets the ground. An unguided one scatters a little (`DISPERSION`): it is an
 //! area weapon, aimed by the CCIP rocket reticle ([`impact`] predicts where one fired now lands).
 //! An APKWS steers after `SEEKER_DELAY` towards the targeting pod's laser spot (the firing
@@ -18,19 +19,70 @@ use crate::Sim;
 use crate::aaa::M_PER_MAP;
 use crate::types::*;
 
-/// The Hydra 70's and the APKWS's weapon types and missile table entries.
+/// The Hydra 70's, the APKWS's and the Zuni's weapon types and missile table entries.
 pub const HYDRA_WEAPON: i32 = 31;
 pub const APKWS_WEAPON: i32 = 32;
+pub const ZUNI_WEAPON: i32 = 36;
 pub const HYDRA_SPEC: i32 = 56;
 pub const APKWS_SPEC: i32 = 57;
+pub const ZUNI_SPEC: i32 = 59;
 
-/// Speed off the tube (m/s, on top of the aircraft's).
-pub const LAUNCH_SPEED: f64 = 45.0;
-/// The motor's burn (s) and its push (m/s²): some 700 m/s at burnout from a hover.
-pub const BURN_SECS: f64 = 1.05;
-pub const THRUST: f64 = 640.0;
-/// Air drag: deceleration per (m/s)².
-pub const DRAG: f64 = 7.0e-5;
+/// How a kind of rocket flies.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Motor {
+    /// Speed off the tube (m/s, on top of the aircraft's).
+    pub launch: f64,
+    /// The motor's burn (s) and its push (m/s²).
+    pub burn: f64,
+    pub thrust: f64,
+    /// Air drag: deceleration per (m/s)².
+    pub drag: f64,
+    /// The range it is of use to (m): the reticle's "in range".
+    pub reach: f64,
+}
+
+/// The Hydra 70's Mk 66 motor: some 700 m/s at burnout from a hover.
+pub const HYDRA_MOTOR: Motor =
+    Motor { launch: 45.0, burn: 1.05, thrust: 640.0, drag: 7.0e-5, reach: 5000.0 };
+/// The Zuni's Mk 71 motor: a longer burn to much the same speed (some 720 m/s), and five times
+/// the weight on three times the frontal area, so it keeps its speed longer.
+pub const ZUNI_MOTOR: Motor =
+    Motor { launch: 40.0, burn: 1.5, thrust: 500.0, drag: 3.5e-5, reach: 8000.0 };
+
+/// A warhead: units within `kill_m` are likely destroyed, within `blast_m` maybe (odds in
+/// percent for a tank and anything else); objects (buildings, parked aircraft, launchers)
+/// within `object_m` may be wrecked.
+struct Warhead {
+    kill_m: f64,
+    blast_m: f64,
+    kill_tank: i32,
+    kill_other: i32,
+    blast_tank: i32,
+    blast_other: i32,
+    object_m: f64,
+}
+
+/// The Hydra 70's and the APKWS's M151 (4.5 kg) and the Zuni's Mk 24 general purpose warhead
+/// (22 kg).
+const M151: Warhead = Warhead {
+    kill_m: 4.0,
+    blast_m: 11.0,
+    kill_tank: 45,
+    kill_other: 95,
+    blast_tank: 5,
+    blast_other: 55,
+    object_m: 15.0,
+};
+const MK24: Warhead = Warhead {
+    kill_m: 7.0,
+    blast_m: 18.0,
+    kill_tank: 70,
+    kill_other: 98,
+    blast_tank: 12,
+    blast_other: 70,
+    object_m: 25.0,
+};
+
 pub const GRAVITY: f64 = 9.81;
 /// Seconds a rocket flies at most.
 pub const MAX_SECS: f64 = 25.0;
@@ -43,16 +95,6 @@ const SEEKER_DELAY: f64 = 0.4;
 const SEEKER_ACCEL: f64 = 200.0;
 /// How fast it closes the angle to the spot (1/s).
 const SEEKER_GAIN: f64 = 10.0;
-/// The M151 warhead: units within `KILL_M` are likely destroyed, within `BLAST_M` maybe;
-/// odds in percent for a tank and anything else.
-const KILL_M: f64 = 4.0;
-const BLAST_M: f64 = 11.0;
-const KILL_TANK: i32 = 45;
-const KILL_OTHER: i32 = 95;
-const BLAST_TANK: i32 = 5;
-const BLAST_OTHER: i32 = 55;
-/// Objects (buildings, parked aircraft, launchers) within this (m) may be wrecked.
-const OBJECT_M: f64 = 15.0;
 /// The frame step of the CCIP prediction (s).
 const PREDICT_DT: f64 = 1.0 / 30.0;
 
@@ -73,12 +115,28 @@ pub struct Rocket {
     pub owner: u8,
     /// An APKWS (it homes on its pilot's laser spot).
     pub guided: bool,
+    /// A Zuni.
+    #[serde(default)]
+    pub zuni: bool,
 }
 
 impl Rocket {
+    /// Its weapon type.
+    pub fn weapon(&self) -> i32 {
+        match (self.zuni, self.guided) {
+            (true, _) => ZUNI_WEAPON,
+            (false, true) => APKWS_WEAPON,
+            (false, false) => HYDRA_WEAPON,
+        }
+    }
+
+    pub fn motor(&self) -> &'static Motor {
+        motor(self.weapon())
+    }
+
     /// The motor is burning (its flame and smoke).
     pub fn burning(&self) -> bool {
-        (self.t as f64) < BURN_SECS
+        (self.t as f64) < self.motor().burn
     }
 }
 
@@ -103,20 +161,34 @@ impl Rockets {
 
 /// Weapon type `w` is a rocket pod.
 pub fn rocket_weapon(w: i32) -> bool {
-    matches!(w, HYDRA_WEAPON | APKWS_WEAPON)
+    matches!(w, HYDRA_WEAPON | APKWS_WEAPON | ZUNI_WEAPON)
+}
+
+/// The motor of rocket weapon type `w`.
+pub fn motor(w: i32) -> &'static Motor {
+    if w == ZUNI_WEAPON { &ZUNI_MOTOR } else { &HYDRA_MOTOR }
+}
+
+/// The motor of the rocket of missile table entry `spec`.
+pub fn spec_motor(spec: i32) -> &'static Motor {
+    if spec == ZUNI_SPEC { &ZUNI_MOTOR } else { &HYDRA_MOTOR }
+}
+
+fn warhead(w: i32) -> &'static Warhead {
+    if w == ZUNI_WEAPON { &MK24 } else { &M151 }
 }
 
 /// Missile table entry `spec` is a rocket.
 pub fn rocket_spec(spec: i32) -> bool {
-    matches!(spec, HYDRA_SPEC | APKWS_SPEC)
+    matches!(spec, HYDRA_SPEC | APKWS_SPEC | ZUNI_SPEC)
 }
 
-/// One step of a rocket's flight `t` s after launch: its motor along its velocity, drag and
+/// One step of a rocket's flight `t` s after launch: its motor `m` along its velocity, drag and
 /// gravity (m, m/s: east, north, up), and the steering `steer` (m/s²) on top.
-fn step(p: &mut [f64; 3], v: &mut [f64; 3], t: f64, dt: f64, steer: [f64; 3]) {
+fn step(m: &Motor, p: &mut [f64; 3], v: &mut [f64; 3], t: f64, dt: f64, steer: [f64; 3]) {
     let speed = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(1.0);
-    let push = if t < BURN_SECS { THRUST } else { 0.0 };
-    let along = push - DRAG * speed * speed;
+    let push = if t < m.burn { m.thrust } else { 0.0 };
+    let along = push - m.drag * speed * speed;
     for k in 0..3 {
         v[k] += (v[k] / speed * along + steer[k]) * dt;
     }
@@ -126,11 +198,12 @@ fn step(p: &mut [f64; 3], v: &mut [f64; 3], t: f64, dt: f64, steer: [f64; 3]) {
     }
 }
 
-/// Where a rocket fired from `p` with velocity `v` (m, m/s: east, north, up; the tube's
-/// direction times `LAUNCH_SPEED` plus the aircraft's velocity) meets the ground, `ground`
-/// giving its height (m) at a point east, north: the point and the seconds it takes. None if it
-/// does not come down within `MAX_SECS`.
+/// Where a rocket with motor `m` fired from `p` with velocity `v` (m, m/s: east, north, up; the
+/// tube's direction times [`Motor::launch`] plus the aircraft's velocity) meets the ground,
+/// `ground` giving its height (m) at a point east, north: the point and the seconds it takes.
+/// None if it does not come down within `MAX_SECS`.
 pub fn impact(
+    m: &Motor,
     p: [f64; 3],
     v: [f64; 3],
     ground: impl Fn(f64, f64) -> f64,
@@ -139,7 +212,7 @@ pub fn impact(
     let mut t = 0.0;
     while t < MAX_SECS {
         let before = p;
-        step(&mut p, &mut v, t, PREDICT_DT, [0.0; 3]);
+        step(m, &mut p, &mut v, t, PREDICT_DT, [0.0; 3]);
         t += PREDICT_DT;
         let g = ground(p[0], p[1]);
         if p[2] <= g {
@@ -188,12 +261,14 @@ impl Sim {
     /// Where a rocket fired now would land (m east, north, up) and its time of flight (s): the
     /// CCIP rocket reticle's point. None without a rocket selected or if it would not come down.
     pub fn rocket_ccip(&self) -> Option<([f64; 3], f64)> {
-        if !rocket_weapon(self.selected_weapon().0) {
+        let w = self.selected_weapon().0;
+        if !rocket_weapon(w) {
             return None;
         }
+        let m = motor(w);
         let (p, v, nose) = self.rocket_launch(None);
-        let v = std::array::from_fn(|k| v[k] + nose[k] * LAUNCH_SPEED);
-        impact(p, v, |e, n| self.rocket_ground(e, n))
+        let v = std::array::from_fn(|k| v[k] + nose[k] * m.launch);
+        impact(m, p, v, |e, n| self.rocket_ground(e, n))
     }
 
     /// The fire button with a rocket selected: a pair, one from each side, then a pair every
@@ -238,6 +313,7 @@ impl Sim {
         self.pl.bays[station].1 -= 1;
         let (p, v, nose) = self.rocket_launch(Some(station));
         let guided = w == APKWS_WEAPON;
+        let zuni = w == ZUNI_WEAPON;
         // An unguided rocket's scatter: a small random turn of its direction.
         let mut dir = nose;
         if !guided {
@@ -258,12 +334,13 @@ impl Sim {
         self.rockets.rockets.push(Rocket {
             id,
             p: p.map(|c| c as f32),
-            v: std::array::from_fn(|k| (v[k] + dir[k] * LAUNCH_SPEED) as f32),
+            v: std::array::from_fn(|k| (v[k] + dir[k] * motor(w).launch) as f32),
             t: 0.0,
             owner: self.pl.id,
             guided,
+            zuni,
         });
-        self.emit(SimEvent::RocketFired { at: fine(p.map(|c| c as f32)), guided });
+        self.emit(SimEvent::RocketFired { at: fine(p.map(|c| c as f32)), guided, zuni });
         true
     }
 
@@ -312,7 +389,7 @@ impl Sim {
                 steer = a;
             }
             let before = p;
-            step(&mut p, &mut v, t, dt, steer);
+            step(r.motor(), &mut p, &mut v, t, dt, steer);
             r.t = (t + dt) as f32;
             let g = self.rocket_ground(p[0], p[1]);
             if p[2] <= g {
@@ -368,7 +445,8 @@ impl Sim {
     /// A rocket's warhead goes off where it came down: the vehicles and objects by it.
     fn rocket_burst(&mut self, r: &Rocket) {
         let (e, n) = (r.p[0] as f64, r.p[1] as f64);
-        let w = if r.guided { APKWS_WEAPON } else { HYDRA_WEAPON };
+        let w = r.weapon();
+        let head = warhead(w);
         let mut kill = false;
         let near: Vec<(usize, f64)> = (0..self.units.len())
             .filter_map(|k| {
@@ -379,16 +457,16 @@ impl Sim {
                 let (x, y) = u.map_xy();
                 let at = [x * M_PER_MAP, (0x8000 as f64 - y) * M_PER_MAP];
                 let d = (at[0] - e).hypot(at[1] - n);
-                (d < BLAST_M).then_some((k, d))
+                (d < head.blast_m).then_some((k, d))
             })
             .collect();
         for (k, d) in near {
             let tank = self.units[k].kind.tank();
-            let odds = match (d < KILL_M, tank) {
-                (true, true) => KILL_TANK,
-                (true, false) => KILL_OTHER,
-                (false, true) => BLAST_TANK,
-                (false, false) => BLAST_OTHER,
+            let odds = match (d < head.kill_m, tank) {
+                (true, true) => head.kill_tank,
+                (true, false) => head.kill_other,
+                (false, true) => head.blast_tank,
+                (false, false) => head.blast_other,
             };
             if self.rng.random(100) < odds {
                 self.rocket_kills_unit(k, r.owner);
@@ -402,7 +480,7 @@ impl Sim {
                     return false;
                 }
                 let at = crate::asw::object_metres(o);
-                (at[0] - e).hypot(at[1] - n) < OBJECT_M
+                (at[0] - e).hypot(at[1] - n) < head.object_m
             })
             .collect();
         for k in objects {
@@ -411,7 +489,7 @@ impl Sim {
                 kill = true;
             }
         }
-        self.emit(SimEvent::RocketBurst { at: fine(r.p), kill });
+        self.emit(SimEvent::RocketBurst { at: fine(r.p), kill, zuni: r.zuni });
     }
 }
 
@@ -434,13 +512,28 @@ mod tests {
     /// ahead in a few seconds; pointed down more, it lands nearer and sooner.
     #[test]
     fn a_rocket_falls_ahead() {
-        let level = impact([0.0, 0.0, 100.0], [0.0, LAUNCH_SPEED, 0.0], |_, _| 0.0).unwrap();
+        let m = &HYDRA_MOTOR;
+        let level = impact(m, [0.0, 0.0, 100.0], [0.0, m.launch, 0.0], |_, _| 0.0).unwrap();
         assert!((1500.0..4500.0).contains(&level.0[1]), "{level:?}");
         assert!(level.0[0].abs() < 1e-6);
-        let dive = [0.0, LAUNCH_SPEED * 0.94, -LAUNCH_SPEED * 0.34];
-        let down = impact([0.0, 0.0, 100.0], dive, |_, _| 0.0).unwrap();
+        let dive = [0.0, m.launch * 0.94, -m.launch * 0.34];
+        let down = impact(m, [0.0, 0.0, 100.0], dive, |_, _| 0.0).unwrap();
         assert!(down.0[1] < level.0[1] && down.1 < level.1, "{down:?} {level:?}");
         // Straight up it does not come down in time.
-        assert!(impact([0.0, 0.0, 100.0], [0.0, 0.0, LAUNCH_SPEED], |_, _| 0.0).is_none());
+        assert!(impact(m, [0.0, 0.0, 100.0], [0.0, 0.0, m.launch], |_, _| 0.0).is_none());
+    }
+
+    /// The Zuni burns out about as fast as the Hydra 70 and carries farther: fired level from
+    /// 1,500 m up it comes down well beyond it.
+    #[test]
+    fn a_zuni_outranges_a_hydra() {
+        let from = [0.0, 0.0, 1500.0];
+        let fall = |m: &Motor| impact(m, from, [0.0, 150.0 + m.launch, 0.0], |_, _| 0.0).unwrap();
+        let (hydra, zuni) = (fall(&HYDRA_MOTOR), fall(&ZUNI_MOTOR));
+        assert!(zuni.0[1] > 1.1 * hydra.0[1] && zuni.1 < hydra.1, "{zuni:?} {hydra:?}");
+        // Burnout speed from rest, without drag: thrust times burn.
+        let burnout = |m: &Motor| m.thrust * m.burn;
+        assert!((650.0..800.0).contains(&burnout(&ZUNI_MOTOR)));
+        assert!((burnout(&ZUNI_MOTOR) / burnout(&HYDRA_MOTOR) - 1.0).abs() < 0.2);
     }
 }

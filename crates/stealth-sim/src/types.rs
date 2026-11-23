@@ -632,6 +632,12 @@ pub const CBU105_WEAPON: i32 = 23;
 pub const SFW_DEFAULT_BURST_FT: u16 = 1500;
 /// The HARM's weapon type.
 pub const HARM_WEAPON: i32 = 2;
+/// The 1,000 lb Mk 83's and the 2,000 lb Mk 84's weapon types (they fall like the Mk 82).
+pub const MK83_WEAPON: i32 = 33;
+pub const MK84_WEAPON: i32 = 34;
+/// The AGM-45 Shrike's missile table entry and weapon type.
+pub const SHRIKE_SPEC: i32 = 58;
+pub const SHRIKE_WEAPON: i32 = 35;
 /// The SLAM-ER's missile table entry and weapon type (`crate::slam`).
 pub const SLAMER_SPEC: i32 = 52;
 pub const SLAMER_WEAPON: i32 = 25;
@@ -1206,15 +1212,21 @@ pub enum SimEvent {
     WingReply {
         reply: crate::wingman::WingReply,
     },
-    /// A 70 mm rocket left its tube (fine units like [`Jp233Burst`]); `guided`: an APKWS.
+    /// A rocket left its tube (fine units like [`Jp233Burst`]); `guided`: an APKWS, `zuni`:
+    /// a 5 in Zuni (else a 70 mm one).
     RocketFired {
         at: (i32, i32, i32),
         guided: bool,
+        #[serde(default)]
+        zuni: bool,
     },
-    /// A 70 mm rocket's warhead went off (fine units); `kill`: it destroyed something.
+    /// A rocket's warhead went off (fine units); `kill`: it destroyed something, `zuni`: a
+    /// Zuni's bigger one.
     RocketBurst {
         at: (i32, i32, i32),
         kill: bool,
+        #[serde(default)]
+        zuni: bool,
     },
     /// Campaign: an aircraft the campaign launched landed (map position).
     CampaignFlightLanded {

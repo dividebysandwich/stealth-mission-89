@@ -181,6 +181,11 @@
         // rockets.rs (not by the missile code).
         (id: "hydra70", name: "Hydra 70", family: Ground, range_km: 6, mach: 2.0, g: 1, seeker: Optical, model: 15),
         (id: "apkws", name: "APKWS", family: Ground, range_km: 8, mach: 2.0, g: 20, seeker: Optical, model: 15),
+        // The AGM-45 Shrike, the A-6's early anti-radiation missile: flown like the HARM, with
+        // some 40% of its reach, slower and less agile.
+        (id: "shrike", name: "Shrike", family: Ground, range_km: 54, mach: 2.0, g: 6, seeker: AntiRadiation, model: 1),
+        // The 5 in Zuni rocket, unguided, flown by rockets.rs like the Hydra 70.
+        (id: "zuni", name: "Zuni", family: Ground, range_km: 8, mach: 2.1, g: 1, seeker: Optical, model: 15),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -271,6 +276,25 @@
         (id: "apkws", short: "APKWS", long: "APKWS", missile: "apkws", picture: 16, bay: 7,
             effect: {"aircraft": 6, "building": 2, "depot": 3, "launcher": 6, "radar": 6, "small_ship": 4,
                      "armour": 4}),
+        // The 1,000 lb Mk 83 and the 2,000 lb Mk 84 low drag general purpose bombs: they fall
+        // like the Mk 82, with a wider blast (the reach against a target grows with its figure
+        // here; against vehicles weapons.rs `blast_scale`).
+        (id: "mk83", short: "Mk 83", long: "LDGP", missile: "freefall", picture: 11, bay: 2,
+            effect: {"shelter": 2, "runway": 3, "aircraft": 5, "building": 6, "bridge": 4, "bunker": 3, "depot": 5,
+                     "launcher": 4, "radar": 5, "rig": 4, "industry": 5, "small_ship": 3, "large_ship": 1, "armour": 3}),
+        (id: "mk84", short: "Mk 84", long: "LDGP", missile: "freefall", picture: 11, bay: 1,
+            effect: {"shelter": 3, "runway": 4, "aircraft": 6, "building": 7, "bridge": 5, "bunker": 4, "depot": 6,
+                     "launcher": 5, "radar": 6, "rig": 5, "industry": 6, "pen": 1, "small_ship": 4, "large_ship": 2,
+                     "armour": 4}),
+        // The AGM-45 Shrike: an anti-radiation missile with a small fragmentation warhead, of
+        // little use against anything but a radar.
+        (id: "shrike", short: "AGM-45", long: "Shrike", missile: "shrike", picture: 7, bay: 1,
+            effect: {"radar": 4, "small_ship": 1, "large_ship": 1}),
+        // 5 in Zuni rockets in the four-tube LAU-10 pod (rockets.rs): unguided, heavier and
+        // longer ranged than the Hydra 70; a round is a rocket.
+        (id: "zuni", short: "LAU-10", long: "Zuni", missile: "zuni", picture: 16, bay: 4,
+            effect: {"shelter": 1, "aircraft": 6, "building": 4, "bridge": 1, "depot": 5, "launcher": 6, "radar": 6,
+                     "rig": 2, "industry": 3, "small_ship": 5, "large_ship": 1, "armour": 5}),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

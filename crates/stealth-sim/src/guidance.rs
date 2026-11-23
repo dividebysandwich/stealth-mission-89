@@ -81,6 +81,8 @@ pub fn profile(spec: i32) -> Option<Profile> {
         22 => rocket(8.0, 3.0, 35.0), // AIM-120
         23 | 32 => Profile { drag: AIM9_DRAG, ..rocket(5.0, 2.0, 35.0) }, // AIM-9
         24 => rocket(6.0, 3.0, 20.0), // HARM
+        // Shrike: a short burn and little pull, so it reaches well under half as far.
+        SHRIKE_SPEC => rocket(3.5, 2.0, 12.0),
         25 => cruise(1e9, 10.0),      // Penguin: a sustainer the whole way
         26 => cruise(3.0, 10.0),      // Harpoon: booster, then its turbojet
         27 => rocket(4.0, 1.0, 15.0), // Maverick

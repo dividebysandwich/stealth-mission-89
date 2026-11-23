@@ -219,5 +219,15 @@ weapon-role-32 = Laserno vodene 70-mm rakete: vsaka leti proti laserski točki c
 employment-32 =
     Usmerite ciljni zabojnik na cilj in streljajte v smeri nosu; zavijejo proti točki
     Do 6 km; držite zabojnik na cilju do zadetka
+weapon-role-33 = 1000-funtna bomba prostega pada
+weapon-role-34 = 2000-funtna bomba prostega pada
+weapon-role-35 = Protiradarski izstrelek: radarji in položaji SAM, na kratki razdalji
+employment-35 =
+    Doseg: 9-20 km
+    Izstrelitev: 3 000-10 000 ft
+weapon-role-36 = Nevodene 127-mm rakete v zabojniku: v parih ali rafalih proti vozilom in vojakom na odprtem
+employment-36 =
+    Merite z raketnim merilnikom (CCIP): kaže, kam pade raketa, izstreljena zdaj
+    Pritisnite za par, držite za rafal; najbolje iz plitvega strmoglavljenja do 6 km
 loadout-wingman = KRILNI PILOT
     .facts = Krilni pilot UI v istem letalu z isto oborožitvijo se vam pridruži v zraku; radijski meni (\) mu daje ukaze

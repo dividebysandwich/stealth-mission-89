@@ -219,5 +219,15 @@ weapon-role-32 = Laserjuhitavad 70 mm raketid: igaüks suundub sihtimiskonteiner
 employment-32 =
     Suuna sihtimiskonteiner sihtmärgile ja tulista nina suunas; need pööravad punktile
     Kuni 6 km; hoia konteinerit sihtmärgil tabamuseni
+weapon-role-33 = 1000 naelane vabalt kukkuv pomm
+weapon-role-34 = 2000 naelane vabalt kukkuv pomm
+weapon-role-35 = Radarivastane rakett: radarid ja SAM-kohad, lühikeselt kauguselt
+employment-35 =
+    Kaugus: 9-20 km
+    Laskmine: 3 000-10 000 ft
+weapon-role-36 = Juhitamata 127 mm raketid konteineris: paaride või seeriatena sõidukite ja lagedal olevate vägede vastu
+employment-36 =
+    Sihi raketisihikuga (CCIP): see näitab, kuhu praegu tulistatud rakett langeb
+    Vajuta paari jaoks, hoia seeria jaoks; parim laugest sööstust alla 6 km
 loadout-wingman = TIIVAMEES
     .facts = Sama lennuki ja relvastusega tehisintellektiga tiivamees liitub õhus; raadiomenüü (\) annab talle käske

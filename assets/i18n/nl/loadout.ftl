@@ -219,5 +219,15 @@ weapon-role-32 = Lasergeleide 70 mm-raketten: elke raket stuurt naar de laservle
 employment-32 =
     Richt de pod op het doel en vuur langs de neus; ze draaien naar de vlek
     Tot 6 km; houd de pod op het doel tot de inslag
+weapon-role-33 = Vrijvallende bom van 1000 lb
+weapon-role-34 = Vrijvallende bom van 2000 lb
+weapon-role-35 = Anti-radarraket: radars en SAM-stellingen, op korte afstand
+employment-35 =
+    Bereik: 9-20 km
+    Lancering: 3.000-10.000 ft
+weapon-role-36 = Ongeleide 127 mm-raketten in een houder: paren of salvo's tegen voertuigen en troepen in het open veld
+employment-36 =
+    Richt met het raketvizier (CCIP): het toont waar een nu afgevuurde raket inslaat
+    Druk voor een paar, houd vast voor een salvo; het best vanuit een ondiepe duik binnen 6 km
 loadout-wingman = WINGMAN
     .facts = Een AI-wingman in hetzelfde toestel met dezelfde bewapening sluit in de lucht aan; het radiomenu (\) geeft hem opdrachten

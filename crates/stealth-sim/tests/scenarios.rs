@@ -834,24 +834,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x14f2a5d50a0994b1,
-        0x47947cf8fcee8662,
-        0x35d60b6d6091c8e4,
-        0x038cfa924f0dc70c,
-        0xdba12d54a36fccbc,
-        0x07336a6bf8859b28,
-        0x4affc0f9cbd535b1,
-        0x2fa021b510014070,
-        0x2f99d72e5cb0a938,
-        0xa91247b4e51118a5,
-        0x367c8af7f9a1690f,
-        0xe9073d8d3186c9cc,
-        0x8a2182b7afb9734d,
-        0x4ded49800fa4d741,
-        0xdd285f6e7c850d91,
-        0x52759cb9434a3e92,
-        0xbc58ee779e13bffd,
-        0x2f56bc7ca32079d8,
+        0x2a7b8e02b88e6404,
+        0x5f919209c5f5a903,
+        0x1ebb2f0d654c37e7,
+        0x9855cfeb38d004e5,
+        0x735ceb927a163467,
+        0x695dae22f59f7117,
+        0x93855fc26f6a5532,
+        0xd77344f2d1664c83,
+        0x805fcba764ce67a5,
+        0xae2b2e17829928e2,
+        0xa54a4719a3cd68f2,
+        0x1189fd15915bb675,
+        0x4294f853248c0fe4,
+        0x96bd9e2248881dc0,
+        0x6ee3124423cc796a,
+        0x0f06492dd831816d,
+        0xbb64892cbc92ad86,
+        0xac4bcd78cd96b573,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -4514,6 +4514,44 @@ fn hydra_pair_lands_at_the_ccip_point() {
     }
 }
 
+/// A salvo of Zunis from two four-tube pods, aimed with the reticle in a 10 degree dive: all
+/// eight come down round the CCIP point and destroy the truck standing there.
+#[test]
+fn zuni_salvo_hits_a_ground_target() {
+    use stealth_sim::rockets;
+    let (mut sim, mut p, _) = rocket_range(rockets::ZUNI_WEAPON, 1000, &[]);
+    sim.set_loadout(&[(rockets::ZUNI_WEAPON, 4), (rockets::ZUNI_WEAPON, 4)]);
+    p.pitch = -0x0700;
+    sim.step(&p, 15);
+    let ccip = sim.rocket_ccip().expect("a CCIP point").0;
+    let m = aaa::M_PER_MAP;
+    *sim.units_mut() = vec![aaa::GroundUnit {
+        kind: aaa::GroundKind::ArmyTruck,
+        x: (ccip[0] / m).round() as i32,
+        y: (0x8000 as f64 - ccip[1] / m).round() as i32,
+        ..Default::default()
+    }];
+    // The trigger held: a pair every quarter second until the pods are empty.
+    p.cmd.fire = true;
+    p.cmd.trigger = true;
+    sim.step(&p, 15);
+    p.cmd.fire = false;
+    for _ in 0..15 {
+        sim.step(&p, 15);
+    }
+    p.cmd = Commands::default();
+    assert_eq!(sim.bays().0.iter().map(|b| b.1).collect::<Vec<_>>(), vec![0, 0]);
+    let (bursts, events) = rockets_down(&mut sim, &mut p);
+    assert_eq!(bursts.len(), 8);
+    for b in &bursts {
+        let miss = (b[0] - ccip[0]).hypot(b[1] - ccip[1]);
+        assert!(miss < 60.0, "{miss:.0} m from the CCIP point {ccip:?}: {b:?}");
+    }
+    assert!(sim.units()[0].destroyed, "{events:?}");
+    let killing = |e: &SimEvent| matches!(e, SimEvent::RocketBurst { zuni: true, kill: true, .. });
+    assert!(events.iter().any(killing));
+}
+
 /// Holding the trigger ripples a pair every quarter second until it is let go.
 #[test]
 fn hydra_ripples_while_the_trigger_is_held() {
@@ -5081,4 +5119,121 @@ fn carrying_on_flying_ends_again() {
         ended |= sim.step(&ground, 15).iter().any(|e| matches!(e, SimEvent::MissionEnd(_)));
     }
     assert!(ended && sim.halted());
+}
+
+/// An anti-radiation missile `w` (2 HARM, 35 Shrike) fired from 3000 ft at an emitting SA-2
+/// site `range` map units northeast, the nose on it: whether it locked, and whether it
+/// destroyed the site's radar.
+fn arm_shot(guided: bool, w: i32, range: i32) -> (bool, bool) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { realistic_guidance: guided, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(w, 1)]);
+    let t = 5;
+    let diag = (range as f64 / std::f64::consts::SQRT_2).round() as i32;
+    place_site(&mut sim, t, 1, mx + diag, my - diag);
+    let mut p = player_at(mx, my, 3000, 0x2000, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    p.cmd.lock_object = Some(t as u16);
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    // Nose down onto the site until the oval locks (if it does from here).
+    let locked = (0..96).map(|k| -k * 64).any(|pitch| {
+        p.pitch = pitch as i16;
+        let angle = pitch as f64 * std::f64::consts::TAU / 65536.0;
+        p.climb_rate = (450.0 * 27.0 / 16.0 * angle.sin()).round() as i32;
+        sim.step(&p, 15);
+        sim.targeting().lock_valid
+    });
+    p.cmd.fire = true;
+    let mut destroyed = false;
+    for _ in 0..15 * 120 {
+        for e in sim.step(&p, 15) {
+            destroyed |= matches!(e, SimEvent::GroundDestroyed { object, .. } if object == t);
+        }
+        p.cmd = Commands::default();
+    }
+    (locked, destroyed)
+}
+
+/// The Shrike kills an emitting radar inside its range with either guidance; from beyond it,
+/// where a HARM still locks and kills, it finds no lock and misses.
+#[test]
+fn shrike_kills_a_radar_inside_its_range_only() {
+    for guided in [false, true] {
+        assert_eq!(arm_shot(guided, 35, 800), (true, true), "guided {guided}: Shrike inside");
+        assert_eq!(arm_shot(guided, 35, 1800), (false, false), "guided {guided}: Shrike beyond");
+        assert_eq!(arm_shot(guided, 2, 1800), (true, true), "guided {guided}: HARM from there");
+    }
+}
+
+/// Bomb `w` dropped from a hover over the primary target of strike mission `m`, a truck
+/// `north` map units north of it: whether the target and the truck were destroyed.
+fn heavy_bomb(m: &Mission, w: i32, north: i32) -> (bool, bool) {
+    let d = data();
+    let t = m.primary.object_index as usize;
+    let opts = SimOptions { air_defence: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, m, opts);
+    sim.set_training(true);
+    let o = sim.objects()[t];
+    *sim.units_mut() = vec![aaa::GroundUnit {
+        kind: aaa::GroundKind::ArmyTruck,
+        x: o.x,
+        y: o.y - north,
+        ..Default::default()
+    }];
+    sim.set_loadout(&[(w, 1)]);
+    let mut p = player_at(o.x, o.y, 500, 0, 0);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    p.cmd.fire = true;
+    let mut killed = false;
+    for _ in 0..15 * 10 {
+        for e in sim.step(&p, 15) {
+            killed |= matches!(e, SimEvent::GroundDestroyed { object, .. } if object == t);
+        }
+        p.cmd = Commands::default();
+    }
+    (killed, sim.units()[0].destroyed)
+}
+
+/// The Mk 83 and the Mk 84 fall like the Mk 82 and do more: their blast destroys vehicles
+/// farther off, and the Mk 84 wrecks a hardened target a Mk 82 leaves standing.
+#[test]
+fn heavier_bombs_have_a_wider_blast() {
+    use stealth_sim::{MK83_WEAPON, MK84_WEAPON};
+    let d = data();
+    let strike = |cats: &[i32]| {
+        (0..9).flat_map(|th| (1..200u16).map(move |s| mission(d, th, s, 0))).find(|m| {
+            let t = m.primary.object_index as usize;
+            let cat = (m.world.shape_class[m.world.objects[t].shape()] & 0xF) as i32;
+            m.primary.mission_type == 2 && cats.contains(&cat)
+        })
+    };
+    // A truck 3, 5 and 6 map units from the impact (some 50, 80 and 100 m).
+    let m = strike(&[2, 3, 6]).expect("a soft target");
+    let reach = |w: i32| (1..12).take_while(|&n| heavy_bomb(&m, w, n).1).count();
+    let (mk82, mk83, mk84) = (reach(9), reach(MK83_WEAPON), reach(MK84_WEAPON));
+    assert!(mk82 >= 3 && mk82 < mk83 && mk83 < mk84, "{mk82} {mk83} {mk84}");
+    for w in [9, MK83_WEAPON, MK84_WEAPON] {
+        assert!(heavy_bomb(&m, w, 20).0, "weapon {w} on the target");
+    }
+    // A target class only the heavier bombs harm (a large ship, a submarine pen).
+    let cats: Vec<i32> = (0..16)
+        .filter(|&c| d.sim.compat_cat(9, c) == 0 && d.sim.compat_cat(MK84_WEAPON, c) > 0)
+        .collect();
+    assert!(!cats.is_empty());
+    let hard = strike(&cats).expect("a hardened target");
+    assert!(!heavy_bomb(&hard, 9, 20).0, "a Mk 82 leaves it standing");
+    assert!(heavy_bomb(&hard, MK84_WEAPON, 20).0, "a Mk 84 wrecks it");
 }

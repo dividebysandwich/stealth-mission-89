@@ -219,5 +219,15 @@ weapon-role-32 = Cohetes de 70 mm guiados por láser: cada uno se dirige al punt
 employment-32 =
     Ponga el pod de designación sobre el blanco y dispare hacia el frente; giran hacia el punto
     Hasta 6 km; mantenga el pod sobre el blanco hasta el impacto
+weapon-role-33 = Bomba de caída libre de 1000 lb
+weapon-role-34 = Bomba de caída libre de 2000 lb
+weapon-role-35 = Misil antirradiación: radares y emplazamientos SAM, a corta distancia
+employment-35 =
+    Alcance: 9-20 km
+    Disparo: 3000-10 000 ft
+weapon-role-36 = Cohetes de 127 mm no guiados en lanzador: por parejas o en ráfagas contra vehículos y tropas al descubierto
+employment-36 =
+    Apunte con la retícula de cohetes (CCIP): muestra dónde cae un cohete disparado ahora
+    Pulse para una pareja, mantenga para una ráfaga; mejor en picado suave a menos de 6 km
 loadout-wingman = PUNTO
     .facts = Un punto IA en el mismo avión y con el mismo armamento se te une en el aire; el menú de radio (\) le da órdenes

@@ -1241,6 +1241,17 @@ impl Sim {
     }
 }
 
+/// How much farther than a 500 lb bomb's the blast of store `w` destroys vehicles (None: no
+/// farther): the Mk 83's and the Mk 84's, by the cube root of their explosive filling (202
+/// and 429 kg against the Mk 82's 87 kg).
+pub(crate) fn blast_scale(w: i32) -> Option<f64> {
+    match w {
+        MK83_WEAPON => Some(1.3),
+        MK84_WEAPON => Some(1.7),
+        _ => None,
+    }
+}
+
 /// Missiles light a motor (bombs, pods and tanks only fall).
 fn trails_smoke(spec: i32) -> bool {
     !matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC)

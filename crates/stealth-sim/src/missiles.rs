@@ -851,6 +851,12 @@ impl Sim {
                 }
             }
             self.msg(text);
+            // The heavy bombs' blast takes the vehicles farther off too.
+            if s >= 8
+                && let Some(scale) = crate::weapons::blast_scale(m.weapon)
+            {
+                self.heavy_blast(ex, ey, scale);
+            }
             let d = approx(self.pl.p.mx - ex, self.pl.p.my - ey) + (self.pl.p.view_z >> 5);
             if self.diff * 32 > d {
                 // Classic builds a "Blast damage" message after the miss text but never shows it.

@@ -219,5 +219,15 @@ weapon-role-32 = Ar lāzeru vadāmas 70 mm raķetes: katra tēmē uz mērķēša
 employment-32 =
     Novirziet konteineru uz mērķi un šaujiet deguna virzienā; tās pagriežas uz punktu
     Līdz 6 km; turiet konteineru uz mērķa līdz trāpījumam
+weapon-role-33 = 1000 lb brīvās krišanas bumba
+weapon-role-34 = 2000 lb brīvās krišanas bumba
+weapon-role-35 = Pretradara raķete: radari un SAM pozīcijas, nelielā attālumā
+employment-35 =
+    Rādiuss: 9-20 km
+    Palaišana: 3 000-10 000 ft
+weapon-role-36 = Nevadāmas 127 mm raķetes konteinerā: pa pāriem vai sērijās pret transportlīdzekļiem un karaspēku klajā vietā
+employment-36 =
+    Tēmējiet ar raķešu tēmēkli (CCIP): tas rāda, kur nokritīs tagad izšauta raķete
+    Nospiediet pārim, turiet sērijai; vislabāk no lēzena pikējuma līdz 6 km
 loadout-wingman = PĀRINIEKS
     .facts = MI pārinieks tajā pašā lidmašīnā ar tādu pašu bruņojumu pievienojas gaisā; radio izvēlne (\) dod tam pavēles

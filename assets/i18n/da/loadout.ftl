@@ -219,5 +219,15 @@ weapon-role-32 = Laserstyrede 70 mm-raketter: hver styrer mod målbelysningskaps
 employment-32 =
     Sæt målkapslen på målet og skyd langs næsen; de drejer ind mod pletten
     Op til 6 km; hold kapslen på målet, til de rammer
+weapon-role-33 = Frit faldende bombe på 1000 lb
+weapon-role-34 = Frit faldende bombe på 2000 lb
+weapon-role-35 = Antiradarmissil: radarer og SAM-stillinger, på kort afstand
+employment-35 =
+    Rækkevidde: 9-20 km
+    Affyring: 3.000-10.000 ft
+weapon-role-36 = Ustyrede 127 mm-raketter i en kapsel: par eller salver mod køretøjer og tropper i det åbne
+employment-36 =
+    Sigt med raketsigtet (CCIP): det viser, hvor en raket affyret nu rammer
+    Tryk for et par, hold for en salve; bedst fra et fladt dyk inden for 6 km
 loadout-wingman = WINGMAN
     .facts = En AI-wingman i samme fly med samme bevæbning slutter sig til dig i luften; radiomenuen (\) giver den ordrer

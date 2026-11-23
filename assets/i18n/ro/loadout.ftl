@@ -219,5 +219,15 @@ weapon-role-32 = Rachete de 70 mm dirijate laser: fiecare se îndreaptă spre pu
 employment-32 =
     Îndreptați containerul de desemnare spre țintă și trageți în axa botului; virează spre punct
     Până la 6 km; țineți containerul pe țintă până la impact
+weapon-role-33 = Bombă cu cădere liberă de 1000 lb
+weapon-role-34 = Bombă cu cădere liberă de 2000 lb
+weapon-role-35 = Rachetă antiradiație: radare și situri SAM, la distanță mică
+employment-35 =
+    Distanță: 9-20 km
+    Lansare: 3 000-10 000 ft
+weapon-role-36 = Rachete nedirijate de 127 mm în container: în perechi sau în salve contra vehiculelor și trupelor la vedere
+employment-36 =
+    Țintiți cu reticulul pentru rachete (CCIP): arată unde cade o rachetă lansată acum
+    Apăsați pentru o pereche, țineți pentru o salvă; cel mai bine dintr-un picaj ușor sub 6 km
 loadout-wingman = COECHIPIER
     .facts = Un coechipier IA în același avion și cu același armament ți se alătură în aer; meniul radio (\) îi dă ordine

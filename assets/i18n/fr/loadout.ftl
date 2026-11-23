@@ -219,5 +219,15 @@ weapon-role-32 = Roquettes de 70 mm guidées laser : chacune se dirige vers la t
 employment-32 =
     Pointez la nacelle de désignation sur la cible et tirez dans l'axe ; elles virent vers la tache
     Jusqu'à 6 km ; gardez la nacelle sur la cible jusqu'à l'impact
+weapon-role-33 = Bombe lisse de 1000 lb
+weapon-role-34 = Bombe lisse de 2000 lb
+weapon-role-35 = Missile antiradar : radars et sites SAM, à courte portée
+employment-35 =
+    Portée : 9-20 km
+    Tir : 3 000-10 000 ft
+weapon-role-36 = Roquettes de 127 mm non guidées en panier : par paires ou en salves contre véhicules et troupes à découvert
+employment-36 =
+    Visez avec le réticule roquettes (CCIP) : il montre où tombe une roquette tirée maintenant
+    Appuyez pour une paire, maintenez pour une salve ; idéal en piqué léger à moins de 6 km
 loadout-wingman = AILIER
     .facts = Un ailier IA du même avion avec le même armement vous rejoint une fois en l'air ; le menu radio (\) lui donne ses ordres

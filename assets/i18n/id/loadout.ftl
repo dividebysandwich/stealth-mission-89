@@ -219,5 +219,15 @@ weapon-role-32 = Roket 70 mm berpemandu laser: masing-masing mengarah ke titik l
 employment-32 =
     Arahkan pod penjejak ke sasaran dan tembak searah hidung; roket berbelok ke titik itu
     Hingga 6 km; tahan pod pada sasaran sampai mengenai
+weapon-role-33 = Bom jatuh bebas 1000 lb
+weapon-role-34 = Bom jatuh bebas 2000 lb
+weapon-role-35 = Rudal anti-radiasi: radar dan situs SAM, pada jarak dekat
+employment-35 =
+    Jangkauan: 9-20 km
+    Peluncuran: 3.000-10.000 ft
+weapon-role-36 = Roket 127 mm tanpa pemandu dalam pod: berpasangan atau beruntun melawan kendaraan dan pasukan di tempat terbuka
+employment-36 =
+    Bidik dengan retikel roket (CCIP): menunjukkan tempat roket yang ditembakkan sekarang jatuh
+    Tekan untuk sepasang, tahan untuk tembakan beruntun; terbaik dari menukik landai dalam 6 km
 loadout-wingman = WINGMAN
     .facts = Wingman AI dengan pesawat dan persenjataan yang sama bergabung di udara; menu radio (\) memberinya perintah

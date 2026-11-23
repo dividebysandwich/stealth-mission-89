@@ -219,5 +219,15 @@ weapon-role-32 = Foguetes de 70 mm guiados a laser: cada um segue o ponto laser 
 employment-32 =
     Aponte o pod de designação para o alvo e dispare pelo nariz; eles curvam para o ponto
     Até 6 km; mantenha o pod no alvo até o impacto
+weapon-role-33 = Bomba de queda livre de 1000 lb
+weapon-role-34 = Bomba de queda livre de 2000 lb
+weapon-role-35 = Míssil antirradiação: radares e sítios SAM, a curta distância
+employment-35 =
+    Alcance: 9-20 km
+    Disparo: 3.000-10.000 ft
+weapon-role-36 = Foguetes de 127 mm não guiados em casulo: em pares ou em salvas contra veículos e tropas a céu aberto
+employment-36 =
+    Mire com o retículo de foguetes (CCIP): mostra onde cai um foguete disparado agora
+    Pressione para um par, segure para uma salva; melhor em mergulho raso a menos de 6 km
 loadout-wingman = ALA
     .facts = Um ala de IA na mesma aeronave e com o mesmo armamento se junta a você no ar; o menu de rádio (\) dá as ordens

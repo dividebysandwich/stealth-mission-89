@@ -219,5 +219,15 @@ weapon-role-32 = Laserem naváděné 70mm rakety: každá míří na laserový b
 employment-32 =
     Namiřte zaměřovací kontejner na cíl a palte ve směru přídě; stočí se k bodu
     Do 6 km; držte kontejner na cíli až do zásahu
+weapon-role-33 = Volně padající puma 1000 lb
+weapon-role-34 = Volně padající puma 2000 lb
+weapon-role-35 = Protiradiolokační střela: radary a stanoviště SAM, na krátkou vzdálenost
+employment-35 =
+    Dosah: 9-20 km
+    Odpal: 3 000-10 000 ft
+weapon-role-36 = Neřízené 127mm rakety v kontejneru: po párech nebo v dávkách proti vozidlům a vojákům v otevřeném terénu
+employment-36 =
+    Miřte raketovým zaměřovačem (CCIP): ukazuje, kam dopadne raketa odpálená teď
+    Stiskněte pro pár, podržte pro dávku; nejlépe z mělkého střemhlavého letu do 6 km
 loadout-wingman = WINGMAN
     .facts = AI wingman ve stejném letounu se stejnou výzbrojí se k vám připojí ve vzduchu; rádiové menu (\) mu dává rozkazy

@@ -219,5 +219,15 @@ weapon-role-32 = Laserski vođene rakete od 70 mm: svaka leti prema laserskoj to
 employment-32 =
     Usmjerite ciljnički kontejner na cilj i pucajte duž nosa; skreću prema točki
     Do 6 km; držite kontejner na cilju do pogotka
+weapon-role-33 = Bomba slobodnog pada od 1000 lb
+weapon-role-34 = Bomba slobodnog pada od 2000 lb
+weapon-role-35 = Proturadarski projektil: radari i SAM položaji, na kratkoj udaljenosti
+employment-35 =
+    Domet: 9-20 km
+    Lansiranje: 3.000-10.000 ft
+weapon-role-36 = Nevođene rakete od 127 mm u lanseru: u parovima ili salvama protiv vozila i vojnika na otvorenom
+employment-36 =
+    Ciljajte raketnim ciljnikom (CCIP): pokazuje gdje pada raketa ispaljena sada
+    Pritisnite za par, držite za salvu; najbolje iz plitkog obrušavanja unutar 6 km
 loadout-wingman = PRATITELJ
     .facts = UI pratitelj u istom zrakoplovu s istim naoružanjem pridružuje vam se u zraku; radijski izbornik (\) mu daje zapovijedi

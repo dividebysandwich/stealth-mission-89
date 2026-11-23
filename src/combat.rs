@@ -2173,7 +2173,7 @@ fn publish(
             y: if a.over_deck { wu_to_bevy(0.0, 0.0, a.ground_altitude as f64).y } else { 0.0 },
             hills: theater.as_ref().map(|t| t.hills.clone()).unwrap_or_default(),
         };
-        new_cues.rocket = rocket_cue(&a, pos, eye, &ground);
+        new_cues.rocket = rocket_cue(stealth_sim::rockets::spec_motor(spec), &a, pos, eye, &ground);
     }
     if settings.aircraft.apache() {
         // The chin gun along the sight it is slaved to (as `Sim::turret_aim`), the TADS along
@@ -2426,24 +2426,23 @@ fn gun_cue(
     cue(d, range, target.map(|_| range as f32), target.is_some() && range < GUN_RANGE)
 }
 
-/// The CCIP rocket reticle: where a rocket fired now along the nose lands (as the simulation
-/// flies it, `stealth_sim::rockets`), seen from the eye.
+/// The CCIP rocket reticle: where a rocket with `motor` fired now along the nose lands (as the
+/// simulation flies it, `stealth_sim::rockets`), seen from the eye.
 fn rocket_cue(
+    motor: &stealth_sim::rockets::Motor,
     a: &Aircraft,
     pos: &WorldPos,
     eye: Vec3,
     ground: &crate::avionics::Terrain,
 ) -> Option<crate::hud::RocketCue> {
     use stealth_sim::rockets;
-    /// The rockets' effective range (m).
-    const EFFECTIVE_M: f64 = 5000.0;
     // Bevy (x east, y up, -z north) to east, north, up and back.
     let enu = |p: DVec3| [p.x, -p.z, p.y];
     let speed = a.knots() as f64 * 0.514_444;
     let nose = (a.orientation * Vec3::NEG_Z).as_dvec3();
-    let v = a.path_dir().as_dvec3() * speed + nose * rockets::LAUNCH_SPEED;
+    let v = a.path_dir().as_dvec3() * speed + nose * motor.launch;
     let from = pos.0;
-    let (hit, tof) = rockets::impact(enu(from), enu(v), |e, n| ground.at(e, -n))?;
+    let (hit, tof) = rockets::impact(motor, enu(from), enu(v), |e, n| ground.at(e, -n))?;
     let at = DVec3::new(hit[0], hit[2], -hit[1]);
     let eye_at = pos.0 + (a.orientation * eye).as_dvec3();
     let dir = (at - eye_at).normalize_or_zero();
@@ -2454,7 +2453,7 @@ fn rocket_cue(
         screen: project_cockpit(a, pos, eye, e, n, alt),
         range_m: range as f32,
         tof: tof as f32,
-        in_range: range <= EFFECTIVE_M,
+        in_range: range <= motor.reach,
     })
 }
 
@@ -2930,7 +2929,7 @@ fn take_event(combat: &mut Combat, e: SimEvent, a: &mut Aircraft, fx: &mut Fx) {
         // A rocket off its pod or its warhead going off: drawn by `rockets`; a kill burns.
         SimEvent::RocketFired { .. } => combat.rocket_fx.push(e),
         SimEvent::WingReply { reply } => combat.wing_replies.push(reply),
-        SimEvent::RocketBurst { at, kill } => {
+        SimEvent::RocketBurst { at, kill, .. } => {
             if kill {
                 let fine = 32 * stealth_sim::ROUND_FINE;
                 combat.kills.push(Kill { x: at.0 / fine, y: at.1 / fine, vehicle: true });

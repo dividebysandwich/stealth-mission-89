@@ -219,5 +219,15 @@ weapon-role-32 = Roicéid 70 mm faoi threorú léasair: téann gach ceann ar spo
 employment-32 =
     Cuir an pota spriocdhírithe ar an sprioc agus scaoil feadh na srón; casann siad ar an spota
     Suas le 6 km; coinnigh an pota ar an sprioc go mbuaileann siad
+weapon-role-33 = Buama titim shaor 1000 lb
+weapon-role-34 = Buama titim shaor 2000 lb
+weapon-role-35 = Diúracán frith-radair: radair agus láithreáin SAM, ar ghearr-raon
+employment-35 =
+    Raon: 9-20 km
+    Lainseáil: 3,000-10,000 ft
+weapon-role-36 = Roicéid 127 mm gan treorú i bpota: ina bpéirí nó ina sraitheanna i gcoinne feithiclí agus trúpaí faoin aer
+employment-36 =
+    Dírigh le crosóg na roicéad (CCIP): taispeánann sí cá dtuirlingeoidh roicéad a scaoiltear anois
+    Brúigh le haghaidh péire, coinnigh síos le haghaidh sraithe; is fearr ó thumadh éadomhain laistigh de 6 km
 loadout-wingman = SCIATHÁNAÍ
     .facts = Tagann sciathánaí IS san aerárthach céanna leis an armlón céanna leat san aer; tugann an roghchlár raidió (\) orduithe dó

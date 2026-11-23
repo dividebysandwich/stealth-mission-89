@@ -546,6 +546,15 @@ const TANK_BLAST: f64 = 1.0;
 const IFV_BLAST: f64 = 1.6;
 const TANK_ROUND_ODDS: i32 = 30;
 const IFV_ROUND_ODDS: i32 = 10;
+/// How near (map units) a bomb or missile going off destroys a unit of `kind`, and the odds
+/// against a gun round on it (1 in n).
+fn blast_radius(kind: GroundKind) -> (f64, i32) {
+    match kind {
+        k if k.tank() => (TANK_BLAST, TANK_ROUND_ODDS),
+        k if k.carrier() => (IFV_BLAST, IFV_ROUND_ODDS),
+        _ => (4.0, 6),
+    }
+}
 /// Units and shells at most.
 const MAX_UNITS: usize = 72;
 const MAX_SHELLS: usize = 160;
@@ -1120,12 +1129,7 @@ impl Sim {
                 continue;
             }
             let (ux, uy) = u.map_xy();
-            // Blast radius and the odds against a gun round (map units, 1 in n).
-            let (r, odds) = match u.kind {
-                k if k.tank() => (TANK_BLAST, TANK_ROUND_ODDS),
-                k if k.carrier() => (IFV_BLAST, IFV_ROUND_ODDS),
-                _ => (4.0, 6),
-            };
+            let (r, odds) = blast_radius(u.kind);
             for &(x, y, round, by) in &blasts {
                 let d = (x - ux).hypot(y - uy);
                 // A gun round kills only now and then.
@@ -1143,6 +1147,27 @@ impl Sim {
             }
         }
         self.aaa_rng = Some(rng);
+    }
+
+    /// A heavy bomb of the active pilot's going off on the ground at (x, y) (map units): its
+    /// blast reaches `scale` times as far as an ordinary one's ([`Self::aaa_damage`], which
+    /// takes the units nearer by).
+    pub(crate) fn heavy_blast(&mut self, x: i32, y: i32, scale: f64) {
+        for k in 0..self.units.len() {
+            let u = self.units[k];
+            if u.destroyed || u.gone {
+                continue;
+            }
+            let (ux, uy) = u.map_xy();
+            if (x as f64 - ux).hypot(y as f64 - uy) >= blast_radius(u.kind).0 * scale {
+                continue;
+            }
+            self.units[k].destroyed = true;
+            self.units[k].burst = 0;
+            let blue = self.aaa_blue(k);
+            self.msg(text!("sim-destroyed", target = u.kind.name_on(blue)));
+            self.emit(SimEvent::AaaDestroyed { unit: k, by: self.credit });
+        }
     }
 
     /// ZSU-23-4 radars for the radar warning receiver (range km, bearing from the player).

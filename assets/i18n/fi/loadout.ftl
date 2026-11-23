@@ -219,5 +219,15 @@ weapon-role-32 = Laserohjatut 70 mm:n raketit: kukin hakeutuu maalinosoitussäil
 employment-32 =
     Suuntaa maalinosoitussäiliö maaliin ja ammu nokan suuntaan; ne kääntyvät pisteeseen
     Enintään 6 km; pidä säiliö maalissa osumaan asti
+weapon-role-33 = 1000 lb:n vapaasti putoava pommi
+weapon-role-34 = 2000 lb:n vapaasti putoava pommi
+weapon-role-35 = Tutkantorjuntaohjus: tutkat ja SAM-asemat, lyhyeltä etäisyydeltä
+employment-35 =
+    Kantama: 9-20 km
+    Laukaisu: 3 000-10 000 ft
+weapon-role-36 = Ohjaamattomat 127 mm:n raketit sarjatulikotelossa: pareittain tai sarjoina ajoneuvoja ja avoimessa maastossa olevia joukkoja vastaan
+employment-36 =
+    Tähtää rakettitähtäimellä (CCIP): se näyttää, mihin nyt ammuttu raketti osuu
+    Paina parille, pidä pohjassa sarjalle; parhaiten loivasta syöksystä alle 6 km:stä
 loadout-wingman = SIIPIMIES
     .facts = Tekoälysiipimies samalla koneella ja samoilla aseilla liittyy seuraasi ilmassa; radiovalikko (\) antaa sille käskyt

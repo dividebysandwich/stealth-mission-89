@@ -219,5 +219,15 @@ weapon-role-32 = Razzi da 70 mm a guida laser: ognuno punta sul punto laser del 
 employment-32 =
     Puntare il pod sul bersaglio e sparare lungo il muso; virano verso il punto
     Fino a 6 km; tenere il pod sul bersaglio fino all'impatto
+weapon-role-33 = Bomba a caduta libera da 1000 lb
+weapon-role-34 = Bomba a caduta libera da 2000 lb
+weapon-role-35 = Missile antiradiazione: radar e siti SAM, a corto raggio
+employment-35 =
+    Portata: 9-20 km
+    Lancio: 3.000-10.000 ft
+weapon-role-36 = Razzi da 127 mm non guidati in lanciatore: a coppie o a raffica contro veicoli e truppe allo scoperto
+employment-36 =
+    Mirare con il reticolo razzi (CCIP): mostra dove cade un razzo sparato ora
+    Premere per una coppia, tenere premuto per una raffica; meglio in leggera picchiata entro 6 km
 loadout-wingman = GREGARIO
     .facts = Un gregario IA sullo stesso aereo con lo stesso armamento ti raggiunge in volo; il menu radio (\) gli dà gli ordini

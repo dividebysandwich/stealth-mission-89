@@ -219,5 +219,15 @@ weapon-role-32 = Lézerirányítású 70 mm-es rakéták: mindegyik a célzókon
 employment-32 =
     Állítsa a célzókonténert a célra, és lőjön az orr irányába; a folt felé fordulnak
     Legfeljebb 6 km; tartsa a konténert a célon a becsapódásig
+weapon-role-33 = 1000 lb-s szabadon eső bomba
+weapon-role-34 = 2000 lb-s szabadon eső bomba
+weapon-role-35 = Radarelhárító rakéta: radarok és SAM-állások, kis távolságról
+employment-35 =
+    Hatótávolság: 9-20 km
+    Kilövés: 3 000-10 000 ft
+weapon-role-36 = Irányítatlan 127 mm-es rakéták konténerben: párban vagy sorozatban járművek és nyílt terepen lévő csapatok ellen
+employment-36 =
+    Célozzon a rakétairányzékkal (CCIP): megmutatja, hová csapódik a most indított rakéta
+    Nyomja meg egy párért, tartsa lenyomva sorozatért; legjobb enyhe zuhanásból 6 km-en belül
 loadout-wingman = KÍSÉRŐ
     .facts = Egy MI kísérő ugyanazzal a géppel és fegyverzettel a levegőben csatlakozik; a rádiómenü (\) adja ki a parancsait

@@ -219,5 +219,15 @@ weapon-role-32 = Laser-guided 70 mm rockets: each homes on the targeting pod's l
 employment-32 =
     Put the targeting pod on the target and fire along the nose; they turn onto the spot
     Up to 6 km; keep the pod on the target until they hit
+weapon-role-33 = 1,000 lb free-fall bomb
+weapon-role-34 = 2,000 lb free-fall bomb
+weapon-role-35 = Anti-radiation missile: radars and SAM sites, at short range
+employment-35 =
+    Range: 9-20 km
+    Launch: 3,000-10,000 ft
+weapon-role-36 = Unguided 127 mm rockets in a pod: pairs or ripples against vehicles and troops in the open
+employment-36 =
+    Aim with the rocket reticle (CCIP): it shows where a rocket fired now lands
+    Press for a pair, hold for a ripple; best from a shallow dive inside 6 km
 loadout-wingman = WINGMAN
     .facts = An AI wingman in the same aircraft with the same stores joins you once you are up; the radio menu (\) gives it its orders

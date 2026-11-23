@@ -219,5 +219,15 @@ weapon-role-32 = Laserom navádzané 70 mm rakety: každá mieri na laserový bo
 employment-32 =
     Namierte zameriavací kontajner na cieľ a strieľajte v smere prídy; stočia sa k bodu
     Do 6 km; držte kontajner na cieli až do zásahu
+weapon-role-33 = 1000 lb bomba vo voľnom páde
+weapon-role-34 = 2000 lb bomba vo voľnom páde
+weapon-role-35 = Protiradarová raketa: radary a pozície SAM, na krátku vzdialenosť
+employment-35 =
+    Dosah: 9-20 km
+    Odpálenie: 3 000-10 000 ft
+weapon-role-36 = Neriadené 127 mm rakety v kontajneri: po pároch alebo v dávkach proti vozidlám a vojakom v otvorenom teréne
+employment-36 =
+    Mierte raketovým zameriavačom (CCIP): ukazuje, kam dopadne raketa odpálená teraz
+    Stlačte pre pár, podržte pre dávku; najlepšie z plytkého strmhlavého letu do 6 km
 loadout-wingman = WINGMAN
     .facts = AI wingman v rovnakom lietadle s rovnakou výzbrojou sa k vám pripojí vo vzduchu; rádiové menu (\) mu dáva rozkazy

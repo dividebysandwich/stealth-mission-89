@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 33] = [
+pub const WEAPONS: [(&str, &str); 37] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -49,6 +49,10 @@ pub const WEAPONS: [(&str, &str); 33] = [
     ("JP233", "weapon-role-30"),
     ("Hydra 70 rockets", "weapon-role-31"),
     ("APKWS laser-guided rockets", "weapon-role-32"),
+    ("Mk 83 LDGP", "weapon-role-33"),
+    ("Mk 84 LDGP", "weapon-role-34"),
+    ("AGM-45 Shrike", "weapon-role-35"),
+    ("Zuni rockets", "weapon-role-36"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -61,7 +65,7 @@ pub const WEAPONS: [(&str, &str); 33] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 33] = [
+const EMPLOYMENT: [&str; 37] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -95,10 +99,16 @@ const EMPLOYMENT: [&str; 33] = [
     "employment-30",
     "employment-31",
     "employment-32",
+    FREE_FALL,
+    FREE_FALL,
+    "employment-35",
+    "employment-36",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
 const LOW_RETARDED: &str = "employment-low-retarded";
+/// The Mk 83 and the Mk 84 fall as the Mk 82 does.
+const FREE_FALL: &str = "employment-9";
 
 /// How weapon `w` is used, in the player's language.
 fn employment(w: usize) -> &'static [&'static str] {
@@ -111,15 +121,16 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 33] = [
+const BAY_QTY: [u8; 37] = [
     4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1, 1, 7,
-    7,
+    7, 2, 1, 1, 4,
 ];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
-/// the Hellfires, a twin launcher for the Stingers, a 7-tube pod of rockets).
-const PYLON_QTY: [u8; 33] = [
+/// the Hellfires, a twin launcher for the Stingers, a 7-tube pod of 70 mm rockets, a 4-tube pod
+/// of Zunis; the 1,000 and 2,000 lb bombs one to a pylon).
+const PYLON_QTY: [u8; 37] = [
     1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7,
-    7,
+    7, 1, 1, 1, 4,
 ];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
@@ -143,11 +154,18 @@ pub const JP233: u8 = 30;
 /// (`stealth_sim::rockets`); a round is a rocket.
 pub const HYDRA: u8 = 31;
 pub const APKWS: u8 = 32;
+/// The 1,000 lb Mk 83's and the 2,000 lb Mk 84's weapon types: they fall like the Mk 82.
+pub const MK83: u8 = 33;
+pub const MK84: u8 = 34;
+/// The AGM-45 Shrike's weapon type: an early anti-radiation missile, flown like the HARM.
+pub const SHRIKE: u8 = 35;
+/// The 5 in Zuni rockets' weapon type, four to a LAU-10 pod (`stealth_sim::rockets`).
+pub const ZUNI: u8 = 36;
 
 /// A rocket pod: hung as one pod, its rounds the rockets in it.
 #[cfg(test)]
 pub fn rocket_pod(w: u8) -> bool {
-    matches!(w, HYDRA | APKWS)
+    matches!(w, HYDRA | APKWS | ZUNI)
 }
 
 /// A bay or a pylon.
@@ -1140,7 +1158,7 @@ static TORNADO_STATIONS: [Hardpoint; 8] = [
 /// heavy bombs and the tanks, the fuselage's the lighter bombs; the centreline the tank, the
 /// camera or the cargo. No anti-ship or anti-radar missiles.
 const A10_WING: [u8; 14] = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, CBU105, HYDRA, APKWS];
-const A10_INNER: [u8; 14] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105, HYDRA, APKWS];
+const A10_INNER: [u8; 15] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105, HYDRA, APKWS, MK84];
 const A10_BELLY: [u8; 7] = [6, 7, 9, 10, 11, 12, 14];
 /// The fuselage stations' racks of the fat or widely finned stores would meet: one of them each.
 const A10_BELLY_QTY: [(u8, u8); 5] = [(7, 1), (10, 1), (11, 1), (12, 1), (14, 1)];
@@ -1177,9 +1195,9 @@ static A10_LAYOUT: Layout =
 /// Sidewinder rails outboard. No centreline station: the gun pods and the bicycle gear's legs
 /// leave no room for a store between them.
 const AV8B_OUTER: [u8; 11] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
-const AV8B_MIDDLE: [u8; 12] = [5, 6, 8, 9, 10, 12, 13, 14, 15, CBU105, HYDRA, APKWS];
-const AV8B_INNER: [u8; 18] =
-    [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105, HYDRA, APKWS];
+const AV8B_MIDDLE: [u8; 13] = [5, 6, 8, 9, 10, 12, 13, 14, 15, CBU105, HYDRA, APKWS, ZUNI];
+const AV8B_INNER: [u8; 20] =
+    [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105, HYDRA, APKWS, MK83, ZUNI];
 /// The AV-8B's pylons are close together: the fat or widely finned stores one to a pylon, and on
 /// the intermediate ones (by the outrigger legs) the Mk 82s and Durandals too.
 const AV8B_OUTER_QTY: [(u8, u8); 3] = [(10, 1), (12, 1), (14, 1)];
@@ -1223,8 +1241,10 @@ static F22_STATIONS: [Hardpoint; 4] = [
 /// lighter stores and the air-to-air missiles; AMRAAMs on the nacelle stations, the camera pod,
 /// a tank or the cargo on the centreline; Sidewinders on the wingtips.
 const FA18E_OUTER: [u8; 16] = [0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, CBU105, MALD];
-const FA18E_WING: [u8; 21] =
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105, SLAMER, JSOW, MALD];
+const FA18E_WING: [u8; 23] = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, CBU105, SLAMER, JSOW, MALD, MK83,
+    MK84,
+];
 const FA18E_NACELLE: [u8; 1] = [1];
 /// The middle wing pylons' Fireyes and fuel-air bombs one to a pylon: a rack of them reaches
 /// the inner pylon's (tools/models/store_clearance.py).
@@ -1245,9 +1265,11 @@ static FA18E_STATIONS: [Hardpoint; 11] = [
     pylon("hardpoint-fa18e-10-right-outer-wing", "10", 4.60, 11.75, Some(1), &FA18E_OUTER),
     pylon("hardpoint-fa18e-11-right-wingtip", "11", 6.78, 11.80, Some(0), &SIDEWINDER),
 ];
-/// The A-6C's wing pylons take the Sidewinder, the anti-radar, anti-ship and Maverick missiles,
-/// the bombs, the rocket pods and the tanks.
-const A6_WING: [u8; 15] = [0, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, HYDRA];
+/// The A-6C's wing pylons take the Sidewinder, the anti-radar (the HARM and its own time's
+/// Shrike), anti-ship and Maverick missiles, the bombs up to the 2,000 lb Mk 84, the rocket pods
+/// (Hydra 70s and Zunis) and the tanks.
+const A6_WING: [u8; 19] =
+    [0, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, HYDRA, MK83, MK84, SHRIKE, ZUNI];
 /// The A-6C's wing stations 1, 2, 4 and 5 (station 3, the centreline, carries its TRIM sensor
 /// pod: not a hardpoint).
 static A6_STATIONS: [Hardpoint; 4] = [
@@ -2675,7 +2697,7 @@ mod tests {
     #[test]
     fn missile_ranges_match_the_lock_ranges() {
         let sim = stealth_host::theater::sim_tables().expect("sim tables");
-        for w in [0, 1, 2, 3, 4, 5, STINGER as usize] {
+        for w in [0, 1, 2, 3, 4, 5, STINGER as usize, SHRIKE as usize] {
             let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
             // 7/8 of it against the ground, less a little for the height.
             let km =

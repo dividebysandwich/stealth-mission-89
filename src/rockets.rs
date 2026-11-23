@@ -1,4 +1,4 @@
-//! The 70 mm rockets as drawn (`stealth_sim::rockets`): each a bright dot while its motor burns
+//! The rockets (70 mm and Zuni) as drawn (`stealth_sim::rockets`): each a bright dot while its motor burns
 //! (its smoke is a trail, `trails`), a dark one after; a puff off the pod as it leaves, and its
 //! warhead's burst where it comes down.
 //!
@@ -81,14 +81,17 @@ pub fn sync_rockets(
 
     for e in &combat.rocket_fx {
         match *e {
-            SimEvent::RocketFired { at, .. } => {
-                ex.pending.push((fine_point(at), Blast::Pop { size: 1.5, shade: 0.8 }));
+            SimEvent::RocketFired { at, zuni, .. } => {
+                let size = if zuni { 2.5 } else { 1.5 };
+                ex.pending.push((fine_point(at), Blast::Pop { size, shade: 0.8 }));
             }
-            SimEvent::RocketBurst { at, kill } => {
+            SimEvent::RocketBurst { at, kill, zuni } => {
                 let p = fine_point(at);
-                let blast = if kill { Blast::Kill } else { Blast::Strike(Calibre::Mm40) };
+                // The Zuni's warhead is five times the 70 mm rocket's.
+                let calibre = if zuni { Calibre::Mm105 } else { Calibre::Mm40 };
+                let blast = if kill { Blast::Kill } else { Blast::Strike(calibre) };
                 ex.pending.push((p, blast));
-                reports.write(crate::sound::GunReport { at: p, calibre: Calibre::Mm40 });
+                reports.write(crate::sound::GunReport { at: p, calibre });
             }
             _ => {}
         }

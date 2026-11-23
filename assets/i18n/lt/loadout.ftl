@@ -219,5 +219,15 @@ weapon-role-32 = Lazeriu valdomos 70 mm raketos: kiekviena skrenda į taikymo ko
 employment-32 =
     Nukreipkite konteinerį į taikinį ir šaukite pagal nosį; jos pasisuka į tašką
     Iki 6 km; laikykite konteinerį ant taikinio iki pataikymo
+weapon-role-33 = 1000 lb laisvai krintanti bomba
+weapon-role-34 = 2000 lb laisvai krintanti bomba
+weapon-role-35 = Priešradarinė raketa: radarai ir SAM objektai, mažu nuotoliu
+employment-35 =
+    Nuotolis: 9-20 km
+    Paleidimas: 3 000-10 000 ft
+weapon-role-36 = Nevaldomos 127 mm raketos konteineryje: poromis ar serijomis prieš transporto priemones ir atvirus karius
+employment-36 =
+    Taikykitės raketų taikikliu (CCIP): jis rodo, kur nukris dabar paleista raketa
+    Paspauskite porai, laikykite serijai; geriausia iš nuožulnaus pikiravimo iki 6 km
 loadout-wingman = SPARNININKAS
     .facts = DI sparnininkas tuo pačiu orlaiviu su ta pačia ginkluote prisijungia ore; radijo meniu (\) duoda jam įsakymus

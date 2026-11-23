@@ -219,5 +219,15 @@ weapon-role-32 = Rokits ta' 70 mm iggwidati bil-lejżer: kull wieħed imur għat
 employment-32 =
     Poġġi l-pod tal-immirar fuq il-mira u spara mal-imnieħer; idawru lejn it-tikka
     Sa 6 km; żomm il-pod fuq il-mira sakemm jolqtu
+weapon-role-33 = Bomba ta' waqgħa ħielsa ta' 1000 lb
+weapon-role-34 = Bomba ta' waqgħa ħielsa ta' 2000 lb
+weapon-role-35 = Missila kontra r-radar: radars u siti SAM, f'firxa qasira
+employment-35 =
+    Firxa: 9-20 km
+    Tnedija: 3,000-10,000 ft
+weapon-role-36 = Rokits mhux iggwidati ta' 127 mm f'pod: f'pari jew f'raffiki kontra vetturi u truppi fil-miftuħ
+employment-36 =
+    Immira bir-retikolu tar-rokits (CCIP): juri fejn jaqa' rokit sparat issa
+    Agħfas għal par, żomm għal raffika; l-aħjar minn għadsa baxxa fi ħdan 6 km
 loadout-wingman = WINGMAN
     .facts = Wingman tal-IA fl-istess ajruplan bl-istess armi jingħaqad miegħek fl-ajru; il-menu tar-radju (\) jagħtih l-ordnijiet

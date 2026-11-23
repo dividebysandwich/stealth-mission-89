@@ -24,6 +24,8 @@ Dimensions (m: length, body diameter, span):
     AN/ALQ-99 jammer pod 4.75 x 0.68, its ram-air turbine's propeller 0.75 across
     JP233 dispenser 6.55 x 0.56 x 0.52 (rounded box section), hung well forward of its middle
     recon pod 4.0 x 0.40, 300 US gal tank 4.6 x 0.66, MXU-648 cargo pod 3.4 x 0.48
+    Mk 83 LDGP 3.00 x 0.357, conical fin 0.48        Mk 84 LDGP 3.84 x 0.458, conical fin 0.64
+    AGM-45 Shrike 3.05 x 0.203, wings 0.914          LAU-10/A (four 5 in Zunis) 2.36 x 0.36
 """
 
 import math
@@ -159,6 +161,20 @@ def harm():
     fins(g, t + 0.36, t + 0.02, r, 0.19, MISSILE, tip=(t + 0.14, t + 0.02))
     lugs(g, 0.0, r, spacing=1.2)
     return Store(hang(g, 0.0, r), hang(motor_flame(t, r, 1.3), 0.0, r))
+
+
+def shrike():
+    """AGM-45 Shrike: a Sparrow-sized white body, the grey ogive radome of its seeker, the four
+    big cropped delta wings at mid-body that steer it, the small fixed tail fins."""
+    L, r = 3.05, 0.1015
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.12, 0.045), (n - 0.35, 0.085), (n - 0.55, r), (t, r)], WHITE,
+             bands=[(n - 0.80, n - 0.88, YELLOW), (n - 2.05, n - 2.13, BROWN)])
+    g.add(body([(n + 0.004, 0.0), (n - 0.12, 0.049), (n - 0.33, 0.087)], GREY, n=10))
+    fins(g, n - 1.15, n - 1.85, r, 0.355, WHITE, tip=(n - 1.62, n - 1.85))
+    fins(g, t + 0.30, t + 0.02, r, 0.13, WHITE, tip=(t + 0.12, t + 0.02))
+    lugs(g, 0.0, r, spacing=0.9)
+    return Store(hang(g, 0.0, r), hang(motor_flame(t, r, 1.1), 0.0, r))
 
 
 def penguin():
@@ -447,6 +463,24 @@ def lau131():
     return Store(hang(g, 0.0, r + 0.025))
 
 
+def lau10():
+    """LAU-10/A: the four-tube launcher of 5 in Zuni rockets: a long white cylinder, its front
+    and back faces showing the four tube mouths, the strongback with its lugs on top."""
+    r, n, t = 0.18, 1.18, -1.18
+    g = body([(n, r - 0.012), (n - 0.03, r), (t + 0.03, r), (t, r - 0.012)], WHITE, n=16,
+             bands=[(n - 0.14, n - 0.22, DARK), (t + 0.22, t + 0.14, DARK)])
+    g.add(frustum((0, n + 0.001, 0), (0, n, 0), r - 0.012, r - 0.012, DARK, 16))
+    g.add(frustum((0, t, 0), (0, t - 0.001, 0), r - 0.012, r - 0.012, DARK, 16))
+    for x in (-0.07, 0.07):
+        for z in (-0.07, 0.07):
+            for y in (n + 0.002, t - 0.003):
+                g.add(frustum((x, y + 0.001, z), (x, y, z), 0.06, 0.06, BLACK, 10))
+    # The strongback the lugs sit in.
+    g.add(block(-0.06, 0.06, -0.40, 0.40, r - 0.02, r + 0.03, WHITE))
+    lugs(g, 0.0, r + 0.03)
+    return Store(hang(g, 0.0, r + 0.03))
+
+
 # ---------------------------------------------------------------------------------------------
 # Strike missiles flown as aircraft (crates/stealth-sim/src/strike_missiles.rs): centred on
 # their middle, nose +y.
@@ -600,6 +634,32 @@ def mk82():
     return Store(hang(g, 0.0, r))
 
 
+def ldgp(L, r, span, lug_spacing):
+    """A Mk 80 series low drag bomb `L` long of radius `r`: the Mk 82's ogive case and conical
+    fin assembly (`mk82`) at its size, the four fins `span` across."""
+    k, s = L / 2.21, r / 0.1365
+    n = L / 2
+    g = body([(n, 0.0), (n - 0.04 * k, 0.03 * s), (n - 0.25 * k, 0.09 * s), (n - 0.55 * k, 0.125 * s),
+              (n - 0.80 * k, r), (n - 1.40 * k, r), (n - 1.72 * k, 0.11 * s)], OLIVE, n=12,
+             bands=[(n - 0.30 * k, n - 0.36 * k, YELLOW), (n - 0.42 * k, n - 0.48 * k, YELLOW)])
+    t = n - 1.72 * k
+    g.add(body([(t, 0.11 * s), (-n, 0.16 * s)], OLIVE, n=12))
+    fins(g, t - 0.05 * k, -n + 0.005, 0.10 * s, span / 2 - 0.10 * s, OLIVE, rot=45.0,
+         tip=(-n + 0.15 * k, -n + 0.005))
+    lugs(g, 0.0, r, spacing=lug_spacing)
+    return Store(hang(g, 0.0, r))
+
+
+def mk83():
+    """Mk 83 low drag: the 1,000 lb bomb, 14 in across."""
+    return ldgp(3.00, 0.1785, 0.48, 0.356)
+
+
+def mk84():
+    """Mk 84 low drag: the 2,000 lb bomb, 18 in across, its lugs 30 in apart."""
+    return ldgp(3.84, 0.229, 0.64, 0.762)
+
+
 def snakeye():
     """Mk 82 Snakeye: the case with the Mk 15 retarding tail, its four blades folded into a
     box behind it."""
@@ -742,14 +802,15 @@ WEAPON_MODELS = {
     14: (64, lambda: dispenser(RED)), 15: (65, lambda: dispenser(YELLOW, Ramp(176, 180))),
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
     25: (80, slamer), 26: (82, jsow), 27: (83, mald), 29: (84, alq99), 30: (85, jp233),
-    31: (86, lau131), 32: (86, lau131),
+    31: (86, lau131), 32: (86, lau131), 33: (91, mk83), 34: (92, mk84), 35: (93, shrike), 36: (94, lau10),
 }
 # The rocket pods: hung as one pod whatever their rounds (the rockets inside it).
-ROCKET_PODS = (31, 32)
+ROCKET_PODS = (31, 32, 36)
 # Body radius (m) of each store, and its length: for the racks' spacing and the checks.
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
-          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28, 31: 0.13, 32: 0.13}
+          20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28, 31: 0.13, 32: 0.13,
+          33: 0.1785, 34: 0.229, 35: 0.1015, 36: 0.18}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -836,7 +897,8 @@ def rack_for(kind, weapon, rounds):
         return "rail"
     if weapon == 5:
         return "lau117"
-    if weapon == 2:
+    # The Shrike on the HARM's launcher.
+    if weapon in (2, 35):
         return "lau118"
     if rounds >= 2:
         return "ter"
@@ -859,7 +921,8 @@ LOADOUT_RS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."
 
 # The weapon type constants of src/loadout.rs.
 NAMED = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26,
-         "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30, "HYDRA": 31, "APKWS": 32}
+         "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30, "HYDRA": 31, "APKWS": 32,
+         "MK83": 33, "MK84": 34, "SHRIKE": 35, "ZUNI": 36}
 
 
 def _loadout_text():

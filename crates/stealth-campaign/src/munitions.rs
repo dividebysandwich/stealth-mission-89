@@ -58,9 +58,13 @@ pub enum Munition {
     Flamingo,
     /// The enemy's Iskander ballistic missiles (its TELs draw them from their site's base).
     Iskander,
+    /// The A-6's AGM-45 Shrike anti-radiation missile and 5 in Zuni rockets (counted one by
+    /// one).
+    Shrike,
+    Zuni,
 }
 
-const BLUE: [Munition; 22] = [
+const BLUE: [Munition; 24] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -83,6 +87,8 @@ const BLUE: [Munition; 22] = [
     Munition::Apkws,
     Munition::Fp7,
     Munition::Flamingo,
+    Munition::Shrike,
+    Munition::Zuni,
 ];
 const RED: [Munition; 9] = [
     Munition::Aa10,
@@ -149,6 +155,8 @@ impl Munition {
             Fp7 => "FP-7",
             Flamingo => "Flamingo",
             Iskander => "Iskander",
+            Shrike => "AGM-45 Shrike",
+            Zuni => "Zuni",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -192,6 +200,8 @@ impl Munition {
             Fp7 => 6.0,
             Flamingo => 4.0,
             Iskander => 4.0,
+            Shrike => 16.0,
+            Zuni => 64.0,
         }
     }
 
@@ -225,6 +235,8 @@ impl Munition {
             Fp7 => 1.0,
             Flamingo => 0.5,
             Iskander => 0.5,
+            Shrike => 8.0,
+            Zuni => 16.0,
         }
     }
 
@@ -233,7 +245,7 @@ impl Munition {
     pub fn fallback(self) -> Option<Munition> {
         match self {
             Munition::Aim120 => Some(Munition::Aim7),
-            Munition::Harm => Some(Munition::Agm65),
+            Munition::Harm | Munition::Shrike => Some(Munition::Agm65),
             Munition::As11 => Some(Munition::As10),
             Munition::Harpoon => Some(Munition::Penguin),
             Munition::Penguin | Munition::Cbu105 => Some(Munition::Agm65),
@@ -265,6 +277,8 @@ impl Munition {
             30 => Jp233,
             31 => Hydra,
             32 => Apkws,
+            35 => Shrike,
+            36 => Zuni,
             _ => return None,
         })
     }
