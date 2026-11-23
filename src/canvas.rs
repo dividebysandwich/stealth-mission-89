@@ -526,14 +526,46 @@ impl Canvas {
         let s = self.scale as f32;
         let lo = (p[0].min(p[1]).min(p[2]) * s).floor();
         let hi = (p[0].max(p[1]).max(p[2]) * s).ceil();
-        for y in lo.y as i32..hi.y as i32 {
-            for x in lo.x as i32..hi.x as i32 {
-                let q = Vec2::new(x as f32 + 0.5, y as f32 + 0.5) / s;
-                let w = [edge(p[1], p[2], q), edge(p[2], p[0], q), edge(p[0], p[1], q)];
-                if w.iter().all(|&w| w * area >= 0.0) {
-                    self.set_texel(x, y, c);
+        // Only the texels inside the clip rectangle (a projected ground can reach far past the
+        // canvas), and on each row only near the span the triangle covers: each edge bounds the
+        // row's texel centres on one side, the exact test below keeps the texels as they were.
+        let si = self.scale as i32;
+        let [x0, y0, x1, y1] = self.clip;
+        let (cx0, cx1) = ((lo.x as i32).max(x0 * si), (hi.x as i32).min((x1 + 1) * si));
+        let (cy0, cy1) = ((lo.y as i32).max(y0 * si), (hi.y as i32).min((y1 + 1) * si));
+        let sign = area.signum();
+        let edges = [(p[1], p[2]), (p[2], p[0]), (p[0], p[1])];
+        for y in cy0..cy1 {
+            let qy = (y as f32 + 0.5) / s;
+            // The texel centres x with sign * edge >= 0 on every edge: k qx + c >= 0 each, with
+            // qx = (x + 0.5) / s.
+            let (mut l, mut r) = (cx0 as f32, cx1 as f32);
+            for (a, b) in edges {
+                let d = b - a;
+                let (k, c0) = (-d.y * sign, (d.x * (qy - a.y) + d.y * a.x) * sign);
+                if k > 0.0 {
+                    l = l.max(-c0 / k * s - 0.5);
+                } else if k < 0.0 {
+                    r = r.min(-c0 / k * s - 0.5);
+                } else if c0 < 0.0 {
+                    r = l - 4.0;
                 }
             }
+            if r < l - 2.0 {
+                continue;
+            }
+            let (xa, xb) = ((l.floor() as i32 - 1).max(cx0), (r.ceil() as i32 + 2).min(cx1));
+            // The row's texels inside are one run (each edge's test only grows or only shrinks
+            // along the row): its ends found from both sides, the run between filled.
+            let inside = |x: i32| {
+                let q = Vec2::new(x as f32 + 0.5, y as f32 + 0.5) / s;
+                let w = [edge(p[1], p[2], q), edge(p[2], p[0], q), edge(p[0], p[1], q)];
+                w.iter().all(|&w| w * area >= 0.0)
+            };
+            let Some(first) = (xa..xb).find(|&x| inside(x)) else { continue };
+            let last = (first..xb).rev().find(|&x| inside(x)).unwrap_or(first);
+            let row = y as usize * self.pw();
+            self.px[row + first as usize..=row + last as usize].fill(c);
         }
     }
 
@@ -1163,5 +1195,56 @@ mod tests {
         assert_eq!(changed_rows(&old, &new, 4), Some(1..5));
         new[4 * 5 + 3] = 1;
         assert_eq!(changed_rows(&old, &new, 4), Some(1..6));
+    }
+
+    /// The triangle covers the texels it did when it tested its whole bounding box (clipped,
+    /// a row's span only): large ones far past the canvas, slivers, both windings, clipped.
+    #[test]
+    fn triangle_spans_cover_the_same_texels() {
+        fn reference(c: &mut Canvas, p: [Vec2; 3], col: u8) {
+            let edge = |a: Vec2, b: Vec2, q: Vec2| (b - a).perp_dot(q - a);
+            let area = edge(p[0], p[1], p[2]);
+            if area == 0.0 {
+                return;
+            }
+            let s = c.scale as f32;
+            let lo = (p[0].min(p[1]).min(p[2]) * s).floor();
+            let hi = (p[0].max(p[1]).max(p[2]) * s).ceil();
+            for y in lo.y as i32..hi.y as i32 {
+                for x in lo.x as i32..hi.x as i32 {
+                    let q = Vec2::new(x as f32 + 0.5, y as f32 + 0.5) / s;
+                    let w = [edge(p[1], p[2], q), edge(p[2], p[0], q), edge(p[0], p[1], q)];
+                    if w.iter().all(|&w| w * area >= 0.0) {
+                        c.set_texel(x, y, col);
+                    }
+                }
+            }
+        }
+        let mut seed = 0x2545_f491_u32;
+        let mut rnd = |lo: f32, hi: f32| {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            lo + (hi - lo) * (seed as f32 / u32::MAX as f32)
+        };
+        for scale in [1, 2] {
+            for i in 0..3000 {
+                let (mut a, mut b) = (Canvas::scaled(80, 60, scale), Canvas::scaled(80, 60, scale));
+                if i % 3 == 0 {
+                    a.set_clip(10, 5, 60, 40);
+                    b.set_clip(10, 5, 60, 40);
+                }
+                let reach = if i % 2 == 0 { 120.0 } else { 900.0 };
+                let mut p = [0; 3].map(|_| Vec2::new(rnd(-reach, reach), rnd(-reach, reach)));
+                if i % 5 == 0 {
+                    // A sliver, or an edge on a texel centre's row or column.
+                    p[2] = p[0].lerp(p[1], rnd(0.0, 1.0)) + Vec2::new(rnd(-0.6, 0.6), 0.0);
+                    p[1].y = p[0].y.round() + 0.25;
+                }
+                a.triangle(p, 7);
+                reference(&mut b, p, 7);
+                assert!(a.px == b.px, "scale {scale}, triangle {p:?}");
+            }
+        }
     }
 }

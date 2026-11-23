@@ -115,22 +115,82 @@ fn seg(c: &mut Canvas, a: Vec2, b: Vec2, w: f32, colour: u8) {
     }
 }
 
-/// A sector picture: `shade(bearing right of the nose, share of the range)` per point of the
-/// tube inside `half` radians either side, 0 dark.
-fn sector(c: &mut Canvas, half: f32, shade: impl Fn(f32, f32) -> f32) {
-    let (mid, rad) = glass(c);
-    let foot = mid + Vec2::Y * rad * FOOT;
-    let reach = rad * REACH;
-    for y in (mid.y - rad) as i32..=(mid.y + rad) as i32 {
-        for x in (mid.x - rad) as i32..=(mid.x + rad) as i32 {
-            let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
-            if p.distance_squared(mid) > rad * rad {
-                continue;
-            }
-            let d = p - foot;
-            let (r, az) = (d.length() / reach, d.x.atan2(-d.y));
-            let v = if r <= 1.0 && az.abs() <= half { shade(az, r) } else { 0.0 };
-            c.set(x, y, if v > 0.0 { ink(v) } else { 0 });
+/// A drawing unit of the tube under a sector picture: its share of the reach from the tube's
+/// foot (past 1 off the picture) and its bearing right of the nose, with the bearing's sine and
+/// cosine.
+#[derive(Clone, Copy)]
+struct Polar {
+    r: f32,
+    az: f32,
+    sin: f32,
+    cos: f32,
+}
+
+/// The tube's units in rows over its bounding square (None outside the tube), for a canvas of
+/// this size: the same every frame, so worked out once (`sector`).
+struct PolarGrid {
+    size: (usize, usize),
+    x0: i32,
+    y0: i32,
+    n: usize,
+    cells: Vec<Option<Polar>>,
+}
+
+impl PolarGrid {
+    fn new(c: &Canvas) -> Self {
+        let (mid, rad) = glass(c);
+        let foot = mid + Vec2::Y * rad * FOOT;
+        let reach = rad * REACH;
+        let (x0, y0) = ((mid.x - rad) as i32, (mid.y - rad) as i32);
+        let n = ((mid.x + rad) as i32 - x0 + 1) as usize;
+        let rows = ((mid.y + rad) as i32 - y0 + 1) as usize;
+        let cells = (0..rows * n)
+            .map(|i| {
+                let (x, y) = (x0 + (i % n) as i32, y0 + (i / n) as i32);
+                let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                (p.distance_squared(mid) <= rad * rad).then(|| {
+                    let d = p - foot;
+                    let az = d.x.atan2(-d.y);
+                    let (sin, cos) = az.sin_cos();
+                    Polar { r: d.length() / reach, az, sin, cos }
+                })
+            })
+            .collect();
+        Self { size: (c.w, c.h), x0, y0, n, cells }
+    }
+
+    /// The grid for this canvas' size, made the first time.
+    fn of(c: &Canvas) -> std::sync::Arc<PolarGrid> {
+        static GRIDS: std::sync::Mutex<Vec<std::sync::Arc<PolarGrid>>> =
+            std::sync::Mutex::new(Vec::new());
+        let mut grids = GRIDS.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(g) = grids.iter().find(|g| g.size == (c.w, c.h)) {
+            return g.clone();
+        }
+        let g = std::sync::Arc::new(PolarGrid::new(c));
+        grids.push(g.clone());
+        g
+    }
+}
+
+/// A sector picture: `shade(the unit's place)` per unit of the tube inside `half` radians
+/// either side of the nose and inside the reach, 0 dark.
+fn sector(c: &mut Canvas, half: f32, shade: impl Fn(&Polar) -> f32) {
+    let grid = PolarGrid::of(c);
+    let (s, pw) = (c.scale, c.pw());
+    for (i, cell) in grid.cells.iter().enumerate() {
+        let Some(p) = cell else { continue };
+        let v = if p.r <= 1.0 && p.az.abs() <= half { shade(p) } else { 0.0 };
+        let (x, y) = (grid.x0 + (i % grid.n) as i32, grid.y0 + (i / grid.n) as i32);
+        if x < 0 || y < 0 || x as usize >= c.w || y as usize >= c.h {
+            continue;
+        }
+        // The unit's texels, row by row (as `Canvas::set`, without its clip: the tube is
+        // inside the canvas).
+        let colour = if v > 0.0 { ink(v) } else { 0 };
+        let at = y as usize * s * pw + x as usize * s;
+        for row in 0..s {
+            c.px[at + row * pw..at + row * pw + s].fill(colour);
         }
     }
 }
@@ -160,14 +220,17 @@ fn ground_map(c: &mut Canvas, s: &Scene, range: f32, amti: bool) {
     if !radar.on {
         return;
     }
-    let at = |az: f32, r: f32| {
-        let (sin, cos) = (s.heading + az).sin_cos();
-        (s.own.x + (sin * r * range) as f64, s.own.y + (cos * r * range) as f64)
-    };
-    sector(c, SCAN_HALF, |az, r| {
-        let (e, n) = at(az, r);
-        let b = radar.brightness(e, n);
+    // The shade of each of the picture's levels, and the bearing's sine and cosine turned to
+    // the heading.
+    let shades: [f32; 256] = std::array::from_fn(|l| {
+        let b = l as f32 / 255.0;
         if amti { 0.04 + b * 0.22 } else { 0.04 + b.powf(0.8) * 0.9 }
+    });
+    let (sh, ch) = s.heading.sin_cos();
+    sector(c, SCAN_HALF, |p| {
+        let (sin, cos) = (sh * p.cos + ch * p.sin, ch * p.cos - sh * p.sin);
+        let d = p.r * range;
+        shades[radar.level(s.own.x + (sin * d) as f64, s.own.y + (cos * d) as f64) as usize]
     });
     range_marks(c, SCAN_HALF, 0.3);
     if amti {
@@ -212,9 +275,9 @@ fn clearance_plan(c: &mut Canvas, s: &Scene, range: f32, clearance: f32) {
         return;
     }
     let (scan, alt) = (s.scan, s.alt);
-    sector(c, terrain::HALF, |az, r| {
-        let b = ((az / terrain::HALF + 1.0) / 2.0 * (terrain::BEARINGS - 1) as f32).round();
-        let i = ((r * range / terrain::REACH).sqrt() * terrain::RANGES as f32 - 1.0).round();
+    sector(c, terrain::HALF, |p| {
+        let b = ((p.az / terrain::HALF + 1.0) / 2.0 * (terrain::BEARINGS - 1) as f32).round();
+        let i = ((p.r * range / terrain::REACH).sqrt() * terrain::RANGES as f32 - 1.0).round();
         let over = scan.height(b as usize, i.max(0.0) as usize) - (alt - clearance);
         if over > 0.0 { (0.35 + over / 300.0).min(1.0) } else { 0.03 }
     });

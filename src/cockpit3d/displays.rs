@@ -703,6 +703,8 @@ pub(super) fn update_displays(
         }
         let Some(mut tex) = find(role).and_then(|e| texes.get_mut(e).ok()) else { continue };
         let tex = tex.as_mut();
+        // Each display timed on its own (`SM89_PROFILE`: "display Vdi").
+        let _span = bevy::log::info_span!("display", name = ?role).entered();
         tex.canvas.reset_clip();
         match role {
             CanvasRole::Left | CanvasRole::Right | CanvasRole::Third | CanvasRole::Fourth => {

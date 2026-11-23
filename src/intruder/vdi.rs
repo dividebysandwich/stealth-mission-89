@@ -254,22 +254,34 @@ fn road(
 /// The terrain clearance picture's ground: the ridges of four range bands, far to near.
 fn ridges(c: &mut Canvas, v: &View, f: &Flight, scan: &TerrainScan, miles: f32, down: Vec2) {
     let reach = miles * 1852.0;
-    for band in (0..4).rev() {
+    let tops: [[Option<Vec2>; terrain::BEARINGS]; 4] = std::array::from_fn(|band| {
         let (near, far) = (reach * band as f32 / 4.0, reach * (band + 1) as f32 / 4.0);
+        std::array::from_fn(|b| {
+            scan.elevation(b, near, far, f.alt)
+                .and_then(|el| v.project(dir(terrain::bearing_at(b), el)))
+        })
+    });
+    for band in (0..4).rev() {
         let shade = ink(0.85 - band as f32 * 0.2);
-        let mut last: Option<Vec2> = None;
-        for b in 0..terrain::BEARINGS {
-            let top = scan
-                .elevation(b, near, far, f.alt)
-                .and_then(|el| v.project(dir(terrain::bearing_at(b), el)));
-            if let (Some(a), Some(p)) = (last, top) {
-                fill(c, &[a, p, p + down * 400.0, a + down * 400.0], shade);
+        for b in 1..terrain::BEARINGS {
+            if let (Some(a), Some(p)) = (tops[band][b - 1], tops[band][b]) {
+                // Its silhouette reaches down to the nearer band's ridge (which covers the rest,
+                // drawn after it) where that has this segment, else off the picture.
+                let nearer = band.checked_sub(1).and_then(|n| tops[n][b - 1].zip(tops[n][b]));
+                let (fa, fp) = nearer.map_or((400.0, 400.0), |(na, np)| {
+                    let to =
+                        |near: Vec2, top: Vec2| (near - top).dot(down).max(0.0) + RIDGE_OVERLAP;
+                    (to(na, a), to(np, p))
+                });
+                fill(c, &[a, p, p + down * fp, a + down * fa], shade);
                 c.stroke(a, p, 1.0, ink(LINE));
             }
-            last = top;
         }
     }
 }
+
+/// A far band's silhouette overlaps the nearer band's ridge by this much (drawing units).
+const RIDGE_OVERLAP: f32 = 3.0;
 
 /// The contact analog's sky and ground.
 fn world(c: &mut Canvas, v: &View, f: &Flight, analog: bool) -> Option<(Vec2, Vec2, Vec2)> {

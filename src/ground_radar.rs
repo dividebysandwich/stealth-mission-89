@@ -235,7 +235,12 @@ impl GroundRadar {
 
     /// The picture's brightness at a point (metres east, north): 0 dark, 1 the brightest.
     pub fn brightness(&self, e: f64, n: f64) -> f32 {
-        self.cell_at(e, n).map_or(0.0, |i| self.grid[i] as f32 / 255.0)
+        self.level(e, n) as f32 / 255.0
+    }
+
+    /// The picture's brightness at a point as stored: 0 dark, 255 the brightest.
+    pub fn level(&self, e: f64, n: f64) -> u8 {
+        self.cell_at(e, n).map_or(0, |i| self.grid[i])
     }
 
     /// One frame of the scan: the beam moves on `dt` seconds' worth, painting the rays it
