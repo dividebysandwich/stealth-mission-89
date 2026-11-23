@@ -64,6 +64,7 @@ mod hud;
 mod i18n;
 mod input;
 mod input_dialog;
+mod intruder;
 mod jam_page;
 mod jp233;
 mod key_guide;
@@ -350,6 +351,7 @@ pub fn run() {
             ground_radar::GroundRadarPlugin,
             aa_radar::AaRadarPlugin,
             panel::PanelPlugin,
+            intruder::IntruderPlugin,
         ))
         .add_plugins((
             combat::CombatPlugin,

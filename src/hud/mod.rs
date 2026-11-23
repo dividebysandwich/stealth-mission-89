@@ -765,7 +765,7 @@ pub struct HudParams<'w, 's> {
 }
 
 /// (temperature ratio, speed of sound in ft/s) at an altitude in feet (standard atmosphere).
-fn speed_of_sound(h: f32) -> (f32, f32) {
+pub(crate) fn speed_of_sound(h: f32) -> (f32, f32) {
     let theta = 1.0 - 6.875_6e-6 * h.clamp(0.0, 36089.0);
     (theta, 1116.4 * theta.sqrt())
 }

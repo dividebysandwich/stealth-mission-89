@@ -101,6 +101,22 @@ enum Readout {
 fn readout_text(readout: Readout, panel: &PanelParams) -> String {
     let Ok(a) = panel.aircraft.single() else { return String::new() };
     match readout {
+        // The instruments with two values: knots and Mach; the left and the right engine.
+        Readout::Dial(Dial::Mach) => format!(
+            "{} kt, Mach {:.2}",
+            panel.dial_value(Dial::Mach).round() as i32,
+            panel.dial_aux(Dial::Mach)
+        ),
+        Readout::Dial(Dial::TapeFlow) => format!(
+            "{} / {} lb/h",
+            panel.dial_value(Dial::TapeFlow).round() as i32,
+            panel.dial_aux(Dial::TapeFlow).round() as i32
+        ),
+        Readout::Dial(dial @ (Dial::TapeRpm | Dial::TapeEgt | Dial::TapeOil)) => format!(
+            "{} / {}",
+            panel.dial_value(dial).round() as i32,
+            dial_text(dial, panel.dial_aux(dial))
+        ),
         Readout::Dial(dial) => dial_text(dial, panel.dial_value(dial)),
         Readout::Led(led) => match led {
             LedId::Chaff => panel.cm.chaff.to_string(),
@@ -165,6 +181,15 @@ fn dial_text(dial: Dial, value: f32) -> String {
             format!("{h:02}:{m:02}:{s:02}")
         }
         Dial::NozzleAngle => format!("{v}°"),
+        Dial::Mach | Dial::TapeFlow | Dial::Slip => format!("{v}"),
+        Dial::RadarAlt => format!("{v} ft"),
+        Dial::GMeter => format!("{value:.1} g"),
+        Dial::TurnSlip => format!("{value:+.1}°/s"),
+        Dial::Climb => format!("{} ft/min", signed(v)),
+        Dial::AoaUnits => format!("{value:.1}"),
+        Dial::TapeRpm => format!("{v} %"),
+        Dial::TapeEgt => format!("{v} °C"),
+        Dial::TapeOil => format!("{v} psi"),
     }
 }
 
@@ -436,6 +461,8 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
             let (title, detail) = console_text(k);
             (title.to_string(), detail.to_string())
         }
+        // An A-6 control: its legend (English, as on the panel) and what its group does.
+        Effect::Intruder(k) => (k.label().replace('\n', " "), t!(k.tip()).to_string()),
         Effect::Osb(side, slot) => {
             let (label, f, _) = osb(side, slot, mfd)?;
             let detail = match f {
@@ -532,10 +559,31 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::Fuel => "tip-dial-fuel",
                 Dial::Clock => "tip-dial-clock",
                 Dial::NozzleAngle => "tip-dial-nozzle-angle",
+                Dial::Mach => "tip-dial-airspeed",
+                Dial::RadarAlt => "tip-dial-radar-alt",
+                Dial::GMeter => "tip-dial-g",
+                Dial::TurnSlip | Dial::Slip => "tip-dial-turn-slip",
+                Dial::Climb => "tip-dial-vvi",
+                Dial::AoaUnits => "tip-dial-aoa",
+                Dial::TapeRpm => "tip-dial-rpm",
+                Dial::TapeEgt => "tip-dial-egt",
+                Dial::TapeFlow => "tip-dial-fuel-flow",
+                Dial::TapeOil => "tip-dial-oil",
             };
+            // The ball shows no number.
+            if dial == Dial::Slip {
+                return Some(tip(id, &[]));
+            }
             return Some(tip(id, &[]).reading(Readout::Dial(dial)));
         }
-        Elem::Label(..) | Elem::SoftKey(..) | Elem::Arrow(..) | Elem::Hazard => return None,
+        // (The A-6's controls are buttons: `control_tip`.)
+        Elem::Label(..)
+        | Elem::SoftKey(..)
+        | Elem::Arrow(..)
+        | Elem::Hazard
+        | Elem::Control(..)
+        | Elem::Light(..)
+        | Elem::Readout(..) => return None,
     };
     Some(Tip::new(title, detail, &[]))
 }
@@ -567,6 +615,10 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Lmpd => "tip-display-lmpd",
         CanvasRole::Rmpd if style == PanelStyle::Ch47 => "tip-display-rmpd-ch47",
         CanvasRole::Rmpd => "tip-display-rmpd",
+        CanvasRole::Vdi => "tip-display-vdi",
+        CanvasRole::Phd => "tip-display-phd",
+        CanvasRole::Dvri => "tip-display-dvri",
+        CanvasRole::Sensor => "tip-display-sensor",
         CanvasRole::Console(ConsoleScreen::Scope) => "tip-display-scope",
         CanvasRole::Console(ConsoleScreen::Board) => "tip-display-board",
         CanvasRole::Console(ConsoleScreen::Eo) => "tip-display-eo",
@@ -1065,6 +1117,8 @@ mod tests {
             PanelStyle::Mh60r,
             PanelStyle::Fa18e,
             PanelStyle::Ea18gEwo,
+            PanelStyle::A6,
+            PanelStyle::A6Bn,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));
@@ -1096,9 +1150,30 @@ mod tests {
         assert_eq!(km_text(123.4), "123 km");
         assert_eq!(dial_text(Dial::Fuel, -3.0), "0 lbs");
         use Dial::*;
-        for dial in
-            [Airspeed, Altimeter, Aoa, Vvi, Rpm, Ftit, Oil, Nozzle, Fuel, Clock, NozzleAngle]
-        {
+        for dial in [
+            Airspeed,
+            Altimeter,
+            Aoa,
+            Vvi,
+            Rpm,
+            Ftit,
+            Oil,
+            Nozzle,
+            Fuel,
+            Clock,
+            NozzleAngle,
+            Mach,
+            RadarAlt,
+            GMeter,
+            TurnSlip,
+            Climb,
+            AoaUnits,
+            Slip,
+            TapeRpm,
+            TapeEgt,
+            TapeFlow,
+            TapeOil,
+        ] {
             let text = dial_text(dial, 950.0);
             assert!(drawable(&text), "{text}");
         }

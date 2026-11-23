@@ -9,7 +9,9 @@
 //! `build_cockpit_oh58.py`, the CH-47F's by `build_cockpit_ch47.py`, the F-22A's by
 //! `build_cockpit_f22.py`, the AH-64D's by `build_cockpit_ah64.py` (the pilot's, `cockpit_ah64.glb`) and
 //! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`), the MH-60R's by
-//! `build_cockpit_mh60r.py`, the F/A-18E's by `build_cockpit_fa18e.py`).
+//! `build_cockpit_mh60r.py`, the F/A-18E's by `build_cockpit_fa18e.py`, the A-6's two by
+//! `build_cockpit_a6.py`: `cockpit_a6.glb`, the pilot's, and `cockpit_a6_bn.glb`, the
+//! bombardier/navigator's).
 //!
 //! Every visible part comes from the model. The game binds behaviour to it by material name
 //! and by object custom properties (glTF extras):
@@ -31,14 +33,23 @@
 //! * `screen_scope`, `screen_board`, `screen_eo`, `screen_info`: an air defence console's air
 //!   picture, track list, camera overlay and target data (`cockpit_console.glb`,
 //!   `tools/models/build_console.py`; the camera picture is its `trackcam`). A console's buttons are `Console(Fire)` controls.
+//! * `screen_vdi`, `screen_phd`, `screen_dvri`, `screen_sensor`: the A-6's displays (`intruder`):
+//!   the pilot's vertical display indicator (a pillowed tube face with rounded corners, UVs 0..1
+//!   across it) and his horizontal display, the bombardier/navigator's direct view radar
+//!   indicator (both a round scope in its heading ring: UVs 0..1 over the ring's square, the
+//!   tube `intruder::scope::TUBE` of its radius) and his sensor scope's overlay, the pod's
+//!   picture (`trackcam`) a few millimetres behind it.
 //! * `hud_glass`: the HUD combiner glass (the HUD is drawn collimated through it).
 //! * `label_<TEXT>`: a side panel button label showing TEXT.
 //! * `legend_<TEXT>`: TEXT printed on the panel (a section's name, a placard), not a key.
 //! * Anything else is used as modelled (base colour, roughness, metallic).
 //!
 //! Object properties:
-//! * `control` (effect, e.g. `Action(Gear)`, `HudMode(1)`, `Osb(Left, 3)`), `kind` (cap, osb,
-//!   side, gear, eject), `half` ([x, y] half size of the face in metres), `height` (face above
+//! * `control` (effect, e.g. `Action(Gear)`, `HudMode(1)`, `Osb(Left, 3)`; the A-6's
+//!   `Intruder(Flight(Land))`, `intruder::Key`), `kind` (cap, osb, side, gear, eject; the A-6's
+//!   `twist`: a square pushbutton that latches in turned 45 degrees about its +Z, `switch`: a
+//!   toggle whose `moving` lever leans to its position about its X, `knob`: turned to its
+//!   position about its Z), `half` ([x, y] half size of the face in metres), `height` (face above
 //!   the object's origin, along +Z), `travel`: a pushable control; its face points along +Z.
 //!   Its `moving` child is what moves when pressed; a `highlight` object under it is shown
 //!   while a VR fingertip touches the control.
@@ -477,7 +488,7 @@ impl<'a> Spawner<'a> {
             }
             "screen_left" | "screen_right" | "screen_third" | "screen_fourth" | "adi"
             | "approach" | "screen_rwr" | "hsi" | "screen_tfr" | "ded" | "screen_lmpd"
-            | "screen_rmpd" => {
+            | "screen_rmpd" | "screen_vdi" | "screen_phd" | "screen_dvri" | "screen_sensor" => {
                 let role = match name {
                     "screen_left" => CanvasRole::Left,
                     "screen_right" => CanvasRole::Right,
@@ -490,6 +501,10 @@ impl<'a> Spawner<'a> {
                     "ded" => CanvasRole::Ded,
                     "screen_lmpd" => CanvasRole::Lmpd,
                     "screen_rmpd" => CanvasRole::Rmpd,
+                    "screen_vdi" => CanvasRole::Vdi,
+                    "screen_phd" => CanvasRole::Phd,
+                    "screen_dvri" => CanvasRole::Dvri,
+                    "screen_sensor" => CanvasRole::Sensor,
                     _ => CanvasRole::Approach,
                 };
                 let (tex, m) =
@@ -837,7 +852,8 @@ mod tests {
     /// the control it fires; the display rectangles (the F-117A's third MFD as `third`, the
     /// F-16's and the A-10's HSI and RWR scopes as `hsi` and `rwr`, the Tornado's terrain
     /// following radar display as `tfr`, the RAH-66's multipurpose displays as `lmpd` and
-    /// `rmpd`).
+    /// `rmpd`, the A-6's displays as `vdi`, `phd`, `dvri` and `sensor`). A control's `kind` is
+    /// how it is modelled (`cap`, `osb`; the A-6's `twist`, `switch`, `knob`).
     fn layout_json(style: PanelStyle) -> serde_json::Value {
         use super::super::displays::Face;
         use super::super::layout::Effect;
@@ -849,14 +865,20 @@ mod tests {
             .map(|(i, (face, rect))| {
                 let (control, kind) = match face {
                     Face::Osb(side, slot) => (Some(Effect::Osb(*side, *slot)), Some("osb")),
-                    _ => (l.items.get(i).and_then(|p| p.cap), Some("cap")),
+                    // The A-6's controls: pushbuttons, switches and knobs.
+                    _ => match l.items.get(i).and_then(|p| p.cap) {
+                        Some(Effect::Intruder(key)) => {
+                            (Some(Effect::Intruder(key)), Some(key.kind()))
+                        }
+                        cap => (cap, Some("cap")),
+                    },
                 };
                 let kind = control.and(kind);
                 let round = l.items.get(i).is_some_and(|p| p.round);
                 serde_json::json!({"key": format!("{face:?}"), "rect": r(rect), "control": control.map(|c| format!("{c:?}")), "kind": kind, "round": round})
             })
             .collect();
-        let mut screens = serde_json::json!({"adi": r(&l.adi), "ded": r(&l.ded.unwrap())});
+        let mut screens = serde_json::json!({"adi": r(&l.adi)});
         for m in &l.mfds {
             let key = match m.side {
                 crate::mfd::MfdSide::Left => "left",
@@ -866,9 +888,19 @@ mod tests {
             };
             screens[key] = r(&m.screen);
         }
-        for (rect, key) in
-            [(l.hsi, "hsi"), (l.rwr, "rwr"), (l.tfr, "tfr"), (l.lmpd, "lmpd"), (l.rmpd, "rmpd")]
-        {
+        let a6 = l.a6.unwrap_or_default();
+        for (rect, key) in [
+            (l.ded, "ded"),
+            (l.hsi, "hsi"),
+            (l.rwr, "rwr"),
+            (l.tfr, "tfr"),
+            (l.lmpd, "lmpd"),
+            (l.rmpd, "rmpd"),
+            (a6.vdi, "vdi"),
+            (a6.phd, "phd"),
+            (a6.dvri, "dvri"),
+            (a6.sensor, "sensor"),
+        ] {
             if let Some(rect) = rect {
                 screens[key] = r(&rect);
             }
@@ -902,6 +934,8 @@ mod tests {
             (PanelStyle::Mh60r, "cockpit_mh60r", "build_cockpit_mh60r"),
             (PanelStyle::Fa18e, "cockpit_fa18e", "build_cockpit_fa18e"),
             (PanelStyle::Ea18gEwo, "cockpit_ea18g_ewo", "build_cockpit_ea18g_ewo"),
+            (PanelStyle::A6, "cockpit_a6", "build_cockpit_a6"),
+            (PanelStyle::A6Bn, "cockpit_a6_bn", "build_cockpit_a6"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -942,6 +976,8 @@ mod tests {
             ("cockpit_mh60r", PanelStyle::Mh60r),
             ("cockpit_fa18e", PanelStyle::Fa18e),
             ("cockpit_ea18g_ewo", PanelStyle::Ea18gEwo),
+            ("cockpit_a6", PanelStyle::A6),
+            ("cockpit_a6_bn", PanelStyle::A6Bn),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -952,19 +988,34 @@ mod tests {
                 .iter()
                 .filter_map(|m| m["name"].as_str())
                 .collect();
-            let mut required = vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"];
-            // The helicopters and the EA-18G's back seat have no approach indexer.
+            // The A-6 has no MFDs: the pilot's vertical and horizontal displays and his standby
+            // attitude indicator, the bombardier/navigator's direct view radar indicator and
+            // his sensor scope over the pod's picture.
+            let mut required = match style {
+                PanelStyle::A6 => vec!["atlas", "adi", "hsi", "screen_vdi", "screen_phd"],
+                PanelStyle::A6Bn => vec!["atlas", "trackcam", "screen_dvri", "screen_sensor"],
+                _ => vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"],
+            };
+            if matches!(style, PanelStyle::A6 | PanelStyle::A6Bn) {
+                for m in ["screen_left", "screen_right", "screen_third", "screen_fourth"] {
+                    assert!(!materials.contains(&m), "{name}: an MFD ({m})");
+                }
+            }
+            // The helicopters, the EA-18G's back seat and the A-6's right seat have no approach
+            // indexer.
             let approach = materials.contains(&"approach");
-            let indexer = !style.helicopter() && style != PanelStyle::Ea18gEwo;
+            let indexer =
+                !style.helicopter() && !matches!(style, PanelStyle::Ea18gEwo | PanelStyle::A6Bn);
             assert_eq!(approach, indexer, "{name}: approach indexer");
-            // The OH-58D, the RAH-66's gunner and the EA-18G's back seat have no HUD (the
-            // helicopters' helmet displays only).
+            // The OH-58D, the RAH-66's gunner, the EA-18G's back seat and the A-6's
+            // bombardier/navigator have no HUD (the helicopters' helmet displays only).
             if !matches!(
                 style,
                 PanelStyle::Oh58
                     | PanelStyle::Oh58Cpg
                     | PanelStyle::Rah66Cpg
                     | PanelStyle::Ea18gEwo
+                    | PanelStyle::A6Bn
             ) {
                 required.push("hud_glass");
             }
@@ -1029,6 +1080,7 @@ mod tests {
                     vec!["screen_third", "ded", "trackcam_left", "trackcam_third", "label_NEAR"]
                 }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
+                PanelStyle::A6 | PanelStyle::A6Bn => Vec::new(),
             });
             for m in required {
                 assert!(materials.contains(&m), "{name}: no material {m}");

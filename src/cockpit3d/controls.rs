@@ -6,6 +6,10 @@
 //! buttons on two side panels carry text labels. Every control has a local frame with +Z pointing out of
 //! its face. A VR fingertip touching a control highlights it (with a light haptic tick) and
 //! pulling the trigger then fires it; a mouse click or a script `press=` fires it directly.
+//!
+//! The A-6's controls (`Effect::Intruder`) show the state they latch in (`intruder`): its square
+//! pushbuttons stay in, turned 45 degrees (`twist`), its toggle switches and knobs stand at
+//! their position (`switch`, `knob`), its address keys stay down.
 
 use bevy::prelude::*;
 
@@ -76,7 +80,7 @@ impl Effect {
             Effect::LeftPage(_) => Action::Maps,
             Effect::CamCycle => Action::CamAhead,
             Effect::TimeToggle => Action::TimeAccel,
-            Effect::Console(_) => return None,
+            Effect::Console(_) | Effect::Intruder(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
                 // The slew buttons have no key action (F8 is the MOV button's).
                 OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => return None,
@@ -100,7 +104,25 @@ enum Kind {
     GearLever,
     /// Ejection handle (front of the seat pan).
     EjectHandle,
+    /// The A-6's square pushbutton: latched in, it sits deeper and is turned 45 degrees about
+    /// its own axis (it shows as a diamond); out, flush and square.
+    Twist,
+    /// A toggle switch: its `moving` lever leans up the panel in its first position, down in
+    /// its last (`intruder::IntruderPanel::position`).
+    Switch,
+    /// A rotary knob: its `moving` part turned to its position, the first fully anticlockwise.
+    Knob,
 }
+
+/// Seconds a pushbutton takes to turn its 45 degrees (a switch or knob to its next position).
+const TURN_SECONDS: f32 = 0.15;
+/// How far in a latched pushbutton or key stays, of its travel.
+const LATCH_DEPTH: f32 = 0.6;
+/// A switch's lever's lean from one position to the next (rad); a knob's turn from one position
+/// to the next, and at most from its first to its last.
+const SWITCH_STEP: f32 = 0.5;
+const KNOB_STEP: f32 = 1.0;
+const KNOB_SWEEP: f32 = 2.6;
 
 /// Fingertip radius.
 const FINGER: f32 = 0.008;
@@ -122,6 +144,11 @@ pub(super) struct Control {
     touched: bool,
     /// Seconds left of a click/script press animation.
     click: f32,
+    /// An A-6 control's shown state, moving to the panel's (`TURN_SECONDS` a step): a
+    /// pushbutton or key 0 out .. 1 latched in, a switch or knob its position's index; and how
+    /// many positions it has.
+    pos: f32,
+    positions: u8,
 }
 
 /// The moving part of a control (cap, lever arm).
@@ -134,9 +161,9 @@ pub(super) struct Highlight;
 
 impl Control {
     /// A control from the cockpit model's object properties: `kind` (cap, osb, side, gear,
-    /// eject), `control` (the effect, e.g. `Action(Gear)`, `HudMode(1)`, `Osb(Left, 3)`),
-    /// `half` (half width and height of the face, metres), `height` (face above the origin) and
-    /// `travel` (press depth).
+    /// eject; the A-6's twist, switch, knob), `control` (the effect, e.g. `Action(Gear)`,
+    /// `HudMode(1)`, `Osb(Left, 3)`, `Intruder(MasterArm)`), `half` (half width and height of the
+    /// face, metres), `height` (face above the origin) and `travel` (press depth).
     pub(super) fn from_model(extras: &serde_json::Value) -> Option<Self> {
         let kind = match extras["kind"].as_str()? {
             "cap" => Kind::Cap,
@@ -144,6 +171,9 @@ impl Control {
             "side" => Kind::Side,
             "gear" => Kind::GearLever,
             "eject" => Kind::EjectHandle,
+            "twist" => Kind::Twist,
+            "switch" => Kind::Switch,
+            "knob" => Kind::Knob,
             _ => return None,
         };
         let effect = parse_effect(extras["control"].as_str()?)?;
@@ -158,6 +188,8 @@ impl Control {
             depth: 0.0,
             touched: false,
             click: 0.0,
+            pos: 0.0,
+            positions: 1,
         })
     }
 
@@ -200,6 +232,7 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
         ("LeftPage", ["Map"]) => Effect::LeftPage(crate::mfd::LeftMfd::Map),
         ("LeftPage", ["Tac"]) => Effect::LeftPage(crate::mfd::LeftMfd::Tac),
         ("CamCycle", []) => Effect::CamCycle,
+        ("Intruder", [key]) => Effect::Intruder(crate::intruder::Key::parse(key)?),
         ("Console", [key, rest @ ..]) => {
             use super::layout::ConsoleKey as K;
             let n = || rest.first().and_then(|n| n.parse::<u8>().ok());
@@ -261,7 +294,9 @@ pub(super) struct Fire<'w, 's> {
     hud: Res<'w, HudState>,
     mfd: Res<'w, MfdState>,
     console: MessageWriter<'w, ConsoleButton>,
-    _p: std::marker::PhantomData<&'s ()>,
+    /// The A-6's panel and the scripts' presses of its controls.
+    intruder: ResMut<'w, crate::intruder::IntruderPanel>,
+    keys: MessageReader<'w, 's, crate::intruder::PressKey>,
 }
 
 impl Fire<'_, '_> {
@@ -316,6 +351,7 @@ impl Fire<'_, '_> {
             Effect::Console(key) => {
                 self.console.write(ConsoleButton(key));
             }
+            Effect::Intruder(key) => self.intruder.press(key),
         }
     }
 }
@@ -347,6 +383,7 @@ pub(super) fn interact(
     // The cockpit is not there (VR, the campaign's Ops screen): nothing to touch.
     if hide.is_some_and(|h| h.0) {
         presses.clear();
+        fire.keys.clear();
         for hand in hands.hands.iter_mut() {
             hand.touching = false;
         }
@@ -380,6 +417,16 @@ pub(super) fn interact(
         } else {
             warn!("no 3D cockpit control for {a:?}");
         }
+    }
+    // A script's press of an A-6 control: in whichever seat it is (the control goes in if this
+    // cockpit has it).
+    let keys: Vec<_> = fire.keys.read().map(|k| k.0).collect();
+    for key in keys {
+        let effect = Effect::Intruder(key);
+        if let Some((_, mut c, _)) = controls.iter_mut().find(|(_, c, _)| c.effect == effect) {
+            c.click = CLICK_SECONDS;
+        }
+        fire.fire(effect);
     }
     let cockpit_view =
         matches!(view.view, View::Cockpit | View::LookLeft | View::LookRight | View::LookRear);
@@ -490,6 +537,25 @@ pub(super) fn interact(
             }
         }
         c.depth = if c.click > 0.0 { c.travel } else { 0.0 };
+        // An A-6 control goes to the state it latched in.
+        if let Effect::Intruder(key) = c.effect {
+            let target = match fire.intruder.position(key) {
+                Some((at, n)) => {
+                    c.positions = n;
+                    at as f32
+                }
+                None => fire.intruder.latched(key) as u8 as f32,
+            };
+            let step = dt / TURN_SECONDS;
+            c.pos = if (target - c.pos).abs() <= step {
+                target
+            } else {
+                c.pos + step * (target - c.pos).signum()
+            };
+            if matches!(c.kind, Kind::Twist | Kind::Cap) {
+                c.depth = c.depth.max(c.travel * LATCH_DEPTH * c.pos.clamp(0.0, 1.0));
+            }
+        }
     }
     for (h, hand) in hands.hands.iter_mut().enumerate() {
         let touched = touching[h].map(|(_, e)| e);
@@ -519,8 +585,8 @@ pub(super) fn interact(
     }
 }
 
-/// Moves the caps in, the gear lever to the gear position, and shows the touched controls'
-/// highlights.
+/// Moves the caps in, the gear lever to the gear position, the A-6's pushbuttons, switches and
+/// knobs to their state, and shows the touched controls' highlights.
 pub(super) fn animate(
     controls: Query<(&Control, &Children)>,
     mut moving: Query<(&mut Transform, &Children), With<Moving>>,
@@ -541,8 +607,21 @@ pub(super) fn animate(
                     }
                 }
                 let mut t = Transform::from_xyz(0.0, 0.0, -c.depth);
-                if c.kind == Kind::GearLever {
-                    t.rotation = Quat::from_rotation_x(if gear { 0.5 } else { -0.5 });
+                // A switch's or knob's position from its middle one.
+                let off = c.pos - (c.positions.max(1) - 1) as f32 / 2.0;
+                match c.kind {
+                    Kind::GearLever => {
+                        t.rotation = Quat::from_rotation_x(if gear { 0.5 } else { -0.5 })
+                    }
+                    Kind::Twist => {
+                        t.rotation = Quat::from_rotation_z(-c.pos * std::f32::consts::FRAC_PI_4)
+                    }
+                    Kind::Switch => t.rotation = Quat::from_rotation_x(off * SWITCH_STEP),
+                    Kind::Knob => {
+                        let last = (c.positions.max(2) - 1) as f32;
+                        t.rotation = Quat::from_rotation_z(-off * KNOB_STEP.min(KNOB_SWEEP / last))
+                    }
+                    _ => {}
                 }
                 if *tf != t {
                     *tf = t;

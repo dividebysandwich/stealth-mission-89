@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py`, `build_cockpit_fa18e.py` and `build_cockpit_ea18g_ewo.py` read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py`, `build_cockpit_fa18e.py`, `build_cockpit_ea18g_ewo.py` and `build_cockpit_a6.py` (the A-6's two cockpits, `a6_layout`) read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -76,6 +76,16 @@ pub enum PanelStyle {
     /// touchscreen high on the centre line, the large centre display (the third MFD) under it,
     /// the two DDIs lower either side of it; no HUD, a centre stick and throttles (unused).
     Ea18gEwo,
+    /// The A-6's pilot's (left) seat: side by side, one wide panel across both seats. No MFDs:
+    /// the vertical display indicator (VDI) over the horizontal display's round scope (PHD),
+    /// round instruments and the engines' vertical tapes round them, the pilot's control box
+    /// with its square pushbuttons; the armament and mode panels between the seats
+    /// (`a6_layout`).
+    A6,
+    /// The A-6's bombardier/navigator's (right) seat: the same panel from his side, the direct
+    /// view radar indicator (DVRI) in front of him with the sensor scope beside it, the radar
+    /// controls under it and the computer keyboard on the pedestal between his knees.
+    A6Bn,
 }
 
 /// A rectangle in panel pixels.
@@ -114,6 +124,9 @@ pub enum Effect {
     Osb(MfdSide, u8),
     /// A button of an air defence console (`station`).
     Console(ConsoleKey),
+    /// A control of the A-6's cockpits (`intruder`): a square pushbutton that latches in turned
+    /// 45 degrees, a switch, a knob or a key.
+    Intruder(crate::intruder::Key),
 }
 
 /// The buttons of an air defence console or the drone command center's (`Console(Fire)`,
@@ -197,6 +210,12 @@ pub enum Elem {
     GearLights,
     /// A round needle instrument (F-16).
     Dial(Dial),
+    /// An A-6 control's face (`intruder::draw_control`): a pushbutton's cap, a switch's plate,
+    /// a knob's top, a key with its legend.
+    Control(crate::intruder::Key),
+    /// An A-6 advisory light and counter (`intruder`).
+    Light(crate::intruder::Light),
+    Readout(crate::intruder::Readout),
 }
 
 /// The glyphs of `Elem::Arrow`: the four directions and the arrow back (reset).
@@ -227,6 +246,23 @@ pub enum Dial {
     Clock,
     /// A V/STOL type's nozzle angle down from aft (degrees, `Aircraft::nozzle`; the AV-8B's).
     NozzleAngle,
+    /// The A-6's: the Mach / airspeed indicator (knots round the face, the Mach number in its
+    /// window), the radar altimeter (0 to 5000 ft, spread out low down), the accelerometer, the
+    /// turn and slip indicator, the rate of climb indicator and the angle of attack indicator
+    /// (units), all round; the slip ball under the vertical display.
+    Mach,
+    RadarAlt,
+    GMeter,
+    TurnSlip,
+    Climb,
+    AoaUnits,
+    Slip,
+    /// The A-6's engine instruments: a pair of vertical tapes each, the left engine's and the
+    /// right one's (RPM %, exhaust gas temperature, fuel flow, oil pressure).
+    TapeRpm,
+    TapeEgt,
+    TapeFlow,
+    TapeOil,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -265,6 +301,19 @@ pub struct PanelLayout {
     /// one (engines; the RAH-66's, the CH-47F's centre display).
     pub lmpd: Option<PxRect>,
     pub rmpd: Option<PxRect>,
+    /// The A-6's displays (`a6_layout`).
+    pub a6: Option<A6Screens>,
+}
+
+/// The A-6's displays: the pilot's vertical display (the tube's face) and his horizontal
+/// display, the bombardier/navigator's direct view radar indicator (both the square round the
+/// heading ring, the scope inside it) and his sensor scope.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct A6Screens {
+    pub vdi: Option<PxRect>,
+    pub phd: Option<PxRect>,
+    pub dvri: Option<PxRect>,
+    pub sensor: Option<PxRect>,
 }
 
 /// Bezel button cap size (millimetres; turned on end down the sides).
@@ -353,7 +402,7 @@ impl PanelStyle {
     }
 
     /// The cockpit's MFDs: 3 with a third (`MfdSide::Third`), 4 with a fourth too
-    /// (`MfdSide::Fourth`).
+    /// (`MfdSide::Fourth`), none in the A-6.
     pub fn mfd_count(self) -> usize {
         match self {
             PanelStyle::F22
@@ -366,6 +415,8 @@ impl PanelStyle {
             | PanelStyle::Tornado
             | PanelStyle::Ah64Cpg
             | PanelStyle::Ea18gEwo => 3,
+            // The A-6 has none.
+            PanelStyle::A6 | PanelStyle::A6Bn => 0,
             _ => 2,
         }
     }
@@ -395,6 +446,8 @@ impl PanelLayout {
             PanelStyle::Mh60r => Self::mh60r(),
             PanelStyle::Fa18e => Self::fa18e(),
             PanelStyle::Ea18gEwo => Self::ea18g_ewo(),
+            PanelStyle::A6 => Self::a6(),
+            PanelStyle::A6Bn => Self::a6_bn(),
         }
     }
 
@@ -597,6 +650,7 @@ impl PanelLayout {
             ded: None,
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -790,6 +844,7 @@ impl PanelLayout {
             )),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -878,6 +933,7 @@ impl PanelLayout {
             ded,
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -956,6 +1012,7 @@ impl PanelLayout {
             items,
             adi: rect(u.adi.x + DX, u.adi.y, u.adi.w, u.adi.h),
             rmpd: Some(rect(-685.0, -95.0, 130.0, 182.0)),
+            a6: None,
             // Centred over the engine gauges (x -370..-278), its top level with the attitude
             // indicator's and the warning lights', 8 mm above them as they are apart.
             rwr: Some(rect(-360.0, -125.0, 72.0, 72.0)),
@@ -1225,6 +1282,7 @@ impl PanelLayout {
             ded: Some(rect(-46.0, -20.0, 92.0, 92.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -1458,6 +1516,7 @@ impl PanelLayout {
             ded: Some(rect(-68.0, -256.0, 86.0, 86.0 * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -1700,6 +1759,7 @@ impl PanelLayout {
             ded: Some(ded),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -1885,6 +1945,7 @@ impl PanelLayout {
             // The up-front display left of the controller, portrait (the canvas' shape).
             lmpd: Some(rect(-162.0, -176.0, 64.0, 90.0)),
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -2077,6 +2138,7 @@ impl PanelLayout {
             ded: Some(ded),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -2176,6 +2238,7 @@ impl PanelLayout {
             ded: Some(ded),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -2379,6 +2442,7 @@ impl PanelLayout {
             // canvas' shape).
             lmpd: Some(rect(279.0, -105.0, 72.0, 101.0)),
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -2567,6 +2631,7 @@ impl PanelLayout {
             // shape).
             lmpd: Some(rect(258.0, -108.0, 72.0, 101.0)),
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -2704,6 +2769,7 @@ impl PanelLayout {
             ded: Some(ded),
             lmpd: Some(rect(-378.0, -44.0, 100.0, 140.0)),
             rmpd: Some(rect(278.0, -44.0, 100.0, 140.0)),
+            a6: None,
         }
     }
 
@@ -2845,6 +2911,7 @@ impl PanelLayout {
             )),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 
@@ -3208,6 +3275,7 @@ impl PanelLayout {
             ded: Some(rect(95.0, -152.0, DED_W, DED_W * DED_CANVAS.1 as f32 / DED_CANVAS.0 as f32)),
             lmpd: None,
             rmpd: None,
+            a6: None,
         }
     }
 }
@@ -3227,7 +3295,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 20] {
+    fn all() -> [PanelLayout; 22] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -3249,6 +3317,8 @@ mod tests {
             PanelLayout::mh60r(),
             PanelLayout::fa18e(),
             PanelLayout::ea18g_ewo(),
+            PanelLayout::a6(),
+            PanelLayout::a6_bn(),
         ]
     }
 

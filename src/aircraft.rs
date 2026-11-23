@@ -1114,7 +1114,7 @@ const fn a6_point(x: f32, s: f32, z: f32) -> Vec3 {
 }
 
 /// The A-6C Intruder: the pilot in the left of its two side-by-side seats, no gun, no
-/// afterburner. Its cockpit is the A-10's for now.
+/// afterburner.
 static A6: AircraftSpec = AircraftSpec {
     model: "aircraft_027",
     model_lift: A6_LIFT,
@@ -1128,11 +1128,11 @@ static A6: AircraftSpec = AircraftSpec {
         two_sided: false,
         parts: false,
     }),
-    cockpits: &[(PanelStyle::A10, "cockpit_a10")],
+    cockpits: &[(PanelStyle::A6, "cockpit_a6")],
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
-    // The A-10's cockpit's.
+    // The optical sight's small reflector plate (tools/models/build_cockpit_a6.py).
     hud_scale: 1900.0,
     vr_hud_scale: 1900.0,
     bomb_bay: false,

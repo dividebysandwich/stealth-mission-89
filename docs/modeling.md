@@ -759,6 +759,9 @@ comes from the model. The game binds behaviour by **material name** and **custom
 | `screen_left`, `screen_right`, `screen_third` | The MFDs. UVs 0..1 over the screen face. |
 | `adi`, `approach`, `hsi`, `ded`, `screen_rwr` | Other live instruments (attitude, approach, HSI, data entry display, RWR scope). UVs 0..1. |
 | `trackcam`, `trackcam_left`, `trackcam_third` | The tracking camera picture, a face a few mm behind the matching screen. |
+| `screen_vdi` | The A-6's vertical display indicator: a pillowed tube face with rounded corners, UVs 0..1 across its rectangle (the picture bulges with the glass). |
+| `screen_phd`, `screen_dvri` | The A-6's round scopes in their heading rings (the pilot's horizontal display, the bombardier/navigator's direct view radar indicator): UVs 0..1 over the ring's square; the tube is the inner 76 % of the radius (`intruder::scope::TUBE`), the ring round it is drawn into the same picture. |
+| `screen_sensor` | The A-6's sensor scope's overlay, with the pod's picture (`trackcam`) a few mm behind it. |
 | `hud_glass` | The HUD combiner glass. The HUD is drawn on it, collimated. |
 | `atlas` | A lamp, readout, label or button face drawn live into the instrument atlas. Needs `atlas_face` (the face's key in `src/cockpit3d/layout.rs`, e.g. `Button(Auto, None)`) and `atlas_uv` ([u0, v0, u1, v1], the UV rectangle the face was mapped to, usually [0, 0, 1, 1]). |
 | `label_<TEXT>` | A side panel label showing TEXT. |
@@ -781,14 +784,22 @@ control_Action_Autopilot_        Empty   control "Action(Autopilot)", kind "cap"
 
 | Property | Type | Meaning |
 |---|---|---|
-| `control` | string | What it does: `Action(<name>)` (any action from `src/input.rs`, e.g. `Action(Gear)`, `Action(Chaff)`), `HudMode(0/1/2)`, `LeftPage(Map)` / `LeftPage(Tac)`, `CamCycle`, `TimeToggle`, `Osb(Left, 3)` (MFD bezel button; sides `Left`, `Right`, `Third`; slots 0..4 along the top, 5..9 along the bottom, 10..14 down the left edge, 15..19 down the right). |
-| `kind` | string | `cap` (push button), `osb` (MFD bezel button), `side` (side panel button), `gear` (gear lever), `eject` (ejection handle, pulled up). |
+| `control` | string | What it does: `Action(<name>)` (any action from `src/input.rs`, e.g. `Action(Gear)`, `Action(Chaff)`), `HudMode(0/1/2)`, `LeftPage(Map)` / `LeftPage(Tac)`, `CamCycle`, `TimeToggle`, `Osb(Left, 3)` (MFD bezel button; sides `Left`, `Right`, `Third`; slots 0..4 along the top, 5..9 along the bottom, 10..14 down the left edge, 15..19 down the right), `Intruder(<key>)` (a control of the A-6's cockpits, any `Key` of `src/intruder/mod.rs` as its `Debug` text: `Intruder(Vdi(TerrainClearance))`, `Intruder(Flight(Land))`, `Intruder(Station(2))`, `Intruder(MasterArm)`). |
+| `kind` | string | `cap` (push button), `osb` (MFD bezel button), `side` (side panel button), `gear` (gear lever), `eject` (ejection handle, pulled up); the A-6's `twist` (a square pushbutton: latched in, its `moving` child sits deeper and is turned 45 degrees about the control's +Z, so the square cap shows as a diamond), `switch` (a toggle switch: the `moving` child is the lever, leaning about the control's X to its position, the first one up the panel) and `knob` (a rotary knob: the `moving` child turns about the control's +Z to its position). The kind of an A-6 control is `Key::kind`. |
 | `half` | float array [2] | Half width and half height of the touch face, metres. |
 | `height` | float | Face height above the Empty's origin along +Z, metres. |
 | `travel` | float | How far the `moving` child sinks when pressed, metres. |
 
 Without VR the controls are clicked with the mouse. In VR they're pressed with a fingertip,
-which is why the touch face and the highlight are needed.
+which is why the touch face and the highlight are needed. Test scripts press a control by its
+action (`--script "2:press=Gear"`) and an A-6 control by its key
+(`--script "2:press=Intruder(Attack(HiLoft))"`).
+
+The A-6's controls keep their state in one resource for both seats (`intruder::IntruderPanel`):
+of each group of pushbuttons (the DISPLAY, RANGE MILES, flight mode, navigation, attack mode
+and G buttons) one is in at a time, an attack mode button pressed again comes out; a switch or
+knob goes to its next position with each press; the keyboard's address keys stay down until
+its RELEASE bar.
 
 ### Levers, lamps
 
@@ -806,7 +817,9 @@ The generated cockpits' panels (the F-117A's modern one, the F-16's, the UH-60A'
 AH-1Z's, the Tornado's, the A-10C's and the AV-8B's) are built from a layout by
 `tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`, `build_cockpit_uh60.py`,
 `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`, `build_cockpit_a10.py` and
-`build_cockpit_av8b.py`, from `assets-src/blend/cockpit_*_layout.json`. A test keeps those layouts in step with
+`build_cockpit_av8b.py` (and the later ones, one a cockpit; the A-6's two seats both by
+`build_cockpit_a6.py`, the right one with `--seat right`), from
+`assets-src/blend/cockpit_*_layout.json`. A test keeps those layouts in step with
 `src/cockpit3d/layout.rs`. To move a button on those panels, change the layout and rebuild
 rather than editing the `.blend`, or your edit will be overwritten. A new hand-made cockpit can
 reuse any face key that exists in `layout.rs`. New faces (a new lamp or readout) need a code

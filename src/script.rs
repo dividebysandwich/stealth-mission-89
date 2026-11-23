@@ -11,7 +11,8 @@
 //! absolute throttle (`collective=0.6`: a helicopter's collective), `trigger=1` / `trigger=0` holds / releases the fire button (`gun=1` / `gun=0` the gun trigger), `mark=1` / `mark=0` the lock cursor
 //! target button, `talk=1` / `talk=0` the coop radio's push-to-talk, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION), `LoadMission` opens the list of saves over the menu (as its LOAD MISSION; `Menu` first opens the menu),
 //! `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
-//! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action and `osb=r2`
+//! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action
+//! (`press=Intruder(Vdi(Off))` an A-6 control, `intruder::Key`) and `osb=r2`
 //! pushes an MFD bezel button (`l` / `r` / `t`: the left, right or third MFD; 0..4 along the
 //! top, 5..9 along the bottom, 10..14 down the left edge, 15..19 down the right). In a coop game `say=Hello there` sends a chat message and
 //! `type=Hello` opens the chat field with that text (no commas in either).
@@ -197,11 +198,17 @@ fn parse(s: &str) -> (Vec<(f32, Step)>, Vec<(f32, Cond, Step, bool)>) {
     (v, conds)
 }
 
+/// The 3D-cockpit presses a script makes: a control by its action, an A-6 control by its key.
+type Presses<'w> = (
+    MessageWriter<'w, crate::cockpit3d::PressControl>,
+    MessageWriter<'w, crate::intruder::PressKey>,
+);
+
 fn apply(
     step: &Step,
     axes: &mut Axes,
     actions: &mut MessageWriter<ActionEvent>,
-    presses: &mut MessageWriter<crate::cockpit3d::PressControl>,
+    presses: &mut Presses,
     shot: &mut Option<ResMut<crate::autoshot::ShotRequest>>,
     notices: &mut crate::player_notices::PlayerNotices,
     menu: &mut crate::flight_menu::FlightMenu,
@@ -231,7 +238,14 @@ fn apply(
         Step::Type(text) => notices.typing = Some(text.clone()),
         Step::Press(name) => {
             if let Some(act) = crate::input::action_by_name(name) {
-                presses.write(crate::cockpit3d::PressControl(act));
+                presses.0.write(crate::cockpit3d::PressControl(act));
+            } else if let Some(key) = name
+                .strip_prefix("Intruder(")
+                .and_then(|k| k.strip_suffix(')'))
+                .and_then(crate::intruder::Key::parse)
+            {
+                // An A-6 control (`press=Intruder(Flight(Land))`).
+                presses.1.write(crate::intruder::PressKey(key));
             } else {
                 warn!("script: unknown action {name}");
             }
@@ -255,7 +269,7 @@ fn run_script(
     mut shot: Option<ResMut<crate::autoshot::ShotRequest>>,
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
-    mut presses: MessageWriter<crate::cockpit3d::PressControl>,
+    mut presses: Presses,
     mut locks: MessageWriter<crate::avionics::LockRequest>,
     mut hud: ResMut<crate::hud::HudState>,
     mfd: Res<crate::mfd::MfdState>,

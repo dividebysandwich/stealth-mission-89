@@ -38,10 +38,13 @@ const ATLAS: usize = 512;
 
 /// The instrument atlas's height (texels): twice the width in the OH-58D's, the MH-60R's and the
 /// F/A-18E's cockpits, whose four MFDs' bezel buttons (and the F/A-18E's soft keys) don't fit
-/// the square one.
+/// the square one, and in the A-6's bombardier/navigator's; three times in the A-6's pilot's.
 fn atlas_rows(style: PanelStyle) -> usize {
     match style {
         PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r | PanelStyle::Fa18e => 2 * ATLAS,
+        // The A-6's many round instruments, pushbuttons and legends.
+        PanelStyle::A6 => 3 * ATLAS,
+        PanelStyle::A6Bn => 2 * ATLAS,
         _ => ATLAS,
     }
 }
@@ -72,6 +75,13 @@ pub(super) enum CanvasRole {
     Lmpd,
     Rmpd,
     Ded,
+    /// The A-6's displays (`intruder`): the pilot's vertical display indicator and his
+    /// horizontal display, the bombardier/navigator's direct view radar indicator and his
+    /// sensor scope's overlay (over the pod's picture, its `trackcam`).
+    Vdi,
+    Phd,
+    Dvri,
+    Sensor,
     /// An air defence console's screens (`station` draws them).
     Console(ConsoleScreen),
 }
@@ -312,7 +322,9 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::Rah66Cpg
         | PanelStyle::Mh60r
         | PanelStyle::Fa18e
-        | PanelStyle::Ea18gEwo => MM_TEXELS,
+        | PanelStyle::Ea18gEwo
+        | PanelStyle::A6
+        | PanelStyle::A6Bn => MM_TEXELS,
     }
 }
 
@@ -386,6 +398,28 @@ pub(super) fn screen(
             },
             false,
         ),
+        // Only the A-6 has these.
+        CanvasRole::Vdi | CanvasRole::Phd | CanvasRole::Dvri | CanvasRole::Sensor => {
+            let a6 = layout.a6.unwrap_or_default();
+            let (there, (w, h), scale) = match role {
+                CanvasRole::Vdi => {
+                    (a6.vdi, crate::intruder::vdi::CANVAS, crate::intruder::vdi::SCALE)
+                }
+                CanvasRole::Sensor => (
+                    a6.sensor,
+                    crate::intruder::scope::SENSOR_CANVAS,
+                    crate::intruder::scope::SCALE,
+                ),
+                _ => (
+                    if role == CanvasRole::Phd { a6.phd } else { a6.dvri },
+                    crate::intruder::scope::CANVAS,
+                    crate::intruder::scope::SCALE,
+                ),
+            };
+            let canvas =
+                if there.is_some() { Canvas::scaled(w, h, scale) } else { Canvas::new(8, 8) };
+            (canvas, role == CanvasRole::Sensor)
+        }
         // The classic cockpit has no data entry display.
         CanvasRole::Ded => (
             if layout.ded.is_some() {
@@ -397,7 +431,15 @@ pub(super) fn screen(
         ),
         _ => (Canvas::new(crate::panel::INDEXER_CANVAS.0, crate::panel::INDEXER_CANVAS.1), true),
     };
-    let tex = CanvasTexture::mipmapped(canvas, images, transparent);
+    let mut tex = CanvasTexture::mipmapped(canvas, images, transparent);
+    // The A-6's tubes have their phosphors' own colours, at every time of day.
+    tex.colours = match role {
+        CanvasRole::Vdi => Some(crate::intruder::vdi::colours()),
+        CanvasRole::Phd => Some(crate::intruder::scope::phd_colours()),
+        CanvasRole::Dvri => Some(crate::intruder::scope::dvri_colours()),
+        CanvasRole::Sensor => Some(crate::intruder::scope::sensor_colours()),
+        _ => None,
+    };
     let material = materials.add(cockpit_part(
         StandardMaterial {
             base_color_texture: Some(tex.image.clone()),
@@ -608,9 +650,15 @@ pub(super) fn update_displays(
     // buttons glow once it is night (the darkness of a moonless night leaves them lit).
     let backlit = sky.on && palette.is_some_and(|p| p.lights_on());
     let find = |r: CanvasRole| roles.iter().find(|(_, x)| **x == r).map(|(e, _)| e);
+    // The A-6's sensor scope shows the pod's picture whichever of the avionics' two formats has
+    // it (the cockpit has no MFDs to tell them apart).
+    let sensor = settings.cockpit().0 == PanelStyle::A6Bn
+        && [MfdSide::Left, MfdSide::Right].into_iter().any(|s| d.mfd.camera_see_through(s));
     for (screen, mut v) in &mut tc {
         v.set_if_neq(
-            if d.mfd.camera_see_through(screen.0) || manning.as_deref().is_some_and(|m| m.console())
+            if sensor
+                || d.mfd.camera_see_through(screen.0)
+                || manning.as_deref().is_some_and(|m| m.console())
             {
                 Visibility::Inherited
             } else {
@@ -623,7 +671,7 @@ pub(super) fn update_displays(
     // other frame, half of them each (all of them took the Frame 2.7 ms a frame).
     *frame = frame.wrapping_add(1);
     let half = |r: CanvasRole| match r {
-        CanvasRole::Hud | CanvasRole::Adi => None,
+        CanvasRole::Hud | CanvasRole::Adi | CanvasRole::Vdi => None,
         CanvasRole::Left
         | CanvasRole::Third
         | CanvasRole::Rwr
@@ -645,6 +693,10 @@ pub(super) fn update_displays(
         CanvasRole::Ded,
         CanvasRole::Lmpd,
         CanvasRole::Rmpd,
+        CanvasRole::Vdi,
+        CanvasRole::Phd,
+        CanvasRole::Dvri,
+        CanvasRole::Sensor,
     ] {
         if settings.vr && half(role).is_some_and(|h| h != *frame % 2) {
             continue;
@@ -679,6 +731,10 @@ pub(super) fn update_displays(
             CanvasRole::Ded => d.panel.draw_ded(&mut tex.canvas, &fonts),
             CanvasRole::Lmpd => d.panel.draw_lmpd(&mut tex.canvas, &fonts),
             CanvasRole::Rmpd => d.panel.draw_engines(&mut tex.canvas, &fonts),
+            CanvasRole::Vdi => d.panel.draw_vdi(&mut tex.canvas, &fonts),
+            CanvasRole::Phd => d.panel.draw_phd(&mut tex.canvas, &fonts),
+            CanvasRole::Dvri => d.panel.draw_dvri(&mut tex.canvas, &fonts),
+            CanvasRole::Sensor => d.panel.draw_sensor(&mut tex.canvas, &fonts),
             CanvasRole::Hud => {
                 tex.canvas.px.fill(0);
                 if let Some(frame) = d.hud.frame(d.mfd.state.camera_shown()) {
@@ -780,7 +836,21 @@ pub(super) fn update_displays(
                 down
             }
             Face::Item(Elem::Dial(dial)) => {
-                crate::panel::draw_dial(c, r, dial, d.panel.dial_value(dial));
+                let (value, aux) = (d.panel.dial_value(dial), d.panel.dial_aux(dial));
+                crate::panel::draw_dial(c, r, dial, value, aux);
+                backlit
+            }
+            Face::Item(Elem::Control(key)) => {
+                crate::intruder::draw_control(c, &fonts, r, key, &d.panel.intruder, k) || backlit
+            }
+            Face::Item(Elem::Light(light)) => {
+                let on = crate::intruder::lit(light, &d.panel.intruder);
+                crate::intruder::draw_light(c, &fonts, r, light, on);
+                on
+            }
+            Face::Item(Elem::Readout(readout)) => {
+                let text = crate::intruder::readout(readout, &d.panel.intruder);
+                crate::intruder::draw_readout(c, r, &text);
                 backlit
             }
             // Modern avionics: blank caps, the labels are on the display.
@@ -850,6 +920,8 @@ mod tests {
             PanelStyle::Mh60r,
             PanelStyle::Fa18e,
             PanelStyle::Ea18gEwo,
+            PanelStyle::A6,
+            PanelStyle::A6Bn,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

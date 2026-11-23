@@ -18,6 +18,7 @@
 //!
 //! VR input arrives through `Hands` (filled by the XR module, in the cockpit frame).
 
+mod a6_layout;
 mod controls;
 mod displays;
 pub(crate) mod hud_glass;

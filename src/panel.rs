@@ -817,6 +817,8 @@ pub struct PanelParams<'w, 's> {
     /// The RAH-66's threat page's strip chart (`mpd`).
     pub threats: Res<'w, crate::mpd::ThreatHistory>,
     pub settings: Res<'w, crate::settings::Settings>,
+    /// The A-6's panel (`intruder`).
+    pub intruder: Res<'w, crate::intruder::IntruderPanel>,
 }
 
 impl PanelParams<'_, '_> {
@@ -1121,18 +1123,100 @@ impl PanelParams<'_, '_> {
             // Seconds of the day.
             Dial::Clock => self.clock.start_seconds + self.clock.elapsed.unwrap_or(a.time),
             Dial::NozzleAngle => a.nozzle.to_degrees(),
+            Dial::Mach => a.knots(),
+            Dial::RadarAlt => {
+                (a.altitude - a.radar_ground.unwrap_or(0.0).max(a.ground_altitude)).max(0.0)
+            }
+            Dial::GMeter => a.gees / 16.0,
+            // Degrees a second, right positive: the turn the bank flies at this speed.
+            Dial::TurnSlip => {
+                let (_, _, roll) = a.euler();
+                let v = (a.knots() * 0.5144).max(30.0);
+                (9.81 * roll.clamp(-1.4, 1.4).tan() / v).to_degrees()
+            }
+            Dial::Climb => a.climb_rate * 60.0,
+            Dial::AoaUnits => aoa_units(Self::aoa(a)),
+            // The ball: the rudder's skid (no sideslip in the flight models to show).
+            Dial::Slip => 0.0,
+            Dial::TapeRpm | Dial::TapeEgt | Dial::TapeFlow | Dial::TapeOil => {
+                self.engine_tape(a, dial, 0)
+            }
         }
     }
+
+    /// The second value of the instruments that show two (`draw_dial`'s `aux`): the Mach number
+    /// in the airspeed indicator's window, the right engine's tape, the turn indicator's ball.
+    pub fn dial_aux(&self, dial: Dial) -> f32 {
+        let Ok(a) = self.aircraft.single() else { return 0.0 };
+        match dial {
+            Dial::Mach => {
+                let (_, sound) = crate::hud::speed_of_sound(a.altitude);
+                a.knots() * 1.6878 / sound
+            }
+            Dial::TapeRpm | Dial::TapeEgt | Dial::TapeFlow | Dial::TapeOil => {
+                self.engine_tape(a, dial, 1)
+            }
+            _ => 0.0,
+        }
+    }
+
+    /// An engine tape's value for engine `i` (`eng_page::Eng`): RPM %, EGT in degrees C, fuel
+    /// flow in lb/h an engine, oil pressure in psi.
+    fn engine_tape(&self, a: &Aircraft, dial: Dial, i: usize) -> f32 {
+        let kind = self.settings.aircraft;
+        let k = kind.spec().flight();
+        let e = crate::eng_page::Eng::of(kind, a, Some(&k));
+        match dial {
+            Dial::TapeRpm => e.core[i],
+            Dial::TapeEgt => e.temp[i],
+            Dial::TapeFlow => e.flow / e.engines.max(1) as f32,
+            _ => e.oil[i],
+        }
+    }
+
+    /// The A-6's displays (`intruder`): the pilot's vertical and horizontal ones, the
+    /// bombardier/navigator's direct view radar indicator and his sensor scope's overlay.
+    pub fn draw_vdi(&self, c: &mut Canvas, fonts: &Fonts) {
+        let (_, pitch, roll) = self.aircraft.single().map_or((0.0, 0.0, 0.0), |a| a.euler());
+        crate::intruder::vdi::draw(c, fonts, &self.intruder, pitch, roll);
+    }
+
+    pub fn draw_phd(&self, c: &mut Canvas, fonts: &Fonts) {
+        let heading = self.aircraft.single().map_or(0.0, |a| a.euler().0);
+        let t = self.time.elapsed_secs();
+        crate::intruder::scope::draw_phd(c, fonts, &self.intruder, heading, t);
+    }
+
+    pub fn draw_dvri(&self, c: &mut Canvas, fonts: &Fonts) {
+        let heading = self.aircraft.single().map_or(0.0, |a| a.euler().0);
+        let t = self.time.elapsed_secs();
+        crate::intruder::scope::draw_dvri(c, fonts, &self.intruder, heading, t);
+    }
+
+    pub fn draw_sensor(&self, c: &mut Canvas, fonts: &Fonts) {
+        crate::intruder::scope::draw_sensor(c, fonts, &self.intruder);
+    }
+}
+
+/// The A-6's angle of attack indicator's units for an angle of attack (degrees): 20 units on
+/// the approach.
+pub fn aoa_units(deg: f32) -> f32 {
+    (20.0 + (deg - crate::hud::modern::APPROACH_AOA) * 1.5).clamp(0.0, 30.0)
 }
 
 /// A round needle instrument into the rectangle r of an instrument atlas: black face, grey
 /// ring and name, white scale and needle. The altimeter has a long needle for the hundreds, a
 /// short one for the thousands and a digital readout; the clock hour, minute and second hands.
-pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32) {
+pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) {
     use crate::font::{Align, stroke_text_at};
-    if matches!(dial, Dial::Aoa | Dial::Vvi) {
-        draw_tape(c, r, dial, value);
-        return;
+    match dial {
+        Dial::Aoa | Dial::Vvi => return draw_tape(c, r, dial, value),
+        Dial::TapeRpm | Dial::TapeEgt | Dial::TapeFlow | Dial::TapeOil => {
+            return draw_engine_tapes(c, r, dial, [value, aux]);
+        }
+        Dial::Slip => return draw_slip(c, r, value),
+        Dial::TurnSlip => return draw_turn_slip(c, r, value, aux),
+        _ => {}
     }
     let [x, y, w, h] = r;
     c.fill_rect(x, y, w, h, 5);
@@ -1181,6 +1265,37 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32) {
         ),
         // Aft at 9 o'clock, the hover (90) straight up, the braking stop past it.
         Dial::NozzleAngle => ("NOZ", &["0", "30", "60", "90", "120"], value / 120.0, -90.0, 120.0),
+        Dial::Mach => {
+            ("KNOTS", &["0", "1", "2", "3", "4", "5", "6", "7"], value / 700.0, -150.0, 300.0)
+        }
+        Dial::RadarAlt => (
+            "RADAR",
+            &["0", "1", "2", "4", "6", "10", "20", "50"],
+            radar_alt_sweep(value),
+            -150.0,
+            300.0,
+        ),
+        Dial::GMeter => {
+            ("G", &["-4", "-2", "0", "2", "4", "6", "8", "10"], (value + 4.0) / 14.0, -150.0, 300.0)
+        }
+        // Level at 9 o'clock, the climb over the top.
+        Dial::Climb => (
+            "CLIMB",
+            &["6", "4", "2", "0", "2", "4", "6"],
+            (value + 6000.0) / 12000.0,
+            -240.0,
+            300.0,
+        ),
+        Dial::AoaUnits => {
+            ("AOA", &["0", "5", "10", "15", "20", "25", "30"], value / 30.0, -150.0, 300.0)
+        }
+        // Drawn by their own functions.
+        Dial::TurnSlip
+        | Dial::Slip
+        | Dial::TapeRpm
+        | Dial::TapeEgt
+        | Dial::TapeFlow
+        | Dial::TapeOil => return,
     };
     let dir = |deg: f32| {
         let a = deg.to_radians();
@@ -1234,11 +1349,125 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32) {
             let d = dir(360.0 * (value % 60.0) / 60.0);
             c.stroke(centre - d * rad * 0.15, centre + d * rad * 0.85, pen * 0.8, 41);
         }
+        // The Mach number in its window.
+        Dial::Mach => {
+            let (w, h) = (rad * 0.46, rad * 0.26);
+            let (wx, wy) = (centre.x - w / 2.0, centre.y + rad * 0.32);
+            c.fill_rect(wx as i32, wy as i32, w as i32, h as i32, 38);
+            let mach = format!("{:.2}", aux.clamp(0.0, 9.99));
+            let ty = wy + h / 2.0;
+            stroke_text_at(c, centre.x, ty, &mach, rad * 0.14, pen, 15, Align::Centre);
+        }
         _ => {}
     }
     let d = dir(start + sweep * t.clamp(0.0, 1.0));
     c.stroke(centre - d * rad * 0.12, centre + d * rad * 0.8, pen * 1.5, 15);
     c.circle(centre.x, centre.y, pen * 2.0, 7);
+}
+
+/// The radar altimeter's needle's fraction of its sweep at a height (feet): its scale is spread
+/// out low down, the labels (hundreds of feet) evenly round it.
+fn radar_alt_sweep(feet: f32) -> f32 {
+    const MARKS: [f32; 8] = [0.0, 100.0, 200.0, 400.0, 600.0, 1000.0, 2000.0, 5000.0];
+    let v = feet.clamp(0.0, 5000.0);
+    let i = MARKS.windows(2).position(|m| v <= m[1]).unwrap_or(MARKS.len() - 2);
+    (i as f32 + (v - MARKS[i]) / (MARKS[i + 1] - MARKS[i])) / (MARKS.len() - 1) as f32
+}
+
+/// The A-6's engine instruments: on black, the instrument's name, a fixed scale down the
+/// middle and a tape rising either side of it, the left engine's and the right one's, with the
+/// limit's red line.
+fn draw_engine_tapes(c: &mut Canvas, r: [i32; 4], dial: Dial, values: [f32; 2]) {
+    use crate::font::{Align, stroke_text_at};
+    let [x, y, w, h] = r;
+    c.fill_rect(x, y, w, h, 5);
+    let (x0, y0, w, h) = (x as f32, y as f32, w as f32, h as f32);
+    let pen = (w / 40.0).max(1.0);
+    // Name, full scale, units a labelled step, the label's divisor and the red line.
+    let (name, full, step, div, limit): (&str, f32, f32, f32, f32) = match dial {
+        Dial::TapeRpm => ("RPM", 110.0, 20.0, 10.0, 102.0),
+        Dial::TapeEgt => ("EGT", 1000.0, 200.0, 100.0, 900.0),
+        Dial::TapeFlow => ("FF", 12000.0, 2000.0, 1000.0, 12000.0),
+        _ => ("OIL", 100.0, 20.0, 10.0, 90.0),
+    };
+    stroke_text_at(c, x0 + w / 2.0, y0 + h * 0.06, name, w * 0.2, pen, 7, Align::Centre);
+    for (i, side) in ["L", "R"].into_iter().enumerate() {
+        let sx = x0 + w * (0.17 + 0.66 * i as f32);
+        stroke_text_at(c, sx, y0 + h * 0.955, side, w * 0.16, pen, 7, Align::Centre);
+    }
+    let (top, bottom) = (y0 + h * 0.13, y0 + h * 0.91);
+    let to_y = |v: f32| bottom - (v / full).clamp(0.0, 1.0) * (bottom - top);
+    let steps = (full / step * 2.0).round() as i32;
+    for i in 0..=steps {
+        let v = i as f32 * step / 2.0;
+        let ty = to_y(v);
+        let half = if i % 2 == 0 { w * 0.1 } else { w * 0.05 };
+        for sx in [x0 + w * 0.33, x0 + w * 0.67] {
+            c.stroke(Vec2::new(sx - half, ty), Vec2::new(sx + half, ty), pen, 15);
+        }
+        if i % 2 == 0 {
+            let label = format!("{}", (v / div).round() as i32);
+            stroke_text_at(c, x0 + w / 2.0, ty, &label, w * 0.15, pen, 15, Align::Centre);
+        }
+    }
+    for (i, v) in values.into_iter().enumerate() {
+        let bx = x0 + w * (0.08 + 0.66 * i as f32);
+        let bw = w * 0.18;
+        let ty = to_y(v);
+        c.fill_rect(bx as i32, top as i32, bw as i32, (bottom - top) as i32, 38);
+        c.fill_rect(bx as i32, ty as i32, bw as i32, (bottom - ty).max(1.0) as i32, 15);
+        let ly = to_y(limit);
+        c.stroke(Vec2::new(bx, ly), Vec2::new(bx + bw, ly), pen * 1.4, 41);
+    }
+}
+
+/// The slip ball: a black ball in its curved glass tube between two index wires (`slip`: -1
+/// full left .. 1 full right).
+fn draw_slip(c: &mut Canvas, r: [i32; 4], slip: f32) {
+    let [x, y, w, h] = r;
+    c.fill_rect(x, y, w, h, 5);
+    slip_tube(c, Vec2::new(x as f32 + w as f32 / 2.0, y as f32 + h as f32 / 2.0), w as f32, slip);
+}
+
+/// A slip ball's tube `w` wide round `mid`: pale glass sagging in the middle, the black ball in
+/// it between the two index wires.
+fn slip_tube(c: &mut Canvas, mid: Vec2, w: f32, slip: f32) {
+    let half = w * 0.42;
+    let tube = w * 0.085;
+    let at = |u: f32| Vec2::new(mid.x + u * half, mid.y - w * 0.02 + w * 0.05 * (1.0 - u * u));
+    let line: Vec<Vec2> = (0..=16).map(|i| at(i as f32 / 8.0 - 1.0)).collect();
+    c.polyline(&line, 2.0 * tube, 7);
+    crate::intruder::disc(c, at(slip.clamp(-1.0, 1.0) * 0.8), tube * 0.85, 5);
+    for s in [-1.0, 1.0] {
+        let p = at(0.0) + Vec2::X * s * tube * 1.3;
+        c.stroke(p - Vec2::Y * tube, p + Vec2::Y * tube, (w / 80.0).max(1.0), 5);
+    }
+}
+
+/// The turn and slip indicator: the turn needle from the bottom against its three index marks
+/// (one needle's width: a standard rate turn, 3 degrees a second), the slip ball under it.
+fn draw_turn_slip(c: &mut Canvas, r: [i32; 4], rate: f32, slip: f32) {
+    use crate::font::{Align, stroke_text_at};
+    let [x, y, w, h] = r;
+    c.fill_rect(x, y, w, h, 5);
+    let centre = Vec2::new(x as f32 + w as f32 / 2.0, y as f32 + h as f32 / 2.0);
+    let rad = w.min(h) as f32 / 2.0 - 1.0;
+    let pen = (rad / 40.0).max(1.0);
+    c.ring(centre, rad - pen, pen, 7);
+    let top = centre.y - rad * 0.62;
+    let mark = rad * 0.13;
+    for s in [-1.0, 0.0, 1.0f32] {
+        let mx = centre.x + s * rad * 0.3;
+        c.fill_rect((mx - mark / 2.0) as i32, top as i32, mark as i32, (rad * 0.2) as i32, 15);
+    }
+    for (s, text) in [(-1.0, "L"), (1.0, "R")] {
+        let tx = centre.x + s * rad * 0.62;
+        stroke_text_at(c, tx, top + rad * 0.1, text, rad * 0.18, pen, 15, Align::Centre);
+    }
+    let foot = Vec2::new(centre.x, centre.y + rad * 0.12);
+    let tip = Vec2::new(centre.x + (rate / 3.0).clamp(-2.0, 2.0) * rad * 0.3, top + rad * 0.02);
+    c.stroke(foot, tip, mark * 0.8, 15);
+    slip_tube(c, Vec2::new(centre.x, centre.y + rad * 0.45), rad * 1.3, slip);
 }
 
 /// A vertical tape instrument into the rectangle r of an instrument atlas (the F-16's AOA and
