@@ -53,6 +53,7 @@ centers and remotely pilot recon, attack and interceptor drones, quadrotors and 
 | [13. Know Your Enemy](#13-know-your-enemy) | Aircraft, air defences, ships and armour |
 | [14. Anti-Submarine Warfare](#14-anti-submarine-warfare) | The MH-60R's hunt: MAD, sonobuoys, the dipping sonar, the operator's console, torpedoes |
 | [15. Electronic War, Stand-off Weapons and the Fleet](#15-electronic-war-stand-off-weapons-and-the-fleet) | JSOW, MALD, the EA-18G Growler, enemy jammers, the fleet's defence, paratroopers |
+| [16. The A-6C Intruder](#16-the-a-6c-intruder) | Two seats and no MFDs: the VDI, the round scopes, the sight, the armament panel, and how to attack with each weapon and mode |
 | [Appendices](#appendices) | Keys, your files, glossary |
 
 
@@ -4504,6 +4505,313 @@ The modern avionics offer a weapon's page only with that weapon aboard: the HARM
 HARMs, the SLAM page with SLAM-ERs, the JAM page with jammer pods. A bottom button whose page
 is not offered stays blank.
 
+# 16. THE A-6C INTRUDER
+
+The Grumman A-6 was the US Navy's all-weather attack aircraft from Vietnam to Desert Storm: a
+blunt, subsonic twin-jet that carried a heavy bomb load off a carrier deck, at night, under the
+weather, and put it on a target its crew never saw. It did so with two men side by side and a
+computer between them. The pilot flies on a television picture of the world drawn by that
+computer; the **bombardier/navigator** (B/N) beside him finds the target on radar and tells the
+computer where it is. The A-6C added a turret under the fuselage with infrared and low-light
+television sensors for finding trucks on the trails at night.
+
+In the game the Intruder is a carrier jet without a gun, a HUD or a single MFD. Everything this
+manual says about the MFD pages does not apply to it: its weapons are worked from the panels
+described here. It flies at up to 566 kt at sea level (Mach 0.89 high up), pulls 6 g, has the
+terrain following autopilot, and carries its stores on four wing stations; the centreline
+holds the sensor turret.
+
+![The pilot's cockpit in an attack: the VDI over the horizontal display, the armament panel at the right](images/cockpit_a6.png)
+
+## 16.1 The crew
+
+The pilot sits on the left, the B/N on the right and a little aft. You can fly it three ways:
+
+- **Alone, in the left seat.** An **automatic B/N** works the right seat for you (16.6).
+- **Alone, in the right seat.** The in-flight menu's **GUNNER'S SEAT** entry moves you across
+  (`--seat gunner[@seconds]`); the autopilot then flies on along the route, climbing over
+  ground in its way. **LEAVE SEAT** takes you back.
+- **With a friend.** In a campaign a second player joins your Intruder from the FLIGHTS tab, as
+  for the other two-seaters, and sits in the right seat. There is **one panel for both of you**:
+  a button or switch either of you moves, moves in the other's cockpit too. The B/N lays the
+  sensor turret and designates the target; the trigger stays the pilot's.
+
+Every control is worked by clicking it. The square **pushbuttons** stay in when pressed and turn
+45 degrees to show it: a button standing on its corner, its lamp lit, is the one that is in. In
+each group one button is in at a time. A click on a **toggle switch** or a **knob** moves it to
+its next position.
+
+## 16.2 The pilot's displays
+
+### The VDI
+
+The vertical display indicator in the middle of the panel is the pilot's main flight
+instrument: a red television picture of the world as the computer has it, seen through the
+windscreen.
+
+![The VDI: an attack with the target ahead, terrain clearance, and the landing display below the glide path](images/a6_vdi.png)
+
+| On the picture | Means |
+|---|---|
+| Sky with clouds over a ground of dark patches | Attitude. The horizon banks and pitches as the real one does; the patches stream towards you with your speed, faster the lower you fly. |
+| The bright road | The **flight path** the computer wants. Its far end points at the commanded course: keep it standing upright in the middle. It leans all the way to one side for a turn of 26 degrees or more. |
+| The ball on a stem | The **impact point**: where the aircraft is going. |
+| The hollow square | The **steering symbol**. Bank until the ball sits in it: it moves aside by the bank still to take up (the computer never asks for more than 26 degrees). |
+| The dark square in a bright frame | The **target**, once one is designated. |
+| Two bars beside the ball, coming down the picture | The **release marker**: it reaches the ball as the computer releases. |
+| A blinking arrowhead over the ball | **Pull up** (high loft). |
+| Marks at the sides and the top | The fixed aircraft reference; the PITCH TRIM knob moves the side marks. |
+
+Four lights sit under it:
+
+| Light | Lit when |
+|---|---|
+| **ATTACK** | An attack button is in. |
+| **IN RANGE** | The release is less than 20 seconds away, or the rockets or the locked missile would reach. |
+| **COMPUTER** | An attack is on with no target to steer to, or the computer is off. |
+| **PLATFORM** | Only in the lamp test (flight mode TEST). |
+
+### The control box
+
+Under the right of the VDI is the box that sets what the two displays show.
+
+![The pilot's control box](images/a6_control_box.png)
+
+- **DISPLAY**: **CONT ANALOG** is the picture above. **TC** (terrain clearance) replaces the
+  ground with what the track radar sees ahead: the ridges out to the range of the **RANGE
+  MILES** buttons (4, 3, 2 or 1) as silhouettes, the nearer the brighter. A silhouette that
+  reaches up to the ball is ground you are flying into. **STBY** and **OFF** blank the
+  tube.
+- **PATH BRIGHT** dims the road. **PITCH TRIM** moves the reference marks.
+- **HORIZONTAL**: the switch at the left picks the round display's picture (below), the one at
+  the right turns it on, to standby or off.
+- **CLEAR 200 / 500 / 1000** sets the clearance in feet for the round display's terrain
+  pictures. **SCALE MI 5 / 10** is their range.
+- **ONE SCAN**, **ERASE** and the DISPLAY / TRACK / BORE SGT switch move but change nothing in
+  the game.
+
+### The horizontal display
+
+The round tube under the VDI, in a compass ring that turns with your heading. Its windows show
+the **TIME** in seconds to the release (to the target, with no release coming) and the **RANGE**
+to the target in tenths of a nautical mile.
+
+![The round scopes: search radar, terrain clearance plan and elevation scan on the pilot's display; the B/N's radar indicator](images/a6_scopes.png)
+
+| Mode | Shows |
+|---|---|
+| **SRCH** | The search radar's map of the ground ahead, 60 degrees either side of the nose, out to the B/N's range. Two cursors cross on the target: a line along its bearing and a short arc at its range. |
+| **TCPPI** | A plan of the ground 30 degrees either side of the nose that stands higher than your altitude less the clearance: what is lit is in your way. |
+| **E-SCAN** | A side view along the nose, from the aircraft at the left: the ground as a bright line, your flight path as a straight line, and under it the clearance line. Keep the ground under the clearance line. |
+
+### The sight
+
+The Intruder has no HUD. On the glare shield stands an optical sight that shows reticles and
+nothing else: speed, altitude and heading are on the round instruments.
+
+![The sight in a computed attack: the movable reticle on the target, the in range arc closing round it](images/a6_sight.png)
+
+- The **fixed reticle** marks where the nose points: a cross with a dot, a dashed circle of 50
+  mils radius, and dots every 10 mils.
+- The **movable reticle**, two rings of arcs round a pipper, is placed by the computer. In an
+  attack the computer releases, it lies on the target. In a rocket attack, or with no attack
+  button in, it lies on the point where a rocket or bomb let go now would hit.
+- The **in range arc** round the movable reticle appears with the IN RANGE light and closes to
+  a full circle as the release comes.
+- Two **breakaway bars** blink either side when it is time to pull up: for a high loft, or when
+  you are about to fly into the ground.
+
+The three lamps beside the control box (**NAV**, **A-A**, **A-G**) show the master mode; F2
+steps it, and an attack button sets A-G by itself.
+
+## 16.3 The armament panel
+
+Between the seats, in reach of both. Nothing leaves the aircraft unless this panel says so.
+
+![The armament panel: stations 1, 2, 4 and 5 switched to BOMBS, GENERAL in, master arm on](images/a6_armament.png)
+
+| Control | Does |
+|---|---|
+| **Station switches** (five, the middle one unused) | Up **BOMBS**, middle off, down **ROCKETS** (rockets and missiles). Only stations switched in release. Selecting a weapon with Space sets the switches for its stations; switching a station in selects its weapon. |
+| **RESELECT** light | An attack is on and no station that holds the selected weapon is switched in. |
+| **ATTACK** buttons | The computer's attack: LAB TGT, LAB IP, ROCKET, HI LOFT, STRAIGHT, GENERAL (16.4). A second press lets the button out. |
+| **G** buttons (5 to 3) | The pull-up you plan for a high loft. |
+| **FT OR SEC** counter, **INCR** / **DECR** | The spacing of a train of bombs in feet, in steps of 10. |
+| **SALVO / TRN / STEP** | **STEP**: one bomb a release. **SALVO**: one from every station switched in, together. **TRN** (train): a stick of up to four, the counter's feet apart, laid across the target. |
+| **MASTER ARM** | Off when you take the aircraft. Until it is on, and a station is switched in, the trigger does nothing. |
+
+## 16.4 Attacking
+
+Every attack starts the same way:
+
+1. **Select the weapon** (Space). Its stations' switches go to BOMBS or ROCKETS.
+2. Set the **release switch** (bombs) and the counter.
+3. **MASTER ARM** on.
+4. Get a **target** into the computer (16.5). Flying alone, the automatic B/N does it.
+
+### Bombs with the computer: GENERAL
+
+For the free-fall and retarded bombs: Mk 82, Mk 83, Mk 84, Snakeye, Rockeye, the incendiaries
+and mines.
+
+1. Press **GENERAL**. ATTACK lights, the master mode goes to A-G.
+2. With a target designated, the VDI's road points at it and its square shows on the ground;
+   the sight's movable reticle lies on it; the horizontal display's cursors cross on it and
+   TIME counts down to the release.
+3. Steer the ball into the steering square and keep the road upright. Fly level or in a
+   shallow dive, at any height that is safe for the bomb.
+4. **Hold the trigger** (Return) once IN RANGE lights: holding it is your consent, not the
+   release.
+5. The release marker comes down to the ball, the in range arc closes, and the computer drops
+   the bombs. Keep the trigger held and the wings level until they are gone.
+
+In TRN the stick is laid so that its middle falls on the target. **STRAIGHT**, **LAB TGT** and
+**LAB IP** release in the same way as GENERAL in the game.
+
+### High loft: HI LOFT
+
+To throw bombs at a defended target without flying over it. Press **HI LOFT** and the **G**
+button for the pull you intend, and run in low and fast, wings level, trigger held. When the
+arrowhead blinks on the VDI and the breakaway bars on the sight, pull up at that g, straight
+ahead. The computer lets the bombs go in the climb when they will reach; then roll away and get
+back down.
+
+### Rockets: ROCKET
+
+For the **Zuni** (four 127 mm rockets in a LAU-10 pod) and the Hydra 70 pods.
+
+1. Select the pods; their stations go to ROCKETS. Press **ROCKET** and arm.
+2. The movable reticle now shows where the rockets would land. In level flight it is at the
+   bottom of its travel: dive at the target, 10 to 20 degrees, to bring it up.
+3. Put the pipper on the target and press the trigger when **IN RANGE** is lit. Each press
+   fires a pair, one from each side.
+4. Pull out at once. The breakaway bars warn you when the ground is four seconds away.
+
+### Bombs by eye
+
+With no attack button in, set the master mode to A-G (F2) and the movable reticle shows the
+point where a bomb released now would land. Dive, put it on the target and press the trigger:
+the bomb goes at once. It is the quick way for a target you come upon.
+
+### AGM-45 Shrike
+
+The Shrike is the HARM's small forerunner: it homes on a radar that is transmitting, and on
+nothing else. It reaches about 40 % as far as the HARM and its warhead is lighter, so it is fired
+from inside the range of most of the sites it is meant for.
+
+1. Select it; its stations go to ROCKETS. Arm.
+2. Lock a radar site: **T** (nearest target ahead) or **B**, in A-G. The target's square
+   shows on the VDI, and TRACK lights on the B/N's indicator.
+3. Fire when IN RANGE lights. A high, fast launch reaches farthest.
+
+A radar that stops transmitting is lost to it. Fire it at a site that is looking at you.
+
+### The other guided weapons
+
+The HARM, Maverick, Harpoon and the laser-guided bombs are locked and fired as chapters 6.4 to
+6.6 describe, with the keys or with the sensor turret from the right seat. The panel's part is
+the same: stations in, master arm on. The Sidewinder is fired in A-A.
+
+### The bombs
+
+| Bomb | Weight | Carried | |
+|---|---|---|---|
+| **Mk 82** | 500 lb | Three to a station | The general purpose bomb (6.7). |
+| **Mk 83** | 1,000 lb | One to a station | A wider blast: a near miss still kills. |
+| **Mk 84** | 2,000 lb | One to a station | The widest blast, for hardened and large targets. Stay well above it. |
+
+## 16.5 The bombardier/navigator
+
+![The B/N's cockpit](images/cockpit_a6_bn.png)
+
+The right seat has no stick, no sight and no attitude display. Its work is the target.
+
+![The direct view radar indicator with a ground lock, and the sensor scope](images/a6_bn_radar.png)
+
+**The direct view radar indicator (DVRI)** is the big orange tube: the search radar's map, as on
+the pilot's SRCH picture, with the cursors on the target. Under it:
+
+| Control | Does |
+|---|---|
+| **ON / STBY / OFF** | The search radar. Transmitting, it is heard: enemy radars see you from farther (chapter 7.1). In STBY and OFF the map goes dark. |
+| **RANGE** knob | 15, 30, 60 or 150 nautical miles across the picture. |
+| **AMTI** | Dims the ground and leaves what moves bright: vehicles on the road. |
+| **RANGE** window | Range to the target, tenths of a nautical mile. |
+
+| Light | Lit when |
+|---|---|
+| **GROUND LOCK ON** | The computer has a designated point or object. |
+| **DISCRETE LOCK ON** | The sensor turret is tracking a vehicle or gun. |
+| **TRACK** | A lock is held. |
+| **ATTACK**, **COMPUTER**, **RESELECT** | As on the pilot's side. |
+| **ECM** | The jammer is transmitting. |
+
+**The sensor scope** to its right shows the picture of the turret under the fuselage. It is
+worked like the targeting pod of chapter 5.2: slew it with the keypad (the slew stick between
+your knees), and lock what is under the reticle with keypad Enter. Its lower edge shows SLEW,
+GROUND or TRACK and the range. The point it rests on **is** the computer's target: the pilot's
+road, square and reticle go to it, and a computed release is aimed at it. The pilot has no
+picture of his own from the turret.
+
+**Designating without the turret:** T locks the nearest target ahead and B steps through them,
+from either seat.
+
+![The computer keyboard](images/a6_keyboard.png)
+
+**The keyboard** on the pedestal is simplified. Press **TARGET** (it stays down) and then a
+number: the route's point of that number becomes the point steered to. With TARGET down the
+TEMPORARY STORAGE window shows the target's bearing from the nose (three digits) and its range in nautical
+miles (three digits). The long **RELEASE** bar lets the address keys up again.
+
+The **flight mode** buttons beside the armament panel belong to the B/N too:
+
+![The flight and navigation mode panel](images/a6_mode_panel.png)
+
+- **LAND** switches the landing system on and turns the VDI's road into the glide path (16.7).
+- **FLIGHT** is the normal mode. **OFF** lights the COMPUTER lamp and **TEST** the advisory
+  lamps; neither changes anything else.
+- The other buttons and the navigation column latch but change nothing in the game.
+
+## 16.6 The automatic B/N
+
+With nobody in the right seat, an automatic B/N does the least a real one would. As soon as an
+**attack button is in** he:
+
+1. switches the search radar on (even if you had it in standby: you will be heard),
+2. sets its range to hold the mission's target,
+3. and, once the target is on the scope, puts the cursors on it and locks it.
+
+He takes the nearest of the mission's primary and secondary targets and the route point you are
+steering to that lies ahead. From then on the computer steers and releases as in 16.4. He does
+not touch the armament panel: the weapon, the release switch and MASTER ARM are yours. He stops
+the moment anyone sits in the right seat.
+
+For a target that is not on the route, lock it yourself with T or B before or after pressing the
+attack button; a lock of your own is never replaced.
+
+## 16.7 Flying it home
+
+Press **LAND**. On an approach to a runway, or within a few miles behind the carrier,
+the VDI's road becomes the glide path: a strip running to the touchdown, whose square marks
+the far end.
+
+- Road **to one side**: you are off the centre line; fly towards it.
+- Road **narrow and far below**: you are above the glide path. **Wide**, filling the lower
+  picture: you are below it.
+- The steering square sinks below the ball when you are high and rises above it when you are
+  low: fly the ball into it.
+
+Approach at about 115 kt with flaps and gear down. On the carrier the meatball and the LSO
+(chapter 7.9) still have the last word.
+
+## 16.8 What it does not have
+
+- No gun, no HUD symbols, no MFD pages, no data entry display and no radar warning scope: threats
+  show only as the lights of the countermeasures column between the seats.
+- No camera: the Intruder cannot fly photo reconnaissance missions.
+- Coordinates cannot be typed into the keyboard: targets come from the route, the radar and the
+  sensor turret.
+
 # APPENDICES
 
 ## Appendix A: Key controls summary
@@ -4587,9 +4895,11 @@ between Windows, macOS and Linux; your options and bindings stay on each compute
 | **CAP** | Combat air patrol. |
 | **CAS** | Close air support: attacks on enemy forces near your own. |
 | **Burn-through** | The range inside which a radar sees its target through the jamming. |
+| **B/N** | Bombardier/navigator: the A-6's right seat. |
 | **CCIP / CCRP** | Continuously computed impact point / release point: the two bombsight modes. |
 | **CIWS** | Close-in weapon system: a ship's Phalanx gun against missiles and boats. |
 | **CSAR** | Combat search and rescue. |
+| **DVRI** | Direct view radar indicator: the A-6 B/N's radar scope. |
 | **DED** | Data entry display: the small text display under the HUD. |
 | **ECM** | Electronic countermeasures: the radar jammer. |
 | **EGR / EAR** | The F-117A's bar graph strips for ground and airborne radar signals. |
@@ -4618,5 +4928,6 @@ between Windows, macOS and Linux; your options and bindings stay on each compute
 | **SPI** | Sensor point of interest: the point the targeting pod marks. |
 | **TFR** | Terrain following radar. |
 | **TGP** | Targeting pod. |
+| **VDI** | Vertical display indicator: the A-6 pilot's television picture of the flight. |
 | **USV** | Unmanned surface vessel: an attack boat. |
 | **V/STOL** | Vertical/short take-off and landing. |
