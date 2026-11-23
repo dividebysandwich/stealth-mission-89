@@ -89,6 +89,8 @@ pub(super) struct Before {
     wait: f32,
     attack: Option<Option<AttackMode>>,
     flight: Option<FlightMode>,
+    /// The pod's FLIR was switched on for the A-6 (off again in another aircraft).
+    flir: bool,
 }
 
 /// The smaller angle from `b` to `a` (rad).
@@ -160,9 +162,17 @@ pub(super) fn drive(
             mfd.panel_ripple = None;
             mfd.master_safe = false;
         }
+        if before.flir {
+            mfd.flir = false;
+        }
         *before = Before::default();
         return;
     }
+    // The TRIM pod's picture is its FLIR's: it has no TV camera.
+    if !mfd.flir {
+        mfd.flir = true;
+    }
+    before.flir = true;
     // The search radar's power switch is the radar's.
     let standby = panel.search_power != Power::On;
     if mfd.av.radar_standby != standby {
