@@ -758,17 +758,337 @@ def yak38():
     return Craft(g, (-3.65, -2.8, 0.45), (3.65, -2.8, 0.45), [(0, -7.2, 3.2)])
 
 
+# The A-6 Intruder from its three-view (16.4 m long on the drawing, 16.2 m span, all views 100 px
+# per metre): points as (x, s m aft of the nose, z), z 0 the nose tip's height (1.95 m above the
+# ground). The round radome, the deep forward fuselage with the engines in its cheeks under the
+# mid wing (intakes at s 2.33, exhausts at s 8.7), the wide side-by-side canopy flowing into the spine,
+# the slim tail boom.
+A6_NOSE = 8.20
+A6_GREY = Ramp(230, 236)
+A6_GROUND = -1.95
+# The fuselage's sections: (s, top, bottom, half width and height of the widest point of the round
+# section, half width over the nacelles or 0 where there are none). The top is the canopy's line
+# from s 1.92 to 4.05 and the spine's behind it: one skin, the glass a part of it.
+A6_BODY = [
+    (0.13, 0.28, -0.29, 0.30, 0.00, 0), (0.38, 0.50, -0.47, 0.52, 0.00, 0), (0.63, 0.66, -0.59, 0.66, 0.02, 0),
+    (1.13, 0.88, -0.73, 0.83, 0.05, 0), (1.63, 1.03, -0.80, 0.92, 0.08, 0), (1.92, 1.09, -0.83, 0.95, 0.10, 0),
+    (2.13, 1.271, -0.85, 0.96, 0.10, 0), (2.33, 1.443, -0.86, 0.97, 0.10, 0), (2.34, 1.451, -0.87, 0.97, 0.10, 1.27),
+    (2.42, 1.52, -0.88, 0.98, 0.12, 1.276), (2.75, 1.63, -0.92, 1.01, 0.22, 1.30), (3.13, 1.73, -0.96, 1.04, 0.30, 1.33), (3.63, 1.79, -0.99, 1.05, 0.30, 1.37),
+    (4.05, 1.81, -1.01, 1.06, 0.30, 1.40), (4.63, 1.77, -1.00, 1.05, 0.30, 1.43), (5.13, 1.67, -1.00, 1.05, 0.30, 1.45),
+    (5.88, 1.54, -0.98, 1.03, 0.30, 1.48), (6.38, 1.40, -0.95, 1.02, 0.30, 1.49), (6.88, 1.27, -0.91, 1.00, 0.30, 1.50),
+    (7.40, 1.22, -0.84, 0.98, 0.30, 1.48), (7.90, 1.20, -0.76, 0.96, 0.30, 1.45), (8.50, 1.17, -0.63, 0.91, 0.30, 1.36),
+    (8.92, 1.16, -0.56, 0.87, 0.30, 1.22), (9.66, 1.15, -0.52, 0.80, 0.32, 0), (11.20, 1.07, -0.36, 0.68, 0.36, 0),
+    (12.40, 1.10, -0.23, 0.55, 0.44, 0), (12.94, 1.08, -0.16, 0.48, 0.46, 0), (14.00, 1.02, 0.00, 0.38, 0.51, 0),
+    (15.40, 0.92, 0.22, 0.23, 0.57, 0), (16.38, 0.80, 0.62, 0.06, 0.71, 0)]
+# The nacelles run back into the round boom between these stations.
+A6_FADE = (7.40, 8.92)
+# The round section's points: degrees up from the widest point.
+A6_ANGLES = (90, 70, 50, 32, 14, 0, -18, -38, -58, -76, -90)
+# The glass: the canopy's panes (tools/models/a6_canopy.json: the two eye-shaped front panes, the
+# quarter panes round them, the canopy's two halves; their outlines from the reference model
+# credited there) cut along the skin's faces and laid on them this far out. The frames between
+# them are the skin itself.
+A6_PANES = "a6_canopy.json"
+A6_PANE_LIFT = 0.012
+# The height the panes are laid round: a point of a pane and the skin's point under it are at
+# the same s and the same angle about the fuselage's axis at this height.
+A6_PANE_AXIS = 0.50
+# The sill (s, z): the sections' fourth point lies on it, level beside the windscreen and
+# rising aft to the canopy's rear frame; ahead of it and behind it that point is back at
+# `A6_ANGLES`' own by `A6_SILL_EASE`.
+A6_SILL = [(1.92, 0.80), (2.13, 0.75), (2.42, 0.73), (2.75, 0.75), (3.13, 0.86), (3.63, 1.05), (4.05, 1.18)]
+A6_SILL_EASE = 0.30
+# The windscreen: a hood leaning back from its foot to its top at these stations, one smooth
+# arch from sill to sill (the sections' second and third points on it, degrees up from the sill).
+A6_SCREEN = (1.92, 2.42)
+A6_SCREEN_ARCH = (62.0, 34.0)
+# The intakes' lips stand this far ahead of the nacelles' front (s), drawn in a little.
+A6_LIP = (2.20, 0.95)
+# The nose's lower flanks are scalloped in ahead of the intakes, from this station to the mouths:
+# how far in each of the section's points under the widest one is drawn there.
+A6_SCALLOP_S = (1.13, 2.33)
+A6_SCALLOP = (0.72, 0.52, 0.40, 0.35)
+A6_EXHAUST = (0.95, -0.33, 0.30)
+A6_WING_Z = 0.36
+# Streamwise sections (x, s of the leading edge, of the trailing edge, z, thickness).
+A6_WING = [(0.80, 3.25, 8.52, A6_WING_Z, 0.34), (2.04, 4.85, 8.66, A6_WING_Z, 0.28), (8.00, 7.96, 9.33, 0.38, 0.12),
+           (8.14, 8.30, 9.28, 0.38, 0.05)]
+A6_TAILPLANE = [(0.30, 12.70, 14.72, 0.57, 0.14), (2.95, 14.44, 15.42, 0.57, 0.06), (3.26, 14.95, 15.35, 0.57, 0.03)]
+# The fin's sections (z, s of the leading edge, of the trailing edge, thickness).
+A6_FIN = [(1.00, 12.55, 16.20, 0.18), (2.65, 14.06, 15.99, 0.12), (3.10, 14.55, 15.95, 0.08), (3.23, 14.95, 15.93, 0.04)]
+# The A-6C's stations 1, 2, 4 and 5 (src/loadout.rs `A6_STATIONS`): the wing pylons; the TRIM pod
+# is on the centreline station.
+A6_STATIONS = [Station(0.42, chord=2.0), Station(0.42, chord=2.2), Station(0.42, chord=2.2), Station(0.42, chord=2.0)]
+
+
+def a6_p(x, s, z):
+    return Vector((x, A6_NOSE - s, z))
+
+
+def a6_ring(s, right):
+    left = [(-x, z) for x, z in reversed(right[1:-1])]
+    return [a6_p(x, s, z) for x, z in right + left]
+
+
+def a6_arc(top, bottom, hw, zc, a):
+    """The round section's point `a` degrees up from its widest point."""
+    r = math.radians(a)
+    c, sn = math.cos(r), math.sin(r)
+    h = top - zc if sn > 0 else zc - bottom
+    return hw * abs(c) ** (2 / 2.3), zc + math.copysign(abs(sn) ** (2 / 2.3), sn) * h
+
+
+def a6_angles(s, top, zc):
+    """The section's points at s: `A6_ANGLES`, the fourth on the glass' sill."""
+    s0, s1 = A6_SILL[0][0], A6_SILL[-1][0]
+    q = min(max(s, s0), s1)
+    z = next(za + (zb - za) * (q - sa) / (sb - sa) for (sa, za), (sb, zb) in zip(A6_SILL, A6_SILL[1:]) if q <= sb)
+    a = math.degrees(math.asin(min(1.0, max(0.05, (z - zc) / (top - zc))) ** (2.3 / 2)))
+    a = min(a, A6_ANGLES[2] - 6.0)
+    out = max(s0 - s, s - s1, 0.0) / A6_SILL_EASE
+    a += (A6_ANGLES[3] - a) * min(1.0, out)
+    return A6_ANGLES[:3] + (a, a * A6_ANGLES[4] / A6_ANGLES[3]) + A6_ANGLES[5:]
+
+
+def a6_half(s, top, bottom, hw, zc, nac):
+    """A section's right half from the top round to the keel: round, and where the nacelles are
+    a pear, the nacelle's round lobe under the same arch, running back into the round boom; the
+    top the windscreen's hood from its foot to its bow."""
+    right = [a6_arc(top, bottom, hw, zc, a) for a in a6_angles(s, top, zc)]
+    if A6_SCREEN[0] <= s <= A6_SCREEN[1]:
+        xs, zs = right[3]
+        for i, a in enumerate(A6_SCREEN_ARCH):
+            r = math.radians(a)
+            right[1 + i] = (xs * math.cos(r) ** (2 / 2.3), zs + (top - zs) * math.sin(r) ** (2 / 2.3))
+    if nac == 0 and A6_SCALLOP_S[0] < s <= A6_SCALLOP_S[1]:
+        k = (s - A6_SCALLOP_S[0]) / (A6_SCALLOP_S[1] - A6_SCALLOP_S[0])
+        for i, m in enumerate(A6_SCALLOP):
+            x, z = right[6 + i]
+            right[6 + i] = (x * (1 - (1 - m) * k), z)
+    if nac > 0:
+        f = -bottom
+        cx, cz, rx, rz = nac - 0.50, -0.44 * f, 0.50, 0.50 * f
+        lobe = [(cx + rx * math.cos(math.radians(a)), cz + rz * math.sin(math.radians(a)))
+                for a in (50, 20, -10, -45, -75)]
+        k = min(1.0, max(0.0, (s - A6_FADE[0]) / (A6_FADE[1] - A6_FADE[0])))
+        k = k * k * (3 - 2 * k)
+        for i, (x, z) in enumerate(lobe):
+            rx_, rz_ = right[5 + i]
+            right[5 + i] = (x + (rx_ - x) * k, z + (rz_ - z) * k)
+    return right
+
+
+def a6_section(*r):
+    return a6_ring(r[0], a6_half(*r))
+
+
+def a6_intake(sx):
+    """An intake: the lip standing ahead of the nacelle's front round its crescent mouth (the
+    nacelle's lobe outside, the round fuselage inside), the mouth dark."""
+    k = next(i for i, r in enumerate(A6_BODY) if r[5] > 0)
+    front = A6_BODY[k]
+    s1 = front[0]
+    s0, draw = A6_LIP
+    lobe = a6_half(*front)[5:10]
+    inner = a6_half(*A6_BODY[k - 1])[5:10]
+    cx = sum(x for x, _ in lobe + inner) / 10
+    cz = sum(z for _, z in lobe + inner) / 10
+    lip = [(cx + (x - cx) * draw, cz + (z - cz) * draw) for x, z in lobe]
+    at = lambda q, s: a6_p(sx * q[0], s, q[1])
+    mid = a6_p(sx * cx, (s0 + s1) / 2, cz)
+    g = Geo()
+    for k in range(4):
+        g.face([at(lip[k], s0), at(lip[k + 1], s0), at(lobe[k + 1], s1), at(lobe[k], s1)], A6_GREY, mid)
+        g.face([at(lip[k], s0 + 0.03), at(lip[k + 1], s0 + 0.03), at(inner[k + 1], s0 + 0.03), at(inner[k], s0 + 0.03)],
+               BLACK, a6_p(sx * cx, s1 + 1.0, cz))
+    for k in (0, 4):
+        g.face([at(lip[k], s0), at(inner[k], s0), at(inner[k], s1), at(lobe[k], s1)], A6_GREY, mid)
+    return g
+
+
+def a6_skin(s, u):
+    """The skin's point at s, `u` points down the right half of the section from its top."""
+    a, b = next((a, b) for a, b in zip(A6_BODY, A6_BODY[1:]) if a[0] <= s <= b[0])
+    f = (s - a[0]) / (b[0] - a[0])
+    k = min(int(u), len(A6_ANGLES) - 2)
+    out = []
+    for r in (a, b):
+        h = a6_half(*r)
+        (x0, z0), (x1, z1) = h[k], h[k + 1]
+        out.append((x0 + (x1 - x0) * (u - k), z0 + (z1 - z0) * (u - k)))
+    (xa, za), (xb, zb) = out
+    return xa + (xb - xa) * f, za + (zb - za) * f
+
+
+def a6_split_skin(g):
+    """Splits the skin's four-sided faces round the cockpit into triangles, so that the panes
+    are laid on the very faces drawn (a four-sided face of the skin is not flat)."""
+    faces = []
+    for pts, c in g.faces:
+        mid = sum(pts, Vector()) / len(pts)
+        if len(pts) == 4 and 1.4 < A6_NOSE - mid.y < 4.4 and mid.z > 0.3:
+            faces += [([pts[0], pts[1], pts[2]], c), ([pts[0], pts[2], pts[3]], c)]
+        else:
+            faces.append((pts, c))
+    g.faces = faces
+
+
+def a6_round_axis(x, s, z):
+    """(s, the angle about the fuselage's axis from straight up, right positive)."""
+    return s, math.atan2(x, z - A6_PANE_AXIS)
+
+
+def a6_clip(poly, a, b):
+    """`poly` (2D points) cut to the left of the line from a to b."""
+    def side(p):
+        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+    out = []
+    for p, q in zip(poly, poly[1:] + poly[:1]):
+        sp, sq = side(p), side(q)
+        if sp >= 0:
+            out.append(p)
+        if (sp > 0 > sq) or (sp < 0 < sq):
+            f = sp / (sp - sq)
+            out.append((p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f))
+    return out
+
+
+def a6_panes(skin):
+    """The canopy's glass: each of the skin's triangles round the cockpit cut to the panes'
+    outlines (both seen round the fuselage's axis), the pieces laid flat on it."""
+    import json
+
+    def area2(q):
+        return sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(q, q[1:] + q[:1]))
+
+    with open(os.path.join(HERE, A6_PANES)) as f:
+        panes = [[a6_round_axis(*v) for v in tri] for tri in json.load(f)["glass"]]
+    panes = [q if area2(q) > 0 else q[::-1] for q in panes]
+    boxes = [(min(p[0] for p in q), max(p[0] for p in q), min(p[1] for p in q), max(p[1] for p in q)) for q in panes]
+    lo, hi = min(b[0] for b in boxes), max(b[1] for b in boxes)
+    g = Geo()
+    for pts, _ in skin.faces:
+        if len(pts) != 3 or not all(lo - 0.6 < A6_NOSE - p.y < hi + 0.6 for p in pts):
+            continue
+        if min(p.z for p in pts) < A6_PANE_AXIS - 0.2:
+            continue
+        flat = [a6_round_axis(p.x, A6_NOSE - p.y, p.z) for p in pts]
+        det = area2(flat)
+        if abs(det) < 1e-9:
+            continue
+        n = mklib.normal(pts)
+        mid = sum(pts, Vector()) / 3
+        if n.dot(mid - Vector((0, mid.y, A6_PANE_AXIS))) < 0:
+            n = -n
+        box = (min(p[0] for p in flat), max(p[0] for p in flat), min(p[1] for p in flat), max(p[1] for p in flat))
+        edges = list(zip(flat, flat[1:] + flat[:1])) if det > 0 else list(zip(flat[::-1], flat[::-1][1:] + flat[::-1][:1]))
+        (s0, w0), (s1, w1), (s2, w2) = flat
+        for pane, b in zip(panes, boxes):
+            if b[0] > box[1] or b[1] < box[0] or b[2] > box[3] or b[3] < box[2]:
+                continue
+            piece = pane
+            for a, c in edges:
+                piece = a6_clip(piece, a, c)
+                if len(piece) < 3:
+                    break
+            if len(piece) < 3 or abs(area2(piece)) < 2e-4:
+                continue
+            out = []
+            for s, w in piece:
+                # The piece's corner in the triangle's own plane.
+                l1 = ((s - s0) * (w2 - w0) - (s2 - s0) * (w - w0)) / det
+                l2 = ((s1 - s0) * (w - w0) - (s - s0) * (w1 - w0)) / det
+                out.append(pts[0] + (pts[1] - pts[0]) * l1 + (pts[2] - pts[0]) * l2 + n * A6_PANE_LIFT)
+            g.face(out, CANOPY, Vector((0, mid.y, A6_PANE_AXIS)))
+    return g
+
+
+def a6_panel(sections, paint):
+    """A wing from streamwise sections (x, s of the leading edge, of the trailing edge, z,
+    thickness): a round-nosed section, thickest at 40% of the chord."""
+    rings = []
+    for x, le, te, z, t in sections:
+        c = te - le
+        d = Vector((0, 0, t / 2))
+        rings.append([a6_p(x, le, z), a6_p(x, le + 0.12 * c, z) + 0.72 * d, a6_p(x, le + 0.40 * c, z) + d,
+                      a6_p(x, te, z), a6_p(x, le + 0.40 * c, z) - d, a6_p(x, le + 0.12 * c, z) - 0.72 * d])
+    return tube(rings, paint)
+
+
+def a6_trim_pod():
+    """The A-6C's TRIM pod on the centreline: the long fairing, the sensor turret under its
+    front with its dark window."""
+    y = lambda s: A6_NOSE - s
+    g = loft([(y(4.30), -1.05, 0.05, 0.05), (y(4.70), -1.22, 0.34, 0.26), (y(5.60), -1.27, 0.40, 0.30),
+              (y(7.20), -1.22, 0.38, 0.28), (y(8.10), -1.05, 0.10, 0.10)], A6_GREY, n=10)
+    g.add(frustum(tuple(a6_p(0, 5.05, -1.42)), tuple(a6_p(0, 5.05, -1.66)), 0.24, 0.20, DARK, n=10, caps=False))
+    g.add(frustum(tuple(a6_p(0, 5.05, -1.66)), tuple(a6_p(0, 5.05, -1.74)), 0.20, 0.10, DARK, n=10))
+    g.face2([a6_p(-0.10, 4.83, -1.50), a6_p(0.10, 4.83, -1.50), a6_p(0.10, 4.85, -1.66), a6_p(-0.10, 4.85, -1.66)],
+            BLACK)
+    return g
+
+
 def a6():
-    g = loft([(8.4, -0.1, 0, 0), (7.6, -0.1, 0.6, 0.55), (6.0, 0.0, 1.0, 0.95), (3.5, 0.0, 1.05, 0.95), (0.0, 0.0, 0.95, 0.75),
-              (-4.0, 0.2, 0.55, 0.5), (-8.2, 0.4, 0.25, 0.3)], GREY_L, n=8, power=2.2)
-    g.add(loft([(6.2, 0.7, 0.05, 0.05), (5.4, 0.95, 0.8, 0.5), (4.0, 1.05, 0.85, 0.5), (3.0, 0.8, 0.5, 0.2)], CANOPY, n=6))
-    for s in (-1, 1):
-        g.add(nacelle(s * 1.1, 3.0, -2.2, -0.5, 0.48, GREY_L))
-    g.add(frustum((0, 6.0, 0.9), (0, 7.4, 1.1), 0.05, 0.03, BLACK, 4))
-    g.add(wing((0.9, 1.4, 0.2), 4.4, (8.1, -2.4, 0.2), 1.8, GREY_L, t=0.06))
-    g.add(wing((0.3, -6.0, 0.6), 2.4, (3.4, -7.8, 0.6), 1.2, GREY_L, t=0.05))
-    g.add(wing((0, -4.6, 0.6), 3.2, (0, -7.4, 4.0), 1.7, GREY_L, t=0.05, vertical=True, mirror=False))
-    return Craft(g, (-8.1, -3.3, 0.2), (8.1, -3.3, 0.2), [(0, -8.2, 4.0)])
+    """The A-6 Intruder; the flown one (slot 28) carries the A-6C's TRIM pod."""
+    p = A6_GREY
+    rings = [a6_ring(0.0, [(0.0, 0.0)] * len(A6_ANGLES))] + [a6_section(*r) for r in A6_BODY]
+    g = Geo().add(tube(rings, p, wound=True))
+    a6_split_skin(g)
+    g.add(a6_panes(g))
+    for sx in (-1, 1):
+        # The intakes' mouths just ahead of the nacelles' front faces, the exhausts at their ends.
+        g.add(a6_intake(sx))
+        ex, ez, er = A6_EXHAUST
+        g.add(frustum(tuple(a6_p(sx * ex, 8.60, ez)), tuple(a6_p(sx * (ex + 0.04), 9.12, ez)), er + 0.03, er, DARK,
+                      n=10, caps=False))
+        g.face([a6_p(sx * (ex + 0.03) + (er - 0.03) * math.cos(a), 9.04, ez + (er - 0.03) * math.sin(a))
+                for a in (2 * math.pi * k / 10 for k in range(10))], BLACK, a6_p(sx * ex, 8.2, ez))
+    # The refuelling probe ahead of the windscreen.
+    g.add(frustum(tuple(a6_p(0, 1.75, 1.02)), tuple(a6_p(0, 1.05, 1.72)), 0.05, 0.045, p, n=6))
+    g.add(frustum(tuple(a6_p(0, 1.08, 1.72)), tuple(a6_p(0, 0.55, 1.72)), 0.045, 0.04, p, n=6))
+    g.add(frustum(tuple(a6_p(0, 0.55, 1.72)), tuple(a6_p(0, 0.42, 1.72)), 0.055, 0.03, DARK, n=6))
+    # The wings, the tailplanes, the fin with its antenna fairing and the bar ahead of it.
+    g.add(mirror(a6_panel(A6_WING, p)))
+    g.add(mirror(a6_panel(A6_TAILPLANE, p)))
+    fin = []
+    for z, le, te, t in A6_FIN:
+        mid = le + 0.35 * (te - le)
+        fin.append([a6_p(0, le, z), a6_p(t / 2, mid, z), a6_p(0, te, z), a6_p(-t / 2, mid, z)])
+    g.add(tube(fin, p))
+    y = lambda s: A6_NOSE - s
+    g.add(loft([(y(15.00), 2.45, 0.02, 0.02), (y(15.30), 2.45, 0.11, 0.13), (y(16.10), 2.45, 0.11, 0.13),
+                (y(16.35), 2.45, 0.05, 0.06)], p, n=8))
+    g.add(frustum(tuple(a6_p(0, 14.00, 2.64)), tuple(a6_p(0, 12.75, 2.64)), 0.025, 0.02, DARK, n=4))
+    tip = lambda sx: (sx * 8.14, A6_NOSE - 8.60, 0.38)
+    return Craft(g, tip(-1), tip(1), [(0, A6_NOSE - 16.40, 0.71)], gear=a6_gear(),
+                 stations=("A6_STATIONS", A6_STATIONS, A6_GREY), groups=[([(STORES_SLOT, 1)], a6_trim_pod())])
+
+
+def a6_gear():
+    """The gear down: the nose leg with its twin wheels and catapult tow bar, the main legs from
+    the nacelles out to the wheels, their doors."""
+    g = Geo()
+    r = 0.235
+    axle = a6_p(0, 2.15, A6_GROUND + r)
+    for x in (-0.13, 0.13):
+        g.add(mklib.wheel((x, axle.y, axle.z), r, 0.14, BLACK, n=8))
+    g.add(frustum(tuple(a6_p(0, 2.30, -0.80)), tuple(axle + Vector((0, 0, 0.06))), 0.07, 0.06, GREY_L, n=5))
+    g.add(frustum(tuple(a6_p(0, 2.90, -0.88)), tuple(a6_p(0, 2.25, -1.30)), 0.035, 0.035, GREY_L, n=4))
+    g.add(frustum(tuple(axle + Vector((0, 0.05, 0.08))), tuple(a6_p(0, 1.55, -1.80)), 0.025, 0.025, GREY_L, n=4))
+    for sx in (-1, 1):
+        g.face2([a6_p(sx * 0.22, 1.70, -0.80), a6_p(sx * 0.22, 2.70, -0.90), a6_p(sx * 0.25, 2.70, -1.25),
+                 a6_p(sx * 0.25, 1.70, -1.15)], A6_GREY)
+    r = 0.40
+    for sx in (-1, 1):
+        axle = a6_p(sx * 1.68, 7.22, A6_GROUND + r)
+        g.add(mklib.wheel(tuple(axle), r, 0.26, BLACK, n=10))
+        g.add(frustum(tuple(a6_p(sx * 1.38, 7.05, -0.55)), tuple(axle + Vector((-sx * 0.16, 0, 0.10))), 0.09, 0.08,
+                      GREY_L, n=5))
+        g.add(frustum(tuple(a6_p(sx * 1.25, 6.30, -0.75)), tuple(axle + Vector((-sx * 0.16, 0, 0.35))), 0.04, 0.04,
+                      GREY_L, n=4))
+        g.face2([a6_p(sx * 1.52, 6.60, -0.70), a6_p(sx * 1.52, 7.80, -0.62), a6_p(sx * 1.60, 7.80, -1.20),
+                 a6_p(sx * 1.60, 6.60, -1.25)], A6_GREY)
+    return g
 
 
 def ef111():

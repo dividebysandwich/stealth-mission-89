@@ -1245,6 +1245,14 @@ static FA18E_STATIONS: [Hardpoint; 11] = [
     pylon("hardpoint-fa18e-10-right-outer-wing", "10", 4.60, 11.75, Some(1), &FA18E_OUTER),
     pylon("hardpoint-fa18e-11-right-wingtip", "11", 6.78, 11.80, Some(0), &SIDEWINDER),
 ];
+/// The A-6C's wing stations 1, 2, 4 and 5 (the TRIM pod is on the centreline station 3).
+#[allow(dead_code)]
+static A6_STATIONS: [Hardpoint; 4] = [
+    pylon("hardpoint-station-3-left-wing", "1", -3.68, 6.95, Some(3), &FA18E_WING),
+    pylon("hardpoint-station-4-left-inner-wing", "2", -2.50, 6.70, Some(2), &FA18E_WING),
+    pylon("hardpoint-fa18e-8-right-inner-wing", "4", 2.50, 6.70, Some(1), &FA18E_WING),
+    pylon("hardpoint-a10-9-right-wing", "5", 3.68, 6.95, Some(0), &FA18E_WING),
+];
 /// The EA-18G's stations 2 to 10 (its wingtips hold the ALQ-218 receivers): the ALQ-99 pods on
 /// the centreline and the middle wing pylons, HARMs and MALDs outboard, AMRAAMs on the
 /// nacelles, tanks inboard.
