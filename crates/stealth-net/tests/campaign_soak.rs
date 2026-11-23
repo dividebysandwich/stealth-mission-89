@@ -104,6 +104,10 @@ fn campaign_soak() {
     host.state.set_crew(env("SOAK_CREW", 1usize));
     let relief = sim.relief();
     let hills = sim.hills();
+    // Place owners at the start, and every change of hands since (captured by side).
+    let owners0: Vec<Side> = host.state.places.iter().map(|p| p.owner).collect();
+    let mut owners = owners0.clone();
+    let mut captures = [0usize; 2];
     let dt = 1.0 / FS as f64;
     let frames = (hours * 3600.0 * FS as f64) as u64;
     let mut tracks: BTreeMap<u32, Track> = BTreeMap::new();
@@ -500,6 +504,16 @@ fn campaign_soak() {
         if frame % FS as u64 != 0 {
             continue;
         }
+        for (k, p) in host.state.places.iter().enumerate() {
+            if owners.get(k).is_some_and(|&o| o != p.owner) {
+                match p.owner {
+                    Side::Blue => captures[0] += 1,
+                    Side::Red => captures[1] += 1,
+                    _ => {}
+                }
+                owners[k] = p.owner;
+            }
+        }
         // Once a second: every campaign aircraft.
         for i in 0..sim.flights().len() {
             let Some(f) = sim.campaign_flight(i) else { continue };
@@ -856,4 +870,65 @@ fn campaign_soak() {
         println!("{n:4} {k}  ({} / {} / {})", f[0], f[1], f[2]);
     }
     println!("{t:.0} s simulated");
+    // One line to compare runs by (`grep BALANCE`).
+    let st = &host.state;
+    let held = |owners: &[Side], side: Side, airfield: bool| {
+        st.places
+            .iter()
+            .zip(owners)
+            .filter(|(p, o)| **o == side && (!airfield || p.airfield.is_some()))
+            .count()
+    };
+    let now: Vec<Side> = st.places.iter().map(|p| p.owner).collect();
+    let flights = |blue: bool, role: Option<Role>| {
+        let all = tracks.values().filter(|t| t.blue == blue && (role.is_none() || t.role == role));
+        let lost = all.clone().filter(|t| t.destroyed).count();
+        (all.count(), lost)
+    };
+    let ground = |side: &str| {
+        ground_losses.iter().filter(|((s, ..), _)| *s == side).map(|(_, n)| n).sum::<usize>()
+    };
+    let cargo_lost = |side: Side| {
+        let all = cargo.values().filter(|(r, _)| r.side == side && r.road.is_none());
+        let lost = all.clone().filter(|(r, _)| st.cargo_lost.contains(&r.tag)).count();
+        (all.count(), lost)
+    };
+    let ai = |side: Side| missions.values().filter(|m| m.side == side).count();
+    let (bs, rs) = (flights(true, Some(Role::Supply)), flights(false, Some(Role::Supply)));
+    let (ba, ra) = (flights(true, None), flights(false, None));
+    let (bc, rc) = (cargo_lost(Side::Blue), cargo_lost(Side::Red));
+    println!(
+        "BALANCE {code} seed {seed} crew {} | places blue {}->{} red {}->{} | fields blue {}->{} red {}->{} | taken by blue {} red {} | materiel blue {:.0} red {:.0} | fighters blue {} red {} | ground lost blue {} red {} | air lost blue {}/{} red {}/{} | ai missions blue {} red {} | supply helos blue {}/{} red {}/{} | cargo planes blue {}/{} red {}/{}",
+        env("SOAK_CREW", 1usize),
+        held(&owners0, Side::Blue, false),
+        held(&now, Side::Blue, false),
+        held(&owners0, Side::Red, false),
+        held(&now, Side::Red, false),
+        held(&owners0, Side::Blue, true),
+        held(&now, Side::Blue, true),
+        held(&owners0, Side::Red, true),
+        held(&now, Side::Red, true),
+        captures[0],
+        captures[1],
+        st.forces(Side::Blue).materiel,
+        st.forces(Side::Red).materiel,
+        st.forces(Side::Blue).fighters,
+        st.forces(Side::Red).fighters,
+        ground("blue"),
+        ground("red"),
+        ba.1,
+        ba.0,
+        ra.1,
+        ra.0,
+        ai(Side::Blue),
+        ai(Side::Red),
+        bs.1,
+        bs.0,
+        rs.1,
+        rs.0,
+        bc.1,
+        bc.0,
+        rc.1,
+        rc.0,
+    );
 }
