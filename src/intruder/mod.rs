@@ -14,6 +14,7 @@
 //! displays out as they are drawn.
 
 pub mod computer;
+pub mod crew;
 pub mod scope;
 pub mod sight;
 pub mod terrain;
@@ -38,7 +39,14 @@ impl Plugin for IntruderPlugin {
             .add_systems(OnEnter(AppState::Flight), reset)
             .add_systems(
                 Update,
-                (computer::drive, computer::compute, terrain::scan, stream)
+                (
+                    crew::share,
+                    crew::automatic,
+                    computer::drive,
+                    computer::compute,
+                    terrain::scan,
+                    stream,
+                )
                     .chain()
                     .after(crate::combat::CombatSystems)
                     .run_if(in_state(AppState::Flight)),
@@ -362,9 +370,9 @@ pub enum Key {
     Action(u8),
 }
 
-const VDI_DISPLAYS: [VdiDisplay; 4] =
+pub(crate) const VDI_DISPLAYS: [VdiDisplay; 4] =
     [VdiDisplay::ContactAnalog, VdiDisplay::TerrainClearance, VdiDisplay::Standby, VdiDisplay::Off];
-const VDI_RANGES: [VdiRange; 5] =
+pub(crate) const VDI_RANGES: [VdiRange; 5] =
     [VdiRange::Mi4, VdiRange::Mi3, VdiRange::Mi2, VdiRange::Mi1, VdiRange::Test];
 pub const FLIGHT_MODES: [FlightMode; 6] = [
     FlightMode::Land,
@@ -656,16 +664,18 @@ fn next<T: Copy + PartialEq>(all: &[T], v: T) -> T {
     all[(i + 1) % all.len()]
 }
 
-const PHD_MODES: [PhdMode; 3] = [PhdMode::Tcppi, PhdMode::EScan, PhdMode::Search];
-const POWERS: [Power; 3] = [Power::On, Power::Standby, Power::Off];
-const CLEARANCES: [Clearance; 3] = [Clearance::Ft200, Clearance::Ft500, Clearance::Ft1000];
-const TRACKS: [TrackFunction; 3] =
+pub(crate) const PHD_MODES: [PhdMode; 3] = [PhdMode::Tcppi, PhdMode::EScan, PhdMode::Search];
+pub(crate) const POWERS: [Power; 3] = [Power::On, Power::Standby, Power::Off];
+pub(crate) const CLEARANCES: [Clearance; 3] =
+    [Clearance::Ft200, Clearance::Ft500, Clearance::Ft1000];
+pub(crate) const TRACKS: [TrackFunction; 3] =
     [TrackFunction::Display, TrackFunction::Track, TrackFunction::Boresight];
-const SCALES: [DisplayScale; 2] = [DisplayScale::Mi5, DisplayScale::Mi10];
-const SELECTS: [StationSelect; 3] =
+pub(crate) const SCALES: [DisplayScale; 2] = [DisplayScale::Mi5, DisplayScale::Mi10];
+pub(crate) const SELECTS: [StationSelect; 3] =
     [StationSelect::Bombs, StationSelect::Off, StationSelect::Rockets];
-const RELEASES: [ReleaseMode; 3] = [ReleaseMode::Salvo, ReleaseMode::Train, ReleaseMode::Step];
-const SEARCH_RANGES: [SearchRange; 4] =
+pub(crate) const RELEASES: [ReleaseMode; 3] =
+    [ReleaseMode::Salvo, ReleaseMode::Train, ReleaseMode::Step];
+pub(crate) const SEARCH_RANGES: [SearchRange; 4] =
     [SearchRange::Mi15, SearchRange::Mi30, SearchRange::Mi60, SearchRange::Mi150];
 
 impl IntruderPanel {

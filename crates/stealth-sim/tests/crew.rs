@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 
 use stealth_mission::{GameData, MissionKind, MissionSettings, Seed};
 use stealth_sim::aaa::{Fine, GroundKind, GroundUnit, M_PER_MAP};
-use stealth_sim::crew::{CrewCmd, GunnerAim, Seat, SharedPod};
+use stealth_sim::crew::{CrewCmd, GunnerAim, Seat, SharedPanel, SharedPod};
 use stealth_sim::*;
 
 struct Data {
@@ -593,4 +593,17 @@ fn the_intruders_bombardier_lays_its_pod() {
     assert!(!sim.pilot_input(0).cmd.trigger, "his trigger fires nothing");
     sim.step_pilots(&[(0, orbit(at, true))], 15);
     assert!(sim.pilot_input(0).cmd.trigger, "the pilot keeps his trigger");
+    // One panel for both seats: as the one who moved a control last has it; a stranger's is
+    // ignored, and a new crew starts with none.
+    assert_eq!(sim.crew_view(0).unwrap().shared_panel, None);
+    let panel = SharedPanel { by: 9, bits: [7; 16] };
+    sim.crew_command(1, CrewCmd::Panel(panel)).unwrap();
+    assert_eq!(sim.crew_view(0).unwrap().shared_panel, Some(SharedPanel { by: 1, ..panel }));
+    sim.crew_command(0, CrewCmd::Panel(SharedPanel { by: 0, bits: [3; 16] })).unwrap();
+    assert_eq!(sim.crew_view(1).unwrap().shared_panel.map(|p| (p.by, p.bits[0])), Some((0, 3)));
+    sim.crew_command(2, CrewCmd::Panel(panel)).unwrap();
+    assert_eq!(sim.crew_view(1).unwrap().shared_panel.map(|p| p.by), Some(0));
+    sim.crew_command(1, CrewCmd::Leave).unwrap();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_view(0).unwrap().shared_panel, None);
 }

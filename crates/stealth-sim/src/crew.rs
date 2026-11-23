@@ -72,6 +72,15 @@ pub struct SharedPod {
     pub track: Option<u16>,
 }
 
+/// The A-6 crew's panel, one for both seats: the switches and buttons as the crew member who
+/// last moved one has them (packed by the client, `intruder::crew`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct SharedPanel {
+    /// The player who moved a control (the server sets it to the sender).
+    pub by: u8,
+    pub bits: [u8; 16],
+}
+
 /// What a player does about a seat.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CrewCmd {
@@ -89,6 +98,8 @@ pub enum CrewCmd {
     Fire { station: u8 },
     /// The owner or his gunner moved the crew's targeting pod (sent while it is his).
     Pod(SharedPod),
+    /// The owner or his bombardier/navigator moved a control of the A-6's panel.
+    Panel(SharedPanel),
 }
 
 /// What a crew member's client is told of the aircraft he is in (with his own state): the
@@ -117,6 +128,9 @@ pub struct CrewView {
     /// The crew's targeting pod as the one who last moved it has it (None: neither has yet).
     #[serde(default)]
     pub shared_pod: Option<SharedPod>,
+    /// The A-6 crew's panel as the one who last moved a control has it.
+    #[serde(default)]
+    pub shared_panel: Option<SharedPanel>,
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
@@ -241,7 +255,10 @@ impl Sim {
                 }
                 self.activate(back);
                 // A new crew: each pod as it was until one of them moves it.
-                self.with_pilot(owner, |sim| sim.pl.crew_pod = None);
+                self.with_pilot(owner, |sim| {
+                    sim.pl.crew_pod = None;
+                    sim.pl.crew_panel = None;
+                });
                 Ok(())
             }
             CrewCmd::Leave => {
@@ -300,6 +317,19 @@ impl Sim {
                 if let Some(owner) = owner {
                     self.with_pilot(owner, |sim| {
                         sim.pl.crew_pod = Some(SharedPod { by: player, ..pod })
+                    });
+                }
+                Ok(())
+            }
+            CrewCmd::Panel(panel) => {
+                let owner = self
+                    .crews()
+                    .iter()
+                    .find(|c| c.gunner.is_some() && (c.owner == player || c.gunner == Some(player)))
+                    .map(|c| c.owner);
+                if let Some(owner) = owner {
+                    self.with_pilot(owner, |sim| {
+                        sim.pl.crew_panel = Some(SharedPanel { by: player, ..panel })
                     });
                 }
                 Ok(())
@@ -436,6 +466,7 @@ impl Sim {
             gun_firing: owner.gun_firing,
             engine: owner.last_input.engine,
             shared_pod: owner.crew_pod.filter(|_| c.gunner.is_some()),
+            shared_panel: owner.crew_panel.filter(|_| c.gunner.is_some()),
         })
     }
 
@@ -475,6 +506,7 @@ impl Sim {
         p.crew_aim = GunnerAim::default();
         p.crew_cmd = Commands::default();
         p.crew_pod = None;
+        p.crew_panel = None;
         let start = p.last_input.clone();
         self.pl = p;
         self.pl.rounds.resize(nb, Bullet::default());

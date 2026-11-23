@@ -280,6 +280,9 @@ pub struct Pilot {
     /// The owner's: the crew's targeting pod as the one who last moved it has it.
     #[serde(skip)]
     pub(crate) crew_pod: Option<crate::crew::SharedPod>,
+    /// The A-6 crew's panel as last moved (`CrewCmd::Panel`).
+    #[serde(skip)]
+    pub(crate) crew_panel: Option<crate::crew::SharedPanel>,
     #[serde(skip)]
     pub(crate) crew_launch: Option<u8>,
     #[serde(skip)]

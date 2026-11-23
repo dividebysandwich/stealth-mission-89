@@ -314,9 +314,22 @@ pub(super) fn compute(
     }
     c.impact = cues.ccip_dir.or(cues.rocket.map(|r| r.dir));
     if let Some(sim) = sim {
-        let (bays, cur) = sim.bays();
-        let weapon = bays.get(cur).map_or(-1, |b| b.0);
-        let (stations, _) = switched(&panel, bays, weapon);
+        let me = sim.active_pilot();
+        let stations = match sim.crew_view(me).filter(|v| v.owner != me) {
+            // In another's right seat: his stores, any station switched in that holds some.
+            Some(v) => STATION_BAYS
+                .iter()
+                .enumerate()
+                .filter(|(i, bay)| {
+                    panel.stations[*i] != StationSelect::Off
+                        && bay.and_then(|b| v.stores.get(b)).is_some_and(|s| s.0 >= 0 && s.1 > 0)
+                })
+                .count() as u8,
+            None => {
+                let (bays, cur) = sim.bays();
+                switched(&panel, bays, bays.get(cur).map_or(-1, |b| b.0)).0
+            }
+        };
         c.armed = panel.master_arm && stations > 0;
         c.reselect = panel.attack.is_some() && stations == 0;
     }
@@ -355,9 +368,10 @@ pub(super) fn compute(
         *logged = 0.0;
         let stores = sim.map(|s| s.bays().0.to_vec());
         println!(
-            "a6 t={:.0} mode {:?} ccrp {} armed {} range {:.0} steer {:.2} release {:?} in_range {} \
+            "a6 t={:.0} panel {:02x?} mode {:?} ccrp {} armed {} range {:.0} steer {:.2} release {:?} in_range {} \
              pull_up {} alt {:.0} stores {stores:?}",
             time.elapsed_secs(),
+            &panel.pack()[..10],
             hud.mode,
             hud.ccrp,
             c.armed,
