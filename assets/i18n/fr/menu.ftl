@@ -228,6 +228,11 @@ aircraft-ea18g =
         Attaque électronique, depuis les porte-avions
         Brouille les radars ennemis pour le raid
         Deux places : pilote et officier de guerre électronique
+aircraft-a6 =
+    .facts =
+        Avion d'attaque embarqué tout temps, deux membres d'équipage côte à côte
+        Subsonique, 6,5 g, sans postcombustion
+        Cockpit analogique : VDI et écrans radar
 aircraft-tornado =
     .facts =
         Avion d'attaque à basse altitude

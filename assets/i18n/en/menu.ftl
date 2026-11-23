@@ -228,6 +228,11 @@ aircraft-ea18g =
         Electronic attack, from the carriers
         Jams the enemy's radars for the strike
         Two seats: pilot and electronic warfare officer
+aircraft-a6 =
+    .facts =
+        Carrier all-weather attack aircraft, two crew side by side
+        Subsonic, 6.5 g, no afterburner
+        Analog cockpit: VDI and radar scopes
 aircraft-tornado =
     .facts =
         Low-level strike aircraft

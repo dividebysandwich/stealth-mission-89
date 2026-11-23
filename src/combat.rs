@@ -376,6 +376,7 @@ fn start_combat(
         crate::aircraft::AircraftKind::FA18E | crate::aircraft::AircraftKind::EA18G
     );
     let growler = settings.aircraft == crate::aircraft::AircraftKind::EA18G;
+    let intruder = settings.aircraft == crate::aircraft::AircraftKind::A6;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -395,6 +396,7 @@ fn start_combat(
             seahawk,
             hornet,
             growler,
+            intruder,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -416,6 +418,7 @@ fn start_combat(
             seahawk,
             hornet,
             growler,
+            intruder,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -1272,6 +1275,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "EA-18G"
     } else if p.hornet {
         "F/A-18E"
+    } else if p.intruder {
+        "A-6C"
     } else if p.galaxy {
         "C-5"
     } else if p.spectre {

@@ -228,6 +228,11 @@ aircraft-ea18g =
         Attakk elettroniku, mill-ġarriera
         Jxekkel ir-radars tal-għadu għall-attakk
         Żewġ sedili: pilota u uffiċjal tal-gwerra elettronika
+aircraft-a6 =
+    .facts =
+        Ajruplan tal-attakk għal kull temp mill-ġarrieri tal-ajruplani, żewġ ekwipaġġ ħdejn xulxin
+        Subsoniku, 6.5 g, mingħajr afterburner
+        Kokpit analogu: VDI u skrins tar-radar
 aircraft-tornado =
     .facts =
         Ajruplan ta' strike f'altitudni baxxa

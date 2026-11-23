@@ -346,6 +346,7 @@ mod tests {
         assert_eq!(t.aircraft[crate::strike_missiles::TU95 as usize].name, "Tu-95");
         assert_eq!(t.aircraft[crate::ai_missions::FA18E as usize].model, 79);
         assert_eq!(t.aircraft[crate::ai_missions::EA18G as usize].model, 81);
+        assert_eq!(t.aircraft[crate::ai_missions::A6 as usize].model, 27);
         assert_eq!(t.missiles.len(), 58);
         assert_eq!(t.missiles[crate::naval::SEA_MISSILE_SPEC as usize].name, "3M-54");
         assert_eq!((t.weapons.len(), t.compat.len()), (33, 33));

@@ -718,6 +718,9 @@ pub struct Airframe {
     /// ([`crate::jamming`]), an electronic warfare officer's seat behind the pilot.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub growler: bool,
+    /// The A-6 Intruder (external stores, as the F-16): no cannon.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub intruder: bool,
 }
 
 /// Landing option.
@@ -798,6 +801,9 @@ pub struct SimOptions {
     /// The aircraft is the EA-18G Growler (with `hornet`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub growler: bool,
+    /// The aircraft is the A-6 Intruder: seen as one by the other pilots, no cannon.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub intruder: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -854,6 +860,7 @@ impl Default for SimOptions {
             seahawk: false,
             hornet: false,
             growler: false,
+            intruder: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

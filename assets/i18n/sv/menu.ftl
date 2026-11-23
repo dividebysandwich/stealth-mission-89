@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronisk attack, från hangarfartygen
         Stör fiendens radar inför anfallet
         Två säten: pilot och telekrigsofficer
+aircraft-a6 =
+    .facts =
+        Hangarfartygsbaserat allvädersattackflygplan, två mans besättning sida vid sida
+        Underljud, 6,5 g, ingen efterbrännkammare
+        Analog cockpit: VDI och radarskärmar
 aircraft-tornado =
     .facts =
         Attackflygplan för låg höjd

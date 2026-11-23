@@ -228,6 +228,11 @@ aircraft-ea18g =
         Serangan elektronik, dari kapal induk
         Mengacau radar musuh untuk serangan
         Dua kursi: pilot dan perwira peperangan elektronik
+aircraft-a6 =
+    .facts =
+        Pesawat serang segala cuaca dari kapal induk, dua awak berdampingan
+        Subsonik, 6,5 g, tanpa afterburner
+        Kokpit analog: VDI dan layar radar
 aircraft-tornado =
     .facts =
         Pesawat serang terbang rendah

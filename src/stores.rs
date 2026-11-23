@@ -21,7 +21,7 @@ use crate::world::WorldPos;
 /// Seconds a store that has left is drawn going over from its rail to its flight path.
 const RELEASE_BLEND: f32 = 0.5;
 /// State slot hiding the AI's own wingtip Sidewinders on the flyable F-16 (its stores are hung
-/// here instead); 1 on the own aircraft.
+/// here instead) and showing the flown A-6's TRIM pod; 1 on the own aircraft.
 pub const STORES_SLOT: usize = 28;
 /// The camera pod's and the fuel tank's weapon types: never released.
 const CAMERA: i32 = 16;
@@ -439,6 +439,7 @@ mod tests {
             AircraftKind::F16,
             AircraftKind::FA18E,
             AircraftKind::EA18G,
+            AircraftKind::A6,
             AircraftKind::Tornado,
             AircraftKind::A10,
             AircraftKind::AV8B,

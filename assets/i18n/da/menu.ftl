@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronisk angreb, fra hangarskibene
         Forstyrrer fjendens radarer for angrebet
         To sæder: pilot og officer for elektronisk krigsførelse
+aircraft-a6 =
+    .facts =
+        Hangarskibsbaseret altvejrs-angrebsfly, to mand side om side
+        Subsonisk, 6,5 g, ingen efterbrænder
+        Analogt cockpit: VDI og radarskærme
 aircraft-tornado =
     .facts =
         Angrebsfly til lav højde

@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektroninen hyökkäys, lentotukialuksilta
         Häiritsee vihollisen tutkia iskun tieltä
         Kaksi istuinta: lentäjä ja elektronisen sodankäynnin upseeri
+aircraft-a6 =
+    .facts =
+        Lentotukialusten jokasään rynnäkkökone, kaksi miehistön jäsentä rinnakkain
+        Aliääninen, 6,5 g, ei jälkipoltinta
+        Analoginen ohjaamo: VDI ja tutkanäytöt
 aircraft-tornado =
     .facts =
         Matalalento-iskukone

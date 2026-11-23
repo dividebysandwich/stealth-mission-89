@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronische aanval, vanaf de vliegdekschepen
         Stoort de vijandelijke radars voor de aanval
         Twee zitplaatsen: piloot en officier elektronische oorlogvoering
+aircraft-a6 =
+    .facts =
+        Alweer-aanvalsvliegtuig van de vliegdekschepen, twee man naast elkaar
+        Subsonisch, 6,5 g, geen naverbrander
+        Analoge cockpit: VDI en radarschermen
 aircraft-tornado =
     .facts =
         Aanvalsvliegtuig voor lage hoogte

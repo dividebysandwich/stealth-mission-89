@@ -268,6 +268,25 @@ impl FlightConstants {
         }
     }
 
+    /// A-6C Intruder: subsonic (the classic model's top speed about 520 kt with full tanks, 580
+    /// kt at most), 6.5 g, a slow roll, 15,800 lb of fuel for its two J52 turbojets; the
+    /// autopilot follows the terrain.
+    pub fn a6() -> Self {
+        Self {
+            thrust_to_knots: 8.0,
+            max_knots: 580.0,
+            stall_knots: 110.0,
+            fuel_div: 750.0,
+            fuel: 15800.0,
+            bingo: 3000.0,
+            max_gees: 104.0,
+            roll_rate: 1.2,
+            aero: modern::Aero::A6,
+            terrain_following: true,
+            ..default()
+        }
+    }
+
     /// AV-8B Harrier II: vectored thrust, the classic model's top speed about 570 kt, 8 g; it
     /// starts with 6,000 lb of its 7,750 lb of fuel, light enough to take off vertically, and
     /// the Pegasus burns it fast.
@@ -1746,6 +1765,41 @@ mod tests {
         let c = fly_with(k(), true, level(airborne(1000.0, 300.0, 100.0)), 120.0, |_, _| {}).0;
         println!("A-10 classic: max speed {:.0} kt", c.knots());
         assert!((340.0..420.0).contains(&c.knots()), "classic {}", c.knots());
+    }
+
+    /// A-6C (modern): about 560 kt low down at full throttle, subsonic at altitude, no
+    /// afterburner; a slow approach with its slats and flaps down; 6.5 g.
+    #[test]
+    fn a6_performance() {
+        let k = FlightConstants::a6;
+        assert!(!k().afterburner() && k().terrain_following);
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 450.0, 100.0), 240.0);
+        println!("A-6: max speed at 1000 ft: {:.0} kt", a.knots());
+        assert!((520.0..600.0).contains(&a.knots()), "sea level {}", a.knots());
+        let a = run(airborne(36000.0, 420.0, 100.0), 400.0);
+        let mach = a.knots() / 573.6;
+        println!("A-6: max speed at 36000 ft: {:.0} kt (Mach {mach:.2})", a.knots());
+        assert!((0.70..0.90).contains(&mach), "at altitude {}", a.knots());
+        let mut slow = airborne(1000.0, 180.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("A-6: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((90.0..115.0).contains(&flaps), "flaps {flaps}");
+        assert!(flaps < clean - 15.0, "clean {clean}");
+        let mut peak: f32 = 0.0;
+        fly_with(k(), false, airborne(10000.0, 500.0, 100.0), 5.0, |a, c| {
+            c.pitch = 1.0;
+            peak = peak.max(a.gees / 16.0);
+        });
+        println!("A-6: peak load {peak:.1} g");
+        assert!((6.0..6.6).contains(&peak), "peak {peak}");
+        // The classic model's top speed.
+        let c = fly_with(k(), true, level(airborne(1000.0, 450.0, 100.0)), 120.0, |_, _| {}).0;
+        println!("A-6 classic: max speed {:.0} kt", c.knots());
+        assert!((520.0..600.0).contains(&c.knots()), "classic {}", c.knots());
     }
 
     /// C-5 Galaxy (always the modern model): about Mach 0.8 at altitude, its cruise; a 1 g

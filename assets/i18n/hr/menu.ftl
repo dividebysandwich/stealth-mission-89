@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronički napad, s nosača
         Ometa neprijateljske radare za napad
         Dva sjedala: pilot i časnik elektroničkog ratovanja
+aircraft-a6 =
+    .facts =
+        Palubni jurišni zrakoplov za sve vremenske uvjete, dva člana posade jedan do drugoga
+        Podzvučni, 6,5 g, bez naknadnog izgaranja
+        Analogni kokpit: VDI i radarski zasloni
 aircraft-tornado =
     .facts =
         Jurišni zrakoplov za niske visine

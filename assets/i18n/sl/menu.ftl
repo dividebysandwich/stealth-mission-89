@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronski napad, z letalonosilk
         Moti sovražne radarje za napad
         Dva sedeža: pilot in častnik za elektronsko bojevanje
+aircraft-a6 =
+    .facts =
+        Palubno jurišno letalo za vse vremenske razmere, dva člana posadke drug ob drugem
+        Podzvočno, 6,5 g, brez dodatnega zgorevanja
+        Analogna kabina: VDI in radarski zasloni
 aircraft-tornado =
     .facts =
         Jurišno letalo za nizko letenje

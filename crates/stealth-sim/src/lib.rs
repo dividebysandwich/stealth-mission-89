@@ -458,6 +458,7 @@ impl Sim {
         let seahawk = opts.seahawk;
         let hornet = opts.hornet;
         let growler = opts.growler;
+        let intruder = opts.intruder;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -512,6 +513,7 @@ impl Sim {
                 seahawk,
                 hornet,
                 growler,
+                intruder,
                 side_guns: Default::default(),
                 cargo_tag: None,
                 unload: [0; 2],
@@ -1340,12 +1342,14 @@ impl Sim {
         self.pl.gun_firing
     }
 
-    /// The aircraft has a cannon (the real F-117A and the transport helicopter have none), or
+    /// The aircraft has a cannon (the real F-117A, the A-6 and the transport helicopter have
+    /// none), or
     /// a helicopter without a turret a machine gun pod on a pylon.
     pub fn has_gun(&self) -> bool {
         !self.pl.lockheed
             && !self.pl.galaxy
             && !self.pl.spectre
+            && !self.pl.intruder
             && (!self.pl.helicopter
                 || self.pl.gunship
                 || self.pl.bays.iter().any(|b| self.gun_pod(b.0)))

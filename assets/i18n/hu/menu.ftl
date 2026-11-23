@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronikus támadás, a repülőgép-hordozókról
         Zavarja az ellenség radarjait a csapás előtt
         Két ülés: pilóta és elektronikai hadviselési tiszt
+aircraft-a6 =
+    .facts =
+        Hordozófedélzeti, minden időjárási csapásmérő repülőgép, kétfős személyzet egymás mellett
+        Szubszonikus, 6,5 g, utánégető nélkül
+        Analóg pilótafülke: VDI és radarernyők
 aircraft-tornado =
     .facts =
         Kis magasságú csapásmérő repülőgép

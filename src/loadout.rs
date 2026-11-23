@@ -1245,14 +1245,69 @@ static FA18E_STATIONS: [Hardpoint; 11] = [
     pylon("hardpoint-fa18e-10-right-outer-wing", "10", 4.60, 11.75, Some(1), &FA18E_OUTER),
     pylon("hardpoint-fa18e-11-right-wingtip", "11", 6.78, 11.80, Some(0), &SIDEWINDER),
 ];
-/// The A-6C's wing stations 1, 2, 4 and 5 (the TRIM pod is on the centreline station 3).
-#[allow(dead_code)]
+/// The A-6C's wing pylons take the Sidewinder, the anti-radar, anti-ship and Maverick missiles,
+/// the bombs, the rocket pods and the tanks.
+const A6_WING: [u8; 15] = [0, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, HYDRA];
+/// The A-6C's wing stations 1, 2, 4 and 5 (station 3, the centreline, carries its TRIM sensor
+/// pod: not a hardpoint).
 static A6_STATIONS: [Hardpoint; 4] = [
-    pylon("hardpoint-station-3-left-wing", "1", -3.68, 6.95, Some(3), &FA18E_WING),
-    pylon("hardpoint-station-4-left-inner-wing", "2", -2.50, 6.70, Some(2), &FA18E_WING),
-    pylon("hardpoint-fa18e-8-right-inner-wing", "4", 2.50, 6.70, Some(1), &FA18E_WING),
-    pylon("hardpoint-a10-9-right-wing", "5", 3.68, 6.95, Some(0), &FA18E_WING),
+    pylon("hardpoint-a6-1-left-outer-wing", "1", -3.68, 6.95, Some(3), &A6_WING),
+    pylon("hardpoint-a6-2-left-inner-wing", "2", -2.50, 6.70, Some(2), &A6_WING),
+    pylon("hardpoint-a6-4-right-inner-wing", "4", 2.50, 6.70, Some(1), &A6_WING),
+    pylon("hardpoint-a6-5-right-outer-wing", "5", 3.68, 6.95, Some(0), &A6_WING),
 ];
+/// aircraft_027 (tools/models/aircraft.py `a6`) seen from above: half span 8.12 m, length
+/// 16.36 m.
+const A6_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.28, 0.12),
+    (0.66, 0.66),
+    (0.82, 1.12),
+    (0.94, 2.18),
+    (1.22, 2.20),
+    (1.24, 2.26),
+    (1.36, 4.00),
+    (1.98, 4.80),
+    (7.96, 7.94),
+    (8.12, 8.28),
+    (8.12, 9.26),
+    (8.04, 9.30),
+    (1.26, 8.58),
+    (1.26, 9.08),
+    (0.82, 9.14),
+    (0.50, 12.84),
+    (2.92, 14.42),
+    (3.24, 14.94),
+    (3.24, 15.34),
+    (2.92, 15.40),
+    (0.54, 14.76),
+    (0.30, 14.76),
+    (0.00, 16.36),
+    (-0.30, 14.76),
+    (-0.54, 14.76),
+    (-2.92, 15.40),
+    (-3.24, 15.34),
+    (-3.24, 14.94),
+    (-2.92, 14.42),
+    (-0.50, 12.84),
+    (-0.82, 9.14),
+    (-1.26, 9.08),
+    (-1.26, 8.58),
+    (-8.04, 9.30),
+    (-8.12, 9.26),
+    (-8.12, 8.28),
+    (-7.96, 7.94),
+    (-1.98, 4.80),
+    (-1.36, 4.00),
+    (-1.24, 2.26),
+    (-1.22, 2.20),
+    (-0.94, 2.18),
+    (-0.82, 1.12),
+    (-0.66, 0.66),
+    (-0.28, 0.12),
+];
+static A6_LAYOUT: Layout =
+    Layout { outline: A6_OUTLINE, half_span: 8.12, length: 16.36, hardpoints: &A6_STATIONS };
 /// The EA-18G's stations 2 to 10 (its wingtips hold the ALQ-218 receivers): the ALQ-99 pods on
 /// the centreline and the middle wing pylons, HARMs and MALDs outboard, AMRAAMs on the
 /// nacelles, tanks inboard.
@@ -1715,6 +1770,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::F22 => &F22_LAYOUT,
         AircraftKind::FA18E => &FA18E_LAYOUT,
         AircraftKind::EA18G => &EA18G_LAYOUT,
+        AircraftKind::A6 => &A6_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::MH60R => &MH60R_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
@@ -1808,7 +1864,7 @@ impl Remembered {
 
 impl PlannedLoadout {
     /// The generator's stores: in the F-117A's bays as they are, on the F-16, the Tornado, the
-    /// A-10 and the AV-8B each on the first free pair of stations that carries it, and Sidewinders on the free
+    /// A-10, the A-6 and the AV-8B each on the first free pair of stations that carries it, and Sidewinders on the free
     /// wingtips or rails; the AH-1Z and the AH-64 full, the RAH-66 with Hellfires in both bays, the OH-58D
     /// with Hellfires on the left and a gun pod on the right.
     pub fn of(m: &Mission, aircraft: AircraftKind) -> Self {
@@ -1876,11 +1932,13 @@ impl PlannedLoadout {
             }
             AircraftKind::F16
             | AircraftKind::FA18E
+            | AircraftKind::A6
             | AircraftKind::Tornado
             | AircraftKind::A10
             | AircraftKind::AV8B => {
                 let tornado = aircraft == AircraftKind::Tornado;
                 let hornet = aircraft == AircraftKind::FA18E;
+                let intruder = aircraft == AircraftKind::A6;
                 let a10 = aircraft == AircraftKind::A10;
                 let harrier = aircraft == AircraftKind::AV8B;
                 // The mission's camera or cargo first: its station must not be blocked.
@@ -1901,6 +1959,10 @@ impl PlannedLoadout {
                         17 if hornet => &[5, 3],
                         4 if hornet => &[3, 2],
                         _ if hornet => &[3, 2, 1],
+                        // The A-6's two pairs: the missiles outboard, the tanks and the
+                        // bombs inboard first.
+                        0 | 2 | 5 if intruder => &[0, 1],
+                        _ if intruder => &[1, 0],
                         0 if a10 => &[0],
                         16 | 18 if a10 => &[5],
                         17 if a10 => &[3],

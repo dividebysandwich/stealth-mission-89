@@ -88,7 +88,7 @@ impl AiLoadout {
     /// jets a pair of Sidewinders (the F-16, F-22 and F/A-18E AMRAAMs too), the enemy's AA-8s (the
     /// Su-34 AA-10s and AA-11s); the F-117A nothing.
     pub fn self_defence(spec: i32, blue: bool) -> Self {
-        use crate::ai_missions::{A10, AV8B, EA18G, F16, F22, FA18E, TORNADO};
+        use crate::ai_missions::{A6, A10, AV8B, EA18G, F16, F22, FA18E, TORNADO};
         let store = |missile, count, seeker| Store { missile, count, seeker };
         let mut stores = [Store::default(); 3];
         match spec {
@@ -96,7 +96,7 @@ impl AiLoadout {
                 stores[0] = store(AIM120, 2, Seeker::Radar);
                 stores[1] = store(AIM9, 2, Seeker::Ir);
             }
-            TORNADO | AV8B | A10 => stores[0] = store(AIM9, 2, Seeker::Ir),
+            TORNADO | AV8B | A10 | A6 => stores[0] = store(AIM9, 2, Seeker::Ir),
             31 if !blue => {
                 stores[0] = store(21, 2, Seeker::Radar);
                 stores[1] = store(AA11, 2, Seeker::Ir);

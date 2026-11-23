@@ -29,7 +29,7 @@ AIRCRAFT = [("F117_OUTLINE", "aircraft_024"), ("F16_OUTLINE", "aircraft_023"), (
             ("TORNADO_OUTLINE", "aircraft_045"), ("A10_OUTLINE", "aircraft_032"), ("AV8B_OUTLINE", "aircraft_047"),
             ("OH58_OUTLINE", "aircraft_048_lod0"), ("CH47_OUTLINE", "aircraft_049_lod0"), ("F22_OUTLINE", "aircraft_075"),
             ("C5_OUTLINE", "aircraft_030"), ("C130_OUTLINE", "aircraft_076"), ("AH64_OUTLINE", "aircraft_077_lod0"),
-            ("FA18E_OUTLINE", "aircraft_079")]
+            ("FA18E_OUTLINE", "aircraft_079"), ("A6_OUTLINE", "aircraft_027")]
 WITH_PARTS = {"aircraft_045"}
 
 

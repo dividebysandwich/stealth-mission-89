@@ -1648,6 +1648,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::F22,
         Aircraft::AH64,
         Aircraft::FA18E,
+        Aircraft::A6,
     ];
     for k in kinds {
         for last in all {
@@ -1686,6 +1687,12 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(AntiShip.pick(Aircraft::FA18E), Aircraft::FA18E);
     assert_eq!(Cas.pick(Aircraft::FA18E), Aircraft::FA18E);
     assert_eq!(Csar.pick(Aircraft::FA18E), Aircraft::UH60);
+    // The A-6 flies the attack missions, never the fighters'.
+    assert_eq!(Interdiction.pick(Aircraft::A6), Aircraft::A6);
+    assert_eq!(Sead.pick(Aircraft::A6), Aircraft::A6);
+    assert_eq!(AntiShip.pick(Aircraft::A6), Aircraft::A6);
+    assert_eq!(Cas.pick(Aircraft::A6), Aircraft::A6);
+    assert_eq!(Cap.pick(Aircraft::A6), Aircraft::F16);
     // The CH-47 and the C-5 drop paratroopers on an insertion's place.
     assert_eq!(Insertion.pick(Aircraft::CH47), Aircraft::CH47);
     assert_eq!(Insertion.pick(Aircraft::C5), Aircraft::C5);

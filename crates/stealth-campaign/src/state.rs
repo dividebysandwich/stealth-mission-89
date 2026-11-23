@@ -58,6 +58,8 @@ pub enum Aircraft {
     /// The EA-18G Growler: the Super Hornet's jamming two-seater, an electronic warfare
     /// officer's seat behind the pilot (multi-crew).
     EA18G,
+    /// The A-6C Intruder: the carriers' all-weather attack aircraft, stores on its wings.
+    A6,
 }
 
 impl Aircraft {
@@ -80,6 +82,7 @@ impl Aircraft {
             Aircraft::MH60R => "MH-60R",
             Aircraft::FA18E => "F/A-18E",
             Aircraft::EA18G => "EA-18G",
+            Aircraft::A6 => "A-6C",
         }
     }
 
@@ -357,12 +360,14 @@ impl MissionKind {
             MissionKind::Recon | MissionKind::Strike => {
                 &[F117, F16, Tornado, A10, AV8B, F22, FA18E]
             }
-            MissionKind::AntiShip => &[F117, F16, Tornado, F22, FA18E],
-            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22, FA18E],
-            MissionKind::Sead => &[F16, EA18G, Tornado, F117, F22, FA18E],
+            MissionKind::AntiShip => &[F117, F16, Tornado, F22, FA18E, A6],
+            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22, FA18E, A6],
+            MissionKind::Sead => &[F16, EA18G, Tornado, F117, F22, FA18E, A6],
             MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22, FA18E],
             MissionKind::Intercept => &[F16, F22, FA18E, AH1Z, AH64, RAH66, OH58],
-            MissionKind::Cas => &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, FA18E, Tornado, F117],
+            MissionKind::Cas => {
+                &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, FA18E, Tornado, F117, A6]
+            }
             MissionKind::Escort => &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, FA18E, EA18G, A10],
             MissionKind::Insertion => &[UH60, CH47, C5],
             MissionKind::Csar => &[UH60],

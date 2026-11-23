@@ -24,6 +24,8 @@ pub const CH47: i32 = 43;
 pub const AH64: i32 = 44;
 pub const FA18E: i32 = 46;
 pub const EA18G: i32 = 47;
+/// The A-6 Intruder: an AI type from the start (units.ron), flown by players too.
+pub const A6: i32 = 24;
 
 /// The other side's ground units this close to a CAS flight's point are its targets (map
 /// units, 5 km).

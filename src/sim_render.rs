@@ -2324,13 +2324,15 @@ pub(crate) fn sync_remote_pilots(
                 // As the own model: the gear (slots 5, 6: down 3 .. up 0), the bay doors, the
                 // lights.
                 let gear = if p.gear_up && !p.on_ground { 0 } else { 3 };
+                // (The A-6's slot 28 group is its TRIM pod: on every flown one, stores or not.)
+                let hung = loads.is_some() || p.intruder;
                 let v = [
                     (5, (gear != 0) as i16),
                     (6, gear - 1),
                     (8, p.door_anim.min(2) as i16),
                     (10, lights as i16),
                     (11, lights as i16),
-                    (crate::stores::STORES_SLOT, loads.is_some() as i16),
+                    (crate::stores::STORES_SLOT, hung as i16),
                 ];
                 if v.iter().any(|&(k, x)| s.0[k] != x) {
                     for (k, x) in v {

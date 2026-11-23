@@ -542,6 +542,50 @@ impl Aero {
         vtol: None,
     };
 
+    /// A-6C Intruder: two J52-P-8 turbojets (17,400 lb static) against 43,000 lb with full
+    /// internal fuel (15,800 lb), a big moderately swept wing (529 ft^2, 81 lb/ft^2) with
+    /// full-span slats and flaps, draggy under load with its pylons: about 560 kt low down,
+    /// Mach 0.9 at altitude, a slow approach, 6.5 g, no afterburner.
+    pub const A6: Aero = Aero {
+        wing_loading: 81.0,
+        dry_weight: 27_200.0,
+        ref_weight: 43_000.0,
+        thrust_ratio: 0.405,
+        ab_thrust_ratio: 0.0,
+        ab_thrust_mach: 0.0,
+        // Turbojets, but in a blunt airframe: the installed thrust falls off with speed (it
+        // stands for the drag rise of the thick wing and the stores at high subsonic speed).
+        thrust_mach: -0.5,
+        cl_alpha: 4.5,
+        alpha_stall: 0.30,
+        alpha_stall_neg: -0.20,
+        alpha_limit: 0.27,
+        alpha_limit_neg: -0.18,
+        cl_flaps: 0.8,
+        alpha_flaps: 0.04,
+        cd0: 0.0168,
+        cd_k: 0.13,
+        cd_sep: 0.5,
+        cl_sep: 1.0,
+        cd_gear: 0.02,
+        cd_flaps: 0.06,
+        // The wingtips split open as speed brakes.
+        cd_speed_brake: 0.12,
+        cd_bay: 0.0,
+        cd_idle: 0.02,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Subsonic,
+        n_max: 6.5,
+        n_min: -2.4,
+        roll_rate: 2.2,
+        pitch_rate_max: 0.5,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        rotate_rate: ROTATE_RATE,
+        swing_wing: None,
+        vtol: None,
+    };
+
     /// AV-8B Harrier II: one Pegasus 11-61 (23,800 lb) against 21,750 lb with full internal
     /// fuel, a little less with the bleed to the reaction controls: it hovers at about 90% with
     /// the 6,000 lb of fuel it starts with. A thick supercritical wing (89

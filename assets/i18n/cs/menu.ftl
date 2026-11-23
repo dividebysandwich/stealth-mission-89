@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronický útok, z letadlových lodí
         Ruší nepřátelské radiolokátory pro úder
         Dvě sedadla: pilot a důstojník elektronického boje
+aircraft-a6 =
+    .facts =
+        Palubní útočný letoun do každého počasí, dva členové posádky vedle sebe
+        Podzvukový, 6,5 g, bez přídavného spalování
+        Analogový kokpit: VDI a radarové obrazovky
 aircraft-tornado =
     .facts =
         Útočný letoun pro nízké výšky

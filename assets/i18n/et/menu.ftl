@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektrooniline rünnak, lennukikandjatelt
         Segab rünnaku eel vaenlase radareid
         Kaks istet: piloot ja elektroonilise sõjapidamise ohvitser
+aircraft-a6 =
+    .facts =
+        Lennukikandjate iga ilma ründelennuk, kaks meeskonnaliiget kõrvuti
+        Alahelikiirus, 6,5 g, järelpõletita
+        Analoog-cockpit: VDI ja radariekraanid
 aircraft-tornado =
     .facts =
         Madallennu ründelennuk

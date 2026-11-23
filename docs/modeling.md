@@ -309,7 +309,7 @@ information. The name is what counts.
 | 5 | Aircraft with a gear | 1 while the gear is not fully up: [landing gear](#landing-gear). The AI's: on the ground, taking off and landing. |
 | 6, 7 | The flown aircraft (6 also other pilots') | 6: the gear's travel, -1 up, 0 and 1 on the way, 2 fully down; 7: 1 while braking on the ground. |
 | 8 | The flown aircraft, other pilots' | [Weapon bay doors](#weapon-bays): 0 shut, 1 half open, 2 open. |
-| 28 | Flyable jets | 1 on the flown aircraft and other pilots' with stores: the game hangs [the stores](#external-stores), so geometry under `_s28v0` (an AI's baked missiles) is hidden. |
+| 28 | Flyable jets | 1 on the flown aircraft and other pilots' with stores: the game hangs [the stores](#external-stores), so geometry under `_s28v0` (an AI's baked missiles) is hidden. Geometry under `_s28v1` is only on the flown aircraft, the other pilots' too (the A-6C's TRIM pod, which the AI's A-6 does not carry). |
 | 18 | Aircraft | White strobe, single flash once a second (fighters' fin tips). |
 | 19 | Aircraft | White strobe, double flash (transports' wingtips). |
 | 20 | Aircraft | Red rotating beacon (top and bottom of the fuselage). |

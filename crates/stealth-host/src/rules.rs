@@ -105,6 +105,10 @@ impl Rules {
                 growler: true,
                 ..Airframe::default()
             },
+            // Stores on its wings, no cannon.
+            Aircraft::A6 => {
+                Airframe { external_stores: true, intruder: true, ..Airframe::default() }
+            }
             // Weapons in bays as the F-117A's, a cannon, a lower radar return.
             Aircraft::F22 => Airframe { raptor: true, ..Airframe::default() },
             // No weapons, no cannon; cargo inside, dropped over the ramp (its "bay").

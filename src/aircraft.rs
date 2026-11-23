@@ -28,6 +28,7 @@ pub enum AircraftKind {
     MH60R,
     FA18E,
     EA18G,
+    A6,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -313,6 +314,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         47 => Some(HARRIER_LIFT - RUNWAY_Y),
         75 => Some(F22_LIFT - RUNWAY_Y),
         79 | 81 => Some(FA18E_LIFT - RUNWAY_Y),
+        27 => Some(A6_LIFT - RUNWAY_Y),
         30 => Some(C5_LIFT - RUNWAY_Y),
         76 => Some(C130_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
@@ -340,6 +342,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         49 => ch47_point(0.0, 6.4, 1.38) - Vec3::Y * CH47_LIFT,
         75 => f22_point(0.0, 5.30, -1.05) - Vec3::Y * F22_LIFT,
         79 | 81 => fa18e_point(0.0, 5.75, -0.50) - Vec3::Y * FA18E_LIFT,
+        27 => a6_point(0.0, 2.25, -1.00) - Vec3::Y * A6_LIFT,
         30 => c5_point(0.0, 27.0, -3.9) - Vec3::Y * C5_LIFT,
         76 => c130_point(0.0, 11.35, -2.0) - Vec3::Y * C130_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
@@ -1100,6 +1103,59 @@ static EA18G: AircraftSpec = AircraftSpec {
     flight: FlightConstants::fa18e,
 };
 
+/// The A-6's wheels are 1.95 m below its model origin (tools/models/aircraft.py `A6_GROUND`).
+const A6_LIFT: f32 = 1.95 + RUNWAY_Y;
+/// A point of the A-6's builder (tools/models/aircraft.py `a6`: metres, x right, s aft of the
+/// nose, z up from the nose tip) in the aircraft frame: the model is centred on its length, its
+/// middle 8.19 m behind the nose.
+const fn a6_point(x: f32, s: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(A6_LIFT, x * K, z * K, -(8.19 - s) * K)
+}
+
+/// The A-6C Intruder: the pilot in the left of its two side-by-side seats, no gun, no
+/// afterburner. Its cockpit is the A-10's for now.
+static A6: AircraftSpec = AircraftSpec {
+    model: "aircraft_027",
+    model_lift: A6_LIFT,
+    // The left seat under the wide canopy (s 1.9..4.05 m, half width about 0.85 m, top z 1.72
+    // m here), 0.37 m under its top.
+    eye: a6_point(-0.36, 3.05, 1.35),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        // Round both seats: the bombardier/navigator's is 0.72 m to the right, 0.15 m aft.
+        cut: (Vec3::new(-0.50, -1.15, -1.05), Vec3::new(1.22, 0.40, 0.95)),
+        two_sided: false,
+        parts: false,
+    }),
+    cockpits: &[(PanelStyle::A10, "cockpit_a10")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    // The A-10's cockpit's.
+    hud_scale: 1900.0,
+    vr_hud_scale: 1900.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    hmd: Hmd::None,
+    // No gun.
+    muzzle: None,
+    sight: None,
+    // Between the two exhausts on the fuselage's sides, under the wing's trailing edge.
+    exhaust: a6_point(0.0, 9.0, -0.33),
+    nozzles: &[],
+    nozzle_radius: 0.0,
+    nozzle_rect: None,
+    swing_wing: false,
+    vtol: false,
+    ground_radar: true,
+    asw: false,
+    gunner_seat: None,
+    console: None,
+    flight: FlightConstants::a6,
+};
+
 /// The C-5's wheels are 5.72 m below its model origin (tools/models/aircraft.py `C5_GROUND`).
 const C5_LIFT: f32 = 5.72 + RUNWAY_Y;
 /// A point of the C-5's builder (tools/models/aircraft.py `c5`: metres, x right, y forward from
@@ -1285,12 +1341,13 @@ impl AircraftKind {
         matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
     }
 
-    pub const ALL: [AircraftKind; 17] = [
+    pub const ALL: [AircraftKind; 18] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::F22,
         AircraftKind::FA18E,
         AircraftKind::EA18G,
+        AircraftKind::A6,
         AircraftKind::Tornado,
         AircraftKind::A10,
         AircraftKind::AV8B,
@@ -1333,6 +1390,8 @@ impl AircraftKind {
             AircraftKind::EA18G
         } else if p.hornet {
             AircraftKind::FA18E
+        } else if p.intruder {
+            AircraftKind::A6
         } else if p.galaxy {
             AircraftKind::C5
         } else if p.spectre {
@@ -1363,6 +1422,7 @@ impl AircraftKind {
             AircraftKind::MH60R => &MH60R,
             AircraftKind::FA18E => &FA18E,
             AircraftKind::EA18G => &EA18G,
+            AircraftKind::A6 => &A6,
         }
     }
 
@@ -1386,6 +1446,7 @@ impl AircraftKind {
             AircraftKind::MH60R => "mh60r",
             AircraftKind::FA18E => "fa18e",
             AircraftKind::EA18G => "ea18g",
+            AircraftKind::A6 => "a6",
         }
     }
 
@@ -1416,6 +1477,8 @@ impl AircraftKind {
                 ) && *k == AircraftKind::FA18E)
                 || (matches!(s.as_str(), "growler" | "ea18" | "e/a18g")
                     && *k == AircraftKind::EA18G)
+                || (matches!(s.as_str(), "intruder" | "a6c" | "a6e" | "a6a")
+                    && *k == AircraftKind::A6)
                 || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m")
                     && *k == AircraftKind::C5)
                 || (matches!(s.as_str(), "c130" | "gunship" | "spectre" | "ac130h" | "ac130u")
@@ -1442,6 +1505,7 @@ impl AircraftKind {
             AircraftKind::MH60R => "MH-60R Seahawk",
             AircraftKind::FA18E => "F/A-18E Super Hornet",
             AircraftKind::EA18G => "EA-18G Growler",
+            AircraftKind::A6 => "A-6C Intruder",
         }
     }
 }
@@ -1514,6 +1578,7 @@ mod tests {
             AircraftKind::F22,
             AircraftKind::FA18E,
             AircraftKind::EA18G,
+            AircraftKind::A6,
         ] {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(
@@ -1664,6 +1729,8 @@ mod tests {
         assert_eq!(AircraftKind::parse("Kiowa"), Some(AircraftKind::OH58));
         assert_eq!(AircraftKind::parse("C-5"), Some(AircraftKind::C5));
         assert_eq!(AircraftKind::parse("Galaxy"), Some(AircraftKind::C5));
+        assert_eq!(AircraftKind::parse("A-6C"), Some(AircraftKind::A6));
+        assert_eq!(AircraftKind::parse("Intruder"), Some(AircraftKind::A6));
     }
 
     /// The C-5's eye: in the left seat behind the windscreen's band, under the flight deck's

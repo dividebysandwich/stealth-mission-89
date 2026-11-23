@@ -228,6 +228,11 @@ aircraft-ea18g =
         Ionsaí leictreonach, ó na hiompróirí
         Cuireann sé isteach ar radair an namhad don ruathar
         Dhá shuíochán: píolóta agus oifigeach cogaíochta leictreonaí
+aircraft-a6 =
+    .facts =
+        Aerárthach ionsaithe uile-aimsire ó na hiompróirí, beirt chriú taobh le taobh
+        Fodhuaineach, 6.5 g, gan iardhóire
+        Cockpit analógach: VDI agus scáileáin radair
 aircraft-tornado =
     .facts =
         Aerárthach ionsaithe ísealairde

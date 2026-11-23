@@ -228,6 +228,11 @@ aircraft-ea18g =
         Atac electronic, de pe portavioane
         Bruiază radarele inamice pentru lovitură
         Două locuri: pilot și ofițer de război electronic
+aircraft-a6 =
+    .facts =
+        Aeronavă de atac ambarcată pentru orice vreme, doi membri de echipaj alături
+        Subsonică, 6,5 g, fără postcombustie
+        Cockpit analogic: VDI și ecrane radar
 aircraft-tornado =
     .facts =
         Aeronavă de lovitură la joasă înălțime

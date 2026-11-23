@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektroninė ataka, iš lėktuvnešių
         Trukdo priešo radarams prieš smūgį
         Dvi vietos: pilotas ir elektroninės kovos karininkas
+aircraft-a6 =
+    .facts =
+        Lėktuvnešių visų oro sąlygų atakos orlaivis, du įgulos nariai greta
+        Ikigarsinis, 6,5 g, be forsažo
+        Analoginė kabina: VDI ir radaro ekranai
 aircraft-tornado =
     .facts =
         Žemo aukščio smūgio orlaivis

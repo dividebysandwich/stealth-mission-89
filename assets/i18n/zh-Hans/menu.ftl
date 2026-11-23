@@ -228,6 +228,11 @@ aircraft-ea18g =
         电子攻击机，从航母起飞
         为打击干扰敌方雷达
         双座：飞行员和电子战军官
+aircraft-a6 =
+    .facts =
+        舰载全天候攻击机，双人并列座舱
+        亚音速，6.5 g，无加力
+        模拟座舱：VDI 和雷达显示器
 aircraft-tornado =
     .facts =
         低空突击机

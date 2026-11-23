@@ -228,6 +228,11 @@ aircraft-ea18g =
         Ataque eletrônico, dos porta-aviões
         Interfere nos radares inimigos para o ataque
         Dois assentos: piloto e oficial de guerra eletrônica
+aircraft-a6 =
+    .facts =
+        Aeronave de ataque embarcada para qualquer tempo, dois tripulantes lado a lado
+        Subsônica, 6,5 g, sem pós-combustor
+        Cockpit analógico: VDI e telas de radar
 aircraft-tornado =
     .facts =
         Aeronave de ataque em baixa altitude

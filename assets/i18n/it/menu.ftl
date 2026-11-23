@@ -228,6 +228,11 @@ aircraft-ea18g =
         Attacco elettronico, dalle portaerei
         Disturba i radar nemici per l'attacco
         Due posti: pilota e ufficiale di guerra elettronica
+aircraft-a6 =
+    .facts =
+        Aereo d'attacco imbarcato ogni tempo, due membri d'equipaggio affiancati
+        Subsonico, 6,5 g, senza postbruciatore
+        Cockpit analogico: VDI e schermi radar
 aircraft-tornado =
     .facts =
         Aereo d'attacco a bassa quota

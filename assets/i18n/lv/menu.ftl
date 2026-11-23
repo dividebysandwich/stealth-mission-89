@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektroniskais uzbrukums, no aviobāzes kuģiem
         Traucē ienaidnieka radarus triecienam
         Divas sēdekļi: pilots un elektroniskās karadarbības virsnieks
+aircraft-a6 =
+    .facts =
+        Bāzeskuģu visu laikapstākļu triecienlidmašīna, divi apkalpes locekļi blakus
+        Zemskaņas, 6,5 g, bez forsāžas
+        Analogā kabīne: VDI un radara ekrāni
 aircraft-tornado =
     .facts =
         Zemlidojuma triecienlidmašīna

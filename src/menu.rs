@@ -212,12 +212,13 @@ fn vr_available() -> bool {
 }
 
 /// Flyable aircraft.
-const AIRCRAFT: [AircraftKind; 17] = [
+const AIRCRAFT: [AircraftKind; 18] = [
     AircraftKind::F117,
     AircraftKind::F16,
     AircraftKind::F22,
     AircraftKind::FA18E,
     AircraftKind::EA18G,
+    AircraftKind::A6,
     AircraftKind::Tornado,
     AircraftKind::A10,
     AircraftKind::AV8B,

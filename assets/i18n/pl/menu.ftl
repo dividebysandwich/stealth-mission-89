@@ -228,6 +228,11 @@ aircraft-ea18g =
         Atak elektroniczny, z lotniskowców
         Zakłóca wrogie radary przed uderzeniem
         Dwa miejsca: pilot i oficer walki elektronicznej
+aircraft-a6 =
+    .facts =
+        Pokładowy samolot szturmowy na każdą pogodę, dwóch członków załogi obok siebie
+        Poddźwiękowy, 6,5 g, bez dopalacza
+        Kokpit analogowy: VDI i ekrany radarowe
 aircraft-tornado =
     .facts =
         Samolot uderzeniowy do lotów na małej wysokości
