@@ -564,3 +564,33 @@ fn the_growlers_ewo_sets_its_pods() {
     assert_eq!(sim.pilot_input(0).jam, Some(jam), "the EWO's settings on the owner's pods");
     assert!(sim.pilot_input(0).cmd.trigger, "the pilot keeps his trigger");
 }
+
+/// The A-6 has a bombardier/navigator's seat: he lays the pod and designates, the pilot keeps
+/// his trigger (the bombardier's does nothing), and the owner may sit there himself.
+#[test]
+fn the_intruders_bombardier_lays_its_pod() {
+    let (mut sim, at) = crewed();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    let airframe = Airframe { external_stores: true, intruder: true, ..Default::default() };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    assert!(sim.gunner_seat_free(0));
+    // The owner in the right seat himself, and back.
+    sim.crew_command(0, CrewCmd::Seat(Seat::Gunner)).unwrap();
+    assert_eq!(sim.owner_seat(0), Seat::Gunner);
+    assert!(!sim.gunner_seat_free(0));
+    sim.crew_command(0, CrewCmd::Seat(Seat::Pilot)).unwrap();
+    // Another player in it: his pod is the aircraft's, his trigger is not.
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_of(1), Some((0, Seat::Gunner)));
+    let pod = pod_on(at, 40);
+    let aim = GunnerAim { pod: Some(pod), trigger: true, ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    assert_eq!(sim.pilot_input(0).pod, Some(pod), "the bombardier's pod");
+    assert!(!sim.pilot_input(0).cmd.trigger, "his trigger fires nothing");
+    sim.step_pilots(&[(0, orbit(at, true))], 15);
+    assert!(sim.pilot_input(0).cmd.trigger, "the pilot keeps his trigger");
+}

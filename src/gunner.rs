@@ -442,9 +442,13 @@ fn orbit(
         }
         return;
     }
-    // The EA-18G with its pilot in the back seat: its autopilot flies on along the route at the
-    // altitude and speed it had (over the terrain ahead), no orbit.
-    if settings.aircraft == crate::aircraft::AircraftKind::EA18G {
+    // The EA-18G with its pilot in the back seat (the A-6 with its pilot in the right one): its
+    // autopilot flies on along the route at the altitude and speed it had (over the terrain
+    // ahead), no orbit.
+    if matches!(
+        settings.aircraft,
+        crate::aircraft::AircraftKind::EA18G | crate::aircraft::AircraftKind::A6
+    ) {
         let first = !a.autopilot();
         if first {
             a.autopilot_alt = crate::flight::view_z(a.altitude).max(1.0);

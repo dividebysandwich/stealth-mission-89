@@ -120,8 +120,8 @@ pub struct CrewView {
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
-/// OH-58D's left seat, the RAH-66's rear one (the MH-60R's sensor operator's console is passed
-/// in with the RAH-66).
+/// OH-58D's left seat, the RAH-66's rear one (the MH-60R's sensor operator's console, the
+/// EA-18G's back seat and the A-6's right seat are passed in with the RAH-66).
 pub fn has_gunner_seat(spectre: bool, apache: bool, kiowa: bool, comanche: bool) -> bool {
     spectre || apache || kiowa || comanche
 }
@@ -165,7 +165,7 @@ impl Sim {
                         p.spectre,
                         p.apache,
                         p.kiowa,
-                        p.comanche || p.seahawk || p.growler,
+                        p.comanche || p.seahawk || p.growler || p.intruder,
                     )
                     && p.chute.is_none()
             })
@@ -178,7 +178,7 @@ impl Sim {
                     p.spectre,
                     p.apache,
                     p.kiowa,
-                    p.comanche || p.seahawk || p.growler,
+                    p.comanche || p.seahawk || p.growler || p.intruder,
                 )
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
@@ -261,7 +261,7 @@ impl Sim {
                         p.spectre,
                         p.apache,
                         p.kiowa,
-                        p.comanche || p.seahawk || p.growler,
+                        p.comanche || p.seahawk || p.growler || p.intruder,
                     ) {
                         return Err(text!("crew-no-such-seat"));
                     }
@@ -384,8 +384,9 @@ impl Sim {
             if fire.is_some() {
                 self.pl.crew_launch = fire;
             }
-        } else if !self.pilot_ref(k).growler {
-            // (The Growler's EWO fires nothing: its pilot keeps his weapons.)
+        } else if !self.pilot_ref(k).growler && !self.pilot_ref(k).intruder {
+            // (The Growler's EWO fires nothing: its pilot keeps his weapons. Nor does the A-6's
+            // bombardier/navigator: he lays the pod and designates.)
             ps.cmd.trigger = aim.trigger;
             ps.cmd.gun = false;
             ps.cmd.fire = false;

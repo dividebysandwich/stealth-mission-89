@@ -1113,8 +1113,8 @@ const fn a6_point(x: f32, s: f32, z: f32) -> Vec3 {
     model_point(A6_LIFT, x * K, z * K, -(8.19 - s) * K)
 }
 
-/// The A-6C Intruder: the pilot in the left of its two side-by-side seats, no gun, no
-/// afterburner.
+/// The A-6C Intruder: the pilot in the left of its two side-by-side seats, the
+/// bombardier/navigator in the right one, no gun, no afterburner.
 static A6: AircraftSpec = AircraftSpec {
     model: "aircraft_027",
     model_lift: A6_LIFT,
@@ -1151,7 +1151,13 @@ static A6: AircraftSpec = AircraftSpec {
     vtol: false,
     ground_radar: true,
     asw: false,
-    gunner_seat: None,
+    // The bombardier/navigator's (right) seat: 0.72 m right of the pilot's, 0.15 m aft of it
+    // and 0.05 m lower (tools/models/build_cockpit_a6.py `--seat right`).
+    gunner_seat: Some(CrewSeat {
+        style: PanelStyle::A6Bn,
+        model: "cockpit_a6_bn",
+        eye: a6_point(0.36, 3.20, 1.30),
+    }),
     console: None,
     flight: FlightConstants::a6,
 };
@@ -1327,14 +1333,15 @@ impl AircraftKind {
     }
 
     /// It has a gunner's seat another player can sit in (multi-crew): the AC-130's console, the
-    /// AH-64's front cockpit, the OH-58D's left seat, the RAH-66's rear one.
+    /// AH-64's front cockpit, the OH-58D's left seat, the RAH-66's rear one, the EA-18G's back
+    /// seat, the A-6's right seat.
     pub fn crew_seat(self) -> bool {
         self.spectre()
             || self.apache()
             || self.kiowa()
             || self.comanche()
             || self.seahawk()
-            || self == AircraftKind::EA18G
+            || matches!(self, AircraftKind::EA18G | AircraftKind::A6)
     }
 
     pub fn rcs_page(self) -> bool {

@@ -120,6 +120,7 @@ impl Aircraft {
                 | Aircraft::RAH66
                 | Aircraft::MH60R
                 | Aircraft::EA18G
+                | Aircraft::A6
         )
     }
 
