@@ -1765,3 +1765,35 @@ fn a_bay_jet_starts_its_sortie_with_the_bays_shut() {
     run(&mut sim, &idle(), 2);
     assert!(!sim.bay_doors_open() && sim.bay_door_anim() == 0);
 }
+
+/// A MANPADS team spots a helicopter hugging the ground much closer than one up against the
+/// sky: low, 2.4 km off, it is left alone; high, it draws a missile (day or night).
+#[test]
+fn a_low_helicopter_slips_past_the_manpads() {
+    use stealth_sim::aaa::SA14;
+    let fired_at = |height: i32| {
+        let (_, mut sim) = campaign();
+        quiet(&mut sim);
+        let from = find(&sim, 0x401, Some("Neuburg"));
+        let to = find(&sim, 0x001, Some("Tabor"));
+        let t = sim.objects()[to];
+        sim.place_defences(t.x, t.y, false, false);
+        let team = *sim.units().iter().find(|u| u.kind == GroundKind::Manpads).expect("MANPADS");
+        let f = sim.spawn_insertion(from, to, 7, 0);
+        run(&mut sim, &idle(), 30);
+        let (relief, hills) = (sim.relief(), sim.hills());
+        let (x, y) = (team.x + 154, team.y);
+        let alt = relief.ground(x, y).max(hills.ground_alt(x, y)) + height;
+        let mut seen = Vec::new();
+        for _ in 0..90 {
+            let u = &mut sim.flights_mut()[f];
+            (u.x, u.y, u.alt) = (x, y, alt);
+            (u.wx, u.wy) = (x << 5, y << 5);
+            run(&mut sim, &idle(), 1);
+            seen.extend(sim.ai_missiles().iter().map(|m| m.spec));
+        }
+        seen.contains(&SA14)
+    };
+    assert!(!fired_at(40), "a missile at the low helicopter");
+    assert!(fired_at(1200), "none at the high one");
+}

@@ -1843,6 +1843,24 @@ impl Sim {
             self.flights.iter().map(|u| self.ac_type(u.spec).stealth as i32).collect();
         // Sites a Growler jams: they find the friendly aircraft only much closer.
         let jammed: Vec<bool> = (0..self.ground_units).map(|i| self.site_jammed(i)).collect();
+        // How far a gun crew or MANPADS team spots each helicopter by eye (m): closer the lower
+        // it flies over the ground, as against the player's.
+        let light_km = self.visual_light_km();
+        let haze_km = if self.weather.any() { self.weather.vis_km } else { 0 };
+        let heli_spot: Vec<Option<f64>> = (0..self.flights.len())
+            .map(|i| {
+                let u = &self.flights[i];
+                (self.aircraft_kind(u.spec) == AircraftKind::Helicopter).then(|| {
+                    let ground = self
+                        .tiles
+                        .as_ref()
+                        .map_or(0, |t| t.relief.ground(u.x, u.y).max(t.hills.ground_alt(u.x, u.y)));
+                    let ft = ((u.alt - ground) as f64 * M_PER_WU / 0.3048) as i32;
+                    let rah66 = u.spec == crate::ai_missions::RAH66;
+                    crate::aaa::heli_spot_m(light_km, ft, rah66, haze_km, false)
+                })
+            })
+            .collect();
         let Some(mut c) = self.campaign.take() else { return };
         let mut rng = c.rng;
         // The nearest aircraft of a side in reach (`low` for a SAM radar's low flyers).
@@ -1910,6 +1928,7 @@ impl Sim {
         for k in 0..self.units.len() * ground_fire as usize {
             let u = self.units[k];
             let blue = c.aaa_blue[k];
+            let had = c.aaa_target[k];
             c.aaa_target[k] = None;
             // The missile teams reload here (the classic air defence only does it while it
             // fights a player). Launchers are refilled from their battery's stockpile
@@ -1955,7 +1974,29 @@ impl Sim {
             }
             let (_, reach, ceiling) = gun_envelope(u.kind);
             let reach = (reach / M_PER_MAP) as i32;
-            let Some((j, _)) = near(u.x, u.y, !blue, reach, false, 15.0, false) else {
+            // The nearest in reach the crew sees: a helicopter only within its spotting range
+            // (kept a little further once tracked) and over the hills between.
+            let mut best: Option<(usize, i32)> = None;
+            for j in 0..sides.len() {
+                if sides[j] != Some(!blue) || pos[j][2] <= 15.0 || ballistic[j] {
+                    continue;
+                }
+                let d = approx(xy[j].0 - u.x, xy[j].1 - u.y);
+                let r = if unseen[j] { reach.min(drone_reach) } else { reach };
+                let r = if cruise[j] { r.min(cruise_reach) } else { r };
+                if d >= r || best.is_some_and(|b| b.1 <= d) {
+                    continue;
+                }
+                if let Some(spot) = heli_spot[j] {
+                    let spot = if had == Some(j) { spot * crate::aaa::HELI_KEEP } else { spot };
+                    let to = (xy[j].0, xy[j].1, self.flights[j].alt);
+                    if d as f64 * M_PER_MAP >= spot || !self.sight_from_ground(u.x, u.y, to) {
+                        continue;
+                    }
+                }
+                best = Some((j, d));
+            }
+            let Some((j, _)) = best else {
                 continue;
             };
             if pos[j][2] > ceiling {

@@ -32,10 +32,11 @@ pub const HOVER_SECONDS: i32 = 10;
 const M_PER_WU: f64 = M_PER_MAP / 32.0;
 /// World units: the AI's height hooking a crate (about 12 m: the hook takes it from there)
 /// and setting one down (about 8 m: it hangs 9 m under the hook), its cruise height (about
-/// 150 m), the height it lifts off to before it turns away from the pad.
+/// 40 m over the ground under it and the next kilometre: low, out of the guns' sight), the
+/// height it lifts off to before it turns away from the pad.
 pub const HOOK_ALT: i32 = 24;
 pub const SET_ALT: i32 = 16;
-const CRUISE_ALT: i32 = 300;
+const CRUISE_ALT: i32 = 80;
 const LIFT_ALT: i32 = 60;
 /// Seconds it hovers over its crate, hooked, while the winch lifts it off the ground.
 pub const HOOK_SECONDS: i32 = 4;
@@ -332,11 +333,11 @@ impl Sim {
                 let turn = clamp_q(s16(brg - u.heading), -cdiv(0x2000, fs), cdiv(0x2000, fs));
                 u.heading = s16(u.heading + turn);
             }
-            // Height: cruising over the mountains, low near the goal, and right over it down
+            // Height: cruising low over the ground, lower near the goal, and right over it down
             // onto the pad at home, to the hook's reach over the crate, or until the crate
             // stands on the ground at the drop.
             let galt = if d > SLOW_DOWN / 2.0 {
-                CRUISE_ALT + self.ground_ahead(&u)
+                CRUISE_ALT + self.ground_near(&u)
             } else if d >= LOW {
                 ground + LIFT_ALT
             } else if run.delivered {

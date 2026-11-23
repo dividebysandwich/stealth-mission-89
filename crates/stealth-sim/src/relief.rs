@@ -97,6 +97,9 @@ impl Relief {
 /// Look-ahead steps over the rolling hills (map units, 0 to 3 km).
 const HILLS_AHEAD: [i32; 7] = [0, 16, 32, 64, 96, 128, 192];
 
+/// Look-ahead steps for a low flyer (map units, 0 to 1.5 km).
+const NEAR_AHEAD: [i32; 6] = [0, 8, 16, 32, 64, 96];
+
 /// Look-ahead steps along the heading (map units, one cell each).
 const AHEAD: [i32; 4] = [0, CELL_MAP, 2 * CELL_MAP, 3 * CELL_MAP];
 
@@ -128,6 +131,21 @@ impl crate::Sim {
                 let x = u.x + self.trig.sin_mul(u.heading, d);
                 let y = u.y - self.trig.cos_mul(u.heading, d);
                 t.hills.ground_alt(x, y)
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// The highest ground, the mountains (smoothed) or the rolling hills, under a flight unit
+    /// and up to `NEAR_AHEAD` ahead of it: a low flyer's floor.
+    pub(crate) fn ground_near(&self, u: &crate::types::FlightUnit) -> i32 {
+        let Some(t) = self.tiles.as_ref() else { return 0 };
+        NEAR_AHEAD
+            .iter()
+            .map(|&d| {
+                let x = u.x + self.trig.sin_mul(u.heading, d);
+                let y = u.y - self.trig.cos_mul(u.heading, d);
+                t.relief.ground(x, y).max(t.hills.ground_alt(x, y))
             })
             .max()
             .unwrap_or(0)

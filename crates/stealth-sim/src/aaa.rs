@@ -509,7 +509,7 @@ const COMANCHE_SIZE: f64 = 0.6;
 /// The crew hears a helicopter this close (m) whatever the light, the RAH-66 half as far.
 const HELI_HEARD_M: f64 = 400.0;
 /// Once spotted, a helicopter stays seen out to this many times the spotting range.
-const HELI_KEEP: f64 = 1.5;
+pub(crate) const HELI_KEEP: f64 = 1.5;
 
 /// How far (m) a gun crew or a MANPADS team spots a helicopter by eye: `light_km` the visual
 /// range in the light of the day or the night, `height_ft` the helicopter's height above the
