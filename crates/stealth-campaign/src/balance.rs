@@ -74,7 +74,8 @@ impl CampaignState {
     /// `every` (an interval of the enemy's offensive: insertions, raids, convoys, drones and
     /// missiles) at the crew's pace, and longer for an outnumbered friendly side.
     pub(crate) fn offensive_paced(&self, every: f64) -> f64 {
-        self.paced(every) * self.friendly_relief().sqrt() * self.hq_slow(Side::Red)
+        let every = (self.paced(every) * self.friendly_relief().sqrt()).max(OFFENSIVE_FLOOR);
+        every * self.hq_slow(Side::Red)
     }
 
     /// How much longer a side's operations take to come while its headquarters is destroyed

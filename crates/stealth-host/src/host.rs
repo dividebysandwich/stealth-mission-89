@@ -1117,6 +1117,8 @@ impl Host {
                     if let Some(p) = self.state.place(*place) {
                         sim.convoys_hand_over(p.x, p.y, blue);
                         sim.place_defences(p.x, p.y, p.airfield.is_some(), blue);
+                        // The armour its reserve could not give.
+                        sim.wreck_armour(p.x, p.y, blue, p.armour_lost as usize);
                     }
                     // A battery at a place the enemy took is gone with its other defences.
                     if !blue {

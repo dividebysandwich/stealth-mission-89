@@ -128,6 +128,10 @@ pub const ENEMY_INSERTION_LEAD: f64 = 300.0;
 /// aircraft, announced this long before they take off, from a base at most this far from the
 /// target (300 km).
 pub const RAID_EVERY: [f64; 4] = [60.0 * 60.0, 40.0 * 60.0, 28.0 * 60.0, 18.0 * 60.0];
+/// However many players, the enemy's operations of a kind come no closer together (s): with
+/// the strategic facilities to strike as well, a crew's pace of three would otherwise bring a
+/// raid every six minutes.
+pub const OFFENSIVE_FLOOR: f64 = 10.0 * 60.0;
 pub const RAID_AIRCRAFT: usize = 2;
 /// Fighters escorting a raid: they take off this long before the strike aircraft and draw
 /// the defenders' CAP.
@@ -303,12 +307,12 @@ pub const GUN_GROUND: i32 = 6;
 
 /// Drone waves (the Ukraine theater): this often by the opponents' skill, this many drones,
 /// announced this long before launch, at a target this far from their base at most (300 km),
-/// at this cost.
+/// at this cost (its Gerans come out of its base's stock besides).
 pub const DRONES_EVERY: [f64; 4] = [80.0 * 60.0, 55.0 * 60.0, 40.0 * 60.0, 30.0 * 60.0];
 pub const DRONE_WAVE: usize = 6;
 pub const DRONE_LEAD: f64 = 180.0;
 pub const DRONE_RANGE: i32 = 0x4B00;
-pub const DRONE_COST: f64 = 12.0;
+pub const DRONE_COST: f64 = 6.0;
 
 /// Resupply: an AI helicopter flies a request nobody has taken for this long (s), and a
 /// player's drop takes this long hovering at the unit (s).
@@ -577,6 +581,9 @@ pub const ARMOUR_RESERVE_MAX: f64 = 30.0;
 pub const ARMOUR_PER_HOUR: f64 = 6.0;
 pub const ENEMY_ARMOUR_PER_HOUR: [f64; 4] = [4.0, 6.0, 8.0, 10.0];
 pub const ARMOUR_WAIT: f64 = 60.0;
+/// The tanks and infantry fighting vehicles of a place's garrison (the simulation's
+/// `place_defences`): a place taken gets them out of its new owner's reserve.
+pub const GARRISON_ARMOUR: u8 = 3;
 
 // ------------------------------------------------------------------------- power and fuel
 

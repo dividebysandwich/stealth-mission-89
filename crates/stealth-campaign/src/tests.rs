@@ -5118,3 +5118,18 @@ fn missile_strikes_go_for_facilities_too() {
     }
     assert!((1..12).contains(&aimed), "{aimed} of 12");
 }
+
+/// A place taken gets its garrison's armour out of the new owner's reserve; what the reserve
+/// has not, it replaces later.
+#[test]
+fn a_place_taken_draws_its_garrison_from_the_reserve() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let place = c.front(Side::Blue)[0];
+    c.armour[0] = 1.0;
+    let mut ev = Vec::new();
+    c.capture_place(place, Side::Blue, &mut ev);
+    assert_eq!(c.armour_reserve(Side::Blue), 0);
+    assert_eq!(c.places[place as usize].armour_lost, tuning::GARRISON_ARMOUR - 1);
+    assert!(c.places[place as usize].armour_repair_at.is_some());
+}

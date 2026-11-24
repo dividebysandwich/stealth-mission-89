@@ -228,11 +228,20 @@ impl CampaignState {
         p.captured_at = Some(now);
         p.intel_until = None;
         p.red_intel_until = None;
-        // The new owner's guns and armour, at full strength.
+        // The new owner's guns at full strength; its armour out of its reserve (what that has
+        // not, it replaces later).
         p.guns_lost = 0;
         p.guns_repair_at = None;
         p.armour_lost = 0;
         p.armour_repair_at = None;
+        if self.armour_on() {
+            let have = self.armour_reserve(side).min(GARRISON_ARMOUR as u32);
+            self.take_armour(side, have);
+            let p = &mut self.places[place as usize];
+            p.armour_lost = GARRISON_ARMOUR - have as u8;
+            p.armour_repair_at = (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR);
+        }
+        let p = &mut self.places[place as usize];
         let airfield = p.airfield.is_some();
         let members = p.members.clone();
         let removed = std::mem::take(&mut p.defences);
