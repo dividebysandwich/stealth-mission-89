@@ -831,8 +831,8 @@ spot below 50 kt, nozzles at the hover stop, and settle with the throttle. Under
 counts as a landing, like a helicopter's: a road, a field, a carrier deck (the wires are for the
 other jets, not the Harrier).
 
-**Weapons.** Nine stations: Sidewinders on the rails (1, 9); Sidewinders, Mavericks, Paveways and
-bombs (no Durandal) outboard (2, 8); Mavericks, every bomb and fuel tanks on the intermediate pylons
+**Weapons.** Nine stations: Sidewinders or AGM-122 Sidearms on the rails (1, 9); Sidewinders,
+Sidearms, Mavericks, Paveways and bombs (no Durandal) outboard (2, 8); Mavericks, every bomb and fuel tanks on the intermediate pylons
 (3, 7); the same plus the Harpoon inboard (4, 6); the camera, a tank or cargo on the centreline (5).
 No AMRAAM, HARM or Penguin. The gun pod in the game has 510 rounds.
 
@@ -938,6 +938,8 @@ and slow aircraft.
 **IN THE GAME.** The Viper tops out near 180 kt in level flight, sits on skids and is armed for the
 job: a **turret gun** (510 rounds), **16 Hellfires** on the stub wings (four on each of the inner
 stations) and a **Sidewinder** on each wingtip, a full load every time. Its stores are external.
+On the LOADOUT page the wingtips can take an **AGM-122 Sidearm** instead, a Sidewinder that homes
+on radars (6.4).
 
 Its **helmet-mounted display** (chapter 5.4) puts the symbology wherever you look, and the targeting pod
 and turret follow your eyes: fire a Hellfire without a lock and it goes where you are looking. The
@@ -990,8 +992,9 @@ grows steadily until at 180 kt and above it is as visible as an F-117A. Its EMV 
 bank is about a third of the normal value in the hover. Open bay doors, the gear and the ECM jammer
 count in full. Slow down near the radars.
 
-**The bays.** Its weapons ride inside, on the two bay doors: **three Hellfires or six Stingers per
-door** (the default is Hellfires in both). Press fire and the doors open, the weapon leaves as soon as
+**The bays.** Its weapons ride inside, on the two bay doors: **three Hellfires, six Stingers or an
+AGM-122 Sidearm per door** (the default is Hellfires in both; the Sidearm, 6.4, is longer than the
+door and shows past both its ends when it opens). Press fire and the doors open, the weapon leaves as soon as
 they are open, and they close by themselves four seconds after the last shot. BAY (8) works by hand
 too. The **FIM-92 Stinger** is a very short range infrared missile (1-6 km, farther head-on), aimed like
 the Sidewinder, by helmet or HUD.
@@ -1525,7 +1528,8 @@ Longbow version, a millimetre-wave radar above the rotor. The game's AH-64D has 
 
 **IN THE GAME.** Heavier and draggier than the Viper, the Apache tops out near 160 kt in level flight.
 It sits on wheels, the nose a little up. It carries the **chin gun** (510 rounds) and four M299
-launchers with **16 Hellfires** on its stub wings, plus two **Stingers** on each wingtip. The pilot's
+launchers with **16 Hellfires** on its stub wings, plus two **Stingers** on each wingtip (or, on the
+LOADOUT page, a rail with an **AGM-122 Sidearm**, 6.4). The pilot's
 **helmet-mounted display** (chapter 5.4) works as in the AH-1Z: the chin gun follows his eyes (**GUN
 HMS**) or the pod (**GUN TGP**), and the Hellfires go where the pod looks.
 
@@ -2300,6 +2304,7 @@ farther head-on.
 | AIM-120A AMRAAM | Aircraft (radar) | 1-38 km | Any | F-117A*, F-16C, Tornado (wing rails) |
 | FIM-92 Stinger | Aircraft (IR) | 1-6 km | Any | RAH-66 (6 per bay door), OH-58D (2 per pylon) |
 | AGM-88A HARM | Radars | 9-50 km | 5,000-20,000 ft | F-117A, F-16C, Tornado |
+| AGM-122 Sidearm | Radars | 1-10 km | Any; pops up below 1,000 ft | AH-1Z, AH-64D (wingtips), RAH-66 (1 per bay door), AV-8B (rails, outer pylons) |
 | Penguin 3 | Ships | 6-14 km (classic guidance 13-14) | 100-500 ft | F-117A, F-16C, Tornado |
 | AGM-84A Harpoon | Ships | 6-41 km | 2,000-5,000 ft | F-117A, F-16C, Tornado, AV-8B (inboard) |
 | AGM-65 Maverick | Ground (TV) | 5-10 km | 2,000-5,000 ft | F-117A, F-16C, Tornado, A-10C, AV-8B |
@@ -2359,6 +2364,17 @@ press Lock cursor target: the HUD goes to GND with the site locked. T and B also
 Fire from 9-50 km, from 5,000 to 20,000 ft; a high, fast launch reaches farthest. A radar must be
 on the air to show on the HARM display, so the HARM is fired at sites that are looking for you:
 fire before they see you, from beyond their missile range (chapter 13.2).
+
+**AGM-122 Sidearm** (AH-1Z, AH-64D, RAH-66, AV-8B). A Sidewinder with a radar seeker in place of its
+infrared one: the attack helicopters' and the Harrier's own anti-radiation missile. Like the HARM it
+homes only on a radar that is transmitting, but it reaches only some 10 km and its warhead is small.
+Lock the radar in GND mode (T, B) and fire inside the zone.
+
+Fired **below 1,000 ft** above the ground, as from a helicopter hiding behind the trees, it runs its
+**pop-up** program: it climbs away from the ground toward the radar, pushes over and dives onto it
+from above. The farther the radar, the higher it climbs and the steeper it comes down: some 30
+degrees from 5 km, 45 from 9 km. Close in it has no room to climb far and comes in
+flatter. Fired from higher up it flies straight at the radar like the HARM.
 
 **Penguin 3** and **AGM-84A Harpoon.** Ships only: lock the ship (T, B or the HSD cursor; ships
 show from far out on the HSD) and fire inside the zone. The Penguin is a short-range weapon for a
@@ -3346,7 +3362,7 @@ refilling (RLD).</li>
 
 Every airbase keeps a stock of munitions. AIM-9 Sidewinders (the enemy's AA-8s), unguided bombs,
 guns, flares and fuel never run out; everything else does: AIM-120, AIM-7, HARM, Maverick, GBU-12,
-Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Penguin, Harpoon, JSOW, MALD, SLAM-ER, JP233, the
+Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Sidearm, Penguin, Harpoon, JSOW, MALD, SLAM-ER, JP233, the
 Patriots' PAC-3s and the Gepards' 35 mm rounds (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
 the stock of the base you take off from: the briefing's loadout shows how many each base has
 left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
