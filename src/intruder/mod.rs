@@ -555,25 +555,57 @@ impl Key {
         }
     }
 
-    /// The tooltip's text (a message of `assets/i18n/*/tooltips.ftl`) saying what the control's
-    /// group does.
+    /// The tooltip's text (a message of `assets/i18n/*/tooltips.ftl`): what the control does
+    /// in the game, in a few words.
     pub fn tip(self) -> &'static str {
         match self {
-            Key::Vdi(_) => "tip-a6-vdi-display",
-            Key::Range(_) => "tip-a6-vdi-range",
-            Key::PathBright | Key::PitchTrim => "tip-a6-vdi-adjust",
-            Key::PhdMode | Key::PhdPower | Key::OneScan | Key::Erase => "tip-a6-phd",
-            Key::Clearance | Key::TrackFunction | Key::DisplayScale => "tip-a6-track-radar",
-            Key::Flight(_) => "tip-a6-flight-mode",
-            Key::Nav(_) | Key::NavTransfer | Key::NavCheckPoint => "tip-a6-nav",
-            Key::Attack(_) => "tip-a6-attack-mode",
-            Key::PullG(_) => "tip-a6-pull-g",
-            Key::Station(_) => "tip-a6-station",
-            Key::ReleaseMode | Key::IntervalUp | Key::IntervalDown => "tip-a6-release",
-            Key::MasterArm => "tip-a6-master-arm",
-            Key::SearchPower | Key::SearchRange | Key::Amti => "tip-a6-search-radar",
-            Key::Address(_) => "tip-a6-address",
-            Key::Release | Key::Clear | Key::Quantity(_) | Key::Action(_) => "tip-a6-keyboard",
+            Key::Vdi(VdiDisplay::ContactAnalog) => "tip-a6-vdi-picture",
+            Key::Vdi(VdiDisplay::TerrainClearance) => "tip-a6-vdi-terrain",
+            Key::Vdi(_) => "tip-a6-vdi-blank",
+            Key::Range(VdiRange::Test) => "tip-a6-vdi-test",
+            Key::Range(_) => "tip-a6-vdi-miles",
+            Key::PathBright => "tip-a6-path-bright",
+            Key::PitchTrim => "tip-a6-pitch-trim",
+            Key::PhdMode => "tip-a6-phd-mode",
+            Key::PhdPower => "tip-a6-phd-power",
+            Key::Clearance => "tip-a6-clearance",
+            Key::DisplayScale => "tip-a6-display-scale",
+            Key::Flight(FlightMode::Land) => "tip-a6-land",
+            Key::Flight(FlightMode::Flight) => "tip-a6-flight",
+            Key::Flight(FlightMode::Off) => "tip-a6-computer-off",
+            Key::Flight(FlightMode::Test) => "tip-a6-lamp-test",
+            Key::Attack(AttackMode::Rocket) => "tip-a6-rocket",
+            Key::Attack(AttackMode::HiLoft) => "tip-a6-hi-loft",
+            Key::Attack(_) => "tip-a6-attack",
+            Key::PullG(_) => "tip-a6-g-buttons",
+            Key::Station(_) => "tip-a6-station-switch",
+            Key::ReleaseMode => "tip-a6-release-mode",
+            Key::IntervalUp => "tip-a6-interval-up",
+            Key::IntervalDown => "tip-a6-interval-down",
+            Key::MasterArm => "tip-a6-arm",
+            Key::SearchPower => "tip-a6-search-power",
+            Key::SearchRange => "tip-a6-search-range",
+            Key::Amti => "tip-a6-amti",
+            Key::Address(Address::Target) => "tip-a6-target",
+            Key::Release => "tip-a6-release-bar",
+            Key::Clear => "tip-a6-clear",
+            Key::Quantity(n) => match QUANTITY_LABELS.get(n as usize).copied() {
+                Some("N/+") => "tip-a6-north",
+                Some("E") => "tip-a6-east",
+                Some("S/-" | "W") => "tip-a6-south-west",
+                _ => "tip-a6-digit",
+            },
+            Key::Action(0) => "tip-a6-pos",
+            // They latch or move, and that is all.
+            Key::OneScan
+            | Key::Erase
+            | Key::TrackFunction
+            | Key::Flight(_)
+            | Key::Nav(_)
+            | Key::NavTransfer
+            | Key::NavCheckPoint
+            | Key::Address(_)
+            | Key::Action(_) => "tip-a6-no-effect",
         }
     }
 }
@@ -920,6 +952,21 @@ pub enum Light {
 }
 
 impl Light {
+    /// The tooltip's text: when it lights.
+    pub fn tip(self) -> &'static str {
+        match self {
+            Light::VdiAttack | Light::DvriAttack => "tip-a6-light-attack",
+            Light::VdiInRange => "tip-a6-light-in-range",
+            Light::VdiComputer | Light::DvriComputer => "tip-a6-light-computer",
+            Light::VdiPlatform => "tip-a6-light-platform",
+            Light::Reselect | Light::DvriReselect => "tip-a6-light-reselect",
+            Light::DvriEcm => "tip-a6-light-ecm",
+            Light::DvriGroundLock => "tip-a6-light-ground-lock",
+            Light::DvriTrack => "tip-a6-light-track",
+            Light::DvriDiscreteLock => "tip-a6-light-discrete-lock",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Light::VdiAttack | Light::DvriAttack => "ATTACK",
@@ -971,6 +1018,27 @@ pub enum Readout {
     PhdRange,
     /// The keyboard's TEMPORARY STORAGE readout.
     Storage,
+}
+
+impl Readout {
+    /// Its legend on the panel and the tooltip's text: what it shows.
+    pub fn label(self) -> &'static str {
+        match self {
+            Readout::Interval => "FT OR SEC",
+            Readout::DvriRange | Readout::PhdRange => "RANGE",
+            Readout::PhdTime => "TIME",
+            Readout::Storage => "TEMPORARY STORAGE",
+        }
+    }
+
+    pub fn tip(self) -> &'static str {
+        match self {
+            Readout::Interval => "tip-a6-readout-interval",
+            Readout::DvriRange | Readout::PhdRange => "tip-a6-readout-range",
+            Readout::PhdTime => "tip-a6-readout-time",
+            Readout::Storage => "tip-a6-readout-storage",
+        }
+    }
 }
 
 /// What a readout shows: the interval counter; the range to the target in tenths of a
@@ -1122,6 +1190,40 @@ pub fn ink(t: f32) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every control, light and counter has its tooltip text.
+    #[test]
+    fn tips_exist() {
+        let lights = [
+            Light::VdiAttack,
+            Light::VdiPlatform,
+            Light::VdiInRange,
+            Light::VdiComputer,
+            Light::Reselect,
+            Light::DvriEcm,
+            Light::DvriReselect,
+            Light::DvriComputer,
+            Light::DvriAttack,
+            Light::DvriGroundLock,
+            Light::DvriTrack,
+            Light::DvriDiscreteLock,
+        ];
+        let readouts = [
+            Readout::Interval,
+            Readout::DvriRange,
+            Readout::PhdTime,
+            Readout::PhdRange,
+            Readout::Storage,
+        ];
+        let ids = Key::all()
+            .into_iter()
+            .map(Key::tip)
+            .chain(lights.map(Light::tip))
+            .chain(readouts.map(Readout::tip));
+        for id in ids {
+            assert!(stealth_i18n::exists(id), "{id}");
+        }
+    }
 
     /// The models' and scripts' names of the keys read back.
     #[test]

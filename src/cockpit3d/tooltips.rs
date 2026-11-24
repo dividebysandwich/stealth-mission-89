@@ -466,7 +466,7 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
             let (title, detail) = console_text(k);
             (title.to_string(), detail.to_string())
         }
-        // An A-6 control: its legend (English, as on the panel) and what its group does.
+        // An A-6 control: its legend (English, as on the panel) and what it does.
         Effect::Intruder(k) => (k.label().replace('\n', " "), t!(k.tip()).to_string()),
         Effect::Osb(side, slot) => {
             let (label, f, _) = osb(side, slot, mfd)?;
@@ -583,14 +583,17 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
             }
             return Some(tip(id, &[]).reading(Readout::Dial(dial)));
         }
-        // (The A-6's controls are buttons: `control_tip`.)
+        // The A-6's lights and counters: the legend (English, as on the panel) and what they
+        // show. (Its controls are buttons: `control_tip`.)
+        Elem::Light(light) => (light.label().replace('\n', " "), t!(light.tip())),
+        Elem::Readout(r) => (r.label().to_string(), t!(r.tip())),
         Elem::Label(..)
         | Elem::SoftKey(..)
         | Elem::Arrow(..)
         | Elem::Hazard
-        | Elem::Control(..)
-        | Elem::Light(..)
-        | Elem::Readout(..) => return None,
+        | Elem::Control(..) => {
+            return None;
+        }
     };
     Some(Tip::new(title, detail, &[]))
 }
