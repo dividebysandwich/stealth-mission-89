@@ -206,6 +206,7 @@ impl CampaignState {
         view.units.iter().any(|u| {
             u.alive
                 && u.side == p.owner
+                && u.facility.is_none()
                 && !moving.contains(&u.convoy)
                 && dist(u.x - p.x, u.y - p.y) <= GARRISON_RADIUS
         })
@@ -1653,7 +1654,9 @@ impl CampaignState {
         view.units
             .iter()
             .enumerate()
-            .filter(move |(_, a)| a.alive && a.side == side && dist(a.x - x, a.y - y) <= r)
+            .filter(move |(_, a)| {
+                a.alive && a.side == side && a.facility.is_none() && dist(a.x - x, a.y - y) <= r
+            })
             .map(|(k, _)| k as u32)
     }
 
@@ -1922,6 +1925,7 @@ impl CampaignState {
                         let u = &view.units[k as usize];
                         u.alive
                             && u.side == v.side.enemy()
+                            && u.facility.is_none()
                             && !moving.contains(&u.convoy)
                             && dist(u.x - px, u.y - py) <= GARRISON_RADIUS
                     })

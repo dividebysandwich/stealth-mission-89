@@ -107,6 +107,8 @@ pub struct Host {
     launchers: Vec<(u32, usize)>,
     /// Reports the host's own calls raised, handed to the campaign with the next tick's.
     pending: Vec<Report>,
+    /// The strategic facilities' buildings in the simulation (facility id, ground unit).
+    pub(crate) facility_units: Vec<(u32, usize)>,
 }
 
 impl Host {
@@ -152,6 +154,7 @@ impl Host {
             ground_loads: Vec::new(),
             launchers: Vec::new(),
             pending: Vec::new(),
+            facility_units: Vec::new(),
         }
     }
 
@@ -208,6 +211,7 @@ impl Host {
                 sim.wreck_armour(p.x, p.y, blue, p.armour_lost as usize);
             }
         }
+        self.place_facilities(sim);
         // The supply roads' bridges brought down earlier stay down.
         if let Some(net) = self.state.road_net() {
             for &k in &self.state.cut_roads {
@@ -865,7 +869,8 @@ impl Host {
         }
         self.return_landed(sim);
         self.refill_magazines(sim, dt);
-        let view = glue::world_view(sim);
+        let mut view = glue::world_view(sim);
+        self.tag_facilities(&mut view);
         let events = self.state.tick(dt, &view, &reports);
         out.extend(self.apply(sim, events));
         let events = self.out_of_stock(sim);
@@ -925,6 +930,7 @@ impl Host {
     fn apply(&mut self, sim: &mut Sim, events: Vec<CampaignEvent>) -> Vec<HostEvent> {
         let mut out = Vec::new();
         for e in events {
+            self.facility_event(sim, &e);
             match &e {
                 CampaignEvent::LauncherDeploy { strike, missile, from, to, blue, fixed } => {
                     // A launch site's launcher still loaded fires this salvo.

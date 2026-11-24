@@ -297,7 +297,10 @@ impl Sim {
         (0..self.units.len())
             .filter(|&k| {
                 let u = &self.units[k];
-                !u.destroyed && c.aaa_blue.get(k).copied().unwrap_or(false) != blue
+                // (Rockets do nothing to a facility's building.)
+                !u.destroyed
+                    && !u.kind.structure()
+                    && c.aaa_blue.get(k).copied().unwrap_or(false) != blue
             })
             .map(|k| (k, approx(self.units[k].x - x, self.units[k].y - y)))
             .filter(|&(_, d)| d < CAS_RADIUS)

@@ -1386,6 +1386,17 @@ pub fn map_metres(x: i32, y: i32) -> DVec2 {
     DVec2::new((x as f64 + 0.5) * m, (0x8000 as f64 - y as f64 - 0.5) * m)
 }
 
+/// The clearing (m) a strategic facility's grounds take (tools/models/facilities.py).
+fn facility_clearing(kind: stealth_sim::aaa::GroundKind) -> Option<f64> {
+    use stealth_sim::aaa::GroundKind as K;
+    Some(match kind {
+        K::AmmoDepot | K::FuelDepot | K::Headquarters => 70.0,
+        K::DroneFactory => 85.0,
+        K::PowerPlant | K::TankFactory => 115.0,
+        _ => return None,
+    })
+}
+
 /// The friendly air defence and the helipads of its new sites stand in clearings: the trees and
 /// buildings there go (the tree blocks are built again when the clearings change, at the start
 /// and when units or sites come or move; the town blocks a changed clearing touches too).
@@ -1406,14 +1417,16 @@ fn clear_air_defence(
     let want: Vec<(DVec2, f64)> = (0..sim.units().len())
         .filter(|&k| {
             let u = &sim.units()[k];
-            sim.aaa_blue(k)
-                && !sim.unit_moving(k)
-                && (u.kind.battery().is_some() || stealth_sim::station::mannable(u.kind))
+            // (Either side's strategic facilities stand on their own ground too.)
+            u.kind.structure()
+                || sim.aaa_blue(k)
+                    && !sim.unit_moving(k)
+                    && (u.kind.battery().is_some() || stealth_sim::station::mannable(u.kind))
         })
         .map(|k| {
             let u = &sim.units()[k];
             let p = DVec2::new((u.x as f64 + 0.5) * m, (0x8000 as f64 - u.y as f64 - 0.5) * m);
-            (p, AIR_DEFENCE_CLEARING)
+            (p, facility_clearing(u.kind).unwrap_or(AIR_DEFENCE_CLEARING))
         })
         .chain(pads)
         .collect();

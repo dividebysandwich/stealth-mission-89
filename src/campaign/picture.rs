@@ -270,8 +270,9 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
         if u.destroyed {
             continue;
         }
-        // A supply convoy's vehicles: drawn with their convoy.
-        if u.kind.supply() {
+        // A supply convoy's vehicles: drawn with their convoy; the strategic facilities from the
+        // campaign's list.
+        if u.kind.supply() || u.kind.structure() {
             continue;
         }
         // Armour, and the guns with a convoy: the enemy's only while seen.

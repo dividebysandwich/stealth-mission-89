@@ -1396,3 +1396,45 @@ fn the_kerch_road_arch_down_cuts_the_road() {
     host.tick(&mut sim, 1.0 / 15.0, &ev);
     assert_eq!(host.state.cut_roads, [edge]);
 }
+
+/// The strategic facilities stand in the simulation as buildings; one destroyed there is out of
+/// action in the campaign, and stands again when its days are up.
+#[test]
+fn facilities_stand_fall_and_are_rebuilt() {
+    let s = setup("central_europe");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "central_europe").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    let n = host.state.facilities.len();
+    assert!(n >= 10, "{n} facilities");
+    let buildings = sim.units().iter().filter(|u| u.kind.structure()).count();
+    assert_eq!(buildings, n);
+    for f in &host.state.facilities {
+        let k = host.facility_unit(f.id).unwrap();
+        let u = sim.units()[k];
+        assert_eq!((u.x, u.y), (f.x, f.y));
+        assert_eq!(sim.aaa_blue(k), host.state.facility_side(f) == stealth_campaign::Side::Blue);
+    }
+    let f = host
+        .state
+        .facilities_of(stealth_campaign::Side::Red, stealth_campaign::FacilityKind::PowerPlant)
+        .next()
+        .unwrap()
+        .clone();
+    let k = host.facility_unit(f.id).unwrap();
+    sim.set_structure_destroyed(k, true);
+    let hit = stealth_sim::PilotEvent {
+        pilot: 0,
+        event: stealth_sim::SimEvent::AaaDestroyed { unit: k, by: Some(0) },
+    };
+    host.tick(&mut sim, 1.0, &[hit]);
+    assert!(!host.state.facility(f.id).unwrap().alive());
+    let days = host.state.game_days(stealth_campaign::tuning::POWER_PLANT_DAYS);
+    for _ in 0..(days / 60.0) as usize + 2 {
+        host.tick(&mut sim, 60.0, &[]);
+    }
+    assert!(host.state.facility(f.id).unwrap().alive());
+    assert!(!sim.units()[k].destroyed);
+}

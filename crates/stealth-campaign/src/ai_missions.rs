@@ -776,6 +776,7 @@ impl CampaignState {
                     u.alive
                         && u.side == Side::Blue
                         && u.convoy == 0
+                        && u.facility.is_none()
                         && dist(u.x - p.x, u.y - p.y) <= GARRISON_RADIUS
                 })
                 .collect();

@@ -1241,9 +1241,6 @@ pub struct CampaignState {
     /// The sides' strategic facilities (placed by the host, `facilities.rs`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub facilities: Vec<crate::Facility>,
-    /// What the host told them to keep clear of (runways, units), for building one again.
-    #[serde(skip)]
-    pub facility_avoid: Vec<crate::Avoid>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1858,7 +1855,6 @@ impl CampaignState {
             ai_rush: Vec::new(),
             munition_log: Default::default(),
             facilities: Vec::new(),
-            facility_avoid: Vec::new(),
             terrain: Terrain::default(),
         };
         c.start = c.measure_start();

@@ -37,6 +37,7 @@ impl CampaignState {
                 let u = &view.units[k as usize];
                 u.alive
                     && u.side == Side::Red
+                    && u.facility.is_none()
                     && matches!(u.vehicle, None | Some(crate::ConvoyUnit::Escort))
                     && segment_dist(a, b, (u.x, u.y)) <= HELO_GUN_CLEAR
             })

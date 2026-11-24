@@ -4,6 +4,7 @@
 
 pub mod assets;
 pub mod cargo;
+pub mod facilities;
 pub mod glue;
 pub mod host;
 pub mod munitions;

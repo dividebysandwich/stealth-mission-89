@@ -161,19 +161,19 @@ impl CampaignState {
         self.facilities_of(side, kind).min_by_key(|f| (dist(f.x - x, f.y - y), f.id))
     }
 
-    /// The host's circles for placing facilities (kept for moving a factory later).
+    /// The facilities placed, if they are not yet: clear of the host's circles (runways,
+    /// units).
     pub fn ensure_facilities(&mut self, avoid: &[Avoid]) {
-        self.facility_avoid = avoid.to_vec();
         if !self.facilities.is_empty() {
             return;
         }
         let mut rng = Rng::new(self.setup.seed ^ 0xFAC1_1715);
         for side in [Side::Blue, Side::Red] {
-            self.place_side(side, &mut rng);
+            self.place_side(side, avoid, &mut rng);
         }
     }
 
-    fn place_side(&mut self, side: Side, rng: &mut Rng) {
+    fn place_side(&mut self, side: Side, avoid: &[Avoid], rng: &mut Rng) {
         let places: Vec<PlaceId> = (0..self.places.len() as PlaceId)
             .filter(|&p| self.places[p as usize].owner == side)
             .collect();
@@ -185,7 +185,7 @@ impl CampaignState {
             for kind in
                 [FacilityKind::DroneFactory, FacilityKind::TankFactory, FacilityKind::Headquarters]
             {
-                let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, rng);
+                let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, avoid, rng);
                 self.add_facility(kind, x, y, Some(rear), None, Some(side));
             }
         }
@@ -207,6 +207,7 @@ impl CampaignState {
                 (ax, ay),
                 AMMO_STORAGE_FROM,
                 Some(place),
+                avoid,
                 rng,
             );
             self.add_facility(FacilityKind::AmmoStorage, x, y, Some(place), Some(object), None);
@@ -216,8 +217,15 @@ impl CampaignState {
             places.iter().copied().filter(|&p| self.city_of(p).is_some()).collect();
         for p in spread(&cities, FUEL_DEPOTS_MAX, |p| self.place_xy(p)) {
             let at = self.city_of(p).expect("city");
-            let (x, y) =
-                self.spot_near(FacilityKind::FuelDepot, side, at, FUEL_DEPOT_FROM, Some(p), rng);
+            let (x, y) = self.spot_near(
+                FacilityKind::FuelDepot,
+                side,
+                at,
+                FUEL_DEPOT_FROM,
+                Some(p),
+                avoid,
+                rng,
+            );
             self.add_facility(FacilityKind::FuelDepot, x, y, Some(p), None, None);
         }
         // The power plants, spread over the side's places.
@@ -227,7 +235,8 @@ impl CampaignState {
             .clamp(POWER_PLANTS.0, POWER_PLANTS.1)
             .min(places.len());
         for p in spread(&places, n, |p| self.place_xy(p)) {
-            let (x, y) = self.place_spot(FacilityKind::PowerPlant, side, p, POWER_PLANT_FROM, rng);
+            let (x, y) =
+                self.place_spot(FacilityKind::PowerPlant, side, p, POWER_PLANT_FROM, avoid, rng);
             self.add_facility(FacilityKind::PowerPlant, x, y, Some(p), None, None);
         }
     }
@@ -272,10 +281,11 @@ impl CampaignState {
         side: Side,
         place: PlaceId,
         from: (i32, i32),
+        avoid: &[Avoid],
         rng: &mut Rng,
     ) -> (i32, i32) {
         let at = self.place_xy(place);
-        self.spot_near(kind, side, at, from, None, rng)
+        self.spot_near(kind, side, at, from, None, avoid, rng)
     }
 
     /// A spot for a facility `from.0` .. `from.1` from `at`: on dry, level land the side holds,
@@ -289,6 +299,7 @@ impl CampaignState {
         at: (i32, i32),
         from: (i32, i32),
         own: Option<PlaceId>,
+        avoid: &[Avoid],
         rng: &mut Rng,
     ) -> (i32, i32) {
         const TRIES: usize = 48;
@@ -300,7 +311,7 @@ impl CampaignState {
                 let x = at.0 + (t.sin() * r as f64) as i32;
                 let y = at.1 - (t.cos() * r as f64) as i32;
                 first.get_or_insert((x, y));
-                if self.spot_ok(kind, side, x, y, own, strict) {
+                if self.spot_ok(kind, side, x, y, own, avoid, strict) {
                     return (x, y);
                 }
             }
@@ -317,6 +328,7 @@ impl CampaignState {
         x: i32,
         y: i32,
         own: Option<PlaceId>,
+        avoid: &[Avoid],
         strict: u8,
     ) -> bool {
         if !(0x200..0x7E00).contains(&x) || !(0x200..0x7E00).contains(&y) {
@@ -355,7 +367,7 @@ impl CampaignState {
         if self.sites.iter().any(|s| !s.removed && near(s.x, s.y, DEPLOY_SITE_CLEAR + foot)) {
             return false;
         }
-        if self.facility_avoid.iter().any(|&(ax, ay, r)| near(ax, ay, r + foot)) {
+        if avoid.iter().any(|&(ax, ay, r)| near(ax, ay, r + foot)) {
             return false;
         }
         if self.facilities.iter().any(|f| near(f.x, f.y, f.kind.footprint() + foot + 0x10)) {
@@ -464,7 +476,9 @@ impl CampaignState {
             let id = self.facilities[k].id;
             // Out of the way of its own old spot while choosing the new one.
             self.facilities[k].x = -0x10000;
-            let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, &mut rng);
+            // (Far from the airfields' runways: those of the rear place are well inside its
+            // clearance.)
+            let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, &[], &mut rng);
             let now = self.clock;
             let back = now + self.game_days(kind.days());
             let was_alive = self.facilities[k].alive();

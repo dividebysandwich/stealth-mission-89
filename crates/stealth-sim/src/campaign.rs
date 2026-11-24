@@ -1255,6 +1255,16 @@ impl Sim {
         }
     }
 
+    /// Campaign: strategic facility `k`'s building is to be built again at (x, y) (its place
+    /// was overrun): it stands there in ruins until it is rebuilt.
+    pub fn move_structure(&mut self, k: usize, x: i32, y: i32) {
+        if let Some(u) = self.units.get_mut(k).filter(|u| u.kind.structure()) {
+            u.x = x.clamp(0x40, 0x7FC0);
+            u.y = y.clamp(0x40, 0x7FC0);
+            u.destroyed = true;
+        }
+    }
+
     /// Campaign: unit `k` changes sides (a facility of a place taken).
     pub fn set_unit_side(&mut self, k: usize, blue: bool) {
         if let Some(c) = self.campaign.as_mut()
