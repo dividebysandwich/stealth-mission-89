@@ -381,3 +381,7 @@ cl-fx-headquarters = Het vijandelijke hoofdkwartier bij { $place } is vernietigd
 cl-fx-ammo-storage = De munitie in { $place } is weg; er wordt { $hours } u niets opgeslagen
 cl-fx-power-plant = Rond { $place } gaan de lichten uit: reparaties en starts in de regio gaan { $hours } u trager
 cl-fx-fuel-depot = De vijandelijke voertuigen rond { $place } staan { $hours } u zonder brandstof
+cb-facility = Aanval - { $what } bij { $place }
+brief-facility-task = Vernietig de strategische installatie van de vijand
+brief-shape-facility = INSTALLATIE
+brief-facility = De vijandelijke { $what } bij { $place }: een gebouw dat met bommen of raketten neer moet (boordkanon en ongeleide raketten doen niets). Vernietiging zet de vijand dagen terug.

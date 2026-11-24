@@ -526,6 +526,7 @@ impl CampaignState {
         let aaa = match &m.offer.objective {
             Objective::Cas { aaa, .. }
             | Objective::Battery { aaa, .. }
+            | Objective::Facility { aaa, .. }
             | Objective::Armour { aaa, .. }
             | Objective::Support { aaa, .. } => aaa
                 .iter()
@@ -659,6 +660,10 @@ impl CampaignState {
             | Objective::Battery { .. }
             | Objective::Armour { .. }
             | Objective::Support { .. } => AiTarget::Ground { x: o.x, y: o.y },
+            Objective::Facility { facility, .. } => {
+                self.facility(*facility).filter(|f| f.alive())?;
+                AiTarget::Ground { x: o.x, y: o.y }
+            }
             Objective::Cap { .. }
             | Objective::Defend { .. }
             | Objective::Intercept { .. }
@@ -791,6 +796,10 @@ impl CampaignState {
                     threat,
                 );
             }
+        }
+        // The friendly side's strategic facilities.
+        for (title, objective, x, y, threat) in self.facility_offers(Side::Red, view) {
+            add(self, MissionKind::Interdiction, title, objective, x, y, threat);
         }
         for (title, objective, x, y, threat) in self.cargo_offers(Side::Red) {
             add(self, MissionKind::Intercept, title, objective, x, y, threat);

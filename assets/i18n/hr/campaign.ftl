@@ -381,3 +381,7 @@ cl-fx-headquarters = Neprijateljski stožer kod { $place } je uništen: njegov r
 cl-fx-ammo-storage = Streljivo u { $place } je uništeno; { $hours } h ondje se ništa ne skladišti
 cl-fx-power-plant = Svjetla se gase oko { $place }: popravci i polijetanja u regiji sporiji su { $hours } h
 cl-fx-fuel-depot = Neprijateljska vozila oko { $place } ostaju bez goriva { $hours } h
+cb-facility = Udar - { $what } kod { $place }
+brief-facility-task = Uništite neprijateljski strateški objekt
+brief-shape-facility = OBJEKT
+brief-facility = Neprijateljski objekt ({ $what }) kod { $place }: zgrada koju treba srušiti bombama ili projektilima (topovi i rakete joj ne štete). Njegovo uništenje usporava neprijatelja danima.

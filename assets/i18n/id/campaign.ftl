@@ -381,3 +381,7 @@ cl-fx-headquarters = Markas besar musuh dekat { $place } hancur: perangnya melam
 cl-fx-ammo-storage = Amunisi di { $place } musnah; tidak ada yang disimpan di sana selama { $hours } jam
 cl-fx-power-plant = Lampu padam di sekitar { $place }: perbaikan dan peluncuran di wilayahnya lebih lambat selama { $hours } jam
 cl-fx-fuel-depot = Kendaraan musuh di sekitar { $place } kehabisan bahan bakar selama { $hours } jam
+cb-facility = Serangan - { $what } dekat { $place }
+brief-facility-task = Hancurkan fasilitas strategis musuh
+brief-shape-facility = FASILITAS
+brief-facility = { $what } musuh dekat { $place }: bangunan yang harus dihancurkan dengan bom atau rudal (meriam dan roket tak mempan). Menghancurkannya menghambat musuh berhari-hari.

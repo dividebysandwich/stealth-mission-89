@@ -380,3 +380,7 @@ cl-fx-headquarters = { $place }附近的敌方司令部被摧毁：{ $hours }小
 cl-fx-ammo-storage = { $place }的弹药全部损毁：{ $hours }小时内无法在此储存
 cl-fx-power-plant = { $place }周边停电：{ $hours }小时内该地区的维修与出动变慢
 cl-fx-fuel-depot = { $place }周边的敌方车辆{ $hours }小时内断油
+cb-facility = 打击 - { $place }附近的{ $what }
+brief-facility-task = 摧毁敌方战略设施
+brief-shape-facility = 设施
+brief-facility = { $place }附近的敌方{ $what }：需用炸弹或导弹摧毁的建筑（机炮和火箭弹无效）。摧毁它可使敌方延误数日。

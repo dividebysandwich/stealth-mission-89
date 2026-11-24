@@ -381,3 +381,7 @@ cl-fx-headquarters = { $place }付近の敵司令部を破壊：{ $hours }時間
 cl-fx-ammo-storage = { $place }の弾薬が失われた：{ $hours }時間は保管できない
 cl-fx-power-plant = { $place }周辺が停電：{ $hours }時間、地域の修理と出撃が遅れる
 cl-fx-fuel-depot = { $place }周辺の敵車両は{ $hours }時間燃料切れになる
+cb-facility = 攻撃 - { $place }付近の{ $what }
+brief-facility-task = 敵の戦略施設を破壊せよ
+brief-shape-facility = 施設
+brief-facility = { $place }付近の敵{ $what }：爆弾かミサイルで破壊する建物（機関砲やロケット弾は効かない）。破壊すれば敵を何日も足止めできる。

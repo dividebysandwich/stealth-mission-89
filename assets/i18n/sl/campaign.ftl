@@ -381,3 +381,7 @@ cl-fx-headquarters = Sovražno poveljstvo pri { $place } je uničeno: { $hours }
 cl-fx-ammo-storage = Strelivo v { $place } je uničeno; { $hours } h ga tam ne hranijo
 cl-fx-power-plant = Okoli { $place } ugasnejo luči: popravila in vzleti v regiji so { $hours } h počasnejši
 cl-fx-fuel-depot = Sovražna vozila okoli { $place } so { $hours } h brez goriva
+cb-facility = Napad - { $what } pri { $place }
+brief-facility-task = Uničite sovražnikov strateški objekt
+brief-shape-facility = OBJEKT
+brief-facility = Sovražnikov objekt ({ $what }) pri { $place }: stavba, ki jo je treba porušiti z bombami ali izstrelki (topovi in rakete ji ne škodijo). Njeno uničenje sovražnika zadrži za več dni.

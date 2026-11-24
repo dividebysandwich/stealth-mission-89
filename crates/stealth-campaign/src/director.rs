@@ -1925,6 +1925,10 @@ impl CampaignState {
                 threat,
             );
         }
+        // The enemy's strategic facilities.
+        for (title, objective, x, y, threat) in self.facility_offers(side, view) {
+            add(self, MissionKind::Interdiction, title, objective, x, y, threat);
+        }
         // The armour columns: the enemy's to stop, ours to clear the way for.
         let moving: Vec<u32> = self.convoys.iter().filter(|v| v.active()).map(|v| v.id).collect();
         for v in self.convoys.clone().into_iter().filter(Convoy::active) {
@@ -2197,5 +2201,6 @@ fn objective_key(o: &Objective) -> (u8, i64) {
         Objective::Asw { carrier } => (20, carrier as i64),
         Objective::Barrier { a, b } => (21, (a as i64) << 16 | b as i64),
         Objective::FleetDefence { carrier } => (22, carrier as i64),
+        Objective::Facility { facility, .. } => (23, facility as i64),
     }
 }

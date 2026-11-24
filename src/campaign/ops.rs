@@ -1562,6 +1562,7 @@ fn describe_offer(c: &ActiveCampaign, o: &MissionOffer) -> &'static str {
             t!(stealth_host::glue::SEAD_DEFENCE_TASK)
         }
         Objective::Battery { .. } => t!(stealth_host::glue::BATTERY_TASK),
+        Objective::Facility { .. } => t!(stealth_host::glue::FACILITY_TASK),
         Objective::Armour { .. } => t!(stealth_host::glue::ARMOUR_TASK),
         Objective::Support { .. } => t!(stealth_host::glue::SUPPORT_TASK),
         _ => describe(o.kind),

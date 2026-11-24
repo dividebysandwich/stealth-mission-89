@@ -556,6 +556,11 @@ pub enum Objective {
     Airlift {
         run: u32,
     },
+    /// Destroy one of the other side's strategic facilities (its building: unit index).
+    Facility {
+        facility: u32,
+        aaa: Vec<u32>,
+    },
 }
 
 /// A mission on the board.

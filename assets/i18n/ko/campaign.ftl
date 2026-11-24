@@ -381,3 +381,7 @@ cl-fx-headquarters = { $place } 인근 적 사령부 파괴: { $hours }시간 �
 cl-fx-ammo-storage = { $place }의 탄약이 소실됨: { $hours }시간 동안 보관 불가
 cl-fx-power-plant = { $place } 주변 정전: { $hours }시간 동안 지역의 수리와 출격이 느려짐
 cl-fx-fuel-depot = { $place } 주변 적 차량이 { $hours }시간 동안 연료 부족
+cb-facility = 타격 - { $place } 인근 { $what }
+brief-facility-task = 적 전략 시설 파괴
+brief-shape-facility = 시설
+brief-facility = { $place } 인근 적 { $what }: 폭탄이나 미사일로 파괴해야 하는 건물(기관포와 로켓은 효과 없음). 파괴하면 적을 며칠간 지연시킨다.

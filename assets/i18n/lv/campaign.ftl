@@ -381,3 +381,7 @@ cl-fx-headquarters = Ienaidnieka štābs pie { $place } iznīcināts: { $hours }
 cl-fx-ammo-storage = Munīcija { $place } ir zudusi; { $hours } h tur netiek glabāta
 cl-fx-power-plant = Ap { $place } nodziest gaismas: { $hours } h reģiona remonti un starti ir lēnāki
 cl-fx-fuel-depot = Ienaidnieka transportlīdzekļi ap { $place } { $hours } h paliek bez degvielas
+cb-facility = Trieciens - { $what } pie { $place }
+brief-facility-task = Iznīcināt ienaidnieka stratēģisko objektu
+brief-shape-facility = OBJEKTS
+brief-facility = Ienaidnieka { $what } pie { $place }: ēka, kas jāsagrauj ar bumbām vai raķetēm (lielgabali un nevadāmās raķetes tai nekaitē). Tās iznīcināšana atliek ienaidnieku uz dienām.

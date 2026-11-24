@@ -4976,3 +4976,79 @@ fn a_dark_base_scrambles_late() {
     c.clock += 60.0;
     assert!(!c.scramble_ready(base));
 }
+
+/// A view with every facility's building standing (its unit index: its place in the list).
+fn facility_view(c: &CampaignState) -> WorldView {
+    let units = c
+        .facilities
+        .iter()
+        .map(|f| GroundView {
+            facility: Some(f.id),
+            ..GroundView::gun(f.x, f.y, c.facility_side(f), f.alive())
+        })
+        .collect();
+    WorldView { units, ..Default::default() }
+}
+
+/// The board offers strikes on the enemy's most valuable facilities in reach, and the enemy's
+/// own board on the friendly ones; destroyed, the offer's objective is met.
+#[test]
+fn the_boards_offer_strikes_on_facilities() {
+    let mut c = ai_campaign();
+    c.ensure_facilities(&[]);
+    let view = facility_view(&c);
+    c.rebuild_board(&view);
+    c.rebuild_red_board(&view);
+    let offers: Vec<u32> = c
+        .board
+        .iter()
+        .filter_map(|o| match o.objective {
+            Objective::Facility { facility, .. } => Some(facility),
+            _ => None,
+        })
+        .collect();
+    assert!(!offers.is_empty() && offers.len() <= tuning::FACILITY_OFFERS, "{offers:?}");
+    for &f in &offers {
+        assert_eq!(c.facility_side(c.facility(f).unwrap()), Side::Red);
+    }
+    let o = c.board.iter().find(|o| matches!(o.objective, Objective::Facility { .. })).unwrap();
+    assert_eq!(o.kind, MissionKind::Interdiction);
+    assert!(o.title.starts_with("Strike - "), "{}", o.title);
+    assert!(c.red_board.iter().any(|o| match o.objective {
+        Objective::Facility { facility, .. } => {
+            c.facility_side(c.facility(facility).unwrap()) == Side::Blue
+        }
+        _ => false,
+    }));
+    let objective = o.objective.clone();
+    assert!(!c.objective_met(&objective, &Progress::default()));
+    let mut ev = Vec::new();
+    c.facility_destroyed(offers[0], None, &mut ev);
+    assert!(c.objective_met(&objective, &Progress::default()));
+    // Gone from the board while it is down.
+    let view = facility_view(&c);
+    c.rebuild_board(&view);
+    assert!(!c.board.iter().any(|o| o.objective == objective));
+}
+
+/// Now and then an enemy missile strike goes for a friendly facility.
+#[test]
+fn missile_strikes_go_for_facilities_too() {
+    let mut c = campaign("ukraine", 9);
+    c.ensure_facilities(&[]);
+    let mut aimed = 0;
+    for _ in 0..12 {
+        c.missile_strikes.clear();
+        let mut ev = Vec::new();
+        c.order_red_strike(missile_strikes::StrikeMissile::Kh101, &mut ev);
+        let Some(s) = c.missile_strikes.last() else { continue };
+        if let Some(f) = s.facility {
+            let f = c.facility(f).unwrap();
+            assert_eq!(c.facility_side(f), Side::Blue);
+            let aims = c.strike_aims(s);
+            assert_eq!(aims[0], ((f.x, f.y), None));
+            aimed += 1;
+        }
+    }
+    assert!((1..12).contains(&aimed), "{aimed} of 12");
+}

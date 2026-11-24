@@ -381,3 +381,7 @@ cl-fx-headquarters = Il-kwartieri ġenerali tal-għadu qrib { $place } meqruda: 
 cl-fx-ammo-storage = Il-munizzjon f'{ $place } intilfet; xejn ma jinżamm hemm għal { $hours } siegħa
 cl-fx-power-plant = Id-dwal jintfew madwar { $place }: it-tiswijiet u t-tluq fir-reġjun huma iktar bil-mod għal { $hours } siegħa
 cl-fx-fuel-depot = Il-vetturi tal-għadu madwar { $place } bla fjuwil għal { $hours } siegħa
+cb-facility = Attakk - { $what } qrib { $place }
+brief-facility-task = Eqred il-faċilità strateġika tal-għadu
+brief-shape-facility = FAĊILITÀ
+brief-facility = Il-{ $what } tal-għadu qrib { $place }: bini li jrid jitwaqqa' b'bombi jew missili (il-kanuni u r-rokits ma jagħmlulux ħsara). Il-qerda tiegħu tdewwem lill-għadu għal jiem.

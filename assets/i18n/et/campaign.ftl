@@ -381,3 +381,7 @@ cl-fx-headquarters = Vaenlase peakorter { $place } lähedal on hävitatud: { $ho
 cl-fx-ammo-storage = Laskemoon { $place } on hävinud; { $hours } h seal moona ei hoita
 cl-fx-power-plant = { $place } ümbruses kustuvad tuled: piirkonna remont ja startimine on { $hours } h aeglasem
 cl-fx-fuel-depot = Vaenlase sõidukid { $place } ümbruses on { $hours } h kütuseta
+cb-facility = Löök - { $what } { $place } lähedal
+brief-facility-task = Hävitada vaenlase strateegiline rajatis
+brief-shape-facility = RAJATIS
+brief-facility = Vaenlase { $what } { $place } lähedal: hoone, mis tuleb hävitada pommide või rakettidega (kahurid ja raketid sellele ei mõju). Selle hävitamine lööb vaenlase päevadeks tagasi.

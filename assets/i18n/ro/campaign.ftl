@@ -381,3 +381,7 @@ cl-fx-headquarters = Cartierul general inamic de lângă { $place } e distrus: r
 cl-fx-ammo-storage = Muniția de la { $place } s-a pierdut; nu se depozitează nimic acolo { $hours } h
 cl-fx-power-plant = Se sting luminile în jurul { $place }: reparațiile și decolările din regiune sunt mai lente { $hours } h
 cl-fx-fuel-depot = Vehiculele inamice din jurul { $place } rămân fără combustibil { $hours } h
+cb-facility = Lovitură - { $what } lângă { $place }
+brief-facility-task = Distrugeți obiectivul strategic al inamicului
+brief-shape-facility = OBIECTIV
+brief-facility = Obiectivul inamic ({ $what }) de lângă { $place }: o clădire de doborât cu bombe sau rachete (tunurile și rachetele nedirijate nu-i fac nimic). Distrugerea lui întârzie inamicul cu zile.

@@ -118,6 +118,9 @@ pub struct MissileStrike {
     /// Its first missile left (a launcher's lets them go once its erector is up).
     #[serde(default)]
     pub away: bool,
+    /// Aimed at this strategic facility (its building), not at `target`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub facility: Option<u32>,
 }
 
 impl MissileStrike {
@@ -247,7 +250,7 @@ impl CampaignState {
     }
 
     /// The enemy orders a strike of `missile`.
-    fn order_red_strike(&mut self, missile: StrikeMissile, ev: &mut Vec<CampaignEvent>) {
+    pub(crate) fn order_red_strike(&mut self, missile: StrikeMissile, ev: &mut Vec<CampaignEvent>) {
         // An Iskander TEL leaves its site's helipad; its missiles come out of the stock of the
         // site's supply base.
         let site = match missile {
@@ -278,8 +281,7 @@ impl CampaignState {
                 KH101_SALVO
             }
         };
-        let Some(t) = self.site(target) else { return };
-        let tp = (t.x, t.y);
+        let Some(t) = self.site(target).map(|t| (t.x, t.y)) else { return };
         let bp = match site {
             Some((at, _)) => at,
             None => {
@@ -287,6 +289,9 @@ impl CampaignState {
                 (b.x, b.y)
             }
         };
+        // Now and then a strategic facility in reach instead.
+        let facility = self.strike_facility(missile, bp);
+        let tp = facility.and_then(|f| self.facility(f)).map_or(t, |f| (f.x, f.y));
         let d = dist(tp.0 - bp.0, tp.1 - bp.1).max(1);
         let id = self.id();
         let (firing, count) = match missile {
@@ -315,6 +320,7 @@ impl CampaignState {
             site: None,
             ended_at: 0.0,
             away: false,
+            facility,
         };
         let aims = self.strike_aims(&strike);
         match missile {
@@ -341,13 +347,37 @@ impl CampaignState {
     /// Where a strike's missiles go (map units) and the object each is aimed at: the target,
     /// the rest of a salvo a little apart round it.
     pub(crate) fn strike_aims(&self, s: &MissileStrike) -> Vec<((i32, i32), Option<ObjectId>)> {
-        let Some(t) = self.site(s.target) else { return Vec::new() };
+        // A facility's building (no world object), or the target object.
+        let (at, object) = match s.facility.and_then(|f| self.facility(f)) {
+            Some(f) => ((f.x, f.y), None),
+            None => {
+                let Some(t) = self.site(s.target) else { return Vec::new() };
+                ((t.x, t.y), Some(s.target))
+            }
+        };
         (0..s.count as i32)
             .map(|k| {
                 let off = [(0, 0), (3, 2), (-3, 2), (2, -3), (-2, -3), (4, 0)][(k as usize) % 6];
-                ((t.x + off.0, t.y + off.1), (k == 0).then_some(s.target))
+                ((at.0 + off.0, at.1 + off.1), object.filter(|_| k == 0))
             })
             .collect()
+    }
+
+    /// A friendly strategic facility an enemy strike of `missile` from `from` goes for, one
+    /// time in `FACILITY_STRIKE_ONE_IN`: the most valuable in reach (not one just rebuilt).
+    fn strike_facility(&mut self, missile: StrikeMissile, from: (i32, i32)) -> Option<u32> {
+        // (No draw of the dice in a campaign without facilities.)
+        if self.facilities.is_empty() || self.rng.below(FACILITY_STRIKE_ONE_IN) != 0 {
+            return None;
+        }
+        let now = self.clock;
+        self.facilities
+            .iter()
+            .filter(|f| f.alive() && self.facility_side(f) == Side::Blue)
+            .filter(|f| f.restored_at.is_none_or(|t| now - t >= FACILITY_GRACE))
+            .filter(|f| dist(f.x - from.0, f.y - from.1) <= missile.range())
+            .max_by_key(|f| (f.kind.value(), std::cmp::Reverse(f.id)))
+            .map(|f| f.id)
     }
 
     /// The strikes' reports from the simulation.
@@ -773,6 +803,7 @@ impl CampaignState {
                 site: Some(site),
                 ended_at: 0.0,
                 away: false,
+                facility: None,
             });
             // A loaded launcher at the site (the last one left empty).
             ev.push(CampaignEvent::LauncherDeploy {

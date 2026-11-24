@@ -23,7 +23,9 @@ use stealth_i18n::text;
 
 use crate::rng::Rng;
 use crate::tuning::*;
-use crate::{CampaignEvent, CampaignState, ObjectId, PlaceId, PlayerId, Side, SiteKind, dist};
+use crate::{
+    CampaignEvent, CampaignState, ObjectId, PlaceId, PlayerId, Side, SiteKind, WorldView, dist,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum FacilityKind {
@@ -76,6 +78,16 @@ impl FacilityKind {
     }
 
     /// Message id of its name.
+    /// What it is worth to strike (the most first on the boards).
+    pub fn value(self) -> i32 {
+        match self {
+            FacilityKind::Headquarters => 6,
+            FacilityKind::DroneFactory | FacilityKind::TankFactory => 5,
+            FacilityKind::PowerPlant => 4,
+            FacilityKind::AmmoStorage | FacilityKind::FuelDepot => 3,
+        }
+    }
+
     pub fn name_id(self) -> &'static str {
         match self {
             FacilityKind::DroneFactory => "fac-drone-factory",
@@ -110,6 +122,9 @@ pub struct Facility {
     pub destroyed_at: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub back_at: Option<f64>,
+    /// When it was last rebuilt (the AI leaves it alone a while after, `FACILITY_GRACE`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub restored_at: Option<f64>,
 }
 
 impl Facility {
@@ -396,6 +411,7 @@ impl CampaignState {
             owner,
             destroyed_at: None,
             back_at: None,
+            restored_at: None,
         });
         id
     }
@@ -562,6 +578,52 @@ impl CampaignState {
         now - self.scramble_alert[k].1 >= delay
     }
 
+    /// Offers for `side`'s board on the other side's facilities: the most valuable standing
+    /// ones in reach of its bases (not those just rebuilt), up to `FACILITY_OFFERS` and one
+    /// more for every `FACILITY_OFFERS_PER` players beyond the first (title, objective, where,
+    /// threat).
+    pub(crate) fn facility_offers(
+        &self,
+        side: Side,
+        view: &WorldView,
+    ) -> Vec<(stealth_i18n::Text, crate::Objective, i32, i32, i32)> {
+        let now = self.clock;
+        let mut found: Vec<(&Facility, u32, i32)> = self
+            .facilities
+            .iter()
+            .filter(|f| f.alive() && self.facility_side(f) == side.enemy())
+            .filter(|f| f.restored_at.is_none_or(|t| now - t >= FACILITY_GRACE))
+            .filter_map(|f| {
+                let k = view.units.iter().position(|u| u.facility == Some(f.id) && u.alive)?;
+                let base = self.nearest_base(side, f.x, f.y)?;
+                let b = self.site(base)?;
+                let d = dist(b.x - f.x, b.y - f.y);
+                (d <= DEEP_RANGE).then_some((f, k as u32, d))
+            })
+            .collect();
+        found.sort_by_key(|&(f, _, d)| (std::cmp::Reverse(f.kind.value()), d, f.id));
+        let players = self.players.iter().filter(|p| p.sortie.is_some()).count().max(1);
+        let n = FACILITY_OFFERS + (players - 1) / FACILITY_OFFERS_PER;
+        found
+            .into_iter()
+            .take(n)
+            .map(|(f, k, _)| {
+                // The SAM sites about it.
+                let sams = self
+                    .sites
+                    .iter()
+                    .filter(|s| s.kind == SiteKind::Sam && s.alive())
+                    .filter(|s| self.owner(s.object) == Some(side.enemy()))
+                    .filter(|s| dist(s.x - f.x, s.y - f.y) <= SITE_ASSOCIATION)
+                    .count() as i32;
+                let place = f.place.and_then(|p| self.place(p)).map_or("", |p| p.name.as_str());
+                let title = text!("cb-facility", what = text!(f.kind.name_id()), place = place);
+                let objective = crate::Objective::Facility { facility: f.id, aaa: vec![k] };
+                (title, objective, f.x, f.y, sams * SAM_THREAT)
+            })
+            .collect()
+    }
+
     /// Every tick: the facilities whose time is up are back in action.
     pub(crate) fn run_facilities(&mut self, ev: &mut Vec<CampaignEvent>) {
         let now = self.clock;
@@ -572,6 +634,7 @@ impl CampaignState {
             let f = &mut self.facilities[k];
             f.destroyed_at = None;
             f.back_at = None;
+            f.restored_at = Some(now);
             let f = f.clone();
             let side = self.facility_side(&f);
             ev.push(CampaignEvent::FacilityRestored { id: f.id });

@@ -381,3 +381,7 @@ cl-fx-headquarters = Nepřátelské velitelství u { $place } zničeno: jeho vá
 cl-fx-ammo-storage = Munice v { $place } je pryč; { $hours } h se tam žádná neskladuje
 cl-fx-power-plant = Kolem { $place } zhasla světla: opravy a starty v oblasti jsou { $hours } h pomalejší
 cl-fx-fuel-depot = Nepřátelská vozidla kolem { $place } jsou { $hours } h bez paliva
+cb-facility = Úder - { $what } u { $place }
+brief-facility-task = Zničte strategický objekt nepřítele
+brief-shape-facility = OBJEKT
+brief-facility = Nepřátelský objekt ({ $what }) u { $place }: budova, kterou je třeba zničit pumami nebo střelami (kanóny a neřízené rakety jí neublíží). Jeho zničení nepřítele zdrží o dny.

@@ -381,3 +381,7 @@ cl-fx-headquarters = The enemy's headquarters near { $place } is destroyed: its 
 cl-fx-ammo-storage = The munitions at { $place } are gone; none are kept there for { $hours } h
 cl-fx-power-plant = The lights go out around { $place }: its region's repairs and launches are slower for { $hours } h
 cl-fx-fuel-depot = The enemy's vehicles around { $place } are out of fuel for { $hours } h
+cb-facility = Strike - { $what } near { $place }
+brief-facility-task = Destroy the enemy's strategic facility
+brief-shape-facility = FACILITY
+brief-facility = The enemy's { $what } near { $place }: a building to bring down with bombs or missiles (guns and rockets do it no harm). Destroying it sets the enemy back for days.

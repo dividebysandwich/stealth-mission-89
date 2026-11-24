@@ -381,3 +381,7 @@ cl-fx-headquarters = Das feindliche Hauptquartier bei { $place } ist zerstört: 
 cl-fx-ammo-storage = Die Munition in { $place } ist vernichtet; { $hours } h lang wird dort keine gelagert
 cl-fx-power-plant = Rund um { $place } gehen die Lichter aus: { $hours } h lang langsamere Reparaturen und Starts in der Region
 cl-fx-fuel-depot = Die feindlichen Fahrzeuge rund um { $place } haben { $hours } h lang keinen Treibstoff
+cb-facility = Angriff - { $what } bei { $place }
+brief-facility-task = Die strategische Einrichtung des Feindes zerstören
+brief-shape-facility = EINRICHTUNG
+brief-facility = Feindliches Ziel ({ $what }) bei { $place }: ein Gebäude, das mit Bomben oder Lenkflugkörpern zerstört werden muss (Bordkanone und Raketen richten nichts aus). Seine Zerstörung wirft den Feind um Tage zurück.

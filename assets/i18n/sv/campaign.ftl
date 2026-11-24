@@ -381,3 +381,7 @@ cl-fx-headquarters = Fiendens högkvarter vid { $place } är förstört: dess kr
 cl-fx-ammo-storage = Ammunitionen vid { $place } är borta; ingen förvaras där på { $hours } h
 cl-fx-power-plant = Ljuset slocknar kring { $place }: regionens reparationer och starter går långsammare i { $hours } h
 cl-fx-fuel-depot = Fiendens fordon kring { $place } står utan bränsle i { $hours } h
+cb-facility = Anfall - { $what } vid { $place }
+brief-facility-task = Förstör fiendens strategiska anläggning
+brief-shape-facility = ANLÄGGNING
+brief-facility = Fiendens { $what } vid { $place }: en byggnad som måste fällas med bomber eller robotar (akan och raketer biter inte). Att förstöra den sätter fienden dagar tillbaka.

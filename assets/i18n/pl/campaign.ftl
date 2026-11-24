@@ -406,3 +406,7 @@ cl-fx-headquarters = Wroga kwatera główna koło { $place } zniszczona: przez {
 cl-fx-ammo-storage = Amunicja w { $place } przepadła; przez { $hours } h nic tam nie jest składowane
 cl-fx-power-plant = Wokół { $place } gasną światła: naprawy i starty w regionie są wolniejsze przez { $hours } h
 cl-fx-fuel-depot = Pojazdy wroga wokół { $place } są bez paliwa przez { $hours } h
+cb-facility = Uderzenie - { $what } koło { $place }
+brief-facility-task = Zniszczyć strategiczny obiekt wroga
+brief-shape-facility = OBIEKT
+brief-facility = Obiekt wroga ({ $what }) koło { $place }: budynek, który trzeba zniszczyć bombami lub pociskami (działka i niekierowane rakiety mu nie szkodzą). Jego zniszczenie opóźni wroga o kilka dni.

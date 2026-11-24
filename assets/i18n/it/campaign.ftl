@@ -381,3 +381,7 @@ cl-fx-headquarters = Il quartier generale nemico presso { $place } è distrutto:
 cl-fx-ammo-storage = Le munizioni di { $place } sono andate; lì non se ne custodiscono per { $hours } h
 cl-fx-power-plant = Si spengono le luci attorno a { $place }: riparazioni e decolli della regione più lenti per { $hours } h
 cl-fx-fuel-depot = I veicoli nemici attorno a { $place } restano senza carburante per { $hours } h
+cb-facility = Attacco - { $what } presso { $place }
+brief-facility-task = Distruggere l'installazione strategica nemica
+brief-shape-facility = INSTALLAZIONE
+brief-facility = L'installazione nemica ({ $what }) presso { $place }: un edificio da abbattere con bombe o missili (cannoni e razzi non lo danneggiano). Distruggerla ritarda il nemico di giorni.

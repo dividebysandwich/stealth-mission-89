@@ -597,3 +597,13 @@ pub const HQ_SLOWDOWN: f64 = 2.0;
 pub const HQ_SCRAMBLE_DELAY: f64 = 120.0;
 pub const HQ_PATROL_SLOW: f64 = 1.5;
 pub const HQ_INCOME: f64 = 0.5;
+
+// ------------------------------------------------------------------- strikes on facilities
+
+/// Offers on the other side's facilities a board has (and one more for every so many players
+/// beyond the first), and how long (s) after its rebuilding a facility is left alone.
+pub const FACILITY_OFFERS: usize = 2;
+pub const FACILITY_OFFERS_PER: usize = 2;
+pub const FACILITY_GRACE: f64 = 30.0 * 60.0;
+/// One enemy missile strike in so many goes for a friendly strategic facility in reach.
+pub const FACILITY_STRIKE_ONE_IN: i32 = 3;

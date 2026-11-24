@@ -240,6 +240,7 @@ pub fn cas_units(state: &CampaignState, tag: u32) -> Vec<u32> {
     match &m.offer.objective {
         Objective::Cas { aaa, .. }
         | Objective::Battery { aaa, .. }
+        | Objective::Facility { aaa, .. }
         | Objective::Armour { aaa, .. }
         | Objective::Support { aaa, .. } => aaa.clone(),
         _ => Vec::new(),
@@ -441,6 +442,7 @@ pub fn sortie_mission(base: &Mission, state: &CampaignState, sortie: &Sortie) ->
     s.special_model = None;
     let what = match o.objective {
         stealth_campaign::Objective::Battery { .. } => t!(BATTERY_TASK),
+        stealth_campaign::Objective::Facility { .. } => t!(FACILITY_TASK),
         stealth_campaign::Objective::Armour { .. } => t!(ARMOUR_TASK),
         stealth_campaign::Objective::Support { .. } => t!(SUPPORT_TASK),
         stealth_campaign::Objective::Defend { raid }
@@ -508,6 +510,8 @@ fn airlift_summary(state: &CampaignState, run: u32) -> Option<String> {
 
 /// What an enemy forward battery's offer asks for (message id).
 pub const BATTERY_TASK: &str = "brief-battery-task";
+/// What an offer on an enemy strategic facility asks for (message id).
+pub const FACILITY_TASK: &str = "brief-facility-task";
 /// What the defence of a SAM battery against enemy SEAD asks for (message id).
 pub const SEAD_DEFENCE_TASK: &str = "brief-sead-defence-task";
 /// What the armour columns' offers ask for (message ids).
@@ -529,6 +533,7 @@ fn primary_target(
         Objective::Sead { ref sites, .. } => sites.first().copied(),
         Objective::Cas { .. } => return (None, t!("brief-shape-guns").into(), true),
         Objective::Battery { .. } => return (None, t!("brief-shape-battery").into(), true),
+        Objective::Facility { .. } => return (None, t!("brief-shape-facility").into(), true),
         Objective::Armour { .. } => return (None, t!("brief-shape-armour").into(), true),
         Objective::Support { .. } => return (None, t!("brief-shape-armour-guns").into(), true),
         Objective::Airlift { run } => state.cargo_runs.iter().find(|r| r.id == run).map(|r| r.to),
@@ -557,6 +562,13 @@ pub fn summary(state: &CampaignState, sortie: &Sortie) -> String {
         Objective::Sead { ref sites, .. } => t!("brief-sead", count = sites.len()),
         Objective::Cas { ref aaa, .. } => t!("brief-cas", count = aaa.len()),
         Objective::Battery { ref aaa, .. } => t!("brief-battery", count = aaa.len()),
+        Objective::Facility { facility, .. } => match state.facility(facility) {
+            Some(f) => {
+                let place = f.place.and_then(|p| state.place(p)).map_or("", |p| p.name.as_str());
+                t!("brief-facility", what = t!(f.kind.name_id()), place = place)
+            }
+            None => String::new(),
+        },
         Objective::Armour { ref aaa, convoy } => {
             let to = state
                 .convoys

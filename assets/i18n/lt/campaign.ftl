@@ -381,3 +381,7 @@ cl-fx-headquarters = Priešo štabas prie { $place } sunaikintas: { $hours } val
 cl-fx-ammo-storage = Šaudmenys { $place } prarasti; { $hours } val. ten nieko nelaikoma
 cl-fx-power-plant = Aplink { $place } užgęsta šviesos: { $hours } val. regiono remontas ir pakilimai lėtesni
 cl-fx-fuel-depot = Priešo transportas aplink { $place } { $hours } val. be kuro
+cb-facility = Smūgis - { $what } prie { $place }
+brief-facility-task = Sunaikinti priešo strateginį objektą
+brief-shape-facility = OBJEKTAS
+brief-facility = Priešo { $what } prie { $place }: pastatas, kurį reikia sugriauti bombomis ar raketomis (pabūklai ir nevaldomos raketos jam nekenkia). Jo sunaikinimas atitolina priešą kelioms dienoms.

@@ -381,3 +381,7 @@ cl-fx-headquarters = Fjendens hovedkvarter ved { $place } er ødelagt: dens krig
 cl-fx-ammo-storage = Ammunitionen ved { $place } er væk; der opbevares ingen i { $hours } t
 cl-fx-power-plant = Lyset går ud omkring { $place }: områdets reparationer og afgange går langsommere i { $hours } t
 cl-fx-fuel-depot = Fjendens køretøjer omkring { $place } er uden brændstof i { $hours } t
+cb-facility = Angreb - { $what } ved { $place }
+brief-facility-task = Ødelæg fjendens strategiske anlæg
+brief-shape-facility = ANLÆG
+brief-facility = Fjendens { $what } ved { $place }: en bygning, der skal ødelægges med bomber eller missiler (kanoner og raketter skader den ikke). Ødelagt sætter den fjenden dage tilbage.

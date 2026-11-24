@@ -381,3 +381,7 @@ cl-fx-headquarters = Tá ceanncheathrú an namhad in aice le { $place } scriosta
 cl-fx-ammo-storage = Tá an lón lámhaigh ag { $place } imithe; ní choinneofar aon cheann ann ar feadh { $hours } u
 cl-fx-power-plant = Múchtar na soilse timpeall ar { $place }: tá deisiúcháin agus seoltaí an réigiúin níos moille ar feadh { $hours } u
 cl-fx-fuel-depot = Tá feithiclí an namhad timpeall ar { $place } gan bhreosla ar feadh { $hours } u
+cb-facility = Ionsaí - { $what } in aice le { $place }
+brief-facility-task = Scrios saoráid straitéiseach an namhad
+brief-shape-facility = SAORÁID
+brief-facility = { $what } an namhad in aice le { $place }: foirgneamh le leagan le buamaí nó diúracáin (ní dhéanann gunnaí ná roicéid aon dochar dó). Cuireann a scriosadh siar an namhad ar feadh laethanta.

@@ -654,6 +654,9 @@ impl CampaignState {
                 p.present() && self.raid(*raid).is_some_and(|r| r.state == RaidState::Repelled)
             }
             Objective::Interdict { object, .. } => !self.site(*object).is_some_and(Site::alive),
+            Objective::Facility { facility, .. } => {
+                !self.facility(*facility).is_some_and(crate::Facility::alive)
+            }
             Objective::Awacs { tag } => self.awacs_down.contains(tag),
             Objective::Cargo { tag } => self.cargo_lost.contains(tag),
             Objective::Rescue { .. } if p.heli => p.delivered,

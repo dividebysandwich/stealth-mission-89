@@ -381,3 +381,7 @@ cl-fx-headquarters = Az ellenség főhadiszállása { $place } közelében megse
 cl-fx-ammo-storage = A lőszer { $place } bázison odaveszett; { $hours } óráig ott nem tárolnak
 cl-fx-power-plant = Kialszanak a fények { $place } körül: { $hours } óráig lassabbak a térség javításai és felszállásai
 cl-fx-fuel-depot = Az ellenség járművei { $place } körül { $hours } óráig üzemanyag nélkül maradnak
+cb-facility = Csapás - { $what }, { $place } közelében
+brief-facility-task = Semmisítse meg az ellenség stratégiai létesítményét
+brief-shape-facility = LÉTESÍTMÉNY
+brief-facility = Az ellenség { $what } létesítménye { $place } közelében: épület, amelyet bombával vagy rakétával kell lerombolni (a gépágyú és a nem irányított rakéta nem árt neki). Megsemmisítése napokra visszaveti az ellenséget.

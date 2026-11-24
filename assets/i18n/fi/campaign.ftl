@@ -381,3 +381,7 @@ cl-fx-headquarters = Vihollisen esikunta lähellä paikkaa { $place } on tuhottu
 cl-fx-ammo-storage = Ammukset paikassa { $place } ovat menneet; sinne ei varastoida mitään { $hours } h
 cl-fx-power-plant = Valot sammuvat paikan { $place } ympärillä: alueen korjaukset ja lähdöt hidastuvat { $hours } h
 cl-fx-fuel-depot = Vihollisen ajoneuvot paikan { $place } ympärillä ovat ilman polttoainetta { $hours } h
+cb-facility = Isku - { $what } lähellä paikkaa { $place }
+brief-facility-task = Tuhoa vihollisen strateginen kohde
+brief-shape-facility = KOHDE
+brief-facility = Vihollisen { $what } lähellä paikkaa { $place }: rakennus, joka tuhotaan pommeilla tai ohjuksilla (tykit ja raketit eivät tehoa). Sen tuhoaminen hidastaa vihollista päiviksi.
