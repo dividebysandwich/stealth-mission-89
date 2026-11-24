@@ -36,3 +36,6 @@ ds-fast-track-confirm = UBRZATI IZGRADNJU?
     .text = Upravo ćete potrošiti { $cost } materijala da odmah izgradite { $site }, bez teretnih letova. AI helikopteri na putu s teretom vraćaju se u bazu.
 ds-fast-track-spend = POTROŠI { $cost } MATERIJALA
 ds-too-steep = Prestrma padina
+ad-offline = NE RADI - NEMA STRUJE NI GORIVA
+ad-low-power = NEMA STRUJE - SPORO PUNI
+ad-no-fuel = NEMA GORIVA - RADI NA MREŽI

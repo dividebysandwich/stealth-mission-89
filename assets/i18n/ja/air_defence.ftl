@@ -36,3 +36,6 @@ ds-fast-track-confirm = 建設を前倒ししますか？
     .text = { $cost } の物資を使って { $site } を輸送飛行なしで即座に建設します。資材を運んでいる途中のAIヘリは基地へ戻ります。
 ds-fast-track-spend = { $cost } の物資を使う
 ds-too-steep = 斜面が急すぎます
+ad-offline = 停止中 - 電力も燃料もない
+ad-low-power = 電力なし - 再装填が遅い
+ad-no-fuel = 燃料なし - 送電網で稼働

@@ -36,3 +36,6 @@ ds-fast-track-confirm = POSPEŠITI GRADNJO?
     .text = Porabili boste { $cost } materiala, da takoj zgradite { $site }, brez tovornih letov. Helikopterji UI na poti s tovorom se vrnejo v bazo.
 ds-fast-track-spend = PORABI { $cost } MATERIALA
 ds-too-steep = Preveč strm breg
+ad-offline = NE DELUJE - NI ELEKTRIKE IN GORIVA
+ad-low-power = NI ELEKTRIKE - POČASNO POLNJENJE
+ad-no-fuel = NI GORIVA - DELUJE NA OMREŽJU

@@ -1938,6 +1938,9 @@ pub(super) fn man_refusal(c: &ActiveCampaign, sim: &stealth_sim::Sim, k: usize) 
     if sim.units().get(k).is_none_or(|u| u.destroyed) {
         return Some(t!("st-destroyed").to_string());
     }
+    if let Some(u) = sim.units().get(k).filter(|u| u.offline()) {
+        return Some(t!("st-unit-offline", unit = u.kind.name()).to_string());
+    }
     if c.phase == Phase::Sortie {
         return Some(t!("ce-finish-sortie").to_string());
     }

@@ -36,3 +36,6 @@ ds-fast-track = FAST-TRACK ({ $cost })
 ds-fast-track-confirm = FAST-TRACK CONSTRUCTION?
     .text = You are about to spend { $cost } materiel to build the { $site } at once, without the cargo flights. AI helicopters on their way with its cargo return to base.
 ds-fast-track-spend = SPEND { $cost } MATERIEL
+ad-offline = OFFLINE - NO POWER, NO FUEL
+ad-low-power = NO POWER - RELOADS SLOWLY
+ad-no-fuel = NO FUEL - ITS GENERATORS RUN ON THE GRID

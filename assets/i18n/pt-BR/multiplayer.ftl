@@ -111,3 +111,4 @@ mp-join = ENTRAR
 delete-all-saves = APAGAR TODOS OS SALVAMENTOS?
 cm-panel-note = GUERRA DO TEATRO EM TEMPO REAL
 mp-note = COOP NA CAMPANHA DINÂMICA
+pic-facilities = Instalações estratégicas (fábricas, QGs, energia, combustível, munição)

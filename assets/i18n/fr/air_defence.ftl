@@ -36,3 +36,6 @@ ds-fast-track-confirm = ACCÉLÉRER LA CONSTRUCTION ?
     .text = Vous allez dépenser { $cost } de matériel pour construire le site { $site } tout de suite, sans les vols de fret. Les hélicoptères IA en route avec son fret rentrent à la base.
 ds-fast-track-spend = DÉPENSER { $cost } DE MATÉRIEL
 ds-too-steep = Pente trop raide
+ad-offline = HORS SERVICE - NI COURANT NI CARBURANT
+ad-low-power = PAS DE COURANT - RECHARGE LENTE
+ad-no-fuel = PAS DE CARBURANT - SUR LE RÉSEAU

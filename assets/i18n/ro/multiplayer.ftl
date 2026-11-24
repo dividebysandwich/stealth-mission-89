@@ -111,3 +111,4 @@ mp-join = ALĂTURARE
 delete-all-saves = ȘTERGEȚI TOATE SALVĂRILE?
 cm-panel-note = RĂZBOI ÎN TEATRU ÎN TIMP REAL
 mp-note = COOP ÎN CAMPANIA DINAMICĂ
+pic-facilities = Obiective strategice (fabrici, comandamente, curent, combustibil, muniție)

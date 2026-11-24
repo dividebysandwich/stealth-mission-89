@@ -67,6 +67,14 @@ pub enum Icon {
     MechInfantry,
     /// Supply (a supply convoy's trucks): the sustainment bar across the frame's lower part.
     Supply,
+    /// The strategic facilities (installations): an ammunition store (a shell), a fuel depot
+    /// (POL: a drop), a power plant (a bolt), a factory (a saw-tooth roof), a headquarters (a
+    /// flag).
+    Ammunition,
+    Fuel,
+    Power,
+    Production,
+    Headquarters,
 }
 
 /// The echelon above the frame.
@@ -278,6 +286,43 @@ fn icon(painter: &egui::Painter, icon: Icon, c: egui::Pos2, hw: f32, hh: f32, li
         }
         Icon::Supply => {
             painter.line_segment([at(-1.0, 0.55), at(1.0, 0.55)], line);
+        }
+        Icon::Ammunition => {
+            let shell =
+                vec![at(-0.3, 0.9), at(-0.3, -0.3), at(0.0, -0.9), at(0.3, -0.3), at(0.3, 0.9)];
+            painter.add(egui::Shape::closed_line(shell, line));
+        }
+        Icon::Fuel => {
+            let drop = (0..=16)
+                .map(|i| {
+                    let t = std::f32::consts::PI * (i as f32 / 16.0);
+                    at(0.45 * t.cos(), 0.35 + 0.5 * t.sin())
+                })
+                .chain([at(0.0, -0.9)])
+                .collect();
+            painter.add(egui::Shape::closed_line(drop, line));
+        }
+        Icon::Power => {
+            let bolt = vec![at(0.4, -1.0), at(-0.3, 0.1), at(0.3, 0.1), at(-0.4, 1.0)];
+            painter.add(egui::Shape::line(bolt, line));
+        }
+        Icon::Production => {
+            let roof = vec![
+                at(-1.0, 0.8),
+                at(-1.0, -0.2),
+                at(-0.33, -0.8),
+                at(-0.33, -0.2),
+                at(0.33, -0.8),
+                at(0.33, -0.2),
+                at(1.0, -0.8),
+                at(1.0, 0.8),
+            ];
+            painter.add(egui::Shape::closed_line(roof, line));
+        }
+        Icon::Headquarters => {
+            painter.line_segment([at(-0.6, 1.0), at(-0.6, -1.0)], line);
+            let flag = vec![at(-0.6, -1.0), at(0.8, -0.6), at(-0.6, -0.2)];
+            painter.add(egui::Shape::convex_polygon(flag, line.color, egui::Stroke::NONE));
         }
         Icon::AirDefenceMissile | Icon::AirDefenceGun => {
             // The air defence dome on the box's floor, the weapon rising from it.

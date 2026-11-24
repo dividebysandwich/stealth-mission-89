@@ -36,3 +36,6 @@ ds-fast-track-confirm = FELGYORSÍTOD AZ ÉPÍTÉST?
     .text = { $cost } hadianyagot készülsz elkölteni, hogy a(z) { $site } azonnal felépüljön, teherszállító repülések nélkül. A rakományával úton lévő MI-helikopterek visszatérnek a bázisra.
 ds-fast-track-spend = { $cost } HADIANYAG ELKÖLTÉSE
 ds-too-steep = Túl meredek lejtő
+ad-offline = ÜZEMEN KÍVÜL - NINCS ÁRAM ÉS ÜZEMANYAG
+ad-low-power = NINCS ÁRAM - LASSAN TÖLT
+ad-no-fuel = NINCS ÜZEMANYAG - HÁLÓZATRÓL MŰKÖDIK

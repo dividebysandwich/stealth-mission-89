@@ -111,3 +111,4 @@ mp-col-pilots = PILOTS
 mp-dedicated = DEDICATED
 mp-other-version = other version
 mp-join = JOIN
+pic-facilities = Strategic facilities (factories, headquarters, power, fuel, ammo)

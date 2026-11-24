@@ -111,3 +111,4 @@ mp-join = PIEVIENOTIES
 delete-all-saves = DZĒST VISUS SAGLABĀJUMUS?
 cm-panel-note = KARŠ KARA TEĀTRĪ REĀLAJĀ LAIKĀ
 mp-note = KOOPERĒŠANA DINAMISKAJĀ KAMPAŅĀ
+pic-facilities = Stratēģiskie objekti (rūpnīcas, štābi, elektrība, degviela, munīcija)

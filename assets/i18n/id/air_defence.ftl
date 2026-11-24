@@ -36,3 +36,6 @@ ds-fast-track-confirm = PERCEPAT PEMBANGUNAN?
     .text = Anda akan menghabiskan { $cost } materiel untuk segera membangun { $site } tanpa penerbangan kargo. Helikopter AI yang sedang membawa kargonya kembali ke pangkalan.
 ds-fast-track-spend = HABISKAN { $cost } MATERIEL
 ds-too-steep = Lereng terlalu curam
+ad-offline = TIDAK AKTIF - TANPA LISTRIK DAN BAHAN BAKAR
+ad-low-power = TANPA LISTRIK - ISI ULANG LAMBAT
+ad-no-fuel = TANPA BAHAN BAKAR - MEMAKAI JARINGAN

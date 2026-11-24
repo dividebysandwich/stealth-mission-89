@@ -111,3 +111,4 @@ mp-join = 加入
 delete-all-saves = 删除所有存档？
 cm-panel-note = 实时战区战争
 mp-note = 动态战役中的合作
+pic-facilities = 战略设施（工厂、司令部、电力、燃料、弹药）

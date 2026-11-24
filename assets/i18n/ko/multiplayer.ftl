@@ -111,3 +111,4 @@ mp-join = 참가
 delete-all-saves = 모든 저장 파일을 삭제할까요?
 cm-panel-note = 실시간 전역 전쟁
 mp-note = 다이내믹 캠페인 협동
+pic-facilities = 전략 시설 (공장, 사령부, 전력, 연료, 탄약)

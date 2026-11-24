@@ -36,3 +36,6 @@ ds-fast-track-confirm = ACCELERARE LA COSTRUZIONE?
     .text = Stai per spendere { $cost } di materiale per costruire subito { $site }, senza i voli cargo. Gli elicotteri IA in volo con il suo carico tornano alla base.
 ds-fast-track-spend = SPENDI { $cost } DI MATERIALE
 ds-too-steep = Pendio troppo ripido
+ad-offline = FUORI SERVIZIO - NIENTE CORRENTE NÉ CARBURANTE
+ad-low-power = NIENTE CORRENTE - RICARICA LENTA
+ad-no-fuel = NIENTE CARBURANTE - VA CON LA RETE

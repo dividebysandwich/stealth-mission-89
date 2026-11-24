@@ -111,3 +111,4 @@ mp-join = PRISIJUNGTI
 delete-all-saves = IŠTRINTI VISUS IŠSAUGOJIMUS?
 cm-panel-note = KARAS KARO TEATRE REALIU LAIKU
 mp-note = KOOPERACIJA DINAMINĖJE KAMPANIJOJE
+pic-facilities = Strateginiai objektai (gamyklos, štabai, elektra, kuras, šaudmenys)

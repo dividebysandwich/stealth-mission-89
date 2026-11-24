@@ -111,3 +111,4 @@ mp-join = TEACHT ISTEACH
 delete-all-saves = SCRIOS NA SEIFEANNA UILE?
 cm-panel-note = CATH AN RÉIMSE I NAMHAD-AM REAL
 mp-note = COOP SAN IARRACHT DHINIMICEACH
+pic-facilities = Saoráidí straitéiseacha (monarchana, ceanncheathrúna, cumhacht, breosla, lón lámhaigh)

@@ -111,3 +111,4 @@ mp-join = PRIDRUŽI SE
 delete-all-saves = IZBRISATI VSE SHRAMBE?
 cm-panel-note = VOJNA NA BOJIŠČU V REALNEM ČASU
 mp-note = KOOP V DINAMIČNI KAMPANJI
+pic-facilities = Strateški objekti (tovarne, poveljstva, elektrika, gorivo, strelivo)

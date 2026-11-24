@@ -111,3 +111,4 @@ mp-join = DOŁĄCZYĆ
 delete-all-saves = USUNĄĆ WSZYSTKIE ZAPISY?
 cm-panel-note = WOJNA NA TEATRZE DZIAŁAŃ W CZASIE RZECZYWISTYM
 mp-note = KOOPERACJA W KAMPANII DYNAMICZNEJ
+pic-facilities = Obiekty strategiczne (fabryki, kwatery, prąd, paliwo, amunicja)

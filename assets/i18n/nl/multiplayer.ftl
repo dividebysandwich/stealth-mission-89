@@ -111,3 +111,4 @@ mp-join = DEELNEMEN
 delete-all-saves = ALLE OPSLAGEN WISSEN?
 cm-panel-note = REALTIME OORLOG IN HET THEATER
 mp-note = COOP IN DE DYNAMISCHE CAMPAGNE
+pic-facilities = Strategische installaties (fabrieken, hoofdkwartieren, stroom, brandstof, munitie)

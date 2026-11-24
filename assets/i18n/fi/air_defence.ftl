@@ -36,3 +36,6 @@ ds-fast-track-confirm = KIIREHDITÄÄNKÖ RAKENTAMISTA?
     .text = Olet käyttämässä { $cost } materiaalia kohteen { $site } rakentamiseen heti ilman rahtilentoja. Matkalla olevat tekoälyhelikopterit palaavat rahdin kanssa tukikohtaan.
 ds-fast-track-spend = KÄYTÄ { $cost } MATERIAALIA
 ds-too-steep = Liian jyrkkä rinne
+ad-offline = EI TOIMINNASSA - EI SÄHKÖÄ EIKÄ POLTTOAINETTA
+ad-low-power = EI SÄHKÖÄ - LATAA HITAASTI
+ad-no-fuel = EI POLTTOAINETTA - TOIMII VERKKOVIRRALLA

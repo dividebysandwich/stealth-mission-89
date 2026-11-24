@@ -36,3 +36,6 @@ ds-fast-track-confirm = ACELERAR A CONSTRUÇÃO?
     .text = Você vai gastar { $cost } de material para construir { $site } imediatamente, sem os voos de carga. Os helicópteros IA a caminho com a carga voltam à base.
 ds-fast-track-spend = GASTAR { $cost } DE MATERIAL
 ds-too-steep = Encosta íngreme demais
+ad-offline = INOPERANTE - SEM ENERGIA E SEM COMBUSTÍVEL
+ad-low-power = SEM ENERGIA - RECARGA LENTA
+ad-no-fuel = SEM COMBUSTÍVEL - FUNCIONA NA REDE

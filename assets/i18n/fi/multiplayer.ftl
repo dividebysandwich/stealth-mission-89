@@ -111,3 +111,4 @@ mp-join = LIITY
 delete-all-saves = POISTETAANKO KAIKKI TALLENNUKSET?
 cm-panel-note = REAALIAIKAINEN SOTA SOTATOIMIALUEELLA
 mp-note = YHTEISPELI DYNAAMISESSA KAMPANJASSA
+pic-facilities = Strategiset kohteet (tehtaat, esikunnat, sähkö, polttoaine, ammukset)

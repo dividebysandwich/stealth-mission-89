@@ -65,6 +65,8 @@ pub struct Defence {
     pub kind: GroundKind,
     /// The player at its console.
     pub manned: Option<u8>,
+    /// Its supplies cut (`stealth_sim::aaa::CUT_POWER`, `CUT_FUEL`).
+    pub cut: u8,
 }
 
 /// A tank or an infantry fighting vehicle, friendly or seen.
@@ -78,6 +80,19 @@ pub struct Vehicle {
     pub blue: bool,
     /// Its heading while its convoy drives (radians, clockwise from north).
     pub heading: Option<f32>,
+}
+
+/// A strategic facility of either side (the enemy's are known: they are watched from afar).
+#[derive(Clone)]
+pub struct FacilityMark {
+    pub kind: stealth_campaign::FacilityKind,
+    pub x: i32,
+    pub y: i32,
+    pub blue: bool,
+    /// Seconds until it is rebuilt (None: it stands).
+    pub back_in: Option<f64>,
+    /// Its place's name.
+    pub place: String,
 }
 
 /// A supply convoy on the road: its vehicles (head first) and its way still to drive to the
@@ -149,6 +164,8 @@ pub struct Picture {
     pub supply: Vec<SupplyConvoy>,
     /// The supply roads cut: where their bridges came down (map units).
     pub cuts: Vec<(i32, i32)>,
+    /// The strategic facilities.
+    pub facilities: Vec<FacilityMark>,
     /// The player in the air.
     pub player: Option<(i32, i32)>,
 }
@@ -306,7 +323,8 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
                     | GroundKind::DroneCenter
             ) {
                 let manned = sim.manned_by(k);
-                pic.defences.push(Defence { index: k, x: u.x, y: u.y, kind: u.kind, manned });
+                let cut = u.cut;
+                pic.defences.push(Defence { index: k, x: u.x, y: u.y, kind: u.kind, manned, cut });
             }
             continue;
         }
@@ -329,7 +347,53 @@ pub fn picture(state: &CampaignState, sim: &Sim) -> Picture {
             .map(|(x, y, _)| map_of(x, y))
             .collect();
     }
+    pic.facilities = state
+        .facilities
+        .iter()
+        .filter_map(|f| {
+            let side = state.facility_side(f);
+            (side != Side::Neutral).then(|| FacilityMark {
+                kind: f.kind,
+                x: f.x,
+                y: f.y,
+                blue: side == Side::Blue,
+                back_in: f.back_at.map(|t| (t - state.clock).max(0.0)),
+                place: f
+                    .place
+                    .and_then(|p| state.place(p))
+                    .map_or(String::new(), |p| p.name.clone()),
+            })
+        })
+        .collect();
     pic
+}
+
+/// A strategic facility's symbol (an APP-6 installation), faded and crossed out while it is
+/// destroyed.
+pub(super) fn facility(painter: &egui::Painter, p: egui::Pos2, f: &FacilityMark, k: f32) {
+    use stealth_campaign::FacilityKind as F;
+    let icon = match f.kind {
+        F::AmmoStorage => Icon::Ammunition,
+        F::FuelDepot => Icon::Fuel,
+        F::PowerPlant => Icon::Power,
+        F::DroneFactory | F::TankFactory => Icon::Production,
+        F::Headquarters => Icon::Headquarters,
+    };
+    let aff = if f.blue { Affiliation::Friend } else { Affiliation::Hostile };
+    let alpha = if f.back_in.is_some() { 0.45 } else { 1.0 };
+    Symbol::new(aff, Dimension::Installation, icon).draw(painter, p, k, alpha);
+    // The drone factory: the drone's V over its roof.
+    if f.kind == F::DroneFactory {
+        let ink = egui::Stroke::new((1.2 * k).max(0.8), egui::Color32::BLACK.gamma_multiply(alpha));
+        let at = |x: f32, y: f32| p + egui::vec2(x, y) * k;
+        painter.add(egui::Shape::line(vec![at(-2.0, -1.5), at(0.0, 0.0), at(2.0, -1.5)], ink));
+    }
+    if f.back_in.is_some() {
+        let stroke = egui::Stroke::new(2.0 * k.max(1.0), MISSILE_RED);
+        let d = 6.0 * k;
+        painter.line_segment([p + egui::vec2(-d, -d), p + egui::vec2(d, d)], stroke);
+        painter.line_segment([p + egui::vec2(-d, d), p + egui::vec2(d, -d)], stroke);
+    }
 }
 
 /// A supply truck (a box over two wheels) or a technical (a box with a gun's stroke); APP-6: a
@@ -478,6 +542,37 @@ pub fn draw(
         if d.manned.is_some() {
             painter.circle_stroke(c, map_draw::halo(9.0) * k, egui::Stroke::new(1.5, GREEN));
             tip.line(t!("mt-manned"));
+        }
+        match d.cut {
+            0 => {}
+            3 => {
+                tip.line(t!("mt-offline"));
+            }
+            1 => {
+                tip.line(t!("mt-no-power"));
+            }
+            _ => {
+                tip.line(t!("mt-no-fuel"));
+            }
+        }
+    }
+    if layers.shows(Layer::Facilities) {
+        for f in &pic.facilities {
+            let c = at(f.x, f.y);
+            let mark = f.clone();
+            scaled(c, &|p, c| facility(p, c, &mark, 0.8));
+            let colour = if f.blue { FRIENDLY_BLUE } else { MISSILE_RED };
+            let tip = tips.add(c, t!(f.kind.name_id()), &f.place, colour);
+            let mark = f.clone();
+            tip.symbol(move |p, c| facility(p, c, &mark, 0.8));
+            match f.back_in {
+                Some(s) => {
+                    tip.line(t!("mt-facility-down", mins = (s / 60.0).ceil() as i64));
+                }
+                None => {
+                    tip.line(t!("mt-facility-up"));
+                }
+            }
         }
     }
     for s in pic.sams.iter().filter(|s| layers.shows_type(&s.name)) {
@@ -764,6 +859,22 @@ pub fn legend(ui: &mut egui::Ui, layers: &mut MapLayers, pic: Option<&Picture>) 
         let (dx, k) = if app6() { (7.5, 0.65) } else { (5.0, 1.0) };
         vehicle(p, c0 - egui::vec2(dx, 0.0), &tank(true), k);
         vehicle(p, c0 + egui::vec2(dx, 0.0), &ifv(false), k);
+    });
+    layers.legend(ui, Layer::Facilities, t!("pic-facilities"), |p, c0| {
+        let mark = |kind, blue| FacilityMark {
+            kind,
+            x: 0,
+            y: 0,
+            blue,
+            back_in: None,
+            place: String::new(),
+        };
+        let (blue, red) = (
+            mark(stealth_campaign::FacilityKind::PowerPlant, true),
+            mark(stealth_campaign::FacilityKind::Headquarters, false),
+        );
+        facility(p, c0 - egui::vec2(7.5, 0.0), &blue, 0.6);
+        facility(p, c0 + egui::vec2(7.5, 0.0), &red, 0.6);
     });
     let lorry = Vehicle { kind: GroundKind::ArmyTruck, ..tank(false) };
     layers.legend(ui, Layer::Supply, t!("pic-supply"), |p, c0| {

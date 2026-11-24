@@ -40,3 +40,6 @@ ds-fast-track-confirm = PRZYSPIESZYĆ BUDOWĘ?
     .text = Zamierzasz wydać { $cost } zasobów, by od razu zbudować { $site }, bez lotów z ładunkiem. Śmigłowce SI w drodze z ładunkiem wracają do bazy.
 ds-fast-track-spend = WYDAJ { $cost } ZASOBÓW
 ds-too-steep = Zbyt stromy stok
+ad-offline = NIE DZIAŁA - BRAK PRĄDU I PALIWA
+ad-low-power = BRAK PRĄDU - WOLNE PRZEŁADOWANIE
+ad-no-fuel = BRAK PALIWA - DZIAŁA Z SIECI

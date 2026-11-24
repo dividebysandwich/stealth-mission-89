@@ -111,3 +111,4 @@ mp-join = REJOINDRE
 delete-all-saves = SUPPRIMER TOUTES LES SAUVEGARDES ?
 cm-panel-note = GUERRE DE THÉÂTRE EN TEMPS RÉEL
 mp-note = COOP DANS LA CAMPAGNE DYNAMIQUE
+pic-facilities = Installations stratégiques (usines, QG, électricité, carburant, munitions)

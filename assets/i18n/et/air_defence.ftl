@@ -36,3 +36,6 @@ ds-fast-track-confirm = KIIRENDADA EHITUST?
     .text = Kulutad { $cost } materjali, et ehitada { $site } kohe, ilma lastilendudeta. Teel olevad tehisintellekti kopterid naasevad lastiga baasi.
 ds-fast-track-spend = KULUTA { $cost } MATERJALI
 ds-too-steep = Liiga järsk nõlv
+ad-offline = EI TÖÖTA - POLE VOOLU EGA KÜTUST
+ad-low-power = VOOLU POLE - LAEB AEGLASELT
+ad-no-fuel = KÜTUST POLE - TÖÖTAB VÕRGUST

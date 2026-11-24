@@ -111,3 +111,4 @@ mp-join = INGĦAQAD
 delete-all-saves = TĦASSAR KOLL IL-ĦŻINIET?
 cm-panel-note = GWERRA TAT-TEATRU FIL-ĦIN REALI
 mp-note = COOP FIL-KAMPANJA DINAMIKA
+pic-facilities = Faċilitajiet strateġiċi (fabbriki, kwartieri, elettriku, fjuwil, munizzjon)

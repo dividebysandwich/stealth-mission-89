@@ -111,3 +111,4 @@ mp-join = LIITU
 delete-all-saves = KUSTUTADA KÕIK SALVESTUSED?
 cm-panel-note = REAALAJALINE SÕDA SÕJATANTRIL
 mp-note = KOOP DÜNAAMILISES KAMPAANIAS
+pic-facilities = Strateegilised rajatised (tehased, staabid, elekter, kütus, moon)

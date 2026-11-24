@@ -36,3 +36,6 @@ ds-fast-track-confirm = BAU BESCHLEUNIGEN?
     .text = Du gibst gleich { $cost } Material aus, um { $site } sofort zu bauen, ohne Frachtflüge. KI-Hubschrauber, die mit seiner Fracht unterwegs sind, kehren zur Basis zurück.
 ds-fast-track-spend = { $cost } MATERIAL AUSGEBEN
 ds-too-steep = Zu steiler Hang
+ad-offline = AUSSER BETRIEB - KEIN STROM, KEIN TREIBSTOFF
+ad-low-power = KEIN STROM - LÄDT LANGSAM NACH
+ad-no-fuel = KEIN TREIBSTOFF - LÄUFT AM STROMNETZ

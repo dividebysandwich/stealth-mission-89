@@ -111,3 +111,4 @@ mp-join = CSATLAKOZÁS
 delete-all-saves = MINDEN MENTÉS TÖRLÉSE?
 cm-panel-note = VALÓS IDEJŰ HÁBORÚ A HADSZÍNTÉREN
 mp-note = KOOP A DINAMIKUS KAMPÁNYBAN
+pic-facilities = Stratégiai létesítmények (gyárak, főhadiszállások, áram, üzemanyag, lőszer)

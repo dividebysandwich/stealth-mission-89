@@ -36,3 +36,6 @@ ds-fast-track-confirm = FREMSKYND OPFØRELSEN?
     .text = Du er ved at bruge { $cost } materiel på at bygge { $site } med det samme, uden lastflyvninger. AI-helikoptere på vej med lasten vender tilbage til basen.
 ds-fast-track-spend = BRUG { $cost } MATERIEL
 ds-too-steep = For stejl skråning
+ad-offline = UDE AF DRIFT - INGEN STRØM, INTET BRÆNDSTOF
+ad-low-power = INGEN STRØM - LADER LANGSOMT
+ad-no-fuel = INTET BRÆNDSTOF - KØRER PÅ NETTET

@@ -36,3 +36,6 @@ ds-fast-track-confirm = TĦAFFEF IL-BINI?
     .text = Se tonfoq { $cost } materiel biex tibni { $site } minnufih, mingħajr it-titjiriet tal-merkanzija. Il-ħelikopters tal-IA fi triqthom bil-merkanzija jerġgħu lura lejn il-bażi.
 ds-fast-track-spend = ONFOQ { $cost } MATERIEL
 ds-too-steep = Għoljiet wisq wieqaf
+ad-offline = MITFI - LA ELETTRIKU U LANQAS FJUWIL
+ad-low-power = BLA ELETTRIKU - JIMLA BIL-MOD
+ad-no-fuel = BLA FJUWIL - JAĦDEM BIL-GRILJA

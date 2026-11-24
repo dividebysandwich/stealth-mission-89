@@ -111,3 +111,4 @@ mp-join = GÅ MED
 delete-all-saves = RADERA ALLA SPARADE SPEL?
 cm-panel-note = KRIG PÅ TEATERN I REALTID
 mp-note = KOOP I DEN DYNAMISKA KAMPANJEN
+pic-facilities = Strategiska anläggningar (fabriker, högkvarter, kraft, bränsle, ammunition)

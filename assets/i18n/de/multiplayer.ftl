@@ -111,3 +111,4 @@ mp-join = BEITRETEN
 delete-all-saves = ALLE SPEICHERSTÄNDE LÖSCHEN?
 cm-panel-note = ECHTZEIT-KRIEG IM EINSATZGEBIET
 mp-note = KOOP IN DER DYNAMISCHEN KAMPAGNE
+pic-facilities = Strategische Ziele (Fabriken, Hauptquartiere, Strom, Treibstoff, Munition)

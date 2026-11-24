@@ -36,3 +36,6 @@ ds-fast-track-confirm = PAĀTRINĀT CELTNIECĪBU?
     .text = Tu tūlīt iztērēsi { $cost } materiālos resursus, lai uzreiz uzbūvētu { $site } bez kravas lidojumiem. MI helikopteri ceļā ar tās kravu atgriežas bāzē.
 ds-fast-track-spend = IZTĒRĒT { $cost } RESURSUS
 ds-too-steep = Pārāk stāva nogāze
+ad-offline = NEDARBOJAS - NAV STRĀVAS UN DEGVIELAS
+ad-low-power = NAV STRĀVAS - PĀRLĀDĒ LĒNI
+ad-no-fuel = NAV DEGVIELAS - DARBOJAS NO TĪKLA

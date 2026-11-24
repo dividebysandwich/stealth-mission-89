@@ -36,3 +36,6 @@ ds-fast-track-confirm = AN TÓGÁIL A BHROSTÚ?
     .text = Tá tú ar tí { $cost } trealamh a chaitheamh chun { $site } a thógáil láithreach, gan na heitiltí lasta. Fillfidh héileacaptair IS atá ar an mbealach lena lasta ar an mbunáit.
 ds-fast-track-spend = CAITH { $cost } TREALAMH
 ds-too-steep = Fána ró-ghéar
+ad-offline = AS FEIDHM - GAN CHUMHACHT NÁ BREOSLA
+ad-low-power = GAN CHUMHACHT - ATHLUCHTÚ MALL
+ad-no-fuel = GAN BHREOSLA - AR AN EANGACH

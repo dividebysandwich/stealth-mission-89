@@ -110,3 +110,4 @@ mp-join = GABUNG
 delete-all-saves = HAPUS SEMUA SIMPANAN?
 cm-panel-note = PERANG TEATER SECARA REAL-TIME
 mp-note = KOOP DALAM KAMPANYE DINAMIS
+pic-facilities = Fasilitas strategis (pabrik, markas, listrik, bahan bakar, amunisi)

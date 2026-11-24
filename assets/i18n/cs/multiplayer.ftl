@@ -111,3 +111,4 @@ mp-join = PŘIPOJIT SE
 delete-all-saves = SMAZAT VŠECHNY ULOŽENÉ HRY?
 cm-panel-note = VÁLKA NA BOJIŠTI V REÁLNÉM ČASE
 mp-note = KOOP V DYNAMICKÉ KAMPANI
+pic-facilities = Strategické objekty (továrny, velitelství, energie, palivo, munice)

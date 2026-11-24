@@ -111,3 +111,4 @@ mp-join = 参加
 delete-all-saves = すべてのセーブを削除しますか？
 cm-panel-note = リアルタイム戦域戦争
 mp-note = ダイナミックキャンペーンでの協力プレイ
+pic-facilities = 戦略施設（工場・司令部・電力・燃料・弾薬）

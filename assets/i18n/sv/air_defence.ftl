@@ -36,3 +36,6 @@ ds-fast-track-confirm = SNABBA PÅ BYGGET?
     .text = Du är på väg att lägga { $cost } materiel på att bygga { $site } direkt, utan lastflygningar. AI-helikoptrar på väg med lasten återvänder till basen.
 ds-fast-track-spend = LÄGG { $cost } MATERIEL
 ds-too-steep = För brant sluttning
+ad-offline = UR DRIFT - INGEN STRÖM, INGET BRÄNSLE
+ad-low-power = INGEN STRÖM - LADDAR LÅNGSAMT
+ad-no-fuel = INGET BRÄNSLE - GÅR PÅ NÄTET

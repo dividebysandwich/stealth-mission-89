@@ -36,3 +36,6 @@ ds-fast-track-confirm = URYCHLIT STAVBU?
     .text = Chystáte se utratit { $cost } materiálu, abyste { $site } postavili hned, bez nákladních letů. Vrtulníky AI na cestě s nákladem se vrátí na základnu.
 ds-fast-track-spend = UTRATIT { $cost } MATERIÁLU
 ds-too-steep = Příliš strmý svah
+ad-offline = MIMO PROVOZ - BEZ PROUDU A PALIVA
+ad-low-power = BEZ PROUDU - NABÍJÍ POMALU
+ad-no-fuel = BEZ PALIVA - GENERÁTORY JEDOU ZE SÍTĚ

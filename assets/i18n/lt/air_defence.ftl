@@ -36,3 +36,6 @@ ds-fast-track-confirm = PASPARTINTI STATYBĄ?
     .text = Ketinate išleisti { $cost } išteklių, kad { $site } būtų pastatyta iškart, be krovinių skrydžių. Pakeliui esantys DI sraigtasparniai su kroviniu grįžta į bazę.
 ds-fast-track-spend = IŠLEISTI { $cost } IŠTEKLIŲ
 ds-too-steep = Per status šlaitas
+ad-offline = NEVEIKIA - NĖRA ELEKTROS IR KURO
+ad-low-power = NĖRA ELEKTROS - UŽTAISO LĖTAI
+ad-no-fuel = NĖRA KURO - VEIKIA IŠ TINKLO

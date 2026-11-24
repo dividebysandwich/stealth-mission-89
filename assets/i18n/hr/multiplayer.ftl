@@ -111,3 +111,4 @@ mp-join = PRIDRUŽI SE
 delete-all-saves = OBRISATI SVA SPREMANJA?
 cm-panel-note = RAT NA BOJIŠTU U STVARNOM VREMENU
 mp-note = KOOP U DINAMIČNOJ KAMPANJI
+pic-facilities = Strateški objekti (tvornice, stožeri, struja, gorivo, streljivo)

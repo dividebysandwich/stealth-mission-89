@@ -34,6 +34,8 @@ pub(super) struct Site {
     /// The nearest place's name.
     near: String,
     destroyed: bool,
+    /// Its supplies cut (`stealth_sim::aaa::CUT_POWER`, `CUT_FUEL`; both: offline).
+    cut: u8,
     /// The player at its console.
     manned: Option<u8>,
     /// Rounds ready (missiles on the launchers or the Gepard's shells), the most it holds,
@@ -100,6 +102,7 @@ pub(super) fn sites(c: &ActiveCampaign, sim: &Sim) -> Vec<Site> {
                 kind: u.kind,
                 near,
                 destroyed: u.destroyed,
+                cut: u.cut,
                 manned: sim.manned_by(k),
                 ready: if drones {
                     sim.uavs_of(k).count() as i32
@@ -295,6 +298,10 @@ fn site_tip(tips: &mut MapTips, p: egui::Pos2, s: &Site, tag: &str) {
         tip.line(t!("mt-destroyed"));
         return;
     }
+    if s.cut == 3 {
+        tip.line(t!("mt-offline"));
+        return;
+    }
     let id = if s.kind == GroundKind::DroneCenter { "mt-drones-up" } else { "mt-rounds-ready" };
     tip.line(t!(id, ready = s.ready, full = s.full, stock = s.stock));
     match s.enemies.first() {
@@ -368,6 +375,20 @@ fn entry(ui: &mut egui::Ui, c: &mut ActiveCampaign, sim: &Sim, s: &Site, tag: &s
     if s.destroyed {
         ui.label(egui::RichText::new(t!("ad-destroyed")).color(MISSILE_RED));
         return;
+    }
+    // Its power plant or fuel depot destroyed.
+    match s.cut {
+        0 => {}
+        3 => {
+            ui.label(egui::RichText::new(t!("ad-offline")).color(MISSILE_RED));
+            return;
+        }
+        1 => {
+            ui.label(egui::RichText::new(t!("ad-low-power")).color(AMBER));
+        }
+        _ => {
+            ui.label(egui::RichText::new(t!("ad-no-fuel")).color(AMBER));
+        }
     }
     let drones = s.kind == GroundKind::DroneCenter;
     let ammo_col = if drones || s.ready * 2 >= s.full {

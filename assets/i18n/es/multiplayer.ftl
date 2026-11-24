@@ -111,3 +111,4 @@ mp-join = UNIRSE
 delete-all-saves = ¿BORRAR TODAS LAS PARTIDAS GUARDADAS?
 cm-panel-note = GUERRA DEL TEATRO EN TIEMPO REAL
 mp-note = COOP EN LA CAMPAÑA DINÁMICA
+pic-facilities = Instalaciones estratégicas (fábricas, cuarteles, energía, combustible, munición)

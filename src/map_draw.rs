@@ -644,6 +644,9 @@ pub enum Layer {
     Armour,
     /// The enemy's supply convoys on the roads (trucks, their technicals) and their way on.
     Supply,
+    /// The campaign's strategic facilities (factories, headquarters, power plants, fuel
+    /// depots, ammo storages).
+    Facilities,
     PulseRadar,
     DopplerRadar,
     MissileRange,

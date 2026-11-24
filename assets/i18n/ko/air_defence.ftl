@@ -36,3 +36,6 @@ ds-fast-track-confirm = 건설을 앞당기시겠습니까?
     .text = 물자 { $cost }을(를) 들여 화물 비행 없이 { $site }을(를) 즉시 건설합니다. 화물을 싣고 가던 AI 헬기는 기지로 돌아갑니다.
 ds-fast-track-spend = 물자 { $cost } 사용
 ds-too-steep = 경사가 너무 가파릅니다
+ad-offline = 작동 불가 - 전력과 연료 없음
+ad-low-power = 전력 없음 - 재장전 느림
+ad-no-fuel = 연료 없음 - 전력망으로 가동

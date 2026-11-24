@@ -111,3 +111,4 @@ mp-join = UNIRSI
 delete-all-saves = ELIMINARE TUTTI I SALVATAGGI?
 cm-panel-note = GUERRA DEL TEATRO IN TEMPO REALE
 mp-note = COOP NELLA CAMPAGNA DINAMICA
+pic-facilities = Installazioni strategiche (fabbriche, comandi, energia, carburante, munizioni)

@@ -36,3 +36,6 @@ ds-fast-track-confirm = 加速建设？
     .text = 你将花费 { $cost } 物资立即建成 { $site }，无需运输飞行。正在运送其货物的 AI 直升机将返回基地。
 ds-fast-track-spend = 花费 { $cost } 物资
 ds-too-steep = 坡度太陡
+ad-offline = 停止运作 - 无电力也无燃料
+ad-low-power = 无电力 - 装填缓慢
+ad-no-fuel = 无燃料 - 依靠电网运作

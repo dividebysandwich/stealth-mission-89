@@ -36,3 +36,6 @@ ds-fast-track-confirm = BOUW VERSNELLEN?
     .text = Je staat op het punt { $cost } materieel uit te geven om { $site } meteen te bouwen, zonder vrachtvluchten. AI-helikopters onderweg met de vracht keren terug naar de basis.
 ds-fast-track-spend = { $cost } MATERIEEL UITGEVEN
 ds-too-steep = Te steile helling
+ad-offline = BUITEN BEDRIJF - GEEN STROOM, GEEN BRANDSTOF
+ad-low-power = GEEN STROOM - HERLAADT TRAAG
+ad-no-fuel = GEEN BRANDSTOF - DRAAIT OP HET NET

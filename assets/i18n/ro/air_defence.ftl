@@ -36,3 +36,6 @@ ds-fast-track-confirm = GRĂBEȘTI CONSTRUCȚIA?
     .text = Ești pe cale să cheltui { $cost } materiale ca să construiești imediat { $site }, fără zborurile de marfă. Elicopterele IA pe drum cu marfa se întorc la bază.
 ds-fast-track-spend = CHELTUIEȘTE { $cost } MATERIALE
 ds-too-steep = Pantă prea abruptă
+ad-offline = NEFUNCȚIONAL - FĂRĂ CURENT ȘI COMBUSTIBIL
+ad-low-power = FĂRĂ CURENT - REÎNCARCĂ ÎNCET
+ad-no-fuel = FĂRĂ COMBUSTIBIL - MERGE PE REȚEA
