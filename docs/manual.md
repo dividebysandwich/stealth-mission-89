@@ -2368,7 +2368,8 @@ fire before they see you, from beyond their missile range (chapter 13.2).
 **AGM-122 Sidearm** (AH-1Z, AH-64D, RAH-66, AV-8B). A Sidewinder with a radar seeker in place of its
 infrared one: the attack helicopters' and the Harrier's own anti-radiation missile. Like the HARM it
 homes only on a radar that is transmitting, but it reaches only some 10 km and its warhead is small.
-Lock the radar in GND mode (T, B) and fire inside the zone.
+With a Sidearm aboard the **HARM** display is offered too (modern avionics): lock a radar on it as
+for the HARM, or in GND mode with T or B, and fire inside the zone.
 
 Fired **below 1,000 ft** above the ground, as from a helicopter hiding behind the trees, it runs its
 **pop-up** program: it climbs away from the ground toward the radar, pushes over and dives onto it
@@ -4518,7 +4519,7 @@ The C-5 and the CH-47 can fly an insertion and drop paratroopers instead of land
 ## 15.7 Pages that come with their weapons
 
 The modern avionics offer a weapon's page only with that weapon aboard: the HARM display with
-HARMs, the SLAM page with SLAM-ERs, the JAM page with jammer pods. A bottom button whose page
+HARMs or Sidearms, the SLAM page with SLAM-ERs, the JAM page with jammer pods. A bottom button whose page
 is not offered stays blank.
 
 # 16. THE A-6C INTRUDER

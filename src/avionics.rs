@@ -783,7 +783,7 @@ impl AvionicsState {
     }
 
     /// The aircraft has format `f` and it applies to the stores loaded: the HARM display with
-    /// HARMs, the SLAM page with SLAM-ERs. A bottom button with a format not offered is blank.
+    /// HARMs or Sidearms, the SLAM page with SLAM-ERs. A bottom button with a format not offered is blank.
     pub fn offered(&self, f: Format) -> bool {
         self.has(f)
             && (f != Format::Harm || self.harm_loaded)

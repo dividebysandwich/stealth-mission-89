@@ -860,6 +860,10 @@ fn reset_mfd(
     raster.geometry_theater.clear();
 }
 
+/// The weapons that bring the HARM display: the HARM and the Sidearm, which home on the radars
+/// it shows (and lock them from it).
+const HARM_PAGE_WEAPONS: [i32; 2] = [stealth_sim::HARM_WEAPON, stealth_sim::SIDEARM_WEAPON];
+
 #[allow(clippy::too_many_arguments)]
 fn mfd_keys(
     mut actions: MessageReader<ActionEvent>,
@@ -912,7 +916,8 @@ fn mfd_keys(
     }
     // The weapons' pages come with those weapons loaded (fired or not).
     let loaded = |w| stores.bays.iter().any(|b| b.weapon == w);
-    let (harm, slam) = (loaded(stealth_sim::HARM_WEAPON), loaded(stealth_sim::SLAMER_WEAPON));
+    let harm = HARM_PAGE_WEAPONS.into_iter().any(loaded);
+    let slam = loaded(stealth_sim::SLAMER_WEAPON);
     let jam = loaded(stealth_sim::jamming::ALQ99_WEAPON);
     if (state.av.harm_loaded, state.av.slam_loaded, state.av.jam_loaded) != (harm, slam, jam) {
         state.av.set_stores(harm, slam, jam);
@@ -2656,6 +2661,45 @@ fn tac_icon(c: &mut Canvas, icon: TacIcon, x: i32, y: i32, hires: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The HARM display comes with HARMs or Sidearms aboard (an AH-64 with Sidearms on its
+    /// wingtips), and goes with neither.
+    #[test]
+    fn sidearms_bring_the_harm_display() {
+        use crate::avionics::Format;
+        let mut settings = crate::settings::Settings::from_args();
+        settings.aircraft = crate::aircraft::AircraftKind::AH64;
+        settings.classic_avionics = false;
+        let bay =
+            |weapon| crate::hud::Bay { weapon, ..crate::hud::Stores::default().bays[0].clone() };
+        let mut app = App::new();
+        app.add_message::<ActionEvent>()
+            .add_message::<MfdCommand>()
+            .add_message::<crate::hotas::TgpZoomAxis>()
+            .insert_resource(MfdState { modern: true, ..default() })
+            .insert_resource(MapRaster::default())
+            .insert_resource(settings)
+            .insert_resource(TrackCam::default())
+            .insert_resource(crate::hud::HudState::default())
+            .add_systems(Update, mfd_keys);
+        let hellfire = crate::loadout::HELLFIRE as i32;
+        for (weapons, harm) in [
+            (vec![stealth_sim::SIDEARM_WEAPON, hellfire], true),
+            (vec![hellfire], false),
+            (vec![stealth_sim::HARM_WEAPON], true),
+        ] {
+            let bays = weapons.into_iter().map(bay).collect();
+            app.insert_resource(crate::hud::Stores { bays, ..default() });
+            app.update();
+            let av = &app.world().resource::<MfdState>().av;
+            assert_eq!(
+                av.available().any(|f| f == Format::Harm),
+                harm,
+                "{:?}",
+                av.available().collect::<Vec<_>>()
+            );
+        }
+    }
 
     /// Every zoom key pair zooms the sensor of interest: the HSD's range or the targeting pod;
     /// without one (classic avionics, HARM) each keeps its own target.
