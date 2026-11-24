@@ -934,12 +934,17 @@ def a6_skin(s, u):
 
 def a6_split_skin(g):
     """Splits the skin's four-sided faces round the cockpit into triangles, so that the panes
-    are laid on the very faces drawn (a four-sided face of the skin is not flat)."""
+    are laid on the very faces drawn (a four-sided face of the skin is not flat). Each is split
+    along the diagonal that folds it outwards, so that both sides of the canopy bulge alike."""
     faces = []
     for pts, c in g.faces:
         mid = sum(pts, Vector()) / len(pts)
         if len(pts) == 4 and 1.4 < A6_NOSE - mid.y < 4.4 and mid.z > 0.3:
-            faces += [([pts[0], pts[1], pts[2]], c), ([pts[0], pts[2], pts[3]], c)]
+            axis = Vector((0, mid.y, A6_PANE_AXIS))
+            if ((pts[0] + pts[2]) / 2 - axis).length >= ((pts[1] + pts[3]) / 2 - axis).length:
+                faces += [([pts[0], pts[1], pts[2]], c), ([pts[0], pts[2], pts[3]], c)]
+            else:
+                faces += [([pts[0], pts[1], pts[3]], c), ([pts[1], pts[2], pts[3]], c)]
         else:
             faces.append((pts, c))
     g.faces = faces
