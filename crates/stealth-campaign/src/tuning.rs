@@ -554,3 +554,15 @@ pub const POWER_PLANT_FROM: (i32, i32) = (0x180, 0x280);
 pub const FUEL_DEPOTS_MAX: usize = 6;
 pub const PLACES_PER_POWER_PLANT: usize = 4;
 pub const POWER_PLANTS: (usize, usize) = (2, 3);
+
+// ------------------------------------------------------------------------- drone production
+
+/// A drone command center's full load of Storks, FP-2s, interceptors and X-12s (the
+/// simulation's `station::*_STOCK`), and what the friendly production base makes of each an
+/// hour while the drone factory stands.
+pub const DRONE_CENTER_STOCK: [u32; 4] = [4, 8, 6, 4];
+pub const DRONES_PER_HOUR: [f64; 4] = [1.0, 3.0, 2.0, 1.0];
+/// The enemy's Gerans: a base's full stock (one wave), and what its production base makes an
+/// hour by skill (a little more than its waves use).
+pub const GERAN_FULL: f64 = 6.0;
+pub const GERAN_PER_HOUR: [f64; 4] = [6.0, 8.0, 11.0, 14.0];

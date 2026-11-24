@@ -64,9 +64,17 @@ pub enum Munition {
     Zuni,
     /// The helicopters' and the Harrier's AGM-122 Sidearm anti-radiation missile.
     Sidearm,
+    /// The drone command centers' drones (made by the side's drone factory): Stork surveillance
+    /// drones, FP-2 attack drones, interceptor drones and X-12s.
+    Stork,
+    Fp2,
+    Interceptor,
+    X12,
+    /// The enemy's Geran attack drones (its drone waves).
+    Geran,
 }
 
-const BLUE: [Munition; 25] = [
+const BLUE: [Munition; 29] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -92,8 +100,12 @@ const BLUE: [Munition; 25] = [
     Munition::Shrike,
     Munition::Zuni,
     Munition::Sidearm,
+    Munition::Stork,
+    Munition::Fp2,
+    Munition::Interceptor,
+    Munition::X12,
 ];
-const RED: [Munition; 9] = [
+const RED: [Munition; 10] = [
     Munition::Aa10,
     Munition::Aa11,
     Munition::As11,
@@ -103,6 +115,7 @@ const RED: [Munition; 9] = [
     Munition::SamShort,
     Munition::AaaRounds,
     Munition::Iskander,
+    Munition::Geran,
 ];
 
 /// The simulation's missile specs (`assets/sim/units.ron`).
@@ -161,6 +174,11 @@ impl Munition {
             Shrike => "AGM-45 Shrike",
             Zuni => "Zuni",
             Sidearm => "AGM-122 Sidearm",
+            Stork => "Stork",
+            Fp2 => "FP-2",
+            Interceptor => "Interceptor",
+            X12 => "X-12",
+            Geran => "Geran-2",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -207,6 +225,12 @@ impl Munition {
             Shrike => 16.0,
             Zuni => 64.0,
             Sidearm => 16.0,
+            // A drone command center's load of each.
+            Stork => DRONE_CENTER_STOCK[0] as f64,
+            Fp2 => DRONE_CENTER_STOCK[1] as f64,
+            Interceptor => DRONE_CENTER_STOCK[2] as f64,
+            X12 => DRONE_CENTER_STOCK[3] as f64,
+            Geran => GERAN_FULL,
         }
     }
 
@@ -243,8 +267,29 @@ impl Munition {
             Shrike => 8.0,
             Zuni => 16.0,
             Sidearm => 8.0,
+            Stork => DRONES_PER_HOUR[0],
+            Fp2 => DRONES_PER_HOUR[1],
+            Interceptor => DRONES_PER_HOUR[2],
+            X12 => DRONES_PER_HOUR[3],
+            Geran => GERAN_PER_HOUR[1],
         }
     }
+
+    /// A drone (made by its side's drone factory).
+    pub fn drone(self) -> bool {
+        matches!(
+            self,
+            Munition::Stork
+                | Munition::Fp2
+                | Munition::Interceptor
+                | Munition::X12
+                | Munition::Geran
+        )
+    }
+
+    /// The drone command center's drones, in the order of its stocks.
+    pub const DRONES: [Munition; 4] =
+        [Munition::Stork, Munition::Fp2, Munition::Interceptor, Munition::X12];
 
     /// What is taken instead when it is out (None: the side's unlimited weapon, an AIM-9 or
     /// AA-8, iron bombs).
@@ -490,6 +535,10 @@ impl CampaignState {
     /// A base's full stock of `m`: for the munitions of the enemy's air defence, enough for the
     /// sites and guns it supplies (none without any), once the host has counted them.
     pub fn full_stock(&self, base: ObjectId, m: Munition) -> f64 {
+        // The enemy keeps attack drones where it launches its waves.
+        if m == Munition::Geran && !stealth_mission::drone_theater(&self.setup.theater_code) {
+            return 0.0;
+        }
         match m.site_fed() {
             Some(k) if !self.site_demand.is_empty() => {
                 self.site_demand.get(&base).map_or(0, |d| d[k]) as f64 * m.per_site()
@@ -506,10 +555,30 @@ impl CampaignState {
     /// What the production base makes of `m` an hour: for the air defence's munitions as much
     /// as the theater's sites need.
     pub fn production_rate(&self, m: Munition) -> f64 {
+        if !self.made(m) {
+            return 0.0;
+        }
+        if m == Munition::Geran {
+            let skill = (self.setup.opponents as usize).min(3);
+            return GERAN_PER_HOUR[skill];
+        }
         match m.site_fed().and_then(|k| self.theater_sites(k)) {
             Some(n) => n as f64 * m.per_site_hour(),
             None => m.per_hour(),
         }
+    }
+
+    /// `m` is made and shipped: a drone only while its side's drone factory stands (the
+    /// enemy's Gerans only on the drone theaters).
+    pub fn made(&self, m: Munition) -> bool {
+        if !m.drone() {
+            return true;
+        }
+        let side = if m == Munition::Geran { Side::Red } else { Side::Blue };
+        if m == Munition::Geran && !stealth_mission::drone_theater(&self.setup.theater_code) {
+            return false;
+        }
+        !self.facility_down(side, crate::FacilityKind::DroneFactory)
     }
 
     /// The most the production base keeps of `m`: `PRODUCTION_CAP` full stocks, or the whole
@@ -798,8 +867,10 @@ impl CampaignState {
             if self.out_of(base, side).is_empty() {
                 continue;
             }
+            // (No drones go out while the drone factory is down.)
             let have: Vec<(Munition, u32, f64)> = Munition::of_side(side)
                 .iter()
+                .filter(|&&m| self.made(m))
                 .map(|&m| (m, s.count(m), self.full_stock(base, m)))
                 .collect();
             let Some(pool) = self.stocks.get_mut(&from) else { continue };

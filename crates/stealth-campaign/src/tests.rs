@@ -3524,8 +3524,9 @@ fn the_war_starts_with_every_airfield_stocked_and_a_production_base_in_the_rear(
         for (&b, s) in c.stocks.iter().filter(|(_, s)| s.side == Some(side)) {
             assert!(rear(b) <= rear(p), "{b} is further back than {p}");
             for &m in Munition::of_side(side) {
-                // The production base has already made a little.
-                let full = m.full() as u32;
+                // The production base has already made a little (the enemy keeps Gerans on the
+                // drone theaters only).
+                let full = c.full_stock(b, m) as u32;
                 assert!(s.count(m) == full || b == p && s.count(m) >= full, "{m:?} at {b}");
             }
         }
@@ -4681,4 +4682,80 @@ fn facilities_change_hands_with_their_place() {
     assert!(!f.alive());
     assert_ne!(f.place, Some(place));
     assert!(c.facility_down(Side::Red, FacilityKind::TankFactory));
+}
+
+/// A Ukraine campaign keeping munitions at its bases, its facilities placed.
+fn ukraine_stocked() -> CampaignState {
+    let mut c = campaign("ukraine", 9);
+    c.rules = Some(CampaignRules::default());
+    c.ensure_facilities(&[]);
+    c.tick(1.0, &WorldView::default(), &[]);
+    c
+}
+
+/// Drones are made at the production base while the drone factory stands; with it destroyed
+/// none are made and none are shipped.
+#[test]
+fn the_drone_factory_makes_the_drones() {
+    let mut c = ukraine_stocked();
+    let p = c.production_base(Side::Blue).unwrap();
+    let before = c.stocks[&p].counts[&Munition::Fp2];
+    c.tick(1800.0, &WorldView::default(), &[]);
+    let made = c.stocks[&p].counts[&Munition::Fp2] - before;
+    assert!((made - tuning::DRONES_PER_HOUR[1] / 2.0).abs() < 0.01, "{made}");
+    let f = c.facilities_of(Side::Blue, FacilityKind::DroneFactory).next().unwrap().id;
+    let mut ev = Vec::new();
+    c.facility_destroyed(f, None, &mut ev);
+    assert!(!c.made(Munition::Fp2) && c.made(Munition::Geran) && c.made(Munition::Aim120));
+    assert_eq!(c.production_rate(Munition::Stork), 0.0);
+    // A base out of FP-2s gets no cargo of them.
+    let b = other_base(&c, Side::Blue);
+    let n = c.available(b, Munition::Fp2);
+    c.draw(b, Munition::Fp2, n);
+    let n = c.available(b, Munition::Aim120);
+    c.draw(b, Munition::Aim120, n);
+    let at = c.stocks[&p].counts[&Munition::Fp2];
+    c.tick(60.0, &WorldView::default(), &[]);
+    assert_eq!(c.stocks[&p].counts[&Munition::Fp2], at);
+    let run = c.cargo_runs.iter().find(|r| r.to == b).expect("a cargo run for the AIM-120s");
+    assert!(run.load.iter().all(|l| !l.0.drone()), "{:?}", run.load);
+    // Three days on it makes them again.
+    c.tick(c.game_days(tuning::FACTORY_DAYS), &WorldView::default(), &[]);
+    assert!(c.made(Munition::Fp2));
+}
+
+/// The enemy's drone waves take their Gerans from the base they leave from; with none left
+/// there are no waves.
+#[test]
+fn drone_waves_need_gerans() {
+    let mut c = ukraine_stocked();
+    for (_, s) in c.stocks.iter_mut().filter(|(_, s)| s.side == Some(Side::Red)) {
+        s.counts.insert(Munition::Geran, 0.0);
+    }
+    let f = c.facilities_of(Side::Red, FacilityKind::DroneFactory).next().unwrap().id;
+    let mut ev = Vec::new();
+    c.facility_destroyed(f, None, &mut ev);
+    for _ in 0..8 {
+        c.tick(c.offensive_paced(tuning::DRONES_EVERY[1]), &WorldView::default(), &[]);
+    }
+    assert!(c.raids.iter().all(|r| !r.drones), "a drone wave without drones");
+    // Stocked again: a wave goes, its drones out of the stock.
+    let from: Vec<ObjectId> =
+        c.stocks.iter().filter(|(_, s)| s.side == Some(Side::Red)).map(|(&b, _)| b).collect();
+    for b in &from {
+        c.stocks.get_mut(b).unwrap().counts.insert(Munition::Geran, 6.0);
+    }
+    let mut launched = None;
+    for _ in 0..8 {
+        let ev = c.tick(c.offensive_paced(tuning::DRONES_EVERY[1]), &WorldView::default(), &[]);
+        launched = launched.or(ev.iter().find_map(|e| match e {
+            CampaignEvent::RaidLaunched { from, tags, drones: true, .. } => {
+                Some((*from, tags.len()))
+            }
+            _ => None,
+        }));
+    }
+    let (base, n) = launched.expect("a drone wave");
+    assert_eq!(n, tuning::DRONE_WAVE);
+    assert!(c.available(base, Munition::Geran) < 6);
 }

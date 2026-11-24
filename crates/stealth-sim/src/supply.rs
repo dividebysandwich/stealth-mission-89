@@ -444,6 +444,41 @@ impl Sim {
         (initial_stock(kind) - self.stockpile(k)).max(0)
     }
 
+    /// Campaign: drone command center `k`'s Storks, FP-2s, interceptors and X-12s short of its
+    /// full load (0 for anything else).
+    pub fn drones_missing(&self, k: usize) -> [i32; 4] {
+        let (Some(u), Some(d)) = (self.units.get(k), self.defence()) else { return [0; 4] };
+        if u.kind != crate::aaa::GroundKind::DroneCenter {
+            return [0; 4];
+        }
+        let have = |v: &Vec<i32>| v.get(k).copied().unwrap_or(0);
+        [
+            (initial_stock(u.kind) - have(&d.stock)).max(0),
+            (initial_stock2(u.kind) - have(&d.stock2)).max(0),
+            (initial_stock3(u.kind) - have(&d.stock3)).max(0),
+            (initial_stock4(u.kind) - have(&d.stock4)).max(0),
+        ]
+    }
+
+    /// Campaign: a load delivered to drone command center `k` with `n` of each of its drones
+    /// (what its base had).
+    pub fn restock_drones(&mut self, k: usize, n: [i32; 4]) {
+        if self.campaign.is_none()
+            || self.units.get(k).is_none_or(|u| u.kind != crate::aaa::GroundKind::DroneCenter)
+        {
+            return;
+        }
+        self.defence_sizes();
+        let kind = self.units[k].kind;
+        let d = &mut self.campaign.as_mut().expect("campaign").defence;
+        let add =
+            |v: &mut Vec<i32>, n: i32, full: i32| v[k] = (v[k] + n.max(0)).min(full.max(v[k]));
+        add(&mut d.stock, n[0], initial_stock(kind));
+        add(&mut d.stock2, n[1], initial_stock2(kind));
+        add(&mut d.stock3, n[2], initial_stock3(kind));
+        add(&mut d.stock4, n[3], initial_stock4(kind));
+    }
+
     /// Campaign: a load delivered to AAA unit `k` with only `n` of its missiles or rounds (what
     /// its base had): its stockpile gets those, its drones are full again.
     pub fn restock_with(&mut self, k: usize, n: i32) {

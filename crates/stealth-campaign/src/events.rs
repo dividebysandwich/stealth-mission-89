@@ -219,6 +219,10 @@ impl CampaignState {
             .filter(|s| !self.raids.iter().any(|r| r.open() && r.bombs(s.object)))
             .filter_map(|s| {
                 let from = self.nearest_base(Side::Red, s.x, s.y)?;
+                // A base with its Gerans for a wave (half of one at least).
+                if self.available(from, crate::Munition::Geran) < (DRONE_WAVE as u32).div_ceil(2) {
+                    return None;
+                }
                 let b = self.site(from)?;
                 let d = dist(b.x - s.x, b.y - s.y);
                 (d <= DRONE_RANGE).then_some((

@@ -1438,3 +1438,11 @@ fn facilities_stand_fall_and_are_rebuilt() {
     assert!(host.state.facility(f.id).unwrap().alive());
     assert!(!sim.units()[k].destroyed);
 }
+
+/// The campaign's drone loads are the drone command center's (the simulation's).
+#[test]
+fn a_drone_load_is_a_drone_command_center_s() {
+    use stealth_sim::station::{FP2_STOCK, INTERCEPTOR_STOCK, STORK_STOCK, X12_STOCK};
+    let stocks = [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK, X12_STOCK].map(|n| n as u32);
+    assert_eq!(stealth_campaign::tuning::DRONE_CENTER_STOCK, stocks);
+}

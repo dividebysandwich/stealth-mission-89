@@ -113,6 +113,7 @@ impl CampaignState {
         let Some(s) = self.stocks.get(&base) else { return };
         let have: Vec<(Munition, f64, f64)> = Munition::of_side(side)
             .iter()
+            .filter(|&&m| self.made(m))
             .map(|&m| (m, (s.count(m) + coming(m)) as f64, self.full_stock(base, m)))
             .collect();
         let Some(pool) = self.stocks.get(&from) else { return };

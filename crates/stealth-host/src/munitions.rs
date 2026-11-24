@@ -164,8 +164,24 @@ impl Host {
         }
     }
 
-    /// A resupply delivered to AAA unit `aaa`: what its base has of what it lacks.
+    /// A resupply delivered to AAA unit `aaa`: what its base has of what it lacks (a drone
+    /// command center's drones: those its base has).
     pub(crate) fn restock_from_base(&mut self, sim: &mut Sim, aaa: usize) {
+        let drones = sim.units().get(aaa).is_some_and(|u| u.kind == GroundKind::DroneCenter);
+        if drones && self.state.munitions_on() {
+            let u = sim.units()[aaa];
+            let missing = sim.drones_missing(aaa);
+            let base = self.state.supply_base(u.x, u.y);
+            let got = std::array::from_fn(|i| {
+                let want = missing[i].max(0) as u32;
+                match base {
+                    Some(b) => self.state.draw(b, Munition::DRONES[i], want) as i32,
+                    None => want as i32,
+                }
+            });
+            sim.restock_drones(aaa, got);
+            return;
+        }
         let Some(m) = Self::defence_munition(sim, aaa).filter(|_| self.state.munitions_on()) else {
             sim.restock(aaa);
             return;
@@ -181,8 +197,14 @@ impl Host {
 
     /// A friendly air defence unit may be resupplied: its base has some of what it needs.
     pub(crate) fn can_resupply(&self, sim: &Sim, aaa: usize) -> bool {
-        let Some(m) = Self::defence_munition(sim, aaa) else { return true };
         let u = sim.units()[aaa];
+        if u.kind == GroundKind::DroneCenter {
+            let missing = sim.drones_missing(aaa);
+            return self.state.supply_base(u.x, u.y).is_none_or(|b| {
+                (0..4).any(|i| missing[i] > 0 && self.state.available(b, Munition::DRONES[i]) > 0)
+            });
+        }
+        let Some(m) = Self::defence_munition(sim, aaa) else { return true };
         self.state.supply_base(u.x, u.y).is_none_or(|b| self.state.available(b, m) > 0)
     }
 

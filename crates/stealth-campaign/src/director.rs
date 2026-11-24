@@ -1419,8 +1419,17 @@ impl CampaignState {
                 self.end_raid(k, RaidState::CalledOff);
                 continue;
             };
-            // Drones are no fighters; strike aircraft come out of the side's.
-            let n = if drones { DRONE_WAVE } else { RAID_AIRCRAFT };
+            // Drones are no fighters (they come out of the base's stock of Gerans); strike
+            // aircraft come out of the side's.
+            let n = if drones {
+                self.draw(from, crate::Munition::Geran, DRONE_WAVE as u32) as usize
+            } else {
+                RAID_AIRCRAFT
+            };
+            if n == 0 {
+                self.end_raid(k, RaidState::CalledOff);
+                continue;
+            }
             if !drones && !self.take_fighters(side, n as u32) {
                 self.end_raid(k, RaidState::CalledOff);
                 continue;
