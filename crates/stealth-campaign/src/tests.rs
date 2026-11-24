@@ -4856,3 +4856,79 @@ fn an_ammo_storage_destroyed_empties_its_airfield() {
     c.tick(60.0, &WorldView::default(), &[]);
     assert!(c.cargo_runs.iter().any(|r| r.to == b));
 }
+
+/// Knocks out a side's power plant and fuel depot nearest to (x, y).
+fn cut_off(c: &mut CampaignState, side: Side, x: i32, y: i32, power: bool, fuel: bool) {
+    let mut ev = Vec::new();
+    for (kind, on) in [(FacilityKind::PowerPlant, power), (FacilityKind::FuelDepot, fuel)] {
+        if on {
+            let id = c.nearest_facility(side, kind, x, y).unwrap().id;
+            c.facility_destroyed(id, None, &mut ev);
+        }
+    }
+}
+
+/// An air defence unit is offline with both its power plant and its fuel depot destroyed.
+#[test]
+fn air_defence_runs_on_power_and_fuel() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    // A place with a city.
+    let p = c
+        .places
+        .iter()
+        .find(|p| {
+            p.owner == Side::Red
+                && p.members.iter().any(|&o| c.site(o).is_some_and(|s| s.kind == SiteKind::City))
+        })
+        .unwrap()
+        .clone();
+    assert_eq!(c.ad_cut(Side::Red, p.x, p.y), 0);
+    cut_off(&mut c, Side::Red, p.x, p.y, true, false);
+    assert_eq!(c.ad_cut(Side::Red, p.x, p.y), 1);
+    assert!(c.dark(Side::Red, p.x, p.y) && !c.dry(Side::Red, p.x, p.y));
+    assert!(c.dark_cities().iter().any(|&(x, y)| dist(x - p.x, y - p.y) < tuning::PLACE_MERGE));
+    cut_off(&mut c, Side::Red, p.x, p.y, false, true);
+    assert_eq!(c.ad_cut(Side::Red, p.x, p.y), 3);
+    // The friendly side's are on their own plants and depots.
+    let q = c.places.iter().find(|q| q.owner == Side::Blue).unwrap();
+    assert_eq!(c.ad_cut(Side::Blue, q.x, q.y), 0);
+    let dry = c.dry_areas();
+    assert!(dry.iter().any(|&(s, at, r)| s == Side::Red && dist(at.0 - p.x, at.1 - p.y) < r));
+}
+
+/// Without power a place's lost guns are replaced more slowly.
+#[test]
+fn repairs_are_slower_without_power() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let k = c.places.iter().position(|p| p.owner == Side::Red).unwrap();
+    let (x, y) = (c.places[k].x, c.places[k].y);
+    cut_off(&mut c, Side::Red, x, y, true, false);
+    c.places[k].guns_lost = 2;
+    c.places[k].guns_repair_at = Some(0.0);
+    c.tick(1.0, &WorldView::default(), &[]);
+    assert_eq!(c.places[k].guns_lost, 1);
+    let next = c.places[k].guns_repair_at.unwrap() - c.clock;
+    let relief = c.repair_relief(Side::Red);
+    let want = tuning::REPAIR_GUN * tuning::POWER_SLOW / relief;
+    assert!((next - want).abs() < 2.0, "{next} s, not {want}");
+}
+
+/// No convoy sets off from a place without fuel.
+#[test]
+fn no_convoy_without_fuel() {
+    let mut c = campaign_on_terrain("ukraine", 9);
+    c.ensure_facilities(&[]);
+    for p in c.places.clone().iter().filter(|p| p.owner == Side::Blue) {
+        if !c.dry(Side::Blue, p.x, p.y) {
+            cut_off(&mut c, Side::Blue, p.x, p.y, false, true);
+        }
+    }
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    let launched = |side| {
+        ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { side: s, .. } if *s == side))
+    };
+    assert!(!launched(Side::Blue) && launched(Side::Red));
+}

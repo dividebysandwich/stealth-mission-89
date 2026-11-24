@@ -314,6 +314,8 @@ impl CampaignState {
         }
         let id = self.id();
         let lead = if side == Side::Blue { INSERTION_LEAD } else { ENEMY_INSERTION_LEAD };
+        // (Slower to get going from a base without power.)
+        let lead = lead * self.power_slow_at(from);
         self.insertions.push(Insertion {
             id,
             side,
@@ -515,6 +517,7 @@ impl CampaignState {
                         continue;
                     }
                     if let Some((from, x, y)) = near
+                        && self.scramble_ready(from)
                         && self.forces(Side::Red).fighters > 0
                         && self.pay(Side::Red, SORTIE_COST, Spend::Operations)
                     {
@@ -662,7 +665,10 @@ impl CampaignState {
             .iter()
             .enumerate()
             .filter(|(_, s)| !s.removed && s.destroyed_at.is_some())
-            .filter(|(_, s)| s.repair_from.is_some_and(|at| now - at >= s.repair_time()))
+            .filter(|(_, s)| {
+                let time = s.repair_time() * self.power_slow_at(s.object);
+                s.repair_from.is_some_and(|at| now - at >= time)
+            })
             .map(|(k, s)| (k, s.kind))
             .collect();
         let mut done = Vec::new();
@@ -702,9 +708,10 @@ impl CampaignState {
             if !self.pay(p.owner, GUN_COST, Spend::Repairs) {
                 continue;
             }
+            let slow = self.power_slow(self.places[k].owner, self.places[k].x, self.places[k].y);
             let p = &mut self.places[k];
             p.guns_lost -= 1;
-            p.guns_repair_at = (p.guns_lost > 0).then_some(now + REPAIR_GUN / relief[k]);
+            p.guns_repair_at = (p.guns_lost > 0).then_some(now + REPAIR_GUN * slow / relief[k]);
             ev.push(CampaignEvent::GunRepaired { place: k as PlaceId });
         }
         for k in 0..self.places.len() {
@@ -722,9 +729,11 @@ impl CampaignState {
                 continue;
             }
             self.take_armour(owner, 1);
+            let slow = self.power_slow(owner, self.places[k].x, self.places[k].y);
             let p = &mut self.places[k];
             p.armour_lost -= 1;
-            p.armour_repair_at = (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR / relief[k]);
+            p.armour_repair_at =
+                (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR * slow / relief[k]);
             ev.push(CampaignEvent::ArmourRepaired { place: k as PlaceId });
         }
     }
@@ -957,6 +966,9 @@ impl CampaignState {
                 .filter(|t| t.2 <= AI_CAP_TRIGGER)
                 .collect();
             let Some(&(tx, ty, d)) = threats.iter().min_by_key(|t| t.2) else { continue };
+            if !self.scramble_ready(base) {
+                continue;
+            }
             let n = if threats.len() >= 2 { 2 } else { 1 };
             // As many as the airfields have left and the materiel pays for.
             let n = n.min(self.blue.fighters as usize);
@@ -1216,6 +1228,7 @@ impl CampaignState {
     ) {
         let now = self.clock;
         let id = self.id();
+        let lead = RAID_LEAD * self.power_slow_at(from);
         self.raids.push(Raid {
             id,
             due: Vec::new(),
@@ -1225,7 +1238,7 @@ impl CampaignState {
             from,
             aircraft: Vec::new(),
             alive: Vec::new(),
-            state: RaidState::Pending { launch_at: now + RAID_LEAD },
+            state: RaidState::Pending { launch_at: now + lead },
             ended: None,
             escorted: false,
             drones: false,
@@ -1234,7 +1247,7 @@ impl CampaignState {
             feint,
         });
         let name = self.places[place as usize].name.clone();
-        let mins = (RAID_LEAD / 60.0).round() as i64;
+        let mins = (lead / 60.0).round() as i64;
         let site = sam.and_then(|s| s.site).and_then(|d| self.deployment(d));
         let text = match site {
             Some(d) => text!("cl-infra-intel", site = d.label(), mins = mins),

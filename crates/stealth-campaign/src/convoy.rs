@@ -272,7 +272,8 @@ impl CampaignState {
         let Some(grid) = self.terrain.ground() else { return };
         let mut pairs: Vec<(i32, PlaceId, PlaceId)> = Vec::new();
         for (a, pa) in self.places.iter().enumerate() {
-            if pa.owner != side {
+            // (None sets off from where there is no fuel.)
+            if pa.owner != side || self.dry(side, pa.x, pa.y) {
                 continue;
             }
             for (b, pb) in self.places.iter().enumerate() {

@@ -1,11 +1,26 @@
 //! The campaign's strategic facilities in the simulation (`stealth_campaign::facilities`): each
 //! stands as a building unit there, its destruction reported back to the campaign.
 
-use stealth_campaign::{Avoid, CampaignEvent, Facility, FacilityKind, Side, WorldView};
+use stealth_campaign::{Avoid, CampaignEvent, Facility, FacilityKind, Side, SiteKind, WorldView};
 use stealth_sim::Sim;
 use stealth_sim::aaa::{GroundKind, M_PER_MAP};
+use stealth_sim::ground::DryArea;
+use stealth_sim::types::oflags;
 
 use crate::Host;
+
+/// Seconds between the power and fuel of the air defence being looked at again.
+const GRID_EVERY: f64 = 2.0;
+
+/// An air defence unit that runs on power and fuel (not the MANPADS teams, the technicals and
+/// the drone command centers).
+fn grid_unit(kind: GroundKind) -> bool {
+    kind.battery().is_some()
+        || matches!(
+            kind,
+            GroundKind::Gepard | GroundKind::Zsu | GroundKind::S60 | GroundKind::Zsu572
+        )
+}
 
 /// The simulation's building of a kind of facility.
 pub fn facility_kind(kind: FacilityKind) -> GroundKind {
@@ -82,8 +97,68 @@ impl Host {
         }
     }
 
+    /// The simulation is told which areas are without fuel, and which air defence units and
+    /// SAM sites without power or fuel (every `GRID_EVERY` s, and at once when `now`).
+    pub(crate) fn apply_grid(&mut self, sim: &mut Sim, dt: f64, now: bool) {
+        self.grid_timer += dt;
+        if !now && self.grid_timer < GRID_EVERY {
+            return;
+        }
+        self.grid_timer = 0.0;
+        let dry: Vec<DryArea> = self
+            .state
+            .dry_areas()
+            .into_iter()
+            .map(|(side, (x, y), r)| DryArea {
+                blue: side == Side::Blue,
+                at: stealth_sim::ground::metres_of(x, y),
+                r: r as f64 * M_PER_MAP,
+            })
+            .collect();
+        if dry != self.dry {
+            sim.set_dry_areas(dry.clone());
+            self.dry = dry;
+        }
+        for k in 0..sim.units().len() {
+            let u = sim.units()[k];
+            if u.gone || !grid_unit(u.kind) || sim.unit_convoy(k) != 0 {
+                continue;
+            }
+            let side = if sim.aaa_blue(k) { Side::Blue } else { Side::Red };
+            let cut = self.state.ad_cut(side, u.x, u.y);
+            if cut != u.cut {
+                sim.set_unit_cut(k, cut);
+            }
+        }
+        let sites: Vec<(usize, bool)> = self
+            .state
+            .sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::Sam && !s.removed)
+            .filter_map(|s| {
+                let side = self.state.owner(s.object)?;
+                Some((s.object as usize, self.state.ad_cut(side, s.x, s.y) == 3))
+            })
+            .collect();
+        for (o, offline) in sites {
+            let is = sim.objects().get(o).is_some_and(|o| o.flags & oflags::OFFLINE != 0);
+            if is != offline {
+                sim.set_site_offline(o, offline);
+            }
+        }
+    }
+
     /// A campaign event about the facilities, applied to the simulation.
     pub(crate) fn facility_event(&mut self, sim: &mut Sim, e: &CampaignEvent) {
+        if matches!(
+            e,
+            CampaignEvent::FacilityRestored { .. }
+                | CampaignEvent::FacilityDestroyed { .. }
+                | CampaignEvent::FacilityMoved { .. }
+                | CampaignEvent::PlaceCaptured { .. }
+        ) {
+            self.grid_due = true;
+        }
         match *e {
             CampaignEvent::FacilityRestored { id } => {
                 if let Some(k) = self.facility_unit(id) {

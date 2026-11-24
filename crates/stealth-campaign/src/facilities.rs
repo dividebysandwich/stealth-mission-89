@@ -450,6 +450,99 @@ impl CampaignState {
             .any(|f| f.kind == FacilityKind::AmmoStorage && f.airfield == Some(base) && !f.alive())
     }
 
+    /// The power plant of a side's region at (x, y): its nearest.
+    fn plant_for(&self, side: Side, x: i32, y: i32) -> Option<&Facility> {
+        self.nearest_facility(side, FacilityKind::PowerPlant, x, y)
+    }
+
+    /// The fuel depot of a side's area at (x, y): its nearest.
+    fn depot_for(&self, side: Side, x: i32, y: i32) -> Option<&Facility> {
+        self.nearest_facility(side, FacilityKind::FuelDepot, x, y)
+    }
+
+    /// A side's region at (x, y) has no power (its power plant is destroyed).
+    pub fn dark(&self, side: Side, x: i32, y: i32) -> bool {
+        self.plant_for(side, x, y).is_some_and(|f| !f.alive())
+    }
+
+    /// A side's vehicles at (x, y) have no fuel (their area's fuel depot is destroyed).
+    pub fn dry(&self, side: Side, x: i32, y: i32) -> bool {
+        self.depot_for(side, x, y).is_some_and(|f| !f.alive())
+    }
+
+    /// How much slower a side's repairs and launches at (x, y) are: `POWER_SLOW` without
+    /// power.
+    pub fn power_slow(&self, side: Side, x: i32, y: i32) -> f64 {
+        if self.dark(side, x, y) { POWER_SLOW } else { 1.0 }
+    }
+
+    /// The same at a site (its owner's).
+    pub(crate) fn power_slow_at(&self, object: ObjectId) -> f64 {
+        match (self.site(object), self.owner(object)) {
+            (Some(s), Some(side)) => self.power_slow(side, s.x, s.y),
+            _ => 1.0,
+        }
+    }
+
+    /// What an air defence unit of a side at (x, y) is cut off from: bit 1 its power, bit 2 its
+    /// fuel (both: it is offline).
+    pub fn ad_cut(&self, side: Side, x: i32, y: i32) -> u8 {
+        (self.dark(side, x, y) as u8) | (self.dry(side, x, y) as u8) << 1
+    }
+
+    /// The areas without fuel: where a side's destroyed fuel depots stand and the places they
+    /// supply (map units: side, centre, radius).
+    pub fn dry_areas(&self) -> Vec<(Side, (i32, i32), i32)> {
+        let mut out = Vec::new();
+        for f in self.facilities.iter().filter(|f| f.kind == FacilityKind::FuelDepot && !f.alive())
+        {
+            let side = self.facility_side(f);
+            out.push((side, (f.x, f.y), FUEL_AREA));
+            for p in self.places.iter().filter(|p| p.owner == side) {
+                if self.depot_for(side, p.x, p.y).is_some_and(|d| d.id == f.id) {
+                    out.push((side, (p.x, p.y), FUEL_AREA));
+                }
+            }
+        }
+        out
+    }
+
+    /// The cities of the regions without power (map units): their lights are out.
+    pub fn dark_cities(&self) -> Vec<(i32, i32)> {
+        self.sites
+            .iter()
+            .filter(|s| s.kind == SiteKind::City && !s.removed)
+            .filter(|s| self.owner(s.object).is_some_and(|side| self.dark(side, s.x, s.y)))
+            .map(|s| (s.x, s.y))
+            .collect()
+    }
+
+    /// The delay (s) a side's fighters at `base` take to scramble: longer without power.
+    pub(crate) fn scramble_delay(&self, base: ObjectId) -> f64 {
+        if self.power_slow_at(base) > 1.0 { POWER_SCRAMBLE_DELAY } else { 0.0 }
+    }
+
+    /// A threat seen from `base` now: its fighters may go (they have waited their delay since
+    /// it was first seen).
+    pub(crate) fn scramble_ready(&mut self, base: ObjectId) -> bool {
+        let delay = self.scramble_delay(base);
+        let now = self.clock;
+        // Threats not seen lately are forgotten.
+        self.scramble_alert.retain(|a| now - a.2 <= 30.0);
+        if delay <= 0.0 {
+            return true;
+        }
+        let k = match self.scramble_alert.iter().position(|a| a.0 == base) {
+            Some(k) => k,
+            None => {
+                self.scramble_alert.push((base, now, now));
+                self.scramble_alert.len() - 1
+            }
+        };
+        self.scramble_alert[k].2 = now;
+        now - self.scramble_alert[k].1 >= delay
+    }
+
     /// Every tick: the facilities whose time is up are back in action.
     pub(crate) fn run_facilities(&mut self, ev: &mut Vec<CampaignEvent>) {
         let now = self.clock;

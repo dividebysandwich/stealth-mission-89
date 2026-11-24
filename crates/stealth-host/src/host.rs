@@ -109,6 +109,11 @@ pub struct Host {
     pending: Vec<Report>,
     /// The strategic facilities' buildings in the simulation (facility id, ground unit).
     pub(crate) facility_units: Vec<(u32, usize)>,
+    /// The areas without fuel the simulation was given, the seconds since the air defence's
+    /// power and fuel were looked at, and whether a facility changed meanwhile.
+    pub(crate) dry: Vec<stealth_sim::ground::DryArea>,
+    pub(crate) grid_timer: f64,
+    pub(crate) grid_due: bool,
 }
 
 impl Host {
@@ -155,6 +160,9 @@ impl Host {
             launchers: Vec::new(),
             pending: Vec::new(),
             facility_units: Vec::new(),
+            dry: Vec::new(),
+            grid_timer: 0.0,
+            grid_due: true,
         }
     }
 
@@ -873,6 +881,8 @@ impl Host {
         self.tag_facilities(&mut view);
         let events = self.state.tick(dt, &view, &reports);
         out.extend(self.apply(sim, events));
+        let due = std::mem::take(&mut self.grid_due);
+        self.apply_grid(sim, dt, due);
         let events = self.out_of_stock(sim);
         out.extend(self.apply(sim, events));
         for (player, e) in ended {

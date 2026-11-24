@@ -829,9 +829,11 @@ impl CampaignState {
             if !self.site(b).is_some_and(Site::alive) || self.store_down(b) {
                 continue;
             }
+            // (Slower without power.)
+            let slow = self.power_slow_at(b);
             let rates: Vec<(Munition, f64, f64)> = Munition::of_side(side)
                 .iter()
-                .map(|&m| (m, self.production_rate(m), self.production_cap(m)))
+                .map(|&m| (m, self.production_rate(m) / slow, self.production_cap(m)))
                 .collect();
             let Some(s) = self.stocks.get_mut(&b) else { continue };
             for (m, rate, cap) in rates {
@@ -965,6 +967,15 @@ impl CampaignState {
                         continue;
                     }
                 }
+            }
+            // Trucks without fuel at either end wait.
+            let dry = |c: &Self, b: ObjectId| {
+                c.site(b).is_some_and(|s| c.dry(r.side, s.x, s.y))
+            };
+            if self.cargo_runs[k].road.is_some() && (dry(self, r.from) || dry(self, r.to)) {
+                self.cargo_runs[k].state =
+                    CargoState::Scheduled { launch_at: now + CARGO_RELAUNCH };
+                continue;
             }
             if self.cargo_runs[k].road.is_some() {
                 // One convoy onto the roads at a time (they share them from the entries); the

@@ -577,3 +577,13 @@ pub const ARMOUR_RESERVE_MAX: f64 = 30.0;
 pub const ARMOUR_PER_HOUR: f64 = 6.0;
 pub const ENEMY_ARMOUR_PER_HOUR: [f64; 4] = [4.0, 6.0, 8.0, 10.0];
 pub const ARMOUR_WAIT: f64 = 60.0;
+
+// ------------------------------------------------------------------------- power and fuel
+
+/// Without power (its power plant destroyed) a region's repairs and launches take this many
+/// times as long, and its fighters scramble this much later (s).
+pub const POWER_SLOW: f64 = 1.5;
+pub const POWER_SCRAMBLE_DELAY: f64 = 60.0;
+/// The area (map units, 16 km) about a destroyed fuel depot and the places it supplied where a
+/// side's vehicles stand still.
+pub const FUEL_AREA: i32 = 0x400;

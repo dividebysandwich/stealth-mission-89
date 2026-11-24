@@ -1446,3 +1446,51 @@ fn a_drone_load_is_a_drone_command_center_s() {
     let stocks = [STORK_STOCK, FP2_STOCK, INTERCEPTOR_STOCK, X12_STOCK].map(|n| n as u32);
     assert_eq!(stealth_campaign::tuning::DRONE_CENTER_STOCK, stocks);
 }
+
+/// With a region's power plant and fuel depot destroyed its air defence goes offline in the
+/// simulation (guns and batteries cut off, SAM sites silent); rebuilt, it is back.
+#[test]
+fn air_defence_goes_offline_without_power_and_fuel() {
+    use stealth_campaign::{FacilityKind, Side};
+    let s = setup("central_europe");
+    let data = theater::game_data().unwrap();
+    let sim_data = theater::sim_data(s.theater, "central_europe").unwrap();
+    let mut host = Host::new(s, &data, Rules::default()).unwrap();
+    let mut sim = host.new_sim(&sim_data);
+    host.begin(&mut sim);
+    host.tick(&mut sim, 1.0, &[]);
+    // An enemy SAM site, and its power plant and fuel depot.
+    let site = host
+        .state
+        .sites
+        .iter()
+        .find(|s| {
+            s.kind == stealth_campaign::SiteKind::Sam
+                && host.state.owner(s.object) == Some(Side::Red)
+        })
+        .unwrap()
+        .clone();
+    let mut hits = Vec::new();
+    for kind in [FacilityKind::PowerPlant, FacilityKind::FuelDepot] {
+        let f = host.state.nearest_facility(Side::Red, kind, site.x, site.y).unwrap().id;
+        let k = host.facility_unit(f).unwrap();
+        sim.set_structure_destroyed(k, true);
+        hits.push(stealth_sim::PilotEvent {
+            pilot: 0,
+            event: stealth_sim::SimEvent::AaaDestroyed { unit: k, by: Some(0) },
+        });
+    }
+    host.tick(&mut sim, 1.0, &hits);
+    let offline = stealth_sim::types::oflags::OFFLINE;
+    assert_ne!(sim.objects()[site.object as usize].flags & offline, 0);
+    let cut: Vec<usize> = (0..sim.units().len()).filter(|&k| sim.units()[k].offline()).collect();
+    assert!(!cut.is_empty(), "no unit offline");
+    assert!(cut.iter().all(|&k| !sim.aaa_blue(k)));
+    // A day later the fuel depot is rebuilt: on line again.
+    let day = host.state.game_days(stealth_campaign::tuning::FUEL_DEPOT_DAYS);
+    for _ in 0..(day / 60.0) as usize + 2 {
+        host.tick(&mut sim, 60.0, &[]);
+    }
+    assert_eq!(sim.objects()[site.object as usize].flags & offline, 0);
+    assert!(cut.iter().all(|&k| !sim.units()[k].offline()));
+}

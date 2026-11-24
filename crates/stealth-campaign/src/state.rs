@@ -1107,6 +1107,10 @@ pub struct CampaignState {
     pub caps: Vec<CapFlight>,
     #[serde(default)]
     pub cap_lockout: Vec<(ObjectId, f64)>,
+    /// The bases that saw a threat lately, when first and last (their fighters scramble a
+    /// while after, `scramble_ready`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scramble_alert: Vec<(ObjectId, f64, f64)>,
     /// The enemy's raids, and when its last offensive insertion and raid were ordered.
     #[serde(default)]
     pub raids: Vec<Raid>,
@@ -1822,6 +1826,7 @@ impl CampaignState {
             patrols: Vec::new(),
             caps: Vec::new(),
             cap_lockout: Vec::new(),
+            scramble_alert: Vec::new(),
             raids: Vec::new(),
             enemy_insert_at: 0.0,
             raid_at: 0.0,
