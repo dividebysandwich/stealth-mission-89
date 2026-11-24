@@ -632,13 +632,16 @@ pub struct IntruderPanel {
 }
 
 /// Coordinates as they are keyed: the field the digits go to, each field's value so far (None
-/// until its N, S, E or W is pressed) and its sign (S, W).
+/// until its N, S, E or W is pressed) and its sign (S, W), and whether POS refused them (until
+/// the next quantity key or CLEAR).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Keying {
     /// 0 north, 1 east.
     pub field: usize,
     pub value: [Option<u32>; 2],
     pub negative: [bool; 2],
+    #[serde(default)]
+    pub error: bool,
 }
 
 /// The largest grid coordinate (the map's 512 km, in hundredths of a kilometre).
@@ -802,10 +805,12 @@ impl IntruderPanel {
             && self.address_in(Address::Target)
         {
             let k = self.keying.get_or_insert_with(Keying::default);
+            k.error = false;
             k.field = field;
             k.value[field] = Some(0);
             k.negative[field] = negative;
         } else if let Some(k) = self.keying.as_mut() {
+            k.error = false;
             if let (Some(d), Some(v)) = (digit, k.value[k.field])
                 && v * 10 + d as u32 <= FIELD_MAX
             {
@@ -824,7 +829,15 @@ impl IntruderPanel {
         if let (Some(north), Some(east)) = (field(0), field(1)) {
             self.keyed = Some([east as u16, north as u16]);
             self.keying = None;
+        } else if let Some(k) = self.keying.as_mut() {
+            k.error = true;
         }
+    }
+
+    /// POS refused the coordinates keyed (TARGET in): the storage window shows ERROR and the
+    /// COMPUTER lights come on.
+    pub fn keying_error(&self) -> bool {
+        self.address_in(Address::Target) && self.keying.is_some_and(|k| k.error)
     }
 
     /// The point the keyed coordinates are at (world units).
@@ -923,7 +936,7 @@ impl Light {
 }
 
 /// Whether an advisory light is lit: ATTACK with an attack button in, IN RANGE from the
-/// computer's solution, COMPUTER with the computer off or with no target to attack, PLATFORM
+/// computer's solution, COMPUTER with the computer off, with no target to attack or with keyed coordinates refused, PLATFORM
 /// in the test only, RESELECT with an attack on and no station to release, the radar's lock
 /// lights by what the lock is on, ECM while the jammer radiates.
 pub fn lit(light: Light, panel: &IntruderPanel, computer: &computer::Computer, ecm: bool) -> bool {
@@ -935,6 +948,7 @@ pub fn lit(light: Light, panel: &IntruderPanel, computer: &computer::Computer, e
         Light::VdiComputer | Light::DvriComputer => {
             panel.flight == FlightMode::Off
                 || test
+                || panel.keying_error()
                 || (panel.attack.is_some() && computer.target.is_none())
         }
         Light::Reselect | Light::DvriReselect => computer.reselect || test,
@@ -975,6 +989,7 @@ pub fn readout(r: Readout, panel: &IntruderPanel, computer: &computer::Computer)
             let secs = computer.release.unwrap_or(computer.time).clamp(0.0, 999.0);
             format!("{:03}", if computer.target.is_some() { secs as u32 } else { 0 })
         }
+        Readout::Storage if panel.keying_error() => "ERROR ".to_string(),
         Readout::Storage if panel.address_in(Address::Target) && panel.keying.is_some() => {
             let k = panel.keying.unwrap_or_default();
             let letter = [["N", "S"], ["E", "W"]][k.field.min(1)][k.negative[k.field] as usize];
@@ -1255,6 +1270,16 @@ mod tests {
         digits(&mut p, "5");
         p.press(Key::Action(0));
         assert_eq!(p.keyed, Some([6789, 12345]));
+        // The refusal shows until the next key.
+        assert!(p.keying_error());
+        assert_eq!(readout(Readout::Storage, &p, &c), "ERROR ");
+        assert!(lit(Light::VdiComputer, &p, &c, false));
+        p.press(Key::Quantity(1));
+        assert!(!p.keying_error());
+        assert_eq!(readout(Readout::Storage, &p, &c), "S00000");
+        digits(&mut p, "1");
+        p.press(Key::Action(0));
+        assert!(p.keying_error());
         p.press(Key::Clear);
         assert_eq!((p.keying, p.keyed), (None, Some([6789, 12345])));
         p.press(Key::Clear);

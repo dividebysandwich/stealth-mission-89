@@ -4795,7 +4795,10 @@ coordinates under its photo, such as `N38969 E38780`: hundredths of a kilometre 
 of the map's south-west corner. With **TARGET** down, press **N/+**, the five digits, **E**, the
 five digits, and **POS**. The digits shift in from the right of the TEMPORARY STORAGE window as
 you type, which shows the coordinate being keyed. The computer then steers to that point until
-a lock or the pod's point takes over, and the automatic B/N looks for that target. **CLEAR**
+a lock or the pod's point takes over, and the automatic B/N looks for that target. If POS
+refuses the coordinates (one of them missing, a south or west value, or a point off the map),
+the window reads **ERROR** and the COMPUTER lights come on until you press a quantity key or
+**CLEAR**. **CLEAR**
 drops a coordinate being keyed; pressed again it drops the keyed target and the route's point is
 steered to again (so does keying a route point's number). In a crew, the other seat gets the
 keyed point to within some 130 m.
