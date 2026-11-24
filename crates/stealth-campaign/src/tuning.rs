@@ -575,10 +575,11 @@ pub const GERAN_PER_HOUR: [f64; 4] = [6.0, 8.0, 11.0, 14.0];
 
 /// The armour reserve: what a side starts with and keeps at most, what its tank factory makes
 /// an hour (the enemy's by skill), and how long a garrison waits for a vehicle (s) when there
-/// is none.
+/// is none. (At six an hour the friendly reserve ran dry on the long fronts, Ukraine's, the
+/// North Cape's and the Middle East's, and the enemy took its places with nobody flying.)
 pub const ARMOUR_RESERVE_START: f64 = 18.0;
 pub const ARMOUR_RESERVE_MAX: f64 = 30.0;
-pub const ARMOUR_PER_HOUR: f64 = 6.0;
+pub const ARMOUR_PER_HOUR: f64 = 10.0;
 pub const ENEMY_ARMOUR_PER_HOUR: [f64; 4] = [4.0, 6.0, 8.0, 10.0];
 pub const ARMOUR_WAIT: f64 = 60.0;
 /// The tanks and infantry fighting vehicles of a place's garrison (the simulation's
