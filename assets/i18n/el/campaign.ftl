@@ -374,3 +374,4 @@ cl-facility-destroyed = Η εγκατάστασή μας ({ $what }) κοντά 
 cl-enemy-facility-destroyed = Εχθρική εγκατάσταση ({ $what }) κοντά στο { $place } καταστράφηκε
 cl-facility-restored = Η εγκατάστασή μας ({ $what }) κοντά στο { $place } λειτουργεί ξανά
 st-unit-offline = { $unit } εκτός λειτουργίας: χωρίς ρεύμα και καύσιμα
+cl-convoy-no-armour = Δεν υπάρχουν αρκετά άρματα σε εφεδρεία για φάλαγγα: περιμένει το εργοστάσιο αρμάτων

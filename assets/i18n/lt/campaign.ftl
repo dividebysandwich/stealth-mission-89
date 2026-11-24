@@ -374,3 +374,4 @@ cl-facility-destroyed = Mūsų objektas ({ $what }) prie { $place } sunaikintas
 cl-enemy-facility-destroyed = Priešo objektas ({ $what }) prie { $place } sunaikintas
 cl-facility-restored = Mūsų objektas ({ $what }) prie { $place } vėl veikia
 st-unit-offline = { $unit } neveikia: nėra elektros ir kuro
+cl-convoy-no-armour = Rezerve nepakanka tankų vilkstinei: ji laukia tankų gamyklos

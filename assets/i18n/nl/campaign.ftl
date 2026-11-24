@@ -374,3 +374,4 @@ cl-facility-destroyed = Onze { $what } bij { $place } vernietigd
 cl-enemy-facility-destroyed = Vijandelijke { $what } bij { $place } vernietigd
 cl-facility-restored = Onze { $what } bij { $place } is weer in bedrijf
 st-unit-offline = { $unit } buiten bedrijf: geen stroom en geen brandstof
+cl-convoy-no-armour = Te weinig tanks in reserve voor een konvooi: het wacht op de tankfabriek

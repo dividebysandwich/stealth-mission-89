@@ -566,3 +566,14 @@ pub const DRONES_PER_HOUR: [f64; 4] = [1.0, 3.0, 2.0, 1.0];
 /// hour by skill (a little more than its waves use).
 pub const GERAN_FULL: f64 = 6.0;
 pub const GERAN_PER_HOUR: [f64; 4] = [6.0, 8.0, 11.0, 14.0];
+
+// ------------------------------------------------------------------------- armour production
+
+/// The armour reserve: what a side starts with and keeps at most, what its tank factory makes
+/// an hour (the enemy's by skill), and how long a garrison waits for a vehicle (s) when there
+/// is none.
+pub const ARMOUR_RESERVE_START: f64 = 18.0;
+pub const ARMOUR_RESERVE_MAX: f64 = 30.0;
+pub const ARMOUR_PER_HOUR: f64 = 6.0;
+pub const ENEMY_ARMOUR_PER_HOUR: [f64; 4] = [4.0, 6.0, 8.0, 10.0];
+pub const ARMOUR_WAIT: f64 = 60.0;

@@ -374,3 +374,4 @@ cl-facility-destroyed = Meie { $what } { $place } lähedal hävitatud
 cl-enemy-facility-destroyed = Vaenlase { $what } { $place } lähedal hävitatud
 cl-facility-restored = Meie { $what } { $place } lähedal töötab jälle
 st-unit-offline = { $unit } ei tööta: pole voolu ega kütust
+cl-convoy-no-armour = Kolonni jaoks pole reservis piisavalt tanke: see ootab tankitehast

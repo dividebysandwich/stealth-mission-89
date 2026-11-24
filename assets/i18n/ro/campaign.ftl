@@ -374,3 +374,4 @@ cl-facility-destroyed = Obiectivul nostru ({ $what }) de lângă { $place } dist
 cl-enemy-facility-destroyed = Obiectiv inamic ({ $what }) de lângă { $place } distrus
 cl-facility-restored = Obiectivul nostru ({ $what }) de lângă { $place } funcționează din nou
 st-unit-offline = { $unit } nu funcționează: fără curent și combustibil
+cl-convoy-no-armour = Nu sunt destule tancuri în rezervă pentru un convoi: așteaptă fabrica de tancuri

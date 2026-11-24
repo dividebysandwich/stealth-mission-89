@@ -373,3 +373,4 @@ cl-facility-destroyed = Nuestra instalación ({ $what }) cerca de { $place } des
 cl-enemy-facility-destroyed = Instalación enemiga ({ $what }) cerca de { $place } destruida
 cl-facility-restored = Nuestra instalación ({ $what }) cerca de { $place } vuelve a funcionar
 st-unit-offline = { $unit } fuera de servicio: sin electricidad ni combustible
+cl-convoy-no-armour = No hay suficientes tanques en reserva para un convoy: espera a la fábrica de tanques

@@ -295,9 +295,22 @@ impl CampaignState {
             }
         }
         let Some((from, place, route)) = found else { return };
+        // Its tanks and infantry fighting vehicles come out of the side's reserve.
+        let armour = COLUMN.iter().filter(|u| matches!(u, ConvoyUnit::Tank | ConvoyUnit::Carrier));
+        let armour = armour.count() as u32;
+        if self.armour_on() && self.armour_reserve(side) < armour {
+            if side == Side::Blue && !std::mem::replace(&mut self.armour_short[0], true) {
+                let t = text!("cl-convoy-no-armour");
+                self.note(t.clone());
+                ev.push(CampaignEvent::Message(t));
+            }
+            return;
+        }
         if !self.pay(side, CONVOY_COST, Spend::Operations) {
             return;
         }
+        self.take_armour(side, armour);
+        self.armour_short[index(side)] = false;
         let id = self.id();
         let at = route[0];
         self.convoys.push(Convoy {

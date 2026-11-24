@@ -374,3 +374,4 @@ cl-facility-destroyed = Наш обект ({ $what }) край { $place } е у�
 cl-enemy-facility-destroyed = Вражески обект ({ $what }) край { $place } е унищожен
 cl-facility-restored = Нашият обект ({ $what }) край { $place } отново работи
 st-unit-offline = { $unit } е изключен: няма ток и гориво
+cl-convoy-no-armour = Няма достатъчно танкове в резерв за колона: тя чака танковия завод

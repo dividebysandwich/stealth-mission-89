@@ -374,3 +374,4 @@ cl-facility-destroyed = Наш об'єкт ({ $what }) біля { $place } зн�
 cl-enemy-facility-destroyed = Ворожий об'єкт ({ $what }) біля { $place } знищено
 cl-facility-restored = Наш об'єкт ({ $what }) біля { $place } знову працює
 st-unit-offline = { $unit } не працює: немає живлення й пального
+cl-convoy-no-armour = Бракує танків у резерві для колони: вона чекає на танковий завод

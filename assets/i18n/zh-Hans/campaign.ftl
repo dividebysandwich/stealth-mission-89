@@ -373,3 +373,4 @@ cl-facility-destroyed = 我方{ $place }附近的{ $what }被摧毁
 cl-enemy-facility-destroyed = 敌方{ $place }附近的{ $what }已被摧毁
 cl-facility-restored = 我方{ $place }附近的{ $what }已恢复运作
 st-unit-offline = { $unit }无法运作：没有电力和燃料
+cl-convoy-no-armour = 预备坦克不足以组成车队：等待坦克工厂

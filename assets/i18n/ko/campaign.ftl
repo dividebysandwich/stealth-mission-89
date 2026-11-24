@@ -374,3 +374,4 @@ cl-facility-destroyed = { $place } 인근 아군 { $what } 파괴됨
 cl-enemy-facility-destroyed = { $place } 인근 적 { $what } 파괴
 cl-facility-restored = { $place } 인근 아군 { $what } 복구됨
 st-unit-offline = { $unit } 작동 불가: 전력과 연료 없음
+cl-convoy-no-armour = 호송대에 필요한 예비 전차 부족: 전차 공장을 기다림

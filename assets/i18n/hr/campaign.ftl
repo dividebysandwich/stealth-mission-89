@@ -374,3 +374,4 @@ cl-facility-destroyed = Naš objekt ({ $what }) kod { $place } uništen
 cl-enemy-facility-destroyed = Neprijateljski objekt ({ $what }) kod { $place } uništen
 cl-facility-restored = Naš objekt ({ $what }) kod { $place } ponovno radi
 st-unit-offline = { $unit } ne radi: nema struje ni goriva
+cl-convoy-no-armour = Nema dovoljno tenkova u pričuvi za konvoj: čeka tvornicu tenkova

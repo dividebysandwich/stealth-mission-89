@@ -374,3 +374,4 @@ cl-facility-destroyed = { $place }付近の味方{ $what }が破壊された
 cl-enemy-facility-destroyed = { $place }付近の敵{ $what }を破壊
 cl-facility-restored = { $place }付近の味方{ $what }が復旧した
 st-unit-offline = { $unit }は停止中：電力も燃料もない
+cl-convoy-no-armour = 車列に必要な予備の戦車が足りない：戦車工場を待つ

@@ -25,6 +25,7 @@ impl CampaignState {
                 let was = f.materiel;
                 f.materiel = ((f.materiel + income).min(MATERIEL_MAX) * 64.0).round() / 64.0;
                 f.ledger.earned += f.materiel - was;
+                self.make_armour(side, elapsed);
             }
         }
         if self.clock - self.resupply_at < RESUPPLY_EVERY {
@@ -87,6 +88,49 @@ impl CampaignState {
                 fighter = !fighter;
             }
         }
+    }
+
+    /// The armour reserve counts (the facilities stand: a host's campaign).
+    pub fn armour_on(&self) -> bool {
+        !self.facilities.is_empty()
+    }
+
+    /// A side's tanks and infantry fighting vehicles in reserve (whole ones).
+    pub fn armour_reserve(&self, side: Side) -> u32 {
+        self.armour[(side == Side::Red) as usize].max(0.0) as u32
+    }
+
+    /// What a side's tank factory makes an hour while it stands.
+    pub fn armour_rate(&self, side: Side) -> f64 {
+        if self.facility_down(side, crate::FacilityKind::TankFactory) {
+            return 0.0;
+        }
+        match side {
+            Side::Blue => ARMOUR_PER_HOUR,
+            _ => ENEMY_ARMOUR_PER_HOUR[(self.setup.opponents as usize).min(3)],
+        }
+    }
+
+    /// The tank factory's work of `secs` seconds into the reserve (in 64ths, as the materiel).
+    fn make_armour(&mut self, side: Side, secs: f64) {
+        let rate = self.armour_rate(side);
+        let a = &mut self.armour[(side == Side::Red) as usize];
+        if *a < ARMOUR_RESERVE_MAX {
+            *a = ((*a + rate * secs / 3600.0).min(ARMOUR_RESERVE_MAX) * 64.0).round() / 64.0;
+        }
+    }
+
+    /// Takes `n` vehicles from a side's reserve, if it has them (always, without facilities).
+    pub(crate) fn take_armour(&mut self, side: Side, n: u32) -> bool {
+        if !self.armour_on() {
+            return true;
+        }
+        let a = &mut self.armour[(side == Side::Red) as usize];
+        if *a < n as f64 {
+            return false;
+        }
+        *a -= n as f64;
+        true
     }
 
     /// Materiel a side gets an hour: a base amount, its places and their intact cities (the

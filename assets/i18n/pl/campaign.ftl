@@ -399,3 +399,4 @@ cl-facility-destroyed = Nasz obiekt ({ $what }) koło { $place } zniszczony
 cl-enemy-facility-destroyed = Obiekt wroga ({ $what }) koło { $place } zniszczony
 cl-facility-restored = Nasz obiekt ({ $what }) koło { $place } znów działa
 st-unit-offline = { $unit } nie działa: brak prądu i paliwa
+cl-convoy-no-armour = Za mało czołgów w rezerwie na konwój: czeka na fabrykę czołgów

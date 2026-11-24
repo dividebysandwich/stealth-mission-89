@@ -374,3 +374,4 @@ cl-facility-destroyed = Ár { $what } in aice le { $place } scriosta
 cl-enemy-facility-destroyed = { $what } an namhad in aice le { $place } scriosta
 cl-facility-restored = Tá ár { $what } in aice le { $place } ag obair arís
 st-unit-offline = Tá { $unit } as feidhm: gan cumhacht ná breosla
+cl-convoy-no-armour = Níl dóthain umar i gcúlchiste do chonbhua: fanann sé leis an monarcha umar

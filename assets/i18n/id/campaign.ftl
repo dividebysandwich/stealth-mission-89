@@ -374,3 +374,4 @@ cl-facility-destroyed = { $what } kita dekat { $place } hancur
 cl-enemy-facility-destroyed = { $what } musuh dekat { $place } dihancurkan
 cl-facility-restored = { $what } kita dekat { $place } kembali beroperasi
 st-unit-offline = { $unit } tidak aktif: tanpa listrik dan bahan bakar
+cl-convoy-no-armour = Tank cadangan tidak cukup untuk konvoi: menunggu pabrik tank

@@ -200,6 +200,15 @@ pub(crate) fn is_zero(v: &u8) -> bool {
     *v == 0
 }
 
+fn is_default<T: Default + PartialEq>(v: &T) -> bool {
+    *v == T::default()
+}
+
+/// The armour reserve a campaign starts with (an older save: its reserve as it is now).
+fn armour_start() -> [f64; 2] {
+    [ARMOUR_RESERVE_START; 2]
+}
+
 /// A city and its airfield (same name, close together): what the sides fight over.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Place {
@@ -1186,6 +1195,13 @@ pub struct CampaignState {
     pub convoys: Vec<crate::Convoy>,
     #[serde(default)]
     pub convoy_at: [f64; 2],
+    /// Each side's armour reserve (blue, red): the tanks and infantry fighting vehicles its
+    /// tank factory makes, for its convoys and its garrisons' losses (`facilities.rs`); and
+    /// whether the players were told it ran short.
+    #[serde(default = "armour_start")]
+    pub armour: [f64; 2],
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub armour_short: [bool; 2],
     /// The AI flights flying missions of a side's board (`ai_missions`), and the enemy's own
     /// board (nobody sees it; its AI flies it).
     #[serde(default)]
@@ -1838,6 +1854,8 @@ impl CampaignState {
             deployments: Vec::new(),
             convoys: Vec::new(),
             convoy_at: [0.0; 2],
+            armour: armour_start(),
+            armour_short: [false; 2],
             ai_missions: Vec::new(),
             red_board: Vec::new(),
             runway_at: [0.0; 2],

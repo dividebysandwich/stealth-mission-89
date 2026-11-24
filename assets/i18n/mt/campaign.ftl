@@ -374,3 +374,4 @@ cl-facility-destroyed = Il-{ $what } tagħna qrib { $place } meqruda
 cl-enemy-facility-destroyed = Il-{ $what } tal-għadu qrib { $place } meqruda
 cl-facility-restored = Il-{ $what } tagħna qrib { $place } qed taħdem mill-ġdid
 st-unit-offline = { $unit } mitfi: la elettriku u lanqas fjuwil
+cl-convoy-no-armour = M'hemmx biżżejjed tankijiet fir-riżerva għal konvoj: qed jistenna l-fabbrika

@@ -374,3 +374,4 @@ cl-facility-destroyed = Náš objekt ({ $what }) pri { $place } zničený
 cl-enemy-facility-destroyed = Nepriateľský objekt ({ $what }) pri { $place } zničený
 cl-facility-restored = Náš objekt ({ $what }) pri { $place } je opäť v prevádzke
 st-unit-offline = { $unit } je mimo prevádzky: bez prúdu a paliva
+cl-convoy-no-armour = V zálohe nie je dosť tankov na kolónu: čaká na tankovú továreň

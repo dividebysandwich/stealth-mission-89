@@ -4759,3 +4759,73 @@ fn drone_waves_need_gerans() {
     assert_eq!(n, tuning::DRONE_WAVE);
     assert!(c.available(base, Munition::Geran) < 6);
 }
+
+/// The tank factory fills the armour reserve, up to its most; destroyed, it makes none.
+#[test]
+fn the_tank_factory_fills_the_armour_reserve() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    c.armour = [0.0; 2];
+    c.tick(1800.0, &WorldView::default(), &[]);
+    assert_eq!(c.armour_reserve(Side::Blue), (tuning::ARMOUR_PER_HOUR / 2.0) as u32);
+    let f = c.facilities_of(Side::Blue, FacilityKind::TankFactory).next().unwrap().id;
+    let mut ev = Vec::new();
+    c.facility_destroyed(f, None, &mut ev);
+    let before = c.armour[0];
+    c.tick(3600.0, &WorldView::default(), &[]);
+    assert_eq!(c.armour[0], before);
+    assert!(c.armour[1] > 0.0, "the enemy's factory works on");
+    c.tick(c.game_days(tuning::FACTORY_DAYS), &WorldView::default(), &[]);
+    c.tick(10.0 * 3600.0, &WorldView::default(), &[]);
+    assert_eq!(c.armour[0], tuning::ARMOUR_RESERVE_MAX);
+}
+
+/// A convoy takes its tanks and infantry fighting vehicles out of the reserve: without them it
+/// waits (and the players hear of it once).
+#[test]
+fn a_convoy_needs_armour_in_reserve() {
+    let mut c = campaign_on_terrain("ukraine", 9);
+    c.ensure_facilities(&[]);
+    c.armour = [2.0, 30.0];
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    let sides: Vec<Side> = ev
+        .iter()
+        .filter_map(|e| match e {
+            CampaignEvent::ConvoyLaunched { side, .. } => Some(*side),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(sides, [Side::Red]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("tanks"))));
+    assert!(c.armour[1] <= 24.0 + 0.1);
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("tanks"))));
+    c.armour[0] = 10.0;
+    c.convoys_due();
+    let ev = c.tick(1.0, &WorldView::default(), &[]);
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::ConvoyLaunched { side: Side::Blue, .. })));
+    assert!(c.armour[0] < 5.0);
+}
+
+/// A garrison's lost tank is replaced out of the reserve: with none there, it waits.
+#[test]
+fn a_garrison_waits_for_armour() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let f = c.facilities_of(Side::Red, FacilityKind::TankFactory).next().unwrap().id;
+    let mut ev = Vec::new();
+    c.facility_destroyed(f, None, &mut ev);
+    c.armour[1] = 0.0;
+    let k = c.places.iter().position(|p| p.owner == Side::Red).unwrap();
+    c.places[k].armour_lost = 1;
+    c.places[k].armour_repair_at = Some(0.0);
+    let ev = c.tick(10.0, &WorldView::default(), &[]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::ArmourRepaired { .. })));
+    assert_eq!(c.places[k].armour_lost, 1);
+    c.armour[1] = 1.0;
+    c.tick(tuning::ARMOUR_WAIT, &WorldView::default(), &[]);
+    assert_eq!(c.places[k].armour_lost, 0);
+    assert_eq!(c.armour_reserve(Side::Red), 0);
+}

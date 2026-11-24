@@ -374,3 +374,4 @@ cl-facility-destroyed = Saját { $what } { $place } közelében megsemmisült
 cl-enemy-facility-destroyed = Ellenséges { $what } { $place } közelében megsemmisítve
 cl-facility-restored = Saját { $what } { $place } közelében újra üzemel
 st-unit-offline = { $unit } üzemen kívül: nincs áram és üzemanyag
+cl-convoy-no-armour = Nincs elég harckocsi tartalékban egy konvojhoz: a harckocsigyárra vár

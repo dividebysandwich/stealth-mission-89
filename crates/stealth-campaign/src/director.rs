@@ -712,9 +712,16 @@ impl CampaignState {
             if p.armour_lost == 0 || !p.armour_repair_at.is_some_and(|t| now >= t) {
                 continue;
             }
-            if !self.pay(p.owner, ARMOUR_COST, Spend::Repairs) {
+            // A vehicle from the reserve (none there: a look again in a while).
+            let owner = p.owner;
+            if self.armour_on() && self.armour_reserve(owner) == 0 {
+                self.places[k].armour_repair_at = Some(now + ARMOUR_WAIT);
                 continue;
             }
+            if !self.pay(owner, ARMOUR_COST, Spend::Repairs) {
+                continue;
+            }
+            self.take_armour(owner, 1);
             let p = &mut self.places[k];
             p.armour_lost -= 1;
             p.armour_repair_at = (p.armour_lost > 0).then_some(now + REPAIR_ARMOUR / relief[k]);
