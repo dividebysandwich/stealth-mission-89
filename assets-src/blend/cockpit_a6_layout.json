@@ -2375,6 +2375,762 @@
         13.0
       ],
       "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriDiscreteLock))",
+      "kind": null,
+      "rect": [
+        250.0,
+        76.0,
+        46.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriGroundLock))",
+      "kind": null,
+      "rect": [
+        298.0,
+        76.0,
+        46.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriAttack))",
+      "kind": null,
+      "rect": [
+        346.0,
+        76.0,
+        40.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriTrack))",
+      "kind": null,
+      "rect": [
+        388.0,
+        76.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriComputer))",
+      "kind": null,
+      "rect": [
+        250.0,
+        91.0,
+        46.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriEcm))",
+      "kind": null,
+      "rect": [
+        298.0,
+        91.0,
+        46.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Light(DvriReselect))",
+      "kind": null,
+      "rect": [
+        346.0,
+        91.0,
+        40.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"RANGE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        440.5,
+        76.0,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Readout(DvriRange))",
+      "kind": null,
+      "rect": [
+        426.0,
+        87.0,
+        52.0,
+        17.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"SEARCH RADAR\", 15, 5))",
+      "kind": null,
+      "rect": [
+        339.5,
+        114.0,
+        51.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(SearchPower)",
+      "key": "Item(Control(SearchPower))",
+      "kind": "switch",
+      "rect": [
+        262.0,
+        132.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ON\", 15, 5))",
+      "kind": null,
+      "rect": [
+        280.0,
+        132.3333282470703,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"STBY\", 15, 5))",
+      "kind": null,
+      "rect": [
+        280.0,
+        141.0,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OFF\", 15, 5))",
+      "kind": null,
+      "rect": [
+        280.0,
+        149.6666717529297,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"RANGE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        353.5,
+        125.0,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(SearchRange)",
+      "key": "Item(Control(SearchRange))",
+      "kind": "knob",
+      "rect": [
+        350.0,
+        136.0,
+        30.0,
+        30.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"15\", 15, 5))",
+      "kind": null,
+      "rect": [
+        331.0,
+        160.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"30\", 15, 5))",
+      "kind": null,
+      "rect": [
+        331.0,
+        136.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"60\", 15, 5))",
+      "kind": null,
+      "rect": [
+        388.0,
+        136.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"150\", 15, 5))",
+      "kind": null,
+      "rect": [
+        388.0,
+        160.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Amti)",
+      "key": "Item(Control(Amti))",
+      "kind": "switch",
+      "rect": [
+        440.0,
+        132.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"AMTI\", 15, 5))",
+      "kind": null,
+      "rect": [
+        419.0,
+        134.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OFF\", 15, 5))",
+      "kind": null,
+      "rect": [
+        423.0,
+        147.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(MasterCaution)",
+      "key": "Item(Lamp(Mw, Some(\"MASTER\\nCAUTION\")))",
+      "kind": "cap",
+      "rect": [
+        508.0,
+        12.0,
+        30.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Menu)",
+      "key": "Item(Label(\"MENU\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        542.0,
+        14.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Nvg)",
+      "key": "Item(Label(\"NVG\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        582.0,
+        14.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Volume)",
+      "key": "Item(Label(\"VOL\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        622.0,
+        14.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TEMPORARY STORAGE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        308.5,
+        302.0,
+        71.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Readout(Storage))",
+      "kind": null,
+      "rect": [
+        302.0,
+        312.0,
+        84.0,
+        16.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Clear)",
+      "key": "Item(Control(Clear))",
+      "kind": "cap",
+      "rect": [
+        404.0,
+        308.0,
+        22.0,
+        22.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(Base))",
+      "key": "Item(Control(Address(Base)))",
+      "kind": "cap",
+      "rect": [
+        292.0,
+        334.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(CheckPoint))",
+      "key": "Item(Control(Address(CheckPoint)))",
+      "kind": "cap",
+      "rect": [
+        318.0,
+        334.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(PresLoca))",
+      "key": "Item(Control(Address(PresLoca)))",
+      "kind": "cap",
+      "rect": [
+        344.0,
+        334.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(RelAdv))",
+      "key": "Item(Control(Address(RelAdv)))",
+      "kind": "cap",
+      "rect": [
+        370.0,
+        334.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(Target))",
+      "key": "Item(Control(Address(Target)))",
+      "kind": "cap",
+      "rect": [
+        292.0,
+        355.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(AimPointOne))",
+      "key": "Item(Control(Address(AimPointOne)))",
+      "kind": "cap",
+      "rect": [
+        318.0,
+        355.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(AimPointTwo))",
+      "key": "Item(Control(Address(AimPointTwo)))",
+      "kind": "cap",
+      "rect": [
+        344.0,
+        355.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(CruiseAlt))",
+      "key": "Item(Control(Address(CruiseAlt)))",
+      "kind": "cap",
+      "rect": [
+        370.0,
+        355.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(MapCenter))",
+      "key": "Item(Control(Address(MapCenter)))",
+      "kind": "cap",
+      "rect": [
+        292.0,
+        376.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(Store))",
+      "key": "Item(Control(Address(Store)))",
+      "kind": "cap",
+      "rect": [
+        318.0,
+        376.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(Wind))",
+      "key": "Item(Control(Address(Wind)))",
+      "kind": "cap",
+      "rect": [
+        344.0,
+        376.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Address(GlidePath))",
+      "key": "Item(Control(Address(GlidePath)))",
+      "kind": "cap",
+      "rect": [
+        370.0,
+        376.0,
+        24.0,
+        19.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Release)",
+      "key": "Item(Control(Release))",
+      "kind": "cap",
+      "rect": [
+        398.0,
+        334.0,
+        14.0,
+        61.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(0))",
+      "key": "Item(Control(Quantity(0)))",
+      "kind": "cap",
+      "rect": [
+        292.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(1))",
+      "key": "Item(Control(Quantity(1)))",
+      "kind": "cap",
+      "rect": [
+        312.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(2))",
+      "key": "Item(Control(Quantity(2)))",
+      "kind": "cap",
+      "rect": [
+        332.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(3))",
+      "key": "Item(Control(Quantity(3)))",
+      "kind": "cap",
+      "rect": [
+        352.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(4))",
+      "key": "Item(Control(Quantity(4)))",
+      "kind": "cap",
+      "rect": [
+        372.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(5))",
+      "key": "Item(Control(Quantity(5)))",
+      "kind": "cap",
+      "rect": [
+        392.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(6))",
+      "key": "Item(Control(Quantity(6)))",
+      "kind": "cap",
+      "rect": [
+        412.0,
+        400.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(7))",
+      "key": "Item(Control(Quantity(7)))",
+      "kind": "cap",
+      "rect": [
+        292.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(8))",
+      "key": "Item(Control(Quantity(8)))",
+      "kind": "cap",
+      "rect": [
+        312.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(9))",
+      "key": "Item(Control(Quantity(9)))",
+      "kind": "cap",
+      "rect": [
+        332.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(10))",
+      "key": "Item(Control(Quantity(10)))",
+      "kind": "cap",
+      "rect": [
+        352.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(11))",
+      "key": "Item(Control(Quantity(11)))",
+      "kind": "cap",
+      "rect": [
+        372.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(12))",
+      "key": "Item(Control(Quantity(12)))",
+      "kind": "cap",
+      "rect": [
+        392.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Quantity(13))",
+      "key": "Item(Control(Quantity(13)))",
+      "kind": "cap",
+      "rect": [
+        412.0,
+        416.0,
+        18.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Action(0))",
+      "key": "Item(Control(Action(0)))",
+      "kind": "cap",
+      "rect": [
+        292.0,
+        432.0,
+        21.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Action(1))",
+      "key": "Item(Control(Action(1)))",
+      "kind": "cap",
+      "rect": [
+        315.0,
+        432.0,
+        21.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Action(2))",
+      "key": "Item(Control(Action(2)))",
+      "kind": "cap",
+      "rect": [
+        338.0,
+        432.0,
+        21.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Action(3))",
+      "key": "Item(Control(Action(3)))",
+      "kind": "cap",
+      "rect": [
+        361.0,
+        432.0,
+        21.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Action(4))",
+      "key": "Item(Control(Action(4)))",
+      "kind": "cap",
+      "rect": [
+        384.0,
+        432.0,
+        21.0,
+        12.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Intruder(Action(5))",
+      "key": "Item(Control(Action(5)))",
+      "kind": "cap",
+      "rect": [
+        407.0,
+        432.0,
+        21.0,
+        12.0
+      ],
+      "round": false
     }
   ],
   "screens": {
@@ -2383,6 +3139,12 @@
       -186.0,
       72.0,
       72.0
+    ],
+    "dvri": [
+      255.0,
+      -152.0,
+      220.0,
+      220.0
     ],
     "hsi": [
       -168.0,
@@ -2395,6 +3157,12 @@
       28.0,
       164.0,
       164.0
+    ],
+    "sensor": [
+      520.0,
+      -104.0,
+      124.0,
+      93.0
     ],
     "vdi": [
       -435.0,

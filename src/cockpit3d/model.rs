@@ -994,10 +994,18 @@ mod tests {
                 .collect();
             // The A-6 has no MFDs: the pilot's vertical and horizontal displays and his standby
             // attitude indicator, the bombardier/navigator's direct view radar indicator and
-            // his sensor scope over the pod's picture.
+            // his sensor scope over the pod's picture, all of them live from either seat.
             let mut required = match style {
-                PanelStyle::A6 => vec!["atlas", "adi", "hsi", "screen_vdi", "screen_phd"],
-                PanelStyle::A6Bn => vec!["atlas", "trackcam", "screen_dvri", "screen_sensor"],
+                PanelStyle::A6 | PanelStyle::A6Bn => vec![
+                    "atlas",
+                    "adi",
+                    "hsi",
+                    "trackcam",
+                    "screen_vdi",
+                    "screen_phd",
+                    "screen_dvri",
+                    "screen_sensor",
+                ],
                 _ => vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"],
             };
             if matches!(style, PanelStyle::A6 | PanelStyle::A6Bn) {

@@ -38,16 +38,15 @@ const ATLAS: usize = 512;
 
 /// The instrument atlas's height (texels): twice the width in the OH-58D's, the MH-60R's and the
 /// F/A-18E's cockpits, whose four MFDs' bezel buttons (and the F/A-18E's soft keys) don't fit
-/// the square one, in the F-117A's modern one and in the A-6's bombardier/navigator's; three
-/// times in the A-6's pilot's.
+/// the square one and in the F-117A's modern one; three times in the A-6's (the whole panel
+/// in either seat).
 fn atlas_rows(style: PanelStyle) -> usize {
     match style {
         PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r | PanelStyle::Fa18e => 2 * ATLAS,
         // The F-117A's instruments are the size of the contributed cockpit's cases.
         PanelStyle::Modern => 2 * ATLAS,
         // The A-6's many round instruments, pushbuttons and legends.
-        PanelStyle::A6 => 3 * ATLAS,
-        PanelStyle::A6Bn => 2 * ATLAS,
+        PanelStyle::A6 | PanelStyle::A6Bn => 3 * ATLAS,
         _ => ATLAS,
     }
 }
@@ -679,7 +678,7 @@ pub(super) fn update_displays(
     let find = |r: CanvasRole| roles.iter().find(|(_, x)| **x == r).map(|(e, _)| e);
     // The A-6's sensor scope shows the pod's picture whichever of the avionics' two formats has
     // it (the cockpit has no MFDs to tell them apart).
-    let sensor = settings.cockpit().0 == PanelStyle::A6Bn
+    let sensor = matches!(settings.cockpit().0, PanelStyle::A6 | PanelStyle::A6Bn)
         && [MfdSide::Left, MfdSide::Right].into_iter().any(|s| d.mfd.camera_see_through(s));
     for (screen, mut v) in &mut tc {
         v.set_if_neq(

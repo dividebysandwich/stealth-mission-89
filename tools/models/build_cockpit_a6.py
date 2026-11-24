@@ -2,17 +2,16 @@
 # modern cockpit: the pilot's (left seat)
 #   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_a6.py -- \
-#       assets-src/blend/cockpit_a6_layout.json assets-src/blend/cockpit_a6.blend \
-#       --other assets-src/blend/cockpit_a6_bn_layout.json
+#       assets-src/blend/cockpit_a6_layout.json assets-src/blend/cockpit_a6.blend
 # and the bombardier/navigator's (right seat)
 #   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_a6.py -- \
 #       assets-src/blend/cockpit_a6_bn_layout.json assets-src/blend/cockpit_a6_bn.blend \
-#       --seat right --other assets-src/blend/cockpit_a6_layout.json
+#       --seat right
 # then tools/models/export.sh cockpit_a6 cockpit_a6_bn. The layout JSONs are written by
 # `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::a6` / `a6_bn`
-# (src/cockpit3d/a6_layout.rs). `--other` is the other seat's layout: its instruments are
-# modelled dark on its side of the panel.
+# (src/cockpit3d/a6_layout.rs). Both have the whole panel, live: the seats differ in the eye,
+# the sight's glass, the approach indexer and the ejection handle's control.
 #
 # One cabin for both: the geometry is laid out in the exterior's frame (tools/models/aircraft.py
 # `a6`: x right of the centre line, s aft of the nose, z up from the nose tip, metres) and built
@@ -48,7 +47,6 @@ args = sys.argv[sys.argv.index("--") + 1:]
 layout_path, out = args[:2]
 layout = json.load(open(layout_path))
 RIGHT_SEAT = "--seat" in args and args[args.index("--seat") + 1] == "right"
-other = json.load(open(args[args.index("--other") + 1])) if "--other" in args else None
 root = bpy.data.objects["cockpit"]
 
 F117_SCALE = 1.4706
@@ -239,7 +237,7 @@ def coloured(name, like, rgb, roughness=None):
 for n, like in (("hsi", "adi"), ("screen_vdi", "adi"), ("screen_phd", "adi"), ("screen_dvri", "adi"), ("screen_sensor", "adi")):
     material(n, like)
 coloured("red", "yellow", (0.55, 0.04, 0.03))
-# The engraved white of the bank indices; a dark tube's glass (the other seat's displays).
+# The engraved white of the bank indices; a dark tube's glass (the dressing's gauges).
 coloured("white", "yellow", (0.80, 0.80, 0.76))
 coloured("tube", "yellow", (0.012, 0.022, 0.016), 0.2)
 
@@ -812,8 +810,6 @@ mesh_object("red", cylinder_mesh("red", 0.005, 0.005, "red", axis="Z", n=KNOB), 
 # --- plates under the panel's groups, housings of the displays
 PLATE = 0.004
 scr = layout["screens"]
-faces = {f["key"]: f["rect"] for f in layout["faces"]}
-keys = set(faces)
 # The displays' housings: (rectangle, its front's height off the panel).
 VDI_HOUSING = ((-462.0, -194.0, 204.0, 174.0), 0.016)
 PHD_HOUSING = ((-448.0, 4.0, 176.0, 194.0), 0.008)
@@ -842,13 +838,8 @@ bn_plates = [
     ("dark", (500.0, 40.0, 160.0, 198.0)),  # navigation panel
     ("black", (286.0, 300.0, 158.0, 148.0)),  # computer keyboard
 ]
-own_plates = bn_plates if RIGHT_SEAT else pilot_plates
-other_plates = pilot_plates if RIGHT_SEAT else bn_plates
-for mat, r in shared_plates + own_plates:
+for mat, r in shared_plates + pilot_plates + bn_plates:
     panel_box(mat, mat, r, PLATE)
-# The other seat's panels: dark plates.
-for mat, r in other_plates:
-    panel_box("dark", "dark", r, PLATE)
 
 
 def offset_of(r):
@@ -1051,20 +1042,10 @@ def sensor(rect, live):
 
 
 # --- displays
-if RIGHT_SEAT:
-    scope("screen_dvri", scr["dvri"], DVRI_HOUSING, True, 0.008)
-    sensor(scr["sensor"], True)
-    if other:
-        o = other["screens"]
-        vdi(o["vdi"], False)
-        scope("screen_phd", o["phd"], PHD_HOUSING, False, 0.006)
-else:
-    vdi(scr["vdi"], True)
-    scope("screen_phd", scr["phd"], PHD_HOUSING, True, 0.006)
-    if other:
-        o = other["screens"]
-        scope("screen_dvri", o["dvri"], DVRI_HOUSING, False, 0.008)
-        sensor(o["sensor"], False)
+vdi(scr["vdi"], True)
+scope("screen_phd", scr["phd"], PHD_HOUSING, True, 0.006)
+scope("screen_dvri", scr["dvri"], DVRI_HOUSING, True, 0.008)
+sensor(scr["sensor"], True)
 
 
 def round_screen(mat, r, offset):
@@ -1073,12 +1054,8 @@ def round_screen(mat, r, offset):
     mesh_object(mat, disc_mesh(mat, min(r[2], r[3]) / 2000, mat), rect_point(r, offset + 0.0105), rect_rotation(r), props={"no_shadow": True})
 
 
-if not RIGHT_SEAT:
-    round_screen("adi", scr["adi"], 0.0)
-    round_screen("hsi", scr["hsi"], 0.0)
-elif other:
-    for k in ("adi", "hsi"):
-        round_screen("tube", other["screens"][k], 0.0)
+round_screen("adi", scr["adi"], 0.0)
+round_screen("hsi", scr["hsi"], 0.0)
 
 # --- faces and controls
 for f in layout["faces"]:
@@ -1101,27 +1078,6 @@ for f in layout["faces"]:
         knob_control(key, r, off, f["control"])
     else:
         control(key, r, off, f["control"], f["kind"])
-
-# The other seat's instruments, dark: round cases and windows where its faces are.
-if other:
-    for f in other["faces"]:
-        if f["key"] in keys:
-            continue
-        r = f["rect"]
-        off = offset_of(r)
-        x, y, w, h = r
-        if f["round"] and f["control"] is None:
-            bezel(r, off)
-            mesh_object("tube", disc_mesh("tube", min(w, h) / 2000, "tube"), rect_point(r, off + 0.0085), rect_rotation(r))
-        elif f["control"] is not None:
-            tall = 0.012 if f["kind"] in ("switch", "knob") else 0.006
-            size = min(w, h) if f["kind"] in ("switch", "knob") else None
-            if size:
-                mesh_object("dark", cylinder_mesh("dark", size / 4000, tall, "dark", n=KNOB), rect_point(r, off), rect_rotation(r))
-            else:
-                panel_box("black", "black", r, tall, 0.0, off)
-        elif f["key"].startswith(("Item(Dial(", "Item(Readout(", "Item(Light(", "Item(Lamp(", "Item(Led(")):
-            panel_box("tube", "tube", r, 0.001, 0.0, off)
 
 # --- dressing: what the layouts do not carry
 # The pilot's side: the emergency stores jettison button, the small hydraulic and trim gauges
@@ -1269,14 +1225,10 @@ for o in indexers:
     box("dark", "dark", at + Vector((0, 0.007, -0.047)), (0.010, 0.010, 0.03))
 # The gear handle on the pilot's panel, left of the engine tapes.
 g = objs["control_Action_Gear_.001"]
-if RIGHT_SEAT:
-    drop(g)
-    panel_box("dark", "dark", (-716.0, 10.0, 22.0, 60.0), 0.03, 0.0, 0.0)
-else:
-    g.location = point(-705.0, 40.0, 0.0)
-    g.rotation_mode = "QUATERNION"
-    g.rotation_quaternion = rotation(-705.0, 40.0)
-    panel_box("black", "black", (-722.0, -10.0, 34.0, 96.0), 0.002)
+g.location = point(-705.0, 40.0, 0.0)
+g.rotation_mode = "QUATERNION"
+g.rotation_quaternion = rotation(-705.0, 40.0)
+panel_box("black", "black", (-722.0, -10.0, 34.0, 96.0), 0.002)
 # Flood lamps: one either side behind the head, one under the glare shield over the panel.
 objs["lamp"].location = Vector((-0.25, -0.05, -0.12))
 objs["lamp.001"].location = Vector((0.25, -0.05, -0.12))

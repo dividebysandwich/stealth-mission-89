@@ -14,7 +14,7 @@
 //!   the DISPLAY and RANGE MILES pushbuttons, pitch trim and path brightness; HORIZONTAL: mode,
 //!   one scan, erase, power; TRACK RADAR: clearance, display scale, function) with the sight's
 //!   modes beside it.
-//! - Between the seats (0 < x < 240), in both cockpits: the armament panel (the station
+//! - Between the seats (0 < x < 240): the armament panel (the station
 //!   switches, the attack mode and G pushbuttons, the FT OR SEC counter, master arm, the release
 //!   mode), the flight / navigation mode panel under it, and the countermeasures column (the
 //!   release keys and counts, the jammers, the threat lights).
@@ -22,6 +22,9 @@
 //!   indicator in its heading ring with its lights and range window, the search radar's
 //!   controls under it, the sensor scope right of it; the computer keyboard on the pedestal
 //!   between his knees (y >= 300: its own surface).
+//!
+//! Both cockpits have the whole panel, live: from either seat the other's instruments,
+//! displays and controls work as in his own.
 //!
 //! The pushbuttons' and switches' printed legends are label faces beside them, every text at
 //! one size (`label_size`), so equal texts share a face of the atlas.
@@ -375,11 +378,12 @@ fn bn(it: &mut Items) {
     it.legend("150", 388.0, 164.0, At::Left);
     it.switch(Key::Amti, 440.0, 132.0);
     it.positions(440.0, 132.0, &["AMTI", "OFF"], false);
-    // Under the sensor scope: the master caution and the keys.
+    // Under the sensor scope: the master caution and the keys (the pilot's own, the same
+    // size, so they share his faces).
     let mc = Some(E::Action(Action::MasterCaution));
     it.put(
         Elem::Lamp(LampId::Mw, Some("MASTER\nCAUTION")),
-        rect(506.0, 12.0, 40.0, 18.0),
+        rect(508.0, 12.0, 30.0, 18.0),
         mc,
         false,
     );
@@ -388,7 +392,7 @@ fn bn(it: &mut Items) {
             .into_iter()
             .enumerate()
     {
-        it.key(label, rect(550.0 + 34.0 * i as f32, 14.0, 30.0, 14.0), E::Action(action));
+        it.key(label, rect(542.0 + 40.0 * i as f32, 14.0, 38.0, 14.0), E::Action(action));
     }
 
     // --- The computer keyboard on the pedestal (x 286..444, y 300..442).
@@ -418,13 +422,15 @@ const DVRI: PxRect = rect(255.0, -152.0, 220.0, 220.0);
 const SENSOR: PxRect = rect(520.0, -104.0, 124.0, 93.0);
 
 impl PanelLayout {
-    /// The A-6's pilot's cockpit (see the module).
-    pub fn a6() -> Self {
+    /// The whole panel, both seats' sides and the middle, as either seat sees it: the other
+    /// seat's instruments and displays are live too (see the module).
+    fn a6_panel(style: PanelStyle) -> Self {
         let mut it = Items(Vec::new());
         pilot(&mut it);
         centre(&mut it);
+        bn(&mut it);
         Self {
-            style: PanelStyle::A6,
+            style,
             items: it.0,
             adi: rect(-166.0, -186.0, 72.0, 72.0),
             mfds: Vec::new(),
@@ -434,29 +440,23 @@ impl PanelLayout {
             ded: None,
             lmpd: None,
             rmpd: None,
-            a6: Some(A6Screens { vdi: Some(VDI), phd: Some(PHD), ..Default::default() }),
+            a6: Some(A6Screens {
+                vdi: Some(VDI),
+                phd: Some(PHD),
+                dvri: Some(DVRI),
+                sensor: Some(SENSOR),
+            }),
         }
+    }
+
+    /// The A-6's pilot's cockpit (see the module).
+    pub fn a6() -> Self {
+        Self::a6_panel(PanelStyle::A6)
     }
 
     /// The A-6's bombardier/navigator's cockpit (see the module).
     pub fn a6_bn() -> Self {
-        let mut it = Items(Vec::new());
-        centre(&mut it);
-        bn(&mut it);
-        Self {
-            style: PanelStyle::A6Bn,
-            items: it.0,
-            // He has no attitude indicator: the rectangle is unused (no `adi` in his model).
-            adi: rect(560.0, 60.0, 60.0, 60.0),
-            mfds: Vec::new(),
-            rwr: None,
-            hsi: None,
-            tfr: None,
-            ded: None,
-            lmpd: None,
-            rmpd: None,
-            a6: Some(A6Screens { dvri: Some(DVRI), sensor: Some(SENSOR), ..Default::default() }),
-        }
+        Self::a6_panel(PanelStyle::A6Bn)
     }
 }
 
@@ -464,32 +464,27 @@ impl PanelLayout {
 mod tests {
     use super::*;
 
-    /// Each seat has its own controls and the shared ones between the seats; every control of
-    /// the A-6 is in one of the two cockpits, none twice in one.
+    /// Both seats have the whole panel: every control of the A-6 once in each cockpit.
     #[test]
     fn every_key_has_a_control() {
-        let keys = |l: &PanelLayout| -> Vec<Key> {
-            l.items
+        for l in [PanelLayout::a6(), PanelLayout::a6_bn()] {
+            let keys: Vec<Key> = l
+                .items
                 .iter()
                 .filter_map(|p| match p.cap {
                     Some(Effect::Intruder(k)) => Some(k),
                     _ => None,
                 })
-                .collect()
-        };
-        let (pilot, bn) = (keys(&PanelLayout::a6()), keys(&PanelLayout::a6_bn()));
-        for k in Key::all() {
-            let n =
-                (pilot.iter().filter(|p| **p == k).count(), bn.iter().filter(|p| **p == k).count());
-            assert!(n.0 <= 1 && n.1 <= 1 && n.0 + n.1 >= 1, "{k:?}: {n:?}");
+                .collect();
+            for k in Key::all() {
+                assert_eq!(keys.iter().filter(|p| **p == k).count(), 1, "{:?}: {k:?}", l.style);
+            }
         }
-        assert!(pilot.contains(&Key::Vdi(VdiDisplay::Off)) && !bn.contains(&Key::PhdMode));
-        assert!(bn.contains(&Key::SearchPower) && !pilot.contains(&Key::Clear));
-        assert!(pilot.contains(&Key::MasterArm) && bn.contains(&Key::MasterArm));
     }
 
     /// Faces with the same key (equal legends) are the same size: they share a face of the
-    /// atlas.
+    /// atlas. Two with a control are one control in each seat's reach (the master caution, the
+    /// MENU, NVG and VOL keys).
     #[test]
     fn equal_faces_are_one_size() {
         for l in [PanelLayout::a6(), PanelLayout::a6_bn()] {
@@ -497,7 +492,7 @@ mod tests {
                 for b in &l.items[..i] {
                     if a.elem == b.elem {
                         assert_eq!((a.rect.w, a.rect.h), (b.rect.w, b.rect.h), "{:?}", a.elem);
-                        assert!(a.cap.is_none() && b.cap.is_none(), "{:?} twice", a.elem);
+                        assert_eq!(a.cap, b.cap, "{:?} twice", a.elem);
                     }
                 }
             }

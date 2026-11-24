@@ -4599,6 +4599,9 @@ The pilot sits on the left, the B/N on the right and a little aft. You can fly i
   a button or switch either of you moves, moves in the other's cockpit too. The B/N lays the
   sensor turret and designates the target; the trigger stays the pilot's.
 
+From either seat the whole panel is live: the other seat's displays and instruments show what
+they show him, and his controls are within your reach too.
+
 Every control is worked by clicking it. The square **pushbuttons** stay in when pressed and turn
 45 degrees to show it: a button standing on its corner, its lamp lit, is the one that is in. In
 each group one button is in at a time. A click on a **toggle switch** or a **knob** moves it to
