@@ -3472,7 +3472,10 @@ The facilities are buildings: bombs and missiles bring them down, gun rounds and
 nothing to them. They show hot on the FLIR, and the targeting pod locks them like a vehicle.
 The board offers strikes on the enemy's most valuable facilities within reach (**INTERDICTION**,
 `Strike - <facility> near <place>`), and the AI flies them too; the enemy strikes yours from its
-own board and with its missiles. One just rebuilt is left alone for half an hour.
+own board and with its missiles. One just rebuilt is left alone for half an hour. The enemy's
+strike aircraft go for one of yours only every hour and a half or so (sooner on harder skills
+and with a large crew, later while you are outnumbered or losing ground), and for the one they
+have left alone longest, so the headquarters is not knocked out again the moment it is back.
 
 When the front passes a facility it changes sides with the ground it stands on: take the town
 by the enemy's tank factory and the factory is yours, and the enemy makes no more armour. A
