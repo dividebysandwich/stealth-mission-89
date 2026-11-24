@@ -27,7 +27,7 @@ const SEEKER_CONE: i32 = 0x1000;
 const HELLFIRE_SEARCH: i32 = 0x200;
 /// Map units ahead per unit of lock range within which the LOCK oval locks on: ground and air
 /// (lock_oval).
-const GROUND_LOCK: f64 = 56.0;
+pub(crate) const GROUND_LOCK: f64 = 56.0;
 const AIR_LOCK: i32 = 64;
 /// Air-to-air: farthest range searched, the farthest the radar locks on from (select_air; a
 /// missile fired head-on at a fast target reaches well beyond the oval's lock range).

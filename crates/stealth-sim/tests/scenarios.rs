@@ -5232,8 +5232,7 @@ fn sidearm_shot(guided: bool, alt: u16, knots: u16, range: i32) -> SidearmShot {
 
 /// Fired low, as from a helicopter, the Sidearm pops up and comes down on the radar from
 /// above, the more steeply the farther the radar; close in it still hits. Fired from higher up
-/// it flies at the radar as the Shrike does. It locks on only from about half the Shrike's
-/// range.
+/// it flies at the radar as the Shrike does. It reaches about half as far as the Shrike.
 #[test]
 fn sidearm_pops_up_when_fired_low() {
     for guided in [false, true] {
@@ -5246,8 +5245,69 @@ fn sidearm_pops_up_when_fired_low() {
         let high = sidearm_shot(guided, 3000, 450, 500);
         assert!(high.locked && high.in_zone && high.destroyed, "guided {guided}: {high:?}");
         assert!(high.top < 3100.0, "guided {guided}: popped up from high {high:?}");
+        // Beyond its reach the seeker still hears the radar, but the launch zone says no.
         let far = sidearm_shot(guided, 3000, 450, 800);
-        assert!(!far.locked && !far.destroyed, "guided {guided}: {far:?}");
+        assert!(far.locked && !far.in_zone, "guided {guided}: {far:?}");
+    }
+}
+
+/// The Sidearm's visual mode at an emitting SA-2 site 300 map units northeast of a helicopter
+/// at 100 ft heading for it, with the helmet sight looking `helmet` (BAM heading; None: no
+/// helmet, the seeker along the HUD's boresight): whether its seeker locked the site's radar by
+/// itself (no lock asked for) and gave the tone within 10 s, and whether a Sidearm fired then
+/// destroyed it.
+fn sidearm_visual(guided: bool, helmet: Option<u16>) -> (bool, bool) {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { realistic_guidance: guided, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(SIDEARM_WEAPON, 1)]);
+    let t = 5;
+    place_site(&mut sim, t, 1, mx + 212, my - 212);
+    let mut p = player_at(mx, my, 100, 0x2000, 60);
+    p.hud_mode = HudMode::Gnd;
+    p.helmet = helmet.map(|heading| PodAim { heading, pitch: 0, ground: None });
+    p.cmd.toggle_bay = true;
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    let mut locked = false;
+    for _ in 0..15 * 10 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+        let tg = sim.targeting();
+        if tg.ground == Some(t) && tg.lock_valid && tg.in_range {
+            locked = true;
+            break;
+        }
+    }
+    if !locked {
+        return (false, false);
+    }
+    assert!(sim.sidearm_seeker().is_some());
+    assert_eq!(sim.helmet_seeker().is_some(), helmet.is_some());
+    p.cmd.fire = true;
+    let mut destroyed = false;
+    for _ in 0..15 * 60 {
+        for e in sim.step(&p, 15) {
+            destroyed |= matches!(e, SimEvent::GroundDestroyed { object, .. } if object == t);
+        }
+        p.cmd = Commands::default();
+    }
+    (locked, destroyed)
+}
+
+/// The Sidearm's visual mode locks the radar it is pointed at by itself, along the HUD's
+/// boresight or the helmet sight, and not one the helmet looks away from.
+#[test]
+fn sidearm_locks_the_radar_it_looks_at() {
+    for guided in [false, true] {
+        assert_eq!(sidearm_visual(guided, None), (true, true), "guided {guided}: boresight");
+        assert_eq!(sidearm_visual(guided, Some(0x2000)), (true, true), "guided {guided}: helmet");
+        assert!(!sidearm_visual(guided, Some(0x0800)).0, "guided {guided}: looking away");
     }
 }
 

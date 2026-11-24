@@ -2371,6 +2371,15 @@ homes only on a radar that is transmitting, but it reaches only some 10 km and i
 With a Sidearm aboard the **HARM** display is offered too (modern avionics): lock a radar on it as
 for the HARM, or in GND mode with T or B, and fire inside the zone.
 
+**Visual mode.** Selected in GND, the Sidearm's seeker works like the Sidewinder's: its circle
+shows on the HUD along the boresight, or, with a helmet-mounted display (AH-1Z, AH-64D, RAH-66),
+it follows your eyes as far as the seeker head turns (40 degrees off the nose). Put the circle on
+a radar that is transmitting and the seeker locks it by itself: you hear it growl, a higher
+growl with a radar in the circle, and the steady tone once it is within reach (the LOCK lamp
+steady). It holds the radar while it stays in the circle, even through a moment's silence, and
+loses it when it leaves; a radar behind a hill it cannot hear. A lock made on the HARM display
+it looks at instead, wherever your eyes are.
+
 Fired **below 1,000 ft** above the ground, as from a helicopter hiding behind the trees, it runs its
 **pop-up** program: it climbs away from the ground toward the radar, pushes over and dives onto it
 from above. The farther the radar, the higher it climbs and the steeper it comes down: some 30

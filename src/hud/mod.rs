@@ -284,6 +284,9 @@ pub struct HudCues {
     /// locked target's direction (aircraft frame) and whether it is an aircraft, and a turret
     /// gun's pipper (selected or not), or a fixed gun's while selected.
     pub helmet_lock: Option<(Vec3, bool)>,
+    /// Sidearms selected in AG: where their seeker looks in its visual mode (aircraft frame;
+    /// its circle, `stealth_sim::HELMET_SEEKER` round, on the HUD).
+    pub sidearm_seeker: Option<Vec3>,
     pub turret_gun: Option<GunCue>,
     /// Rockets selected: the CCIP rocket reticle (on the HUD in AG, on a full helmet display
     /// in every cockpit view).

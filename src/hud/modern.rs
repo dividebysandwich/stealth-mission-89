@@ -1002,15 +1002,21 @@ fn field_line(field: (Vec2, Vec2), p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
     (t0 < t1).then(|| (p + d * t0, p + d * t1))
 }
 
-/// AG, F-16 style: the target designator box; with a free-fall or retarded bomb in CCIP the
-/// pipper on the bomb fall line from the flight path marker (a delay cue across the line while
-/// the impact point is below the field), in CCRP the azimuth steering line through the target
-/// with the solution cue sliding down it to the flight path marker (the bomb goes when the
-/// cue reaches the marker with the button held); for the guided release (flight-path guide)
-/// the steering line with the release cue.
+/// AG, F-16 style: the Sidearm's seeker circle; the target designator box; with a free-fall or
+/// retarded bomb in CCIP the pipper on the bomb fall line from the flight path marker (a delay
+/// cue across the line while the impact point is below the field), in CCRP the azimuth steering
+/// line through the target with the solution cue sliding down it to the flight path marker (the
+/// bomb goes when the cue reaches the marker with the button held); for the guided release
+/// (flight-path guide) the steering line with the release cue.
 fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
     let fld = field(f);
     let cues = &f.cues;
+    // The Sidearm's seeker circle, where it looks (the boresight, or the helmet sight).
+    if let Some(p) =
+        cues.sidearm_seeker.and_then(|d| project(d, f.scale)).filter(|&p| inside(fld, p))
+    {
+        c.ring(p, f.scale * (stealth_sim::HELMET_SEEKER as f32).tan(), PEN, INK);
+    }
     if let Some(p) = cues.target_dir.and_then(|d| project(d, f.scale)) {
         let q = p.clamp(fld.0, fld.1);
         let s = 16.0;
@@ -1128,6 +1134,27 @@ mod tests {
             target_range_km: Some(5.0),
             ..Default::default()
         }
+    }
+
+    /// Sidearms selected in AG: the seeker's circle where it looks, its size the seeker's view.
+    #[test]
+    fn draws_the_sidearm_seeker_circle() {
+        let ink = |f: &HudFrame, x0: f32, x1: f32| {
+            let mut c = Canvas::new(WIDTH, HEIGHT);
+            draw(&mut c, f);
+            (0..HEIGHT)
+                .flat_map(|y| (0..WIDTH).map(move |x| (x, y)))
+                .filter(|&(x, y)| (x0..x1).contains(&(x as f32)) && c.px[y * WIDTH + x] != 0)
+                .count()
+        };
+        let mut f = frame(HudMode::Gnd);
+        let d = Vec3::new(0.15, 0.05, -1.0);
+        let p = project(d, f.scale).unwrap();
+        let r = f.scale * (stealth_sim::HELMET_SEEKER as f32).tan();
+        let around = |f: &HudFrame| ink(f, p.x - r - 4.0, p.x + r + 4.0);
+        let without = around(&f);
+        f.cues.sidearm_seeker = Some(d);
+        assert!(around(&f) > without + (3.0 * r) as usize, "{without} {}", around(&f));
     }
 
     #[test]

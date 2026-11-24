@@ -283,6 +283,13 @@ fn weapon_cues(c: &mut Canvas, f: &HudFrame, col: u8) {
     let at = |(x, y): (i32, i32)| {
         (CX + ((x - CX) as f32 * k).round() as i32, CY + ((y - CY) as f32 * k).round() as i32)
     };
+    // The Sidearm's seeker circle, where it looks (the boresight, or the helmet sight).
+    if let Some((x, y)) = cues.sidearm_seeker.and_then(|d| project(f, d)) {
+        let r = super::classic_zoom(f.scale)
+            * crate::cockpit::FOCAL
+            * (stealth_sim::HELMET_SEEKER as f32).tan();
+        ellipse(c, x, y, r.round() as i32, (r * crate::cockpit::VSCALE).round() as i32, col);
+    }
     if let Some(b) = cues.target_box {
         let colour = if b.colour == 0 { col } else { b.colour };
         let (x, y) = at((b.x, b.y));

@@ -53,8 +53,9 @@
 //! - A SAM site's launch (`launch.flac`, a recording) is heard near the site, placed and fading
 //!   like the aircraft, arriving at the speed of sound.
 //! - At an air defence console the shelter's own sounds play (`station::sound`).
-//! - With Sidewinders selected in the air-to-air HUD mode, the seeker growls (cut from a
-//!   recording of the real tones by tools/cut_sidewinder_tones.py): the low growl
+//! - With Sidewinders selected in the air-to-air HUD mode (Sidearms in air-to-ground), the
+//!   seeker growls (cut from a recording of the real tones by tools/cut_sidewinder_tones.py):
+//!   the low growl
 //!   (`aim9_growl.flac`) with nothing in its view, the higher one (`aim9_seen.flac`) with the
 //!   locked target in the seeker (the LOCK oval), and the steady lock tone (`aim9_tone.flac`)
 //!   once the target is in range.
@@ -1343,7 +1344,7 @@ fn fire_siren(
 }
 
 /// The Sidewinder seeker's growl and lock tone, while Sidewinders are selected in the air-to-air
-/// HUD mode (held while the flight is paused).
+/// HUD mode, or Sidearms in the air-to-ground one (held while the flight is paused).
 #[allow(clippy::too_many_arguments)]
 fn sidewinder_tones(
     mut commands: Commands,
@@ -1369,10 +1370,14 @@ fn sidewinder_tones(
             .weapon_types()
             .get(w.max(0) as usize)
             .is_some_and(|t| stealth_sim::ir_aam(t.spec as i32));
-        let on = aim9
+        // The Sidearm's seeker in its visual mode growls at the radars as the Sidewinder's at
+        // the aircraft.
+        let sidearm = w == stealth_sim::SIDEARM_WEAPON;
+        let mode = if sidearm { crate::hud::HudMode::Gnd } else { crate::hud::HudMode::Air };
+        let on = (aim9 || sidearm)
             && rounds > 0
             && !sim.gun_selected()
-            && hud.mode == crate::hud::HudMode::Air
+            && hud.mode == mode
             && c.end.is_none()
             && !sim.player_absent()
             && !has_ejected(Some(c))

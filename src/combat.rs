@@ -1986,6 +1986,11 @@ fn publish(
     let mut info = TrackCam { live: cam.live, ..default() };
     let mut new_cues = HudCues::default();
     let cockpit = view.view == View::Cockpit;
+    // The Sidearm's seeker in its visual mode: its circle on the HUD.
+    new_cues.sidearm_seeker = sim
+        .sidearm_seeker()
+        .filter(|_| cockpit)
+        .map(|[e, n, u]| a.orientation.inverse() * Vec3::new(e as f32, u as f32, -n as f32));
     let spec = groups.get(cur).map_or(0, |&(w, _)| {
         data.weapons[(w.max(0) as usize).min(data.weapons.len() - 1)].spec as i32
     });

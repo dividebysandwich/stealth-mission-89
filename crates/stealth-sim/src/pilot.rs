@@ -218,6 +218,9 @@ pub struct Pilot {
     /// Where the Sidewinder seeker following the helmet sight looks (`Sim::helmet_seeker`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) helmet_seeker: Option<[f64; 3]>,
+    /// Where the Sidearm's seeker looks in its visual mode (`Sim::sidearm_seeker`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) sidearm_seeker: Option<[f64; 3]>,
     pub(crate) gnd_cooldown: i32,
     /// Frames left for a nearest-target request to wait for the HUD mode (`Commands::nearest_target`).
     pub(crate) nearest_req: u8,

@@ -587,6 +587,7 @@ impl Sim {
                 air_lock: -1,
                 pilot_lock: None,
                 helmet_seeker: None,
+                sidearm_seeker: None,
                 gnd_lock: -1,
                 targeting: TargetingState::default(),
                 gnd_cooldown: 0,
@@ -1515,10 +1516,21 @@ impl Sim {
         self.pl.helmet_seeker
     }
 
-    /// Whether the helmet seeker looks at a lock made on purpose (the HSD cursor, the nearest
-    /// target) rather than along the helmet sight.
+    /// Whether the helmet seeker looks at a lock made on purpose (the HSD cursor, the HARM
+    /// display, the nearest target) rather than along the helmet sight.
     pub fn helmet_seeker_held(&self) -> bool {
-        self.pl.helmet_seeker.is_some() && self.pl.target_hold && self.air_lock_point().is_some()
+        self.pl.helmet_seeker.is_some()
+            && self.pl.target_hold
+            && (self.air_lock_point().is_some()
+                || (self.pl.sidearm_seeker.is_some() && self.valid_gnd().is_some()))
+    }
+
+    /// Where the Sidearm's seeker looks in its visual mode (unit vector east, north, up): with
+    /// Sidearms selected in GND, along the helmet sight (then [`Self::helmet_seeker`] too) or
+    /// the HUD's boresight, locking the radar on the air nearest the middle of its circle
+    /// (`HELMET_SEEKER`); None otherwise.
+    pub fn sidearm_seeker(&self) -> Option<[f64; 3]> {
+        self.pl.sidearm_seeker
     }
 
     /// The right MFD should show the Maverick seeker of this slot.

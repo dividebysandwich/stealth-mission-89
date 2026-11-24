@@ -103,6 +103,7 @@ impl Sim {
         self.designate();
         self.lock_oval(ps);
         self.update_helmet_seeker(ps);
+        self.update_sidearm_seeker(ps);
         self.bombsight(ps);
         self.photo(ps);
         self.radio_beacon();
@@ -614,6 +615,83 @@ impl Sim {
         let t = &mut self.pl.targeting;
         t.lock_valid = range.is_some_and(|r| r < lock * 2.0);
         t.in_range = range.is_some_and(|r| r < lock);
+        self.pl.lights.lock = t.lock_valid && (t.in_range || self.frame & 1 != 0);
+    }
+
+    /// The Sidearm's visual mode: its seeker looks along the helmet sight (as far as its gimbals
+    /// turn) or, without one, along the HUD's boresight, and locks the radar nearest the middle
+    /// of its circle (`HELMET_SEEKER` round where it looks) that is on the air and in sight of
+    /// it over the hills, as the Sidewinder's locks an aircraft. It keeps its radar while that is
+    /// in the circle, through the moments it falls silent, and loses it when it leaves. A lock
+    /// made on purpose (the HARM display, the HSD) it looks at instead. The oval as for the
+    /// Sidewinder: the radar within twice the LOCK oval's reach, red (the tone) within it.
+    fn update_sidearm_seeker(&mut self, ps: &PlayerState) {
+        let (w, count) = self.selected_weapon();
+        if w != SIDEARM_WEAPON
+            || count <= 0
+            || self.pl.gun_selected
+            || self.pl.hud_mode != HudMode::Gnd
+            || self.pl.external_view
+        {
+            self.pl.sidearm_seeker = None;
+            return;
+        }
+        let nose = bam_dir(self.pl.p.heading, self.pl.p.pitch);
+        let (mx, my, vz) = (self.pl.p.mx, self.pl.p.my, self.pl.p.view_z);
+        // Direction (east, north, up) and range (map units) of a radar.
+        let to = |o: &GroundObject| {
+            let d = [s16(o.x - mx) as f64, -(s16(o.y - my) as f64), -((vz >> 5) as f64)];
+            let r = d.iter().map(|v| v * v).sum::<f64>().sqrt().max(1.0);
+            (d.map(|v| v / r), r)
+        };
+        let radar = |i: usize| {
+            self.objects.get(i).filter(|o| {
+                o.unit_type != 0
+                    && i < self.ground_units
+                    && o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) == 0
+            })
+        };
+        let held = self
+            .valid_gnd()
+            .filter(|_| self.pl.target_hold)
+            .and_then(|g| radar(g).map(|o| to(o).0));
+        let sight = ps.helmet.map(|h| bam_dir(h.heading as i32, h.pitch as i32)).unwrap_or(nose);
+        let los = gimbal(held.unwrap_or(sight), nose, SEEKER_GIMBAL);
+        // Off the middle of the circle (rad) and range of radar `i` in it, heard over the hills.
+        let heard = |i: usize| {
+            let o = radar(i)?;
+            let (d, r) = to(o);
+            let cos = d.iter().zip(los).map(|(a, b)| a * b).sum::<f64>();
+            let off = cos.clamp(-1.0, 1.0).acos();
+            (off < HELMET_SEEKER && self.sight_from_ground(o.x, o.y, (mx, my, self.pl.p.alt)))
+                .then_some((off, r))
+        };
+        let reach = crate::dlz::GROUND_LOCK * self.missile(SIDEARM_SPEC).lock_range as f64;
+        let mut lock = self.valid_gnd().and_then(|g| Some((g, heard(g)?)));
+        // Nothing in the circle: the radar on the air nearest its middle.
+        let drop = held.is_none() && lock.is_none();
+        let own = self.valid_gnd().is_some_and(|g| radar(g).is_some());
+        if drop {
+            lock = (0..self.ground_units)
+                .filter(|&i| !self.site_silent(i))
+                .filter_map(|i| Some((i, heard(i)?)))
+                .filter(|&(_, (_, r))| r < 2.0 * reach)
+                .min_by(|a, b| a.1.0.total_cmp(&b.1.0));
+            if let Some((i, _)) = lock {
+                self.pl.gnd_lock = i as i32;
+            } else if own {
+                self.pl.gnd_lock = -1;
+            }
+        }
+        // Seen only while it transmits.
+        let range = lock.filter(|&(g, _)| !self.site_silent(g)).map(|(_, (_, r))| r);
+        self.pl.sidearm_seeker = Some(los);
+        if ps.helmet.is_some() {
+            self.pl.helmet_seeker = Some(los);
+        }
+        let t = &mut self.pl.targeting;
+        t.lock_valid = range.is_some_and(|r| r < 2.0 * reach);
+        t.in_range = range.is_some_and(|r| r < reach);
         self.pl.lights.lock = t.lock_valid && (t.in_range || self.frame & 1 != 0);
     }
 

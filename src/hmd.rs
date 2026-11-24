@@ -11,7 +11,8 @@
 //! - the turret gun's pipper (where its rounds go, selected or not) while it is slaved to the
 //!   helmet;
 //! - with Sidewinders selected, their seeker's circle (the seeker follows the helmet sight as
-//!   far as its gimbals turn and locks the aircraft nearest its middle);
+//!   far as its gimbals turn and locks the aircraft nearest its middle); with Sidearms selected
+//!   in AG, theirs (it locks the radar on the air nearest its middle);
 //! - where the targeting pod looks on the ground (a small circle with a dot, as on the HUD);
 //! - the gun line (rounds and what it is slaved to) under the reticle while the gun is
 //!   selected;
