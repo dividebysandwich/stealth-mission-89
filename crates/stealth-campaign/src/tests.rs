@@ -1739,6 +1739,7 @@ fn a_garrison_holds_its_place_against_an_insertion() {
         alive: true,
         vehicle: None,
         convoy: 0,
+        facility: None,
     };
     let view = |landed| WorldView { units: vec![gun], ..heli_at(t.x + 0x20, t.y, landed) };
     for _ in 0..3 {
@@ -4541,4 +4542,143 @@ fn fighters_fly_with_a_resupply_when_enemy_fighters_are_about() {
     for f in escorts {
         assert!(ev.contains(&CampaignEvent::Recall { tag: f }), "{f} recalled: {ev:?}");
     }
+}
+
+// ------------------------------------------------------------------- strategic facilities
+
+const THEATERS: [(&str, usize); 12] = [
+    ("libya", 0),
+    ("persian_gulf", 1),
+    ("north_cape", 2),
+    ("central_europe", 3),
+    ("vietnam", 4),
+    ("middle_east", 5),
+    ("desert_storm", 6),
+    ("cuba", 7),
+    ("korea", 8),
+    ("ukraine", 9),
+    ("gulf_of_finland", 10),
+    ("suwalki", 11),
+];
+
+/// Every side with places gets one drone factory, tank factory and headquarters, an ammo
+/// storage at each airfield, fuel depots and power plants, all on dry land; the same each time.
+#[test]
+fn facilities_stand_on_land_on_every_theater() {
+    for (code, index) in THEATERS {
+        let mut c = campaign_on_terrain(code, index);
+        c.ensure_facilities(&[]);
+        let mut again = campaign_on_terrain(code, index);
+        again.ensure_facilities(&[]);
+        assert_eq!(c.facilities, again.facilities, "{code}");
+        let t = c.terrain.0.clone().unwrap();
+        for f in &c.facilities {
+            assert!(!t.is_water(f.x, f.y), "{code}: {:?} in the water at {}, {}", f.kind, f.x, f.y);
+        }
+        for side in [Side::Blue, Side::Red] {
+            if c.held(side) == 0 {
+                continue;
+            }
+            let n = |k| c.facilities_of(side, k).count();
+            for k in
+                [FacilityKind::DroneFactory, FacilityKind::TankFactory, FacilityKind::Headquarters]
+            {
+                assert_eq!(n(k), 1, "{code} {side:?} {k:?}");
+            }
+            let fields = c
+                .sites
+                .iter()
+                .filter(|s| s.kind == SiteKind::Airfield && s.place.is_some())
+                .filter(|s| c.owner(s.object) == Some(side))
+                .count();
+            assert_eq!(n(FacilityKind::AmmoStorage), fields, "{code} {side:?}");
+            assert!(n(FacilityKind::FuelDepot) <= tuning::FUEL_DEPOTS_MAX, "{code} {side:?}");
+            assert!((1..=tuning::POWER_PLANTS.1).contains(&n(FacilityKind::PowerPlant)), "{code}");
+            eprintln!(
+                "{code} {side:?}: {} fuel depots, {} power plants, {} ammo storages",
+                n(FacilityKind::FuelDepot),
+                n(FacilityKind::PowerPlant),
+                fields
+            );
+        }
+    }
+}
+
+/// A facility's unit destroyed puts it out of action for its days, then it is back.
+#[test]
+fn a_destroyed_facility_is_back_after_its_days() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let f = c.facilities_of(Side::Red, FacilityKind::FuelDepot).next().unwrap().clone();
+    let view = WorldView {
+        units: vec![GroundView {
+            facility: Some(f.id),
+            ..GroundView::gun(f.x, f.y, Side::Red, false)
+        }],
+        ..Default::default()
+    };
+    let ev = c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: Some(P0) }]);
+    assert!(ev.contains(&CampaignEvent::FacilityDestroyed { id: f.id }));
+    // Reported again (by another pilot): once is enough.
+    let ev = c.tick(1.0, &view, &[Report::AaaDestroyed { index: 0, by: None }]);
+    assert!(!ev.iter().any(|e| matches!(e, CampaignEvent::FacilityDestroyed { .. })));
+    assert!(!c.facility(f.id).unwrap().alive());
+    // A gun's loss is not counted against the place.
+    assert!(c.places.iter().all(|p| p.guns_lost == 0));
+    let day = c.game_days(tuning::FUEL_DEPOT_DAYS);
+    assert_eq!(day, 3600.0);
+    c.tick(day - 10.0, &WorldView::default(), &[]);
+    assert!(!c.facility(f.id).unwrap().alive());
+    let ev = c.tick(20.0, &WorldView::default(), &[]);
+    assert!(ev.contains(&CampaignEvent::FacilityRestored { id: f.id }));
+    assert!(c.facility(f.id).unwrap().alive());
+}
+
+/// An in-game day follows the sky's clock, within limits.
+#[test]
+fn game_days_follow_the_sky() {
+    let mut c = campaign("central_europe", 3);
+    assert_eq!(c.game_days(3.0), 3.0 * 3600.0);
+    c.setup.sky_ratio = 1.0;
+    assert_eq!(c.game_days(1.0), 86_400.0 / tuning::FACILITY_SKY_MIN);
+    c.setup.sky_ratio = 0.0;
+    assert!(c.game_days(1.0).is_finite());
+    c.setup.sky_ratio = 1000.0;
+    assert_eq!(c.game_days(1.0), 86_400.0 / tuning::FACILITY_SKY_MAX);
+}
+
+/// An older save without facilities gets them when the host places them.
+#[test]
+fn an_older_save_gets_facilities() {
+    let mut c = campaign("central_europe", 3);
+    let json = serde_json::to_string(&c).unwrap();
+    assert!(!json.contains("\"facilities\""));
+    c = serde_json::from_str(&json).unwrap();
+    c.ensure_facilities(&[]);
+    assert!(!c.facilities.is_empty());
+    let placed = c.facilities.clone();
+    let mut d: CampaignState = serde_json::from_str(&serde_json::to_string(&c).unwrap()).unwrap();
+    d.ensure_facilities(&[]);
+    assert_eq!(d.facilities, placed);
+}
+
+/// A place taken: its ammo storage changes hands with it; a factory there is overrun and built
+/// again in its side's rear.
+#[test]
+fn facilities_change_hands_with_their_place() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let ammo = c.facilities_of(Side::Red, FacilityKind::AmmoStorage).next().unwrap().clone();
+    let place = ammo.place.unwrap();
+    let factory = c.facilities_of(Side::Red, FacilityKind::TankFactory).next().unwrap().id;
+    c.facilities.iter_mut().find(|f| f.id == factory).unwrap().place = Some(place);
+    let mut ev = Vec::new();
+    c.capture_place(place, Side::Blue, &mut ev);
+    assert_eq!(c.facility_side(c.facility(ammo.id).unwrap()), Side::Blue);
+    assert!(ev.contains(&CampaignEvent::FacilityMoved { id: factory }));
+    let f = c.facility(factory).unwrap();
+    assert_eq!(c.facility_side(f), Side::Red);
+    assert!(!f.alive());
+    assert_ne!(f.place, Some(place));
+    assert!(c.facility_down(Side::Red, FacilityKind::TankFactory));
 }

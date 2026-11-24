@@ -29,6 +29,7 @@ mod deploy;
 mod director;
 mod effects;
 mod events;
+mod facilities;
 mod flow;
 pub mod ground;
 pub mod missile_strikes;
@@ -58,6 +59,7 @@ pub use balance::StartBalance;
 pub use convoy::{COLUMN, Convoy, ConvoyState, ConvoyUnit};
 pub use crew::{Crew, crew_scale};
 pub use deploy::{fast_track_cost, footprint, loads};
+pub use facilities::{Avoid, Facility, FacilityKind};
 pub use flow::{Due, Operation, WarEvent, divertible};
 pub use munitions::{CargoRun, CargoState, Munition, Stock, spec as munition_spec};
 pub use protect::{HeloCover, HeloEscort};
@@ -89,12 +91,15 @@ pub struct GroundView {
     /// The convoy it came with (0: none).
     #[serde(default)]
     pub convoy: u32,
+    /// The strategic facility it is (its id), a building and no gun.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub facility: Option<u32>,
 }
 
 impl GroundView {
     /// An air defence unit (not a convoy's).
     pub fn gun(x: i32, y: i32, side: Side, alive: bool) -> Self {
-        Self { x, y, side, alive, vehicle: None, convoy: 0 }
+        Self { x, y, side, alive, vehicle: None, convoy: 0, facility: None }
     }
 }
 
@@ -554,6 +559,18 @@ pub enum CampaignEvent {
         cargo: LeftCargo,
         hooked: bool,
     },
+    /// Strategic facility `id`'s building was destroyed: it is out of action.
+    FacilityDestroyed {
+        id: u32,
+    },
+    /// It is back in action (its building stands again).
+    FacilityRestored {
+        id: u32,
+    },
+    /// Its place fell: it is built again elsewhere (destroyed meanwhile).
+    FacilityMoved {
+        id: u32,
+    },
 }
 
 /// What a helicopter handed to the AI goes on to deliver.
@@ -617,6 +634,7 @@ impl CampaignState {
         self.run_convoys(view, &mut ev);
         self.run_raids(view, &mut ev);
         self.repairs(&mut ev);
+        self.run_facilities(&mut ev);
         self.expire_intel(&mut ev);
         self.enemy_air(view, &mut ev);
         self.friendly_cap(view, &mut ev);

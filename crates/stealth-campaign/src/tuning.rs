@@ -529,3 +529,28 @@ pub const FLAMINGO_SALVO: u8 = 1;
 /// after the last one left or was lost, campaign s).
 pub const DEPLOY_LOADS_ISKANDER_SITE: u8 = 3;
 pub const RED_CARGO_GAP: f64 = 10.0 * 60.0;
+
+// ------------------------------------------------------------------- strategic facilities
+
+/// In-game days each kind of facility is out of action once destroyed (`facilities.rs`).
+pub const FACTORY_DAYS: f64 = 3.0;
+pub const HEADQUARTERS_DAYS: f64 = 2.0;
+pub const POWER_PLANT_DAYS: f64 = 2.0;
+pub const FUEL_DEPOT_DAYS: f64 = 1.0;
+pub const AMMO_STORAGE_DAYS: f64 = 1.0;
+/// The sky's clock ratio an in-game day is measured with, at least and at most: a campaign with
+/// the sky at real time (1) or stopped (0) still repairs its facilities within hours, not days.
+pub const FACILITY_SKY_MIN: f64 = 6.0;
+pub const FACILITY_SKY_MAX: f64 = 96.0;
+/// How far from its anchor (map units) each kind is built: the factories and the headquarters
+/// from the side's rearmost place, an ammo storage from its airfield, a fuel depot from its
+/// city, a power plant from the place it is built at.
+pub const FACTORY_FROM: (i32, i32) = (0x200, 0x500);
+pub const AMMO_STORAGE_FROM: (i32, i32) = (0x50, 0x90);
+pub const FUEL_DEPOT_FROM: (i32, i32) = (0x100, 0x180);
+pub const POWER_PLANT_FROM: (i32, i32) = (0x180, 0x280);
+/// Fuel depots a side has at most (one at each of its cities), and its power plants: one for
+/// every `PLACES_PER_POWER_PLANT` places, at least and at most.
+pub const FUEL_DEPOTS_MAX: usize = 6;
+pub const PLACES_PER_POWER_PLANT: usize = 4;
+pub const POWER_PLANTS: (usize, usize) = (2, 3);

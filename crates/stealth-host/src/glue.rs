@@ -96,6 +96,7 @@ pub fn world_view(sim: &Sim) -> WorldView {
                 alive: !u.destroyed,
                 vehicle,
                 convoy,
+                facility: None,
             }
         })
         .collect();

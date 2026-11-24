@@ -94,6 +94,10 @@ impl CampaignState {
                 }
             }
             Report::AaaDestroyed { index, by } => {
+                if let Some(f) = view.units.get(index as usize).and_then(|u| u.facility) {
+                    self.facility_destroyed(f, by, ev);
+                    return;
+                }
                 self.sead_hit(index, by.is_none(), ev);
                 self.gun_lost(index, view);
             }
@@ -263,6 +267,7 @@ impl CampaignState {
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
         ev.push(CampaignEvent::PlaceCaptured { place, side, members, removed });
+        self.facilities_captured(place, ev);
     }
 
     /// The friendly side's insertion (a player's order, or the campaign's own).
