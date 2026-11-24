@@ -1,6 +1,6 @@
 # Builds the A-10C cockpit master (assets-src/blend/cockpit_a10.blend) from the panel layout,
 # after the A-10C's front panel, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_a10.py -- \
 #       assets-src/blend/cockpit_a10_layout.json assets-src/blend/cockpit_a10.blend
 # then tools/models/export.sh cockpit_a10. The layout JSON is written by

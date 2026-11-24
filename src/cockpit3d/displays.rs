@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use super::hud_glass::HudGlassMaterial;
-use super::layout::{DED_CANVAS, Elem, PanelLayout, PanelStyle, Placed, PxRect};
+use super::layout::{Dial, Elem, PanelLayout, PanelStyle, Placed, PxRect};
 use super::shading::{CockpitMaterial, cockpit_material_bright, cockpit_part, in_part};
 use crate::canvas::{Canvas, CanvasTexture};
 use crate::cockpit::{CockpitArt, Displays};
@@ -38,10 +38,13 @@ const ATLAS: usize = 512;
 
 /// The instrument atlas's height (texels): twice the width in the OH-58D's, the MH-60R's and the
 /// F/A-18E's cockpits, whose four MFDs' bezel buttons (and the F/A-18E's soft keys) don't fit
-/// the square one, and in the A-6's bombardier/navigator's; three times in the A-6's pilot's.
+/// the square one, in the F-117A's modern one and in the A-6's bombardier/navigator's; three
+/// times in the A-6's pilot's.
 fn atlas_rows(style: PanelStyle) -> usize {
     match style {
         PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r | PanelStyle::Fa18e => 2 * ATLAS,
+        // The F-117A's instruments are the size of the contributed cockpit's cases.
+        PanelStyle::Modern => 2 * ATLAS,
         // The A-6's many round instruments, pushbuttons and legends.
         PanelStyle::A6 => 3 * ATLAS,
         PanelStyle::A6Bn => 2 * ATLAS,
@@ -226,6 +229,9 @@ fn gear_lights(c: &mut Canvas, r: [i32; 4], down: bool) {
 pub(super) struct PanelMaterials {
     pub solid: Handle<CockpitMaterial>,
     pub atlas: Handle<CockpitMaterial>,
+    /// The atlas with its see-through texels (index 0) left out: faces drawn over the model's
+    /// own plate (`atlas_cut`).
+    pub atlas_cut: Handle<CockpitMaterial>,
     /// Atlas rectangle (uv min, max) of each face, by face key (`Face`'s `Debug` text).
     pub faces: HashMap<String, (Vec2, Vec2)>,
 }
@@ -270,8 +276,9 @@ pub(super) fn panel_materials(
             Vec2::new((s[0] + s[2]) as f32, (s[1] + s[3]) as f32) / n,
         )
     };
+    // See-through index 0 (black where the faces are opaque, as the palette's 0).
     let atlas_tex =
-        CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, rows), images, false, ATLAS_MIPS);
+        CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, rows), images, true, ATLAS_MIPS);
     let glow_tex =
         CanvasTexture::mipmapped_levels(Canvas::new(ATLAS, rows), images, false, ATLAS_MIPS);
     let atlas = materials.add(cockpit_part(
@@ -287,6 +294,11 @@ pub(super) fn panel_materials(
         },
         ViewPart::Gauges,
     ));
+    let mut cut = materials.get(&atlas).cloned().expect("atlas material");
+    cut.base.alpha_mode = AlphaMode::Mask(0.5);
+    let atlas_cut = materials.add(cut);
+    let e = commands.spawn(LitMaterial(atlas_cut.clone())).id();
+    commands.entity(root).add_child(e);
     let info = InstrumentAtlas {
         faces: faces.iter().zip(&slots).map(|((f, _), s)| (*f, *s)).collect(),
         texels: k,
@@ -296,7 +308,7 @@ pub(super) fn panel_materials(
     let e = commands.spawn((CanvasRole::Glow, glow_tex)).id();
     commands.entity(root).add_child(e);
     let faces = faces.iter().zip(&slots).map(|((f, _), s)| (format!("{f:?}"), uv(s))).collect();
-    PanelMaterials { solid, atlas, faces }
+    PanelMaterials { solid, atlas, atlas_cut, faces }
 }
 
 /// Atlas texels per layout unit.
@@ -358,7 +370,21 @@ pub(super) fn screen(
 ) -> (CanvasTexture, Handle<CockpitMaterial>) {
     let (canvas, transparent) = match role {
         CanvasRole::Left | CanvasRole::Right | CanvasRole::Third | CanvasRole::Fourth if hires => {
-            (Canvas::scaled(HIRES.0, HIRES.1, crate::mfd::HIRES_SCALE), false)
+            // A screen taller than the canvas' shape (the F-117A's square side MFDs) has a
+            // taller canvas: the page in its middle (`avionics::tall_offset`).
+            let side = match role {
+                CanvasRole::Left => MfdSide::Left,
+                CanvasRole::Right => MfdSide::Right,
+                CanvasRole::Third => MfdSide::Third,
+                _ => MfdSide::Fourth,
+            };
+            let h = layout
+                .mfds
+                .iter()
+                .find(|m| m.side == side)
+                .map_or(HIRES.1, |m| (HIRES.0 as f32 * m.screen.h / m.screen.w).round() as usize)
+                .max(HIRES.1);
+            (Canvas::scaled(HIRES.0, h, crate::mfd::HIRES_SCALE), false)
         }
         CanvasRole::Left | CanvasRole::Right | CanvasRole::Third | CanvasRole::Fourth => {
             (Canvas::scaled(CLASSIC.0, CLASSIC.1, crate::mfd::CLASSIC_SCALE), false)
@@ -423,7 +449,8 @@ pub(super) fn screen(
         // The classic cockpit has no data entry display.
         CanvasRole::Ded => (
             if layout.ded.is_some() {
-                Canvas::new(DED_CANVAS.0, DED_CANVAS.1)
+                let (w, h) = super::layout::ded_canvas(layout.style);
+                Canvas::new(w, h)
             } else {
                 Canvas::new(8, 8)
             },
@@ -840,6 +867,12 @@ pub(super) fn update_displays(
                 let down = lit[LampId::Gear as usize];
                 gear_lights(c, r, down);
                 down
+            }
+            Face::Item(Elem::Dial(Dial::Engines)) => {
+                if let Some(e) = d.panel.engines() {
+                    crate::panel::draw_engine_counters(c, r, &e);
+                }
+                backlit
             }
             Face::Item(Elem::Dial(dial)) => {
                 let (value, aux) = (d.panel.dial_value(dial), d.panel.dial_aux(dial));

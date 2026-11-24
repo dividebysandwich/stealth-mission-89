@@ -292,11 +292,11 @@ const fn model_point(lift: f32, x: f32, y: f32, z: f32) -> Vec3 {
 /// The airfields' ground overlays (theater detail level 2) are lifted 0.32 m and a step per
 /// overlay (world.rs): the wheels stand on them.
 const RUNWAY_Y: f32 = 0.34;
-/// The F-117A's model origin is on its flat underside, the wheels 1.65 m below it
-/// (tools/models/f117.py).
-const F117_LIFT: f32 = 1.65 + RUNWAY_Y;
+/// The F-117A's model origin is under its underside's lowest facets, the wheels 1.25 m below
+/// it (tools/models/f117.py `GROUND`).
+const F117_LIFT: f32 = 1.25 + RUNWAY_Y;
 /// A point of the F-117A's builder (tools/models/f117.py: metres, x right, s aft of the nose, z
-/// above the flat underside) in the aircraft frame.
+/// above the underside) in the aircraft frame.
 const fn f117_point(x: f32, s: f32, z: f32) -> Vec3 {
     const K: f32 = 16.384;
     model_point(F117_LIFT, x * K, z * K, -(10.6 - s) * K)
@@ -332,7 +332,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         3 | 26 => Vec3::new(0.0, -0.62, -4.0),
         7 => Vec3::new(0.0, -0.57, -4.6),
         23 => f16_point(0.0, 2.20, -1.04) - Vec3::Y * F16_LIFT,
-        24 => f117_point(0.0, 4.80, -0.12) - Vec3::Y * F117_LIFT,
+        24 => f117_point(0.0, 4.45, -0.02) - Vec3::Y * F117_LIFT,
         25 => uh60_point(0.0, 3.0, 0.53) - Vec3::Y * UH60_LIFT,
         32 => a10_point(0.30, 5.10, -0.66) - Vec3::Y * A10_LIFT,
         43 => ah1z_point(0.0, 2.5, 0.70) - Vec3::Y * AH1Z_LIFT,
@@ -364,18 +364,26 @@ const fn f16_point(x: f32, y: f32, z: f32) -> Vec3 {
 
 /// Behind the middle, at the engines (the helicopters').
 const EXHAUST: Vec3 = Vec3::new(0.0, 0.3, 8.0);
-/// The F-117A's exhaust slots, 15 m behind the nose (10.6 m ahead of the model origin).
-const F117_EXHAUST: Vec3 = Vec3::new(0.0, F117_LIFT + 0.4, 4.6);
+/// The F-117A's exhaust slots, 15.8 m behind the nose (10.6 m ahead of the model origin).
+const F117_EXHAUST: Vec3 = Vec3::new(0.0, F117_LIFT + 0.55, 5.2);
+
+/// The F-117A's HUD's pixels per unit: the modern HUD's field (`hud::modern::field`, 780
+/// pixels across) in its glass, 0.11 across per unit ahead at its narrow top.
+const F117_HUD_SCALE: f32 = 3500.0;
 
 static F117: AircraftSpec = AircraftSpec {
     model: "aircraft_024",
     model_lift: F117_LIFT,
-    // Under the canopy's glass, a little ahead of its apex (s 5.1 m, z 2.26 m), the head 0.3 m
-    // under the panes.
-    eye: f117_point(0.0, 4.9, 1.85),
+    // The contributed model's pilot's (tools/models/f117_source.py `EYE`, under the canopy's
+    // apex, where its cockpit is built round), 0.10 m lower to look through the HUD's glass
+    // (tools/models/build_cockpit_f117.py `EYE_DROP`).
+    eye: f117_point(0.0, 4.9, 1.76),
     cockpit_view: Some(CockpitView {
         canopy_colours: &[144, 145],
-        cut: (Vec3::new(-0.60, -1.20, -1.10), Vec3::new(0.60, 0.30, 0.90)),
+        // Nothing is cut: the modern cockpit is the same contributed model's, inside its
+        // canopy at life size, the classic one's walls stand outside the canopy, and the
+        // canopy's own faces look away from the pilot.
+        cut: (Vec3::ZERO, Vec3::ZERO),
         two_sided: false,
         parts: false,
     }),
@@ -385,9 +393,10 @@ static F117: AircraftSpec = AircraftSpec {
     // Life size, as the F-16's.
     vr_scale: 1.25 * 0.7,
     vr_eye_height: Some(2.7),
-    hud_scale: crate::hud::modern::SCALE,
-    // About the F-16's angular size: the symbology in the middle half of the combiner.
-    vr_hud_scale: 2.0 * crate::hud::modern::SCALE,
+    // The symbology's field fits the contributed model's small HUD glass (about 13 degrees
+    // across), as seen from the eye, in VR too.
+    hud_scale: F117_HUD_SCALE,
+    vr_hud_scale: F117_HUD_SCALE,
     bomb_bay: true,
     helicopter: false,
     turret: false,

@@ -1,7 +1,7 @@
 # Builds the AC-130 gunship's flight deck master (assets-src/blend/cockpit_c130.blend) from the
 # panel layout, after the C-130J's glass flight deck, as the C-5M's (build_cockpit_c5.py) with
 # parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_c130.py -- \
 #       assets-src/blend/cockpit_c130_layout.json assets-src/blend/cockpit_c130.blend
 # then tools/models/export.sh cockpit_c130. The layout JSON is written by

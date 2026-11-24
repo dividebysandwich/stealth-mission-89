@@ -491,6 +491,15 @@ the parts, and adds the wreck and the far level. The ZSU-57-2 (`aaa_135`,
 towards -y) is the example: see `zsu572_parts` in `air_defence.py`. To update it, replace the
 `.blend` and rerun the builder.
 
+A contributed model far too detailed for the game is converted once, by a script of its own,
+into a small source file that the builder reads. The F-117A is the example
+(`tools/models/f117_source.py`, a 267,000 triangle model with its engines, gear and bombs
+modelled): the script keeps the skin that the sky can see, closes its openings, reduces it
+to about a thousand triangles (its large flat facets survive that untouched) and writes
+`assets-src/blend/f117a.blend`; `f117.py` paints it, lays the canopy's panes and the intake
+grids over it and cuts the weapon bays. The download itself is not kept in the repository:
+the script's docstring says where it is from.
+
 ---
 
 ## Aircraft
@@ -543,7 +552,8 @@ model number (`model_file` in `src/sim_render.rs`: below 100 `aircraft`, 100-109
 point, cockpit file, flight model).
 
 The flyable jets (F-16 `aircraft_023`, A-10 `032`, Tornado `045`, AV-8B `047`, F-22 `075`) are
-built by `tools/models/aircraft.py`, the F-117A by `f117.py`, the helicopters by their own scripts
+built by `tools/models/aircraft.py`, the F-117A by `f117.py` (from a contributed model, see
+below), the helicopters by their own scripts
 (`uh60.py`, `ah1z.py`, `comanche.py`, `kiowa.py`, `chinook.py`, `apache.py`). These scripts work in metres and
 scale by `K` = 16.384, and they write every structure described below, so they are the
 reference. Hand-built geometry in those models is overwritten the next time the script runs: change
@@ -812,6 +822,16 @@ its RELEASE bar.
 | Flood lamp | `lamp` ([r, g, b], linear), `range` (m) | A point light, used with the local lights option. |
 
 ### Panel layouts
+
+The F-117A's modern cockpit is a contributed model with the game's instruments on it:
+`tools/models/f117_source.py` writes the model's cockpit into `assets-src/blend/f117a.blend` in
+the game's cockpit materials (none of its textures is used, so its instrument faces and
+displays are blank), and `tools/models/build_cockpit_f117.py` stands each face and display of
+the layout on the model's surface under it: a display on its glass, a dial in its case, a
+bezel button on the model's button. The layout's coordinates are measured on the model's
+panel. The seat, the throttle and the other parts every cockpit shares come from
+`assets-src/blend/cockpit_base.blend` (the F-117A's first modern cockpit), which the other
+cockpits' builders start from too.
 
 The generated cockpits' panels (the F-117A's modern one, the F-16's, the UH-60A's, the
 AH-1Z's, the Tornado's, the A-10C's and the AV-8B's) are built from a layout by

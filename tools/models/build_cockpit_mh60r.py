@@ -1,6 +1,6 @@
 # Builds the MH-60R cockpit master (assets-src/blend/cockpit_mh60r.blend) from the panel layout,
 # after the MH-60R's glass cockpit, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_mh60r.py -- \
 #       assets-src/blend/cockpit_mh60r_layout.json assets-src/blend/cockpit_mh60r.blend
 # then tools/models/export.sh cockpit_mh60r. The layout JSON is written by

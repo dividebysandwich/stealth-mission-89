@@ -320,10 +320,16 @@ impl Settings {
     }
 
     /// Modern HUD scale (canvas pixels per unit of the tangent plane) of the aircraft, on the
-    /// screen or in VR.
+    /// screen or in VR; the classic cockpit's large combiner (the F-117A's) has the modern
+    /// HUD's own.
     pub fn hud_scale(&self) -> f32 {
         let spec = self.aircraft.spec();
-        if self.vr { spec.vr_hud_scale } else { spec.hud_scale }
+        let (hud, vr) = if self.cockpit().0 == crate::cockpit3d::layout::PanelStyle::Classic {
+            (crate::hud::modern::SCALE, 2.0 * crate::hud::modern::SCALE)
+        } else {
+            (spec.hud_scale, spec.vr_hud_scale)
+        };
+        if self.vr { vr } else { hud }
     }
 
     /// The eye point and cockpit in the aircraft frame: the design eye point, in VR raised to

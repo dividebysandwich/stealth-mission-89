@@ -1,7 +1,7 @@
 # Builds the Tornado IDS cockpit master (assets-src/blend/cockpit_tornado.blend) from the panel
 # layout, after the modernised Tornado's three-MFD front cockpit, with parts of the F-117A's
 # modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_tornado.py -- \
 #       assets-src/blend/cockpit_tornado_layout.json assets-src/blend/cockpit_tornado.blend
 # then tools/models/export.sh cockpit_tornado. The layout JSON is written by

@@ -1,11 +1,11 @@
 # Builds the A-6 Intruder's two cockpit masters from the panel layouts, with parts of the F-117A's
 # modern cockpit: the pilot's (left seat)
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_a6.py -- \
 #       assets-src/blend/cockpit_a6_layout.json assets-src/blend/cockpit_a6.blend \
 #       --other assets-src/blend/cockpit_a6_bn_layout.json
 # and the bombardier/navigator's (right seat)
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_a6.py -- \
 #       assets-src/blend/cockpit_a6_bn_layout.json assets-src/blend/cockpit_a6_bn.blend \
 #       --seat right --other assets-src/blend/cockpit_a6_layout.json

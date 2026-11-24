@@ -263,6 +263,12 @@ pub enum Dial {
     TapeEgt,
     TapeFlow,
     TapeOil,
+    /// The F-117A's engine instruments (`panel::draw_engine_counters`): both engines' core
+    /// speed, exhaust gas temperature, fuel flow, fan speed and oil pressure in counters.
+    Engines,
+    /// The F-117A's fuel quantity indicator: the total on a needle and a counter, the bingo
+    /// fuel in a counter.
+    FuelQuantity,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -382,6 +388,41 @@ fn tedac_labels(s: PxRect) -> Vec<Placed> {
     ]
 }
 
+/// The F-117A's modern panel is the contributed cockpit model's (`tools/models/f117_source.py`):
+/// its side MFDs' middles (mm, x either side of the centre line, y under the panel's origin).
+const MODERN_MFD_X: f32 = 231.5;
+const MODERN_MFD_Y: f32 = 29.0;
+
+/// The bezel buttons of the F-117A's modern panel, where the cockpit model has its own. A side
+/// MFD's are 21 mm apart in rows over and under the glass and in columns either side of it, the
+/// glass taller than the picture; the centre display has none in the model: its buttons are on
+/// its case's frame round the picture.
+fn modern_osbs(unit: &MfdUnit) -> Vec<(u8, PxRect)> {
+    use crate::mfd::OsbEdge;
+    let s = unit.screen;
+    let (cx, cy) = (s.x + s.w / 2.0, s.y + s.h / 2.0);
+    // (rows' and columns' distance from the middle, the buttons' pitch along and down: the
+    // model's buttons round its glass).
+    let (top, bottom, side, px, py) = if unit.side == MfdSide::Right {
+        (83.5, 85.5, 127.0, 41.6, 29.8)
+    } else {
+        (85.0, 84.0, 84.5, 21.0, 21.0)
+    };
+    (0..OSB_COUNT)
+        .map(|slot| {
+            let (edge, k) = crate::mfd::osb_edge(slot);
+            let k = k as f32 - 2.0;
+            let (x, y, w, h) = match edge {
+                OsbEdge::Top => (cx + k * px, cy - top, 13.0, OSB_H),
+                OsbEdge::Bottom => (cx + k * px, cy + bottom, 13.0, OSB_H),
+                OsbEdge::Left => (cx - side, cy + k * py, OSB_H, 13.0),
+                OsbEdge::Right => (cx + side, cy + k * py, OSB_H, 13.0),
+            };
+            (slot, rect(x - w / 2.0, y - h / 2.0, w, h))
+        })
+        .collect()
+}
+
 impl PanelStyle {
     /// A helicopter's cockpit: no approach indexer (no angle of attack to fly the approach by).
     #[cfg(test)]
@@ -461,6 +502,9 @@ impl PanelLayout {
         let s = unit.screen;
         if self.style == PanelStyle::Ah64Cpg && unit.side == MfdSide::Third {
             return tedac_osbs(s);
+        }
+        if self.style == PanelStyle::Modern {
+            return modern_osbs(unit);
         }
         (0..OSB_COUNT)
             .map(|slot| {
@@ -671,7 +715,205 @@ impl PanelLayout {
     ///   lights with FLAPS, BRAKE and AUTO left (x <= -600, centred on -700; the gear handle and
     ///   the target buttons are modelled), the caution lights and the countermeasures right
     ///   (x >= 1100, centred on 1200).
+    /// The F-117A's modern panel: the faces where the contributed cockpit model has their
+    /// places (millimetres, x right and y down, life size; `tools/models/build_cockpit_f117.py`
+    /// stands them on the model's surfaces):
+    /// - The middle of the panel (|x| < 1000), its origin on the centre line level with the eye
+    ///   less 0.45 m: the up-front controls with the data entry display over the large centre
+    ///   display, the side MFDs either side in the model's bezels, the warning lights over
+    ///   them, the caps and the engine readouts under them.
+    /// - The panel's wings, which stand at an angle to it: the left one's faces at x - 1000
+    ///   (the flight instruments), the right one's at x + 1000 (the engine instruments and
+    ///   the caution lights), x from the wing's inner edge outwards.
+    /// - The right console's top at x + 3000 (the countermeasures), x from its inner edge
+    ///   outwards, y aft from its front end.
     pub fn modern() -> Self {
+        use Effect as E;
+        use LampId::*;
+        let mut items = Vec::new();
+        let mut put = |elem: Elem, rect: PxRect, cap: Option<Effect>, round: bool| {
+            items.push(Placed { elem, rect, cap, round })
+        };
+        // Up-front display caps (black on grey as the F-16's keys) on the model's keys: a row
+        // of seven over the data entry display and one under it.
+        const KEY: (u8, u8) = (5, 14);
+        let ufc = |k: usize, y: f32| rect(-68.9 + 20.3 * k as f32, y, 16.0, 7.0);
+        for (k, (elem, cap)) in [
+            (Elem::Lamp(Nav, None), Some(E::HudMode(0))),
+            (Elem::Lamp(Air, None), Some(E::HudMode(1))),
+            (Elem::Lamp(Gnd, None), Some(E::HudMode(2))),
+            (Elem::Lamp(Lock, None), Some(E::Action(Action::DesignateTarget))),
+            (Elem::Label("DCLT", KEY.0, KEY.1), Some(E::Action(Action::HudDeclutter))),
+            (Elem::Label("NVG", KEY.0, KEY.1), Some(E::Action(Action::Nvg))),
+            (Elem::Label("ILS", KEY.0, KEY.1), Some(E::Action(Action::Ils))),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            put(elem, ufc(k, -125.0), cap, false);
+        }
+        for (k, (label, cap)) in [
+            ("MENU", Some(E::Action(Action::Menu))),
+            ("VOL", Some(E::Action(Action::Volume))),
+            ("TIME", Some(E::TimeToggle)),
+            ("STPT", Some(E::Action(Action::SelectWaypoint))),
+            ("ORD", Some(E::Action(Action::MissionOrders))),
+            ("COM", None),
+            ("IFF", None),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            put(Elem::Label(label, KEY.0, KEY.1), ufc(k, -82.0), cap, false);
+        }
+        // The warning and caution lights in the model's light panel low on the right wing:
+        // the first four of its eleven rows of four (its cells lie turned 6.3 degrees, each
+        // row and column a little offset from the last).
+        let mc = Some(E::Action(Action::MasterCaution));
+        const CAUTION: (u8, u8) = (16, 43);
+        let cell = |col: usize, row: usize| {
+            let (c, r) = (col as f32, row as f32);
+            let (x, y) = (1306.9 + 27.85 * c + 1.29 * r, 286.75 - 3.07 * c + 11.36 * r);
+            rect(x - 13.0, y - 4.75, 26.0, 9.5)
+        };
+        for (k, (elem, cap)) in [
+            (Elem::Lamp(Mw, Some("MASTER\nCAUTION")), mc),
+            (Elem::Lamp(Stall, None), None),
+            (Elem::Lamp(Fire, Some("ENG\nFIRE")), None),
+            (Elem::Lamp(Eng, Some("ENGINE")), None),
+            (Elem::Lamp(Trak, Some("TRACK")), None),
+            (Elem::Lamp(Ir, None), None),
+            (Elem::Lamp(Rad, Some("LAUNCH")), None),
+            (Elem::Lamp(Fc, Some("FLCS")), None),
+            (Elem::Lamp(Jam, None), None),
+            (Elem::Lamp(Av, None), None),
+            (Elem::Lamp(Fuel, None), None),
+            (Elem::Lamp(Bd, None), None),
+            (Elem::Lamp(Blank, None), None),
+            (Elem::Label("ELEC\nSYS", CAUTION.0, CAUTION.1), None),
+            (Elem::Label("HYD\nPRESS", CAUTION.0, CAUTION.1), None),
+            (Elem::Label("OXY\nLOW", CAUTION.0, CAUTION.1), None),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            put(elem, cell(k % 4, k / 4), cap, false);
+        }
+        // On the panel under the left MFD: flaps, brakes, autopilot and the bay doors.
+        for (k, (id, action)) in [
+            (Flaps, Action::Flaps),
+            (Brake, Action::Brakes),
+            (Auto, Action::Autopilot),
+            (Bay, Action::BayDoors),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            put(
+                Elem::Lamp(id, None),
+                rect(-306.0 + 80.0 * (k % 2) as f32, 196.0 + 32.0 * (k / 2) as f32, 66.0, 20.0),
+                Some(E::Action(action)),
+                false,
+            );
+        }
+        // Under the right MFD: the fuel and thrust readouts and the EMV gauge, the fuel
+        // quantity and oil pressure in the two instruments under them.
+        put(Elem::Led(LedId::Fuel), rect(160.0, 121.0, 30.0, 13.0), None, false);
+        put(Elem::Label("FUEL", 47, 79), rect(192.0, 121.0, 34.0, 13.0), None, false);
+        put(Elem::Lamp(LowFuel, Some("LOW\nFUEL")), rect(228.0, 121.0, 30.0, 13.0), None, false);
+        put(Elem::Led(LedId::Thrust), rect(262.0, 121.0, 30.0, 13.0), None, false);
+        put(Elem::Label("THRUST", 47, 79), rect(294.0, 121.0, 34.0, 13.0), None, false);
+        put(Elem::Label("EGR\nEAR", 47, 33), rect(172.0, 138.0, 20.0, 13.0), None, false);
+        put(Elem::Gauge, rect(194.0, 138.0, 84.0, 13.0), None, false);
+        put(Elem::Label("EMV", 47, 33), rect(280.0, 138.0, 20.0, 13.0), None, false);
+        put(Elem::Lamp(EmvWarn, None), rect(302.0, 138.0, 18.0, 13.0), None, false);
+        put(Elem::Dial(Dial::Fuel), rect(164.0, 182.0, 56.0, 56.0), None, true);
+        put(Elem::Dial(Dial::Oil), rect(262.0, 209.0, 46.0, 46.0), None, true);
+        // The left wing: the flight instruments round the attitude indicator, the gear lights
+        // low beside the gear handle.
+        put(Elem::GearLights, rect(-1395.0, 321.0, 40.0, 32.0), None, false);
+        put(Elem::Dial(Dial::Airspeed), rect(-1440.0, 82.0, 46.0, 46.0), None, true);
+        put(Elem::Dial(Dial::Clock), rect(-1514.0, 111.0, 46.0, 46.0), None, true);
+        put(Elem::Dial(Dial::Altimeter), rect(-1447.0, 156.0, 60.0, 60.0), None, true);
+        put(Elem::Dial(Dial::Aoa), rect(-1346.0, 167.0, 18.0, 52.0), None, false);
+        put(Elem::Dial(Dial::Vvi), rect(-1324.0, 167.0, 18.0, 52.0), None, false);
+        // The right wing: the engine instruments and the fuel.
+        put(Elem::Dial(Dial::Rpm), rect(1296.0, -24.0, 48.0, 48.0), None, true);
+        put(Elem::Dial(Dial::Ftit), rect(1391.0, 18.0, 48.0, 48.0), None, true);
+        // The engine counters in the model's tall plate under them (the nozzle position
+        // indicator's), the fuel quantity indicator on the plate outboard of it (both plates
+        // lie turned 6 degrees: the rectangles are their middles and sizes).
+        put(Elem::Dial(Dial::Engines), rect(1284.0, 94.0, 94.0, 142.0), None, false);
+        put(Elem::Dial(Dial::FuelQuantity), rect(1398.5, 106.5, 88.0, 105.0), None, false);
+        // The countermeasures (release caps, counts, released lights; the jammers) on a plate
+        // at the front of the right console, under the light panel (x from 3000 at its inner
+        // edge, y aft from its front end).
+        for (k, (label, action, led, act)) in [
+            ("CHAFF", Action::Chaff, LedId::Chaff, ChaffAct),
+            ("FLARE", Action::Flare, LedId::Flares, FlareAct),
+            ("DECOY", Action::Decoy, LedId::Decoys, DecoyAct),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let y = 31.0 + 18.0 * k as f32;
+            put(
+                Elem::Label(label, 47, 38),
+                rect(3039.0, y, 44.0, 15.0),
+                Some(E::Action(action)),
+                false,
+            );
+            put(Elem::Led(led), rect(3087.0, y, 28.0, 15.0), None, false);
+            put(Elem::Lamp(act, None), rect(3119.0, y, 22.0, 15.0), None, false);
+        }
+        put(
+            Elem::Lamp(Ecm, None),
+            rect(3039.0, 85.0, 49.0, 15.0),
+            Some(E::Action(Action::Ecm)),
+            false,
+        );
+        put(
+            Elem::Lamp(Irj, None),
+            rect(3092.0, 85.0, 49.0, 15.0),
+            Some(E::Action(Action::IrJammer)),
+            false,
+        );
+
+        // The side MFDs fill the model's square glass (a taller canvas, the page in its middle
+        // and the labels along its edges: `avionics::tall_offset`); the centre display the
+        // height of its glass, at the HIRES canvas' shape.
+        let side = |cx: f32| rect(cx - 74.0, MODERN_MFD_Y - 74.0, 148.0, 148.0);
+        let centre_w = 149.0 * crate::mfd::HIRES.0 as f32 / crate::mfd::HIRES.1 as f32;
+        let centre = rect(-centre_w / 2.0, 14.0, centre_w, 149.0);
+        Self {
+            style: PanelStyle::Modern,
+            items,
+            adi: rect(-1361.0, 74.0, 62.0, 62.0),
+            mfds: vec![
+                MfdUnit { side: MfdSide::Left, screen: side(-MODERN_MFD_X), osbs: true },
+                MfdUnit { side: MfdSide::Right, screen: centre, osbs: true },
+                MfdUnit { side: MfdSide::Third, screen: side(MODERN_MFD_X), osbs: true },
+            ],
+            rwr: None,
+            hsi: None,
+            tfr: None,
+            // The four-line display in the up-front controls' glass.
+            ded: Some(rect(
+                -70.0,
+                -118.0,
+                140.0,
+                140.0 * DED4_CANVAS.1 as f32 / DED4_CANVAS.0 as f32,
+            )),
+            lmpd: None,
+            rmpd: None,
+            a6: None,
+        }
+    }
+
+    /// The faces of the F-117A's first modern panel (its sizes and what they are: the
+    /// arrangement itself is no longer built), which the UH-60A's, the Tornado's and the
+    /// OH-58D's panels rearrange.
+    fn modern_faces() -> Self {
         use Effect as E;
         use LampId::*;
         let mut items = Vec::new();
@@ -870,7 +1112,7 @@ impl PanelLayout {
     /// The UH-60A's panel with the BAY cap under the left MFD, for the types built on it (the
     /// AH-1Z keeps it).
     fn uh60_panel() -> Self {
-        let m = Self::modern();
+        let m = Self::modern_faces();
         // A face's new place: alone, or moved with its group of the F-117A's panel.
         let place = |p: &Placed| {
             let r = p.rect;
@@ -1193,7 +1435,7 @@ impl PanelLayout {
     pub fn tornado() -> Self {
         use Effect as E;
         use LampId::*;
-        let m = Self::modern();
+        let m = Self::modern_faces();
         let mut items = Vec::new();
         let mut put = |elem: Elem, rect: PxRect, cap: Option<Effect>, round: bool| {
             items.push(Placed { elem, rect, cap, round })
@@ -2807,7 +3049,7 @@ impl PanelLayout {
     ///
     /// No gear lights (skids), no HUD (the helmet display only).
     pub fn oh58() -> Self {
-        let m = Self::modern();
+        let m = Self::modern_faces();
         let items = m.items.iter().filter(|p| !matches!(p.elem, Elem::GearLights)).map(|p| {
             let r = p.rect;
             let at = |x: f32, y: f32| rect(x, y, r.w, r.h);
@@ -3289,6 +3531,17 @@ pub const DED_LINES: i32 = 5;
 pub const DED_SCALE: i32 = 3;
 pub const DED_CANVAS: (usize, usize) =
     ((DED_COLS * 4 * DED_SCALE + 8) as usize, (DED_LINES * 8 * DED_SCALE + 3) as usize);
+/// The F-117A's modern panel's data entry display: four lines of 38 columns, the shape of the
+/// cockpit model's glass.
+pub const DED4_COLS: i32 = 38;
+pub const DED4_LINES: i32 = 4;
+pub const DED4_CANVAS: (usize, usize) =
+    ((DED4_COLS * 4 * DED_SCALE + 8) as usize, (DED4_LINES * 8 * DED_SCALE + 3) as usize);
+
+/// The data entry display's canvas in a panel style.
+pub fn ded_canvas(style: PanelStyle) -> (usize, usize) {
+    if style == PanelStyle::Modern { DED4_CANVAS } else { DED_CANVAS }
+}
 
 #[cfg(test)]
 mod tests {

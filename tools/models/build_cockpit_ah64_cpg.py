@@ -1,7 +1,7 @@
 # Builds the AH-64D copilot/gunner's cockpit master (assets-src/blend/cockpit_ah64_cpg.blend) from
 # the panel layout, the gunner's (front, lower) seat after the AH-64D's, with parts of the
 # F-117A's modern cockpit and the UH-60's collective:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_ah64_cpg.py -- \
 #       assets-src/blend/cockpit_ah64_cpg_layout.json assets-src/blend/cockpit_ah64_cpg.blend
 # then tools/models/export.sh cockpit_ah64_cpg. The layout JSON is written by

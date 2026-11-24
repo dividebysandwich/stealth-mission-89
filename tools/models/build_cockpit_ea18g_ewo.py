@@ -1,7 +1,7 @@
 # Builds the EA-18G Growler's electronic warfare officer's (rear) cockpit master
 # (assets-src/blend/cockpit_ea18g_ewo.blend) from the panel layout, after the F model's rear
 # cockpit, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_ea18g_ewo.py -- \
 #       assets-src/blend/cockpit_ea18g_ewo_layout.json assets-src/blend/cockpit_ea18g_ewo.blend
 # then tools/models/export.sh cockpit_ea18g_ewo. The layout JSON is written by

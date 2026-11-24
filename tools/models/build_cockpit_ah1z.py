@@ -1,7 +1,7 @@
 # Builds the AH-1Z cockpit master (assets-src/blend/cockpit_ah1z.blend) from the panel layout,
 # the pilot's (rear) cockpit after the AH-1Z's, with parts of the F-117A's modern cockpit and the
 # UH-60's collective:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_ah1z.py -- \
 #       assets-src/blend/cockpit_ah1z_layout.json assets-src/blend/cockpit_ah1z.blend
 # then tools/models/export.sh cockpit_ah1z. The layout JSON is written by

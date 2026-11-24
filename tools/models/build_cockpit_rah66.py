@@ -1,12 +1,12 @@
 # Builds the RAH-66 cockpit master (assets-src/blend/cockpit_rah66.blend) from the panel layout,
 # the pilot's (front) cockpit after the RAH-66's mock-up, with parts of the F-117A's modern cockpit
 # and the UH-60's collective:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_rah66.py -- \
 #       assets-src/blend/cockpit_rah66_layout.json assets-src/blend/cockpit_rah66.blend
 # then tools/models/export.sh cockpit_rah66. The copilot/gunner's (rear) cockpit is built the same
 # way round his own eye (`--seat rear`):
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_rah66.py -- \
 #       assets-src/blend/cockpit_rah66_cpg_layout.json assets-src/blend/cockpit_rah66_cpg.blend --seat rear
 # then tools/models/export.sh cockpit_rah66_cpg: his panel (`PanelLayout::rah66_cpg`, two enlarged

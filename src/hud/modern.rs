@@ -22,7 +22,7 @@ pub const HEIGHT: usize = 800;
 /// Boresight (canvas pixels) and pixels per unit of the tangent plane.
 pub const CX: f32 = 640.0;
 pub const CY: f32 = 280.0;
-/// The F-117A's pixels per unit (its combiner's size).
+/// Pixels per unit of a large combiner (`AircraftSpec::hud_scale`: the aircraft that use it).
 pub const SCALE: f32 = 1024.0;
 
 /// Ink (any colour but the transparent 0; the glass draws all ink in HUD green).

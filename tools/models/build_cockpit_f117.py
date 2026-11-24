@@ -1,142 +1,135 @@
-# Rebuilds the F-117A's modern cockpit master (assets-src/blend/cockpit_modern.blend) in place
-# from the panel layout, after the F-16's (tools/models/build_cockpit_f16.py) and the real
-# F-117A's front panel:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+# Builds the F-117A's modern cockpit master (assets-src/blend/cockpit_modern.blend) from the
+# contributed cockpit model and the panel layout:
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_f117.py -- \
 #       assets-src/blend/cockpit_modern_layout.json assets-src/blend/cockpit_modern.blend
-# then tools/models/export.sh cockpit_modern. Running it again on its output rebuilds the same.
+# then tools/models/export.sh cockpit_modern.
 #
-# Kept (with their materials, labels and control properties): the seat and the ejection
-# handle, the stick and the throttle with its rails, the gear handle and five side panel
-# buttons (the target buttons), the floor, the HUD glass, the approach indexer and the flood
-# lamps (the HUD glass gets a new frame along its outline). Everything else is built here, low-poly: the panel
-# with the faces and displays of `PanelLayout::modern` (src/cockpit3d/layout.rs; the layout JSON
-# is written by `UPDATE_LAYOUT=1 cargo test layout_files`): its wings' upper edges falling
-# steeply outwards under the canopy's long front frames, the up-front display standing out
-# under the HUD, the large centre display and the side MFDs in raised bezels, the round
-# instruments in their bezels and cases; the coaming over it, the consoles with their switch
-# panels, the sloped panels from them up to the main panel, the knee wall and the centre
-# pedestal between the legs; the walls up to the low canopy sills (level with the panel's outer
-# top corners, as the real one's), the canopy bow behind the seat and outside the sills the
-# fuselage's faceted shoulders (the exterior model is not drawn from this cockpit).
+# The cockpit itself is the contributed model's (assets-src/blend/f117a.blend, which
+# tools/models/f117_source.py makes of the Sketchfab "F-117 Nighthawk (War Thunder)" by Köjf,
+# CC BY 4.0): the tub with its consoles, the panel with its bezels, cases, knobs and switches,
+# the coaming with the HUD's mount and the canopy's frame, in the game's cockpit materials and
+# without the source's pictures; and its stick, which becomes the game's. The seat and what
+# was behind it are left out there.
 #
-# The F-117A's cockpit is the classic one, larger than life (`AircraftSpec::vr_scale`): the
-# new parts are built life size, the F-16's millimetres, and scaled by SCALE about the eye at the
-# end. Blender frame: eye at the origin, x right, y forward, z up, metres. A control's face
-# points along its local -Y (towards the pilot), local Z is up the panel.
+# What the game works is put on it here, from the faces and displays of `PanelLayout::modern`
+# (src/cockpit3d/layout.rs; the layout JSON is written by `UPDATE_LAYOUT=1 cargo test
+# layout_files`). The panel has three flat parts: its middle and its two wings, which stand at
+# an angle to it; the right console's top is a fourth (`SECTIONS`; the layout's x says which:
+# `section`). Each face is stood on whatever the model has under it, on the highest of it, as
+# that surface lies (`seat`): a display on its glass, the data entry display in the up-front
+# controls' glass, a bezel button on the model's button, the warning lights in the cells of
+# the model's light panel and the engine and fuel instruments on their plates (turned as these
+# are: `SPIN`; the plates show through the instruments: `CUT`), the dials on the panel with a
+# thin rim, a few groups of faces on a plate (`PLATES`; the countermeasures' on the right
+# console). Where the model's own parts would be in the way, or are only clutter, they are
+# taken out first (`CLEAR`: the up-front display's keys, the countermeasures' case, the
+# dashboard's fittings over the MFDs, the switches of the panel under the left MFD, three knobs
+# under the centre display, a lever by the gear lights' first place, a button and the pod they
+# stood in, the RPM indicator's pod and the plate under it, the pods under the EMV gauge), or
+# made one plain box (`BOXED`: the up-front controls' plate under the data entry display, the
+# panel low on the left wing with its gear lever, a handle, switches and buttons, the round
+# instruments' pods with their bezels, cases and knobs), or made flat (`FLATTEN`: a few
+# recesses, and the fuel quantity indicator's plate with its round pocket, one face).
+#
+# From the parts file (cockpit_base.blend, the F-117A's first modern cockpit, which the other
+# cockpits' builders also take their seat and levers from) come, with their materials, labels
+# and control properties, brought to life size: the seat with the ejection handle (simple,
+# as the game's others: the model's seat frame and the machinery behind it are gone), the
+# throttle with its rails forward on the left console, the gear handle low on the panel's left
+# wing where the model's gear lever was, the five target buttons on the left console behind the
+# throttle, the approach indexer and the flood lamps; and the HUD glass's material, on the
+# model's HUD glass (the HUD shows only through it).
+#
+# The F-117A's cockpits are built larger than life (`AircraftSpec::cockpit_size`, after the
+# classic one): everything here is life size, the contributed model's metres, and scaled by
+# SCALE about the eye at the end (but the indexer and the lamps, which stay where the parts
+# file has them). Blender frame: eye at the origin, x right, y forward, z up,
+# metres. A control's face points along its local -Y (towards the pilot), local Z is up the
+# panel.
 import json
 import math
+import os
 import sys
 
 import bmesh
+import numpy
 import bpy
 from mathutils import Euler, Matrix, Quaternion, Vector
+from mathutils.bvhtree import BVHTree
 
 layout_path, out = sys.argv[sys.argv.index("--") + 1:][:2]
 layout = json.load(open(layout_path))
 root = bpy.data.objects["cockpit"]
+SOURCE = os.path.join(os.path.dirname(os.path.abspath(layout_path)), "f117a.blend")
 
-# The F-117A cockpit's size over life size (as tools/models/copy_f16_controls.py's).
+# The F-117A cockpit's size over life size (`AircraftSpec::cockpit_size`).
 SCALE = 1.4706
-# Life size from here on (the kept parts' coordinates divided by SCALE).
-PANEL_TILT = math.radians(20.0)  # top of the panel leaning away
-PANEL_CENTRE = Vector((0.0, 0.50, -0.27))
-FLOOR = -0.765
-WALL_X = 0.36
-# Canopy sills (top), from the rear of the cockpit to the coaming's back.
-SILL = -0.24
-SILL_REAR = -0.40
-# Consoles (the stick and the throttle stand on them): x, y and their top (low enough for the
-# VR hands on the stick and throttle to stay clear of the arm rests).
-CONSOLE_X = (0.19, 0.354)
-CONSOLE_Y = (-0.269, 0.241)
-CONSOLE_TOP = -0.646
-# The kept stick and throttle with their rails and boot, moved with the consoles' top; the
-# stick's pivot stands this far over it (the cockpit's scale).
-LEVERS = ("stick", "throttle", "throttle_full", "black_549", "metal_550", "metal_551", "rubber_543")
-PIVOT_OVER_CONSOLE = 0.01
-# The panel's centre column (|x| <= HINGE) and its wings out to WING either side (flat, in the
-# panel's plane), down to WING_BOTTOM and CENTRE_BOTTOM (layout mm).
-HINGE = 100.0
-WING = 358.0
-WING_BOTTOM = 170.0
-CENTRE_BOTTOM = 175.0
-# The panel's top: level at TOP for |x| <= TOP_FLAT, falling to CORNER at the wings' outer
-# edges (the canopy's front frames run down to the sills there).
-TOP = -137.0
-TOP_FLAT = 80.0
-CORNER = -40.0
-# The up-front display (|x| <= TOP_FLAT, y < UFC_BOTTOM) stands out of the panel.
-UFC_BOTTOM = -55.0
-UFC_DEPTH = 0.035
-# The consoles' sloped panels rise from their ends to the wings' lower edge (layout x <= -600
-# left, centred on -700; x >= 1100 right, centred on 1200; y down the slope).
-SLOPE_X = (0.19, 0.358)
-SLOPE_BEVEL = 40.0
-# The coaming reaches forward to here, level with the top of the up-front display at the back.
-COAMING_BACK = 0.714
-# The HUD frame's bars (square, the cockpit's scale), round the glass from the coaming up.
-HUD_BAR = 0.012
 # Segments of the round parts (bezels, buttons, knobs): low-poly.
 ROUND = 16
 KNOB = 8
 
-RIGHT = Vector((1.0, 0.0, 0.0))
-UP = Vector((0.0, math.sin(PANEL_TILT), math.cos(PANEL_TILT)))
-NORMAL = Vector((0.0, -math.cos(PANEL_TILT), math.sin(PANEL_TILT)))
+# The panel's flat parts, as the contributed model has them (m about the eye): the plane's
+# normal towards the pilot and its distance (normal . point), and the x of the line the
+# layout's x is counted from, on the level Z0 under the eye where the layout's y is 0.
+Z0 = -0.45
 
 
-def top_v(u):
-    """The panel's upper edge at layout x u."""
-    return TOP + max(0.0, abs(u) - TOP_FLAT) * (CORNER - TOP) / (WING - TOP_FLAT)
+def plane(normal, d, x0):
+    """(origin, across to the right, normal towards the pilot, up the panel)."""
+    n = Vector(normal).normalized()
+    h = Vector((-n.y, n.x, 0.0)).normalized()
+    if h.x < 0:
+        h = -h
+    up = h.cross(n)
+    if up.z < 0:
+        up = -up
+    return Vector((x0, (d - n.x * x0 - n.z * Z0) / n.y, Z0)), h, n, up
+
+
+SECTIONS = {
+    0: plane((0.0, -0.9279, 0.3728), -1.0948, 0.0),
+    -1: plane((0.4217, -0.8758, 0.2346), -1.0766, -0.10),
+    1: plane((-0.4217, -0.8758, 0.2346), -1.0766, 0.10),
+}
+# The consoles' tops fall 15 degrees towards the seat: z at x.
+CONSOLE = (0.2588, 0.9195, 0.9659)
+
+
+def console_z(x):
+    return (-CONSOLE[1] + CONSOLE[0] * abs(x)) / CONSOLE[2]
+
+
+# The right console's top as a part of the panel (2): the layout's x 3000 mm at its inner edge
+# (CONSOLE_X), outwards up its slope; its y aft from its front end (CONSOLE_Y), "up" forward.
+CONSOLE_X, CONSOLE_Y = 0.335, 0.68
+_tilt = math.atan2(CONSOLE[0], CONSOLE[2])
+SECTIONS[2] = (
+    Vector((CONSOLE_X, CONSOLE_Y, console_z(CONSOLE_X))),
+    Vector((math.cos(_tilt), 0.0, math.sin(_tilt))),
+    Vector((-math.sin(_tilt), 0.0, math.cos(_tilt))),
+    Vector((0.0, 1.0, 0.0)),
+)
+# Where each part's x starts (mm).
+SECTION_X = {0: 0.0, -1: -1000.0, 1: 1000.0, 2: 3000.0}
 
 
 def section(u):
-    """-4 / 4 left / right slope, -1 / 1 left / right wing, 0 centre column."""
-    if u >= 1100.0:
-        return 4
-    if u <= -600.0:
-        return -4
-    if abs(u) > HINGE:
-        return int(math.copysign(1, u))
-    return 0
+    """-1 / 1 the left / right wing (the layout's x 1000 mm out from the wing's inner edge), 0
+    the middle, 2 the right console's top (x 3000 mm and more)."""
+    return 2 if u >= 3000.0 else -1 if u <= -1000.0 else 1 if u >= 1000.0 else 0
 
 
-def slope_top():
-    """(y, z) of the wings' lower edge, where the sloped panels end."""
-    p = PANEL_CENTRE - UP * (WING_BOTTOM / 1000)
-    return p.y, p.z
-
-
-def basis(sec):
-    """(across, normal towards the pilot, up) of a section."""
-    if abs(sec) == 4:
-        sy, sz = slope_top()
-        d = Vector((0.0, sy - CONSOLE_Y[1], sz - CONSOLE_TOP)).normalized()
-        return RIGHT, Vector((0.0, -d.z, d.y)), d
-    return RIGHT, NORMAL, UP
-
-
-def point(u, v, offset=0.0, plane=False):
-    """A panel point: layout millimetres (u right, v down), raised `offset` m off its surface (the
-    panel plane with `plane`, not the up-front display's raised face)."""
+def point(u, v, offset=0.0):
+    """A panel point: layout millimetres (u right, v down), `offset` m off its part's plane."""
     sec = section(u)
-    d, n, up = basis(sec)
-    if abs(sec) == 4:
-        s = math.copysign(1, u)
-        sy, sz = slope_top()
-        mid = Vector((s * sum(SLOPE_X) / 2, (CONSOLE_Y[1] + sy) / 2, (CONSOLE_TOP + sz) / 2))
-        p = mid + d * ((u - s * (700.0 if s < 0 else 1200.0)) / 1000) - up * (v / 1000)
-    else:
-        p = PANEL_CENTRE + RIGHT * (u / 1000) - UP * (v / 1000)
-        if not plane and abs(u) <= TOP_FLAT and v < UFC_BOTTOM:
-            p += NORMAL * UFC_DEPTH
-    return p + n * offset
+    o, h, n, up = SECTIONS[sec]
+    return o + h * ((u - SECTION_X[sec]) / 1000) - up * (v / 1000) + n * offset
 
 
 def rotation(u):
-    d, n, up = basis(section(u))
-    return Matrix((d, -n, up)).transposed().to_quaternion()
+    o, h, n, up = SECTIONS[section(u)]
+    return Matrix((h, -n, up)).transposed().to_quaternion()
 
 
 def rect_point(r, offset=0.0):
@@ -144,12 +137,16 @@ def rect_point(r, offset=0.0):
     return point(x + w / 2.0, y + h / 2.0, offset)
 
 
-# --- keep, drop
+# --- the parts file: keep, drop
 KEEP = (
-    "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "black_549", "metal_550", "metal_551", "rubber_543", "dark_83", "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
+    "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "throttle",
+    "black_549", "metal_550", "metal_551", "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
+# Of those, left where and as large as they are.
+AS_IS = ("approach", "lamp")
+SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
+THROTTLE = ("throttle", "black_549", "metal_550", "metal_551")
 
 
 def kept(o):
@@ -165,7 +162,7 @@ def drop(o):
 for o in list(root.children):
     if not kept(o):
         drop(o)
-old = set(root.children)
+fixed = {o for o in root.children if o.name.startswith(AS_IS)}
 
 # --- materials
 mats = bpy.data.materials
@@ -190,6 +187,336 @@ red.diffuse_color = (0.55, 0.04, 0.03, 1.0)
 for nd in red.node_tree.nodes if red.use_nodes else ():
     if nd.type == "BSDF_PRINCIPLED":
         nd.inputs["Base Color"].default_value = red.diffuse_color
+
+# --- the contributed cockpit and its stick, in this file's materials
+with bpy.data.libraries.load(SOURCE) as (src, dst):
+    dst.objects = ["cockpit", "cockpit_stick", "hud"]
+shell, stick_mesh, hud_source = dst.objects
+for o in (shell, stick_mesh):
+    bpy.context.scene.collection.objects.link(o)
+    for slot in o.material_slots:
+        name = slot.material.name.split(".")[0]
+        own = mats.get(name) if mats.get(name) is not slot.material else None
+        if own is None:
+            # Not in the parts file: a copy of the nearest one that is.
+            slot.material.name = name + "_source"
+            own = material(name, "dark")
+        slot.material = own
+shell.name = "tub"
+shell.parent = root
+# The HUD is drawn in the model's HUD glass.
+hud = next(o for o in root.children if o.name.startswith("hud_glass"))
+glass = hud.data.materials[0]
+hud.data = hud_source.data
+hud.data.materials.clear()
+hud.data.materials.append(glass)
+hud.location = (0.0, 0.0, 0.0)
+hud.rotation_mode = "QUATERNION"
+hud.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+
+# Loose parts of the model that are in the way of the game's own, or only clutter: those
+# wholly inside a box (the layout's x0, y0, x1, y1, mm, in the box's part of the panel), their
+# middle within CLEAR_DEPTH m of its plane, and no larger than the box's limit (m) go. What
+# else stays is the box's `keeps`: PLATES_STAY, plates (simple boxes of at most 10 faces,
+# PLATE_M across or more), on which things stand, and single flat faces (an instrument's face,
+# which closes its pod); FACES_STAY, the flat faces only (the instruments' plates are their
+# cases' backs, which go with the cases); NOTHING_STAYS (the dashboard's shoulders, where the
+# flat faces and small plates are what is left of its fittings, and the holes they stood in
+# are closed).
+PLATES_STAY, FACES_STAY, NOTHING_STAYS = "plates", "faces", "nothing"
+CLEAR = [
+    ((-76.0, -136.0, 76.0, -112.0), 0.13, PLATES_STAY),  # the up-front display's upper keys
+    ((-76.0, -90.0, 76.0, -68.0), 0.13, PLATES_STAY),  # its lower keys
+    ((-62.0, 150.0, 48.0, 192.0), 0.13, PLATES_STAY),  # three knobs under the centre display
+    ((-1335.0, -50.0, -1265.0, 80.0), 0.13, PLATES_STAY),  # a lever by the gear lights
+    # A button by the airspeed indicator, and the pod over the attitude indicator (the gear
+    # lights' first place) with its face.
+    ((-1416.0, 38.0, -1383.0, 71.0), 0.13, NOTHING_STAYS),
+    ((-1390.0, -20.0, -1310.0, 56.0), 0.13, NOTHING_STAYS),
+    # The dashboard's switches, lights and fittings over the MFDs, either side of the
+    # up-front display and the HUD's mount.
+    ((-620.0, -320.0, -95.0, -64.0), 0.12, NOTHING_STAYS),
+    ((95.0, -320.0, 620.0, -64.0), 0.12, NOTHING_STAYS),
+    ((-322.0, 174.0, -142.0, 270.0), 0.10, PLATES_STAY),  # the switches of the panel under the left MFD
+    ((1380.0, 85.0, 1505.0, 230.0), 0.19, PLATES_STAY),  # the countermeasures' case and its knob
+    # The three round pods and the plate with its screws under the EMV gauge's row.
+    ((140.0, 130.0, 330.0, 176.0), 0.1, NOTHING_STAYS),
+    # The RPM indicator's pod and the plate under it with its two round recesses.
+    ((1255.0, -60.0, 1385.0, 90.0), 0.16, NOTHING_STAYS),
+]
+# The angle of attack and vertical velocity tapes (layout mm, both).
+TAPES = (-1350.0, 163.0, 48.0, 60.0)
+# Kept all the same (the layout's bounds of the part, mm): the countermeasures' plate.
+UNCLEARED = ((1392.4, 101.6, 1492.6, 217.1),)
+CLEAR_DEPTH = 0.36
+PLATE_M = 0.05
+# The most sides of a hole closed where nothing stays.
+HOLE_SIDES = 16
+# Clutter that becomes one box (as CLEAR, the box's limit): the loose parts inside go, and the
+# largest of them (its plate, or its pod) is made a plain box, as it lies: the up-front
+# controls' plate under the data entry display, with its knobs, switches and screws; the
+# panel low on the left wing; the round instruments' (and the tapes') pods with their bezels, cases and knobs, this far (mm)
+# round them.
+# The dials that stand flush on the panel instead (their pods go: `CLEAR`).
+FLUSH = ("Item(Dial(Rpm))",)
+BOXED = [
+    ((-92.0, -70.0, 110.0, -14.0), 0.2),
+    # The panel low on the left wing, with its gear lever, a yellow handle, switches and
+    # buttons.
+    ((-1505.0, 220.0, -1255.0, 430.0), 0.35),
+]
+CASE_REACH = 35.0
+for r in [f["rect"] for f in layout["faces"] if f["round"] and f["key"] not in FLUSH] + [layout["screens"]["adi"], TAPES]:
+    x, y, w, h = r
+    BOXED.append(((x - CASE_REACH, y - CASE_REACH, x + w + CASE_REACH, y + h + CASE_REACH), 0.2))
+# A box is at least this thick (m): a pod that is only its face.
+BOX_MIN = 0.003
+# Recesses in the model's panel made flat (layout mm, as CLEAR): what is inside a box is
+# brought out (or in) along its part's normal onto the plane where its edge meets the panel
+# round it (of the points inside with an edge going out), and its faces made one: the gear
+# lights' first pod's and the button's beside it, the centre display's sunken glass, and the
+# fuel quantity indicator's plate (with a round pocket in it): a box can lie turned as its
+# plate (degrees, as `SPIN`), about its middle.
+FLATTEN = [
+    ((-1390.0, -22.0, -1310.0, 58.0), 0.0),
+    ((-1416.0, 38.0, -1385.0, 71.0), 0.0),
+    ((-114.0, 4.0, 114.0, 173.0), 0.0),
+    ((1395.5, 103.0, 1489.5, 215.0), 6.4),
+]
+# How far off its part's plane (m) a point can be and still be flattened, and the most sides
+# of the face it makes.
+FLATTEN_DEPTH = 0.08
+FLATTEN_SIDES = 32
+
+
+def layout_bounds(vs, sec):
+    o, h, n, up = SECTIONS[sec]
+    us = [(v.co - o).dot(h) * 1000 + SECTION_X[sec] for v in vs]
+    ws = [-(v.co - o).dot(up) * 1000 for v in vs]
+    return min(us), min(ws), max(us), max(ws)
+
+
+def hull(vs, sec):
+    """The points of vs round their outline in the layout's plane, in order."""
+    pts = sorted(vs, key=lambda v: layout_bounds([v], sec)[:2])
+
+    def cross(a, b, c):
+        (ax, ay), (bx, by), (cx, cy) = (layout_bounds([v], sec)[:2] for v in (a, b, c))
+        return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+    def half(ps):
+        out = []
+        for p in ps:
+            while len(out) >= 2 and cross(out[-2], out[-1], p) <= 0:
+                out.pop()
+            out.append(p)
+        return out[:-1]
+
+    return half(pts) + half(pts[::-1])
+
+
+def boxify(part, sec):
+    """The box a part makes (a unit cube's matrix) and its material: turned as its largest
+    face, across as its part of the panel, over the part's extent; in its material with the
+    most area."""
+    o, h, n, up = SECTIONS[sec]
+    fronts = [f for f in part if abs(f.normal.dot(n)) > 0.7]
+    big = max(fronts, key=lambda f: f.calc_area()) if fronts else None
+    normal = n if big is None else big.normal.copy() if big.normal.dot(n) > 0 else -big.normal
+    across = (h - normal * h.dot(normal)).normalized()
+    upward = normal.cross(across)
+    if upward.dot(up) < 0:
+        upward = -upward
+    axes = (across, normal, upward)
+    vs = [v.co.copy() for v in {v for f in part for v in f.verts}]
+    lo = [min(v.dot(a) for v in vs) for a in axes]
+    hi = [max(v.dot(a) for v in vs) for a in axes]
+    centre = sum(((l + u) / 2 * a for l, u, a in zip(lo, hi, axes)), Vector())
+    rot = Matrix((across, -normal, upward)).transposed().to_4x4()
+    m = Matrix.Translation(centre) @ rot @ Matrix.Diagonal((*(max(u - l, BOX_MIN) for l, u in zip(lo, hi)), 1.0))
+    area = {}
+    for f in part:
+        area[f.material_index] = area.get(f.material_index, 0.0) + f.calc_area()
+    return m, max(area, key=area.get)
+
+
+def clear():
+    bm = bmesh.new()
+    bm.from_mesh(shell.data)
+    seen, gone, plates_of = set(), [], {}
+    for f in bm.faces:
+        if f in seen:
+            continue
+        part, stack = [], [f]
+        seen.add(f)
+        while stack:
+            g = stack.pop()
+            part.append(g)
+            for e in g.edges:
+                for k in e.link_faces:
+                    if k not in seen:
+                        seen.add(k)
+                        stack.append(k)
+        vs = {v for g in part for v in g.verts}
+        lo = Vector([min(v.co[i] for v in vs) for i in range(3)])
+        hi = Vector([max(v.co[i] for v in vs) for i in range(3)])
+        size = (hi - lo).length
+        plate = len(part) <= 10 and size >= PLATE_M
+        face_plate = len(part) <= 2
+        c = (lo + hi) / 2
+        boxed = False
+        for k, ((x0, y0, x1, y1), limit) in enumerate(BOXED):
+            sec = section(x0)
+            if size <= limit and abs((c - SECTIONS[sec][0]).dot(SECTIONS[sec][2])) < CLEAR_DEPTH:
+                u0, v0, u1, v1 = layout_bounds(vs, sec)
+                if x0 <= u0 and u1 <= x1 and y0 <= v0 and v1 <= y1:
+                    if k not in plates_of or size > plates_of[k][0]:
+                        plates_of[k] = (size, part)
+                    gone += part
+                    boxed = True
+                    break
+        if boxed:
+            continue
+        for (x0, y0, x1, y1), limit, keeps in CLEAR:
+            if (plate and keeps == PLATES_STAY) or (face_plate and keeps != NOTHING_STAYS):
+                continue
+            sec = section(x0)
+            o, h, n, up = SECTIONS[sec]
+            if size > limit or abs((c - o).dot(n)) >= CLEAR_DEPTH:
+                continue
+            u0, v0, u1, v1 = layout_bounds(vs, sec)
+            if not (x0 <= u0 and u1 <= x1 and y0 <= v0 and v1 <= y1):
+                continue
+            if any(max(abs(a - b) for a, b in zip((u0, v0, u1, v1), k)) < 3.0 for k in UNCLEARED):
+                continue
+            gone += part
+            break
+    blocks = [boxify(plates_of[k][1], section(BOXED[k][0][0])) for k in sorted(plates_of)]
+    bmesh.ops.delete(bm, geom=gone, context="FACES")
+    for m, mat in blocks:
+        made = bmesh.ops.create_cube(bm, size=1.0, matrix=m)
+        for f in {f for v in made["verts"] for f in v.link_faces}:
+            f.material_index = mat
+    # Where nothing stays, the holes the fittings stood in are closed.
+    def inside(v, box):
+        x0, y0, x1, y1 = box
+        u0, v0, u1, v1 = layout_bounds([v], section(x0))
+        return x0 <= u0 <= x1 and y0 <= v0 <= y1
+    rims = [e for e in bm.edges if e.is_boundary and any(keeps == NOTHING_STAYS and all(inside(v, box) for v in e.verts) for box, _, keeps in CLEAR)]
+    for f in bmesh.ops.holes_fill(bm, edges=rims, sides=HOLE_SIDES)["faces"]:
+        # In the material round it.
+        f.material_index = next(k.material_index for e in f.edges for k in e.link_faces if k is not f)
+    def inside_turned(v, box, deg):
+        x0, y0, x1, y1 = box
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        u0, v0, _, _ = layout_bounds([v], section(x0))
+        a = math.radians(deg)
+        du, dv = u0 - mx, v0 - my
+        x, y = du * math.cos(a) - dv * math.sin(a), du * math.sin(a) + dv * math.cos(a)
+        return abs(x) <= (x1 - x0) / 2 and abs(y) <= (y1 - y0) / 2
+    for box, deg in FLATTEN:
+        o, h, n, up = SECTIONS[section(box[0])]
+        ins = {v for v in bm.verts if abs((v.co - o).dot(n)) < FLATTEN_DEPTH and inside_turned(v, box, deg)}
+        edge = [v for v in ins if any(e.other_vert(v) not in ins for e in v.link_edges)]
+        loose = not edge
+        if loose:
+            # A plate of its own: its outline (the hull of its points, as the pilot sees them).
+            edge = hull(list(ins), section(box[0]))
+        if len(edge) >= 3:
+            # The edge's plane (a least squares fit).
+            mid = sum((v.co for v in edge), Vector()) / len(edge)
+            pn = min(
+                (Vector(r) for r in numpy.linalg.svd(numpy.array([v.co - mid for v in edge]))[2]),
+                key=lambda r: sum(((v.co - mid).dot(r)) ** 2 for v in edge),
+            )
+            for v in ins:
+                v.co += n * ((mid - v.co).dot(pn) / n.dot(pn))
+            # Its faces made one, in the material round it.
+            inner = [f for f in bm.faces if all(v in ins for v in f.verts)]
+            mat = next((f.material_index for v in edge for f in v.link_faces if f not in inner), 0)
+            if loose:
+                # In its own material with the most area, one face over its outline.
+                areas = {}
+                for f in inner:
+                    areas[f.material_index] = areas.get(f.material_index, 0.0) + f.calc_area()
+                mat = max(areas, key=areas.get)
+                bmesh.ops.delete(bm, geom=[v for v in ins if v not in edge], context="VERTS")
+                bmesh.ops.delete(bm, geom=[f for v in edge for f in v.link_faces], context="FACES_ONLY")
+                f = bm.faces.new(edge)
+                f.material_index = mat
+                f.normal_update()
+                if f.normal.dot(n) < 0:
+                    f.normal_flip()
+                continue
+            bmesh.ops.delete(bm, geom=inner, context="FACES")
+            rim = [e for e in bm.edges if e.is_boundary and all(v in ins for v in e.verts)]
+            for f in bmesh.ops.holes_fill(bm, edges=rim, sides=FLATTEN_SIDES)["faces"]:
+                f.material_index = mat
+                if f.normal.dot(n) < 0:
+                    f.normal_flip()
+    bm.to_mesh(shell.data)
+    bm.normal_update()
+    tree = BVHTree.FromBMesh(bm)
+    bm.free()
+    return tree
+
+
+surface = clear()
+# How far off its plane the model can stand under a face (m): what is further out is in front
+# of the panel, not on it (the up-front display stands a good way out of the panel's middle).
+PROUD = (-0.15, 0.36)
+REACH = 0.5
+
+
+class Seat:
+    """Where a face stands on the model: a point, the surface's normal there (towards the
+    pilot) and the directions across and up it."""
+
+    def __init__(self, at, h, n, up):
+        self.at, self.h, self.n, self.up = at, h, n, up
+        self.rot = Matrix((h, -n, up)).transposed().to_quaternion()
+
+    def point(self, du=0.0, dv=0.0, off=0.0):
+        """`du` mm right and `dv` mm down of the point, `off` m off the surface."""
+        return self.at + self.h * (du / 1000) - self.up * (dv / 1000) + self.n * off
+
+
+# The model's surface under a face is what stands within TOP m of its highest point there.
+TOP = 0.003
+
+
+def seat(r, inset=1.0, step=5.0, round=False):
+    """The model's surface under the rectangle r (layout mm, less `inset`; under its inscribed
+    circle for a round face): the highest of what is there, as it lies (the model's cases
+    and bezels do not all lie in their part's plane)."""
+    x, y, w, h = r
+    o, hh, n, up = SECTIONS[section(x + w / 2)]
+    hits = []
+    nu = max(2, int((w - 2 * inset) / step) + 1)
+    nv = max(2, int((h - 2 * inset) / step) + 1)
+    for i in range(nu):
+        for j in range(nv):
+            fu, fv = i / (nu - 1) - 0.5, j / (nv - 1) - 0.5
+            if round and fu * fu + fv * fv > 0.12:
+                continue
+            p = point(x + w / 2 + (w - 2 * inset) * fu, y + h / 2 + (h - 2 * inset) * fv, REACH)
+            hit, normal, _, _ = surface.ray_cast(p, -n, REACH - PROUD[0])
+            if hit is not None and (hit - o).dot(n) <= PROUD[1]:
+                hits.append(((hit - o).dot(n), hit, normal))
+    centre = rect_point(r)
+    if not hits:
+        return Seat(centre, hh, n, up)
+    top = max(d for d, _, _ in hits)
+    layer = [(q, m) for d, q, m in hits if d >= top - TOP]
+    normal = sum((m for _, m in layer), Vector()).normalized()
+    if normal.dot(n) < 0.8:
+        normal = n
+    mid = sum((q for q, _ in layer), Vector()) / len(layer)
+    # The rectangle's middle, carried along its part's normal onto that surface.
+    at = centre + n * ((mid - centre).dot(normal) / n.dot(normal))
+    across = (hh - normal * hh.dot(normal)).normalized()
+    upward = across.cross(normal)
+    return Seat(at, across, normal, upward if upward.dot(up) > 0 else -upward)
 
 
 # --- building blocks (as the F-16's)
@@ -286,46 +613,33 @@ def box(name, mat, centre, size, rot=Euler((0, 0, 0)), parent=root):
     return mesh_object(name, box_mesh(name, size, mat), centre, rot, parent=parent)
 
 
-def panel_box(name, mat, r, raise_m, margin=0.0, base=0.0):
-    """A plate from `base` to `base + raise_m` off the panel over the rectangle r (mm, within one
-    section) grown by `margin` mm."""
-    x, y, w, h = r
-    c = rect_point(r, base + raise_m / 2)
-    return box(name, mat, c, ((w + 2 * margin) / 1000, abs(raise_m), (h + 2 * margin) / 1000), rotation(x + w / 2))
+# Faces drawn over the model's own plate: their atlas texels' see-through index left out.
+CUT = ("Item(Dial(Engines))", "Item(Dial(FuelQuantity))")
 
 
-def bezel(r, offset, height=0.008, lip=0.003):
-    """A round black bezel standing `height` out of the panel at `offset` round the rectangle r's
-    inscribed circle, the instrument's octagonal case behind it."""
-    x, y, w, h = r
-    me = cylinder_mesh("black", min(w, h) / 2000 + lip, height, "black", n=ROUND)
-    mesh_object("black", me, rect_point(r, offset), rotation(x + w / 2))
-    flat = min(w, h) / 2000 + lip + 0.002
-    me = cylinder_mesh("dark", flat / math.cos(math.pi / 8), offset + 0.003, "dark", n=8)
-    me.transform(Matrix.Rotation(math.pi / 8, 4, "Y"))
-    mesh_object("dark", me, rect_point(r, 0.0), rotation(x + w / 2))
-
-
-def face(key, r, offset, round=False):
-    """An atlas face over the rectangle r; round ones are discs in a bezel (the instruments)."""
+def face(key, r, pos, rot, n, round=False):
+    """An atlas face the size of the rectangle r at `pos`; round ones are discs (the dials)
+    with a thin black rim."""
     x, y, w, h = r
     if round:
-        bezel(r, offset)
         me = disc_mesh("atlas", min(w, h) / 2000, "atlas")
-        offset += 0.0085
+        mesh_object("black", disc_mesh("black", min(w, h) / 2000 + RIM, "black"), pos - n * FACE_LIFT, rot, props={"no_shadow": True})
     else:
         me = quad_mesh("atlas", w / 1000, h / 1000, "atlas")
-    mesh_object("atlas", me, rect_point(r, offset), rotation(x + w / 2), props={"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
+    props = {"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True}
+    if key in CUT:
+        props["atlas_cut"] = True
+    mesh_object("atlas", me, pos, rot, props=props)
 
 
-def control(key, r, offset, effect, kind):
+def control(key, r, pos, rot, effect, kind):
     """A push button: origin on the surface, its face 6 mm out; a dark cap body under the face
     and a highlight frame."""
     x, y, w, h = r
     hw, hh = w / 2000, h / 2000
     height, travel = 0.006, 0.004
     name = "control_" + "".join(ch if ch.isalnum() else "_" for ch in effect)
-    c = empty(name, rect_point(r, offset), rotation(x + w / 2), props={"control": effect, "kind": kind, "half": [hw, hh], "height": height, "travel": travel})
+    c = empty(name, pos, rot, props={"control": effect, "kind": kind, "half": [hw, hh], "height": height, "travel": travel})
     moving = empty("moving", (0, 0, 0), parent=c, props={"moving": True})
     mesh_object("atlas", quad_mesh("atlas", 2 * hw, 2 * hh, "atlas", -height), (0, 0, 0), parent=moving, props={"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
     mesh_object("dark", box_mesh("dark", (2 * hw, height - 0.0004, 2 * hh), "dark", (0, -(height - 0.0004) / 2, 0)), (0, 0, 0), parent=moving)
@@ -335,436 +649,106 @@ def control(key, r, offset, effect, kind):
         mesh_object("highlight", box_mesh("highlight", (sx, t, sz), "highlight"), (cx, -height, cz), parent=hl, props={"no_shadow": True})
 
 
-def screen(mat, r, offset, behind=None, round=False):
-    """A display over the rectangle r: a quad, or a disc in a bezel (the round instruments)."""
+def screen(mat, r, at, behind=None, round=False):
+    """A display the size of the rectangle r on the surface `at`: a quad, or a disc (the
+    attitude indicator, in the model's case); the tracking camera's picture just behind it."""
     x, y, w, h = r
-    rot = rotation(x + w / 2)
     if round:
-        bezel(r, offset, 0.010, 0.004)
-        mesh_object(mat, disc_mesh(mat, min(w, h) / 2000, mat), rect_point(r, offset + 0.0105), rot, props={"no_shadow": True})
+        mesh_object(mat, disc_mesh(mat, min(w, h) / 2000, mat), at.point(off=LIFT), at.rot, props={"no_shadow": True})
         return
-    mesh_object(mat, quad_mesh(mat, w / 1000, h / 1000, mat), rect_point(r, offset), rot, props={"no_shadow": True})
+    mesh_object(mat, quad_mesh(mat, w / 1000, h / 1000, mat), at.point(off=2 * LIFT), at.rot, props={"no_shadow": True})
     if behind:
-        mesh_object(behind, quad_mesh(behind, w / 1000, h / 1000, behind), rect_point(r, offset - 0.003), rot, props={"no_shadow": True})
+        mesh_object(behind, quad_mesh(behind, w / 1000, h / 1000, behind), at.point(off=LIFT), at.rot, props={"no_shadow": True})
 
 
-def plate(name, mat, pieces, depth):
-    """A panel plate `depth` m thick behind the panel plane, from convex outlines (layout mm, one
-    section) that together make its shape."""
-    me = bpy.data.meshes.new(name)
-    bm = bmesh.new()
-    n = basis(section(pieces[0][0][0]))[1]
-    for loop in pieces:
-        front = [bm.verts.new(point(u, v, 0.0, True)) for u, v in loop]
-        back = [bm.verts.new(point(u, v, 0.0, True) - n * depth) for u, v in loop]
-        bm.faces.new(front)
-        bm.faces.new(back[::-1])
-        for i in range(len(loop)):
-            j = (i + 1) % len(loop)
-            bm.faces.new((front[i], back[i], back[j], front[j]))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    bm.to_mesh(me)
-    bm.free()
-    me.materials.append(mats[mat])
-    return mesh_object(name, me, (0, 0, 0))
+# --- plates: groups of faces that do not fit what the model has there stand on a plate over
+# it (material, rectangle in layout mm)
+PLATES = (
+    ("dark", (156.0, 117.0, 176.0, 38.0)),  # fuel and thrust readouts, EMV
+    ("black", TAPES),  # angle of attack and vertical velocity tapes
+    ("dark", (-1399.0, 317.0, 48.0, 40.0)),  # gear lights
+    ("black", (3025.0, 18.0, 130.0, 95.0)),  # the countermeasures, on the right console
+)
+PLATE = 0.006  # thickness
+LIFT = 0.0015  # a plate's front, a display or a face over the model's surface
+FACE_LIFT = 0.0005  # a face over its plate
+RIM = 0.0015  # a dial's rim round its face
+# The model's light panel's cells and some plates lie turned (degrees, anticlockwise as the
+# pilot sees them): the faces in these boxes (layout mm) are turned with them, about their
+# middles.
+SPIN = (
+    ((1290.0, 265.0, 1420.0, 400.0), 6.3),
+    # The engine instruments' and the fuel quantity indicator's sunken plates.
+    ((1270.0, 85.0, 1392.0, 250.0), 6.0),
+    ((1392.0, 100.0, 1495.0, 220.0), 6.4),
+)
 
 
-def plane_box(name, mat, r, d0, d1):
-    """A box over the rectangle r (layout mm) from d0 to d1 m off the panel plane."""
+def spun(r, at):
+    """The rotation of a face over r: the surface's, turned with the model's part under it."""
     x, y, w, h = r
-    c = point(x + w / 2, y + h / 2, (d0 + d1) / 2, True)
-    return box(name, mat, c, (w / 1000, abs(d1 - d0), h / 1000), rotation(x + w / 2))
+    for (x0, y0, x1, y1), deg in SPIN:
+        if x0 <= x and x + w <= x1 and y0 <= y and y + h <= y1:
+            return at.rot @ Quaternion((0.0, 1.0, 0.0), math.radians(-deg))
+    return at.rot
 
 
-def frame(mat, outer, inner, d0, d1):
-    """A rectangular frame (layout mm, outer and inner rectangles) from d0 to d1 m off the
-    panel plane."""
-    ox, oy, ow, oh = outer
-    ix, iy, iw, ih = inner
-    for r in ((ox, oy, ow, iy - oy), (ox, iy + ih, ow, oy + oh - iy - ih), (ox, iy, ix - ox, ih), (ix + iw, iy, ox + ow - ix - iw, ih)):
-        plane_box(mat, mat, r, d0, d1)
+plates = []
+for mat, r in PLATES:
+    at = seat(r)
+    x, y, w, h = r
+    box(mat, mat, at.point(off=LIFT - PLATE / 2), (w / 1000, PLATE, h / 1000), at.rot)
+    plates.append((r, at))
 
 
-def knob(u, v, r=0.006, h=0.012, mat="metal", offset=0.0):
-    """A round knob standing out of the panel at layout (u, v)."""
-    mesh_object(mat, cylinder_mesh(mat, r, h, mat, n=KNOB), point(u, v, offset), rotation(u))
+# Faces that fill a plate sunk in a frame (layout key, mm): they stand on the plate, as it
+# lies, looking this far in from their edges (not on the frame's rim round it).
+SUNK = {"Item(Dial(Engines))": 12.0, "Item(Dial(FuelQuantity))": 12.0}
 
 
-def toggle(u, v, offset=0.0, up=True):
-    """A toggle switch: a round base and a lever leaning up or down the panel."""
-    mesh_object("dark", cylinder_mesh("dark", 0.005, 0.004, "dark", n=KNOB), point(u, v, offset), rotation(u))
-    lean = Matrix.Rotation(math.radians(-35.0 if up else 35.0), 3, "X")
-    me = box_mesh("metal", (0.004, 0.016, 0.004), "metal", (0.0, -0.011, 0.0), lean.to_quaternion())
-    mesh_object("metal", me, point(u, v, offset + 0.003), rotation(u))
+def stand(r, round=False, key=None):
+    """Where a face over r stands: (the surface under its middle, m off it): on its plate, or
+    on the model."""
+    x, y, w, h = r
+    for (px, py, pw, ph), at in plates:
+        if px <= x and x + w <= px + pw and py <= y and y + h <= py + ph:
+            return Seat(at.point(x + w / 2 - px - pw / 2, y + h / 2 - py - ph / 2), at.h, at.n, at.up), LIFT
+    return seat(r, inset=SUNK.get(key, 1.0), round=round), 0.0
 
 
-def prism(name, mat, yz, x0, x1):
-    """A convex outline in the y-z plane (m) from x0 to x1."""
-    me = bpy.data.meshes.new(name)
-    bm = bmesh.new()
-    sides = [[bm.verts.new((x, y, z)) for y, z in yz] for x in (x0, x1)]
-    bm.faces.new(sides[0])
-    bm.faces.new(sides[1][::-1])
-    n = len(yz)
-    for i in range(n):
-        j = (i + 1) % n
-        bm.faces.new((sides[0][i], sides[1][i], sides[1][j], sides[0][j]))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    bm.to_mesh(me)
-    bm.free()
-    me.materials.append(mats[mat])
-    return mesh_object(name, me, (0, 0, 0))
-
-
-def facets(name, mat, tris, thickness=0.02):
-    """Triangles (m) as sheets `thickness` thick under them (the fuselage's facets)."""
-    me = bpy.data.meshes.new(name)
-    bm = bmesh.new()
-    for t in tris:
-        t = [Vector(v) for v in t]
-        n = (t[1] - t[0]).cross(t[2] - t[0]).normalized()
-        if n.z < 0:
-            n = -n
-        top = [bm.verts.new(v) for v in t]
-        bot = [bm.verts.new(v - n * thickness) for v in t]
-        bm.faces.new(top)
-        bm.faces.new(bot[::-1])
-        for i in range(3):
-            j = (i + 1) % 3
-            bm.faces.new((top[i], bot[i], bot[j], top[j]))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    bm.to_mesh(me)
-    bm.free()
-    me.materials.append(mats[mat])
-    return mesh_object(name, me, (0, 0, 0))
-
-
-def solid(name, mat, front, back, thickness, up):
-    """A sheet `thickness` m thick under the surface between the polylines front and back (the
-    coaming)."""
-    me = bpy.data.meshes.new(name)
-    bm = bmesh.new()
-    top_f = [bm.verts.new(v) for v in front]
-    top_b = [bm.verts.new(v) for v in back]
-    bot_f = [bm.verts.new(v - up * thickness) for v in front]
-    bot_b = [bm.verts.new(v - up * thickness) for v in back]
-    n = len(front)
-    for i in range(n - 1):
-        j = i + 1
-        bm.faces.new((top_f[i], top_f[j], top_b[j], top_b[i]))
-        bm.faces.new((bot_f[j], bot_f[i], bot_b[i], bot_b[j]))
-        bm.faces.new((bot_f[i], bot_f[j], top_f[j], top_f[i]))
-        bm.faces.new((top_b[i], top_b[j], bot_b[j], bot_b[i]))
-    for i in (0, n - 1):
-        bm.faces.new((top_f[i], top_b[i], bot_b[i], bot_f[i]))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    uv = bm.loops.layers.uv.new()
-    for f in bm.faces:
-        for l in f.loops:
-            l[uv].uv = (0.0, 0.0)
-    bm.to_mesh(me)
-    bm.free()
-    me.materials.append(mats[mat])
-    return mesh_object(name, me, (0.0, 0.0, 0.0))
-
-
-# --- coaming: over the panel's top edge (the up-front display standing out in the middle),
-# forward to COAMING_BACK; level behind the up-front display, rising from the falling wing
-# edges to that height (the real one's anti-glare flaps, not modelled, hinge along those).
-THICK = 0.016
-LIP = 0.008
-edge = [
-    point(-WING, CORNER), point(-TOP_FLAT, TOP, 0.0, True), point(-TOP_FLAT, TOP, UFC_DEPTH, True),
-    point(TOP_FLAT, TOP, UFC_DEPTH, True), point(TOP_FLAT, TOP, 0.0, True), point(WING, CORNER),
-]
-front = [e + UP * THICK + NORMAL * LIP for e in edge]
-z_back = max(f.z for f in front)
-back = [Vector((f.x, COAMING_BACK, z_back)) for f in front]
-solid("black", "black", front, back, THICK, Vector((0.0, 0.0, 1.0)))
-# Out to the walls past the wings' outer edges.
-for s in (-1, 1):
-    f = front[0 if s < 0 else -1]
-    box("black", "black", (s * (WING / 1000 + WALL_X) / 2, (f.y + COAMING_BACK) / 2, f.z - THICK / 2), (WALL_X - WING / 1000, COAMING_BACK - f.y, THICK))
-# A bulkhead under its back edge.
-box("dark", "dark", (0.0, COAMING_BACK + 0.01, (FLOOR + z_back) / 2), (2 * WALL_X, 0.02, z_back - FLOOR))
-
-
-def coaming_z(x, y):
-    """The coaming's top at (x, y) (between its front edge and the back)."""
-    for a, b in zip(front, front[1:]):
-        if a.x <= x <= b.x and b.x > a.x:
-            t = (x - a.x) / (b.x - a.x)
-            f = a.lerp(b, t)
-            return f.z + (z_back - f.z) * (y - f.y) / (COAMING_BACK - f.y)
-    return z_back
-
-
-# --- panel: the wings round the side MFDs' wells, the centre column round the centre
-# display's, the up-front display standing out at its top
+# --- displays and faces
 scr = layout["screens"]
-faces = {f["key"]: f["rect"] for f in layout["faces"]}
-
-
-def well(r, side=19.0):
-    x, y, w, h = r
-    return (x - side, y - 25.0, w + 2 * side, h + 50.0)
-
-
-wells = {key: well(scr[key]) for key in ("left", "third", "right")}
-for key in ("left", "third"):
-    x, y, w, h = wells[key]
-    s_ = -1 if x < 0 else 1
-    # In the right wing's terms (the left one mirrored): above, outside, below and inside the well.
-    x0, x1 = (x, x + w) if s_ > 0 else (-(x + w), -x)
-    y0, y1 = y, y + h
-    pieces = [
-        [(HINGE, top_v(HINGE)), (x1, top_v(x1)), (x1, y0), (HINGE, y0)],
-        [(x1, top_v(x1)), (WING, CORNER), (WING, WING_BOTTOM), (x1, WING_BOTTOM)],
-        [(HINGE, y1), (x1, y1), (x1, WING_BOTTOM), (HINGE, WING_BOTTOM)],
-        [(HINGE, y0), (x0, y0), (x0, y1), (HINGE, y1)],
-    ]
-    plate("panel_grey", "panel_grey", [[(s_ * u, v) for u, v in piece] for piece in pieces], 0.03)
-x, y, w, h = wells["right"]
-plate("panel_grey", "panel_grey", [
-    [(-HINGE, top_v(HINGE)), (-TOP_FLAT, TOP), (TOP_FLAT, TOP), (HINGE, top_v(HINGE)), (HINGE, y), (-HINGE, y)],
-    [(-HINGE, y + h), (HINGE, y + h), (HINGE, CENTRE_BOTTOM), (-HINGE, CENTRE_BOTTOM)],
-    [(-HINGE, y), (x, y), (x, y + h), (-HINGE, y + h)],
-    [(x + w, y), (HINGE, y), (HINGE, y + h), (x + w, y + h)],
-], 0.03)
-plane_box("dark", "dark", (-TOP_FLAT, TOP, 2 * TOP_FLAT, UFC_BOTTOM - TOP), -0.03, UFC_DEPTH)
-# Rims standing out along the wings' lower edges.
-for s_ in (-1, 1):
-    panel_box("dark", "dark", (HINGE if s_ > 0 else -WING, WING_BOTTOM - 6.0, WING - HINGE, 6.0), 0.007)
-
-# --- tub: consoles with sloped panels up to the main panel, knee wall with the footwell,
-# centre pedestal
-for s in (-1, 1):
-    cx = s * sum(CONSOLE_X) / 2
-    y0, y1 = CONSOLE_Y
-    box("panel_grey", "panel_grey", (cx, (y0 + y1) / 2, (CONSOLE_TOP + FLOOR) / 2), (CONSOLE_X[1] - CONSOLE_X[0], y1 - y0, CONSOLE_TOP - FLOOR))
-    box("dark", "dark", (cx, (y0 + y1) / 2, CONSOLE_TOP + 0.002), (CONSOLE_X[1] - CONSOLE_X[0] - 0.01, y1 - y0 - 0.02, 0.004))
-    u_mid = -700.0 if s < 0 else 1200.0
-    sy, sz = slope_top()
-    length = (Vector((sy, sz)) - Vector((CONSOLE_Y[1], CONSOLE_TOP))).length * 1000 + 30.0
-    # Its outer edge bevelled in towards the top.
-    half = (SLOPE_X[1] - SLOPE_X[0]) * 500
-    inner, outer = u_mid - s * half, u_mid + s * half
-    top, bottom = -length / 2, length / 2
-    shape = [(inner, top), (outer - s * SLOPE_BEVEL, top), (outer, bottom), (inner, bottom)]
-    if s > 0:
-        shape.reverse()
-    plate("dark", "dark", [shape], 0.03)
-    # Filled under it to the floor: a wedge under the slope.
-    yz = [(CONSOLE_Y[1], CONSOLE_TOP - 0.03), (sy, sz - 0.03), (sy, FLOOR), (CONSOLE_Y[1], FLOOR)]
-    prism("panel_grey", "panel_grey", yz, *sorted(s * x for x in CONSOLE_X))
-# Walls up to the sills, the sill rails on them; between the sills' front and the coaming's
-# rising outer ends, the walls filled up to the coaming.
-length = COAMING_BACK - SILL_REAR
-for s in (-1, 1):
-    box("panel_grey", "panel_grey", (s * (WALL_X + 0.01), (SILL_REAR + COAMING_BACK) / 2, (SILL + FLOOR) / 2), (0.02, length, SILL - FLOOR))
-    box("frame", "frame", (s * (WALL_X + 0.008), (SILL_REAR + COAMING_BACK) / 2, SILL - 0.012), (0.034, length, 0.025))
-    f = front[0 if s < 0 else -1]
-    yz = [(f.y, SILL), (COAMING_BACK, SILL), (COAMING_BACK, z_back), (f.y, f.z)]
-    prism("panel_grey", "panel_grey", yz, *sorted((s * WALL_X, s * (WALL_X + 0.02))))
-# Canopy bow behind the seat: two bars from the sills up to its apex (the faceted canopy's).
-APEX = Vector((0.0, -0.34, 0.28))
-for s in (-1, 1):
-    p0 = Vector((s * (WALL_X + 0.008), APEX.y, SILL))
-    d = APEX - p0
-    rot = Vector((1, 0, 0)).rotation_difference(d.normalized()).to_euler()
-    box("frame", "frame", (p0 + APEX) / 2, (d.length + 0.02, 0.03, 0.03), rot)
-# The fuselage outside the sills: a facet falling outwards along each, narrowing to the front,
-# and one from its front up to the coaming's back corner.
-for s in (-1, 1):
-    rail_rear = Vector((s * (WALL_X + 0.025), SILL_REAR - 0.05, SILL))
-    rail_front = Vector((s * (WALL_X + 0.025), COAMING_BACK, SILL))
-    out_rear = Vector((s * 1.40, SILL_REAR - 0.05, SILL - 0.45))
-    out_front = Vector((s * 0.85, COAMING_BACK + 0.50, SILL - 0.30))
-    corner_ = Vector((s * (WALL_X + 0.02), COAMING_BACK + 0.02, z_back))
-    facets("dark", "dark", [(rail_rear, rail_front, out_front), (rail_rear, out_front, out_rear), (rail_front, corner_, out_front)])
-low = point(0, WING_BOTTOM, 0.0, True)
-LEGS = (0.20, -0.48)  # opening's half width, top (m)
-wall = low.y + 0.08
-for s_ in (-1, 1):
-    box("panel_grey", "panel_grey", (s_ * (LEGS[0] + WALL_X) / 2, wall, (low.z + FLOOR) / 2), (WALL_X - LEGS[0], 0.02, low.z - FLOOR))
-box("panel_grey", "panel_grey", (0.0, wall, (low.z + LEGS[1]) / 2), (2 * LEGS[0], 0.02, low.z - LEGS[1]))
-# The footwell behind the opening: side walls, roof and front wall.
-WELL_DEPTH = 0.30
-yc = wall + WELL_DEPTH / 2
-for s_ in (-1, 1):
-    box("dark", "dark", (s_ * (LEGS[0] + 0.01), yc, (LEGS[1] + FLOOR) / 2), (0.02, WELL_DEPTH, LEGS[1] - FLOOR))
-box("dark", "dark", (0.0, yc, LEGS[1] + 0.01), (2 * LEGS[0] + 0.04, WELL_DEPTH, 0.02))
-box("dark", "dark", (0.0, wall + WELL_DEPTH, (LEGS[1] + FLOOR) / 2), (2 * LEGS[0] + 0.04, 0.02, LEGS[1] - FLOOR))
-# Centre pedestal between the legs under the centre column: two panels of knobs down its face
-# (the real one's radio and navigation controls).
-col = point(0.0, CENTRE_BOTTOM, -0.03, True)
-PEDESTAL = 0.07  # half width
-pfront = col.y - 0.004
-box("panel_grey", "panel_grey", (0.0, (pfront + wall + WELL_DEPTH) / 2, (col.z + FLOOR) / 2), (2 * PEDESTAL, wall + WELL_DEPTH - pfront, col.z - FLOOR))
-for k, (z0, rows) in enumerate(((0.015, 3), (0.135, 3))):
-    zt = col.z - z0
-    box("black", "black", (0.0, pfront - 0.002, zt - 0.05), (0.12, 0.004, 0.10))
-    for r in range(rows):
-        for c in range(3):
-            p = Vector(((c - 1) * 0.034, pfront - 0.004, zt - 0.018 - r * 0.032))
-            if (r + c + k) % 3 == 2:
-                mesh_object("dark", cylinder_mesh("dark", 0.005, 0.004, "dark", n=KNOB), p)
-                lean = Euler((math.radians(-30.0 if r % 2 else 30.0), 0, 0)).to_quaternion()
-                mesh_object("metal", box_mesh("metal", (0.004, 0.016, 0.004), "metal", (0.0, -0.008, 0.0), lean), p - Vector((0, 0.003, 0)))
-            else:
-                mesh_object("metal", cylinder_mesh("metal", 0.009 if r == 0 else 0.007, 0.012, "metal", n=KNOB), p)
-
-# --- plates, bezels, faces and displays
-PLATE = 0.004
-plates = [
-    ("black", (-77.0, -136.0, 154.0, 80.0)),  # up-front display
-    ("black", (-62.0, -53.0, 124.0, 14.0)),  # its knobs under it
-    ("black", (-72.0, 156.0, 144.0, 16.0)),  # the centre display's knobs
-    ("dark", (-171.0, -99.0, 72.0, 32.0)),  # left warning lights
-    ("dark", (99.0, -99.0, 72.0, 32.0)),  # right warning lights
-    ("dark", (-326.0, -40.0, 52.0, 200.0)),  # flight instruments
-    ("dark", (274.0, -40.0, 52.0, 188.0)),  # engine instruments
-    ("black", (-166.0, 88.0, 52.0, 64.0)),  # master arm panel
-    ("dark", (106.0, 84.0, 156.0, 72.0)),  # fuel, engine readouts, EMV
-    ("dark", (-736.0, -114.0, 48.0, 40.0)),  # gear lights (left slope)
-    ("dark", (-735.0, -72.0, 46.0, 54.0)),  # flaps, brakes and autopilot under them
-    ("dark", (1128.0, -122.0, 108.0, 40.0)),  # caution lights (right slope)
-    ("dark", (1146.0, -74.0, 80.0, 75.0)),  # countermeasures
-    ("black", (1146.0, 24.0, 110.0, 70.0)),  # switches under them
-]
-for mat, r in plates:
-    panel_box(mat, mat, r, PLATE)
-for u in (-36.0, -6.0, 24.0):
-    knob(u, -46.0, 0.006, 0.010, offset=PLATE)
-toggle(48.0, -46.0, PLATE)
-for u in (-50.0, -18.0, 18.0, 50.0):
-    knob(u, 164.0, 0.006, 0.010, offset=PLATE)
-# Master arm panel: master arm and bay door switches, the jettison button under a red guard.
-for u in (-154.0, -138.0):
-    toggle(u, 124.0, PLATE, up=(u == -154.0))
-mesh_object("red", cylinder_mesh("red", 0.005, 0.005, "red", n=KNOB), point(-124.0, 124.0, PLATE), rotation(-124.0))
-mesh_object("red", box_mesh("red", (0.014, 0.012, 0.022), "red", (0.0, -0.006, -0.002)), point(-124.0, 140.0, PLATE), rotation(-124.0))
-for v in (40.0, 60.0, 80.0):
-    toggle(1160.0, v, PLATE, up=(v != 60.0))
-    toggle(1200.0, v, PLATE, up=(v == 60.0))
-knob(1240.0, 60.0, 0.008, 0.012, offset=PLATE)
-# MFD bezels: a housing standing out of the well to the bezel's face (BEZEL off the panel), the
-# screen back in a black recess. All three as the F-16's: twenty push buttons round the
-# screen with ridges between them and rocker switches at the corners.
-BEZEL = 0.006
-for key in ("left", "third", "right"):
-    x, y, w, h = scr[key]
-    wx, wy, ww, wh = wells[key]
-    hole = (x - 3.0, y - 3.0, w + 6.0, h + 6.0)
-    frame("dark", (wx - 3.0, wy - 3.0, ww + 6.0, wh + 6.0), hole, -0.03, BEZEL - 0.002)
-    frame("black", (wx + 1.0, wy + 1.0, ww - 2.0, wh - 2.0), hole, BEZEL - 0.002, BEZEL)
-    frame("black", hole, (x - 0.5, y - 0.5, w + 1.0, h + 1.0), -0.006, BEZEL - 0.001)
-    for k in range(1, 5):
-        for by in (y - 16.5, y + h + 6.5):
-            panel_box("black", "black", (x + w * k / 5 - 1.0, by - 4.0, 2.0, 8.0), 0.003, 0.0, BEZEL)
-    for k in range(1, 5):
-        for bx in (x - 9.0, x + w + 9.0):
-            panel_box("black", "black", (bx - 4.0, y + h * k / 5 - 1.0, 8.0, 2.0), 0.003, 0.0, BEZEL)
-    for bx in (x - 9.0, x + w + 9.0):
-        for by in (y - 16.0, y + h + 16.0):
-            panel_box("dark", "dark", (bx - 4.5, by - 6.5, 9.0, 13.0), 0.003, 0.0, BEZEL)
-            panel_box("black", "black", (bx - 1.5, by - 5.0, 3.0, 10.0), 0.003, 0.0, BEZEL + 0.003)
-# Setting knobs at instrument corners: airspeed and altimeter, the attitude indicator and the
-# clock.
-
-
-def corner(r, sx, sy, inset=3.0):
-    x, y, w, h = r
-    return (x + w - inset if sx > 0 else x + inset, y + h - inset if sy > 0 else y + inset)
-
-
-for r, sx, sy in (
-    (faces["Item(Dial(Airspeed))"], 1, 1),
-    (faces["Item(Dial(Altimeter))"], 1, 1),
-    (scr["adi"], 1, 1),
-    (faces["Item(Dial(Clock))"], 1, 1),
-):
-    u, v = corner(r, sx, sy)
-    knob(u, v, 0.0045, 0.009, "dark", offset=PLATE)
-screen("screen_left", scr["left"], -0.004, "trackcam_left")
-screen("screen_right", scr["right"], -0.004, "trackcam")
-screen("screen_third", scr["third"], -0.004, "trackcam_third")
-screen("adi", scr["adi"], 0.0, round=True)
-screen("ded", scr["ded"], PLATE + 0.0005)
+screen("screen_left", scr["left"], seat(scr["left"]), "trackcam_left")
+screen("screen_right", scr["right"], seat(scr["right"]), "trackcam")
+screen("screen_third", scr["third"], seat(scr["third"]), "trackcam_third")
+screen("adi", scr["adi"], seat(scr["adi"], round=True), round=True)
+at, off = stand(scr["ded"])
+mesh_object("ded", quad_mesh("ded", scr["ded"][2] / 1000, scr["ded"][3] / 1000, "ded"), at.point(off=off + FACE_LIFT), at.rot, props={"no_shadow": True})
 for f in layout["faces"]:
+    r = f["rect"]
+    at, off = stand(r, f["round"], f["key"])
     if f["control"] is None:
-        face(f["key"], f["rect"], PLATE + 0.0005, f["round"])
-        if f["key"].startswith("Item(Dial(") and not f["round"]:
-            # The tapes' black window frames.
-            x, y, w, h = f["rect"]
-            frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), 0.0, PLATE + 0.005)
-    elif f["kind"] == "osb":
-        control(f["key"], f["rect"], BEZEL, f["control"], "osb")
+        face(f["key"], r, at.point(off=off + (FACE_LIFT if off else LIFT)), spun(r, at), at.n, f["round"])
     else:
-        control(f["key"], f["rect"], PLATE, f["control"], f["kind"])
+        control(f["key"], r, at.point(off=off), spun(r, at), f["control"], f["kind"])
 
-# --- side console panels round the throttle and the stick (dressing, as the F-16's)
-CONSOLE_FACE = CONSOLE_TOP + 0.004
+# --- the stick: the model's, tilting about the foot of its boot
+grip = max(v.co.z for v in stick_mesh.data.vertices) - 0.08
+stick = empty("stick", stick_mesh.location.copy(), props={"stick": True})
+stick_mesh.name = "stick_grip"
+stick_mesh.parent = stick
+stick_mesh.location = (0.0, 0.0, 0.0)
+stick["grip"] = grip * SCALE
 
-
-def fitting(c, p):
-    """A console fitting at p (on a panel's top): k / K small / large knob, t / T toggle leaning
-    forward / back, g red guard, r red button."""
-    if c in "kK":
-        r, h = (0.006, 0.010) if c == "k" else (0.009, 0.013)
-        mesh_object("dark", cylinder_mesh("dark", r + 0.003, 0.002, "dark", axis="Z", n=KNOB), p)
-        mesh_object("metal", cylinder_mesh("metal", r, h, "metal", axis="Z", n=KNOB), p + Vector((0.0, 0.0, 0.002)))
-    elif c in "tT":
-        mesh_object("dark", cylinder_mesh("dark", 0.005, 0.004, "dark", axis="Z", n=KNOB), p)
-        lean = Euler((math.radians(-30.0 if c == "t" else 30.0), 0.0, 0.0)).to_quaternion()
-        mesh_object("metal", box_mesh("metal", (0.004, 0.004, 0.016), "metal", (0.0, 0.0, 0.008), lean), p + Vector((0.0, 0.0, 0.003)))
-    elif c == "g":
-        mesh_object("red", box_mesh("red", (0.013, 0.022, 0.012), "red", (0.0, 0.0, 0.006)), p)
-    elif c == "r":
-        mesh_object("red", cylinder_mesh("red", 0.005, 0.006, "red", axis="Z", n=KNOB), p)
-
-
-def console_panel(x0, x1, y0, y1, rows, h=0.006):
-    """A plate over x0..x1, y0..y1 (m) on a console, its fittings in rows from the front."""
-    box("black", "black", ((x0 + x1) / 2, (y0 + y1) / 2, CONSOLE_FACE + h / 2), (x1 - x0, y1 - y0, h))
-    for i, row in enumerate(rows):
-        y = y1 - (y1 - y0) * (i + 0.5) / len(rows)
-        for j, c in enumerate(row):
-            fitting(c, Vector((x0 + (x1 - x0) * (j + 0.5) / len(row), y, CONSOLE_FACE + h)))
-
-
-for s in (-1, 1):
-    def side(x0, x1, y0, y1, rows):
-        """A panel given for the right console (x outwards), mirrored on the left."""
-        console_panel(*sorted((s * x0, s * x1)), y0, y1, [r if s > 0 else r[::-1] for r in rows])
-    # Behind the throttle and the arm rest, the width of the console.
-    side(0.198, 0.346, -0.262, -0.176, ["kKk", "tgt"])
-    side(0.198, 0.346, -0.168, -0.112, ["tttt", "kTk"] if s > 0 else ["tttt", "rgrg"])
-for rows, rect in (
-    (["kk", "TT", "kr"], (-0.346, -0.198, -0.100, 0.040)),  # ahead of those, behind the throttle
-    (["k", "t", "r", "k"], (-0.350, -0.300, 0.060, 0.232)),  # outboard of the throttle rails
-    (["t", "k", "t"], (-0.246, -0.198, 0.060, 0.232)),  # inboard of them
-    (["kk", "tt", "rr", "Kk"], (0.198, 0.240, -0.100, 0.120)),  # inboard of the arm rest
-):
-    console_panel(*rect, rows)
-# Arm rest behind the stick.
-box("cushion", "cushion", (0.295, 0.01, CONSOLE_TOP + 0.015), (0.09, 0.22, 0.03))
-# Yellow handles on the consoles' inner faces by the pilot's knees (canopy jettison left,
-# its emergency release right).
-for s, y in ((-1, 0.20), (1, 0.06)):
-    box("yellow", "yellow", (s * (CONSOLE_X[0] - 0.022), y, CONSOLE_TOP - 0.07), (0.012, 0.012, 0.08))
-    for dz in (-0.03, 0.03):
-        box("yellow", "yellow", (s * (CONSOLE_X[0] - 0.011), y, CONSOLE_TOP - 0.07 + dz), (0.022, 0.01, 0.01))
-
-
-# --- the new parts to the F-117A cockpit's size: positions and meshes scaled about the eye,
-# the controls' sizes with them
+# --- the parts file's parts, which it has at the F-117A cockpit's size: to life size first
 SIZE_PROPS = ("height", "travel")
 
 
-def scale(o, k):
+def scale(o, k, done):
+    """Scales an object and its children about the eye: their places, meshes and sizes."""
     o.location = o.location * k
-    if o.type == "MESH":
+    if o.type == "MESH" and o.data.name not in done:
+        done.add(o.data.name)
         o.data.transform(Matrix.Scale(k, 4))
     for p in SIZE_PROPS:
         if p in o.keys():
@@ -772,58 +756,137 @@ def scale(o, k):
     if "half" in o.keys():
         o["half"] = [h * k for h in o["half"]]
     for c in o.children:
-        scale(c, k)
+        scale(c, k, done)
 
 
-for o in list(root.children):
-    if o not in old:
-        scale(o, SCALE)
-
-# --- the kept parts
 objs = {o.name: o for o in root.children}
-rise = CONSOLE_TOP * SCALE + PIVOT_OVER_CONSOLE - objs["stick"].location.z
-for n in LEVERS:
-    objs[n].location.z += rise
-# Target buttons on the left slope, ahead of the throttle, faces up towards the pilot; the gear
-# handle right of the gear lights above them.
+life = set()
+for o in objs.values():
+    if o not in fixed and o is not hud and o.name.startswith(KEEP):
+        scale(o, 1.0 / SCALE, life)
+
+
+def named(prefixes):
+    return [o for n, o in objs.items() if n.startswith(prefixes)]
+
+
+# The seat: larger, to sit between the consoles with the pilot's eye 0.8 m over its cushion,
+# on a pedestal from the floor.
+SEAT_SIZE = 1.25
+FLOOR = -1.13
+seated = set()
+for o in named(SEAT):
+    scale(o, SEAT_SIZE, seated)
+bottom = min((o.matrix_world @ Vector(c)).z for o in named(("seat_",)) for c in o.bound_box)
+pedestal = box("dark", "dark", (0.0, -0.12, (FLOOR + bottom) / 2), (0.34, 0.46, bottom - FLOOR))
+# The throttle and its rails forward on the left console, the handle at idle level with the
+# stick's grip.
+THROTTLE_AT = Vector((-0.425, 0.52))  # x, y of the handle at idle
+handle = objs["throttle"]
+move = Vector((THROTTLE_AT.x - handle.location.x, THROTTLE_AT.y - handle.location.y, 0.0))
+move.z = console_z(THROTTLE_AT.x) + 0.004 - objs["black_549"].location.z
+for o in named(THROTTLE):
+    o.location += move
+# The target buttons on the left console behind the throttle, faces up; the gear handle low
+# on the panel's left wing where the model's lever was.
+tilt = math.atan2(CONSOLE[0], CONSOLE[2])
+across = Vector((math.cos(tilt), 0.0, -math.sin(tilt)))
+normal = Vector((math.sin(tilt), 0.0, math.cos(tilt)))
+console_rot = Matrix((across, -normal, Vector((0.0, 1.0, 0.0)))).transposed().to_quaternion()
 for i, n in enumerate(["button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL"]):
     o = objs[n]
     col_, row = i // 3, i % 3
-    u = -700.0 - (-25.0 + 45.0 * col_)
-    o.location = point(u, 15.0 + 34.0 * row, 0.004) * SCALE
+    x = -0.385 - 0.08 * col_
+    o.location = Vector((x, 0.37 - 0.045 * row, console_z(x))) + normal * 0.002
     o.rotation_mode = "QUATERNION"
-    o.rotation_quaternion = rotation(u)
+    o.rotation_quaternion = console_rot
 g = objs["control_Action_Gear_.001"]
-g.location = point(-668.0, -94.0, 0.002) * SCALE
+GEAR = (-1329.0, 337.0)
+at = seat((GEAR[0] - 15.0, GEAR[1] - 15.0, 30.0, 30.0))
+g.location = at.point(off=0.002)
 g.rotation_mode = "QUATERNION"
-g.rotation_quaternion = rotation(-668.0)
-# HUD frame (the cockpit's scale): bars along the glass's outline (its posts, chamfered top
-# corners and top), outside it by half a bar, the posts standing on the coaming; each bar
-# overlaps the next by half a bar so the joints close.
-hud = next(o for o in root.children if o.name.startswith("hud_glass"))
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-hud_y = sum(v.y for v in glass) / len(glass)
-half_x = max(abs(v.x) for v in glass)
-top = max(v.z for v in glass)
-# The chamfers: from the posts' tops (the highest glass corner at the side) to the top's ends.
-shoulder = max(v.z for v in glass if abs(abs(v.x) - half_x) < 0.01)
-top_x = min(abs(v.x) for v in glass if abs(v.z - top) < 0.002)
-post_x = half_x + HUD_BAR / 2
-bottom = [coaming_z(s * post_x / SCALE, hud_y / SCALE) * SCALE for s in (-1, 1)]
-outline = [
-    Vector((-post_x, bottom[0])), Vector((-post_x, shoulder)),
-    Vector((-top_x, top + HUD_BAR / 2)), Vector((top_x, top + HUD_BAR / 2)),
-    Vector((post_x, shoulder)), Vector((post_x, bottom[1])),
-]
-for a, b in zip(outline, outline[1:]):
-    d = b - a
-    centre = (a + b) / 2
-    rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
-    box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
-# The approach indexer just outside the left post, in a housing behind it.
+g.rotation_quaternion = at.rot
+
+# --- the consoles' switch panels: the model's are flat (their switches were in its picture),
+# so plates with knobs, toggle switches and guarded buttons lie on them, round the throttle
+# and the target buttons left (dressing: none of them works)
+
+
+def console_frame(sx):
+    """A console's top (sx -1 left, 1 right): (normal, rotation of a part lying on it)."""
+    n = Vector((-sx * math.sin(tilt), 0.0, math.cos(tilt)))
+    return n, Euler((0.0, -sx * tilt, 0.0))
+
+
+def fitting(c, p, n, rot):
+    """A console fitting at p: k / K small / large knob, t / T toggle leaning forward / back, g
+    red guard, r red button."""
+    if c in "kK":
+        r, h = (0.006, 0.010) if c == "k" else (0.009, 0.013)
+        mesh_object("dark", cylinder_mesh("dark", r + 0.003, 0.002, "dark", axis="Z", n=KNOB), p, rot)
+        mesh_object("metal", cylinder_mesh("metal", r, h, "metal", axis="Z", n=KNOB), p + n * 0.002, rot)
+    elif c in "tT":
+        mesh_object("dark", cylinder_mesh("dark", 0.005, 0.004, "dark", axis="Z", n=KNOB), p, rot)
+        lean = Euler((math.radians(-30.0 if c == "t" else 30.0), 0.0, 0.0)).to_quaternion()
+        mesh_object("metal", box_mesh("metal", (0.004, 0.004, 0.016), "metal", (0.0, 0.0, 0.008), lean), p + n * 0.003, rot)
+    elif c == "g":
+        mesh_object("red", box_mesh("red", (0.013, 0.022, 0.012), "red", (0.0, 0.0, 0.006)), p, rot)
+    elif c == "r":
+        mesh_object("red", cylinder_mesh("red", 0.005, 0.006, "red", axis="Z", n=KNOB), p, rot)
+
+
+def console_panel(x0, x1, y0, y1, rows, h=0.005):
+    """A plate over x0..x1, y0..y1 (m) on a console, its fittings in rows from the front."""
+    sx = 1 if x0 > 0 else -1
+    n, rot = console_frame(sx)
+    at = lambda x, y, off: Vector((x, y, console_z(x))) + n * off
+    w = (x1 - x0) / math.cos(tilt)
+    mesh_object("black", box_mesh("black", (w, y1 - y0, h), "black"), at((x0 + x1) / 2, (y0 + y1) / 2, h / 2), rot)
+    for i, row in enumerate(rows):
+        y = y1 - (y1 - y0) * (i + 0.5) / len(rows)
+        for j, c in enumerate(row):
+            fitting(c, at(x0 + (x1 - x0) * (j + 0.5) / len(row), y, h), n, rot)
+
+
+# The consoles' tops reach from |x| 0.335 to 0.515 m, from y -0.17 m to 0.68 m.
+for rows, rect in (
+    (["kKk", "tgt", "tttt"], (-0.515, -0.335, -0.17, 0.06)),  # behind the target buttons
+    (["kk", "TT", "kr"], (-0.515, -0.335, 0.08, 0.22)),
+    (["t", "k", "t"], (-0.395, -0.338, 0.49, 0.67)),  # inboard of its rails
+    (["k", "t", "r", "k"], (-0.512, -0.455, 0.49, 0.67)),  # outboard of them
+    (["kKk", "tTt"], (0.335, 0.515, -0.10, 0.06)),
+    (["tttt", "kTk"], (0.335, 0.515, 0.09, 0.28)),
+    (["kk", "tt", "rg"], (0.335, 0.515, 0.31, 0.50)),
+):
+    console_panel(*rect, rows)
+
+# The approach indexer left of the HUD's mount, in a housing behind it standing on the
+# glare shield (it is not scaled: its place at the cockpit's size).
 ind = next(o for o in root.children if o.name.startswith("approach"))
-ind.location.x = -(post_x + HUD_BAR / 2 + 0.018)
-box("dark", "dark", (ind.location.x, hud_y + 0.009, ind.location.z), (0.040, 0.014, 0.097))
+INDEXER = Vector((-0.19, 0.88))  # x, y (m)
+HOUSING = (0.040, 0.014, 0.097)
+# Down onto it from under the canopy's frame.
+shield = surface.ray_cast(Vector((INDEXER.x, INDEXER.y, -0.12)), Vector((0.0, 0.0, -1.0)), 1.0)[0]
+ind.location = Vector((INDEXER.x * SCALE, INDEXER.y * SCALE, shield.z * SCALE + HOUSING[2] / 2))
+housing = box("dark", "dark", ind.location + Vector((0.0, 0.009, 0.0)), HOUSING)
+fixed.add(housing)
+
+# --- the pilot sits EYE_DROP m lower than the contributed model's pilot (`AircraftSpec::eye`
+# is as much under tools/models/f117_source.py `EYE`), to look through the HUD's glass, not
+# over it: the cockpit stands as much higher about the eye, but the seat, which goes down
+# with him
+EYE_DROP = 0.10
+seat_parts = set(named(SEAT)) | {pedestal}
+for o in list(root.children):
+    if o not in seat_parts:
+        o.location.z += EYE_DROP * (SCALE if o in fixed else 1.0)
+
+# --- everything to the F-117A cockpit's size: positions and meshes scaled about the eye, the
+# controls' sizes with them
+done = set()
+for o in list(root.children):
+    if o not in fixed:
+        scale(o, SCALE, done)
 
 bpy.data.orphans_purge(do_recursive=True)
 bpy.ops.wm.save_as_mainfile(filepath=out)

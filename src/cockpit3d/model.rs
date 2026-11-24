@@ -463,7 +463,11 @@ impl<'a> Spawner<'a> {
                 if let Some(tip) = face.and_then(|&f| tooltips::face_tip(f)) {
                     ec.insert(tip);
                 }
-                self.panel.atlas.clone()
+                if extras["atlas_cut"].as_bool() == Some(true) {
+                    self.panel.atlas_cut.clone()
+                } else {
+                    self.panel.atlas.clone()
+                }
             }
             "screen_scope" | "screen_board" | "screen_eo" | "screen_info" | "screen_map"
             | "screen_feed" | "screen_asw" => {

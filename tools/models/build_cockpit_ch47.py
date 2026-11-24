@@ -1,6 +1,6 @@
 # Builds the CH-47F cockpit master (assets-src/blend/cockpit_ch47.blend) from the panel layout,
 # after the CH-47F's cockpit, with parts of the F-117A's modern cockpit and the UH-60's collective:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_ch47.py -- \
 #       assets-src/blend/cockpit_ch47_layout.json assets-src/blend/cockpit_ch47.blend
 # then tools/models/export.sh cockpit_ch47. The layout JSON is written by

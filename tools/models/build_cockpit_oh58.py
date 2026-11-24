@@ -1,10 +1,10 @@
 # Builds the OH-58D cockpit masters (assets-src/blend/cockpit_oh58.blend, the pilot's, and
 # cockpit_oh58_cpg.blend, the copilot/gunner's) from the panel layout, after the OH-58D Kiowa
 # Warrior's cockpit, with parts of the F-117A's modern cockpit and the UH-60's collective:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_oh58.py -- \
 #       assets-src/blend/cockpit_oh58_layout.json assets-src/blend/cockpit_oh58.blend
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_oh58.py -- \
 #       assets-src/blend/cockpit_oh58_cpg_layout.json assets-src/blend/cockpit_oh58_cpg.blend --seat left
 # then tools/models/export.sh cockpit_oh58 and cockpit_oh58_cpg. The layout JSONs are written by

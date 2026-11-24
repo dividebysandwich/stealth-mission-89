@@ -112,11 +112,14 @@ fn readout_text(readout: Readout, panel: &PanelParams) -> String {
             panel.dial_value(Dial::TapeFlow).round() as i32,
             panel.dial_aux(Dial::TapeFlow).round() as i32
         ),
-        Readout::Dial(dial @ (Dial::TapeRpm | Dial::TapeEgt | Dial::TapeOil)) => format!(
-            "{} / {}",
-            panel.dial_value(dial).round() as i32,
-            dial_text(dial, panel.dial_aux(dial))
-        ),
+        Readout::Dial(Dial::FuelQuantity) => dial_text(Dial::Fuel, a.fuel),
+        Readout::Dial(dial @ (Dial::TapeRpm | Dial::TapeEgt | Dial::TapeOil | Dial::Engines)) => {
+            format!(
+                "{} / {}",
+                panel.dial_value(dial).round() as i32,
+                dial_text(dial, panel.dial_aux(dial))
+            )
+        }
         Readout::Dial(dial) => dial_text(dial, panel.dial_value(dial)),
         Readout::Led(led) => match led {
             LedId::Chaff => panel.cm.chaff.to_string(),
@@ -190,6 +193,8 @@ fn dial_text(dial: Dial, value: f32) -> String {
         Dial::TapeRpm => format!("{v} %"),
         Dial::TapeEgt => format!("{v} °C"),
         Dial::TapeOil => format!("{v} psi"),
+        Dial::Engines => format!("{v} %"),
+        Dial::FuelQuantity => format!("{} lbs", v.max(0)),
     }
 }
 
@@ -569,6 +574,8 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::TapeEgt => "tip-dial-egt",
                 Dial::TapeFlow => "tip-dial-fuel-flow",
                 Dial::TapeOil => "tip-dial-oil",
+                Dial::Engines => "tip-dial-rpm",
+                Dial::FuelQuantity => "tip-dial-fuel",
             };
             // The ball shows no number.
             if dial == Dial::Slip {

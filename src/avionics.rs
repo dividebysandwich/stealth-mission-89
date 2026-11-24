@@ -1385,8 +1385,40 @@ const YELLOW: u8 = 17;
 const AMBER: u8 = 18;
 const DEEP_RED: u8 = 16;
 
-/// Draws an MFD with the modern avionics.
+/// How far down (canvas pixels) a screen taller than the `HIRES` canvas (the F-117A's square
+/// side MFDs) shows the page: in its middle, at its own shape.
+pub fn tall_offset(h: usize) -> usize {
+    h.saturating_sub(HIRES.1) / 2
+}
+
+/// Draws an MFD with the modern avionics. On a taller screen the page is drawn at the `HIRES`
+/// shape in its middle (everything on it works in `HIRES` pixels), the bezel labels along the
+/// whole screen's edges, next to their buttons.
 pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, fonts: &Fonts) {
+    let off = tall_offset(c.h);
+    if off == 0 {
+        draw_page(p, side, c, art, fonts, true);
+        return;
+    }
+    let mut page = Canvas::scaled(c.w, HIRES.1, c.scale);
+    draw_page(p, side, &mut page, art, fonts, false);
+    c.clear(if p.camera_see_through(side) { 0 } else { BLACK });
+    c.copy_rect(&page, 0, 0, page.w as i32, page.h as i32, 0, off as i32);
+    draw_labels(c, side, &p.state);
+    if p.state.av.soi_format() == Some(p.state.av.format(side)) && p.state.av.menu(side).is_none() {
+        c.frame(Vec2::splat(1.0), Vec2::new(c.w as f32 - 2.0, c.h as f32 - 2.0), 2.0, WHITE);
+    }
+}
+
+/// Draws a format's page, with its bezel labels and the SOI frame when `edges`.
+fn draw_page(
+    p: &MfdParams,
+    side: MfdSide,
+    c: &mut Canvas,
+    art: &CockpitArt,
+    fonts: &Fonts,
+    edges: bool,
+) {
     let s = &p.state;
     let av = &s.av;
     let f = av.format(side);
@@ -1395,7 +1427,9 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
     // The format menu: just the formats along the sides.
     if av.menu(side).is_some() {
         c.clear(BLACK);
-        draw_labels(c, side, s);
+        if edges {
+            draw_labels(c, side, s);
+        }
         return;
     }
     match f {
@@ -1444,9 +1478,11 @@ pub fn draw(p: &MfdParams, side: MfdSide, c: &mut Canvas, art: &CockpitArt, font
             }
         }
     }
-    draw_labels(c, side, s);
-    if soi {
-        c.frame(Vec2::splat(1.0), Vec2::new(c.w as f32 - 2.0, c.h as f32 - 2.0), 2.0, WHITE);
+    if edges {
+        draw_labels(c, side, s);
+        if soi {
+            c.frame(Vec2::splat(1.0), Vec2::new(c.w as f32 - 2.0, c.h as f32 - 2.0), 2.0, WHITE);
+        }
     }
 }
 
@@ -2295,6 +2331,17 @@ pub fn gm_backdrop(
     }
     let view = gm_view(av, p.aircraft.single().ok())?;
     let radar = p.radar.as_deref()?;
+    // On a taller screen: the page's picture in its middle (`tall_offset`).
+    let page_h = (HIRES.1 as f32 * scale).round() as usize;
+    if ph > page_h {
+        let page = gm_backdrop(p, side, None, pw, page_h, scale)?;
+        let off =
+            (tall_offset((ph as f32 / scale).round() as usize) as f32 * scale).round() as usize;
+        let mut rgba = vec![0; pw * ph * 4];
+        let row = pw * 4;
+        rgba[off * row..(off + page_h) * row].copy_from_slice(&page.rgba);
+        return Some(std::sync::Arc::new(crate::canvas::Picture { w: pw, h: ph, rgba }));
+    }
     let mut pic = prev.filter(|pic| pic.w == pw && pic.h == ph).unwrap_or_else(|| {
         std::sync::Arc::new(crate::canvas::Picture { w: pw, h: ph, rgba: vec![0; pw * ph * 4] })
     });

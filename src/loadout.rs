@@ -237,34 +237,36 @@ const NO_AIR_TO_AIR: [u8; 18] =
     [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105];
 
 // tools/models/planform.py
-/// aircraft_024 (tools/models/f117.py) seen from above: half span 6.48 m, length 20.26 m.
+/// aircraft_024 (tools/models/f117.py) seen from above: half span 6.62 m, length 20.38 m.
 const F117_OUTLINE: &[(f32, f32)] = &[
     (0.00, 0.00),
-    (6.48, 14.96),
-    (6.48, 16.48),
-    (5.88, 17.14),
-    (2.92, 13.66),
-    (2.66, 13.60),
-    (2.58, 13.68),
-    (0.84, 16.10),
-    (0.86, 16.42),
-    (1.74, 19.28),
-    (1.74, 20.26),
-    (0.34, 17.56),
-    (0.34, 17.08),
-    (0.00, 17.06),
-    (-0.34, 17.08),
-    (-0.34, 17.56),
-    (-1.74, 20.26),
-    (-1.74, 19.28),
-    (-0.86, 16.42),
-    (-0.84, 16.10),
-    (-2.58, 13.68),
-    (-2.66, 13.60),
-    (-2.92, 13.66),
-    (-5.88, 17.14),
-    (-6.48, 16.48),
-    (-6.48, 14.96),
+    (6.62, 15.98),
+    (6.62, 16.92),
+    (5.96, 17.64),
+    (2.78, 13.94),
+    (2.56, 13.92),
+    (2.34, 14.82),
+    (1.00, 16.32),
+    (1.02, 16.60),
+    (1.62, 18.60),
+    (1.68, 19.44),
+    (1.62, 20.38),
+    (0.20, 17.86),
+    (0.12, 17.46),
+    (0.00, 17.44),
+    (-0.12, 17.46),
+    (-0.20, 17.86),
+    (-1.62, 20.38),
+    (-1.68, 19.44),
+    (-1.62, 18.60),
+    (-1.02, 16.60),
+    (-1.00, 16.32),
+    (-2.34, 14.82),
+    (-2.56, 13.92),
+    (-2.78, 13.94),
+    (-5.96, 17.64),
+    (-6.62, 16.92),
+    (-6.62, 15.98),
 ];
 /// aircraft_048 (tools/models/kiowa.py) seen from above, without its rotors and pylons: half span
 /// (the skids) 1.18 m, length 10.32 m.
@@ -1187,9 +1189,9 @@ static A10_STATIONS: [Hardpoint; 11] = [
 ];
 
 static F117_REAL_LAYOUT: Layout =
-    Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_REAL };
+    Layout { outline: F117_OUTLINE, half_span: 6.62, length: 20.38, hardpoints: &F117_REAL };
 static F117_FANTASY_LAYOUT: Layout =
-    Layout { outline: F117_OUTLINE, half_span: 6.48, length: 20.26, hardpoints: &F117_FANTASY };
+    Layout { outline: F117_OUTLINE, half_span: 6.62, length: 20.38, hardpoints: &F117_FANTASY };
 static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.84, length: 15.90, hardpoints: &F16_STATIONS };
 static A10_LAYOUT: Layout =

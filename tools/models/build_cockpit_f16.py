@@ -1,6 +1,6 @@
 # Builds the F-16C cockpit master (assets-src/blend/cockpit_f16.blend) from the F-117A's modern
 # cockpit and the F-16 panel layout:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_f16.py -- assets-src/blend/cockpit_f16_layout.json \
 #       assets-src/blend/cockpit_f16.blend
 # then tools/models/export.sh cockpit_f16.

@@ -1,6 +1,6 @@
 # Builds the AV-8B Harrier II cockpit master (assets-src/blend/cockpit_av8b.blend) from the panel
 # layout, after the AV-8B Night Attack's front panel, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_av8b.py -- \
 #       assets-src/blend/cockpit_av8b_layout.json assets-src/blend/cockpit_av8b.blend
 # then tools/models/export.sh cockpit_av8b. The layout JSON is written by

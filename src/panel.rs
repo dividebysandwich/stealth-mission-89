@@ -1045,10 +1045,32 @@ impl PanelParams<'_, '_> {
             format!("STPT {}", self.waypoints.current + 1)
         };
         let cut = |s: &str, n: usize| s.chars().take(n).collect::<String>();
+        let clock = format!("{hh:02}:{mm:02}:{ss:02}");
+        // The F-117A's modern panel's display is wider and four lines tall.
+        if self.settings.cockpit().0 == PanelStyle::Modern {
+            use crate::cockpit3d::layout::DED4_COLS;
+            let lines = [
+                format!("{:<12}{:<12}{:>14}", "UHF 305.00", "VHF 123.45", steer),
+                format!("{:<19}{:>19}", cut(&kind, 19), cut(&place, 19)),
+                format!("BRG {bearing:03} {dist:>6} ETA {eta}{clock:>14}"),
+                format!("{:<19}{:>19}", "M3 1234", right),
+            ];
+            for (i, line) in lines.iter().enumerate() {
+                fonts.text_scaled(
+                    c,
+                    4,
+                    2 + i as i32 * 8 * DED_SCALE,
+                    cut(line, DED4_COLS as usize).as_bytes(),
+                    ink,
+                    DED_SCALE,
+                );
+            }
+            return;
+        }
         let lines = [
             format!("{:<12}{:>12}", "UHF 305.00", steer),
             format!("{:<12}{:>12}", cut(&kind, 12), cut(&place, 12)),
-            format!("{:<12}{:>12}", "VHF 123.45", format!("{hh:02}:{mm:02}:{ss:02}")),
+            format!("{:<12}{:>12}", "VHF 123.45", clock),
             format!("BRG {bearing:03} {dist:>6} ETA {eta}"),
             format!("{:<12}{:>12}", "M3 1234", right),
         ];
@@ -1145,7 +1167,17 @@ impl PanelParams<'_, '_> {
             Dial::TapeRpm | Dial::TapeEgt | Dial::TapeFlow | Dial::TapeOil => {
                 self.engine_tape(a, dial, 0)
             }
+            Dial::Engines => self.engines().map_or(0.0, |e| e.core[0]),
+            Dial::FuelQuantity => a.fuel.max(0.0),
         }
+    }
+
+    /// The engines' readings (`eng_page::Eng`).
+    pub fn engines(&self) -> Option<crate::eng_page::Eng> {
+        let a = self.aircraft.single().ok()?;
+        let kind = self.settings.aircraft;
+        let k = kind.spec().flight();
+        Some(crate::eng_page::Eng::of(kind, a, Some(&k)))
     }
 
     /// The second value of the instruments that show two (`draw_dial`'s `aux`): the Mach number
@@ -1160,6 +1192,8 @@ impl PanelParams<'_, '_> {
             Dial::TapeRpm | Dial::TapeEgt | Dial::TapeFlow | Dial::TapeOil => {
                 self.engine_tape(a, dial, 1)
             }
+            Dial::Engines => self.engines().map_or(0.0, |e| e.core[1]),
+            Dial::FuelQuantity => self.bingo(),
             _ => 0.0,
         }
     }
@@ -1236,6 +1270,105 @@ impl PanelParams<'_, '_> {
     }
 }
 
+/// The F-117A's engine and fuel instruments' plates: see-through (index 0), the model's own
+/// plate shows (their faces have the cut-out atlas material, `atlas_cut`).
+fn instrument_plate(c: &mut Canvas, x: f32, y: f32, w: f32, h: f32) {
+    c.fill_rect(x as i32, y as i32, w as i32, h as i32, 0);
+}
+
+/// A counter: white digits in a black window centred on (x, y), `h` high.
+fn counter(c: &mut Canvas, x: f32, y: f32, w: f32, h: f32, text: &str) {
+    use crate::font::{Align, stroke_text_at};
+    c.fill_rect((x - w / 2.0) as i32, (y - h / 2.0) as i32, w as i32, h as i32, 5);
+    stroke_text_at(c, x, y, text, h * 0.62, (h / 14.0).max(1.0), 15, Align::Centre);
+}
+
+/// The F-117A's engine instruments into the rectangle r (after the real one's; clear of the
+/// corners, which the model's plate's clamps cover): under ENGINE with L and R, both engines' core speed (%), exhaust gas temperature (deg C), fuel flow (lb
+/// an hour) and fan speed (%) in counters, the oil pressure (psi) under them.
+pub fn draw_engine_counters(c: &mut Canvas, r: [i32; 4], e: &crate::eng_page::Eng) {
+    use crate::font::{Align, stroke_text_at};
+    let [x, y, w, h] = r;
+    let (x, y, w, h) = (x as f32, y as f32, w as f32, h as f32);
+    instrument_plate(c, x, y, w, h);
+    let unit = h / 30.0;
+    let pen = (unit / 3.0).max(1.0);
+    let grey = |c: &mut Canvas, cx: f32, cy: f32, s: &str, size: f32| {
+        stroke_text_at(c, cx, cy, s, size, pen, 7, Align::Centre);
+    };
+    let flow = e.flow / e.engines.max(1) as f32;
+    let rows: [(&str, [f32; 2], usize); 5] = [
+        ("CORE RPM", [e.core[0], e.core[1]], 3),
+        ("EGT", [e.temp[0], e.temp[1]], 3),
+        ("FF", [flow, flow], 4),
+        ("FAN RPM", [e.fan[0], e.fan[1]], 3),
+        ("OIL", [e.oil[0], e.oil[1]], 2),
+    ];
+    grey(c, x + w * 0.17, y + unit * 2.6, "L", unit * 1.5);
+    grey(c, x + w / 2.0, y + unit * 2.6, "ENGINE", unit * 1.4);
+    grey(c, x + w * 0.83, y + unit * 2.6, "R", unit * 1.5);
+    for (k, (name, v, digits)) in rows.into_iter().enumerate() {
+        let top = y + unit * (4.5 + 5.1 * k as f32);
+        grey(c, x + w / 2.0, top + unit, name, unit * 1.4);
+        let cw = unit * (1.5 * digits as f32 + 1.0);
+        for (i, cx) in [x + w * 0.27, x + w * 0.73].into_iter().enumerate() {
+            let n = v[i].round().clamp(0.0, 10f32.powi(digits as i32) - 1.0) as i32;
+            counter(c, cx, top + unit * 3.3, cw, unit * 2.6, &format!("{n:0digits$}"));
+        }
+    }
+}
+
+/// The F-117A's fuel quantity indicator into the rectangle r: under FUEL QUANTITY a needle
+/// over thousands of lbs (to a full load), the total in a counter under it and the bingo fuel
+/// (`bingo`) in a small one.
+fn draw_fuel_quantity(c: &mut Canvas, r: [i32; 4], fuel: f32, bingo: f32) {
+    use crate::font::{Align, stroke_text_at};
+    let [x, y, w, h] = r;
+    let (x, y, w, h) = (x as f32, y as f32, w as f32, h as f32);
+    instrument_plate(c, x, y, w, h);
+    let unit = h / 30.0;
+    let pen = (unit / 3.0).max(1.0);
+    stroke_text_at(
+        c,
+        x + w / 2.0,
+        y + unit * 2.0,
+        "FUEL QUANTITY",
+        unit * 1.6,
+        pen,
+        7,
+        Align::Centre,
+    );
+    // The dial: 0 to a full load in thousands, over 300 degrees.
+    let centre = Vec2::new(x + w / 2.0, y + unit * 12.0);
+    let rad = unit * 8.2;
+    c.ring(centre, rad / 2.0, rad, 5);
+    c.ring(centre, rad - pen, pen, 7);
+    let full = crate::mfd::FULL_FUEL;
+    let dir = |t: f32| {
+        let a = (-150.0 + 300.0 * t).to_radians();
+        Vec2::new(a.sin(), -a.cos())
+    };
+    let steps = (full / 2000.0).round().max(1.0) as i32;
+    for i in 0..=steps {
+        let t = i as f32 / steps as f32;
+        let d = dir(t);
+        c.stroke(centre + d * rad * 0.92, centre + d * rad * 0.78, pen, 15);
+        let p = centre + d * rad * 0.6;
+        let label = format!("{}", (t * full / 1000.0).round() as i32);
+        stroke_text_at(c, p.x, p.y, &label, rad * 0.2, pen, 15, Align::Centre);
+    }
+    stroke_text_at(c, centre.x, centre.y + rad * 0.25, "X1000", rad * 0.13, pen, 7, Align::Centre);
+    let d = dir((fuel / full).clamp(0.0, 1.0));
+    c.stroke(centre - d * rad * 0.12, centre + d * rad * 0.85, pen * 1.6, 15);
+    // The total and the bingo fuel.
+    stroke_text_at(c, x + w / 2.0, y + unit * 21.6, "TOTAL LBS", unit * 1.3, pen, 7, Align::Centre);
+    let total = fuel.round().clamp(0.0, 99999.0) as i32;
+    counter(c, x + w / 2.0, y + unit * 24.2, unit * 9.5, unit * 2.8, &format!("{total:05}"));
+    stroke_text_at(c, x + w * 0.24, y + unit * 28.0, "BINGO", unit * 1.2, pen, 7, Align::Centre);
+    let bingo = bingo.round().clamp(0.0, 99999.0) as i32;
+    counter(c, x + w * 0.62, y + unit * 28.0, unit * 7.5, unit * 2.0, &format!("{bingo:05}"));
+}
+
 /// The A-6's angle of attack indicator's units for an angle of attack (degrees): 20 units on
 /// the approach.
 pub fn aoa_units(deg: f32) -> f32 {
@@ -1254,6 +1387,9 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
         }
         Dial::Slip => return draw_slip(c, r, value),
         Dial::TurnSlip => return draw_turn_slip(c, r, value, aux),
+        Dial::FuelQuantity => return draw_fuel_quantity(c, r, value, aux),
+        // Drawn with all the engines' readings (`draw_engine_counters`).
+        Dial::Engines => return,
         _ => {}
     }
     let [x, y, w, h] = r;
@@ -1333,7 +1469,9 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
         | Dial::TapeRpm
         | Dial::TapeEgt
         | Dial::TapeFlow
-        | Dial::TapeOil => return,
+        | Dial::TapeOil
+        | Dial::Engines
+        | Dial::FuelQuantity => return,
     };
     let dir = |deg: f32| {
         let a = deg.to_radians();

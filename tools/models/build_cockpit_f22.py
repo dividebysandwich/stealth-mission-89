@@ -1,6 +1,6 @@
 # Builds the F-22A Raptor cockpit master (assets-src/blend/cockpit_f22.blend) from the panel
 # layout, after the F-22A's glass cockpit, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_f22.py -- \
 #       assets-src/blend/cockpit_f22_layout.json assets-src/blend/cockpit_f22.blend
 # then tools/models/export.sh cockpit_f22. The layout JSON is written by

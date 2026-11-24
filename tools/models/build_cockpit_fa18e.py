@@ -1,6 +1,6 @@
 # Builds the F/A-18E Super Hornet cockpit master (assets-src/blend/cockpit_fa18e.blend) from the
 # panel layout, after the Block II's, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_fa18e.py -- \
 #       assets-src/blend/cockpit_fa18e_layout.json assets-src/blend/cockpit_fa18e.blend
 # then tools/models/export.sh cockpit_fa18e. The layout JSON is written by

@@ -189,7 +189,8 @@ its Aircraft options match the options above. Shaders, shadows, lighting, cockpi
 also be switched in flight (Esc).
 
 ### Editing the cockpits
-The cockpits are Blender models: `assets-src/blend/cockpit_modern.blend` and
+The cockpits are Blender models: `assets-src/blend/cockpit_modern.blend` (built by
+`tools/models/build_cockpit_f117.py` from a contributed model) and
 `cockpit_classic.blend` are the sources, `tools/models/export.sh cockpit_modern cockpit_classic`
 writes `assets/models/cockpit_*.glb`, which the game loads. The game finds its parts by
 material name (live displays, HUD glass, instrument atlas faces, palette-coloured solids) and by

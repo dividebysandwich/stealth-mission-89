@@ -1,6 +1,6 @@
 # Builds the UH-60A cockpit master (assets-src/blend/cockpit_uh60.blend) from the panel layout,
 # after the UH-60M's cockpit, with parts of the F-117A's modern cockpit:
-#   blender -b assets-src/blend/cockpit_modern.blend --python-exit-code 1 \
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_uh60.py -- \
 #       assets-src/blend/cockpit_uh60_layout.json assets-src/blend/cockpit_uh60.blend
 # then tools/models/export.sh cockpit_uh60. The layout JSON is written by
