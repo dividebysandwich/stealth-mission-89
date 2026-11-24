@@ -166,6 +166,13 @@ fn unit_model(k: stealth_sim::aaa::GroundKind) -> i32 {
         K::ArmyTruck => AAA_MODELS + 23,
         K::Technical => AAA_MODELS + 24,
         K::Zsu572 => AAA_MODELS + 25,
+        // The campaign's strategic facilities (tools/models/facilities.py).
+        K::AmmoDepot => AAA_MODELS + 27,
+        K::FuelDepot => AAA_MODELS + 28,
+        K::PowerPlant => AAA_MODELS + 29,
+        K::DroneFactory => AAA_MODELS + 30,
+        K::TankFactory => AAA_MODELS + 31,
+        K::Headquarters => AAA_MODELS + 32,
         stealth_sim::aaa::GroundKind::Usv => USV_MODEL,
         k => AAA_MODELS + k as i32,
     }

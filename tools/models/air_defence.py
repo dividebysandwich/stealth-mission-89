@@ -2,6 +2,7 @@
 MANPADS team, ZSU-57-2 (a contributed model, assets-src/blend/zsu572.blend), and the friendly
 Patriot launcher and radar, the Gepard, the drone command center and the NASAMS launcher and
 Sentinel radar, and a carrier's catapult officer)
+and the campaign's strategic facilities (tools/models/facilities.py: models 137 to 142)
 and the armour (T-90A and BMP-2 for the red side, Leopard 2A6 and M2A2 Bradley for the blue), for
 the air defence option and the campaign (crates/stealth-sim/src/aaa.rs):
 
@@ -28,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE)
 
+import facilities  # noqa: E402
 import mklib  # noqa: E402
 import stores  # noqa: E402
 from mklib import Geo, Ramp, block, frustum, wheel  # noqa: E402
@@ -1984,6 +1986,7 @@ def main():
     technical()
     zsu572()
     phalanx_deck()
+    facilities.build_all(levels, mesh_obj, far, K)
     bpy.ops.export_scene.gltf(
         filepath=out, export_format="GLB", export_extras=True, export_yup=True, export_texcoords=False,
         export_normals=False, export_materials="EXPORT", use_visible=False, export_animations=False,
