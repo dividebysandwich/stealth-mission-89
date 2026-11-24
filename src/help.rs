@@ -174,9 +174,9 @@ Testing and screenshots
   --map-view <x>,<y>,<scale>   frame the war map at map point x, y (map units per point)
   --fp2-strike [m]             an attack drone at the enemy column's Shilka once it drove m
                                (with --convoy-now)
-  --campaign-watch armour|fp2|zsu|nasams|supply|supply-road
+  --campaign-watch armour|fp2|zsu|nasams|supply|supply-road|facility
                                watch a tank on the move, the attack drone, the column's Shilka,
-                               a friendly NASAMS launcher
+                               a friendly NASAMS launcher, an enemy strategic facility
   --watch-orbit <yaw>,<pitch>,<m>
                                the watching camera's place (radians from behind, above)
   --watch-ir                   the watching window starts in infrared

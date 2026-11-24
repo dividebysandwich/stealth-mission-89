@@ -523,7 +523,8 @@ fn blink(ctx: &egui::Context) -> egui::Color32 {
 }
 
 /// Test aid: `--campaign-watch` watches the first friendly aircraft, `--campaign-watch
-/// armour` the first tank of a column on the move (`fp2`, `zsu`, `nasams`, `sam` others).
+/// armour` the first tank of a column on the move (`fp2`, `zsu`, `nasams`, `sam`, `facility`
+/// others).
 fn test_watch(
     sim: &stealth_sim::Sim,
     unit_view: &mut super::UnitView,
@@ -597,6 +598,17 @@ fn test_watch(
                     sim.threat_name(sim.objects()[i].unit_type).to_string(),
                     true,
                 ),
+                None => return,
+            }
+        }
+        // The first enemy strategic facility's building.
+        Some("facility") => {
+            let k = (0..sim.units().len()).find(|&k| {
+                let u = &sim.units()[k];
+                u.kind.structure() && !u.destroyed && !sim.aaa_blue(k)
+            });
+            match k {
+                Some(k) => (UnitRef::Aaa(k), sim.units()[k].kind.name().to_string(), true),
                 None => return,
             }
         }
