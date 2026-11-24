@@ -217,7 +217,7 @@ fn spawn(
     mut commands: Commands,
     roots: Query<Entity, With<CockpitRoot>>,
     boards: Query<&CanvasTexture, With<Board>>,
-    overlays: Query<(), With<Overlay>>,
+    mut overlays: Query<&mut ImageNode, With<Overlay>>,
     settings: Res<Settings>,
     mut kb: ResMut<Kneeboard>,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -263,6 +263,12 @@ fn spawn(
             image
         }
     };
+    // A rebuilt cockpit (another seat) has a new board: the overlay shows its picture.
+    for mut node in &mut overlays {
+        if node.image != image {
+            node.image = image.clone();
+        }
+    }
     if !settings.vr && overlays.is_empty() {
         let holder = commands
             .spawn((
