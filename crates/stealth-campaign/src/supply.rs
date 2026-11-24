@@ -140,6 +140,8 @@ impl CampaignState {
     pub fn income(&self, side: Side) -> f64 {
         let (places, cities) = self.producers(side);
         let income = INCOME_BASE + INCOME_PLACE * places as f64 + INCOME_CITY * cities as f64;
+        // (Half of it while its headquarters is down.)
+        let income = if self.hq_slow(side) > 1.0 { income * HQ_INCOME } else { income };
         match side {
             Side::Red => income * self.pace(),
             _ => income * self.pace() * self.few_players_bonus() * self.friendly_relief(),

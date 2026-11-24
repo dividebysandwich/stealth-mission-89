@@ -404,7 +404,7 @@ impl CampaignState {
     pub(crate) fn facility_destroyed(
         &mut self,
         id: u32,
-        _by: Option<PlayerId>,
+        by: Option<PlayerId>,
         ev: &mut Vec<CampaignEvent>,
     ) {
         let Some(k) = self.facilities.iter().position(|f| f.id == id && f.alive()) else {
@@ -421,13 +421,27 @@ impl CampaignState {
         let what = text!(f.kind.name_id());
         let place = f.place.and_then(|p| self.place(p)).map(|p| p.name.clone()).unwrap_or_default();
         let msg = if side == Side::Blue {
-            text!("cl-facility-destroyed", what = what, place = place)
+            text!("cl-facility-destroyed", what = what, place = place.as_str())
         } else {
-            text!("cl-enemy-facility-destroyed", what = what, place = place)
+            text!("cl-enemy-facility-destroyed", what = what, place = place.as_str())
         };
         self.note(msg.clone());
         ev.push(CampaignEvent::Message(msg));
         ev.push(CampaignEvent::FacilityDestroyed { id });
+        // What the player's strike did, for his debrief.
+        if let Some(p) = by.filter(|_| side == Side::Red) {
+            let hours = (back - now) / 3600.0;
+            let hours = format!("{:.1}", hours).trim_end_matches(".0").to_string();
+            let id = match f.kind {
+                FacilityKind::DroneFactory => "cl-fx-drone-factory",
+                FacilityKind::TankFactory => "cl-fx-tank-factory",
+                FacilityKind::Headquarters => "cl-fx-headquarters",
+                FacilityKind::AmmoStorage => "cl-fx-ammo-storage",
+                FacilityKind::PowerPlant => "cl-fx-power-plant",
+                FacilityKind::FuelDepot => "cl-fx-fuel-depot",
+            };
+            self.effect(p, text!(id, place = place.as_str(), hours = hours));
+        }
         self.board_at = f64::MIN;
     }
 
@@ -519,7 +533,12 @@ impl CampaignState {
 
     /// The delay (s) a side's fighters at `base` take to scramble: longer without power.
     pub(crate) fn scramble_delay(&self, base: ObjectId) -> f64 {
-        if self.power_slow_at(base) > 1.0 { POWER_SCRAMBLE_DELAY } else { 0.0 }
+        let power = if self.power_slow_at(base) > 1.0 { POWER_SCRAMBLE_DELAY } else { 0.0 };
+        let hq = match self.owner(base) {
+            Some(side) if self.hq_slow(side) > 1.0 => HQ_SCRAMBLE_DELAY,
+            _ => 0.0,
+        };
+        power + hq
     }
 
     /// A threat seen from `base` now: its fighters may go (they have waited their delay since

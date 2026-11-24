@@ -74,6 +74,12 @@ impl CampaignState {
     /// `every` (an interval of the enemy's offensive: insertions, raids, convoys, drones and
     /// missiles) at the crew's pace, and longer for an outnumbered friendly side.
     pub(crate) fn offensive_paced(&self, every: f64) -> f64 {
-        self.paced(every) * self.friendly_relief().sqrt()
+        self.paced(every) * self.friendly_relief().sqrt() * self.hq_slow(Side::Red)
+    }
+
+    /// How much longer a side's operations take to come while its headquarters is destroyed
+    /// (`HQ_SLOWDOWN`; 1 while it stands).
+    pub fn hq_slow(&self, side: Side) -> f64 {
+        if self.facility_down(side, crate::FacilityKind::Headquarters) { HQ_SLOWDOWN } else { 1.0 }
     }
 }

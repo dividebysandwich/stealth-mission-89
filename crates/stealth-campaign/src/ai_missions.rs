@@ -302,7 +302,7 @@ impl CampaignState {
                 let wait = if matches!(o.objective, Objective::Cargo { .. }) {
                     CARGO_INTERCEPT_WAIT
                 } else {
-                    AI_MISSION_WAIT
+                    AI_MISSION_WAIT * self.hq_slow(side)
                 };
                 Some((since + wait, o))
             })

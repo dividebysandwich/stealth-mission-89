@@ -260,7 +260,7 @@ impl CampaignState {
         }
         let skill = (self.setup.opponents as usize).min(3);
         let every = if side == Side::Blue {
-            CONVOY_EVERY
+            CONVOY_EVERY * self.hq_slow(side)
         } else {
             self.offensive_paced(ENEMY_CONVOY_EVERY[skill])
         };

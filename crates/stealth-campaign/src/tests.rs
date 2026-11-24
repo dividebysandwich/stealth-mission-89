@@ -4932,3 +4932,47 @@ fn no_convoy_without_fuel() {
     };
     assert!(!launched(Side::Blue) && launched(Side::Red));
 }
+
+/// A side's headquarters destroyed: its operations come half as often, its income halves and
+/// its fighters scramble later, until it is rebuilt.
+#[test]
+fn a_destroyed_headquarters_slows_its_side() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let paced = c.offensive_paced(3600.0);
+    let income = c.income(Side::Red);
+    let base = c.bases(Side::Red)[0];
+    assert_eq!(c.scramble_delay(base), 0.0);
+    let hq = c.facilities_of(Side::Red, FacilityKind::Headquarters).next().unwrap().id;
+    let mut ev = Vec::new();
+    c.facility_destroyed(hq, None, &mut ev);
+    assert_eq!(c.offensive_paced(3600.0), paced * tuning::HQ_SLOWDOWN);
+    assert_eq!(c.income(Side::Red), income * tuning::HQ_INCOME);
+    assert_eq!(c.scramble_delay(base), tuning::HQ_SCRAMBLE_DELAY);
+    // The friendly side's is untouched.
+    assert_eq!(c.hq_slow(Side::Blue), 1.0);
+    c.tick(c.game_days(tuning::HEADQUARTERS_DAYS) + 1.0, &WorldView::default(), &[]);
+    assert_eq!(c.offensive_paced(3600.0), paced);
+}
+
+/// A fighter base scrambles only after its delay (power out) has passed since the threat was
+/// first seen.
+#[test]
+fn a_dark_base_scrambles_late() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let base = c.bases(Side::Red)[0];
+    let s = c.site(base).unwrap().clone();
+    cut_off(&mut c, Side::Red, s.x, s.y, true, false);
+    assert_eq!(c.scramble_delay(base), tuning::POWER_SCRAMBLE_DELAY);
+    // Seen all along (each tick).
+    let mut waited = 0.0;
+    while !c.scramble_ready(base) {
+        c.clock += 10.0;
+        waited += 10.0;
+    }
+    assert_eq!(waited, tuning::POWER_SCRAMBLE_DELAY);
+    // Out of sight for long, it is forgotten: the next threat waits again.
+    c.clock += 60.0;
+    assert!(!c.scramble_ready(base));
+}

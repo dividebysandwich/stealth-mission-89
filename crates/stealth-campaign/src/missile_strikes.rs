@@ -732,7 +732,7 @@ impl CampaignState {
                 .missile_strikes
                 .iter()
                 .filter(|s| s.site == Some(site))
-                .all(|s| now - s.ended_at >= LAUNCH_SITE_REST);
+                .all(|s| now - s.ended_at >= LAUNCH_SITE_REST * self.hq_slow(Side::Blue));
             if busy || !rested {
                 continue;
             }

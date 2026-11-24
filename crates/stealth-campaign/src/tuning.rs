@@ -587,3 +587,13 @@ pub const POWER_SCRAMBLE_DELAY: f64 = 60.0;
 /// The area (map units, 16 km) about a destroyed fuel depot and the places it supplied where a
 /// side's vehicles stand still.
 pub const FUEL_AREA: i32 = 0x400;
+
+// ------------------------------------------------------------------------- headquarters
+
+/// A side whose headquarters is destroyed: its operations come this many times as far apart,
+/// its fighters scramble this much later (s), its enemy's patrols this many times as far apart,
+/// and it gets this share of its materiel.
+pub const HQ_SLOWDOWN: f64 = 2.0;
+pub const HQ_SCRAMBLE_DELAY: f64 = 120.0;
+pub const HQ_PATROL_SLOW: f64 = 1.5;
+pub const HQ_INCOME: f64 = 0.5;

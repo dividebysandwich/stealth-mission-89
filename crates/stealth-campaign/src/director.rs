@@ -835,6 +835,8 @@ impl CampaignState {
         // players.
         let awacs = self.awacs.as_ref().filter(|a| a.side == Side::Red).map(|a| (a.x, a.y));
         let every = self.paced(if awacs.is_some() { PATROL_EVERY / 2.0 } else { PATROL_EVERY });
+        // (Fewer without its headquarters.)
+        let every = if self.hq_slow(Side::Red) > 1.0 { every * HQ_PATROL_SLOW } else { every };
         if now - self.patrol_at < every || red >= max {
             return;
         }
@@ -1095,7 +1097,7 @@ impl CampaignState {
         if self.operation_insertion(view, ev) {
             return;
         }
-        if self.clock - self.auto_insert_at < AUTO_INSERT_EVERY {
+        if self.clock - self.auto_insert_at < AUTO_INSERT_EVERY * self.hq_slow(Side::Blue) {
             return;
         }
         let candidate = self.front(Side::Blue).into_iter().find(|&p| {
