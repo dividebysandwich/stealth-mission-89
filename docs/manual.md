@@ -46,7 +46,7 @@ centers and remotely pilot recon, attack and interceptor drones, quadrotors and 
 | [6. Arms and Equipment](#6-arms-and-equipment) | Every weapon, its range and how to deliver it |
 | [7. Techniques and Tactics](#7-techniques-and-tactics) | Radar and stealth, defeating missiles, flying low, landing, ejecting |
 | [8. Single Missions and the Career](#8-single-missions-and-the-career) | Mission kinds, the planner, the debrief, the career |
-| [9. The Dynamic Campaign](#9-the-dynamic-campaign) | The front, the mission board, the ground war, the enemy's moves, air defence and logistics |
+| [9. The Dynamic Campaign](#9-the-dynamic-campaign) | The front, the mission board, the ground war, the enemy's moves, air defence, logistics and the strategic facilities |
 | [10. Drone Warfare](#10-drone-warfare) | Geran waves, drone defense, the drone command center and its drones |
 | [11. Multiplayer](#11-multiplayer) | Joining, hosting, dedicated servers |
 | [12. Areas of Conflict](#12-areas-of-conflict) | The twelve theaters |
@@ -3374,7 +3374,7 @@ refilling (RLD).</li>
 Every airbase keeps a stock of munitions. AIM-9 Sidewinders (the enemy's AA-8s), unguided bombs,
 guns, flares and fuel never run out; everything else does: AIM-120, AIM-7, HARM, Maverick, GBU-12,
 Rockeye II, CBU-72, CBU-105, Hellfire, Stinger, Sidearm, Penguin, Harpoon, JSOW, MALD, SLAM-ER, JP233, the
-Patriots' PAC-3s and the Gepards' 35 mm rounds (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
+Patriots' PAC-3s, the Gepards' 35 mm rounds and the drone command centers' drones (the NASAMS batteries fire AIM-120s from the same stock as the fighters). The war starts with every airbase fully stocked. Your loadout comes out of
 the stock of the base you take off from: the briefing's loadout shows how many each base has
 left (*(12 at base)*) and greys out what it can't supply. What you bring back unfired goes into the
 stock of the base you land at, and rearming there takes from it. The AI's aircraft draw from it
@@ -3447,7 +3447,40 @@ can also press **REQUEST RESUPPLY** on the SITE page. It becomes a **RESUPPLY** 
 
 After 5 minutes without a player, an AI helicopter flies it from the nearest airfield.
 
-## 9.15 Tips
+## 9.15 Strategic facilities
+
+Behind the front each side keeps the buildings its war runs on. They are on the war map's
+**Strategic facilities** layer as installation symbols (blue: yours, red: the enemy's; crossed
+out while destroyed, with the minutes until they are rebuilt):
+
+| Facility | Where | Destroyed |
+|---|---|---|
+| **Drone factory** (one a side) | in the rear | No drones are made for 3 days: the drone command centers' Storks, FP-2s, interceptors and X-12s (and the enemy's Gerans) are not replaced, nor shipped to the airbases. What the bases and centers hold is used up. |
+| **Tank factory** (one a side) | in the rear | No tanks or infantry fighting vehicles join the armour reserve for 3 days. Convoys wait for their six vehicles, garrisons for their losses to be replaced. |
+| **Headquarters** (one a side) | far from the front | For 2 days the side's operations come half as often, its fighters scramble 2 minutes late and its materiel comes in at half the rate. |
+| **Ammo storage** (one at each airfield) | beside the runway | The airfield's munitions are gone; for 1 day it keeps none, gets no cargo, and aircraft rearming there get only what never runs out. |
+| **Power plant** (two or three a side) | outside a town | For 2 days its region is dark: its towns' lights go out, repairs, launches and munitions production there take half as long again, and fighters scramble a minute late. |
+| **Fuel depot** (at the cities) | outside a city | For 1 day the side's tanks and trucks around it (16 km) stand still, and no convoy sets off from there. |
+
+The days are the sky's: at the usual sky clock (a day an hour) the factories are out for 3 hours.
+Every air defence site (not the drone command centers) runs on its side's nearest power plant and
+fuel depot: with one of them destroyed it carries on (without power it reloads slowly), with
+both destroyed it is **offline**. An offline SAM site neither tracks nor fires, and an offline
+Patriot, NASAMS or Gepard cannot be manned (the AIR DEFENSE tab shows *OFFLINE*).
+
+The facilities are buildings: bombs and missiles bring them down, gun rounds and rockets do
+nothing to them. They show hot on the FLIR, and the targeting pod locks them like a vehicle.
+The board offers strikes on the enemy's most valuable facilities within reach (**INTERDICTION**,
+`Strike - <facility> near <place>`), and the AI flies them too; the enemy strikes yours from its
+own board and with its missiles. One just rebuilt is left alone for half an hour.
+
+When the front passes a facility it changes sides with the ground it stands on: take the town
+by the enemy's tank factory and the factory is yours, and the enemy makes no more armour. A
+headquarters never changes hands: when the front comes within 40 km it moves back to the rear,
+and one overrun is built again there. A friendly side that starts with no airfield of its own,
+or outnumbered three times over, has no headquarters to lose.
+
+## 9.16 Tips
 
 - Clear a front place's SAM sites and guns and Command sends the helicopters in for free; or
   order the insertion yourself and fly its escort.
