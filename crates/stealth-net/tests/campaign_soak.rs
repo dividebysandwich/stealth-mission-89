@@ -4,7 +4,9 @@
 //!
 //! `cargo test --release -p stealth-net --test campaign_soak -- --ignored --nocapture`, with
 //! `SOAK_THEATER` (central_europe), `SOAK_HOURS` (campaign-clock hours of sim time, 3),
-//! `SOAK_SEED` (1), `SOAK_CREW` (players online for the enemy's tempo, none flying; 1).
+//! `SOAK_SEED` (1), `SOAK_CREW` (players online for the enemy's tempo, none flying; 1),
+//! `SOAK_FACILITY_STRIKES` (the enemy's facilities the players destroy an hour, the most
+//! valuable standing first; 0).
 
 use std::collections::BTreeMap;
 
@@ -155,8 +157,18 @@ fn campaign_soak() {
     let mut road_on: Vec<usize> = Vec::new();
     let mut road_runs: BTreeMap<u32, (f64, String)> = BTreeMap::new();
     let mut road_out = 0usize;
-    let interdict: f64 = std::env::var("SOAK_INTERDICT").ok().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+    let interdict: f64 =
+        std::env::var("SOAK_INTERDICT").ok().and_then(|v| v.parse().ok()).unwrap_or(0.0);
     let mut struck = 0usize;
+    // The strategic facilities: what the players destroy an hour (`SOAK_FACILITY_STRIKES`),
+    // each one's last state seen, the changes, and the seconds each side's were down by kind.
+    let fac_strikes: f64 = env("SOAK_FACILITY_STRIKES", 0.0);
+    let mut fac_struck = 0usize;
+    let mut fac_alive: BTreeMap<u32, (bool, Side)> = BTreeMap::new();
+    let mut fac_log: Vec<String> = Vec::new();
+    let mut fac_down: BTreeMap<(&str, String), f64> = BTreeMap::new();
+    let mut fac_lost = [0usize; 2];
+    let mut fac_by: BTreeMap<(&str, &str), usize> = BTreeMap::new();
     let mut fleet_dry = 0usize;
     let road_bases: Vec<u16> = host
         .state
@@ -164,8 +176,17 @@ fn campaign_soak() {
         .iter()
         .filter(|s| s.kind == stealth_campaign::SiteKind::Airfield)
         .filter(|s| {
-            ["Taganrog", "Berdiansk", "Melitopol", "Dzhankoi", "Kirovske", "Hvardiiske", "Saky", "Belbek"]
-                .contains(&s.name.as_str())
+            [
+                "Taganrog",
+                "Berdiansk",
+                "Melitopol",
+                "Dzhankoi",
+                "Kirovske",
+                "Hvardiiske",
+                "Saky",
+                "Belbek",
+            ]
+            .contains(&s.name.as_str())
         })
         .map(|s| s.object)
         .collect();
@@ -210,7 +231,31 @@ fn campaign_soak() {
                 struck += 1;
             }
         }
+        // Players' strikes on the enemy's facilities (reported as the simulation would).
+        let mut fac_hit = None;
+        if fac_strikes > 0.0
+            && frame > 0
+            && frame % ((3600.0 / fac_strikes / dt) as u64).max(1) == 0
+        {
+            let st = &host.state;
+            let f = st
+                .facilities
+                .iter()
+                .filter(|f| f.alive() && st.facility_side(f) == Side::Red)
+                .max_by_key(|f| (f.kind.value(), std::cmp::Reverse(f.id)));
+            if let Some(k) = f.and_then(|f| host.facility_unit(f.id)) {
+                sim.units_mut()[k].destroyed = true;
+                fac_hit = Some(k);
+                fac_struck += 1;
+            }
+        }
         let mut events = sim.step_pilots(&[], FS);
+        if let Some(unit) = fac_hit {
+            events.push(stealth_sim::PilotEvent {
+                pilot: 0,
+                event: SimEvent::AaaDestroyed { unit, by: None },
+            });
+        }
         events.extend(host.take_sim_events(&mut sim));
         for e in host.tick(&mut sim, dt, &events) {
             if let stealth_host::HostEvent::Campaign(stealth_campaign::CampaignEvent::Message(m)) =
@@ -221,6 +266,70 @@ fn campaign_soak() {
         }
         for m in &host.state.ai_missions {
             missions.insert(m.id, m.clone());
+        }
+        if frame % FS as u64 == 0 {
+            let st = &host.state;
+            for f in &st.facilities {
+                let side = st.facility_side(f);
+                let alive = f.alive();
+                if !alive {
+                    *fac_down
+                        .entry((
+                            if side == Side::Blue { "blue" } else { "red" },
+                            format!("{:?}", f.kind),
+                        ))
+                        .or_default() += 1.0;
+                }
+                let place = f.place.and_then(|p| st.place(p)).map_or("", |p| p.name.as_str());
+                match fac_alive.insert(f.id, (alive, side)) {
+                    Some((was, by)) if was != alive || by != side => {
+                        let what = if was != alive {
+                            if alive { "rebuilt" } else { "destroyed" }
+                        } else {
+                            "changed hands"
+                        };
+                        let mut what = what.to_string();
+                        if !alive && was {
+                            fac_lost[(side == Side::Red) as usize] += 1;
+                            // By what: an AI flight sent at it, a missile strike, the soak.
+                            let flight = missions.values().any(|m| {
+                                m.ended.is_none_or(|e| e >= st.clock - 120.0)
+                                    && matches!(m.offer.objective,
+                                        stealth_campaign::Objective::Facility { facility, .. } if facility == f.id)
+                            });
+                            let missile =
+                                st.missile_strikes.iter().any(|m| m.facility == Some(f.id));
+                            let by = if fac_hit.is_some_and(|k| host.unit_facility(k) == Some(f.id))
+                            {
+                                "soak"
+                            } else if flight {
+                                "flight"
+                            } else if missile {
+                                "missile"
+                            } else {
+                                "other"
+                            };
+                            *fac_by
+                                .entry((if side == Side::Blue { "blue" } else { "red" }, by))
+                                .or_default() += 1;
+                            what = format!("{what} by {by}");
+                        }
+                        fac_log.push(format!(
+                            "{:6.1} h {side:?} {:?} #{} at {place}: {what}",
+                            t / 3600.0,
+                            f.kind,
+                            f.id
+                        ));
+                    }
+                    None if !alive => fac_log.push(format!(
+                        "{:6.1} h {side:?} {:?} #{} at {place}: down from the start",
+                        t / 3600.0,
+                        f.kind,
+                        f.id
+                    )),
+                    _ => {}
+                }
+            }
         }
         for r in &host.state.cargo_runs {
             // Keep the escorts it had once they are gone.
@@ -452,7 +561,14 @@ fn campaign_soak() {
                                 shelled.get(unit).copied().unwrap_or(0),
                             ));
                             if supply_log.len() <= 6 {
-                                supply_log.extend(tr.trail.iter().rev().take(4).rev().map(|l| format!("    | {l}")));
+                                supply_log.extend(
+                                    tr.trail
+                                        .iter()
+                                        .rev()
+                                        .take(4)
+                                        .rev()
+                                        .map(|l| format!("    | {l}")),
+                                );
                             }
                         }
                         tr.destroyed = true;
@@ -760,12 +876,22 @@ fn campaign_soak() {
     let log = &host.state.supply_log;
     println!(
         "convoys over {}, trucks arrived {}, trucks lost {}, items delivered {}, lost {}, cut roads {:?}",
-        log.convoys, log.trucks_arrived, log.trucks_lost, log.items_delivered, log.items_lost, host.state.cut_roads
+        log.convoys,
+        log.trucks_arrived,
+        log.trucks_lost,
+        log.items_delivered,
+        log.items_lost,
+        host.state.cut_roads
     );
     println!("samples with no trucks ready: {fleet_dry} of {samples}");
     println!("trucks struck by the soak (SOAK_INTERDICT {interdict}/h): {struck}");
     let f = &host.state.trucks;
-    println!("truck fleet at the end: {:.1} ready, {} out, {} returning", f.ready, f.out, f.returning.iter().map(|r| r.1 as u32).sum::<u32>());
+    println!(
+        "truck fleet at the end: {:.1} ready, {} out, {} returning",
+        f.ready,
+        f.out,
+        f.returning.iter().map(|r| r.1 as u32).sum::<u32>()
+    );
     if !road_on.is_empty() {
         let mean = road_on.iter().sum::<usize>() as f64 / road_on.len() as f64;
         println!(
@@ -816,6 +942,34 @@ fn campaign_soak() {
             d.id, d.kind, d.name, d.by, d.built, d.delivered, d.ai, d.open_since, d.crates
         );
     }
+    println!(
+        "\n== Strategic facilities ({} at the start; {fac_struck} struck by the soak)",
+        host.state.facilities.len()
+    );
+    for f in &host.state.facilities {
+        let place = f.place.and_then(|p| host.state.place(p)).map_or("", |p| p.name.as_str());
+        println!(
+            "#{:2} {:?} {:?} at {place} (built by {:?}){}",
+            f.id,
+            host.state.facility_side(f),
+            f.kind,
+            f.owner,
+            if f.alive() { "" } else { " DOWN" }
+        );
+    }
+    for l in &fac_log {
+        println!("{l}");
+    }
+    for ((side, kind), s) in &fac_down {
+        println!("{side:4} {kind:13} down {:5.1} h", s / 3600.0);
+    }
+    println!(
+        "armour reserve blue {} red {}, hq slow blue {} red {}",
+        host.state.armour_reserve(Side::Blue),
+        host.state.armour_reserve(Side::Red),
+        host.state.hq_slow(Side::Blue),
+        host.state.hq_slow(Side::Red)
+    );
     println!("\n== News");
     for n in &news {
         println!("{n}");
@@ -898,7 +1052,7 @@ fn campaign_soak() {
     let (ba, ra) = (flights(true, None), flights(false, None));
     let (bc, rc) = (cargo_lost(Side::Blue), cargo_lost(Side::Red));
     println!(
-        "BALANCE {code} seed {seed} crew {} | places blue {}->{} red {}->{} | fields blue {}->{} red {}->{} | taken by blue {} red {} | materiel blue {:.0} red {:.0} | fighters blue {} red {} | ground lost blue {} red {} | air lost blue {}/{} red {}/{} | ai missions blue {} red {} | supply helos blue {}/{} red {}/{} | cargo planes blue {}/{} red {}/{}",
+        "BALANCE {code} seed {seed} crew {} | places blue {}->{} red {}->{} | fields blue {}->{} red {}->{} | taken by blue {} red {} | materiel blue {:.0} red {:.0} | fighters blue {} red {} | ground lost blue {} red {} | air lost blue {}/{} red {}/{} | ai missions blue {} red {} | supply helos blue {}/{} red {}/{} | cargo planes blue {}/{} red {}/{} | facilities lost blue {} red {} (struck {fac_struck}) | fac down-h blue {:.1} red {:.1} | armour blue {} red {}",
         env("SOAK_CREW", 1usize),
         held(&owners0, Side::Blue, false),
         held(&now, Side::Blue, false),
@@ -930,5 +1084,18 @@ fn campaign_soak() {
         bc.0,
         rc.1,
         rc.0,
+        fac_lost[0],
+        fac_lost[1],
+        fac_down.iter().filter(|((s, _), _)| *s == "blue").map(|(_, v)| v).sum::<f64>() / 3600.0,
+        fac_down.iter().filter(|((s, _), _)| *s == "red").map(|(_, v)| v).sum::<f64>() / 3600.0,
+        st.armour_reserve(Side::Blue),
+        st.armour_reserve(Side::Red),
+    );
+    println!(
+        "FACBY {code} seed {seed} crew {} {:?} hq-down blue {:.1} red {:.1}",
+        env("SOAK_CREW", 1usize),
+        fac_by,
+        fac_down.get(&("blue", "Headquarters".to_string())).copied().unwrap_or(0.0) / 3600.0,
+        fac_down.get(&("red", "Headquarters".to_string())).copied().unwrap_or(0.0) / 3600.0,
     );
 }
