@@ -169,9 +169,11 @@ pub fn build(sc: &Scenery, bx: i32, by: i32, tier: Tier, houses: f64, trees_shar
                 }
             }
             power(&sc.net, &f, &mut g, low);
+            black_out(sc, &f, &mut g);
         }
         Tier::Lights => {
             city_lights(sc, &f, &mut g);
+            black_out(sc, &f, &mut g);
             // Most distant blocks are empty: don't sample their terrain or build geometry.
             if g.lamps.is_empty() {
                 return g;
@@ -198,10 +200,38 @@ pub fn build_lights(sc: &Scenery, bx: i32, by: i32, share: f64) -> Geom {
     let f = Frame::new(bx, by, Tier::Lights.block_size());
     let mut g = Geom::default();
     city_glow(sc, &f, &mut g, share.clamp(0.0, 1.0));
+    black_out(sc, &f, &mut g);
     if !g.glow.is_empty() {
         drape(&sc.hills, &f, &mut g);
     }
     g
+}
+
+/// Where the lights are out (`Scenery::blackouts`): no lamps, and the windows unlit.
+fn black_out(sc: &Scenery, f: &Frame, g: &mut Geom) {
+    if !sc.blackout_near(f.min, f.max()) {
+        return;
+    }
+    let world = |p: Vec3| DVec2::new(f.o.x + p.x as f64, f.o.y - p.z as f64);
+    g.lamps.retain(|&(_, p)| !sc.blacked_out(world(p)));
+    g.glow.retain(|&(_, p)| !sc.blacked_out(world(p)));
+    // The dark windows' walls under the plain wall's key.
+    let lit: Vec<u32> =
+        g.solid.keys().copied().filter(|&k| k as u16 & geom::WINDOWS != 0).collect();
+    for key in lit {
+        let tris = g.solid.remove(&key).unwrap_or_default();
+        let (dark, on): (Vec<[Vec3; 3]>, Vec<[Vec3; 3]>) = tris
+            .chunks_exact(3)
+            .map(|t| [t[0], t[1], t[2]])
+            .partition(|t| sc.blacked_out(world((t[0] + t[1] + t[2]) / 3.0)));
+        if !on.is_empty() {
+            g.solid.entry(key).or_default().extend(on.into_iter().flatten());
+        }
+        if !dark.is_empty() {
+            let plain = (key as u16 & !(geom::WINDOWS | geom::FEW_WINDOWS)) as u32;
+            g.solid.entry(plain).or_default().extend(dark.into_iter().flatten());
+        }
+    }
 }
 
 /// The same lamps at every range, without constructing their buildings or road surfaces.
@@ -584,6 +614,7 @@ mod light_tests {
             net: net.into(),
             airfields: vec![].into(),
             clearings: vec![],
+            blackouts: vec![],
             hills: Default::default(),
         }
     }
@@ -651,6 +682,7 @@ mod light_tests {
             net: net.into(),
             airfields: vec![].into(),
             clearings: vec![],
+            blackouts: vec![],
             hills,
         };
         (sc, c)
@@ -709,6 +741,25 @@ mod light_tests {
         assert!(g.solid.keys().any(|k| *k as u16 & geom::WINDOWS != 0));
         let town = build(&sc, bx.div_euclid(2), by.div_euclid(2), Tier::Town, 1.0, 1.0);
         assert!(town.solid.keys().any(|k| *k as u16 & geom::WINDOWS != 0));
+    }
+
+    /// A town blacked out (its power plant destroyed): no lamps, no lit windows; its walls
+    /// still stand.
+    #[test]
+    fn a_blacked_out_town_is_dark() {
+        let (mut sc, c) = city();
+        let (bx, by) = ((c.x / BLOCK).floor() as i32, (c.y / BLOCK).floor() as i32);
+        let lit = build(&sc, bx, by, Tier::Main, 1.0, 1.0);
+        let walls = |g: &Geom| g.solid.values().map(Vec::len).sum::<usize>();
+        let (lx, ly) = (bx.div_euclid(2), by.div_euclid(2));
+        assert!(!build_lights(&sc, lx, ly, 1.0).glow.is_empty());
+        sc.blackouts = vec![(c, 20_000.0)];
+        let dark = build(&sc, bx, by, Tier::Main, 1.0, 1.0);
+        assert!(!dark.solid.keys().any(|k| *k as u16 & geom::WINDOWS != 0));
+        assert_eq!(walls(&dark), walls(&lit));
+        assert!(dark.lamps.is_empty());
+        assert!(build_lights(&sc, lx, ly, 1.0).glow.is_empty());
+        assert!(build(&sc, lx, ly, Tier::Lights, 1.0, 1.0).lamps.is_empty());
     }
 }
 

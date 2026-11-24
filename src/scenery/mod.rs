@@ -91,6 +91,7 @@ impl Plugin for SceneryPlugin {
                         share_parking,
                         clear_units,
                         clear_air_defence,
+                        black_out_towns,
                         deployment_pads,
                         remap_vertex_words,
                         skin::remap_words,
@@ -170,6 +171,9 @@ pub struct Scenery {
     /// Where no trees grow and no generated buildings stand (metres east, north; radius):
     /// round the friendly air defence and the helipads of its new sites.
     clearings: Vec<(DVec2, f64)>,
+    /// Where the lights are out (metres east, north; radius): the towns of a campaign's regions
+    /// whose power plant is destroyed.
+    blackouts: Vec<(DVec2, f64)>,
     /// The rolling hills the scenery stands on.
     hills: stealth_sim::hills::Hills,
 }
@@ -219,6 +223,16 @@ impl Scenery {
         use network::TownKind::*;
         let towns = self.net.towns.iter().filter(|t| matches!(t.kind, Town | City));
         towns.map(|t| (t.c, t.r, matches!(t.kind, City))).collect()
+    }
+
+    /// `p` lies where the lights are out.
+    fn blacked_out(&self, p: DVec2) -> bool {
+        self.blackouts.iter().any(|&(c, r)| c.distance_squared(p) < r * r)
+    }
+
+    /// Any of the blackouts touches the square `min` .. `max`.
+    fn blackout_near(&self, min: DVec2, max: DVec2) -> bool {
+        self.blackouts.iter().any(|&(c, r)| c.clamp(min, max).distance_squared(c) < r * r)
     }
 
     /// `p` lies in a clearing (no trees, no generated buildings).
@@ -483,6 +497,7 @@ fn build_scenery(
         net,
         airfields: fields,
         clearings: vec![],
+        blackouts: vec![],
         hills,
     });
 }
@@ -1440,10 +1455,21 @@ fn clear_air_defence(
         .copied()
         .collect();
     scenery.clearings = want;
+    rebuild_towns(&mut commands, &mut blocks, &changed, true);
+}
+
+/// The town blocks and their lights a changed circle (metres east, north; radius) touches go,
+/// to be built again (and every tree block with `trees`).
+fn rebuild_towns(
+    commands: &mut Commands,
+    blocks: &mut Blocks,
+    changed: &[(DVec2, f64)],
+    trees: bool,
+) {
     blocks.0.retain(|&(tier, bx, by), e| {
         let gone = match group_of(tier) {
-            Some(g) if std::ptr::eq(g, &TREES) => true,
-            // The buildings and their independently streamed lights where a clearing changed.
+            Some(g) if std::ptr::eq(g, &TREES) => trees,
+            // The buildings and their independently streamed lights where a circle changed.
             g if tier == Tier::Lights || g.is_some_and(|g| std::ptr::eq(g, &TOWNS)) => {
                 let size = tier.block_size();
                 let min = DVec2::new(bx as f64, by as f64) * size;
@@ -1460,6 +1486,48 @@ fn clear_air_defence(
         !gone
     });
 }
+
+/// A campaign's towns whose region's power plant is destroyed are dark: their street lamps and
+/// windows go out (their blocks are built again when that changes).
+fn black_out_towns(
+    mut commands: Commands,
+    mut scenery: ResMut<Scenery>,
+    campaign: Option<Res<crate::campaign::ActiveCampaign>>,
+    mut blocks: ResMut<Blocks>,
+    mut every: Local<u32>,
+) {
+    // (A look every half second or so is soon enough.)
+    *every = (*every + 1) % 30;
+    if *every != 0 {
+        return;
+    }
+    let towns = scenery.towns();
+    let want: Vec<(DVec2, f64)> = campaign
+        .iter()
+        .flat_map(|c| c.state().dark_cities())
+        .map(|(x, y)| {
+            let at = map_metres(x, y);
+            // The town there, a little beyond its edge (else a few kilometres about the city).
+            let town = towns.iter().filter(|t| t.0.distance(at) < t.1 + 2000.0);
+            let town = town.min_by(|a, b| a.0.distance(at).total_cmp(&b.0.distance(at)));
+            town.map_or((at, BLACKOUT_RADIUS), |t| (t.0, t.1 * 1.25))
+        })
+        .collect();
+    if want == scenery.blackouts {
+        return;
+    }
+    let changed: Vec<(DVec2, f64)> = want
+        .iter()
+        .filter(|c| !scenery.blackouts.contains(c))
+        .chain(scenery.blackouts.iter().filter(|c| !want.contains(c)))
+        .copied()
+        .collect();
+    scenery.blackouts = want;
+    rebuild_towns(&mut commands, &mut blocks, &changed, false);
+}
+
+/// The blackout (m) about a dark city with no generated town to go by.
+const BLACKOUT_RADIUS: f64 = 3000.0;
 
 /// The helipads of the new air defence sites (the campaign's: a client's copy has them too),
 /// built when a site is designated and gone with it.
