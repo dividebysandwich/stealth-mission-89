@@ -4829,3 +4829,30 @@ fn a_garrison_waits_for_armour() {
     assert_eq!(c.places[k].armour_lost, 0);
     assert_eq!(c.armour_reserve(Side::Red), 0);
 }
+
+/// An airfield's ammo storage destroyed: its munitions are gone, and none come or are kept
+/// there until it is rebuilt a day later.
+#[test]
+fn an_ammo_storage_destroyed_empties_its_airfield() {
+    let mut c = ai_campaign();
+    c.ensure_facilities(&[]);
+    let b = other_base(&c, Side::Blue);
+    let f = c.facilities.iter().find(|f| f.airfield == Some(b)).expect("its storage").id;
+    assert!(c.available(b, Munition::Aim120) > 0);
+    let mut ev = Vec::new();
+    c.facility_destroyed(f, None, &mut ev);
+    assert!(c.store_down(b));
+    for &m in Munition::of_side(Side::Blue) {
+        assert_eq!(c.available(b, m), 0, "{m:?}");
+    }
+    // Landed aircraft's weapons have nowhere to go; no cargo is flown in.
+    c.put_back(b, Munition::Aim120, 4);
+    assert_eq!(c.available(b, Munition::Aim120), 0);
+    c.tick(60.0, &WorldView::default(), &[]);
+    assert!(c.cargo_runs.iter().all(|r| r.to != b), "{:?}", c.cargo_runs);
+    // Rebuilt: it is supplied again.
+    c.tick(c.game_days(tuning::AMMO_STORAGE_DAYS), &WorldView::default(), &[]);
+    assert!(!c.store_down(b));
+    c.tick(60.0, &WorldView::default(), &[]);
+    assert!(c.cargo_runs.iter().any(|r| r.to == b));
+}

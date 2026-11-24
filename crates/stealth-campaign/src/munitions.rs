@@ -649,7 +649,8 @@ impl CampaignState {
 
     /// Munitions into a base's stock (of its side's).
     pub(crate) fn put_in(&mut self, base: ObjectId, m: Munition, n: u32) {
-        if self.stock(base).is_none() || n == 0 {
+        // (Nowhere to keep them while its ammo storage is in ruins.)
+        if self.stock(base).is_none() || n == 0 || self.store_down(base) {
             return;
         }
         let side = self.owner(base);
@@ -825,7 +826,7 @@ impl CampaignState {
     fn produce(&mut self, dt: f64) {
         for side in [Side::Blue, Side::Red] {
             let Some(b) = self.production_base(side) else { continue };
-            if !self.site(b).is_some_and(Site::alive) {
+            if !self.site(b).is_some_and(Site::alive) || self.store_down(b) {
                 continue;
             }
             let rates: Vec<(Munition, f64, f64)> = Munition::of_side(side)
@@ -848,6 +849,10 @@ impl CampaignState {
     fn schedule_cargo(&mut self, ev: &mut Vec<CampaignEvent>) {
         for (base, side) in self.stocked_airfields() {
             let Some(from) = self.production_base(side) else { continue };
+            // Neither to nor from a base whose ammo storage is in ruins.
+            if self.store_down(base) || self.store_down(from) {
+                continue;
+            }
             // One at a time, and none for a while after one was shot down.
             let cooling =
                 self.cargo_cooldown.iter().any(|&(b, until)| b == base && until > self.clock);
@@ -940,6 +945,12 @@ impl CampaignState {
                     self.trucks_unused(w.trucks());
                 }
                 self.board_at = f64::MIN;
+                continue;
+            }
+            // Its base's ammo storage destroyed meanwhile: it waits for the rebuilding.
+            if self.store_down(r.to) {
+                self.cargo_runs[k].state =
+                    CargoState::Scheduled { launch_at: now + CARGO_RELAUNCH };
                 continue;
             }
             if self.owner(r.from) != Some(r.side) || !self.site(r.from).is_some_and(Site::alive) {

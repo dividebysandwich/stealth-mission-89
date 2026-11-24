@@ -431,8 +431,24 @@ impl CampaignState {
         self.board_at = f64::MIN;
     }
 
-    /// What losing facility `f` of `side` costs at once.
-    fn facility_lost(&mut self, _f: &Facility, _side: Side) {}
+    /// What losing facility `f` of `side` costs at once: an ammo storage's munitions go up
+    /// with it.
+    fn facility_lost(&mut self, f: &Facility, _side: Side) {
+        if f.kind == FacilityKind::AmmoStorage
+            && let Some(s) = f.airfield.and_then(|b| self.stocks.get_mut(&b))
+        {
+            for c in s.counts.values_mut() {
+                *c = 0.0;
+            }
+        }
+    }
+
+    /// Airfield `base`'s ammo storage is destroyed: it keeps no munitions until it is rebuilt.
+    pub fn store_down(&self, base: ObjectId) -> bool {
+        self.facilities
+            .iter()
+            .any(|f| f.kind == FacilityKind::AmmoStorage && f.airfield == Some(base) && !f.alive())
+    }
 
     /// Every tick: the facilities whose time is up are back in action.
     pub(crate) fn run_facilities(&mut self, ev: &mut Vec<CampaignEvent>) {
