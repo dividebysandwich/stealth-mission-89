@@ -373,3 +373,4 @@ fac-fuel-depot = Polttoainevarasto
 cl-facility-destroyed = Oma { $what } lähellä paikkaa { $place } tuhottu
 cl-enemy-facility-destroyed = Vihollisen { $what } lähellä paikkaa { $place } tuhottu
 cl-facility-restored = Oma { $what } lähellä paikkaa { $place } on taas toiminnassa
+st-unit-offline = { $unit } ei toimi: ei sähköä eikä polttoainetta

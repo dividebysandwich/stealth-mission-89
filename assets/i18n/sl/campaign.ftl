@@ -373,3 +373,4 @@ fac-fuel-depot = Skladišče goriva
 cl-facility-destroyed = Naš objekt ({ $what }) pri { $place } uničen
 cl-enemy-facility-destroyed = Sovražni objekt ({ $what }) pri { $place } uničen
 cl-facility-restored = Naš objekt ({ $what }) pri { $place } znova deluje
+st-unit-offline = { $unit } ne deluje: ni elektrike in goriva

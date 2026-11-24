@@ -451,7 +451,8 @@ impl Sim {
         let near: Vec<(usize, f64)> = (0..self.units.len())
             .filter_map(|k| {
                 let u = &self.units[k];
-                if u.destroyed || u.gone {
+                // (A rocket's warhead does nothing to a building.)
+                if u.destroyed || u.gone || u.kind.structure() {
                     return None;
                 }
                 let (x, y) = u.map_xy();

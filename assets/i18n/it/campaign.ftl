@@ -373,3 +373,4 @@ fac-fuel-depot = Deposito carburante
 cl-facility-destroyed = Nostra installazione ({ $what }) presso { $place } distrutta
 cl-enemy-facility-destroyed = Installazione nemica ({ $what }) presso { $place } distrutta
 cl-facility-restored = La nostra installazione ({ $what }) presso { $place } è di nuovo operativa
+st-unit-offline = { $unit } fuori servizio: niente corrente né carburante

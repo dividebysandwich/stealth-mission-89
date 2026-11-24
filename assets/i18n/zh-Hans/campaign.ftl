@@ -372,3 +372,4 @@ fac-fuel-depot = 燃料库
 cl-facility-destroyed = 我方{ $place }附近的{ $what }被摧毁
 cl-enemy-facility-destroyed = 敌方{ $place }附近的{ $what }已被摧毁
 cl-facility-restored = 我方{ $place }附近的{ $what }已恢复运作
+st-unit-offline = { $unit }无法运作：没有电力和燃料

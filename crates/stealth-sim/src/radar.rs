@@ -397,7 +397,11 @@ impl Sim {
             .objects
             .iter()
             .take(self.ground_units)
-            .filter(|o| o.unit_type != 0 && o.flags & oflags::DESTROYED == 0 && o.alert > 0xC0)
+            .filter(|o| {
+                o.unit_type != 0
+                    && o.flags & (oflags::DESTROYED | oflags::OFFLINE) == 0
+                    && o.alert > 0xC0
+            })
             .count();
         let air = self
             .flights
@@ -466,6 +470,10 @@ impl Sim {
     /// war and after an alarm.
     pub(crate) fn site_silent(&self, i: usize) -> bool {
         let o = self.objects[i];
+        // Without power and fuel (a campaign's), it is off the air.
+        if o.flags & oflags::OFFLINE != 0 {
+            return true;
+        }
         let k = if self.alarm_last < 0x80 { 2 * self.roe + 1 } else { 2 * self.roe + 3 };
         let ph = (-((s16(self.frame) >> 10) * i as i32)) & 7;
         k < ph && o.alert == 0 && o.flags & oflags::NEUTRAL == 0
@@ -880,7 +888,9 @@ impl Sim {
         };
         for (i, o) in self.objects.iter().enumerate().take(self.ground_units) {
             if o.unit_type == 0
-                || o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
+                || o.flags
+                    & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL | oflags::OFFLINE)
+                    != 0
             {
                 continue;
             }

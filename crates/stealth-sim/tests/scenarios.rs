@@ -1872,6 +1872,7 @@ fn aaa_duel_with(
         rounds: 0,
         fine: None,
         gone: false,
+        cut: 0,
     };
     *sim.units_mut() = vec![unit];
     let p = player_at(x, y - north, alt, 0x4000, 0);
@@ -2012,6 +2013,7 @@ fn flak_leads_a_moving_target() {
         rounds: 0,
         fine: None,
         gone: false,
+        cut: 0,
     };
     *sim.units_mut() = vec![unit];
     let mut misses = Vec::new();

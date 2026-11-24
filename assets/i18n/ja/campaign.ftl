@@ -373,3 +373,4 @@ fac-fuel-depot = 燃料貯蔵所
 cl-facility-destroyed = { $place }付近の味方{ $what }が破壊された
 cl-enemy-facility-destroyed = { $place }付近の敵{ $what }を破壊
 cl-facility-restored = { $place }付近の味方{ $what }が復旧した
+st-unit-offline = { $unit }は停止中：電力も燃料もない

@@ -372,3 +372,4 @@ fac-fuel-depot = Топливный склад
 cl-facility-destroyed = Наш объект ({ $what }) у { $place } уничтожен
 cl-enemy-facility-destroyed = Вражеский объект ({ $what }) у { $place } уничтожен
 cl-facility-restored = Наш объект ({ $what }) у { $place } снова работает
+st-unit-offline = { $unit } не работает: нет питания и топлива

@@ -174,6 +174,16 @@ pub enum GroundKind {
     /// optically laid. Some of the S-60 batteries have them instead, and so do some of the
     /// enemy's columns.
     Zsu572,
+    /// A campaign's strategic facilities (`stealth_campaign::facilities`): buildings that stand
+    /// where they were built, with no gun. An airfield's ammo storage (earth-covered bunkers),
+    /// a fuel depot (a tank farm), a power plant, the drone factory, the tank factory and the
+    /// headquarters.
+    AmmoDepot,
+    FuelDepot,
+    PowerPlant,
+    DroneFactory,
+    TankFactory,
+    Headquarters,
 }
 
 /// A friendly missile battery: a radar that tracks and the launchers around it that fire on
@@ -292,6 +302,12 @@ impl GroundKind {
             GroundKind::ArmyTruck => "Ural truck",
             GroundKind::Technical => "Technical",
             GroundKind::Zsu572 => "ZSU-57-2",
+            GroundKind::AmmoDepot => "Ammo storage",
+            GroundKind::FuelDepot => "Fuel depot",
+            GroundKind::PowerPlant => "Power plant",
+            GroundKind::DroneFactory => "Drone factory",
+            GroundKind::TankFactory => "Tank factory",
+            GroundKind::Headquarters => "Headquarters",
         }
     }
 
@@ -326,6 +342,21 @@ impl GroundKind {
             || self.missile_launcher()
             || self.armour()
             || self.truck()
+            || self.structure()
+    }
+
+    /// A strategic facility's building: never moves, never fires, and takes a bomb or a
+    /// missile to destroy (gun rounds do nothing to it).
+    pub fn structure(self) -> bool {
+        matches!(
+            self,
+            GroundKind::AmmoDepot
+                | GroundKind::FuelDepot
+                | GroundKind::PowerPlant
+                | GroundKind::DroneFactory
+                | GroundKind::TankFactory
+                | GroundKind::Headquarters
+        )
     }
 
     /// A supply truck (no gun).
@@ -433,6 +464,18 @@ pub struct GroundUnit {
     /// the new garrison), its slot free for another unit.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub gone: bool,
+    /// A campaign's air defence unit cut off from its supplies ([`CUT_POWER`], [`CUT_FUEL`]):
+    /// with both cut it is offline.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub cut: u8,
+}
+
+/// [`GroundUnit::cut`]: its power plant is destroyed (slower to reload), its fuel depot is.
+pub const CUT_POWER: u8 = 1;
+pub const CUT_FUEL: u8 = 2;
+
+fn is_zero(v: &u8) -> bool {
+    *v == 0
 }
 
 /// A vehicle's position in metres (east, north) and its hull's heading (rad, clockwise from
@@ -445,6 +488,11 @@ pub struct Fine {
 }
 
 impl GroundUnit {
+    /// Without power and fuel: it cannot fire, track or be manned.
+    pub fn offline(&self) -> bool {
+        self.cut & (CUT_POWER | CUT_FUEL) == CUT_POWER | CUT_FUEL
+    }
+
     /// Position in metres (east, north, up) on the rolling hills.
     pub fn metres_on(&self, hills: &crate::hills::Hills) -> [f64; 3] {
         let [e, n, z] = self.metres();
@@ -552,6 +600,11 @@ fn blast_radius(kind: GroundKind) -> (f64, i32) {
     match kind {
         k if k.tank() => (TANK_BLAST, TANK_ROUND_ODDS),
         k if k.carrier() => (IFV_BLAST, IFV_ROUND_ODDS),
+        // Buildings: no gun round destroys one (odds 0).
+        GroundKind::AmmoDepot | GroundKind::FuelDepot => (3.0, 0),
+        GroundKind::Headquarters => (2.5, 0),
+        GroundKind::PowerPlant => (4.0, 0),
+        GroundKind::DroneFactory | GroundKind::TankFactory => (4.5, 0),
         _ => (4.0, 6),
     }
 }
@@ -690,6 +743,7 @@ impl Sim {
                 rounds: 0,
                 fine: None,
                 gone: false,
+                cut: 0,
             });
         };
         let around =
@@ -805,6 +859,7 @@ impl Sim {
             // Only the classic guns fight the player (the friendly ones never do).
             // A supply convoy's technical fires at drones only (`campaign_guns`).
             if u.destroyed
+                || u.offline()
                 || self.aaa_blue(i)
                 || u.kind.unarmed()
                 || matches!(u.kind, GroundKind::Gepard | GroundKind::Technical)
@@ -973,7 +1028,13 @@ impl Sim {
                 | GroundKind::FlamingoLauncher
                 | GroundKind::CivTruck
                 | GroundKind::ArmyTruck
-                | GroundKind::Technical => {}
+                | GroundKind::Technical
+                | GroundKind::AmmoDepot
+                | GroundKind::FuelDepot
+                | GroundKind::PowerPlant
+                | GroundKind::DroneFactory
+                | GroundKind::TankFactory
+                | GroundKind::Headquarters => {}
             }
         }
         self.units = units;
@@ -1133,7 +1194,7 @@ impl Sim {
             for &(x, y, round, by) in &blasts {
                 let d = (x - ux).hypot(y - uy);
                 // A gun round kills only now and then.
-                if (round && d < 1.0 && rng.random(odds) == 0) || (!round && d < r) {
+                if (round && d < 1.0 && odds > 0 && rng.random(odds) == 0) || (!round && d < r) {
                     self.units[k].destroyed = true;
                     self.units[k].burst = 0;
                     if let Some(p) = by {
@@ -1174,7 +1235,7 @@ impl Sim {
     pub(crate) fn aaa_emitters(&self, out: &mut Vec<Emitter>) {
         let (px, py) = (self.pl.p.mx, self.pl.p.my);
         for (i, u) in self.units.iter().enumerate() {
-            if u.kind != GroundKind::Zsu || u.destroyed || self.aaa_blue(i) {
+            if u.kind != GroundKind::Zsu || u.destroyed || u.offline() || self.aaa_blue(i) {
                 continue;
             }
             let range = approx(s16(px - u.x), s16(py - u.y)) >> 6;

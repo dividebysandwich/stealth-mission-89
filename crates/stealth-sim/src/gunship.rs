@@ -183,7 +183,8 @@ const G_METRES: f64 = 9.81;
 
 /// A unit's armour class for the side guns: tanks (0), anything else (1).
 fn class(kind: GroundKind) -> usize {
-    if kind.tank() { 0 } else { 1 }
+    // A building takes the 105 mm as a tank does.
+    if kind.tank() || kind.structure() { 0 } else { 1 }
 }
 
 /// The campaign tag of a gunship mission's enemy column.
@@ -533,7 +534,8 @@ impl Sim {
         }
         for k in 0..self.units.len() {
             let u = self.units[k];
-            if u.destroyed {
+            // The 40 mm does nothing to a building.
+            if u.destroyed || (gun == 0 && u.kind.structure()) {
                 continue;
             }
             let m = u.metres_on(&hills);

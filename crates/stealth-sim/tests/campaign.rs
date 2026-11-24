@@ -1815,3 +1815,80 @@ fn an_outnumbered_side_garrisons_its_places_stronger() {
     assert_eq!(count(2, true), (tanks + 2, manpads + 2));
     assert_eq!(count(2, false), count(0, false));
 }
+
+/// An enemy raid bombs a friendly facility's building (a unit, not a world object).
+#[test]
+fn an_enemy_strike_bombs_a_facility() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x001, Some("Tabor"));
+    let o = sim.objects()[find(&sim, 0x401, Some("Neuburg"))];
+    let k = sim.place_structure(GroundKind::AmmoDepot, o.x + 0x60, o.y, true, 0.0).unwrap();
+    assert!(sim.aaa_blue(k));
+    // A raid of several (an AI's bomb hits now and then: `BOMB_PK`).
+    for tag in 58..64 {
+        sim.spawn_unit_strike(from, k, tag, false);
+    }
+    let mut bombs = false;
+    let mut hit = false;
+    for _ in 0..60 * 60 {
+        // (Spec 30: the AI's iron bombs.)
+        bombs |= sim.ai_missiles().iter().any(|m| m.ground == Some(k) && m.spec == 30);
+        let ev = run(&mut sim, &idle(), 1);
+        if ev.iter().any(|e| matches!(e, SimEvent::AaaDestroyed { unit, .. } if *unit == k)) {
+            hit = true;
+            break;
+        }
+    }
+    assert!(bombs, "no bombs at the building");
+    assert!(hit && sim.units()[k].destroyed, "the building stands");
+    sim.set_structure_destroyed(k, false);
+    assert!(!sim.units()[k].destroyed);
+}
+
+/// A Patriot battery without power and fuel is offline: it lets the raider through. With just
+/// its power cut it still fights.
+#[test]
+fn an_offline_battery_holds_its_fire() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let (home, _) = raid(&mut sim);
+    let o = sim.objects()[home];
+    sim.place_patriot(o.x + 0x100, o.y);
+    for k in 0..sim.units().len() {
+        sim.set_unit_cut(k, stealth_sim::aaa::CUT_POWER | stealth_sim::aaa::CUT_FUEL);
+    }
+    let mut seen = Vec::new();
+    assert!(!until_down(&mut sim, 8, 20 * 60, &mut seen));
+    assert!(seen.is_empty(), "{seen:?}");
+    for k in 0..sim.units().len() {
+        sim.set_unit_cut(k, stealth_sim::aaa::CUT_POWER);
+    }
+    assert!(until_down(&mut sim, 8, 40 * 60, &mut seen), "the Patriots never got it");
+}
+
+/// An enemy SAM site without power and fuel lets the helicopters by.
+#[test]
+fn an_offline_sam_site_lets_helicopters_by() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    let from = find(&sim, 0x401, Some("Neuburg"));
+    let to = find(&sim, 0x001, Some("Tabor"));
+    let (a, b) = (sim.objects()[from], sim.objects()[to]);
+    let site = &mut sim.objects_mut()[3];
+    site.unit_type = 7;
+    site.x = (a.x + b.x) / 2;
+    site.y = (a.y + b.y) / 2;
+    site.flags = 0;
+    sim.set_site_offline(3, true);
+    for n in 0..4 {
+        sim.spawn_insertion(from, to, 100 + n, n as usize);
+    }
+    for _ in 0..20 * 60 {
+        for e in run(&mut sim, &idle(), 1) {
+            assert!(!matches!(e, SimEvent::CampaignFlightDestroyed { .. }), "{e:?}");
+        }
+    }
+    sim.set_site_offline(3, false);
+    assert_eq!(sim.objects()[3].flags & oflags::OFFLINE, 0);
+}

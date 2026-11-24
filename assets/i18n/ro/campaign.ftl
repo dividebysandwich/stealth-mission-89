@@ -373,3 +373,4 @@ fac-fuel-depot = Depozit de combustibil
 cl-facility-destroyed = Obiectivul nostru ({ $what }) de lângă { $place } distrus
 cl-enemy-facility-destroyed = Obiectiv inamic ({ $what }) de lângă { $place } distrus
 cl-facility-restored = Obiectivul nostru ({ $what }) de lângă { $place } funcționează din nou
+st-unit-offline = { $unit } nu funcționează: fără curent și combustibil

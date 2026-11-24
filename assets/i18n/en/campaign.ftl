@@ -373,3 +373,4 @@ fac-fuel-depot = Fuel depot
 cl-facility-destroyed = Our { $what } near { $place } destroyed
 cl-enemy-facility-destroyed = Enemy { $what } near { $place } destroyed
 cl-facility-restored = Our { $what } near { $place } is back in operation
+st-unit-offline = The { $unit } is offline: no power and no fuel

@@ -373,3 +373,4 @@ fac-fuel-depot = Sklad paliva
 cl-facility-destroyed = Náš objekt ({ $what }) u { $place } zničen
 cl-enemy-facility-destroyed = Nepřátelský objekt ({ $what }) u { $place } zničen
 cl-facility-restored = Náš objekt ({ $what }) u { $place } je opět v provozu
+st-unit-offline = { $unit } je mimo provoz: bez proudu a paliva

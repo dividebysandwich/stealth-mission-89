@@ -373,3 +373,4 @@ fac-fuel-depot = Degvielas noliktava
 cl-facility-destroyed = Mūsu objekts ({ $what }) pie { $place } iznīcināts
 cl-enemy-facility-destroyed = Ienaidnieka objekts ({ $what }) pie { $place } iznīcināts
 cl-facility-restored = Mūsu objekts ({ $what }) pie { $place } atkal darbojas
+st-unit-offline = { $unit } nedarbojas: nav strāvas un degvielas

@@ -373,3 +373,4 @@ fac-fuel-depot = Brændstofdepot
 cl-facility-destroyed = Vores { $what } ved { $place } ødelagt
 cl-enemy-facility-destroyed = Fjendens { $what } ved { $place } ødelagt
 cl-facility-restored = Vores { $what } ved { $place } er i drift igen
+st-unit-offline = { $unit } er ude af drift: ingen strøm og intet brændstof

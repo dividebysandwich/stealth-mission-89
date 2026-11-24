@@ -124,6 +124,25 @@ pub struct GroundState {
     /// Roads cut since the last frame (where, metres; reach): [`Sim::cut_supply`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cuts: Vec<([f64; 2], f64)>,
+    /// Where a side's fuel depot is destroyed: its vehicles there stand still.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dry: Vec<DryArea>,
+}
+
+/// An area without fuel (a campaign's fuel depot destroyed): a side's convoys there stop.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct DryArea {
+    pub blue: bool,
+    /// Its centre (metres east, north) and radius (m).
+    pub at: [f64; 2],
+    pub r: f64,
+}
+
+impl GroundState {
+    /// A side's vehicles at `p` (metres east, north) have no fuel.
+    pub fn dry_at(&self, blue: bool, p: [f64; 2]) -> bool {
+        self.dry.iter().any(|d| d.blue == blue && dist(d.at, p) < d.r)
+    }
 }
 
 impl GroundState {
@@ -136,6 +155,7 @@ impl GroundState {
             seen_blue: self.seen_blue.clone(),
             seen_red: self.seen_red.clone(),
             speed: self.speed,
+            dry: self.dry.clone(),
             ..Default::default()
         };
         for v in &mut g.convoys {
@@ -194,6 +214,10 @@ struct Shot {
 /// infantry fighting vehicle with a hit and another tank with one or two; it takes about a
 /// dozen autocannon hits on an infantry fighting vehicle and 20 to 30 on a tank.
 fn shot(a: GroundKind, b: GroundKind) -> Option<Shot> {
+    // The ground war leaves the strategic facilities' buildings to the aircraft.
+    if a.structure() || b.structure() {
+        return None;
+    }
     let light = b.tracked_gun();
     if a.tank() {
         // The T-90's autoloader is a little slower than the Leopard's loader.
@@ -799,6 +823,13 @@ impl Sim {
             return;
         }
         let length = v.length();
+        // Out of fuel: the column stands (and an army's fights where it stands).
+        let head =
+            if v.supply { lane_at(&v.route, v.along).0 } else { point_at(&v.route, v.along).0 };
+        let dry = self.ground().is_some_and(|g| g.dry_at(v.blue, head));
+        if v.supply && dry {
+            return;
+        }
         if v.supply {
             // Trucks drive on whatever happens, the last one up to the end of the road (the
             // head up to a cut road's gap).
@@ -817,9 +848,12 @@ impl Sim {
         if look && v.mode != ConvoyMode::Assault {
             let contact = alive.iter().any(|&k| self.in_contact(k));
             v.mode = if contact { ConvoyMode::Halt } else { ConvoyMode::March };
-            if v.along >= length - ASSAULT_START {
+            if v.along >= length - ASSAULT_START && !dry {
                 v.mode = ConvoyMode::Assault;
             }
+        }
+        if dry && v.mode == ConvoyMode::March {
+            v.mode = ConvoyMode::Halt;
         }
         match v.mode {
             ConvoyMode::Halt => {}

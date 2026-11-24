@@ -373,3 +373,4 @@ fac-fuel-depot = Treibstofflager
 cl-facility-destroyed = Unser { $what } bei { $place } zerstört
 cl-enemy-facility-destroyed = Feindliches Ziel ({ $what }) bei { $place } zerstört
 cl-facility-restored = Unser { $what } bei { $place } ist wieder in Betrieb
+st-unit-offline = { $unit } außer Betrieb: kein Strom und kein Treibstoff

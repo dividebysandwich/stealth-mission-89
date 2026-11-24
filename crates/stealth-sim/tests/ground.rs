@@ -444,3 +444,39 @@ fn a_cut_road_turns_the_trucks_back_short_of_the_gap() {
         [&SimEvent::SupplyTurnedBack { tag: 2, trucks: 1 }, &SimEvent::SupplyConvoyArrived { tag: 2, trucks: 1 }]
     );
 }
+
+#[test]
+fn convoys_stand_still_without_fuel() {
+    let (_, mut sim) = campaign();
+    let kinds = [GroundKind::Leopard2, GroundKind::Bradley];
+    sim.spawn_convoy(7, true, &kinds, &[(X, Y), (X + 40 * KM, Y)]);
+    let a = stealth_sim::ground::metres_of(X, Y + 2 * KM);
+    let trucks = [GroundKind::ArmyTruck, GroundKind::CivTruck];
+    sim.spawn_supply_convoy(9, false, &trucks, &[a, [a[0] + 3000.0, a[1]]], 0.0);
+    let dry = |blue| stealth_sim::ground::DryArea { blue, at: a, r: 5000.0 };
+    // The other side's fuel depot is no matter to them.
+    sim.set_dry_areas(vec![dry(true)]);
+    run(&mut sim, 2);
+    let (tank, truck) = (metres(&sim, 0), metres(&sim, 2));
+    run(&mut sim, 30);
+    assert_eq!(metres(&sim, 0), tank, "the friendly column drove without fuel");
+    assert!(metres(&sim, 2)[0] > truck[0] + 100.0, "the enemy's trucks stopped");
+    sim.set_dry_areas(vec![dry(false)]);
+    run(&mut sim, 2);
+    let truck = metres(&sim, 2);
+    run(&mut sim, 30);
+    assert_eq!(metres(&sim, 2), truck, "the trucks drove without fuel");
+    assert!(metres(&sim, 0)[0] > tank[0] + 100.0, "the column did not set off again");
+}
+
+/// Tanks drive past a facility's building: the ground war leaves it to the aircraft.
+#[test]
+fn tanks_leave_buildings_alone() {
+    let (_, mut sim) = campaign();
+    let depot = sim.place_structure(GroundKind::FuelDepot, X + 2 * KM, Y + 10, false, 0.0).unwrap();
+    sim.spawn_convoy(7, true, &[GroundKind::Leopard2], &[(X, Y), (X + 20 * KM, Y)]);
+    let ev = run(&mut sim, 200);
+    assert!(!sim.units()[depot].destroyed);
+    assert!(!ev.iter().any(|e| matches!(e, SimEvent::AaaDestroyed { .. })));
+    assert!(metres(&sim, 1)[0] > metres(&sim, depot)[0] + 1000.0, "the tank halted for it");
+}

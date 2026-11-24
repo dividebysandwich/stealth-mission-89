@@ -460,6 +460,7 @@ impl Sim {
             if u.destroyed
                 || u.gone
                 || matches!(u.kind, GroundKind::Manpads | GroundKind::DroneCenter)
+                || u.kind.structure()
             {
                 return None;
             }

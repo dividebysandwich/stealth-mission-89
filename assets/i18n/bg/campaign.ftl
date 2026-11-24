@@ -373,3 +373,4 @@ fac-fuel-depot = Горивен склад
 cl-facility-destroyed = Наш обект ({ $what }) край { $place } е унищожен
 cl-enemy-facility-destroyed = Вражески обект ({ $what }) край { $place } е унищожен
 cl-facility-restored = Нашият обект ({ $what }) край { $place } отново работи
+st-unit-offline = { $unit } е изключен: няма ток и гориво

@@ -100,13 +100,14 @@ fn frame_line(sim: &Sim, events: &[SimEvent]) -> String {
         h = fnv(h, &format!("{i} {} {} {}", o.flags, o.alert, o.unit_type));
     }
     for u in sim.units() {
-        // Without the Patriot launchers' ready rounds, the vehicles' fine positions and the
-        // gone flag (added later; always 0, None and false here), under the types' names from
-        // before they took armour.
+        // Without the Patriot launchers' ready rounds, the vehicles' fine positions, the gone
+        // flag and the supplies cut (added later; always 0, None, false and 0 here), under the
+        // types' names from before they took armour.
         let line = format!("{u:?}")
             .replace(", rounds: 0", "")
             .replace(", fine: None", "")
-            .replace(", gone: false", "");
+            .replace(", gone: false", "")
+            .replace(", cut: 0", "");
         h = fnv(h, &line.replace("GroundUnit", "AaaUnit").replace("GroundKind", "AaaKind"));
     }
     let _ = write!(

@@ -384,6 +384,7 @@ impl Sim {
                     && !u.gone
                     && !self.aaa_blue(k)
                     && !matches!(u.kind, GroundKind::Manpads | GroundKind::DroneCenter)
+                    && !u.kind.structure()
                     && (u.x as f64 - mx).abs() < r_map + 2.0
                     && (u.y as f64 - my).abs() < r_map + 2.0
             })

@@ -675,3 +675,16 @@ fn no_nasams_shot_beyond_40_km() {
     let e = sim.station_command(ME, StationCmd::Fire { launcher: None }).unwrap_err();
     assert!(e.tr_in(stealth_i18n::Language::En).contains("range"), "{e}");
 }
+
+/// A battery without power and fuel cannot be manned; its crew (a player) is sent off.
+#[test]
+fn an_offline_battery_cannot_be_manned() {
+    let (mut sim, radar, _) = battery();
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+    sim.set_unit_cut(radar, stealth_sim::aaa::CUT_POWER | stealth_sim::aaa::CUT_FUEL);
+    run(&mut sim, 1);
+    assert_eq!(sim.station_of(ME), None);
+    assert!(sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).is_err());
+    sim.set_unit_cut(radar, stealth_sim::aaa::CUT_FUEL);
+    sim.station_command(ME, StationCmd::Man { unit: radar as u16 }).unwrap();
+}

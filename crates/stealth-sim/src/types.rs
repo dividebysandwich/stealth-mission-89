@@ -16,6 +16,9 @@ pub mod oflags {
     pub const FRIENDLY: i32 = 0x0400;
     pub const DISABLED: i32 = 0x0800;
     pub const RADAR_ID: i32 = 0x1000;
+    /// A campaign's SAM site without power and fuel (its power plant and fuel depot
+    /// destroyed): it neither tracks nor fires.
+    pub const OFFLINE: i32 = 0x4000;
 }
 
 /// Flight-unit flags.

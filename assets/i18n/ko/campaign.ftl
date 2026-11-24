@@ -373,3 +373,4 @@ fac-fuel-depot = 연료 저장소
 cl-facility-destroyed = { $place } 인근 아군 { $what } 파괴됨
 cl-enemy-facility-destroyed = { $place } 인근 적 { $what } 파괴
 cl-facility-restored = { $place } 인근 아군 { $what } 복구됨
+st-unit-offline = { $unit } 작동 불가: 전력과 연료 없음

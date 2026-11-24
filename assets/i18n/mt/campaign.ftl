@@ -373,3 +373,4 @@ fac-fuel-depot = Depożitu tal-fjuwil
 cl-facility-destroyed = Il-{ $what } tagħna qrib { $place } meqruda
 cl-enemy-facility-destroyed = Il-{ $what } tal-għadu qrib { $place } meqruda
 cl-facility-restored = Il-{ $what } tagħna qrib { $place } qed taħdem mill-ġdid
+st-unit-offline = { $unit } mitfi: la elettriku u lanqas fjuwil

@@ -39,6 +39,9 @@ pub const GEPARD_ROUNDS: i32 = 640;
 pub const GEPARD_STOCK: i32 = 640;
 /// A drone command center's stockpile: surveillance drones, attack drones.
 pub const STORK_STOCK: i32 = 4;
+/// A launcher or a Gepard whose power plant is destroyed takes this many times as long to
+/// refill.
+pub const POWER_CUT_SLOW: f32 = 1.5;
 pub const FP2_STOCK: i32 = 8;
 pub const INTERCEPTOR_STOCK: i32 = 6;
 pub const X12_STOCK: i32 = 4;
@@ -484,6 +487,9 @@ impl Sim {
         if u.destroyed {
             return Err(text!("st-unit-destroyed", unit = u.kind.name()));
         }
+        if u.offline() {
+            return Err(text!("st-unit-offline", unit = u.kind.name()));
+        }
         if self.manned_by(unit).is_some_and(|p| p != pilot) {
             return Err(text!("st-another-player-mans-it"));
         }
@@ -569,7 +575,11 @@ impl Sim {
         }
         let ready = |sim: &Sim, k: usize| {
             let u = &sim.units[k];
-            !u.destroyed && u.rounds > 0 && u.cooldown == 0 && sim.refill_left(k) == 0.0
+            !u.destroyed
+                && !u.offline()
+                && u.rounds > 0
+                && u.cooldown == 0
+                && sim.refill_left(k) == 0.0
         };
         let launchers = self.battery_launchers(radar);
         let k = match launcher {
@@ -718,7 +728,13 @@ impl Sim {
                     self.defence_mut().refill[k] = 0.0;
                     continue;
                 }
-                let left = (left - real).max(0.0);
+                // Without power the crew reloads by hand (slower); without fuel too, not at all.
+                if u.offline() {
+                    continue;
+                }
+                let rate =
+                    if u.cut & crate::aaa::CUT_POWER != 0 { 1.0 / POWER_CUT_SLOW } else { 1.0 };
+                let left = (left - real * rate).max(0.0);
                 self.defence_mut().refill[k] = left;
                 if left == 0.0 {
                     done.push(k);
@@ -763,7 +779,8 @@ impl Sim {
         let mut keep = Vec::new();
         for st in stations {
             let k = st.unit as usize;
-            if self.units.get(k).is_none_or(|u| u.destroyed) {
+            // Destroyed, or without power and fuel: the console goes dark.
+            if self.units.get(k).is_none_or(|u| u.destroyed || u.offline()) {
                 // The missiles it guided are lost.
                 let c = self.campaign.as_mut().expect("campaign");
                 for m in &mut c.missiles {

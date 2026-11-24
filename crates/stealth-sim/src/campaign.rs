@@ -891,6 +891,7 @@ impl Sim {
                 rounds: if kind == GroundKind::Gepard { crate::station::GEPARD_ROUNDS } else { 0 },
                 fine: None,
                 gone: false,
+                cut: 0,
             };
             // Armour faces out, its gun level.
             if kind.armour() {
@@ -1214,6 +1215,95 @@ impl Sim {
         if self.aaa_rng.is_none() {
             self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
         }
+    }
+
+    /// Campaign: a strategic facility's building of `kind` (a [`GroundKind::structure`]) of a
+    /// side at (x, y), facing `heading` (rad, clockwise from north); its unit, None when the
+    /// world is full.
+    pub fn place_structure(
+        &mut self,
+        kind: GroundKind,
+        x: i32,
+        y: i32,
+        blue: bool,
+        heading: f32,
+    ) -> Option<usize> {
+        if !kind.structure() || self.units.len() >= MAX_UNITS {
+            return None;
+        }
+        let c = self.campaign.as_mut()?;
+        c.aaa_blue.resize(self.units.len(), false);
+        self.units.push(GroundUnit {
+            kind,
+            x: x.clamp(0x40, 0x7FC0),
+            y: y.clamp(0x40, 0x7FC0),
+            aim_az: heading,
+            ..Default::default()
+        });
+        c.aaa_blue.push(blue);
+        c.aaa_target.resize(self.units.len(), None);
+        if self.aaa_rng.is_none() {
+            self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
+        }
+        Some(self.units.len() - 1)
+    }
+
+    /// Campaign: strategic facility `k`'s building stands again (rebuilt), or lies in ruins.
+    pub fn set_structure_destroyed(&mut self, k: usize, destroyed: bool) {
+        if let Some(u) = self.units.get_mut(k).filter(|u| u.kind.structure()) {
+            u.destroyed = destroyed;
+        }
+    }
+
+    /// Campaign: unit `k` changes sides (a facility of a place taken).
+    pub fn set_unit_side(&mut self, k: usize, blue: bool) {
+        if let Some(c) = self.campaign.as_mut()
+            && k < self.units.len()
+        {
+            c.aaa_blue.resize(self.units.len(), false);
+            c.aaa_blue[k] = blue;
+        }
+    }
+
+    /// Campaign: air defence unit `k`'s supplies cut ([`crate::aaa::CUT_POWER`],
+    /// [`crate::aaa::CUT_FUEL`]); with both cut it is offline, and its crew (a player) leaves.
+    pub fn set_unit_cut(&mut self, k: usize, cut: u8) {
+        if let Some(u) = self.units.get_mut(k) {
+            u.cut = cut;
+            if u.offline() {
+                u.burst = 0;
+                u.tracking = false;
+            }
+        }
+    }
+
+    /// Campaign: SAM site `i` (a world object) without power and fuel, or back on line.
+    pub fn set_site_offline(&mut self, i: usize, offline: bool) {
+        if let Some(o) = self.objects.get_mut(i) {
+            if offline {
+                o.flags |= oflags::OFFLINE;
+                o.flags &= !(oflags::TRACKING | oflags::PAINTED);
+            } else {
+                o.flags &= !oflags::OFFLINE;
+            }
+        }
+    }
+
+    /// Campaign: the areas whose fuel depot is destroyed (a side's vehicles there stop).
+    pub fn set_dry_areas(&mut self, dry: Vec<crate::ground::DryArea>) {
+        if let Some(c) = self.campaign.as_mut() {
+            c.ground.dry = dry;
+        }
+    }
+
+    /// Campaign: a strike aircraft of a side takes off from base `from` to bomb ground unit
+    /// `k` (a facility's building), then flies home and lands.
+    pub fn spawn_unit_strike(&mut self, from: usize, k: usize, tag: u32, blue: bool) -> usize {
+        let i = self.spawn_sead(from, k, tag, blue);
+        if let Some(Some(f)) = self.campaign.as_mut().map(|c| &mut c.flights[i]) {
+            f.iron = true;
+        }
+        i
     }
 
     /// Campaign: SAM site `i` fired at an aircraft lately (it gave itself away).
@@ -1908,7 +1998,9 @@ impl Sim {
             let o = self.objects[i];
             c.site_cool[i] = (c.site_cool[i] - fs).max(0);
             if o.unit_type == 0
-                || o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) != 0
+                || o.flags
+                    & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL | oflags::OFFLINE)
+                    != 0
                 || c.site_cool[i] > 0
                 || (c.magazines && c.site_rounds.get(i).is_some_and(|&n| n <= 0))
             {
@@ -1960,6 +2052,8 @@ impl Sim {
                 a.cooldown = (a.cooldown - fs).max(0);
             }
             if u.destroyed
+                || u.offline()
+                || u.kind.structure()
                 || (!blue && u.tracking)
                 || u.kind.battery_launcher().is_some()
                 || u.kind == GroundKind::DroneCenter
@@ -2043,7 +2137,9 @@ impl Sim {
         // Missile battery launchers fire on their battery radar's track.
         for k in 0..self.units.len() * ground_fire as usize {
             let u = self.units[k];
-            let Some(b) = u.kind.battery_launcher().filter(|_| !u.destroyed) else { continue };
+            let Some(b) = u.kind.battery_launcher().filter(|_| !u.destroyed && !u.offline()) else {
+                continue;
+            };
             let blue = c.aaa_blue[k];
             let track = (0..self.units.len()).find_map(|r| {
                 let radar = self.units[r];
