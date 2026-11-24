@@ -181,12 +181,24 @@ for n, like in (
     ("trackcam_third", "trackcam"),
 ):
     material(n, like)
-# Guard covers and red buttons (not a shared material: the game takes its colour from the model).
-red = material("red", "yellow")
-red.diffuse_color = (0.55, 0.04, 0.03, 1.0)
-for nd in red.node_tree.nodes if red.use_nodes else ():
-    if nd.type == "BSDF_PRINCIPLED":
-        nd.inputs["Base Color"].default_value = red.diffuse_color
+
+
+def coloured(name, like, rgb):
+    """A material of its own colour (linear RGB), not one of the game's shared ones: the game
+    takes its colour from the model."""
+    m = material(name, like)
+    m.diffuse_color = (*rgb, 1.0)
+    for nd in m.node_tree.nodes if m.use_nodes else ():
+        if nd.type == "BSDF_PRINCIPLED":
+            nd.inputs["Base Color"].default_value = m.diffuse_color
+    return m
+
+
+# Guard covers and red buttons.
+coloured("red", "yellow", (0.55, 0.04, 0.03))
+# The panel's face, lighter than the shared panel grey: the F-117A's panel lies deep in the
+# shade of its glare shield (about sRGB 0.30 / 0.32 / 0.34).
+coloured("panel_light", "panel_grey", (0.073, 0.084, 0.095))
 
 # --- the contributed cockpit and its stick, in this file's materials
 with bpy.data.libraries.load(SOURCE) as (src, dst):
@@ -462,6 +474,48 @@ def clear():
 
 
 surface = clear()
+
+# --- the panel's colours: the model paints the panel, its bezels and cases nearly all one
+# dark grey. The panel's face (what lies flat in its part's plane, up to PANEL_FACE m out of
+# it) is made light grey (`panel_light`); the displays' bezels standing further out
+# (BEZEL_FACE) and the round instruments' pods (`BOXED` but its first two) standing more
+# than POD_FACE m out black.
+PANEL_FACE = (-0.012, 0.045)
+BEZEL_FACE = (0.045, 0.08)
+POD_FACE = 0.015
+PODS = BOXED[2:]
+
+
+def colour_panel():
+    shell.data.materials.append(mats["panel_light"])
+    slot = {s.material.name: i for i, s in enumerate(shell.material_slots)}
+    grey, black = slot["panel_light"], slot["black"]
+    repaint = {slot[m] for m in ("dark", "black", "frame") if m in slot}
+    counts = [0, 0]
+    for f in shell.data.polygons:
+        if f.material_index not in repaint:
+            continue
+        sec = max((0, -1, 1), key=lambda k: f.normal.dot(SECTIONS[k][2]))
+        o, h, n, up = SECTIONS[sec]
+        if f.normal.dot(n) < 0.9:
+            continue
+        c = f.center
+        d = (c - o).dot(n)
+        u, v = (c - o).dot(h) * 1000 + SECTION_X[sec], -(c - o).dot(up) * 1000
+        pod = any(section(x0) == sec and x0 <= u <= x1 and y0 <= v <= y1 for (x0, y0, x1, y1), _ in PODS)
+        if pod and d >= POD_FACE:
+            f.material_index = black
+            counts[1] += 1
+        elif PANEL_FACE[0] <= d < PANEL_FACE[1]:
+            f.material_index = grey
+            counts[0] += 1
+        elif BEZEL_FACE[0] <= d < BEZEL_FACE[1]:
+            f.material_index = black
+            counts[1] += 1
+    print(f"panel: {counts[0]} faces light grey, {counts[1]} bezel black")
+
+
+colour_panel()
 # How far off its plane the model can stand under a face (m): what is further out is in front
 # of the panel, not on it (the up-front display stands a good way out of the panel's middle).
 PROUD = (-0.15, 0.36)
