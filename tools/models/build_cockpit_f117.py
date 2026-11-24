@@ -483,6 +483,13 @@ surface = clear()
 PANEL_FACE = (-0.012, 0.045)
 BEZEL_FACE = (0.045, 0.08)
 POD_FACE = 0.015
+# The centre display's bezel is lower over its top (its button row stands on a sloping
+# shoulder): over its top edge, BEZEL_REACH mm round it, all of it from CENTRE_TOP m out to
+# the bezel's front is black, its steps and slopes too.
+CENTRE_TOP = 0.010
+BEZEL_REACH = 45.0
+_cx, _cy, _cw, _ch = layout["screens"]["right"]
+CENTRE_BEZEL = (_cx - BEZEL_REACH, _cy - BEZEL_REACH, _cx + _cw + BEZEL_REACH, _cy)
 PODS = BOXED[2:]
 
 
@@ -495,11 +502,18 @@ def colour_panel():
     for f in shell.data.polygons:
         if f.material_index not in repaint:
             continue
+        o, h, n, up = SECTIONS[0]
+        c = f.center
+        u, v, d = (c - o).dot(h) * 1000, -(c - o).dot(up) * 1000, (c - o).dot(n)
+        x0, y0, x1, y1 = CENTRE_BEZEL
+        if x0 <= u <= x1 and y0 <= v <= y1 and CENTRE_TOP <= d < BEZEL_FACE[1]:
+            f.material_index = black
+            counts[1] += 1
+            continue
         sec = max((0, -1, 1), key=lambda k: f.normal.dot(SECTIONS[k][2]))
         o, h, n, up = SECTIONS[sec]
         if f.normal.dot(n) < 0.9:
             continue
-        c = f.center
         d = (c - o).dot(n)
         u, v = (c - o).dot(h) * 1000 + SECTION_X[sec], -(c - o).dot(up) * 1000
         pod = any(section(x0) == sec and x0 <= u <= x1 and y0 <= v <= y1 for (x0, y0, x1, y1), _ in PODS)
