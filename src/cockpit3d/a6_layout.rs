@@ -213,10 +213,10 @@ fn pilot(it: &mut Items) {
     use LampId::*;
     // Round the vertical display: its lights at the lower corners, the slip ball under it.
     for (light, x, y) in [
-        (Light::VdiAttack, -458.0, -50.0),
-        (Light::VdiPlatform, -458.0, -37.0),
-        (Light::VdiInRange, -302.0, -50.0),
-        (Light::VdiComputer, -302.0, -37.0),
+        (Light::VdiAttack, -444.0, -50.0),
+        (Light::VdiPlatform, -444.0, -37.0),
+        (Light::VdiInRange, -316.0, -50.0),
+        (Light::VdiComputer, -316.0, -37.0),
     ] {
         it.put(Elem::Light(light), rect(x, y, 40.0, 11.0), None, false);
     }
