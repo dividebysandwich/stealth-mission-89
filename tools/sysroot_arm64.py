@@ -23,7 +23,9 @@ SKIP = {"debconf", "dpkg", "perl", "perl-base", "debianutils", "libc-dev-bin", "
 
 
 def fetch(url):
-    with urllib.request.urlopen(url) as r:
+    # ports.ubuntu.com answers 403 to urllib's default "Python-urllib/x.y" User-Agent.
+    req = urllib.request.Request(url, headers={"User-Agent": "sysroot-arm64/1.0"})
+    with urllib.request.urlopen(req) as r:
         return r.read()
 
 
@@ -84,8 +86,12 @@ def main():
         deb = os.path.join(cache, os.path.basename(fn))
         if not os.path.exists(deb):
             print(f"fetch {n}")
-            with open(deb, "wb") as w:
-                w.write(fetch(f"{MIRROR}/{fn}"))
+            # Write to a temporary name first so a failed or interrupted download never
+            # leaves a truncated .deb behind that later runs would take as cached.
+            data = fetch(f"{MIRROR}/{fn}")
+            with open(deb + ".part", "wb") as w:
+                w.write(data)
+            os.replace(deb + ".part", deb)
         data = subprocess.run(["bsdtar", "-xOf", deb, "data.tar.*"], check=True, capture_output=True).stdout
         subprocess.run(["bsdtar", "-xf", "-", "-C", out], input=data, check=True)
     # Merged /usr: some packages still use /lib.
