@@ -83,6 +83,9 @@ pub fn profile(spec: i32) -> Option<Profile> {
         24 => rocket(6.0, 3.0, 20.0), // HARM
         // Shrike: a short burn and little pull, so it reaches well under half as far.
         SHRIKE_SPEC => rocket(3.5, 2.0, 12.0),
+        // Sidearm: the AIM-9C's airframe and motor, slowing as fast as a Sidewinder once burnt
+        // out.
+        SIDEARM_SPEC => Profile { drag: AIM9_DRAG, ..rocket(5.0, 2.0, 35.0) },
         25 => cruise(1e9, 10.0),      // Penguin: a sustainer the whole way
         26 => cruise(3.0, 10.0),      // Harpoon: booster, then its turbojet
         27 => rocket(4.0, 1.0, 15.0), // Maverick
@@ -132,6 +135,22 @@ const NASAMS_STALL: f64 = 800.0;
 /// AIM-9: drag as a multiple of [`DRAG`]. A small, finned airframe: burnt out it slows fast,
 /// some 18 km head-on from medium altitude, well under half that chasing a target's tail.
 const AIM9_DRAG: f64 = 12.0;
+
+/// The Sidearm's pop-up program ([`Popup`]): fired less than `POPUP_BELOW` ft above the ground
+/// at a radar, it climbs toward it at up to `POPUP_CLIMB` (radians). It pushes over once
+/// turning down to the radar at its full pull would take `POPUP_PUSHOVER` of the time left to
+/// it, once it is `POPUP_TOP` ft above the radar, or, burnt out, has slowed below `POPUP_SLOW`
+/// (wu/s). Then it comes over onto the radar in an arc of steady turn (proportional navigation
+/// with a gain of `POPUP_ARC`: at the push-over that is its full pull), which comes down as
+/// much steeper than the line of sight as it went up above it, and homes as any other missile
+/// once its seeker looks at the radar again. The farther the radar, the higher it climbs and
+/// the steeper it dives: some 30 degrees from 5 km, 45 from 9 km.
+pub const POPUP_BELOW: i32 = 1000;
+pub(crate) const POPUP_CLIMB: f64 = 0.8;
+pub(crate) const POPUP_PUSHOVER: f64 = 0.5;
+pub(crate) const POPUP_TOP: f64 = 6000.0;
+const POPUP_SLOW: f64 = 1200.0;
+const POPUP_ARC: f64 = 2.0;
 
 /// Navigation constant.
 const PN_GAIN: f64 = 4.0;
@@ -477,13 +496,41 @@ pub(crate) fn flight_step(
         }
         let r = sub(tg.p, p);
         let off = dot(r, vh) / len(r).max(1.0);
-        f.lost |= f.seen && off < GIMBAL_COS && f.loft == 0;
+        f.lost |= f.seen && off < GIMBAL_COS && f.loft == 0 && pm.popup.is_off();
         f.seen |= off > ACQUIRE_COS;
         !f.lost
     });
     if !straight && let Some(tg) = guide {
         let r = sub(tg.p, p);
-        if f.loft != 0 {
+        if pm.popup == Popup::Climb {
+            // Up and toward the radar, until it is time to push over: turning down to it at
+            // the speed it is boosting to.
+            let range = r[0].hypot(r[1]);
+            let fast = if burnt < prof.burn { speed.max(vmax) } else { speed };
+            let a_fast =
+                prof.g * GRAVITY * (sigma * (fast / FULL_LIFT_SPEED).powi(2)).clamp(MIN_LIFT, 1.0);
+            let down = vh[2].clamp(-1.0, 1.0).asin() - r[2].atan2(range);
+            let turn = down.max(0.0) * fast / a_fast;
+            let spent = burnt > prof.burn && speed < POPUP_SLOW;
+            if range < 1.0 || turn > POPUP_PUSHOVER * len(r) / fast || -r[2] >= POPUP_TOP || spent {
+                pm.popup = Popup::Dive;
+            } else {
+                let (c, s) = (POPUP_CLIMB.cos(), POPUP_CLIMB.sin());
+                let want = [r[0] / range * c, r[1] / range * c, s];
+                cmd = add(cmd, mul(across(want, vh), speed * LOFT_GAIN));
+            }
+        }
+        if pm.popup == Popup::Dive {
+            // Over onto it in an arc of steady turn, until the seeker looks at it.
+            let los = mul(r, 1.0 / len(r).max(1.0));
+            if dot(los, vh) > ACQUIRE_COS {
+                pm.popup = Popup::Off;
+            } else {
+                let omega = mul(cross(r, sub(tg.v, v)), 1.0 / dot(r, r).max(1.0));
+                cmd = add(cmd, mul(cross(omega, v), POPUP_ARC));
+            }
+        }
+        if pm.popup.is_off() && f.loft != 0 {
             let loft = f.loft as f64 / BAM;
             let range = r[0].hypot(r[1]);
             let elev = r[2].atan2(range);
@@ -503,7 +550,7 @@ pub(crate) fn flight_step(
                 cmd = add(cmd, mul(across(want, vh), speed * LOFT_GAIN));
             }
         }
-        if f.loft == 0 {
+        if pm.popup.is_off() && f.loft == 0 {
             // Pure proportional navigation: the velocity turns N times as fast as the line
             // of sight.
             let omega = mul(cross(r, sub(tg.v, v)), 1.0 / dot(r, r).max(1.0));

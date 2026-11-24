@@ -229,5 +229,9 @@ weapon-role-36 = Ohjaamattomat 127 mm:n raketit sarjatulikotelossa: pareittain t
 employment-36 =
     Tähtää rakettitähtäimellä (CCIP): se näyttää, mihin nyt ammuttu raketti osuu
     Paina parille, pidä pohjassa sarjalle; parhaiten loivasta syöksystä alle 6 km:stä
+weapon-role-37 = Sidewinderista tehty tutkantorjuntaohjus: tutkat ja SAM-asemat, helikopterista tai matalalta
+employment-37 =
+    Kantama: 1-10 km
+    Alle 1 000 ft:n korkeudelta se nousee ja syöksyy tutkaan ylhäältä
 loadout-wingman = SIIPIMIES
     .facts = Tekoälysiipimies samalla koneella ja samoilla aseilla liittyy seuraasi ilmassa; radiovalikko (\) antaa sille käskyt

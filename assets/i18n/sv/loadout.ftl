@@ -229,5 +229,9 @@ weapon-role-36 = Ostyrda 127 mm-raketer i kapsel: par eller salvor mot fordon oc
 employment-36 =
     Sikta med raketsiktet (CCIP): det visar var en raket som avfyras nu slår ned
     Tryck för ett par, håll för en salva; bäst från en flack dykning inom 6 km
+weapon-role-37 = Antiradarrobot byggd på Sidewinder: radarer och SAM-ställningar, från helikopter eller lågt
+employment-37 =
+    Räckvidd: 1-10 km
+    Under 1 000 ft stiger den och dyker på radarn uppifrån
 loadout-wingman = ROTEKAMRAT
     .facts = En AI-rotekamrat i samma flygplan med samma beväpning ansluter i luften; radiomenyn (\) ger den order

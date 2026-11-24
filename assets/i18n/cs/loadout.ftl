@@ -229,5 +229,9 @@ weapon-role-36 = Neřízené 127mm rakety v kontejneru: po párech nebo v dávk�
 employment-36 =
     Miřte raketovým zaměřovačem (CCIP): ukazuje, kam dopadne raketa odpálená teď
     Stiskněte pro pár, podržte pro dávku; nejlépe z mělkého střemhlavého letu do 6 km
+weapon-role-37 = Protiradiolokační střela z Sidewinderu: radary a stanoviště SAM, z vrtulníku nebo z malé výšky
+employment-37 =
+    Dosah: 1-10 km
+    Pod 1 000 ft vystoupá a střemhlav zaútočí na radar shora
 loadout-wingman = WINGMAN
     .facts = AI wingman ve stejném letounu se stejnou výzbrojí se k vám připojí ve vzduchu; rádiové menu (\) mu dává rozkazy

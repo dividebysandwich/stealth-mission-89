@@ -834,24 +834,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x2a7b8e02b88e6404,
-        0x5f919209c5f5a903,
-        0x1ebb2f0d654c37e7,
-        0x9855cfeb38d004e5,
-        0x735ceb927a163467,
-        0x695dae22f59f7117,
-        0x93855fc26f6a5532,
-        0xd77344f2d1664c83,
-        0x805fcba764ce67a5,
-        0xae2b2e17829928e2,
-        0xa54a4719a3cd68f2,
-        0x1189fd15915bb675,
-        0x4294f853248c0fe4,
-        0x96bd9e2248881dc0,
-        0x6ee3124423cc796a,
-        0x0f06492dd831816d,
-        0xbb64892cbc92ad86,
-        0xac4bcd78cd96b573,
+        0x684aed9df748cf6e,
+        0xf5039ba5535e8991,
+        0xc1d52e5ac4b2e77d,
+        0x6ce98d696fabc3eb,
+        0x2bd9dbd423e4ceb9,
+        0x60693b76b3d6fcdd,
+        0x9bdebac569ceb98c,
+        0xa587b3d271c9644d,
+        0xf6b7ff32724adb0b,
+        0x2d2bc4cf8154089c,
+        0x5928e727c1063bc4,
+        0x67538847cc726edb,
+        0xa378fbd33cdbc75a,
+        0x06f4534c33e446be,
+        0xdd9d5869d833c010,
+        0x24a73ab32897e933,
+        0x6c6244e43e4cc99c,
+        0x9b8b0fd4ec1b1b25,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -5170,6 +5170,84 @@ fn shrike_kills_a_radar_inside_its_range_only() {
         assert_eq!(arm_shot(guided, 35, 800), (true, true), "guided {guided}: Shrike inside");
         assert_eq!(arm_shot(guided, 35, 1800), (false, false), "guided {guided}: Shrike beyond");
         assert_eq!(arm_shot(guided, 2, 1800), (true, true), "guided {guided}: HARM from there");
+    }
+}
+
+/// What became of a Sidearm fired from `alt` ft at `knots` at an emitting SA-2 site `range` map
+/// units northeast, the nose on it.
+#[derive(Debug)]
+struct SidearmShot {
+    locked: bool,
+    /// The launch zone said it would reach the radar.
+    in_zone: bool,
+    destroyed: bool,
+    /// The highest it flew (ft) and the steepest it came down (degrees below the horizon).
+    top: f64,
+    dive: f64,
+}
+
+fn sidearm_shot(guided: bool, alt: u16, knots: u16, range: i32) -> SidearmShot {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { realistic_guidance: guided, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(SIDEARM_WEAPON, 1)]);
+    let t = 5;
+    let diag = (range as f64 / std::f64::consts::SQRT_2).round() as i32;
+    place_site(&mut sim, t, 1, mx + diag, my - diag);
+    let mut p = player_at(mx, my, alt, 0x2000, knots);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    p.cmd.lock_object = Some(t as u16);
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    let locked = (0..96).map(|k| -k * 64).any(|pitch| {
+        p.pitch = pitch as i16;
+        let angle = pitch as f64 * std::f64::consts::TAU / 65536.0;
+        p.climb_rate = (knots as f64 * 27.0 / 16.0 * angle.sin()).round() as i32;
+        sim.step(&p, 15);
+        sim.targeting().lock_valid
+    });
+    let in_zone = sim.launch_zone().is_some_and(|z| z.in_zone());
+    p.cmd.fire = true;
+    let (mut destroyed, mut top, mut dive) = (false, 0.0f64, 0.0f64);
+    for _ in 0..15 * 60 {
+        for e in sim.step(&p, 15) {
+            destroyed |= matches!(e, SimEvent::GroundDestroyed { object, .. } if object == t);
+        }
+        p.cmd = Commands::default();
+        for m in &sim.projectiles()[8..] {
+            if m.ttl > 0 && m.weapon == SIDEARM_WEAPON && m.alt >= 0 {
+                top = top.max(m.map_pos().2);
+                dive = dive.max(-(m.pitch as i16) as f64 * 360.0 / 65536.0);
+            }
+        }
+    }
+    SidearmShot { locked, in_zone, destroyed, top, dive }
+}
+
+/// Fired low, as from a helicopter, the Sidearm pops up and comes down on the radar from
+/// above, the more steeply the farther the radar; close in it still hits. Fired from higher up
+/// it flies at the radar as the Shrike does. It locks on only from about half the Shrike's
+/// range.
+#[test]
+fn sidearm_pops_up_when_fired_low() {
+    for guided in [false, true] {
+        let low = sidearm_shot(guided, 100, 120, 500);
+        assert!(low.locked && low.in_zone && low.destroyed, "guided {guided}: {low:?}");
+        assert!(low.top > 2500.0 && low.dive > 35.0, "guided {guided}: no pop-up {low:?}");
+        let close = sidearm_shot(guided, 100, 120, 200);
+        assert!(close.locked && close.in_zone && close.destroyed, "guided {guided}: {close:?}");
+        assert!(close.top > 300.0, "guided {guided}: no pop-up {close:?}");
+        let high = sidearm_shot(guided, 3000, 450, 500);
+        assert!(high.locked && high.in_zone && high.destroyed, "guided {guided}: {high:?}");
+        assert!(high.top < 3100.0, "guided {guided}: popped up from high {high:?}");
+        let far = sidearm_shot(guided, 3000, 450, 800);
+        assert!(!far.locked && !far.destroyed, "guided {guided}: {far:?}");
     }
 }
 

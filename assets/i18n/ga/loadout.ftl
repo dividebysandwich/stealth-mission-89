@@ -229,5 +229,9 @@ weapon-role-36 = Roicéid 127 mm gan treorú i bpota: ina bpéirí nó ina srait
 employment-36 =
     Dírigh le crosóg na roicéad (CCIP): taispeánann sí cá dtuirlingeoidh roicéad a scaoiltear anois
     Brúigh le haghaidh péire, coinnigh síos le haghaidh sraithe; is fearr ó thumadh éadomhain laistigh de 6 km
+weapon-role-37 = Diúracán frith-radair déanta as Sidewinder: radair agus láithreáin SAM, ó héileacaptar nó go híseal
+employment-37 =
+    Raon: 1-10 km
+    Faoi 1,000 ft éiríonn sé suas agus tumann sé ar an radar ó thuas
 loadout-wingman = SCIATHÁNAÍ
     .facts = Tagann sciathánaí IS san aerárthach céanna leis an armlón céanna leat san aer; tugann an roghchlár raidió (\) orduithe dó

@@ -229,5 +229,9 @@ weapon-role-36 = Nevaldomos 127 mm raketos konteineryje: poromis ar serijomis pr
 employment-36 =
     Taikykitės raketų taikikliu (CCIP): jis rodo, kur nukris dabar paleista raketa
     Paspauskite porai, laikykite serijai; geriausia iš nuožulnaus pikiravimo iki 6 km
+weapon-role-37 = Iš Sidewinder padaryta priešradarinė raketa: radarai ir SAM objektai, iš sraigtasparnio ar žemai
+employment-37 =
+    Nuotolis: 1-10 km
+    Žemiau 1 000 ft ji pakyla ir smenga į radarą iš viršaus
 loadout-wingman = SPARNININKAS
     .facts = DI sparnininkas tuo pačiu orlaiviu su ta pačia ginkluote prisijungia ore; radijo meniu (\) duoda jam įsakymus

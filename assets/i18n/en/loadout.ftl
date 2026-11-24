@@ -229,5 +229,9 @@ weapon-role-36 = Unguided 127 mm rockets in a pod: pairs or ripples against vehi
 employment-36 =
     Aim with the rocket reticle (CCIP): it shows where a rocket fired now lands
     Press for a pair, hold for a ripple; best from a shallow dive inside 6 km
+weapon-role-37 = Anti-radiation missile built from a Sidewinder: radars and SAM sites, from a helicopter or low down
+employment-37 =
+    Range: 1-10 km
+    Below 1,000 ft it pops up and dives on the radar from above
 loadout-wingman = WINGMAN
     .facts = An AI wingman in the same aircraft with the same stores joins you once you are up; the radio menu (\) gives it its orders

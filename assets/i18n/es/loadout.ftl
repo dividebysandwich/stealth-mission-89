@@ -229,5 +229,9 @@ weapon-role-36 = Cohetes de 127 mm no guiados en lanzador: por parejas o en ráf
 employment-36 =
     Apunte con la retícula de cohetes (CCIP): muestra dónde cae un cohete disparado ahora
     Pulse para una pareja, mantenga para una ráfaga; mejor en picado suave a menos de 6 km
+weapon-role-37 = Misil antirradiación derivado del Sidewinder: radares y emplazamientos SAM, desde helicóptero o a baja cota
+employment-37 =
+    Alcance: 1-10 km
+    Por debajo de 1000 ft asciende y cae en picado sobre el radar
 loadout-wingman = PUNTO
     .facts = Un punto IA en el mismo avión y con el mismo armamento se te une en el aire; el menú de radio (\) le da órdenes

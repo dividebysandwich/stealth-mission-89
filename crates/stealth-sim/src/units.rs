@@ -347,9 +347,9 @@ mod tests {
         assert_eq!(t.aircraft[crate::ai_missions::FA18E as usize].model, 79);
         assert_eq!(t.aircraft[crate::ai_missions::EA18G as usize].model, 81);
         assert_eq!(t.aircraft[crate::ai_missions::A6 as usize].model, 27);
-        assert_eq!(t.missiles.len(), 60);
+        assert_eq!(t.missiles.len(), 61);
         assert_eq!(t.missiles[crate::naval::SEA_MISSILE_SPEC as usize].name, "3M-54");
-        assert_eq!((t.weapons.len(), t.compat.len()), (37, 37));
+        assert_eq!((t.weapons.len(), t.compat.len()), (38, 38));
         // The Mk 83 and the Mk 84 fall like the Mk 82 and do more to everything it harms.
         let (mk83, mk84) = (crate::types::MK83_WEAPON as usize, crate::types::MK84_WEAPON as usize);
         for (w, less) in [(mk83, 9), (mk84, mk83)] {
@@ -366,6 +366,15 @@ mod tests {
         // Some 40% of the HARM's reach, and slower.
         assert!((0.35..0.45).contains(&(shrike.lock_range as f64 / harm.lock_range as f64)));
         assert!(shrike.max_speed < harm.max_speed && shrike.turn < harm.turn);
+        // The Sidearm: about half the Shrike's reach, a Sidewinder's agility.
+        let sidearm = &t.missiles[crate::types::SIDEARM_SPEC as usize];
+        assert_eq!(
+            t.weapons[crate::types::SIDEARM_WEAPON as usize].spec as i32,
+            crate::types::SIDEARM_SPEC
+        );
+        assert_eq!(sidearm.class, harm.class, "anti-radiation");
+        assert!((0.4..0.6).contains(&(sidearm.lock_range as f64 / shrike.lock_range as f64)));
+        assert_eq!(sidearm.turn, t.missiles[t.weapons[0].spec as usize].turn);
         assert_eq!(
             t.weapons[crate::rockets::ZUNI_WEAPON as usize].spec as i32,
             crate::rockets::ZUNI_SPEC

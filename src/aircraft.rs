@@ -167,12 +167,14 @@ pub fn apache_muzzle(azimuth: f32, elevation: f32) -> Vec3 {
 
 /// The AH-64's store slot values for its stations' (weapon type, rounds left; a negative type
 /// none): 0 nothing on a station, 1 its empty launcher, 1 + n with n rounds on it, 6 a rocket
-/// pod (full or empty).
+/// pod (full or empty); on a wingtip 4 a Sidearm's empty rail, 5 the rail with its Sidearm.
 pub fn apache_store_values(stations: impl Iterator<Item = (i32, i32)>) -> [i16; 6] {
     let mut v = [0; 6];
     for (s, (w, n)) in v.iter_mut().zip(stations) {
         if stealth_sim::rockets::rocket_weapon(w) {
             *s = 6;
+        } else if w == stealth_sim::SIDEARM_WEAPON {
+            *s = 4 + n.clamp(0, 1) as i16;
         } else if w >= 0 {
             *s = 1 + n.clamp(0, 4) as i16;
         }
@@ -1538,6 +1540,18 @@ pub fn cockpit_files() -> Vec<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The AH-64's stations show their stores: Stingers and Sidearms on the tips, Hellfires and
+    /// rocket pods on the pylons.
+    #[test]
+    fn apache_stores_show_on_their_stations() {
+        let sidearm = stealth_sim::SIDEARM_WEAPON;
+        let hellfire = crate::loadout::HELLFIRE as i32;
+        let stinger = crate::loadout::STINGER as i32;
+        let hydra = crate::loadout::HYDRA as i32;
+        let loads = [(sidearm, 1), (hellfire, 3), (hydra, 0), (-1, 0), (stinger, 2), (sidearm, 0)];
+        assert_eq!(apache_store_values(loads.into_iter()), [5, 4, 6, 0, 3, 4]);
+    }
 
     /// Accessor bounds of the primitives of `node` drawn in the given palette colours (glTF JSON
     /// chunk only).

@@ -229,5 +229,9 @@ weapon-role-36 = Razzi da 127 mm non guidati in lanciatore: a coppie o a raffica
 employment-36 =
     Mirare con il reticolo razzi (CCIP): mostra dove cade un razzo sparato ora
     Premere per una coppia, tenere premuto per una raffica; meglio in leggera picchiata entro 6 km
+weapon-role-37 = Missile antiradiazione derivato dal Sidewinder: radar e siti SAM, da elicottero o a bassa quota
+employment-37 =
+    Portata: 1-10 km
+    Sotto i 1.000 ft cabra e si tuffa sul radar dall'alto
 loadout-wingman = GREGARIO
     .facts = Un gregario IA sullo stesso aereo con lo stesso armamento ti raggiunge in volo; il menu radio (\) gli dà gli ordini

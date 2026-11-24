@@ -229,5 +229,9 @@ weapon-role-36 = Rokits mhux iggwidati ta' 127 mm f'pod: f'pari jew f'raffiki ko
 employment-36 =
     Immira bir-retikolu tar-rokits (CCIP): juri fejn jaqa' rokit sparat issa
     Agħfas għal par, żomm għal raffika; l-aħjar minn għadsa baxxa fi ħdan 6 km
+weapon-role-37 = Missila kontra r-radar mibnija minn Sidewinder: radars u siti SAM, minn ħelikopter jew baxx
+employment-37 =
+    Firxa: 1-10 km
+    Taħt 1,000 ft titla' 'l fuq u tiġi fuq ir-radar minn fuq
 loadout-wingman = WINGMAN
     .facts = Wingman tal-IA fl-istess ajruplan bl-istess armi jingħaqad miegħek fl-ajru; il-menu tar-radju (\) jagħtih l-ordnijiet

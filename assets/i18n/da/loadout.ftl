@@ -229,5 +229,9 @@ weapon-role-36 = Ustyrede 127 mm-raketter i en kapsel: par eller salver mod kør
 employment-36 =
     Sigt med raketsigtet (CCIP): det viser, hvor en raket affyret nu rammer
     Tryk for et par, hold for en salve; bedst fra et fladt dyk inden for 6 km
+weapon-role-37 = Antiradarmissil bygget på Sidewinder: radarer og SAM-stillinger, fra helikopter eller lav højde
+employment-37 =
+    Rækkevidde: 1-10 km
+    Under 1.000 ft stiger den op og dykker ned på radaren ovenfra
 loadout-wingman = WINGMAN
     .facts = En AI-wingman i samme fly med samme bevæbning slutter sig til dig i luften; radiomenuen (\) giver den ordrer

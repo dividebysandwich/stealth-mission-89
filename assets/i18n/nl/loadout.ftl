@@ -229,5 +229,9 @@ weapon-role-36 = Ongeleide 127 mm-raketten in een houder: paren of salvo's tegen
 employment-36 =
     Richt met het raketvizier (CCIP): het toont waar een nu afgevuurde raket inslaat
     Druk voor een paar, houd vast voor een salvo; het best vanuit een ondiepe duik binnen 6 km
+weapon-role-37 = Anti-radarraket op basis van de Sidewinder: radars en SAM-stellingen, vanuit een helikopter of laag
+employment-37 =
+    Bereik: 1-10 km
+    Onder 1.000 ft klimt hij op en duikt van bovenaf op de radar
 loadout-wingman = WINGMAN
     .facts = Een AI-wingman in hetzelfde toestel met dezelfde bewapening sluit in de lucht aan; het radiomenu (\) geeft hem opdrachten

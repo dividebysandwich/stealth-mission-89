@@ -62,9 +62,11 @@ pub enum Munition {
     /// one).
     Shrike,
     Zuni,
+    /// The helicopters' and the Harrier's AGM-122 Sidearm anti-radiation missile.
+    Sidearm,
 }
 
-const BLUE: [Munition; 24] = [
+const BLUE: [Munition; 25] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -89,6 +91,7 @@ const BLUE: [Munition; 24] = [
     Munition::Flamingo,
     Munition::Shrike,
     Munition::Zuni,
+    Munition::Sidearm,
 ];
 const RED: [Munition; 9] = [
     Munition::Aa10,
@@ -157,6 +160,7 @@ impl Munition {
             Iskander => "Iskander",
             Shrike => "AGM-45 Shrike",
             Zuni => "Zuni",
+            Sidearm => "AGM-122 Sidearm",
             SamLong => return text!("mu-sam-long"),
             SamMedium => return text!("mu-sam-medium"),
             SamShort => return text!("mu-sam-short"),
@@ -202,6 +206,7 @@ impl Munition {
             Iskander => 4.0,
             Shrike => 16.0,
             Zuni => 64.0,
+            Sidearm => 16.0,
         }
     }
 
@@ -237,6 +242,7 @@ impl Munition {
             Iskander => 0.5,
             Shrike => 8.0,
             Zuni => 16.0,
+            Sidearm => 8.0,
         }
     }
 
@@ -279,6 +285,7 @@ impl Munition {
             32 => Apkws,
             35 => Shrike,
             36 => Zuni,
+            37 => Sidearm,
             _ => return None,
         })
     }

@@ -229,5 +229,9 @@ weapon-role-36 = Roquettes de 127 mm non guidées en panier : par paires ou en s
 employment-36 =
     Visez avec le réticule roquettes (CCIP) : il montre où tombe une roquette tirée maintenant
     Appuyez pour une paire, maintenez pour une salve ; idéal en piqué léger à moins de 6 km
+weapon-role-37 = Missile antiradar dérivé du Sidewinder : radars et sites SAM, depuis un hélicoptère ou à basse altitude
+employment-37 =
+    Portée : 1-10 km
+    Sous 1 000 ft, il cabre puis plonge sur le radar par le dessus
 loadout-wingman = AILIER
     .facts = Un ailier IA du même avion avec le même armement vous rejoint une fois en l'air ; le menu radio (\) lui donne ses ordres

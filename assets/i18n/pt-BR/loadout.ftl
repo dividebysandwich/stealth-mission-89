@@ -229,5 +229,9 @@ weapon-role-36 = Foguetes de 127 mm não guiados em casulo: em pares ou em salva
 employment-36 =
     Mire com o retículo de foguetes (CCIP): mostra onde cai um foguete disparado agora
     Pressione para um par, segure para uma salva; melhor em mergulho raso a menos de 6 km
+weapon-role-37 = Míssil antirradiação derivado do Sidewinder: radares e sítios SAM, de helicóptero ou em baixa altitude
+employment-37 =
+    Alcance: 1-10 km
+    Abaixo de 1.000 ft ele sobe e mergulha sobre o radar por cima
 loadout-wingman = ALA
     .facts = Um ala de IA na mesma aeronave e com o mesmo armamento se junta a você no ar; o menu de rádio (\) dá as ordens

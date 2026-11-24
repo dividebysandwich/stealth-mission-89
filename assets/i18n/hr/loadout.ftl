@@ -229,5 +229,9 @@ weapon-role-36 = Nevođene rakete od 127 mm u lanseru: u parovima ili salvama pr
 employment-36 =
     Ciljajte raketnim ciljnikom (CCIP): pokazuje gdje pada raketa ispaljena sada
     Pritisnite za par, držite za salvu; najbolje iz plitkog obrušavanja unutar 6 km
+weapon-role-37 = Proturadarski projektil od Sidewindera: radari i SAM položaji, iz helikoptera ili s male visine
+employment-37 =
+    Domet: 1-10 km
+    Ispod 1.000 ft se uspne i obruši na radar odozgo
 loadout-wingman = PRATITELJ
     .facts = UI pratitelj u istom zrakoplovu s istim naoružanjem pridružuje vam se u zraku; radijski izbornik (\) mu daje zapovijedi

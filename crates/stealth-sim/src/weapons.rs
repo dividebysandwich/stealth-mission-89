@@ -722,6 +722,8 @@ impl Sim {
                 pr.target = -1;
             }
         }
+        let at_radar = pr.target > 0;
+        self.popup_launch(&mut pr, at_radar);
         if self.fall_drag(spec).is_some() {
             // Free-fall and retarded bombs (and, fixed, supply pods; under realistic guidance
             // the laser-guided ones) fall ballistically. Classic flew free-fall and guided bombs
@@ -821,11 +823,24 @@ impl Sim {
             glide: None,
             intercept: None,
             sea: None,
+            popup: Popup::Off,
         };
         if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {
             pr.speed >>= 1;
         }
         pr
+    }
+
+    /// Missile `pr` leaving now at a radar (`at_radar`): a Sidearm fired low runs its pop-up
+    /// program (`guidance::POPUP_BELOW`), and flies longer for it.
+    pub(crate) fn popup_launch(&self, pr: &mut Projectile, at_radar: bool) {
+        if pr.weapon == SIDEARM_WEAPON
+            && at_radar
+            && self.pl.p.height < crate::guidance::POPUP_BELOW
+        {
+            pr.popup = Popup::Climb;
+            pr.ttl += pr.ttl / 2;
+        }
     }
 
     /// The station store `w` leaves from next: the one with the most left (pairs of pylons

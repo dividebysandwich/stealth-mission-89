@@ -229,5 +229,9 @@ weapon-role-36 = Irányítatlan 127 mm-es rakéták konténerben: párban vagy s
 employment-36 =
     Célozzon a rakétairányzékkal (CCIP): megmutatja, hová csapódik a most indított rakéta
     Nyomja meg egy párért, tartsa lenyomva sorozatért; legjobb enyhe zuhanásból 6 km-en belül
+weapon-role-37 = Sidewinderből készült radarelhárító rakéta: radarok és SAM-állások, helikopterről vagy alacsonyról
+employment-37 =
+    Hatótávolság: 1-10 km
+    1 000 ft alatt felemelkedik, és felülről zuhan a radarra
 loadout-wingman = KÍSÉRŐ
     .facts = Egy MI kísérő ugyanazzal a géppel és fegyverzettel a levegőben csatlakozik; a rádiómenü (\) adja ki a parancsait

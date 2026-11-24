@@ -191,6 +191,28 @@ pub struct Projectile {
     /// A submarine's sea-skimmer at a ship (`crate::naval`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sea: Option<crate::naval::SeaGuide>,
+    /// A Sidearm fired low: its pop-up program ([`Popup`]).
+    #[serde(default, skip_serializing_if = "Popup::is_off")]
+    pub popup: Popup,
+}
+
+/// The Sidearm's pop-up program: fired low at a radar it climbs away from the ground, then
+/// pushes over and dives on the radar from above (`crate::guidance`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum Popup {
+    /// None, or the program is over: it homes as any other missile.
+    #[default]
+    Off,
+    /// Climbing toward the radar.
+    Climb,
+    /// Pushing over onto it, until its seeker looks at it again.
+    Dive,
+}
+
+impl Popup {
+    pub fn is_off(&self) -> bool {
+        *self == Popup::Off
+    }
 }
 
 fn no_burst(b: &u16) -> bool {
@@ -638,6 +660,10 @@ pub const MK84_WEAPON: i32 = 34;
 /// The AGM-45 Shrike's missile table entry and weapon type.
 pub const SHRIKE_SPEC: i32 = 58;
 pub const SHRIKE_WEAPON: i32 = 35;
+/// The AGM-122 Sidearm's missile table entry and weapon type: an anti-radiation missile that
+/// pops up when fired low ([`Projectile::popup`]).
+pub const SIDEARM_SPEC: i32 = 60;
+pub const SIDEARM_WEAPON: i32 = 37;
 /// The SLAM-ER's missile table entry and weapon type (`crate::slam`).
 pub const SLAMER_SPEC: i32 = 52;
 pub const SLAMER_WEAPON: i32 = 25;

@@ -229,5 +229,9 @@ weapon-role-36 = Nevodene 127-mm rakete v zabojniku: v parih ali rafalih proti v
 employment-36 =
     Merite z raketnim merilnikom (CCIP): kaže, kam pade raketa, izstreljena zdaj
     Pritisnite za par, držite za rafal; najbolje iz plitvega strmoglavljenja do 6 km
+weapon-role-37 = Protiradarski izstrelek iz Sidewinderja: radarji in položaji SAM, s helikopterja ali z nizke višine
+employment-37 =
+    Doseg: 1-10 km
+    Pod 1 000 ft se dvigne in strmoglavi na radar od zgoraj
 loadout-wingman = KRILNI PILOT
     .facts = Krilni pilot UI v istem letalu z isto oborožitvijo se vam pridruži v zraku; radijski meni (\) mu daje ukaze

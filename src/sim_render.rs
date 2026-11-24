@@ -1827,7 +1827,7 @@ fn world_model_state(
         None => c.sim.bay_door_anim(),
     }) as i16;
     // The RAH-66's doors show what is left on them (slots 23 left, 24 right): 0 Hellfires,
-    // 1 Stingers, 2 none.
+    // 1 Stingers, 2 none, 3 a Sidearm.
     let door_stores = |i: usize| {
         let bay = match ridden {
             Some(v) => v.stores.get(i).map(|&(w, n)| (w as i32, n as i32)),
@@ -1838,6 +1838,8 @@ fn world_model_state(
                 2
             } else if w == crate::loadout::STINGER as i32 {
                 1
+            } else if w == crate::loadout::SIDEARM as i32 {
+                3
             } else {
                 0
             }

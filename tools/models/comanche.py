@@ -19,7 +19,8 @@ navigation lights (`_s12v1`) and red beacons (`_s20v1`). Levels 0 and 1 have:
   shut wheel well doors);
 - a weapon bay door on each side, hinged at the chine (`_s8v0` shut, `_s8v1` half open,
   `_s8v2` swung up and out level), with the door's stores on slot 23 (left) and 24 (right):
-  0 three Hellfires, 1 six Stingers, 2 none.
+  0 three Hellfires, 1 six Stingers, 2 none, 3 a Sidearm (stores.py's Sidewinder, longer than
+  the door: it reaches past both its ends).
 Dark grey. Built in metres and scaled to aircraft units (K per metre). Model space: x right,
 y forward, z up.
 """
@@ -37,6 +38,7 @@ sys.path.insert(0, HERE)
 
 import heli  # noqa: E402
 import mklib  # noqa: E402
+import stores as stores_lib  # noqa: E402
 from heli import ring  # noqa: E402
 from mklib import Geo, Ramp, frustum  # noqa: E402
 
@@ -330,14 +332,30 @@ def stinger(p, level):
     return g
 
 
+# The Sidearm's axis below the door's inner face (clear of its canards) and its middle along
+# the door (m).
+SIDEARM_DROP = 0.24
+SIDEARM_Y = (BAY_Y[0] + BAY_Y[1]) / 2
+
+
 def stores(sx, angle, kind, level):
     """The stores hanging on rails under a door's inner face: `kind` 0 three Hellfires, 1 six
-    Stingers."""
+    Stingers, 3 a Sidearm."""
     g = Geo()
     _, inner, n1, _ = door_section(sx, angle)
     nose_y = BAY_Y[0] - 0.20
     # The inner face looks down once the door is open.
     down = n1
+    if kind == 3:
+        top = inner[0] + (inner[1] - inner[0]) * 0.5
+        c = top + down * SIDEARM_DROP
+        # The Sidewinder model hangs below its lugs: its axis one body radius down.
+        r = stores_lib.RADIUS[0]
+        g.add(stores_lib.aim9().body.transformed(lambda p: Vector((p.x + c.x, p.y + SIDEARM_Y, p.z + r + c.z))))
+        y0, y1 = SIDEARM_Y + 0.95, SIDEARM_Y - 1.10
+        g.face2([top + Vector((0, y0, 0)), top + Vector((0, y1, 0)), top + down * (SIDEARM_DROP - r) + Vector((0, y1, 0)),
+                 top + down * (SIDEARM_DROP - r) + Vector((0, y0, 0))], METAL)
+        return g
     for s, r, gap, length in ([(s, 0.089, 0.05, 1.63) for s in (0.2, 0.5, 0.8)] if kind == 0
                                else [(0.12 + 0.152 * k, 0.035, 0.03, 1.52) for k in range(6)]):
         top = inner[0] + (inner[1] - inner[0]) * s
@@ -555,7 +573,7 @@ def build():
             if state == 0:
                 continue
             for sx, slot in ((-1, 23), (1, 24)):
-                for kind in (0, 1):
+                for kind in (0, 1, 3):
                     group(lod, [(8, state), (slot, kind)], stores(sx, angle, kind, level))
 
 

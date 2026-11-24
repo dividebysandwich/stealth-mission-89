@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 37] = [
+pub const WEAPONS: [(&str, &str); 38] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -53,6 +53,7 @@ pub const WEAPONS: [(&str, &str); 37] = [
     ("Mk 84 LDGP", "weapon-role-34"),
     ("AGM-45 Shrike", "weapon-role-35"),
     ("Zuni rockets", "weapon-role-36"),
+    ("AGM-122 Sidearm", "weapon-role-37"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -65,7 +66,7 @@ pub const WEAPONS: [(&str, &str); 37] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 37] = [
+const EMPLOYMENT: [&str; 38] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -103,6 +104,7 @@ const EMPLOYMENT: [&str; 37] = [
     FREE_FALL,
     "employment-35",
     "employment-36",
+    "employment-37",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -121,16 +123,16 @@ fn employment(w: usize) -> &'static [&'static str] {
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
 const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 37] = [
+const BAY_QTY: [u8; 38] = [
     4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1, 1, 7,
-    7, 2, 1, 1, 4,
+    7, 2, 1, 1, 4, 2,
 ];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers, a 7-tube pod of 70 mm rockets, a 4-tube pod
 /// of Zunis; the 1,000 and 2,000 lb bombs one to a pylon).
-const PYLON_QTY: [u8; 37] = [
+const PYLON_QTY: [u8; 38] = [
     1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7,
-    7, 1, 1, 1, 4,
+    7, 1, 1, 1, 4, 1,
 ];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
@@ -161,6 +163,9 @@ pub const MK84: u8 = 34;
 pub const SHRIKE: u8 = 35;
 /// The 5 in Zuni rockets' weapon type, four to a LAU-10 pod (`stealth_sim::rockets`).
 pub const ZUNI: u8 = 36;
+/// The AGM-122 Sidearm's weapon type: the helicopters' and the Harrier's anti-radiation
+/// missile, a Sidewinder with a radar seeker, one to a rail (`stealth_sim::SIDEARM_WEAPON`).
+pub const SIDEARM: u8 = 37;
 
 /// A rocket pod: hung as one pod, its rounds the rockets in it.
 #[cfg(test)]
@@ -1189,12 +1194,12 @@ static F16_LAYOUT: Layout =
     Layout { outline: F16_OUTLINE, half_span: 4.84, length: 15.90, hardpoints: &F16_STATIONS };
 static A10_LAYOUT: Layout =
     Layout { outline: A10_OUTLINE, half_span: 8.78, length: 16.44, hardpoints: &A10_STATIONS };
-/// The AV-8B's outer pylons carry the Mavericks, the bombs and Sidewinders, the intermediate ones
-/// (on the outriggers' fairings, ahead of the legs) the heavier stores but the Rockeye pairs, the
-/// inboard ones (by the intakes) the tanks, the camera, the cargo and the Harpoon too; the
-/// Sidewinder rails outboard. No centreline station: the gun pods and the bicycle gear's legs
+/// The AV-8B's outer pylons carry the Mavericks, the bombs, Sidewinders and Sidearms, the
+/// intermediate ones (on the outriggers' fairings, ahead of the legs) the heavier stores but the
+/// Rockeye pairs, the inboard ones (by the intakes) the tanks, the camera, the cargo and the
+/// Harpoon too; the Sidewinder (or Sidearm) rails outboard. No centreline station: the gun pods and the bicycle gear's legs
 /// leave no room for a store between them.
-const AV8B_OUTER: [u8; 11] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15];
+const AV8B_OUTER: [u8; 12] = [0, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, SIDEARM];
 const AV8B_MIDDLE: [u8; 13] = [5, 6, 8, 9, 10, 12, 13, 14, 15, CBU105, HYDRA, APKWS, ZUNI];
 const AV8B_INNER: [u8; 20] =
     [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, CBU105, HYDRA, APKWS, MK83, ZUNI];
@@ -1206,7 +1211,7 @@ const AV8B_INNER_QTY: [(u8, u8); 3] = [(10, 1), (12, 1), (14, 1)];
 /// The AV-8B's stations: the left Sidewinder rail (1) to the right one (9), numbered as the
 /// real ones (5, the centreline, not fitted).
 static AV8B_STATIONS: [Hardpoint; 8] = [
-    pylon("hardpoint-av8b-1-left-rail", "1", -3.90, 8.64, Some(7), &SIDEWINDER),
+    pylon("hardpoint-av8b-1-left-rail", "1", -3.90, 8.64, Some(7), &RAIL_MISSILES),
     pylon("hardpoint-station-2-left-outer-wing", "2", -3.28, 8.69, Some(6), &AV8B_OUTER)
         .carrying(&AV8B_OUTER_QTY),
     pylon("hardpoint-av8b-3-left-middle-wing", "3", -2.60, 8.19, Some(5), &AV8B_MIDDLE)
@@ -1219,7 +1224,7 @@ static AV8B_STATIONS: [Hardpoint; 8] = [
         .carrying(&AV8B_MIDDLE_QTY),
     pylon("hardpoint-station-8-right-outer-wing", "8", 3.28, 8.69, Some(1), &AV8B_OUTER)
         .carrying(&AV8B_OUTER_QTY),
-    pylon("hardpoint-av8b-9-right-rail", "9", 3.90, 8.64, Some(0), &SIDEWINDER),
+    pylon("hardpoint-av8b-9-right-rail", "9", 3.90, 8.64, Some(0), &RAIL_MISSILES),
 ];
 static AV8B_LAYOUT: Layout =
     Layout { outline: AV8B_OUTLINE, half_span: 4.46, length: 14.52, hardpoints: &AV8B_STATIONS };
@@ -1360,7 +1365,7 @@ static TORNADO_LAYOUT: Layout = Layout {
 };
 /// The AH-1Z's stations 1 (left wingtip rail) to 6 (right wingtip rail).
 static AH1Z_STATIONS: [Hardpoint; 6] = [
-    pylon("hardpoint-station-1-left-wingtip-rail", "1", -2.30, 5.6, Some(5), &SIDEWINDER),
+    pylon("hardpoint-station-1-left-wingtip-rail", "1", -2.30, 5.6, Some(5), &RAIL_MISSILES),
     pylon("hardpoint-station-2-left-outer-pylon", "2", -1.75, 5.5, Some(4), &ATTACK_PYLON)
         .carrying(&POD_19),
     pylon("hardpoint-station-3-left-inner-pylon", "3", -1.05, 5.4, Some(3), &ATTACK_PYLON)
@@ -1369,7 +1374,7 @@ static AH1Z_STATIONS: [Hardpoint; 6] = [
         .carrying(&POD_19),
     pylon("hardpoint-station-5-right-outer-pylon", "5", 1.75, 5.5, Some(1), &ATTACK_PYLON)
         .carrying(&POD_19),
-    pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.30, 5.6, Some(0), &SIDEWINDER),
+    pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.30, 5.6, Some(0), &RAIL_MISSILES),
 ];
 /// aircraft_079 (tools/models/aircraft.py `fa18e`) seen from above: half span 6.80 m, length
 /// 18.14 m.
@@ -1532,16 +1537,18 @@ const AV8B_OUTLINE: &[(f32, f32)] = &[
     (-0.50, 1.40),
 ];
 const SIDEWINDER: [u8; 1] = [0];
+/// The AV-8B's and the AH-1Z's missile rails: a Sidewinder, or the Sidearm built from one.
+const RAIL_MISSILES: [u8; 2] = [0, SIDEARM];
 /// An attack helicopter's wing pylon: a Hellfire launcher or a 19-tube rocket pod.
 const ATTACK_PYLON: [u8; 3] = [HELLFIRE, HYDRA, APKWS];
 const POD_19: [(u8, u8); 2] = [(HYDRA, 19), (APKWS, 19)];
 
 static AH1Z_LAYOUT: Layout =
     Layout { outline: AH1Z_OUTLINE, half_span: 2.32, length: 15.16, hardpoints: &AH1Z_STATIONS };
-/// The AH-64's stations 1 (left wingtip) to 6 (right wingtip): the Stinger launchers on the tips,
-/// M299 launchers of four Hellfires on the four wing pylons.
+/// The AH-64's stations 1 (left wingtip) to 6 (right wingtip): the Stinger launchers (or a
+/// Sidearm's rail) on the tips, M299 launchers of four Hellfires on the four wing pylons.
 static AH64_STATIONS: [Hardpoint; 6] = [
-    pylon("hardpoint-station-1-left-wingtip-rail", "1", -2.70, 4.7, Some(5), &STINGERS)
+    pylon("hardpoint-station-1-left-wingtip-rail", "1", -2.70, 4.7, Some(5), &APACHE_TIP)
         .carrying(&STINGER_PAIR),
     pylon("hardpoint-station-2-left-outer-pylon", "2", -2.35, 4.6, Some(4), &ATTACK_PYLON)
         .carrying(&POD_19),
@@ -1551,10 +1558,11 @@ static AH64_STATIONS: [Hardpoint; 6] = [
         .carrying(&POD_19),
     pylon("hardpoint-station-5-right-outer-pylon", "5", 2.35, 4.6, Some(1), &ATTACK_PYLON)
         .carrying(&POD_19),
-    pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.70, 4.7, Some(0), &STINGERS)
+    pylon("hardpoint-station-6-right-wingtip-rail", "6", 2.70, 4.7, Some(0), &APACHE_TIP)
         .carrying(&STINGER_PAIR),
 ];
-const STINGERS: [u8; 1] = [STINGER];
+/// The AH-64's wingtips: the Stinger launcher, or a rail with a Sidearm.
+const APACHE_TIP: [u8; 2] = [STINGER, SIDEARM];
 const STINGER_PAIR: [(u8, u8); 1] = [(STINGER, 2)];
 static AH64_LAYOUT: Layout =
     Layout { outline: AH64_OUTLINE, half_span: 2.66, length: 15.04, hardpoints: &AH64_STATIONS };
@@ -1638,8 +1646,8 @@ const AH64_OUTLINE: &[(f32, f32)] = &[
     (-0.12, 0.60),
     (-0.14, 0.12),
 ];
-/// The RAH-66's bay doors, left and right: each swings up and out with three Hellfires or six
-/// Stingers on its inside.
+/// The RAH-66's bay doors, left and right: each swings up and out with three Hellfires, six
+/// Stingers or a Sidearm on its inside.
 static RAH66_STATIONS: [Hardpoint; 2] =
     [door("Left bay door", "L", -1.0, 1), door("Right bay door", "R", 1.0, 0)];
 
@@ -1651,8 +1659,8 @@ const fn door(name: &'static str, label: &'static str, x: f32, mirror: usize) ->
         bay: true,
         fantasy: false,
         mirror: Some(mirror),
-        loads: &[HELLFIRE, STINGER],
-        qty: &[(HELLFIRE, 3), (STINGER, 6)],
+        loads: &[HELLFIRE, STINGER, SIDEARM],
+        qty: &[(HELLFIRE, 3), (STINGER, 6), (SIDEARM, 1)],
         excludes: &[],
         takes: &[],
     }
@@ -2697,7 +2705,7 @@ mod tests {
     #[test]
     fn missile_ranges_match_the_lock_ranges() {
         let sim = stealth_host::theater::sim_tables().expect("sim tables");
-        for w in [0, 1, 2, 3, 4, 5, STINGER as usize, SHRIKE as usize] {
+        for w in [0, 1, 2, 3, 4, 5, STINGER as usize, SHRIKE as usize, SIDEARM as usize] {
             let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
             // 7/8 of it against the ground, less a little for the height.
             let km =

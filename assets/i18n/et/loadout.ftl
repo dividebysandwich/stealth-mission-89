@@ -229,5 +229,9 @@ weapon-role-36 = Juhitamata 127 mm raketid konteineris: paaride või seeriatena 
 employment-36 =
     Sihi raketisihikuga (CCIP): see näitab, kuhu praegu tulistatud rakett langeb
     Vajuta paari jaoks, hoia seeria jaoks; parim laugest sööstust alla 6 km
+weapon-role-37 = Sidewinderist tehtud radarivastane rakett: radarid ja SAM-kohad, kopterilt või madalalt
+employment-37 =
+    Kaugus: 1-10 km
+    Alla 1 000 ft tõuseb üles ja sukeldub radarile ülalt
 loadout-wingman = TIIVAMEES
     .facts = Sama lennuki ja relvastusega tehisintellektiga tiivamees liitub õhus; raadiomenüü (\) annab talle käske

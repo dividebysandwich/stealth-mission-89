@@ -229,5 +229,9 @@ weapon-role-36 = Niekierowane rakiety 127 mm w wyrzutni: parami lub salwami prze
 employment-36 =
     Celuj celownikiem rakietowym (CCIP): pokazuje, gdzie spadnie rakieta odpalona teraz
     Naciśnij, by odpalić parę, przytrzymaj dla salwy; najlepiej z płytkiego nurkowania z mniej niż 6 km
+weapon-role-37 = Pocisk przeciwradarowy z Sidewindera: radary i stanowiska SAM, ze śmigłowca lub z niska
+employment-37 =
+    Zasięg: 1-10 km
+    Poniżej 1 000 ft wznosi się i nurkuje na radar z góry
 loadout-wingman = SKRZYDŁOWY
     .facts = Skrzydłowy SI w tym samym samolocie i z tym samym uzbrojeniem dołącza w powietrzu; menu radiowe (\) wydaje mu rozkazy

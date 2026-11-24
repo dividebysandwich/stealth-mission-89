@@ -229,5 +229,9 @@ weapon-role-36 = Nevadāmas 127 mm raķetes konteinerā: pa pāriem vai sērijā
 employment-36 =
     Tēmējiet ar raķešu tēmēkli (CCIP): tas rāda, kur nokritīs tagad izšauta raķete
     Nospiediet pārim, turiet sērijai; vislabāk no lēzena pikējuma līdz 6 km
+weapon-role-37 = No Sidewinder veidota pretradara raķete: radari un SAM pozīcijas, no helikoptera vai zemu
+employment-37 =
+    Rādiuss: 1-10 km
+    Zem 1 000 ft tā paceļas un uzbrūk radaram no augšas
 loadout-wingman = PĀRINIEKS
     .facts = MI pārinieks tajā pašā lidmašīnā ar tādu pašu bruņojumu pievienojas gaisā; radio izvēlne (\) dod tam pavēles

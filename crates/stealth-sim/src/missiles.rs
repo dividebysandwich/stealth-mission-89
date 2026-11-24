@@ -1,4 +1,5 @@
 use crate::ballistics;
+use crate::guidance::{POPUP_CLIMB, POPUP_PUSHOVER, POPUP_TOP};
 use crate::math::{abs16, approx, bearing, cdiv, clamp_q, hi8s, s16, sign, view_z_f};
 use crate::types::*;
 use crate::weather::optical_seeker;
@@ -9,6 +10,8 @@ use stealth_i18n::{Text, text};
 const LGB_PULL: f64 = 1.5;
 /// Speed (viewZ units/s) a classic missile sinks at while it drops clear.
 const CLASSIC_DROP_SPEED: i32 = 20;
+/// Radians to BAM.
+const BAM: f64 = 65536.0 / std::f64::consts::TAU;
 /// Flare / chaff seduction: a missile rolls once per cartridge it sees, at `CM_FAR_PCT` %
 /// from `CM_FAR` map units (32 ft) out, rising to `CM_NEAR_PCT` % at `CM_NEAR` and closer
 /// (less `CM_DIFF_PCT` % per difficulty level).
@@ -638,11 +641,28 @@ impl Sim {
             m.heading = s16(m.heading + cdiv(d * 4, fs));
             m.roll = s16(d * 2);
             let ab = best.abs();
-            let pa = if enemy && best < 0x400 {
+            let mut pa = if enemy && best < 0x400 {
                 bearing(s16(alt0 - m.alt) >> 4, ab)
             } else {
                 bearing((s16(alt0 - m.alt) >> 5) + if ab > 0x140 { ab >> 3 } else { 0 }, ab)
             };
+            // A Sidearm's pop-up: it climbs until turning down to the radar at its turn rate
+            // would take a good part of the time left to it, or it is high enough above it,
+            // then steers for it as any other.
+            if m.popup != Popup::Off {
+                let above = m.alt - alt0;
+                let los = bearing(-above >> 5, ab);
+                let rate = ((turn << 8) * 4) as f64 / BAM;
+                // At the speed it is getting up to.
+                let top = (self.missile(m.spec).max_speed as i32 >> 6).max(m.speed).max(1);
+                let to_go = ((above >> 5) as f64).hypot(ab as f64) / (top * 4) as f64;
+                let down = s16(m.pitch - los) as f64 / BAM;
+                if down.max(0.0) / rate > POPUP_PUSHOVER * to_go || above as f64 >= POPUP_TOP {
+                    m.popup = Popup::Off;
+                } else {
+                    pa = (POPUP_CLIMB * BAM) as i32;
+                }
+            }
             let mut dp = s16(pa - m.pitch);
             if enemy {
                 dp = clamp_q(dp, -(diff + 1) << 9, (diff + 1) << 9);

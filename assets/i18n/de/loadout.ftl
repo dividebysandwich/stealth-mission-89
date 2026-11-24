@@ -229,5 +229,9 @@ weapon-role-36 = Ungelenkte 127-mm-Raketen im Behälter: Paare oder Salven gegen
 employment-36 =
     Mit dem Raketenvisier (CCIP) zielen: es zeigt, wo eine jetzt abgefeuerte Rakete einschlägt
     Drücken für ein Paar, halten für eine Salve; am besten aus flachem Sturzflug unter 6 km
+weapon-role-37 = Radarbekämpfungsrakete auf Sidewinder-Basis: Radare und SAM-Stellungen, vom Hubschrauber oder aus dem Tiefflug
+employment-37 =
+    Reichweite: 1-10 km
+    Unter 1.000 ft steigt sie hoch und stürzt sich von oben auf das Radar
 loadout-wingman = ROTTENFLIEGER
     .facts = Ein KI-Rottenflieger im selben Flugzeug mit denselben Waffen schließt nach dem Start auf; das Funkmenü (\) gibt ihm Befehle

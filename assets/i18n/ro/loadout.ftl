@@ -229,5 +229,9 @@ weapon-role-36 = Rachete nedirijate de 127 mm în container: în perechi sau în
 employment-36 =
     Țintiți cu reticulul pentru rachete (CCIP): arată unde cade o rachetă lansată acum
     Apăsați pentru o pereche, țineți pentru o salvă; cel mai bine dintr-un picaj ușor sub 6 km
+weapon-role-37 = Rachetă antiradiație din Sidewinder: radare și situri SAM, din elicopter sau de la joasă înălțime
+employment-37 =
+    Distanță: 1-10 km
+    Sub 1 000 ft urcă și plonjează pe radar de sus
 loadout-wingman = COECHIPIER
     .facts = Un coechipier IA în același avion și cu același armament ți se alătură în aer; meniul radio (\) îi dă ordine

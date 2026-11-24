@@ -186,6 +186,10 @@
         (id: "shrike", name: "Shrike", family: Ground, range_km: 54, mach: 2.0, g: 6, seeker: AntiRadiation, model: 1),
         // The 5 in Zuni rocket, unguided, flown by rockets.rs like the Hydra 70.
         (id: "zuni", name: "Zuni", family: Ground, range_km: 8, mach: 2.1, g: 1, seeker: Optical, model: 15),
+        // The AGM-122 Sidearm, the helicopters' and the Harrier's anti-radiation missile: an
+        // AIM-9C airframe with a passive radar seeker, a short reach (about half the Shrike's)
+        // and a small warhead. Fired low it pops up and dives on the radar (guidance.rs).
+        (id: "sidearm", name: "Sidearm", family: Ground, range_km: 20, mach: 2.3, g: 35, seeker: AntiRadiation, model: 1),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -295,6 +299,10 @@
         (id: "zuni", short: "LAU-10", long: "Zuni", missile: "zuni", picture: 16, bay: 4,
             effect: {"shelter": 1, "aircraft": 6, "building": 4, "bridge": 1, "depot": 5, "launcher": 6, "radar": 6,
                      "rig": 2, "industry": 3, "small_ship": 5, "large_ship": 1, "armour": 5}),
+        // The AGM-122 Sidearm: a Sidewinder turned anti-radiation missile (the Sidewinder's
+        // picture), its small blast fragmentation warhead of use against a radar only.
+        (id: "sidearm", short: "AGM-122", long: "Sidearm", missile: "sidearm", picture: 0, bay: 2,
+            effect: {"radar": 4}),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

@@ -2852,7 +2852,12 @@ def build():
         print(f"{lod.name}: radius {lod['radius']}")
     import stores
 
+    built = set()
     for w, (index, make) in sorted(stores.WEAPON_MODELS.items()):
+        # A store drawn as another (the Sidearm as the Sidewinder) is built once.
+        if index in built:
+            continue
+        built.add(index)
         lod = build_store(index, make())
         print(f"{lod.name}: radius {lod['radius']} (weapon {w})")
     for name, (index, make) in sorted(stores.RACKS.items()):

@@ -3543,6 +3543,7 @@ fn the_war_starts_with_every_airfield_stocked_and_a_production_base_in_the_rear(
         (32, Munition::Apkws, 76),
         (35, Munition::Shrike, 16),
         (36, Munition::Zuni, 64),
+        (37, Munition::Sidearm, 16),
     ] {
         assert_eq!(Munition::of_weapon(w), Some(m));
         assert!(Munition::of_side(Side::Blue).contains(&m));

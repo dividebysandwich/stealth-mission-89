@@ -803,6 +803,8 @@ WEAPON_MODELS = {
     16: (66, camera_pod), 17: (67, fuel_tank), 18: (68, cargo_pod), 20: (69, hellfire), 23: (74, cbu105),
     25: (80, slamer), 26: (82, jsow), 27: (83, mald), 29: (84, alq99), 30: (85, jp233),
     31: (86, lau131), 32: (86, lau131), 33: (91, mk83), 34: (92, mk84), 35: (93, shrike), 36: (94, lau10),
+    # The AGM-122 Sidearm: a Sidewinder with a radar seeker, drawn as the AIM-9.
+    37: (50, aim9),
 }
 # The rocket pods: hung as one pod whatever their rounds (the rockets inside it).
 ROCKET_PODS = (31, 32, 36)
@@ -810,7 +812,7 @@ ROCKET_PODS = (31, 32, 36)
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
           20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28, 31: 0.13, 32: 0.13,
-          33: 0.1785, 34: 0.229, 35: 0.1015, 36: 0.18}
+          33: 0.1785, 34: 0.229, 35: 0.1015, 36: 0.18, 37: 0.0635}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -893,7 +895,7 @@ def rack_for(kind, weapon, rounds):
     on a pylon's side) hangs weapon `weapon` on, `rounds` of it; None: straight on the pylon."""
     if kind in ("rail", "side") or weapon in ROCKET_PODS:
         return None
-    if weapon in (0, 1):
+    if weapon in (0, 1, 37):
         return "rail"
     if weapon == 5:
         return "lau117"
@@ -922,7 +924,7 @@ LOADOUT_RS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."
 # The weapon type constants of src/loadout.rs.
 NAMED = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26,
          "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30, "HYDRA": 31, "APKWS": 32,
-         "MK83": 33, "MK84": 34, "SHRIKE": 35, "ZUNI": 36}
+         "MK83": 33, "MK84": 34, "SHRIKE": 35, "ZUNI": 36, "SIDEARM": 37}
 
 
 def _loadout_text():

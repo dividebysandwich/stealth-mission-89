@@ -229,5 +229,9 @@ weapon-role-36 = Roket 127 mm tanpa pemandu dalam pod: berpasangan atau beruntun
 employment-36 =
     Bidik dengan retikel roket (CCIP): menunjukkan tempat roket yang ditembakkan sekarang jatuh
     Tekan untuk sepasang, tahan untuk tembakan beruntun; terbaik dari menukik landai dalam 6 km
+weapon-role-37 = Rudal anti-radiasi dari Sidewinder: radar dan situs SAM, dari helikopter atau ketinggian rendah
+employment-37 =
+    Jangkauan: 1-10 km
+    Di bawah 1.000 ft ia menanjak lalu menukik ke radar dari atas
 loadout-wingman = WINGMAN
     .facts = Wingman AI dengan pesawat dan persenjataan yang sama bergabung di udara; menu radio (\) memberinya perintah

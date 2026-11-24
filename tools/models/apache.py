@@ -28,7 +28,8 @@ navigation lights (`_s12v1`) and red beacons (`_s20v1`). Levels 0 and 1 also hav
   24 (right outer): 0 nothing, 1 an empty M299 launcher, 2..5 the launcher with 1..4 Hellfires,
   6 an M261 pod of nineteen 70 mm rockets;
 - the wingtip Stinger launchers, slots 26 (left) and 27 (right): 0 nothing, 1 the empty
-  launcher, 2..3 the launcher with 1..2 Stingers.
+  launcher, 2..3 the launcher with 1..2 Stingers, 4 a Sidearm's empty rail, 5 the rail with its
+  Sidearm (stores.py's Sidewinder).
 Dark olive drab. Built in metres and scaled to aircraft units (K per metre). Model space: x right,
 y forward, z up.
 """
@@ -46,6 +47,7 @@ sys.path.insert(0, HERE)
 
 import heli  # noqa: E402
 import mklib  # noqa: E402
+import stores  # noqa: E402
 from mklib import Geo, Ramp, area, cut, frustum, v3  # noqa: E402
 
 NAME = "aircraft_077"
@@ -526,6 +528,27 @@ def atas(x, count, level):
     return g
 
 
+# A Sidearm's rail under the wingtip: its top just under the tip, its middle at mid chord.
+SIDEARM_TOP = WING_Z - 0.07
+SIDEARM_Y = WING_LE - WING_CHORD / 2
+
+
+def sidearm(x, loaded, level):
+    """The wingtip's LAU-7 rail (`x` the tip, drawing frame) and, `loaded`, the AGM-122 Sidearm
+    on it: stores.py's rail and Sidewinder (the low detail level a plain body)."""
+    rail = stores.rail_launcher()
+    at = Vector((x, SIDEARM_Y, SIDEARM_TOP))
+    g = rail.body.transformed(lambda p: p + at)
+    if loaded:
+        lug = at + Vector(rail.mounts[0][0])
+        if level == 0:
+            g.add(stores.aim9().body.transformed(lambda p: p + lug))
+        else:
+            r = stores.RADIUS[0]
+            g.add(frustum((lug.x, lug.y + 1.43, lug.z - r), (lug.x, lug.y - 1.43, lug.z - r), r, r, STORE, n=4))
+    return g
+
+
 # --- Tail ---------------------------------------------------------------------------------------
 FIN_ROOT = (sy(637), sy(692), sz(156), 0.20)
 FIN_TOP = (sy(687), sy(725), sz(53), 0.11)
@@ -723,6 +746,8 @@ def build():
             for slot, x in ((26, -WING_TIP), (27, WING_TIP)):
                 for count in range(3):
                     group(lod, [(slot, count + 1)], placed(atas(x, count, level)))
+                for loaded in (False, True):
+                    group(lod, [(slot, 4 + loaded)], placed(sidearm(x, loaded, level)))
         print(f"{lod.name}: {faces} faces, radius {radius}")
     print(f"tilt {math.degrees(TILT):.2f} deg, hub {tuple(round(c / K, 3) for c in hub)} m, "
           f"tail hub {tuple(round(c / K, 3) for c in tail_hub)} m, gun pivot {tuple(round(c, 3) for c in place(GUN_PIVOT))} m, "
