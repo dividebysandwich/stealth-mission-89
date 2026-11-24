@@ -1854,8 +1854,9 @@ If you land or eject it goes home.
 
 A kneeboard lies on your left thigh: look down to read it. Its tabs: **BRIEF** (orders,
 objectives, weather, armament, rules of engagement), **ROUTE** (each leg's bearing, distance and
-time), **MAP** (the route and the SAM ranges) and **TARGET** (a close-up of the primary target and
-the intelligence summary). Achieved objectives are ticked.
+time), **MAP** (the route and the SAM ranges) and **TARGET** (recon photos of the primary and the
+secondary target with the grid coordinates of the ground targets, the A-6's keyboard takes
+them, a close-up of the primary target and the intelligence summary). Achieved objectives are ticked.
 
 * Desktop: click a tab; **K** shows the board large over the view and turns its pages; **Esc** puts it away (a second Esc opens the menu).
 * VR: touch a tab with a fingertip; **K** or the *Kneeboard* action hides or shows it. Squeeze
@@ -4789,6 +4790,16 @@ number: the route's point of that number becomes the point steered to. With TARG
 TEMPORARY STORAGE window shows the target's bearing from the nose (three digits) and its range in nautical
 miles (three digits). The long **RELEASE** bar lets the address keys up again.
 
+**Keying target coordinates:** the kneeboard's TARGET page gives each ground target's grid
+coordinates under its photo, such as `N38969 E38780`: hundredths of a kilometre north and east
+of the map's south-west corner. With **TARGET** down, press **N/+**, the five digits, **E**, the
+five digits, and **POS**. The digits shift in from the right of the TEMPORARY STORAGE window as
+you type, which shows the coordinate being keyed. The computer then steers to that point until
+a lock or the pod's point takes over, and the automatic B/N looks for that target. **CLEAR**
+drops a coordinate being keyed; pressed again it drops the keyed target and the route's point is
+steered to again (so does keying a route point's number). In a crew, the other seat gets the
+keyed point to within some 130 m.
+
 The **flight mode** buttons beside the armament panel belong to the B/N too:
 
 ![The flight and navigation mode panel](images/a6_mode_panel.png)
@@ -4835,8 +4846,8 @@ Approach at about 115 kt with flaps and gear down. On the carrier the meatball a
 - No gun, no HUD symbols, no MFD pages, no data entry display and no radar warning scope: threats
   show only as the lights of the countermeasures column between the seats.
 - No camera: the Intruder cannot fly photo reconnaissance missions.
-- Coordinates cannot be typed into the keyboard: targets come from the route, the radar and the
-  sensor turret.
+- The keyboard takes only target coordinates and route point numbers: no check points, aim
+  points, wind or altitudes.
 
 # APPENDICES
 

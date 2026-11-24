@@ -11,7 +11,7 @@ use super::{
     RELEASES, SCALES, SEARCH_RANGES, SELECTS, SearchRange, TRACKS, VDI_DISPLAYS, VDI_RANGES,
 };
 use crate::aircraft::AircraftKind;
-use crate::hud::Waypoints;
+use crate::hud::{Waypoint, Waypoints};
 use crate::world::WU;
 
 /// Seconds a control I moved stays mine before the server's panel is taken again, and between
@@ -20,6 +20,11 @@ const GRACE: f32 = 1.0;
 const REPEAT: f32 = 0.5;
 /// Seconds between the automatic bombardier/navigator's looks at the panel.
 const LOOK: f32 = 1.0;
+
+/// The keyed coordinates go to the other seat in steps of 130 m (twelve bits each); all ones:
+/// none keyed.
+const KEYED_STEP: u32 = 13;
+const KEYED_NONE: u32 = 0xFF_FFFF;
 
 fn index<T: PartialEq>(all: &[T], v: &T) -> u8 {
     all.iter().position(|a| a == v).unwrap_or(0) as u8
@@ -30,8 +35,9 @@ fn pick<T: Copy>(all: &[T], i: u8) -> T {
 }
 
 impl IntruderPanel {
-    /// The switches and buttons in 16 bytes (`SharedPanel::bits`); the keyboard's presses and
-    /// the number last keyed stay in their seat.
+    /// The switches and buttons in 16 bytes (`SharedPanel::bits`), and the target's keyed
+    /// coordinates to `KEYED_STEP`; the keyboard's presses and what is being keyed stay in
+    /// their seat.
     pub fn pack(&self) -> [u8; 16] {
         let mut b = [0u8; 16];
         b[0] = index(&VDI_DISPLAYS, &self.vdi)
@@ -62,6 +68,11 @@ impl IntruderPanel {
         b[9] = index(&POWERS, &self.search_power) | index(&SEARCH_RANGES, &self.search_range) << 2;
         b[10..12].copy_from_slice(&self.addresses.to_le_bytes());
         b[12] = self.erases;
+        let keyed = self.keyed.map_or(KEYED_NONE, |g| {
+            let q = |v: u16| (v as u32 + KEYED_STEP / 2) / KEYED_STEP;
+            q(g[0]) | q(g[1]) << 12
+        });
+        b[13..16].copy_from_slice(&keyed.to_le_bytes()[..3]);
         b
     }
 
@@ -95,6 +106,11 @@ impl IntruderPanel {
         self.search_range = pick(&SEARCH_RANGES, b[9] >> 2 & 3);
         self.addresses = u16::from_le_bytes([b[10], b[11]]);
         self.erases = b[12];
+        let keyed = u32::from_le_bytes([b[13], b[14], b[15], 0]);
+        self.keyed = (keyed != KEYED_NONE).then(|| {
+            let v = |q: u32| ((q & 0xFFF) * KEYED_STEP).min(super::GRID_MAX) as u16;
+            [v(keyed), v(keyed >> 12)]
+        });
     }
 }
 
@@ -187,14 +203,21 @@ pub(super) fn automatic(
     if aboard || panel.attack.is_none() || computer.designated {
         return;
     }
-    // The mission's targets (the route's primary and secondary points) and the point steered
-    // to: the nearest of them ahead.
+    // The coordinates keyed, else the mission's targets (the route's primary and secondary
+    // points) and the point steered to: the nearest of them ahead.
     let anchor = |i: usize| waypoints.anchors.get(i).copied().unwrap_or(i);
     let own = bevy::math::DVec2::new(pos.0.x, -pos.0.z);
-    let nose = aircraft_heading(&computer, own, &waypoints);
-    let best = [anchor(1), anchor(2), waypoints.current]
-        .into_iter()
-        .filter_map(|i| waypoints.points.get(i))
+    let steered = panel.keyed_waypoint().or_else(|| waypoints.target());
+    let nose = aircraft_heading(&computer, own, steered);
+    let candidates: Vec<Waypoint> = match panel.keyed_waypoint() {
+        Some(k) => vec![k],
+        None => [anchor(1), anchor(2), waypoints.current]
+            .into_iter()
+            .filter_map(|i| waypoints.points.get(i).copied())
+            .collect(),
+    };
+    let best = candidates
+        .iter()
         .map(|wp| {
             let d = bevy::math::DVec2::new(wp.east * WU, wp.north * WU) - own;
             (wp, d.length() as f32, (d.x as f32).atan2(d.y as f32))
@@ -219,9 +242,9 @@ pub(super) fn automatic(
 fn aircraft_heading(
     computer: &Computer,
     own: bevy::math::DVec2,
-    waypoints: &Waypoints,
+    steered: Option<Waypoint>,
 ) -> Option<f32> {
-    let wp = waypoints.target()?;
+    let wp = steered?;
     computer.target.filter(|_| !computer.designated)?;
     let d = bevy::math::DVec2::new(wp.east * WU, wp.north * WU) - own;
     Some(super::computer::wrap((d.x as f32).atan2(d.y as f32) - computer.bearing))
@@ -246,7 +269,24 @@ mod tests {
             q.unpack(&p.pack());
             q.key_presses = p.key_presses;
             q.entry = p.entry;
+            q.keying = p.keying;
             assert_eq!(q, p, "after {key:?}");
+        }
+    }
+
+    /// Keyed coordinates reach the other seat to within a step, and none stays none.
+    #[test]
+    fn keyed_coordinates_pack() {
+        let mut p = IntruderPanel::default();
+        let mut q = IntruderPanel { keyed: Some([1, 1]), ..default() };
+        q.unpack(&p.pack());
+        assert_eq!(q.keyed, None);
+        for g in [[0, 0], [6789, 12345], [51_200, 51_200]] {
+            p.keyed = Some(g);
+            q.unpack(&p.pack());
+            let k = q.keyed.unwrap();
+            assert!((0..2).all(|i| k[i].abs_diff(g[i]) as u32 <= KEYED_STEP / 2), "{g:?} {k:?}");
+            assert_eq!(q.pack(), p.pack());
         }
     }
 

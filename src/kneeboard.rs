@@ -940,8 +940,15 @@ fn draw(
                     col,
                     Align::Left,
                 );
+                // A ground target's grid coordinates, as the A-6's keyboard takes them.
+                if !crate::recon::airborne(tgt) {
+                    let grid = crate::intruder::grid_of(tgt.position.x, tgt.position.y);
+                    let text = crate::intruder::grid_text(grid);
+                    let y = (top + ph) as f32 + 46.0;
+                    stroke_text_at(c, x as f32, y, &text, 18.0, 2.4, WHITE, Align::Left);
+                }
             }
-            let top = top + ph + 44;
+            let top = top + ph + 70;
             if crate::recon::airborne(t) {
                 let mut w = Writer { c, y: top as f32 + 10.0 };
                 w.heading(ts!("kb-airborne-target"));
@@ -963,9 +970,6 @@ fn draw(
                 let y = (top + h) as f32 + 30.0;
                 c.stroke(Vec2::new(28.0, y), Vec2::new(28.0 + km, y), 3.0, WHITE);
                 stroke_text_at(c, 40.0 + km, y, "2 KM", 18.0, 2.4, WHITE, Align::Left);
-                let p = m.waypoints[1];
-                let grid = format!("GRID {:03}.{:03}", p.x / 64, (0x8000 - p.y) / 64);
-                stroke_text_at(c, W as f32 - 28.0, y, &grid, 18.0, 2.4, GREY, Align::Right);
                 let mut w = Writer { c, y: y + 40.0 };
                 w.para(&b.primary_summary, GREY);
             }

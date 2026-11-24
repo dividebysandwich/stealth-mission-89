@@ -1,9 +1,9 @@
 //! The A-6's attack-navigation computer: what it steers to (the lock or the pod's ground
-//! point, else the route's point), the steering, release and landing solutions its displays
-//! show (`vdi`, `scope`, `sight`), and the panel's hold on the game's own systems: the attack
-//! buttons choose the bombing mode, the station switches the weapon, the release switch and
-//! the interval counter the stick of bombs, MASTER ARM the trigger, the search radar's power
-//! switch the radar.
+//! point, else the coordinates keyed, else the route's point), the steering, release and
+//! landing solutions its displays show (`vdi`, `scope`, `sight`), and the panel's hold on the
+//! game's own systems: the attack buttons choose the bombing mode, the station switches the
+//! weapon, the release switch and the interval counter the stick of bombs, MASTER ARM the
+//! trigger, the search radar's power switch the radar.
 
 use bevy::math::DVec2;
 use bevy::prelude::*;
@@ -203,6 +203,7 @@ pub(super) fn drive(
         && (n as usize) <= waypoints.points.len()
     {
         waypoints.current = n as usize - 1;
+        panel.keyed = None;
     }
     let Some(combat) = combat.as_deref_mut() else { return };
     let (bays, cur) = combat.sim.bays();
@@ -277,14 +278,15 @@ pub(super) fn compute(
     let own = DVec2::new(pos.0.x, -pos.0.z);
     let (east, north, _) = bevy_to_wu(pos.0);
     let sim = combat.as_deref().map(|c| &c.sim);
-    // The target: the lock or the pod's point, else the route's.
+    // The target: the lock or the pod's point, else the coordinates keyed, else the route's.
     let aim = sim
         .and_then(|s| s.ccrp_aim())
         .map(|(x, y)| DVec2::new(x * 32.0 * WU, (0x8000 as f64 - y) * 32.0 * WU));
     c.designated = aim.is_some();
     c.target = aim.or_else(|| {
-        waypoints
-            .target()
+        panel
+            .keyed_waypoint()
+            .or_else(|| waypoints.target())
             .filter(|_| !a.damage.autopilot_failed)
             .map(|w| DVec2::new(w.east * WU, w.north * WU))
     });

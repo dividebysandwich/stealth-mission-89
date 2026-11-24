@@ -622,6 +622,47 @@ pub struct IntruderPanel {
     /// The number last keyed (1 to 9, 0), until the computer takes it.
     #[serde(default)]
     pub entry: Option<u8>,
+    /// Target coordinates being keyed (TARGET in, N or S, the north, E or W, the east), and
+    /// the target's grid coordinates (hundredths of a kilometre east and north, `grid_of`)
+    /// that POS entered: the computer steers to them.
+    #[serde(default)]
+    pub keying: Option<Keying>,
+    #[serde(default)]
+    pub keyed: Option<[u16; 2]>,
+}
+
+/// Coordinates as they are keyed: the field the digits go to, each field's value so far (None
+/// until its N, S, E or W is pressed) and its sign (S, W).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Keying {
+    /// 0 north, 1 east.
+    pub field: usize,
+    pub value: [Option<u32>; 2],
+    pub negative: [bool; 2],
+}
+
+/// The largest grid coordinate (the map's 512 km, in hundredths of a kilometre).
+pub const GRID_MAX: u32 = 51_200;
+/// The largest value a field takes (five digits).
+const FIELD_MAX: u32 = 99_999;
+
+/// A map point's grid coordinates, as the kneeboard gives them and the keyboard takes them:
+/// hundredths of a kilometre east and north of the map's south-west corner.
+pub fn grid_of(x: i32, y: i32) -> [u16; 2] {
+    let km100 = |u: i32| ((u.clamp(0, 0x8000) as u32 * 25 + 8) / 16).min(GRID_MAX) as u16;
+    [km100(x), km100(0x8000 - y)]
+}
+
+/// Grid coordinates as written on the kneeboard and keyed: `N12345 E06789`.
+pub fn grid_text(g: [u16; 2]) -> String {
+    format!("N{:05} E{:05}", g[1], g[0])
+}
+
+/// The point at grid coordinates `g`, in world units.
+pub fn grid_waypoint(g: [u16; 2]) -> crate::hud::Waypoint {
+    // A map unit is 32 world units and 1/64 km.
+    let wu = |v: u16| v as f64 * 0.64 * 32.0;
+    crate::hud::Waypoint { east: wu(g[0]), north: wu(g[1]) }
 }
 
 impl Default for IntruderPanel {
@@ -654,6 +695,8 @@ impl Default for IntruderPanel {
             addresses: 0,
             key_presses: 0,
             entry: None,
+            keying: None,
+            keyed: None,
         }
     }
 }
@@ -717,13 +760,76 @@ impl IntruderPanel {
             Key::SearchRange => self.search_range = next(&SEARCH_RANGES, self.search_range),
             Key::Amti => self.amti = !self.amti,
             Key::Address(a) => self.addresses |= 1 << a as u16,
-            Key::Release => self.addresses = 0,
+            Key::Release => {
+                self.addresses = 0;
+                self.keying = None;
+            }
             Key::Quantity(n) => {
                 self.key_presses = self.key_presses.wrapping_add(1);
-                self.entry = QUANTITY_LABELS.get(n as usize).and_then(|l| l.parse().ok());
+                self.quantity(n);
             }
-            Key::Clear | Key::Action(_) => self.key_presses = self.key_presses.wrapping_add(1),
+            Key::Clear => {
+                self.key_presses = self.key_presses.wrapping_add(1);
+                // A keying under way is cleared; with none, TARGET's keyed coordinates.
+                if self.keying.take().is_none() && self.address_in(Address::Target) {
+                    self.keyed = None;
+                }
+            }
+            Key::Action(n) => {
+                self.key_presses = self.key_presses.wrapping_add(1);
+                if n == 0 && self.address_in(Address::Target) {
+                    self.enter_position();
+                }
+            }
         }
+    }
+
+    /// A quantity key: with TARGET in, N, S, E and W start a coordinate and the digits go to
+    /// it (shifted in from the right, five at most); a digit with none started is the route's
+    /// point of that number.
+    fn quantity(&mut self, n: u8) {
+        let label = QUANTITY_LABELS.get(n as usize).copied().unwrap_or("");
+        let digit: Option<u8> = label.parse().ok();
+        self.entry = None;
+        let letter = match label {
+            "N/+" => Some((0, false)),
+            "S/-" => Some((0, true)),
+            "E" => Some((1, false)),
+            "W" => Some((1, true)),
+            _ => None,
+        };
+        if let Some((field, negative)) = letter
+            && self.address_in(Address::Target)
+        {
+            let k = self.keying.get_or_insert_with(Keying::default);
+            k.field = field;
+            k.value[field] = Some(0);
+            k.negative[field] = negative;
+        } else if let Some(k) = self.keying.as_mut() {
+            if let (Some(d), Some(v)) = (digit, k.value[k.field])
+                && v * 10 + d as u32 <= FIELD_MAX
+            {
+                k.value[k.field] = Some(v * 10 + d as u32);
+            }
+        } else {
+            self.entry = digit;
+        }
+    }
+
+    /// POS: the coordinates keyed become the target, if both are and lie on the map.
+    fn enter_position(&mut self) {
+        let Some(k) = self.keying else { return };
+        let field =
+            |i: usize| k.value[i].filter(|v| !k.negative[i] || *v == 0).filter(|v| *v <= GRID_MAX);
+        if let (Some(north), Some(east)) = (field(0), field(1)) {
+            self.keyed = Some([east as u16, north as u16]);
+            self.keying = None;
+        }
+    }
+
+    /// The point the keyed coordinates are at (world units).
+    pub fn keyed_waypoint(&self) -> Option<crate::hud::Waypoint> {
+        self.keyed.map(grid_waypoint)
     }
 
     /// The control stays in (a pushbutton turned 45 degrees, an address key down).
@@ -855,8 +961,8 @@ pub enum Readout {
 
 /// What a readout shows: the interval counter; the range to the target in tenths of a
 /// nautical mile and the seconds to it (to the release, with one coming); the keyboard's
-/// storage, by the address key that is in: the target's bearing and range, else the route's
-/// point steered to.
+/// storage, by the address key that is in: the coordinate being keyed, the target's bearing
+/// and range, else nothing.
 pub fn readout(r: Readout, panel: &IntruderPanel, computer: &computer::Computer) -> String {
     let tenths = (computer.range / 185.2).round().clamp(0.0, 9999.0) as u32;
     match r {
@@ -868,6 +974,11 @@ pub fn readout(r: Readout, panel: &IntruderPanel, computer: &computer::Computer)
         Readout::PhdTime => {
             let secs = computer.release.unwrap_or(computer.time).clamp(0.0, 999.0);
             format!("{:03}", if computer.target.is_some() { secs as u32 } else { 0 })
+        }
+        Readout::Storage if panel.address_in(Address::Target) && panel.keying.is_some() => {
+            let k = panel.keying.unwrap_or_default();
+            let letter = [["N", "S"], ["E", "W"]][k.field.min(1)][k.negative[k.field] as usize];
+            format!("{letter}{:05}", k.value[k.field.min(1)].unwrap_or(0))
         }
         Readout::Storage if panel.address_in(Address::Target) && computer.target.is_some() => {
             let brg = computer.bearing.to_degrees().rem_euclid(360.0) as u32 % 360;
@@ -1095,6 +1206,71 @@ mod tests {
         assert!(!p.latched(Key::Address(Address::Base)));
         p.press(Key::Release);
         assert!(Address::ALL.iter().all(|a| !p.address_in(*a)));
+    }
+
+    /// TARGET, N and five digits, E and five digits, POS: the target's grid coordinates. The
+    /// storage window shows the field being keyed; CLEAR drops a keying, then the target.
+    #[test]
+    fn coordinates_keyed() {
+        let mut p = IntruderPanel::default();
+        let digits = |p: &mut IntruderPanel, s: &str| {
+            for ch in s.chars() {
+                let n = QUANTITY_LABELS.iter().position(|l| *l == ch.to_string()).unwrap();
+                p.press(Key::Quantity(n as u8));
+            }
+        };
+        // Without TARGET, a letter starts nothing and a digit is the route's point.
+        p.press(Key::Quantity(0));
+        assert_eq!(p.keying, None);
+        digits(&mut p, "3");
+        assert_eq!(p.entry, Some(3));
+        p.entry = None;
+        p.press(Key::Address(Address::Target));
+        p.press(Key::Quantity(0));
+        digits(&mut p, "12345");
+        assert_eq!(p.entry, None);
+        let c = computer::Computer::default();
+        assert_eq!(readout(Readout::Storage, &p, &c), "N12345");
+        // POS with only the north keyed does nothing.
+        p.press(Key::Action(0));
+        assert_eq!(p.keyed, None);
+        p.press(Key::Quantity(7));
+        digits(&mut p, "0678");
+        assert_eq!(readout(Readout::Storage, &p, &c), "E00678");
+        digits(&mut p, "9");
+        assert_eq!(readout(Readout::Storage, &p, &c), "E06789");
+        p.press(Key::Action(0));
+        assert_eq!(p.keyed, Some([6789, 12345]));
+        assert_eq!(p.keying, None);
+        // Off the map, or south: not taken.
+        p.press(Key::Quantity(1));
+        digits(&mut p, "5");
+        // A sixth digit is not taken.
+        p.press(Key::Quantity(0));
+        digits(&mut p, "999999");
+        assert_eq!(readout(Readout::Storage, &p, &c), "N99999");
+        p.press(Key::Quantity(1));
+        digits(&mut p, "5");
+        p.press(Key::Quantity(7));
+        digits(&mut p, "5");
+        p.press(Key::Action(0));
+        assert_eq!(p.keyed, Some([6789, 12345]));
+        p.press(Key::Clear);
+        assert_eq!((p.keying, p.keyed), (None, Some([6789, 12345])));
+        p.press(Key::Clear);
+        assert_eq!(p.keyed, None);
+    }
+
+    /// The kneeboard's coordinates key back to the point they were made of.
+    #[test]
+    fn grid_round_trip() {
+        let (x, y) = (12_000u16, 20_000u16);
+        let g = grid_of(x as i32, y as i32);
+        assert_eq!(grid_text(g), format!("N{:05} E{:05}", g[1], g[0]));
+        let w = grid_waypoint(g);
+        let (east, north) = crate::world::map_to_wu(x, y);
+        assert!((w.east - east).abs() < 32.0 && (w.north - north).abs() < 32.0);
+        assert_eq!(grid_of(0x8000, 0), [GRID_MAX as u16, GRID_MAX as u16]);
     }
 
     /// The panel goes to the other crew member as it is.
