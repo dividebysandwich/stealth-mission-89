@@ -472,6 +472,9 @@ impl CampaignState {
         f.back_at = Some(back);
         let f = f.clone();
         let side = self.facility_side(&f);
+        if side == Side::Blue {
+            self.red_facility_at = Some(now);
+        }
         self.facility_lost(&f, side);
         let what = text!(f.kind.name_id());
         let place = f.place.and_then(|p| self.place(p)).map(|p| p.name.clone()).unwrap_or_default();
@@ -617,8 +620,24 @@ impl CampaignState {
         now - self.scramble_alert[k].1 >= delay
     }
 
+    /// The enemy's strike aircraft may go for the friendly facilities: `RED_FACILITY_EVERY`
+    /// has passed since it last destroyed one (since the war began, the first time).
+    pub(crate) fn red_facility_due(&self) -> bool {
+        let every = RED_FACILITY_EVERY[(self.setup.opponents as usize).min(3)];
+        self.clock >= self.red_facility_at.unwrap_or(0.0) + self.offensive_paced(every)
+    }
+
+    /// The order the enemy goes for the friendly facilities in: those it has not destroyed
+    /// longest (never first), then the most valuable, so that it does not knock the same one
+    /// out again each time it is rebuilt.
+    pub(crate) fn red_pick_key(f: &Facility) -> (i64, std::cmp::Reverse<i32>) {
+        let last = f.restored_at.map_or(i64::MIN, |t| t as i64);
+        (last, std::cmp::Reverse(f.kind.value()))
+    }
+
     /// Offers for `side`'s board on the other side's facilities: the most valuable standing
-    /// ones in reach of its bases (not those just rebuilt), up to `FACILITY_OFFERS` and one
+    /// ones in reach of its bases (not those just rebuilt; the enemy's in its own order and
+    /// at its own pace, `red_pick_key`, `red_facility_due`), up to `FACILITY_OFFERS` and one
     /// more for every `FACILITY_OFFERS_PER` players beyond the first (title, objective, where,
     /// threat).
     pub(crate) fn facility_offers(
@@ -627,6 +646,9 @@ impl CampaignState {
         view: &WorldView,
     ) -> Vec<(stealth_i18n::Text, crate::Objective, i32, i32, i32)> {
         let now = self.clock;
+        if side == Side::Red && !self.red_facility_due() {
+            return Vec::new();
+        }
         let mut found: Vec<(&Facility, u32, i32)> = self
             .facilities
             .iter()
@@ -640,7 +662,11 @@ impl CampaignState {
                 (d <= DEEP_RANGE).then_some((f, k as u32, d))
             })
             .collect();
-        found.sort_by_key(|&(f, _, d)| (std::cmp::Reverse(f.kind.value()), d, f.id));
+        if side == Side::Red {
+            found.sort_by_key(|&(f, _, d)| (Self::red_pick_key(f), d, f.id));
+        } else {
+            found.sort_by_key(|&(f, _, d)| (std::cmp::Reverse(f.kind.value()), d, f.id));
+        }
         let players = self.players.iter().filter(|p| p.sortie.is_some()).count().max(1);
         let n = FACILITY_OFFERS + (players - 1) / FACILITY_OFFERS_PER;
         found

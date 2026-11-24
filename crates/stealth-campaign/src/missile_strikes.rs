@@ -364,7 +364,8 @@ impl CampaignState {
     }
 
     /// A friendly strategic facility an enemy strike of `missile` from `from` goes for, one
-    /// time in `FACILITY_STRIKE_ONE_IN`: the most valuable in reach (not one just rebuilt).
+    /// time in `FACILITY_STRIKE_ONE_IN`: the first in reach in the enemy's order
+    /// (`red_pick_key`; not one just rebuilt).
     fn strike_facility(&mut self, missile: StrikeMissile, from: (i32, i32)) -> Option<u32> {
         // (No draw of the dice in a campaign without facilities.)
         if self.facilities.is_empty() || self.rng.below(FACILITY_STRIKE_ONE_IN) != 0 {
@@ -376,7 +377,7 @@ impl CampaignState {
             .filter(|f| f.alive() && self.facility_side(f) == Side::Blue)
             .filter(|f| f.restored_at.is_none_or(|t| now - t >= FACILITY_GRACE))
             .filter(|f| dist(f.x - from.0, f.y - from.1) <= missile.range())
-            .max_by_key(|f| (f.kind.value(), std::cmp::Reverse(f.id)))
+            .min_by_key(|f| (Self::red_pick_key(f), f.id))
             .map(|f| f.id)
     }
 

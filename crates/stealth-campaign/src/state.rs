@@ -1266,6 +1266,9 @@ pub struct CampaignState {
     /// The sides' strategic facilities (placed by the host, `facilities.rs`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub facilities: Vec<crate::Facility>,
+    /// Campaign time the enemy last destroyed a friendly facility (`RED_FACILITY_EVERY`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub red_facility_at: Option<f64>,
     #[serde(skip)]
     pub terrain: Terrain,
 }
@@ -1883,6 +1886,7 @@ impl CampaignState {
             ai_rush: Vec::new(),
             munition_log: Default::default(),
             facilities: Vec::new(),
+            red_facility_at: None,
             terrain: Terrain::default(),
         };
         c.start = c.measure_start();

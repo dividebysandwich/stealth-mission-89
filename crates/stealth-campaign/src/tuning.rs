@@ -612,6 +612,11 @@ pub const HQ_INCOME: f64 = 0.5;
 pub const FACILITY_OFFERS: usize = 2;
 pub const FACILITY_OFFERS_PER: usize = 2;
 pub const FACILITY_GRACE: f64 = 30.0 * 60.0;
+/// The enemy's board offers its strike aircraft the friendly facilities this long (s, by its
+/// skill) after it last destroyed one, and first this long into the war (at the crew's pace and
+/// longer for an outnumbered friendly side: `offensive_paced`): left to themselves, its flights
+/// kept a friendly headquarters down most of the time and its war came apart.
+pub const RED_FACILITY_EVERY: [f64; 4] = [150.0 * 60.0, 100.0 * 60.0, 75.0 * 60.0, 50.0 * 60.0];
 /// One enemy missile strike in so many goes for a friendly strategic facility in reach.
 pub const FACILITY_STRIKE_ONE_IN: i32 = 3;
 /// A headquarters moves back once the other side holds a place this near (map units, 40 km);

@@ -5062,6 +5062,8 @@ fn facility_view(c: &CampaignState) -> WorldView {
 fn the_boards_offer_strikes_on_facilities() {
     let mut c = ai_campaign();
     c.ensure_facilities(&[]);
+    // (Late enough into the war for the enemy's: `red_facility_due`.)
+    c.clock = 6.0 * 3600.0;
     let view = facility_view(&c);
     c.rebuild_board(&view);
     c.rebuild_red_board(&view);
@@ -5132,4 +5134,41 @@ fn a_place_taken_draws_its_garrison_from_the_reserve() {
     assert_eq!(c.armour_reserve(Side::Blue), 0);
     assert_eq!(c.places[place as usize].armour_lost, tuning::GARRISON_ARMOUR - 1);
     assert!(c.places[place as usize].armour_repair_at.is_some());
+}
+
+/// The enemy goes for the friendly facilities at its own pace, not before the war is a while
+/// on and not again for a while after it destroyed one; and for the one it has left alone
+/// longest, not the headquarters again each time it is rebuilt.
+#[test]
+fn the_enemy_strikes_the_friendly_facilities_in_turn() {
+    let mut c = ai_campaign();
+    c.ensure_facilities(&[]);
+    let red_offers = |c: &CampaignState| -> Vec<u32> {
+        c.red_board
+            .iter()
+            .filter_map(|o| match o.objective {
+                Objective::Facility { facility, .. } => Some(facility),
+                _ => None,
+            })
+            .collect()
+    };
+    let view = facility_view(&c);
+    c.rebuild_red_board(&view);
+    assert!(red_offers(&c).is_empty(), "at the start");
+    c.clock = 6.0 * 3600.0;
+    c.rebuild_red_board(&view);
+    let first = red_offers(&c);
+    let hq = c.facility(first[0]).unwrap().clone();
+    assert_eq!(hq.kind, FacilityKind::Headquarters);
+    let mut ev = Vec::new();
+    c.facility_destroyed(hq.id, None, &mut ev);
+    c.rebuild_red_board(&facility_view(&c));
+    assert!(red_offers(&c).is_empty(), "just after one was destroyed");
+    // Rebuilt, and long after: the headquarters is last in line.
+    c.clock = c.facility(hq.id).unwrap().back_at.unwrap();
+    c.run_facilities(&mut ev);
+    c.clock += 6.0 * 3600.0;
+    c.rebuild_red_board(&facility_view(&c));
+    let next = red_offers(&c);
+    assert!(!next.is_empty() && !next.contains(&hq.id), "{next:?}");
 }
