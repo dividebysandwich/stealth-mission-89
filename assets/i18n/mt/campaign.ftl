@@ -385,3 +385,6 @@ cb-facility = Attakk - { $what } qrib { $place }
 brief-facility-task = Eqred il-faċilità strateġika tal-għadu
 brief-shape-facility = FAĊILITÀ
 brief-facility = Il-{ $what } tal-għadu qrib { $place }: bini li jrid jitwaqqa' b'bombi jew missili (il-kanuni u r-rokits ma jagħmlulux ħsara). Il-qerda tiegħu tdewwem lill-għadu għal jiem.
+cl-facility-captured = Il-{ $what } tal-għadu qrib { $place } issa tagħna
+cl-facility-lost = Il-{ $what } tagħna qrib { $place } waqgħet f'idejn l-għadu
+cl-hq-moved = Il-kwartieri ġenerali tagħna jmorru lura mill-front, qrib { $place }

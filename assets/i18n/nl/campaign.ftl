@@ -385,3 +385,6 @@ cb-facility = Aanval - { $what } bij { $place }
 brief-facility-task = Vernietig de strategische installatie van de vijand
 brief-shape-facility = INSTALLATIE
 brief-facility = De vijandelijke { $what } bij { $place }: een gebouw dat met bommen of raketten neer moet (boordkanon en ongeleide raketten doen niets). Vernietiging zet de vijand dagen terug.
+cl-facility-captured = De vijandelijke { $what } bij { $place } is nu van ons
+cl-facility-lost = Onze { $what } bij { $place } is in vijandelijke handen gevallen
+cl-hq-moved = Ons hoofdkwartier trekt terug van het front, naar { $place }

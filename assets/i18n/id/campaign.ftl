@@ -385,3 +385,6 @@ cb-facility = Serangan - { $what } dekat { $place }
 brief-facility-task = Hancurkan fasilitas strategis musuh
 brief-shape-facility = FASILITAS
 brief-facility = { $what } musuh dekat { $place }: bangunan yang harus dihancurkan dengan bom atau rudal (meriam dan roket tak mempan). Menghancurkannya menghambat musuh berhari-hari.
+cl-facility-captured = { $what } musuh dekat { $place } kini milik kita
+cl-facility-lost = { $what } kita dekat { $place } jatuh ke tangan musuh
+cl-hq-moved = Markas besar kita mundur dari garis depan, dekat { $place }

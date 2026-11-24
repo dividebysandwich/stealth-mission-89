@@ -385,3 +385,6 @@ cb-facility = Csapás - { $what }, { $place } közelében
 brief-facility-task = Semmisítse meg az ellenség stratégiai létesítményét
 brief-shape-facility = LÉTESÍTMÉNY
 brief-facility = Az ellenség { $what } létesítménye { $place } közelében: épület, amelyet bombával vagy rakétával kell lerombolni (a gépágyú és a nem irányított rakéta nem árt neki). Megsemmisítése napokra visszaveti az ellenséget.
+cl-facility-captured = Az ellenség { $what } létesítménye { $place } közelében most a miénk
+cl-facility-lost = Saját { $what } létesítményünk { $place } közelében az ellenség kezére került
+cl-hq-moved = Főhadiszállásunk hátrébb költözik a fronttól, { $place } közelébe

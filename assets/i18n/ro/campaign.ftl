@@ -385,3 +385,6 @@ cb-facility = Lovitură - { $what } lângă { $place }
 brief-facility-task = Distrugeți obiectivul strategic al inamicului
 brief-shape-facility = OBIECTIV
 brief-facility = Obiectivul inamic ({ $what }) de lângă { $place }: o clădire de doborât cu bombe sau rachete (tunurile și rachetele nedirijate nu-i fac nimic). Distrugerea lui întârzie inamicul cu zile.
+cl-facility-captured = Obiectivul inamic ({ $what }) de lângă { $place } este acum al nostru
+cl-facility-lost = Obiectivul nostru ({ $what }) de lângă { $place } a căzut în mâinile inamicului
+cl-hq-moved = Cartierul nostru general se retrage de pe front, lângă { $place }

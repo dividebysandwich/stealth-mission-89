@@ -385,3 +385,6 @@ cb-facility = Trieciens - { $what } pie { $place }
 brief-facility-task = Iznīcināt ienaidnieka stratēģisko objektu
 brief-shape-facility = OBJEKTS
 brief-facility = Ienaidnieka { $what } pie { $place }: ēka, kas jāsagrauj ar bumbām vai raķetēm (lielgabali un nevadāmās raķetes tai nekaitē). Tās iznīcināšana atliek ienaidnieku uz dienām.
+cl-facility-captured = Ienaidnieka objekts ({ $what }) pie { $place } tagad ir mūsu
+cl-facility-lost = Mūsu objekts ({ $what }) pie { $place } nonācis ienaidnieka rokās
+cl-hq-moved = Mūsu štābs atkāpjas no frontes, pie { $place }

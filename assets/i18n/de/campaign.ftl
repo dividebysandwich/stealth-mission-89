@@ -385,3 +385,6 @@ cb-facility = Angriff - { $what } bei { $place }
 brief-facility-task = Die strategische Einrichtung des Feindes zerstören
 brief-shape-facility = EINRICHTUNG
 brief-facility = Feindliches Ziel ({ $what }) bei { $place }: ein Gebäude, das mit Bomben oder Lenkflugkörpern zerstört werden muss (Bordkanone und Raketen richten nichts aus). Seine Zerstörung wirft den Feind um Tage zurück.
+cl-facility-captured = Das feindliche Ziel ({ $what }) bei { $place } ist jetzt unser
+cl-facility-lost = Unser { $what } bei { $place } ist in Feindeshand gefallen
+cl-hq-moved = Unser Hauptquartier zieht sich von der Front zurück, nach { $place }

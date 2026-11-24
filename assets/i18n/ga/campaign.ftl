@@ -385,3 +385,6 @@ cb-facility = Ionsaí - { $what } in aice le { $place }
 brief-facility-task = Scrios saoráid straitéiseach an namhad
 brief-shape-facility = SAORÁID
 brief-facility = { $what } an namhad in aice le { $place }: foirgneamh le leagan le buamaí nó diúracáin (ní dhéanann gunnaí ná roicéid aon dochar dó). Cuireann a scriosadh siar an namhad ar feadh laethanta.
+cl-facility-captured = Is linne anois { $what } an namhad in aice le { $place }
+cl-facility-lost = Tá ár { $what } in aice le { $place } tite chuig an namhaid
+cl-hq-moved = Bogann ár gceanncheathrú siar ón líne thosaigh, in aice le { $place }

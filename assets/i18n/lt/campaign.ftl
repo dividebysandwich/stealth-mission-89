@@ -385,3 +385,6 @@ cb-facility = Smūgis - { $what } prie { $place }
 brief-facility-task = Sunaikinti priešo strateginį objektą
 brief-shape-facility = OBJEKTAS
 brief-facility = Priešo { $what } prie { $place }: pastatas, kurį reikia sugriauti bombomis ar raketomis (pabūklai ir nevaldomos raketos jam nekenkia). Jo sunaikinimas atitolina priešą kelioms dienoms.
+cl-facility-captured = Priešo objektas ({ $what }) prie { $place } dabar mūsų
+cl-facility-lost = Mūsų objektas ({ $what }) prie { $place } pateko priešui
+cl-hq-moved = Mūsų štabas atsitraukia nuo fronto, prie { $place }

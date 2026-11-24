@@ -385,3 +385,6 @@ cb-facility = Angreb - { $what } ved { $place }
 brief-facility-task = Ødelæg fjendens strategiske anlæg
 brief-shape-facility = ANLÆG
 brief-facility = Fjendens { $what } ved { $place }: en bygning, der skal ødelægges med bomber eller missiler (kanoner og raketter skader den ikke). Ødelagt sætter den fjenden dage tilbage.
+cl-facility-captured = Fjendens { $what } ved { $place } er nu vores
+cl-facility-lost = Vores { $what } ved { $place } er faldet i fjendens hænder
+cl-hq-moved = Vores hovedkvarter flytter væk fra fronten, til { $place }

@@ -385,3 +385,6 @@ cb-facility = Napad - { $what } pri { $place }
 brief-facility-task = Uničite sovražnikov strateški objekt
 brief-shape-facility = OBJEKT
 brief-facility = Sovražnikov objekt ({ $what }) pri { $place }: stavba, ki jo je treba porušiti z bombami ali izstrelki (topovi in rakete ji ne škodijo). Njeno uničenje sovražnika zadrži za več dni.
+cl-facility-captured = Sovražni objekt ({ $what }) pri { $place } je zdaj naš
+cl-facility-lost = Naš objekt ({ $what }) pri { $place } je padel v sovražnikove roke
+cl-hq-moved = Naše poveljstvo se umika s fronte, k { $place }

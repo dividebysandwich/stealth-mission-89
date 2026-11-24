@@ -385,3 +385,6 @@ cb-facility = Isku - { $what } lähellä paikkaa { $place }
 brief-facility-task = Tuhoa vihollisen strateginen kohde
 brief-shape-facility = KOHDE
 brief-facility = Vihollisen { $what } lähellä paikkaa { $place }: rakennus, joka tuhotaan pommeilla tai ohjuksilla (tykit ja raketit eivät tehoa). Sen tuhoaminen hidastaa vihollista päiviksi.
+cl-facility-captured = Vihollisen { $what } lähellä paikkaa { $place } on nyt meidän
+cl-facility-lost = Oma { $what } lähellä paikkaa { $place } on joutunut vihollisen käsiin
+cl-hq-moved = Esikuntamme siirtyy kauemmas rintamasta, lähelle paikkaa { $place }

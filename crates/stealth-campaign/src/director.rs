@@ -221,6 +221,7 @@ impl CampaignState {
     ) {
         self.patriots_lost.retain(|&k| k != place);
         self.log_war(side, MOMENTUM_CAPTURE);
+        let facilities = self.facility_sides();
         let now = self.clock;
         let p = &mut self.places[place as usize];
         p.owner = side;
@@ -268,7 +269,7 @@ impl CampaignState {
         self.note(text.clone());
         ev.push(CampaignEvent::Message(text!("cl-exclaim", text = text)));
         ev.push(CampaignEvent::PlaceCaptured { place, side, members, removed });
-        self.facilities_captured(place, ev);
+        self.facilities_captured(&facilities, ev);
     }
 
     /// The friendly side's insertion (a player's order, or the campaign's own).

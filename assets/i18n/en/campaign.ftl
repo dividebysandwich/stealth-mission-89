@@ -385,3 +385,6 @@ cb-facility = Strike - { $what } near { $place }
 brief-facility-task = Destroy the enemy's strategic facility
 brief-shape-facility = FACILITY
 brief-facility = The enemy's { $what } near { $place }: a building to bring down with bombs or missiles (guns and rockets do it no harm). Destroying it sets the enemy back for days.
+cl-facility-captured = The enemy's { $what } near { $place } is ours now
+cl-facility-lost = Our { $what } near { $place } has fallen to the enemy
+cl-hq-moved = Our headquarters moves back from the front, near { $place }

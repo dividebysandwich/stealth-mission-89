@@ -385,3 +385,6 @@ cb-facility = 攻撃 - { $place }付近の{ $what }
 brief-facility-task = 敵の戦略施設を破壊せよ
 brief-shape-facility = 施設
 brief-facility = { $place }付近の敵{ $what }：爆弾かミサイルで破壊する建物（機関砲やロケット弾は効かない）。破壊すれば敵を何日も足止めできる。
+cl-facility-captured = { $place }付近の敵{ $what }を奪取した
+cl-facility-lost = { $place }付近の味方{ $what }が敵の手に落ちた
+cl-hq-moved = 味方司令部は前線から後退し、{ $place }付近へ移転

@@ -102,7 +102,7 @@ impl CampaignState {
 
     /// What a side's tank factory makes an hour while it stands.
     pub fn armour_rate(&self, side: Side) -> f64 {
-        if self.facility_down(side, crate::FacilityKind::TankFactory) {
+        if !self.factory_works(side, crate::FacilityKind::TankFactory) {
             return 0.0;
         }
         match side {

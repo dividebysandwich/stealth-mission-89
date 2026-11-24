@@ -385,3 +385,6 @@ cb-facility = Úder - { $what } u { $place }
 brief-facility-task = Zničte strategický objekt nepřítele
 brief-shape-facility = OBJEKT
 brief-facility = Nepřátelský objekt ({ $what }) u { $place }: budova, kterou je třeba zničit pumami nebo střelami (kanóny a neřízené rakety jí neublíží). Jeho zničení nepřítele zdrží o dny.
+cl-facility-captured = Nepřátelský objekt ({ $what }) u { $place } je teď náš
+cl-facility-lost = Náš objekt ({ $what }) u { $place } padl do rukou nepřítele
+cl-hq-moved = Naše velitelství se stahuje od fronty k { $place }

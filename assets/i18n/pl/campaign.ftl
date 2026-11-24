@@ -410,3 +410,6 @@ cb-facility = Uderzenie - { $what } koło { $place }
 brief-facility-task = Zniszczyć strategiczny obiekt wroga
 brief-shape-facility = OBIEKT
 brief-facility = Obiekt wroga ({ $what }) koło { $place }: budynek, który trzeba zniszczyć bombami lub pociskami (działka i niekierowane rakiety mu nie szkodzą). Jego zniszczenie opóźni wroga o kilka dni.
+cl-facility-captured = Obiekt wroga ({ $what }) koło { $place } jest teraz nasz
+cl-facility-lost = Nasz obiekt ({ $what }) koło { $place } wpadł w ręce wroga
+cl-hq-moved = Nasza kwatera główna wycofuje się od frontu, koło { $place }

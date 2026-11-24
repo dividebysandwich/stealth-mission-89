@@ -155,6 +155,7 @@ impl Host {
             CampaignEvent::FacilityRestored { .. }
                 | CampaignEvent::FacilityDestroyed { .. }
                 | CampaignEvent::FacilityMoved { .. }
+                | CampaignEvent::FacilityChanged { .. }
                 | CampaignEvent::PlaceCaptured { .. }
         ) {
             self.grid_due = true;
@@ -173,18 +174,17 @@ impl Host {
             CampaignEvent::FacilityMoved { id } => {
                 let Some(f) = self.state.facility(id).cloned() else { return };
                 match self.facility_unit(id) {
-                    Some(k) => sim.move_structure(k, f.x, f.y),
+                    Some(k) => {
+                        sim.move_structure(k, f.x, f.y);
+                        sim.set_structure_destroyed(k, !f.alive());
+                    }
                     None => self.spawn_facility(sim, &f),
                 }
             }
-            // The facilities of a place taken change sides with it.
-            CampaignEvent::PlaceCaptured { place, side, .. } => {
-                for f in self.state.facilities.iter().filter(|f| f.place == Some(place)) {
-                    if f.owner.is_none()
-                        && let Some(k) = self.facility_unit(f.id)
-                    {
-                        sim.set_unit_side(k, side == Side::Blue);
-                    }
+            // The front passed it: it changes sides.
+            CampaignEvent::FacilityChanged { id } => {
+                if let (Some(f), Some(k)) = (self.state.facility(id), self.facility_unit(id)) {
+                    sim.set_unit_side(k, self.state.facility_side(f) == Side::Blue);
                 }
             }
             _ => {}

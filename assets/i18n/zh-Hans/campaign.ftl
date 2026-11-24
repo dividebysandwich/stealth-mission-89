@@ -384,3 +384,6 @@ cb-facility = 打击 - { $place }附近的{ $what }
 brief-facility-task = 摧毁敌方战略设施
 brief-shape-facility = 设施
 brief-facility = { $place }附近的敌方{ $what }：需用炸弹或导弹摧毁的建筑（机炮和火箭弹无效）。摧毁它可使敌方延误数日。
+cl-facility-captured = { $place }附近的敌方{ $what }已归我方所有
+cl-facility-lost = 我方{ $place }附近的{ $what }落入敌手
+cl-hq-moved = 我方司令部从前线后撤至{ $place }附近

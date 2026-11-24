@@ -607,3 +607,7 @@ pub const FACILITY_OFFERS_PER: usize = 2;
 pub const FACILITY_GRACE: f64 = 30.0 * 60.0;
 /// One enemy missile strike in so many goes for a friendly strategic facility in reach.
 pub const FACILITY_STRIKE_ONE_IN: i32 = 3;
+/// A headquarters moves back once the other side holds a place this near (map units, 40 km);
+/// the friendly side has none when the enemy starts this many times as strong.
+pub const HQ_FRONT_CLEAR: i32 = 0xA00;
+pub const HQ_OMIT_RATIO: f64 = 3.0;

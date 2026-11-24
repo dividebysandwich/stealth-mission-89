@@ -385,3 +385,6 @@ cb-facility = Löök - { $what } { $place } lähedal
 brief-facility-task = Hävitada vaenlase strateegiline rajatis
 brief-shape-facility = RAJATIS
 brief-facility = Vaenlase { $what } { $place } lähedal: hoone, mis tuleb hävitada pommide või rakettidega (kahurid ja raketid sellele ei mõju). Selle hävitamine lööb vaenlase päevadeks tagasi.
+cl-facility-captured = Vaenlase { $what } { $place } lähedal on nüüd meie
+cl-facility-lost = Meie { $what } { $place } lähedal langes vaenlase kätte
+cl-hq-moved = Meie peakorter liigub rindelt tagasi, { $place } lähedale

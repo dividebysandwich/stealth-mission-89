@@ -385,3 +385,6 @@ cb-facility = Udar - { $what } kod { $place }
 brief-facility-task = Uništite neprijateljski strateški objekt
 brief-shape-facility = OBJEKT
 brief-facility = Neprijateljski objekt ({ $what }) kod { $place }: zgrada koju treba srušiti bombama ili projektilima (topovi i rakete joj ne štete). Njegovo uništenje usporava neprijatelja danima.
+cl-facility-captured = Neprijateljski objekt ({ $what }) kod { $place } sada je naš
+cl-facility-lost = Naš objekt ({ $what }) kod { $place } pao je u neprijateljske ruke
+cl-hq-moved = Naš se stožer povlači s bojišnice, kod { $place }

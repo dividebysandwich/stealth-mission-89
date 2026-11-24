@@ -384,3 +384,6 @@ cb-facility = Ataque - { $what } cerca de { $place }
 brief-facility-task = Destruir la instalación estratégica enemiga
 brief-shape-facility = INSTALACIÓN
 brief-facility = La instalación enemiga ({ $what }) cerca de { $place }: un edificio que hay que derribar con bombas o misiles (los cañones y cohetes no le hacen daño). Destruirlo retrasa al enemigo varios días.
+cl-facility-captured = La instalación enemiga ({ $what }) cerca de { $place } es nuestra
+cl-facility-lost = Nuestra instalación ({ $what }) cerca de { $place } ha caído en manos enemigas
+cl-hq-moved = Nuestro cuartel general se retira del frente, cerca de { $place }

@@ -385,3 +385,6 @@ cb-facility = Anfall - { $what } vid { $place }
 brief-facility-task = Förstör fiendens strategiska anläggning
 brief-shape-facility = ANLÄGGNING
 brief-facility = Fiendens { $what } vid { $place }: en byggnad som måste fällas med bomber eller robotar (akan och raketer biter inte). Att förstöra den sätter fienden dagar tillbaka.
+cl-facility-captured = Fiendens { $what } vid { $place } är nu vår
+cl-facility-lost = Vår { $what } vid { $place } har fallit i fiendens händer
+cl-hq-moved = Vårt högkvarter flyttar bort från fronten, till { $place }

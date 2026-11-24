@@ -4581,11 +4581,11 @@ fn facilities_stand_on_land_on_every_theater() {
                 continue;
             }
             let n = |k| c.facilities_of(side, k).count();
-            for k in
-                [FacilityKind::DroneFactory, FacilityKind::TankFactory, FacilityKind::Headquarters]
-            {
+            for k in [FacilityKind::DroneFactory, FacilityKind::TankFactory] {
                 assert_eq!(n(k), 1, "{code} {side:?} {k:?}");
             }
+            let hq = side == Side::Red || !c.no_friendly_hq();
+            assert_eq!(n(FacilityKind::Headquarters), hq as usize, "{code} {side:?}");
             let fields = c
                 .sites
                 .iter()
@@ -4663,25 +4663,91 @@ fn an_older_save_gets_facilities() {
     assert_eq!(d.facilities, placed);
 }
 
-/// A place taken: its ammo storage changes hands with it; a factory there is overrun and built
-/// again in its side's rear.
+/// A place taken: the facilities in its ground change sides (the factory too: the side that
+/// lost it makes nothing more); a headquarters there is overrun and built again in its side's
+/// rear.
 #[test]
-fn facilities_change_hands_with_their_place() {
+fn facilities_change_hands_with_the_front() {
     let mut c = campaign("central_europe", 3);
     c.ensure_facilities(&[]);
     let ammo = c.facilities_of(Side::Red, FacilityKind::AmmoStorage).next().unwrap().clone();
     let place = ammo.place.unwrap();
+    let (px, py) = (c.places[place as usize].x, c.places[place as usize].y);
+    // The red tank factory and headquarters moved next to that place.
     let factory = c.facilities_of(Side::Red, FacilityKind::TankFactory).next().unwrap().id;
-    c.facilities.iter_mut().find(|f| f.id == factory).unwrap().place = Some(place);
+    let hq = c.facilities_of(Side::Red, FacilityKind::Headquarters).next().unwrap().id;
+    for (id, dx) in [(factory, 0x60), (hq, -0x60)] {
+        let f = c.facilities.iter_mut().find(|f| f.id == id).unwrap();
+        (f.x, f.y) = (px + dx, py);
+    }
+    assert!(c.factory_works(Side::Red, FacilityKind::TankFactory));
     let mut ev = Vec::new();
     c.capture_place(place, Side::Blue, &mut ev);
     assert_eq!(c.facility_side(c.facility(ammo.id).unwrap()), Side::Blue);
-    assert!(ev.contains(&CampaignEvent::FacilityMoved { id: factory }));
-    let f = c.facility(factory).unwrap();
+    assert_eq!(c.facility_side(c.facility(factory).unwrap()), Side::Blue);
+    assert!(ev.contains(&CampaignEvent::FacilityChanged { id: factory }));
+    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("is ours now"))));
+    // The enemy has lost its only tank factory: no more armour for it.
+    assert!(!c.factory_works(Side::Red, FacilityKind::TankFactory));
+    assert_eq!(c.armour_rate(Side::Red), 0.0);
+    // Its headquarters never changes hands: overrun, it is built again in the rear.
+    assert!(ev.contains(&CampaignEvent::FacilityMoved { id: hq }));
+    let f = c.facility(hq).unwrap();
     assert_eq!(c.facility_side(f), Side::Red);
     assert!(!f.alive());
-    assert_ne!(f.place, Some(place));
-    assert!(c.facility_down(Side::Red, FacilityKind::TankFactory));
+    assert_eq!(c.territory(f.x, f.y), Some(Side::Red));
+}
+
+/// A headquarters the front came near moves back, standing.
+#[test]
+fn a_headquarters_keeps_away_from_the_front() {
+    let mut c = campaign("central_europe", 3);
+    c.ensure_facilities(&[]);
+    let hq = c.facilities_of(Side::Red, FacilityKind::Headquarters).next().unwrap().id;
+    // Within reach of a friendly place, still in its own ground.
+    let p = c.front(Side::Red)[0];
+    let (bx, by) = (c.places[p as usize].x, c.places[p as usize].y);
+    let enemy = c
+        .places
+        .iter()
+        .filter(|q| q.owner == Side::Red)
+        .min_by_key(|q| dist(q.x - bx, q.y - by))
+        .unwrap()
+        .clone();
+    // Just past the middle, on the enemy's side.
+    let d = dist(enemy.x - bx, enemy.y - by);
+    let t = (d / 2 + 0x100) as f64 / d as f64;
+    assert!(d / 2 + 0x100 < tuning::HQ_FRONT_CLEAR);
+    let f = c.facilities.iter_mut().find(|f| f.id == hq).unwrap();
+    (f.x, f.y) = (bx + ((enemy.x - bx) as f64 * t) as i32, by + ((enemy.y - by) as f64 * t) as i32);
+    assert_eq!(c.territory(c.facility(hq).unwrap().x, c.facility(hq).unwrap().y), Some(Side::Red));
+    // (Looked at whenever a place changes hands.)
+    let mut ev = Vec::new();
+    c.keep_headquarters_back(&mut ev);
+    assert!(ev.contains(&CampaignEvent::FacilityMoved { id: hq }), "{ev:?}");
+    let f = c.facility(hq).unwrap();
+    assert!(f.alive());
+    let front = c
+        .places
+        .iter()
+        .filter(|q| q.owner == Side::Blue)
+        .map(|q| dist(q.x - f.x, q.y - f.y))
+        .min()
+        .unwrap();
+    assert!(front >= tuning::HQ_FRONT_CLEAR, "{front}");
+}
+
+/// The friendly side far outnumbered at the start has no headquarters (and no penalty for
+/// it); its factories it has.
+#[test]
+fn an_outnumbered_friendly_side_has_no_headquarters() {
+    let mut c = campaign("central_europe", 3);
+    c.start.strength = [10.0, 10.0 * tuning::HQ_OMIT_RATIO];
+    c.ensure_facilities(&[]);
+    assert_eq!(c.facilities_of(Side::Blue, FacilityKind::Headquarters).count(), 0);
+    assert_eq!(c.facilities_of(Side::Red, FacilityKind::Headquarters).count(), 1);
+    assert_eq!(c.facilities_of(Side::Blue, FacilityKind::DroneFactory).count(), 1);
+    assert_eq!(c.hq_slow(Side::Blue), 1.0);
 }
 
 /// A Ukraine campaign keeping munitions at its bases, its facilities placed.

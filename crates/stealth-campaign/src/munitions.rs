@@ -578,7 +578,7 @@ impl CampaignState {
         if m == Munition::Geran && !stealth_mission::drone_theater(&self.setup.theater_code) {
             return false;
         }
-        !self.facility_down(side, crate::FacilityKind::DroneFactory)
+        self.factory_works(side, crate::FacilityKind::DroneFactory)
     }
 
     /// The most the production base keeps of `m`: `PRODUCTION_CAP` full stocks, or the whole

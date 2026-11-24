@@ -68,8 +68,7 @@ impl FacilityKind {
         }
     }
 
-    /// One a side (the factories, the headquarters), built in its rear and moved back there
-    /// when its place falls; the others belong to their place and change hands with it.
+    /// One a side to start with (the factories, the headquarters), built in its rear.
     pub fn unique(self) -> bool {
         matches!(
             self,
@@ -108,13 +107,13 @@ pub struct Facility {
     /// Map units (x east, y south).
     pub x: i32,
     pub y: i32,
-    /// The place it stands at (its owner holds it; a unique one's place is where it was
-    /// built).
+    /// The place it was built at (named after it).
     pub place: Option<PlaceId>,
     /// An ammo storage's airfield.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub airfield: Option<ObjectId>,
-    /// A unique facility's side (it never changes hands).
+    /// The side it was built by: the headquarters' for good (it never changes hands, it moves
+    /// back from the front), the others' until the front passes them.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<Side>,
     /// Campaign time it was destroyed, and when it is back in action.
@@ -149,10 +148,30 @@ impl CampaignState {
     }
 
     /// Who holds a facility now.
+    /// The headquarters its builder's; any other the side whose territory it stands in (the
+    /// owner of the place nearest to it).
     pub fn facility_side(&self, f: &Facility) -> Side {
-        f.owner
+        if f.kind == FacilityKind::Headquarters
+            && let Some(side) = f.owner
+        {
+            return side;
+        }
+        self.territory(f.x, f.y)
+            .or(f.owner)
             .or_else(|| f.place.and_then(|p| self.place(p)).map(|p| p.owner))
             .unwrap_or(Side::Neutral)
+    }
+
+    /// Whose territory (x, y) is: the owner of the place nearest to it.
+    pub fn territory(&self, x: i32, y: i32) -> Option<Side> {
+        self.places.iter().min_by_key(|p| dist(p.x - x, p.y - y)).map(|p| p.owner)
+    }
+
+    /// A side's factory of `kind` works: one it holds stands (a side that never had one, as
+    /// one with only carriers at the start, makes what it makes without).
+    pub fn factory_works(&self, side: Side, kind: FacilityKind) -> bool {
+        self.facilities_of(side, kind).any(Facility::alive)
+            || !self.facilities.iter().any(|f| f.kind == kind && f.owner == Some(side))
     }
 
     /// A side's facilities of a kind.
@@ -195,11 +214,13 @@ impl CampaignState {
         if places.is_empty() {
             return;
         }
-        // The factories and the headquarters: in the rear.
+        // The factories and the headquarters: in the rear (the friendly side has no
+        // headquarters in the theater when it starts with no airfield, or far outnumbered).
+        let hq = side == Side::Red || !self.no_friendly_hq();
+        let unique =
+            [FacilityKind::DroneFactory, FacilityKind::TankFactory, FacilityKind::Headquarters];
         if let Some(rear) = self.rear_place(side) {
-            for kind in
-                [FacilityKind::DroneFactory, FacilityKind::TankFactory, FacilityKind::Headquarters]
-            {
+            for kind in unique.into_iter().filter(|&k| hq || k != FacilityKind::Headquarters) {
                 let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, avoid, rng);
                 self.add_facility(kind, x, y, Some(rear), None, Some(side));
             }
@@ -225,7 +246,14 @@ impl CampaignState {
                 avoid,
                 rng,
             );
-            self.add_facility(FacilityKind::AmmoStorage, x, y, Some(place), Some(object), None);
+            self.add_facility(
+                FacilityKind::AmmoStorage,
+                x,
+                y,
+                Some(place),
+                Some(object),
+                Some(side),
+            );
         }
         // Fuel depots outside the cities.
         let cities: Vec<PlaceId> =
@@ -241,7 +269,7 @@ impl CampaignState {
                 avoid,
                 rng,
             );
-            self.add_facility(FacilityKind::FuelDepot, x, y, Some(p), None, None);
+            self.add_facility(FacilityKind::FuelDepot, x, y, Some(p), None, Some(side));
         }
         // The power plants, spread over the side's places.
         let n = places
@@ -252,7 +280,7 @@ impl CampaignState {
         for p in spread(&places, n, |p| self.place_xy(p)) {
             let (x, y) =
                 self.place_spot(FacilityKind::PowerPlant, side, p, POWER_PLANT_FROM, avoid, rng);
-            self.add_facility(FacilityKind::PowerPlant, x, y, Some(p), None, None);
+            self.add_facility(FacilityKind::PowerPlant, x, y, Some(p), None, Some(side));
         }
     }
 
@@ -414,6 +442,17 @@ impl CampaignState {
             restored_at: None,
         });
         id
+    }
+
+    /// The friendly side goes without a headquarters: it starts with no airfield of its own
+    /// (a carrier's war), or outnumbered `HQ_OMIT_RATIO` times over.
+    pub(crate) fn no_friendly_hq(&self) -> bool {
+        let airfield = self
+            .sites
+            .iter()
+            .any(|s| s.kind == SiteKind::Airfield && self.owner(s.object) == Some(Side::Blue));
+        let [blue, red] = self.start.strength;
+        !airfield || blue <= 0.0 || red / blue >= HQ_OMIT_RATIO
     }
 
     /// Facility `id`'s unit was destroyed (reported once per pilot: the first counts).
@@ -649,41 +688,119 @@ impl CampaignState {
         }
     }
 
-    /// A place changed hands: a side's unique facility there is overrun, and is built again in
-    /// the side's rear (destroyed meanwhile).
-    pub(crate) fn facilities_captured(&mut self, place: PlaceId, ev: &mut Vec<CampaignEvent>) {
-        let overrun: Vec<usize> = (0..self.facilities.len())
-            .filter(|&k| {
-                let f = &self.facilities[k];
-                f.place == Some(place)
-                    && f.owner.is_some_and(|s| s != self.places[place as usize].owner)
-            })
+    /// The facilities' sides before a place changes hands (for `facilities_captured`).
+    pub(crate) fn facility_sides(&self) -> Vec<(u32, Side)> {
+        self.facilities.iter().map(|f| (f.id, self.facility_side(f))).collect()
+    }
+
+    /// A place changed hands: the facilities the front passed change sides with their ground
+    /// (the players hear of it); a headquarters overrun is built again in its side's rear
+    /// (destroyed meanwhile).
+    pub(crate) fn facilities_captured(
+        &mut self,
+        before: &[(u32, Side)],
+        ev: &mut Vec<CampaignEvent>,
+    ) {
+        for &(id, was) in before {
+            let Some(f) = self.facility(id).cloned() else { continue };
+            let now = self.facility_side(&f);
+            if now == was {
+                continue;
+            }
+            let place =
+                f.place.and_then(|p| self.place(p)).map_or(String::new(), |p| p.name.clone());
+            let what = text!(f.kind.name_id());
+            let msg = match (was, now) {
+                (_, Side::Blue) => Some(text!("cl-facility-captured", what = what, place = place)),
+                (Side::Blue, _) => Some(text!("cl-facility-lost", what = what, place = place)),
+                _ => None,
+            };
+            if let Some(t) = msg {
+                self.note(t.clone());
+                ev.push(CampaignEvent::Message(t));
+            }
+            ev.push(CampaignEvent::FacilityChanged { id });
+        }
+        // A headquarters in the other side's territory now.
+        let overrun: Vec<u32> = self
+            .facilities
+            .iter()
+            .filter(|f| f.kind == FacilityKind::Headquarters)
+            .filter(|f| f.owner.is_some_and(|s| self.territory(f.x, f.y) != Some(s)))
+            .map(|f| f.id)
             .collect();
-        let mut rng = Rng::new(self.setup.seed ^ 0xFAC1_1715 ^ self.next_id);
-        for k in overrun {
-            let side = self.facilities[k].owner.expect("unique");
-            let Some(rear) = self.rear_place(side) else { continue };
-            let kind = self.facilities[k].kind;
-            let id = self.facilities[k].id;
-            // Out of the way of its own old spot while choosing the new one.
-            self.facilities[k].x = -0x10000;
-            // (Far from the airfields' runways: those of the rear place are well inside its
-            // clearance.)
-            let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, &[], &mut rng);
-            let now = self.clock;
-            let back = now + self.game_days(kind.days());
-            let was_alive = self.facilities[k].alive();
-            let f = &mut self.facilities[k];
-            f.x = x;
-            f.y = y;
-            f.place = Some(rear);
+        for id in overrun {
+            self.move_headquarters(id, true, ev);
+        }
+        // The front moved: those it came near move back.
+        self.keep_headquarters_back(ev);
+    }
+
+    /// Headquarters `id` moves to its side's rear: `overrun` (destroyed meanwhile, for its
+    /// days) or ahead of the front (standing at once). False when there is nowhere further.
+    fn move_headquarters(&mut self, id: u32, overrun: bool, ev: &mut Vec<CampaignEvent>) -> bool {
+        let Some(k) = self.facilities.iter().position(|f| f.id == id) else { return false };
+        let Some(side) = self.facilities[k].owner else { return false };
+        let Some(rear) = self.rear_place(side) else { return false };
+        let kind = self.facilities[k].kind;
+        let mut rng = Rng::new(self.setup.seed ^ 0xFAC1_1715 ^ self.next_id ^ id);
+        let (ox, oy) = (self.facilities[k].x, self.facilities[k].y);
+        // Out of the way of its own old spot while choosing the new one.
+        self.facilities[k].x = -0x10000;
+        // (Far from the airfields' runways: those of the rear place are well inside its
+        // clearance.)
+        let (x, y) = self.place_spot(kind, side, rear, FACTORY_FROM, &[], &mut rng);
+        // Not worth it ahead of the front unless the new spot is well further back.
+        if !overrun && self.front_distance(side, x, y) < self.front_distance(side, ox, oy) + 0x100 {
+            self.facilities[k].x = ox;
+            return false;
+        }
+        let now = self.clock;
+        let back = now + self.game_days(kind.days());
+        let was_alive = self.facilities[k].alive();
+        let f = &mut self.facilities[k];
+        f.x = x;
+        f.y = y;
+        f.place = Some(rear);
+        if overrun {
             f.destroyed_at = Some(now);
             f.back_at = Some(back);
-            let f = f.clone();
-            if was_alive {
-                self.facility_lost(&f, side);
-            }
-            ev.push(CampaignEvent::FacilityMoved { id });
+        }
+        let f = f.clone();
+        if overrun && was_alive {
+            self.facility_lost(&f, side);
+        }
+        if side == Side::Blue {
+            let place = self.places[rear as usize].name.clone();
+            let t = text!("cl-hq-moved", place = place);
+            self.note(t.clone());
+            ev.push(CampaignEvent::Message(t));
+        }
+        ev.push(CampaignEvent::FacilityMoved { id });
+        true
+    }
+
+    /// How far (x, y) is from the other side's nearest place (map units).
+    fn front_distance(&self, side: Side, x: i32, y: i32) -> i32 {
+        self.places
+            .iter()
+            .filter(|p| p.owner == side.enemy())
+            .map(|p| dist(p.x - x, p.y - y))
+            .min()
+            .unwrap_or(i32::MAX)
+    }
+
+    /// A headquarters the front came near moves back (`HQ_FRONT_CLEAR`).
+    pub(crate) fn keep_headquarters_back(&mut self, ev: &mut Vec<CampaignEvent>) {
+        let near: Vec<u32> = self
+            .facilities
+            .iter()
+            .filter(|f| f.kind == FacilityKind::Headquarters && f.alive())
+            .filter(|f| f.owner.is_some_and(|s| self.front_distance(s, f.x, f.y) < HQ_FRONT_CLEAR))
+            .map(|f| f.id)
+            .collect();
+        for id in near {
+            self.move_headquarters(id, false, ev);
         }
     }
 }

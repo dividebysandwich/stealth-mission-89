@@ -385,3 +385,6 @@ cb-facility = 타격 - { $place } 인근 { $what }
 brief-facility-task = 적 전략 시설 파괴
 brief-shape-facility = 시설
 brief-facility = { $place } 인근 적 { $what }: 폭탄이나 미사일로 파괴해야 하는 건물(기관포와 로켓은 효과 없음). 파괴하면 적을 며칠간 지연시킨다.
+cl-facility-captured = { $place } 인근 적 { $what } 확보
+cl-facility-lost = { $place } 인근 아군 { $what }이(가) 적에게 넘어감
+cl-hq-moved = 아군 사령부가 전선에서 { $place } 인근으로 후퇴

@@ -567,8 +567,13 @@ pub enum CampaignEvent {
     FacilityRestored {
         id: u32,
     },
-    /// Its place fell: it is built again elsewhere (destroyed meanwhile).
+    /// It is built again elsewhere (a headquarters moved back from the front; destroyed
+    /// meanwhile when it was overrun).
     FacilityMoved {
+        id: u32,
+    },
+    /// It changed sides (the front passed it).
+    FacilityChanged {
         id: u32,
     },
 }
