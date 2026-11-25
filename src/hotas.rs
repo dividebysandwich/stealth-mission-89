@@ -15,7 +15,34 @@ use crate::input::{Action, ActionEvent, FlightControls, Mods};
 pub fn build(app: &mut App) {
     app.insert_resource(InputConfig::load())
         .insert_resource(Hotas::new())
-        .add_message::<TgpZoomAxis>();
+        .add_message::<TgpZoomAxis>()
+        .add_systems(PreUpdate, mark_joysticks);
+}
+
+/// On a Bevy gamepad that is a joystick, HOTAS part or pedals (`Device::joystick`): its inputs
+/// do only what the input mapping or its built-in layout binds, never the gamepad layout's
+/// (menu navigation, A to fire, B for the gun...), which gilrs gives every joystick.
+#[derive(Component)]
+pub struct Joystick;
+
+/// Marks the Bevy gamepads that are joysticks (by USB ids and name, as `read_gamepad` matches
+/// them to devices).
+fn mark_joysticks(
+    mut commands: Commands,
+    hotas: Res<Hotas>,
+    gamepads: Query<(Entity, &Gamepad, Option<&Name>, Has<Joystick>)>,
+) {
+    for (entity, pad, name, marked) in &gamepads {
+        let ids = pad.vendor_id().zip(pad.product_id());
+        let joystick = hotas.devices.values().any(|d| {
+            d.joystick && d.usb_id == ids && name.is_none_or(|n| n.as_str() == d.name)
+        });
+        if joystick && !marked {
+            commands.entity(entity).insert(Joystick);
+        } else if marked && !joystick {
+            commands.entity(entity).remove::<Joystick>();
+        }
+    }
 }
 
 /// The TGP zoom axis moved to another zoom step (`mfd::CAM_ZOOMS`): the targeting pod's or
@@ -750,6 +777,8 @@ pub struct Device {
     /// the device (through gilrs' mapping: an SDL one, else gilrs' fallback Xbox layout, which
     /// makes every HOTAS a gamepad there).
     standard: Vec<(u32, GamepadInput)>,
+    /// A joystick, HOTAS part or pedals rather than a gamepad (see `is_joystick`).
+    joystick: bool,
     pub axes: BTreeMap<u32, f32>,
     /// Analog buttons also exposed as axes; button capture must not bind their release.
     pub button_axes: BTreeSet<u32>,
@@ -782,7 +811,16 @@ impl Device {
         if let Some(p) = profile {
             info!("joystick {}: built-in layout {}", pad.name(), p.name);
         }
-        Self { name: pad.name().to_string(), product, usb_id, profile, standard, ..default() }
+        let joystick = is_joystick(&pad, profile.is_some());
+        Self {
+            name: pad.name().to_string(),
+            product,
+            usb_id,
+            profile,
+            standard,
+            joystick,
+            ..default()
+        }
     }
 
     /// gilrs sends values for digital buttons too. Read these directly so analog releases
@@ -828,6 +866,27 @@ impl Device {
     /// The buttons pressed since the last poll.
     pub fn just_pressed(&self) -> impl Iterator<Item = u32> + '_ {
         self.buttons.difference(&self.prev_buttons).copied()
+    }
+}
+
+/// Whether a device (before `raw_mapping`) is a joystick, HOTAS part or pedals, not a gamepad:
+/// a model with a built-in layout, else one neither SDL's database maps nor the platform knows
+/// as a gamepad (Windows Gaming Input's Gamepad, which gilrs gives a nil UUID; on Linux a
+/// gamepad's buttons, BTN_SOUTH and on, which gilrs' own mapping keeps). Elsewhere (macOS, the
+/// browser) only the built-in layouts tell.
+fn is_joystick(pad: &gilrs::Gamepad, profiled: bool) -> bool {
+    if profiled {
+        return true;
+    }
+    if pad.mapping_source() == gilrs::MappingSource::SdlMappings {
+        return false;
+    }
+    if cfg!(windows) {
+        pad.uuid() != [0; 16]
+    } else if cfg!(target_os = "linux") {
+        pad.button_code(gilrs::Button::South).is_none()
+    } else {
+        false
     }
 }
 

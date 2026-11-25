@@ -807,8 +807,9 @@ pub fn stronger(current: f32, v: f32) -> f32 {
 /// right VR thumbstick (up: nearest, down: drop the locks, right: next, left: designate), Start =
 /// the menu (unless turned off in the input mapping). An input the mapping binds does only what it is bound to:
 /// a joystick's button the gamepad mapping calls Start (often button 9) can be bound to anything.
+/// A joystick, HOTAS part or pedals (`hotas::Joystick`) gets none of this layout.
 fn read_gamepad(
-    gamepads: Query<(&Gamepad, Option<&Name>)>,
+    gamepads: Query<(&Gamepad, Option<&Name>), Without<crate::hotas::Joystick>>,
     (config, hotas): (Res<crate::hotas::InputConfig>, Res<crate::hotas::Hotas>),
     mut controls: ResMut<FlightControls>,
     mut actions: MessageWriter<ActionEvent>,

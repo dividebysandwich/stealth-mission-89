@@ -46,6 +46,12 @@ impl InputDialog {
         Self { open: std::env::args().any(|a| a == "--open-input"), ..default() }
     }
 
+    /// Waiting for a key or a joystick input to bind: the gamepad doesn't navigate the menus
+    /// meanwhile (`menu_nav.rs`), so that its B (Esc there) binds rather than cancels.
+    pub fn capturing(&self) -> bool {
+        self.open && self.capture.is_some()
+    }
+
     /// Closes the dialog, dropping a capture, the status and the search.
     pub fn close(&mut self) {
         self.open = false;

@@ -1277,7 +1277,7 @@ fn scroll_guide(
     mut menu: ResMut<FlightMenu>,
     keys: Res<ButtonInput<KeyCode>>,
     wheel: Res<AccumulatedMouseScroll>,
-    gamepads: Query<&Gamepad>,
+    gamepads: Query<&Gamepad, Without<crate::hotas::Joystick>>,
     hands: Res<Hands>,
     time: Res<Time<Real>>,
 ) {
@@ -1314,7 +1314,7 @@ fn navigate(
     mut settings: ResMut<Settings>,
     keys: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
-    gamepads: Query<&Gamepad>,
+    gamepads: Query<&Gamepad, Without<crate::hotas::Joystick>>,
     mut hands: ResMut<Hands>,
     (windows, mirror): (Query<&Window>, Res<crate::camera::MirrorRay>),
     cams: Query<(&Camera, &GlobalTransform), With<EyeCamera>>,

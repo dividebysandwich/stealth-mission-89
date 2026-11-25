@@ -2,7 +2,9 @@
 //! keyboard focus with the arrow keys and Tab and presses the focused button with Enter or Space,
 //! sliders and lists take left / right. This adds the gamepad (d-pad as the arrows, A as Enter,
 //! B as Esc) and the first press when nothing has the focus yet: an arrow or the d-pad then
-//! focuses the first control, as Tab does.
+//! focuses the first control, as Tab does. While the input dialog waits for an input to bind,
+//! the gamepad is left to it. Joysticks (`hotas::Joystick`) don't navigate: gilrs makes them
+//! gamepads, their buttons A, B and so on.
 //!
 //! The in-flight menu has its own (`flight_menu.rs`); in VR the menus are pointed at.
 
@@ -31,13 +33,15 @@ impl Plugin for MenuNavPlugin {
 /// nearest control on that side and miss rows and columns that don't line up); with nothing
 /// focused any arrow focuses the first control.
 fn pad_and_first_press(
-    gamepads: Query<&Gamepad>,
+    gamepads: Query<&Gamepad, Without<crate::hotas::Joystick>>,
     keys: Res<ButtonInput<KeyCode>>,
     settings: Res<Settings>,
     mut contexts: Query<(Entity, &mut EguiContext), With<PrimaryEguiContext>>,
     mut out: MessageWriter<EguiInputEvent>,
+    dialog: Option<Res<crate::input_dialog::InputDialog>>,
 ) {
-    if settings.vr {
+    // Binding an input: every joystick and gamepad button is the binding's.
+    if settings.vr || dialog.is_some_and(|d| d.capturing()) {
         return;
     }
     let Ok((context, mut ctx)) = contexts.single_mut() else { return };
