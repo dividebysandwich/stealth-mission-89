@@ -831,8 +831,8 @@ impl PanelLayout {
         put(Elem::Dial(Dial::Airspeed), rect(-1440.0, 82.0, 46.0, 46.0), None, true);
         put(Elem::Dial(Dial::Clock), rect(-1522.0, 111.0, 46.0, 46.0), None, true);
         put(Elem::Dial(Dial::Altimeter), rect(-1447.0, 156.0, 60.0, 60.0), None, true);
-        put(Elem::Dial(Dial::Aoa), rect(-1346.0, 167.0, 18.0, 52.0), None, false);
-        put(Elem::Dial(Dial::Vvi), rect(-1324.0, 167.0, 18.0, 52.0), None, false);
+        put(Elem::Dial(Dial::Aoa), rect(-1350.0, 160.0, 18.0, 52.0), None, false);
+        put(Elem::Dial(Dial::Vvi), rect(-1328.0, 160.0, 18.0, 52.0), None, false);
         // The right wing: the engine instruments and the fuel.
         put(Elem::Dial(Dial::Rpm), rect(1296.0, -24.0, 48.0, 48.0), None, true);
         put(Elem::Dial(Dial::Ftit), rect(1391.0, 18.0, 48.0, 48.0), None, true);

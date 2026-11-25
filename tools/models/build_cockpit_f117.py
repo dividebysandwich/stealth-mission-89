@@ -347,7 +347,10 @@ CLEAR = [
     ((1255.0, -60.0, 1385.0, 90.0), 0.16, NOTHING_STAYS),
 ]
 # The angle of attack and vertical velocity tapes (layout mm, both).
-TAPES = (-1350.0, 163.0, 48.0, 60.0)
+TAPES = (-1354.0, 156.0, 48.0, 60.0)
+# The model's pod for them stands a little off them (up and outboard of the other
+# instruments' grid): their box reaches this much further (mm).
+TAPES_POD_REACH = 8.0
 # Kept all the same (the layout's bounds of the part, mm): the countermeasures' plate.
 UNCLEARED = ((1392.4, 101.6, 1492.6, 217.1),)
 CLEAR_DEPTH = 0.36
@@ -377,7 +380,8 @@ for r in [f["rect"] for f in layout["faces"] if f["round"] and f["key"] not in F
     x, y, w, h = r
     if section(x) == -1:
         SIZED[len(BOXED)] = r
-    BOXED.append(((x - CASE_REACH, y - CASE_REACH, x + w + CASE_REACH, y + h + CASE_REACH), 0.2))
+    reach = CASE_REACH + (TAPES_POD_REACH if r == TAPES else 0.0)
+    BOXED.append(((x - reach, y - reach, x + w + reach, y + h + reach), 0.2))
 POD_SIZE = max(max(w, h) for _, _, w, h in SIZED.values()) + 2 * POD_RIM
 # A box is at least this thick (m): a pod that is only its face.
 BOX_MIN = 0.003
