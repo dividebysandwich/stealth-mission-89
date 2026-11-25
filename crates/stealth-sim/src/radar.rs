@@ -819,7 +819,8 @@ impl Sim {
     /// reach the player, the higher threat tiers and the closer ones.
     pub fn emitters(&self) -> Vec<Emitter> {
         let (px, py) = (self.pl.p.mx, self.pl.p.my);
-        let me = self.pl.id;
+        // A crew member in another's aircraft hears what engages that aircraft: its owner's.
+        let me = self.crew_of(self.pl.id).map_or(self.pl.id, |(owner, _)| owner);
         let launched = |source: EmitterSource| {
             self.proj[..ENEMY_SLOTS].iter().zip(&self.proj_pilot).any(|(m, &k)| {
                 m.ttl != 0
