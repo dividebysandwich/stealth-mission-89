@@ -6669,7 +6669,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stealth-android"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "bevy",
  "stealth-mission-89",
@@ -6677,7 +6677,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-campaign"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "anyhow",
  "serde",
@@ -6688,14 +6688,14 @@ dependencies = [
 
 [[package]]
 name = "stealth-formats"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "stealth-host"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "anyhow",
  "dirs",
@@ -6713,7 +6713,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-i18n"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "fluent-bundle",
  "fluent-pseudo",
@@ -6725,7 +6725,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-master"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -6736,14 +6736,14 @@ dependencies = [
 
 [[package]]
 name = "stealth-master-proto"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "stealth-mission"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "anyhow",
  "ron",
@@ -6755,7 +6755,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-mission-89"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -6813,7 +6813,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-net"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "anyhow",
  "ciborium",
@@ -6840,7 +6840,7 @@ dependencies = [
 
 [[package]]
 name = "stealth-sim"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "anyhow",
  "ron",
