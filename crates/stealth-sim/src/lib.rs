@@ -1168,11 +1168,25 @@ impl Sim {
     pub fn take_pilot_events(&mut self) -> Vec<PilotEvent> {
         let pilots = std::mem::take(&mut self.event_pilot);
         self.event_credit.clear();
-        std::mem::take(&mut self.events)
+        let mut out: Vec<PilotEvent> = std::mem::take(&mut self.events)
             .into_iter()
             .enumerate()
             .map(|(i, event)| PilotEvent { pilot: pilots.get(i).copied().unwrap_or(0), event })
-            .collect()
+            .collect();
+        // Another player in an aircraft's crew hears what its pilot hears: the cockpit's
+        // sounds and the radar warning tones (the owner's private events).
+        if !self.mirror && self.crews().iter().any(|c| c.gunner.is_some()) {
+            let shared: Vec<PilotEvent> = out
+                .iter()
+                .filter(|e| matches!(e.event, SimEvent::Sound { .. } | SimEvent::Rwr(_)))
+                .filter_map(|e| {
+                    let g = self.gunner_of(e.pilot).filter(|&g| g != e.pilot)?;
+                    Some(PilotEvent { pilot: g, event: e.event.clone() })
+                })
+                .collect();
+            out.extend(shared);
+        }
+        out
     }
 
     // ---------------------------------------------------------------- accessors
