@@ -4072,7 +4072,16 @@ fn route_length(route: &[[f64; 2]]) -> f64 {
 #[test]
 fn the_enemy_s_bases_along_the_roads_are_supplied_by_truck() {
     let c = road_campaign();
-    for name in ["Taganrog", "Berdiansk", "Melitopol", "Dzhankoi", "Kirovske", "Hvardiiske", "Saky", "Belbek"] {
+    for name in [
+        "Taganrog",
+        "Berdiansk",
+        "Melitopol",
+        "Dzhankoi",
+        "Kirovske",
+        "Hvardiiske",
+        "Saky",
+        "Belbek",
+    ] {
         assert!(c.road_served(airfield_named(&c, name), Side::Red), "{name}");
     }
     for name in ["Krasnodar", "Millerovo", "Dnipro"] {
@@ -4131,13 +4140,17 @@ fn a_whole_convoy_lost_is_news_and_does_not_hold_up_the_next() {
     let mut tag = None;
     for _ in 0..tuning::SUPPLY_WAIT as i32 + 5 {
         let ev = c.tick(1.0, &WorldView::default(), &[]);
-        tag = tag.or(convoys_launched(&ev).into_iter().find(|l| {
-            c.cargo_runs.iter().any(|r| r.tag == l.0 && r.to == b)
-        }).map(|l| l.0));
+        tag = tag.or(convoys_launched(&ev)
+            .into_iter()
+            .find(|l| c.cargo_runs.iter().any(|r| r.tag == l.0 && r.to == b))
+            .map(|l| l.0));
     }
     let tag = tag.expect("a convoy");
     let ev = c.tick(1.0, &WorldView::default(), &[Report::SupplyConvoyArrived { tag, trucks: 0 }]);
-    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("convoy"))), "{ev:?}");
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("convoy"))),
+        "{ev:?}"
+    );
     assert_eq!(c.available(b, Munition::SamShort), 0);
     // The next one goes (no cooldown as after a cargo aircraft shot down).
     for _ in 0..(tuning::SUPPLY_SPACING / 60.0) as i32 + 2 {
@@ -4157,7 +4170,10 @@ fn the_kerch_bridge_cut_sends_the_trucks_for_crimea_round_by_the_isthmus() {
     let before = c.road_route(b).expect("a way to Kirovske");
     assert!(over(&before), "over the bridge from Krymsk");
     let ev = c.tick(1.0, &WorldView::default(), &[Report::RoadCut { edge: bridge }]);
-    assert!(ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("cut"))), "{ev:?}");
+    assert!(
+        ev.iter().any(|e| matches!(e, CampaignEvent::Message(t) if t.contains("cut"))),
+        "{ev:?}"
+    );
     assert_eq!(c.cut_roads, [bridge]);
     let after = c.road_route(b).expect("still a way, the long one");
     assert!(!over(&after));
@@ -4178,9 +4194,10 @@ fn trucks_that_turn_back_bring_their_loads_back() {
     let mut tag = None;
     for _ in 0..tuning::SUPPLY_WAIT as i32 + 5 {
         let ev = c.tick(1.0, &WorldView::default(), &[]);
-        tag = tag.or(convoys_launched(&ev).into_iter().find(|l| {
-            c.cargo_runs.iter().any(|r| r.tag == l.0 && r.to == b)
-        }).map(|l| l.0));
+        tag = tag.or(convoys_launched(&ev)
+            .into_iter()
+            .find(|l| c.cargo_runs.iter().any(|r| r.tag == l.0 && r.to == b))
+            .map(|l| l.0));
     }
     let tag = tag.expect("a convoy");
     let load = c.cargo_runs.iter().find(|r| r.tag == tag).unwrap().load.clone();

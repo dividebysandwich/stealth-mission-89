@@ -22,7 +22,8 @@
 #
 # Kept, with their materials and control properties: the seat with the ejection handle (copied
 # for the other seat), the stick (a centre stick on the pilot's centre line), the throttle with
-# its rails on the pilot's left console, the gear handle, the HUD glass (the optical sight's
+# its rails on the pilot's left console (in the right seat's cockpit the slew stick is the
+# `stick`, the pilot's a still copy), the gear handle, the HUD glass (the optical sight's
 # reflector plate), the approach indexer and the flood lamps. Built here, low-poly: the tub
 # under the wide canopy (walls up to the glass's lower edge, the rear bulkhead under the
 # canopy's arch), one panel across both seats under an arched glare shield, the three consoles,
@@ -803,9 +804,15 @@ slew = C(sum(PED_X) / 2, ped_end[0] + 0.09, ped_end[1] - 0.004)
 box("black", "black", slew + Vector((0, 0, 0.003)), (0.11, 0.12, 0.006))
 mesh_object("rubber", cylinder_mesh("rubber", 0.026, 0.02, "rubber", axis="Z", n=12), slew + Vector((0, 0, 0.006)))
 tip = slew + Vector((0.0, -0.02, 0.12))
-rod("metal", slew + Vector((0, 0, 0.02)), tip, 0.007, "metal")
-rod("rubber", tip - Vector((0.0, -0.004, 0.025)), tip + Vector((0.0, -0.008, 0.05)), 0.016, "rubber", n=10)
-mesh_object("red", cylinder_mesh("red", 0.005, 0.005, "red", axis="Z", n=KNOB), tip + Vector((0.0, -0.008, 0.05)))
+# Its pivot in the boot, and the parts that move about it (in the right seat's cockpit they are
+# its `stick`: it slews the pod).
+SLEW_PIVOT = slew + Vector((0, 0, 0.015))
+slew_parts = [
+    rod("metal", slew + Vector((0, 0, 0.02)), tip, 0.007, "metal"),
+    rod("rubber", tip - Vector((0.0, -0.004, 0.025)), tip + Vector((0.0, -0.008, 0.05)), 0.016, "rubber", n=10),
+    mesh_object("red", cylinder_mesh("red", 0.005, 0.005, "red", axis="Z", n=KNOB), tip + Vector((0.0, -0.008, 0.05))),
+]
+SLEW_GRIP = (tip + Vector((0.0, -0.006, 0.0125)) - SLEW_PIVOT).z
 
 # --- plates under the panel's groups, housings of the displays
 PLATE = 0.004
@@ -1162,6 +1169,17 @@ stick["grip"] = float(stick["grip"]) + STICK_RAISE
 rod("metal", (0, 0, 0), (0, 0, STICK_RAISE + 0.02), 0.011, "metal", stick)
 rod("rubber", pivot, pivot + Vector((0, 0, 0.06)), 0.04, "rubber")
 box("dark", "dark", pivot + Vector((0.0, 0.0, -0.004)), (0.12, 0.12, 0.008))
+# In the right seat the pilot's stick stands still (a copy) and the slew stick between the
+# bombardier's knees is the `stick`: taken in VR, it slews the pod.
+if RIGHT_SEAT:
+    for c in list(stick.children):
+        copy_of(c, pivot + c.location)
+        drop(c)
+    stick.location = SLEW_PIVOT
+    for o in slew_parts:
+        o.parent = stick
+        o.location = o.location - SLEW_PIVOT
+    stick["grip"] = SLEW_GRIP
 # Rudder pedals under the panel.
 for dx in (-0.11, 0.11):
     cbox("black", (PILOT_EYE[0] + dx - 0.045, PILOT_EYE[0] + dx + 0.045), (low_s - 0.06, low_s - 0.045), (FLOOR + 0.08, FLOOR + 0.20))

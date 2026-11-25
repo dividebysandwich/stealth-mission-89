@@ -657,6 +657,13 @@ pub(super) fn console_stick_tip() -> Tip {
     tip("tip-console-stick", &[PitchDown, PitchUp, RollLeft, RollRight, FireWeapon])
 }
 
+/// A gunner's cockpit's stick (the A-6's slew stick, the AH-64's and OH-58D's gunner's): it
+/// slews the pod.
+pub(super) fn slew_stick_tip() -> Tip {
+    use Action::*;
+    tip("tip-slew-stick", &[PitchDown, PitchUp, RollLeft, RollRight])
+}
+
 pub(super) fn throttle_tip() -> Tip {
     use Action::*;
     tip("tip-throttle", &[ThrottleUp, ThrottleDown, ThrottleMax, ThrottleIdle])

@@ -1007,7 +1007,9 @@ fn propeller_drones_climb_better_by_hand_with_the_same_top_speed() {
 
 /// A supply convoy's technical at map point `at`, its two trucks 100 m apart behind it.
 fn technical_at(sim: &mut Sim, at: (i32, i32)) -> usize {
-    for (dx, kind) in [(0, GroundKind::Technical), (6, GroundKind::CivTruck), (12, GroundKind::ArmyTruck)] {
+    for (dx, kind) in
+        [(0, GroundKind::Technical), (6, GroundKind::CivTruck), (12, GroundKind::ArmyTruck)]
+    {
         sim.units_mut().push(GroundUnit { kind, x: at.0 + dx, y: at.1, ..Default::default() });
     }
     sim.units().len() - 3
@@ -1059,7 +1061,8 @@ fn truck_strike_odds() {
         let a = t as f64 * 0.31;
         let at = off(&sim, k, 6000.0 * a.cos(), 6000.0 * a.sin());
         let truck = technical_at(&mut sim, at) + 1;
-        launch(&mut sim, UavKind::Fp2, vec![wp((at.0 + 6, at.1), 300.0, WpKind::Terminate)]).unwrap();
+        launch(&mut sim, UavKind::Fp2, vec![wp((at.0 + 6, at.1), 300.0, WpKind::Terminate)])
+            .unwrap();
         for _ in 0..400 {
             run(&mut sim, 1);
             if sim.uavs().is_empty() {

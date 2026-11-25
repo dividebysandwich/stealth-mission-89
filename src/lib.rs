@@ -113,7 +113,6 @@ mod recorder;
 mod restart;
 mod rockets;
 mod rotor_blur;
-mod water_ssr;
 mod rwr;
 mod savegame;
 mod scenery;
@@ -149,6 +148,7 @@ mod voice;
 mod voice_dialog;
 #[cfg(feature = "xr")]
 mod vr_menu;
+mod water_ssr;
 mod weather;
 #[cfg(target_arch = "wasm32")]
 mod web_loading;

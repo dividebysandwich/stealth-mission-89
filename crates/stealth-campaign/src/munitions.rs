@@ -969,9 +969,7 @@ impl CampaignState {
                 }
             }
             // Trucks without fuel at either end wait.
-            let dry = |c: &Self, b: ObjectId| {
-                c.site(b).is_some_and(|s| c.dry(r.side, s.x, s.y))
-            };
+            let dry = |c: &Self, b: ObjectId| c.site(b).is_some_and(|s| c.dry(r.side, s.x, s.y));
             if self.cargo_runs[k].road.is_some() && (dry(self, r.from) || dry(self, r.to)) {
                 self.cargo_runs[k].state =
                     CargoState::Scheduled { launch_at: now + CARGO_RELAUNCH };
@@ -980,10 +978,11 @@ impl CampaignState {
             if self.cargo_runs[k].road.is_some() {
                 // One convoy onto the roads at a time (they share them from the entries); the
                 // test aid's empty ones (`supply_now`) at once.
-                let busy = !self.cargo_runs[k].load.is_empty() && self.cargo_runs.iter().any(|r| {
-                    r.state == CargoState::Airborne
-                        && r.road.as_ref().is_some_and(|w| now - w.launched < SUPPLY_GAP_S)
-                });
+                let busy = !self.cargo_runs[k].load.is_empty()
+                    && self.cargo_runs.iter().any(|r| {
+                        r.state == CargoState::Airborne
+                            && r.road.as_ref().is_some_and(|w| now - w.launched < SUPPLY_GAP_S)
+                    });
                 if busy {
                     continue;
                 }

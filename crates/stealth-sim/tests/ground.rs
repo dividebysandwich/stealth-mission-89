@@ -390,7 +390,8 @@ fn a_column_that_took_its_place_hands_over_to_the_garrison() {
 #[test]
 fn a_supply_convoy_drives_to_its_base_and_leaves_the_world() {
     let (_, mut sim) = campaign();
-    let kinds = [GroundKind::Technical, GroundKind::ArmyTruck, GroundKind::CivTruck, GroundKind::ArmyTruck];
+    let kinds =
+        [GroundKind::Technical, GroundKind::ArmyTruck, GroundKind::CivTruck, GroundKind::ArmyTruck];
     let a = stealth_sim::ground::metres_of(X, Y);
     let route = [a, [a[0] + 3000.0, a[1]]];
     sim.spawn_supply_convoy(9, false, &kinds, &route, 0.0);
@@ -414,7 +415,8 @@ fn a_cut_road_turns_the_trucks_back_short_of_the_gap() {
     let (_, mut sim) = campaign();
     let a = stealth_sim::ground::metres_of(X, Y);
     let route = [a, [a[0] + 20_000.0, a[1]]];
-    let kinds = [GroundKind::CivTruck, GroundKind::Technical, GroundKind::CivTruck, GroundKind::ArmyTruck];
+    let kinds =
+        [GroundKind::CivTruck, GroundKind::Technical, GroundKind::CivTruck, GroundKind::ArmyTruck];
     // Column 1 far short of the gap; column 2 across it when it comes down (its head 200 m
     // past it, its tail 100 m short of it after 10 s).
     sim.spawn_supply_convoy(1, false, &kinds, &route, 0.0);
@@ -433,7 +435,10 @@ fn a_cut_road_turns_the_trucks_back_short_of_the_gap() {
     // Column 1 drives up to the gap and turns back with its three trucks.
     assert_eq!(
         of(1),
-        [&SimEvent::SupplyTurnedBack { tag: 1, trucks: 3 }, &SimEvent::SupplyConvoyArrived { tag: 1, trucks: 0 }]
+        [
+            &SimEvent::SupplyTurnedBack { tag: 1, trucks: 3 },
+            &SimEvent::SupplyConvoyArrived { tag: 1, trucks: 0 }
+        ]
     );
     let head = metres(&sim, 0);
     assert!(head[0] < gap[0] - 49.0 && head[0] > gap[0] - 52.0, "stopped at {head:?}");
@@ -441,7 +446,10 @@ fn a_cut_road_turns_the_trucks_back_short_of_the_gap() {
     // truck on the span goes down with it, its last truck (100 m short) turns back at once.
     assert_eq!(
         of(2),
-        [&SimEvent::SupplyTurnedBack { tag: 2, trucks: 1 }, &SimEvent::SupplyConvoyArrived { tag: 2, trucks: 1 }]
+        [
+            &SimEvent::SupplyTurnedBack { tag: 2, trucks: 1 },
+            &SimEvent::SupplyConvoyArrived { tag: 2, trucks: 1 }
+        ]
     );
 }
 

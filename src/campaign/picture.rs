@@ -130,7 +130,8 @@ pub fn supply_convoys(sim: &Sim) -> Vec<SupplyConvoy> {
                     }
                 })
                 .collect();
-            let head = sim.units()[*c.units.iter().find(|&&k| !sim.units()[k as usize].destroyed)? as usize];
+            let head = sim.units()
+                [*c.units.iter().find(|&&k| !sim.units()[k as usize].destroyed)? as usize];
             let m = head.metres();
             // The route from the point nearest the head on.
             let next = c
@@ -641,7 +642,8 @@ pub fn draw(
                 let p = at(v.x, v.y);
                 let ink = lit(UnitRef::Aaa(v.index));
                 scaled(p, &|pa, p| map_draw::marked(pa, ink, || truck(pa, p, v, 0.6)));
-                let kind = if v.kind.truck() { t!("mt-enemy-truck") } else { t!("mt-enemy-technical") };
+                let kind =
+                    if v.kind.truck() { t!("mt-enemy-truck") } else { t!("mt-enemy-technical") };
                 let colour = if v.blue { FRIENDLY_BLUE } else { MISSILE_RED };
                 let v = *v;
                 tips.add(p, kind, v.kind.name(), colour).symbol(move |p, c| truck(p, c, &v, 0.6));

@@ -102,6 +102,10 @@ pub struct GunnerState {
     pod_moved: Option<f32>,
     pod_sent: Option<SharedPod>,
     pod_since: f32,
+    /// In a gunner's cockpit: its stick as the hand moves it (x right, y back), the slew keys
+    /// too; the cockpit's stick is drawn so (`cockpit3d::levers`), the flight controls being
+    /// the AI's.
+    pub stick: Option<Vec2>,
 }
 
 /// The chin gun is slaved to the pod (else to the helmet sight): another's gunner's own choice,
@@ -276,6 +280,7 @@ fn console(
         }
         state.at = now;
     }
+    state.stick = None;
     let Some(remote) = now else {
         keys.clear();
         return;
@@ -310,6 +315,12 @@ fn console(
         let a = ((v.abs() - 0.05) / 0.95).clamp(0.0, 1.0);
         v.signum() * a * a
     };
+    if cockpit {
+        state.stick = Some(Vec2::new(
+            crate::input::stronger(controls.roll, controls.slew.x),
+            crate::input::stronger(controls.pitch, -controls.slew.y),
+        ));
+    }
     let stick = Vec2::new(curve(controls.roll), curve(-controls.pitch));
     controls.slew = Vec2::new(
         crate::input::stronger(controls.slew.x, stick.x),

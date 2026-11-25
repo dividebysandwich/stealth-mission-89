@@ -1369,9 +1369,15 @@ fn a_supply_convoy_drives_munitions_to_taganrog() {
         }
         host.tick(&mut sim, 1.0 / 15.0, &all);
         if tag.is_none() {
-            tag = host.state.cargo_runs.iter().find(|r| r.to == to && r.road.is_some()).map(|r| r.tag);
+            tag = host
+                .state
+                .cargo_runs
+                .iter()
+                .find(|r| r.to == to && r.road.is_some())
+                .map(|r| r.tag);
         }
-        trucks_seen = trucks_seen.max(sim.units().iter().filter(|u| u.kind.truck() && !u.destroyed).count());
+        trucks_seen =
+            trucks_seen.max(sim.units().iter().filter(|u| u.kind.truck() && !u.destroyed).count());
         if arrived.is_some() {
             break;
         }
@@ -1380,7 +1386,9 @@ fn a_supply_convoy_drives_munitions_to_taganrog() {
     assert_eq!(arrived, Some(3), "all three trucks got there");
     assert!(trucks_seen >= 3);
     assert!(host.state.available(to, m) > 0, "delivered");
-    assert!(host.state.cargo_runs.iter().all(|r| r.to != to || r.road.is_none() || Some(r.tag) != tag));
+    assert!(
+        host.state.cargo_runs.iter().all(|r| r.to != to || r.road.is_none() || Some(r.tag) != tag)
+    );
 }
 
 /// The Kerch bridge's road arch brought down cuts the road for the campaign.

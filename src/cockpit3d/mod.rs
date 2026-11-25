@@ -585,12 +585,22 @@ fn cockpit_visibility(
 }
 
 /// At an air defence console the hand controller slews a Gepard's gun (a Patriot's has none), at
-/// a drone command center it flies the drone or slews its camera.
+/// a drone command center it flies the drone or slews its camera; in a gunner's cockpit the
+/// stick slews the pod.
 fn console_stick(
     manning: Option<Res<crate::station::Manning>>,
     mut q: Query<(Ref<levers::Stick>, &mut Visibility, &mut tooltips::Tip)>,
 ) {
-    let Some(m) = manning.filter(|m| m.console()) else { return };
+    let Some(m) = manning else { return };
+    // A gunner's cockpit's stick slews the pod (the A-6's slew stick).
+    if m.cockpit() {
+        for (stick, _, mut tip) in &mut q {
+            if stick.is_added() {
+                *tip = tooltips::slew_stick_tip();
+            }
+        }
+        return;
+    }
     for (stick, mut v, mut tip) in &mut q {
         v.set_if_neq(if m.gepard() || m.drones() || m.gunner() {
             Visibility::Inherited

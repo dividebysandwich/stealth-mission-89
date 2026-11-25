@@ -882,6 +882,7 @@ pub(super) fn animate_levers(
     >,
     anchors: Res<CockpitAnchors>,
     k: Res<FlightConstants>,
+    gunner: Res<crate::gunner::GunnerState>,
 ) {
     let (column, turn) = yoke_pose(&anchors, controls.pitch, controls.roll);
     if let Ok(mut tf) = yoke.single_mut() {
@@ -892,9 +893,15 @@ pub(super) fn animate_levers(
     }
     if let Ok(mut tf) = stick.single_mut() {
         let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
-        tf.rotation = Quat::from_rotation_x(controls.pitch * tilt)
-            * Quat::from_rotation_z(-controls.roll * tilt)
-            * Quat::from_rotation_y(-controls.yaw * STICK_TWIST);
+        // A gunner's cockpit's stick (the A-6's slew stick) as his hand has it: it slews the
+        // pod, the AI flies.
+        let (pitch, roll, yaw) = match gunner.stick {
+            Some(s) => (s.y.clamp(-1.0, 1.0), s.x.clamp(-1.0, 1.0), 0.0),
+            None => (controls.pitch, controls.roll, controls.yaw),
+        };
+        tf.rotation = Quat::from_rotation_x(pitch * tilt)
+            * Quat::from_rotation_z(-roll * tilt)
+            * Quat::from_rotation_y(-yaw * STICK_TWIST);
     }
     if let (Ok(mut tf), Ok(a)) = (throttle.single_mut(), aircraft.single()) {
         let t = controls.throttle.or(console_throttle.0).unwrap_or(a.lever(k.afterburner()));

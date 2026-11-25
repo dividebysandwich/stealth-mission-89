@@ -213,7 +213,13 @@ pub fn contacts(sim: &Sim, campaign: Option<&crate::campaign::ActiveCampaign>) -
         let pic = crate::campaign::picture::picture(c.state(), sim);
         for s in &pic.sams {
             if !out.iter().any(|o| (o.x, o.y) == (s.x, s.y)) {
-                out.push(Contact { x: s.x, y: s.y, name: s.name.clone(), drones: false, vehicle: None });
+                out.push(Contact {
+                    x: s.x,
+                    y: s.y,
+                    name: s.name.clone(),
+                    drones: false,
+                    vehicle: None,
+                });
             }
         }
         for g in &pic.guns {
@@ -386,7 +392,10 @@ pub(super) fn draw(
         }
     }
     // The enemy's supply convoys' way on, dotted.
-    for s in crate::campaign::picture::supply_convoys(sim).iter().filter(|s| s.vehicles.iter().any(|v| !v.blue)) {
+    for s in crate::campaign::picture::supply_convoys(sim)
+        .iter()
+        .filter(|s| s.vehicles.iter().any(|v| !v.blue))
+    {
         let pts: Vec<Vec2> =
             s.route.iter().map(|&(x, y)| to_screen(&ui, x as f64 + 0.5, y as f64 + 0.5)).collect();
         for w in pts.windows(2).step_by(2) {

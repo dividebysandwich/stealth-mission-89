@@ -142,7 +142,14 @@ impl CampaignState {
     }
 
     /// A road run of a new convoy with `load` from `from` to `base`, setting off at `at`.
-    fn add_road_run(&mut self, base: ObjectId, side: Side, from: ObjectId, load: Vec<(Munition, u32)>, at: f64) {
+    fn add_road_run(
+        &mut self,
+        base: ObjectId,
+        side: Side,
+        from: ObjectId,
+        load: Vec<(Munition, u32)>,
+        at: f64,
+    ) {
         let (id, tag) = (self.id(), self.id());
         // A mix of civilian and army trucks, a pickup with a machine gun with half of them
         // (from the run's id: the campaign's random stream is left alone).
@@ -176,7 +183,8 @@ impl CampaignState {
     /// nothing aboard).
     pub fn supply_now(&mut self) {
         // (Before the war's first tick no production base is picked yet.)
-        let Some(from) = self.production_base(Side::Red).or_else(|| self.rearmost(Side::Red)) else {
+        let Some(from) = self.production_base(Side::Red).or_else(|| self.rearmost(Side::Red))
+        else {
             return;
         };
         let bases: Vec<ObjectId> = self
@@ -205,16 +213,25 @@ impl CampaignState {
         if let Some(w) = r.road.as_mut() {
             w.launched = now;
         }
-        ev.push(CampaignEvent::SupplyConvoyLaunched { id: r.id, side: r.side, tag: r.tag, units, route });
+        ev.push(CampaignEvent::SupplyConvoyLaunched {
+            id: r.id,
+            side: r.side,
+            tag: r.tag,
+            units,
+            route,
+        });
         true
     }
 
     /// The simulation's news of the convoys and the roads.
     pub(crate) fn road_report(&mut self, r: &crate::Report, ev: &mut Vec<CampaignEvent>) {
         match *r {
-            crate::Report::SupplyConvoyArrived { tag, trucks } => self.supply_arrived(tag, trucks, ev),
+            crate::Report::SupplyConvoyArrived { tag, trucks } => {
+                self.supply_arrived(tag, trucks, ev)
+            }
             crate::Report::SupplyTurnedBack { tag, trucks } => {
-                let Some(run) = self.cargo_runs.iter_mut().find(|c| c.tag == tag && c.road.is_some())
+                let Some(run) =
+                    self.cargo_runs.iter_mut().find(|c| c.tag == tag && c.road.is_some())
                 else {
                     return;
                 };
@@ -319,7 +336,11 @@ impl CampaignState {
         if trucks == 0 && road.turned_back == 0 {
             // The whole convoy destroyed: the other side hears of it.
             let base = self.site(run.to).map_or(String::new(), |s| s.name.clone());
-            let id = if run.side == Side::Blue { "cl-supply-convoy-lost" } else { "cl-enemy-supply-convoy-lost" };
+            let id = if run.side == Side::Blue {
+                "cl-supply-convoy-lost"
+            } else {
+                "cl-enemy-supply-convoy-lost"
+            };
             let t = text!(id, base = base);
             self.note(t.clone());
             ev.push(CampaignEvent::Message(t));
