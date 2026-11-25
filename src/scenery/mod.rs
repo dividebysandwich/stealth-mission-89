@@ -1673,14 +1673,14 @@ fn clear_approaches(
             continue;
         }
         let mut entity = commands.entity(e);
-        entity.insert(ApproachChecked);
+        entity.try_insert(ApproachChecked);
         if tag.0 & 7 == crate::palette_material::LEVEL_AIRCRAFT {
             continue;
         }
         let p = tf.translation().as_dvec3() + origin.origin;
         let ground = DVec2::new(p.x, -p.z);
         if scenery.airfields.iter().any(|a| airfield::in_approach(a, ground)) {
-            entity.insert(Visibility::Hidden);
+            entity.try_insert(Visibility::Hidden);
         }
     }
 }
