@@ -235,7 +235,7 @@ def coloured(name, like, rgb, roughness=None):
     return m
 
 
-for n, like in (("hsi", "adi"), ("screen_vdi", "adi"), ("screen_phd", "adi"), ("screen_dvri", "adi"), ("screen_sensor", "adi")):
+for n, like in (("hsi", "adi"), ("screen_vdi", "adi"), ("screen_phd", "adi"), ("screen_dvri", "adi"), ("screen_sensor", "adi"), ("screen_rwr", "adi")):
     material(n, like)
 coloured("red", "yellow", (0.55, 0.04, 0.03))
 # The engraved white of the bank indices; a dark tube's glass (the dressing's gauges).
@@ -1063,6 +1063,8 @@ def round_screen(mat, r, offset):
 
 round_screen("adi", scr["adi"], 0.0)
 round_screen("hsi", scr["hsi"], 0.0)
+# The radar warning receiver's scope between the seats, on the plate under the countermeasures.
+round_screen("screen_rwr", scr["rwr"], PLATE)
 
 # --- faces and controls
 for f in layout["faces"]:
@@ -1103,15 +1105,12 @@ for v in (140.0, 166.0, 192.0, 218.0):
 # The control box's brightness and contrast knobs.
 for u, v in ((-128.0, 78.0), (-128.0, 112.0), (-190.0, 226.0), (-78.0, 228.0)):
     knob(u, v, 0.006, 0.010, "dark", offset=PLATE)
-# Between the seats: the fuzing panel's buttons and switches, the knobs under the
-# countermeasures.
+# Between the seats: the fuzing panel's buttons and switches (under the countermeasures the
+# radar warning receiver's scope fills the plate).
 for i in range(8):
     panel_box("black", "black", (172.0, 60.0 + 20.0 * i, 12.0, 12.0), 0.006, 0.0, PLATE)
 for i, v in enumerate((70.0, 110.0, 150.0, 190.0)):
     toggle(214.0, v, PLATE, up=(i % 2 == 0))
-for u, v in ((176.0, -22.0), (214.0, -22.0), (176.0, 16.0)):
-    knob(u, v, 0.008, 0.012, "dark", offset=PLATE)
-toggle(214.0, 16.0, PLATE)
 # The bombardier's side: the radar panel's knobs and its meter, the navigation panel's counters
 # and switches.
 for i, u in enumerate((270.0, 310.0, 350.0, 390.0, 430.0, 466.0)):

@@ -17,7 +17,8 @@
 //! - Between the seats (0 < x < 240): the armament panel (the station
 //!   switches, the attack mode and G pushbuttons, the FT OR SEC counter, master arm, the release
 //!   mode), the flight / navigation mode panel under it, and the countermeasures column (the
-//!   release keys and counts, the jammers, the threat lights).
+//!   release keys and counts, the jammers, the threat lights, the radar warning receiver's
+//!   round scope under them).
 //! - The bombardier/navigator's side (x > 240, his centre line at x 360): the direct view radar
 //!   indicator in its heading ring with its lights and range window, the search radar's
 //!   controls under it, the sensor scope right of it; the computer keyboard on the pedestal
@@ -420,6 +421,8 @@ const VDI: PxRect = rect(-435.0, -168.0, 150.0, 112.0);
 const PHD: PxRect = rect(-442.0, 28.0, 164.0, 164.0);
 const DVRI: PxRect = rect(255.0, -152.0, 220.0, 220.0);
 const SENSOR: PxRect = rect(520.0, -104.0, 124.0, 93.0);
+/// The radar warning receiver's round scope between the seats, under the countermeasures.
+const RWR: PxRect = rect(160.0, -36.0, 72.0, 72.0);
 
 impl PanelLayout {
     /// The whole panel, both seats' sides and the middle, as either seat sees it: the other
@@ -434,7 +437,7 @@ impl PanelLayout {
             items: it.0,
             adi: rect(-166.0, -186.0, 72.0, 72.0),
             mfds: Vec::new(),
-            rwr: None,
+            rwr: Some(RWR),
             hsi: Some(rect(-168.0, -108.0, 80.0, 80.0)),
             tfr: None,
             ded: None,

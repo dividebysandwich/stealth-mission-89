@@ -1005,6 +1005,7 @@ mod tests {
                     "screen_phd",
                     "screen_dvri",
                     "screen_sensor",
+                    "screen_rwr",
                 ],
                 _ => vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"],
             };
