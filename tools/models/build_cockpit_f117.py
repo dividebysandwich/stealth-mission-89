@@ -9,8 +9,9 @@
 # tools/models/f117_source.py makes of the Sketchfab "F-117 Nighthawk (War Thunder)" by Köjf,
 # CC BY 4.0): the tub with its consoles, the panel with its bezels, cases, knobs and switches,
 # the coaming with the HUD's mount and the canopy's frame, in the game's cockpit materials and
-# without the source's pictures; and its stick, which becomes the game's. The seat and what
-# was behind it are left out there.
+# without the source's pictures; and its stick, which becomes the game's (without the box it
+# stands in: its column goes down to the floor). The seat and what was behind it are left out
+# there.
 #
 # What the game works is put on it here, from the faces and displays of `PanelLayout::modern`
 # (src/cockpit3d/layout.rs; the layout JSON is written by `UPDATE_LAYOUT=1 cargo test
@@ -216,6 +217,94 @@ for o in (shell, stick_mesh):
         slot.material = own
 shell.name = "tub"
 shell.parent = root
+
+
+def loose_parts(bm):
+    """A mesh's loose parts (lists of faces)."""
+    seen, parts = set(), []
+    for f in bm.faces:
+        if f in seen:
+            continue
+        seen.add(f)
+        part, todo = [], [f]
+        while todo:
+            g = todo.pop()
+            part.append(g)
+            for e in g.edges:
+                for h in e.link_faces:
+                    if h not in seen:
+                        seen.add(h)
+                        todo.append(h)
+        parts.append(part)
+    return parts
+
+
+# The model's stick stands in a box (its boot) from the floor: the box goes and the stick's
+# column is drawn down to the floor, where it tilts; what the source had beside the boot,
+# lower than its top (the round cap of a pull handle), is the cockpit's.
+bm = bmesh.new()
+bm.from_mesh(stick_mesh.data)
+parts = loose_parts(bm)
+boot = next(p for p in parts if min(v.co.z for f in p for v in f.verts) < 0.01)
+boot_top = max(v.co.z for f in boot for v in f.verts)
+beside = [f for p in parts if p is not boot and max(v.co.z for f in p for v in f.verts) < boot_top for f in p]
+cap = bmesh.new()
+cap.from_mesh(stick_mesh.data)
+cap.faces.ensure_lookup_table()
+keep = {f.index for f in beside}
+bmesh.ops.delete(cap, geom=[f for f in cap.faces if f.index not in keep], context="FACES")
+loose = bpy.data.meshes.new("stick_beside")
+cap.to_mesh(loose)
+cap.free()
+loose.transform(Matrix.Translation(stick_mesh.location - shell.location))
+tub = bmesh.new()
+tub.from_mesh(shell.data)
+tub.from_mesh(loose)
+bpy.data.meshes.remove(loose)
+# The rudder pedals with their mechanism on the floor (the loose parts wholly inside one of
+# PEDAL_ASSEMBLY: the floor under the panel, and above it, clear of the panel's lowest
+# controls, where the pedals stand) go: a flat upright board stands for each pedal (PEDALS,
+# where its upright frame was: x0, y0, z0 and x1, y1, z1).
+PEDAL_ASSEMBLY = [((-0.3, 0.77, -1.2), (0.3, 1.4, -1.0)), ((-0.3, 0.9, -1.2), (0.3, 1.4, -0.84))]
+PEDALS = [((0.106, 1.160, -1.036), (0.261, 1.175, -0.880)), ((-0.261, 1.160, -1.036), (-0.106, 1.175, -0.880))]
+bmesh.ops.delete(tub, geom=[
+    f for p in loose_parts(tub)
+    if any(all(lo[i] <= v.co[i] <= hi[i] for f in p for v in f.verts for i in range(3)) for lo, hi in PEDAL_ASSEMBLY)
+    for f in p
+], context="FACES")
+dark = [s.material for s in shell.material_slots].index(mats["dark"])
+for lo, hi in PEDALS:
+    lo, hi = Vector(lo), Vector(hi)
+    board = bmesh.ops.create_cube(tub, size=1.0, matrix=Matrix.Translation((lo + hi) / 2) @ Matrix.Diagonal((hi - lo).to_4d()))
+    for f in {f for v in board["verts"] for f in v.link_faces}:
+        f.material_index = dark
+        f.smooth = False
+tub.to_mesh(shell.data)
+tub.free()
+bmesh.ops.delete(bm, geom=boot + beside, context="FACES")
+# The column's open foot, extended straight down to the floor and closed.
+low = min(v.co.z for v in bm.verts)
+ring = [e for e in bm.edges if e.is_boundary and all(v.co.z < low + 0.005 for v in e.verts)]
+new = bmesh.ops.extrude_edge_only(bm, edges=ring)["geom"]
+feet = [g for g in new if isinstance(g, bmesh.types.BMVert)]
+for v in feet:
+    v.co.z = 0.0
+for g in new:
+    if isinstance(g, bmesh.types.BMFace):
+        g.smooth = True
+    elif isinstance(g, bmesh.types.BMEdge):
+        g.smooth = True
+for e in ring:
+    e.smooth = True
+bmesh.ops.contextual_create(bm, geom=[g for g in new if isinstance(g, bmesh.types.BMEdge) and g.is_boundary])
+bm.normal_update()
+# The stick tilts about the middle of the column's foot.
+foot = sum((v.co for v in feet), Vector()) / len(feet)
+foot.z = 0.0
+bmesh.ops.translate(bm, verts=bm.verts, vec=-foot)
+bm.to_mesh(stick_mesh.data)
+bm.free()
+stick_mesh.location += foot
 # The HUD is drawn in the model's HUD glass.
 hud = next(o for o in root.children if o.name.startswith("hud_glass"))
 glass = hud.data.materials[0]
@@ -800,7 +889,7 @@ for f in layout["faces"]:
     else:
         control(f["key"], r, at.point(off=off), spun(r, at), f["control"], f["kind"])
 
-# --- the stick: the model's, tilting about the foot of its boot
+# --- the stick: the model's, tilting about the foot of its column on the floor
 grip = max(v.co.z for v in stick_mesh.data.vertices) - 0.08
 stick = empty("stick", stick_mesh.location.copy(), props={"stick": True})
 stick_mesh.name = "stick_grip"
