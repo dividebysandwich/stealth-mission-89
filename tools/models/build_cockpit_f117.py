@@ -583,14 +583,34 @@ CENTRE_BEZEL = (_cx - BEZEL_REACH, _cy - BEZEL_REACH, _cx + _cw + BEZEL_REACH, _
 PODS = BOXED[2:]
 # The engine instruments' and the fuel quantity indicator's sunken plates show through their
 # faces (`CUT`): black as the displays' bezels, the plates (turned: `SPIN`) and the frames'
-# rims round them, what lies wholly within SUNK_REACH mm round a face.
+# rims round them, what lies wholly within SUNK_REACH mm round a face; the warning lights'
+# panel with its frame, round all of its cells, too.
 SUNK_REACH = 30.0
-SUNK_PLATES = [
-    (x - SUNK_REACH, y - SUNK_REACH, x + w + SUNK_REACH, y + h + SUNK_REACH)
-    for x, y, w, h in (
-        next(f["rect"] for f in layout["faces"] if f["key"] == key)
-        for key in ("Item(Dial(Engines))", "Item(Dial(FuelQuantity))")
+
+
+def around(keys, reach=SUNK_REACH):
+    """The box (layout mm) reach round the faces whose keys start with one of keys."""
+    rects = [f["rect"] for f in layout["faces"] if f["key"].startswith(keys)]
+    return (
+        min(x for x, _, _, _ in rects) - reach,
+        min(y for _, y, _, _ in rects) - reach,
+        max(x + w for x, _, w, _ in rects) + reach,
+        max(y + h for _, y, _, h in rects) + reach,
     )
+
+
+# The warning lights' panel: its cells (`SPIN`'s first box), the lamps' upper rows and the
+# unused below.
+LIGHT_PANEL = (1290.0, 265.0, 1420.0, 400.0)
+SUNK_PLATES = [
+    around(("Item(Dial(Engines))",)),
+    around(("Item(Dial(FuelQuantity))",)),
+    (
+        LIGHT_PANEL[0] - SUNK_REACH,
+        LIGHT_PANEL[1] - SUNK_REACH,
+        LIGHT_PANEL[2] + SUNK_REACH,
+        LIGHT_PANEL[3] + SUNK_REACH,
+    ),
 ]
 
 def colour_panel():
