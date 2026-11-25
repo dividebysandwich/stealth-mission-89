@@ -253,6 +253,7 @@ tip-a6-rocket = Raketattack riktad med siktet; tryck igen för att avsluta
 tip-a6-hi-loft = Loftattack: dra upp vid signalen; tryck igen för att avsluta
 tip-a6-g-buttons = G i loftens uppdragning
 tip-a6-station-switch = Station: bomber, av eller raketer
+tip-a6-station-empty = Tom
 tip-a6-release-mode = Fäll en bomb, en salva eller en serie
 tip-a6-interval-up = Öka avståndet mellan seriens bomber med 10 ft
 tip-a6-interval-down = Minska avståndet mellan seriens bomber med 10 ft

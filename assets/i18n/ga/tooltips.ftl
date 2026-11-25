@@ -253,6 +253,7 @@ tip-a6-rocket = Ionsaí roicéad dírithe leis an aimsitheoir; brúigh arís chu
 tip-a6-hi-loft = Ionsaí loft: tarraing suas ag an leid; brúigh arís chun é a chríochnú
 tip-a6-g-buttons = G tharraingt suas an loft
 tip-a6-station-switch = Stáisiún: buamaí, as nó roicéid
+tip-a6-station-empty = Folamh
 tip-a6-release-mode = Scaoil buama amháin, salvo nó traein
 tip-a6-interval-up = Spásáil buamaí na traenach 10 ft níos faide óna chéile
 tip-a6-interval-down = Spásáil buamaí na traenach 10 ft níos gaire dá chéile

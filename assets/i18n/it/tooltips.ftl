@@ -253,6 +253,7 @@ tip-a6-rocket = Attacco con razzi mirato col collimatore; premi di nuovo per ter
 tip-a6-hi-loft = Attacco in lancio: richiamata al segnale; premi di nuovo per terminarlo
 tip-a6-g-buttons = G della richiamata del lancio
 tip-a6-station-switch = Stazione: bombe, spento o razzi
+tip-a6-station-empty = Vuoto
 tip-a6-release-mode = Sgancia una bomba, una salva o una serie
 tip-a6-interval-up = Distanzia le bombe della serie di 10 ft in più
 tip-a6-interval-down = Avvicina le bombe della serie di 10 ft

@@ -254,6 +254,7 @@ tip-a6-rocket = Raketový útok zaměřený zaměřovačem; dalším stiskem uko
 tip-a6-hi-loft = Útok nadhozem: přitáhnout na signál; dalším stiskem ukončit
 tip-a6-g-buttons = G přitažení při nadhozu
 tip-a6-station-switch = Závěsník: pumy, vypnuto nebo rakety
+tip-a6-station-empty = Prázdný
 tip-a6-release-mode = Shodí jednu pumu, salvu nebo řadu
 tip-a6-interval-up = Rozestup pum v řadě o 10 ft větší
 tip-a6-interval-down = Rozestup pum v řadě o 10 ft menší

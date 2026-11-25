@@ -254,6 +254,7 @@ tip-a6-rocket = Rakétatámadás az irányzékkal célozva; újbóli nyomás bef
 tip-a6-hi-loft = Feldobásos támadás: felhúzás a jelre; újbóli nyomás befejezi
 tip-a6-g-buttons = A feldobás felhúzásának G-je
 tip-a6-station-switch = Függesztési pont: bombák, ki vagy rakéták
+tip-a6-station-empty = Üres
 tip-a6-release-mode = Egy bomba, sortűz vagy sorozat oldása
 tip-a6-interval-up = A sorozat bombái 10 ft-tal távolabb egymástól
 tip-a6-interval-down = A sorozat bombái 10 ft-tal közelebb egymáshoz

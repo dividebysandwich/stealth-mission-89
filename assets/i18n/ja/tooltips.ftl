@@ -254,6 +254,7 @@ tip-a6-rocket = 照準器で狙うロケット攻撃：もう一度押すと終�
 tip-a6-hi-loft = トス爆撃：合図で引き起こし、もう一度押すと終了
 tip-a6-g-buttons = トス爆撃の引き起こしのG
 tip-a6-station-switch = ステーション：爆弾／オフ／ロケット
+tip-a6-station-empty = 空
 tip-a6-release-mode = 爆弾1発、斉射、または連続投下
 tip-a6-interval-up = 連続投下の爆弾間隔を10 ft広げる
 tip-a6-interval-down = 連続投下の爆弾間隔を10 ft狭める

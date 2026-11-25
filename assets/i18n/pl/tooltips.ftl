@@ -253,6 +253,7 @@ tip-a6-rocket = Atak rakietowy celowany celownikiem; naciśnij ponownie, aby zak
 tip-a6-hi-loft = Atak z podrzutu: poderwij na sygnał; naciśnij ponownie, aby zakończyć
 tip-a6-g-buttons = G poderwania przy podrzucie
 tip-a6-station-switch = Stacja: bomby, wyłączona lub rakiety
+tip-a6-station-empty = Pusty
 tip-a6-release-mode = Zrzuć jedną bombę, salwę lub serię
 tip-a6-interval-up = Rozsuń bomby serii o 10 ft
 tip-a6-interval-down = Zsuń bomby serii o 10 ft

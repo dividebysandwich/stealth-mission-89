@@ -254,6 +254,7 @@ tip-a6-rocket = Ataque con cohetes apuntado con la mira; pulsar de nuevo para te
 tip-a6-hi-loft = Ataque loft: tirar hacia arriba en la señal; pulsar de nuevo para terminar
 tip-a6-g-buttons = G del tirón del loft
 tip-a6-station-switch = Estación: bombas, apagada o cohetes
+tip-a6-station-empty = Vacío
 tip-a6-release-mode = Suelta una bomba, una salva o una serie
 tip-a6-interval-up = Separa 10 ft más las bombas de la serie
 tip-a6-interval-down = Junta 10 ft más las bombas de la serie

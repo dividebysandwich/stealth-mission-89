@@ -253,6 +253,7 @@ tip-a6-rocket = Raketni napad, namerjen z merkom; ponovni pritisk ga konča
 tip-a6-hi-loft = Napad loft: na znak povleci; ponovni pritisk ga konča
 tip-a6-g-buttons = G potega pri loftu
 tip-a6-station-switch = Nosilec: bombe, izklop ali rakete
+tip-a6-station-empty = Prazno
 tip-a6-release-mode = Odvrzi eno bombo, salvo ali niz
 tip-a6-interval-up = Razmakni bombe niza za 10 ft
 tip-a6-interval-down = Približaj bombe niza za 10 ft

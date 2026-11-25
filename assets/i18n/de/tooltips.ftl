@@ -254,6 +254,7 @@ tip-a6-rocket = Raketenangriff mit dem Visier; erneut drücken zum Beenden
 tip-a6-hi-loft = Loft-Angriff: am Signal hochziehen; erneut drücken zum Beenden
 tip-a6-g-buttons = G beim Hochziehen des Lofts
 tip-a6-station-switch = Station: Bomben, aus oder Raketen
+tip-a6-station-empty = Leer
 tip-a6-release-mode = Wirft eine Bombe, eine Salve oder eine Reihe
 tip-a6-interval-up = Bomben der Reihe 10 ft weiter auseinander
 tip-a6-interval-down = Bomben der Reihe 10 ft enger zusammen

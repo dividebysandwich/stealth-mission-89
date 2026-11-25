@@ -253,6 +253,7 @@ tip-a6-rocket = Attaque aux roquettes visée au collimateur ; appuyer à nouveau
 tip-a6-hi-loft = Attaque en lancer : ressource au signal ; appuyer à nouveau pour l'arrêter
 tip-a6-g-buttons = G de la ressource du lancer
 tip-a6-station-switch = Point d'emport : bombes, arrêt ou roquettes
+tip-a6-station-empty = Vide
 tip-a6-release-mode = Larguer une bombe, une salve ou un train
 tip-a6-interval-up = Espacer les bombes du train de 10 ft de plus
 tip-a6-interval-down = Espacer les bombes du train de 10 ft de moins

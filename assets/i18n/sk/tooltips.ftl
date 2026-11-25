@@ -253,6 +253,7 @@ tip-a6-rocket = Raketový útok mierený zameriavačom; ďalšie stlačenie ho u
 tip-a6-hi-loft = Útok loft: pri signáli pritiahnuť; ďalšie stlačenie ho ukončí
 tip-a6-g-buttons = G pritiahnutia pri lofte
 tip-a6-station-switch = Závesník: bomby, vyp. alebo rakety
+tip-a6-station-empty = Prázdny
 tip-a6-release-mode = Zhodenie jednej bomby, salvy alebo série
 tip-a6-interval-up = Rozostúpiť bomby série o 10 ft viac
 tip-a6-interval-down = Priblížiť bomby série o 10 ft

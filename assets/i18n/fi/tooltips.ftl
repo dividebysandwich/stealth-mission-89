@@ -253,6 +253,7 @@ tip-a6-rocket = Tähtäimellä suunnattu rakettihyökkäys; lopeta painamalla uu
 tip-a6-hi-loft = Loft-hyökkäys: vedä ylös merkistä; lopeta painamalla uudelleen
 tip-a6-g-buttons = Loftin ylösvedon G
 tip-a6-station-switch = Ripustin: pommit, pois tai raketit
+tip-a6-station-empty = Tyhjä
 tip-a6-release-mode = Pudottaa yhden pommin, salvan tai sarjan
 tip-a6-interval-up = Sarjan pommit 10 ft harvemmin
 tip-a6-interval-down = Sarjan pommit 10 ft tiheämmin

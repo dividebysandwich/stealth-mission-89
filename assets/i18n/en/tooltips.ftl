@@ -270,6 +270,7 @@ tip-a6-rocket = Rocket attack aimed with the sight; press again to end it
 tip-a6-hi-loft = Loft attack: pull up at the cue; press again to end it
 tip-a6-g-buttons = G of the loft's pull-up
 tip-a6-station-switch = Station: bombs, off or rockets
+tip-a6-station-empty = Empty
 tip-a6-release-mode = Releases one bomb, a salvo or a train
 tip-a6-interval-up = Spaces the train's bombs 10 ft wider
 tip-a6-interval-down = Spaces the train's bombs 10 ft closer

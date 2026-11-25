@@ -254,6 +254,7 @@ tip-a6-rocket = Raketaanval gericht met het vizier; nogmaals drukken om te stopp
 tip-a6-hi-loft = Loft-aanval: optrekken bij het signaal; nogmaals drukken om te stoppen
 tip-a6-g-buttons = G van het optrekken bij de loft
 tip-a6-station-switch = Station: bommen, uit of raketten
+tip-a6-station-empty = Leeg
 tip-a6-release-mode = Eén bom, een salvo of een reeks lossen
 tip-a6-interval-up = De bommen van de reeks 10 ft verder uit elkaar
 tip-a6-interval-down = De bommen van de reeks 10 ft dichter bij elkaar

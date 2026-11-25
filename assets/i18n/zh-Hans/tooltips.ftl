@@ -252,6 +252,7 @@ tip-a6-rocket = 用瞄准具瞄准的火箭攻击；再按一次结束
 tip-a6-hi-loft = 上仰投弹攻击：按提示拉起；再按一次结束
 tip-a6-g-buttons = 上仰投弹拉起的 G
 tip-a6-station-switch = 挂点：炸弹、关或火箭
+tip-a6-station-empty = 空
 tip-a6-release-mode = 投放单枚炸弹、齐投或连投
 tip-a6-interval-up = 连投炸弹间距加大 10 ft
 tip-a6-interval-down = 连投炸弹间距减小 10 ft

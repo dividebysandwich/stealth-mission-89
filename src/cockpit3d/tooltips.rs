@@ -95,6 +95,8 @@ enum Readout {
     Hsi,
     /// The nozzle lever's angle (`Aircraft::nozzle_lever`).
     Nozzles,
+    /// What hangs on an A-6 station (1 to `intruder::STATIONS`).
+    Station(u8),
 }
 
 /// What the instrument shows now (empty without an aircraft).
@@ -130,6 +132,7 @@ fn readout_text(readout: Readout, panel: &PanelParams) -> String {
             LedId::Thrust => format!("{} %", a.thrust.max(0.0).round() as i32),
         },
         Readout::Nozzles => t!("tip-nozzles", deg = nozzle_degrees(a.nozzle_lever)),
+        Readout::Station(n) => station_text(panel.computer.stations.get(n as usize - 1).copied()),
         Readout::RadarBars => {
             let (emv, egr, ear) = panel.gauge_values();
             t!("tip-radar-bars-readout", emv = emv, egr = egr, ear = ear)
@@ -441,6 +444,19 @@ fn console_text(k: ConsoleKey) -> (&'static str, &'static str) {
     (title, t!(id))
 }
 
+/// What hangs on an A-6 station: its weapon and how many (weapon names stay English), the
+/// centre line's pod, or nothing.
+fn station_text(store: Option<Option<(i32, i32)>>) -> String {
+    match store {
+        Some(None) => "TRIM pod".to_string(),
+        Some(Some((w, n))) if n > 0 => match crate::loadout::WEAPONS.get(w.max(0) as usize) {
+            Some((name, _)) if w >= 0 => format!("{name} x{n}"),
+            _ => t!("tip-a6-station-empty").to_string(),
+        },
+        _ => t!("tip-a6-station-empty").to_string(),
+    }
+}
+
 /// A control's tooltip (bezel buttons: on the current page; None for a blank one).
 fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip> {
     let (title, detail) = match effect {
@@ -501,7 +517,12 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
         Effect::CamCycle => Vec::new(),
         _ => effect.action(mfd).into_iter().collect(),
     };
-    Some(Tip { title, readout: None, detail, actions })
+    // An A-6 station switch reads out what hangs on its station.
+    let readout = match effect {
+        Effect::Intruder(crate::intruder::Key::Station(n)) => Some(Readout::Station(n)),
+        _ => None,
+    };
+    Some(Tip { title, readout, detail, actions })
 }
 
 /// The tooltip of an instrument atlas face that is not a button (None: a plain label).
@@ -1077,6 +1098,16 @@ pub(super) fn place_screen(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A station switch's tooltip names the weapon on its station and how many.
+    #[test]
+    fn station_switch_names_its_weapon() {
+        let shrike = crate::loadout::SHRIKE as i32;
+        assert_eq!(station_text(Some(Some((shrike, 2)))), "AGM-45 Shrike x2");
+        assert_eq!(station_text(Some(None)), "TRIM pod");
+        assert_eq!(station_text(Some(Some((shrike, 0)))), t!("tip-a6-station-empty"));
+        assert_eq!(station_text(Some(Some((-1, 0)))), t!("tip-a6-station-empty"));
+    }
 
     #[test]
     fn keys_of_one_action_are_joined_by_a_slash() {

@@ -254,6 +254,7 @@ tip-a6-rocket = Raketų ataka nusitaikant taikikliu; dar kartą – baigti
 tip-a6-hi-loft = Metimo kabruojant ataka: kabruoti ties ženklu; dar kartą – baigti
 tip-a6-g-buttons = Kabravimo G
 tip-a6-station-switch = Pakaba: bombos, išjungta arba raketos
+tip-a6-station-empty = Tuščias
 tip-a6-release-mode = Numesti vieną bombą, salvę arba seriją
 tip-a6-interval-up = Serijos bombas išdėstyti 10 ft rečiau
 tip-a6-interval-down = Serijos bombas išdėstyti 10 ft tankiau

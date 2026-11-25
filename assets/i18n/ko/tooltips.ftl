@@ -253,6 +253,7 @@ tip-a6-rocket = 조준기로 조준하는 로켓 공격; 다시 누르면 종료
 tip-a6-hi-loft = 로프트 공격: 신호에 맞춰 기수 올림; 다시 누르면 종료
 tip-a6-g-buttons = 로프트 기수 올림 G
 tip-a6-station-switch = 스테이션: 폭탄, 끔 또는 로켓
+tip-a6-station-empty = 비어 있음
 tip-a6-release-mode = 폭탄 한 발, 일제 투하 또는 연속 투하
 tip-a6-interval-up = 연속 투하 폭탄 간격 10 ft 넓힘
 tip-a6-interval-down = 연속 투하 폭탄 간격 10 ft 좁힘

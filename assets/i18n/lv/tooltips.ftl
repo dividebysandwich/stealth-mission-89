@@ -253,6 +253,7 @@ tip-a6-rocket = Raķešu uzbrukums, tēmējot ar tēmekli; vēlreiz – beigt
 tip-a6-hi-loft = Metiena uzbrukums kabrējot: kabrēt pēc signāla; vēlreiz – beigt
 tip-a6-g-buttons = Kabrēšanas G
 tip-a6-station-switch = Piekare: bumbas, izslēgts vai raķetes
+tip-a6-station-empty = Tukšs
 tip-a6-release-mode = Nomest vienu bumbu, zalvi vai sēriju
 tip-a6-interval-up = Sērijas bumbas izvietot 10 ft retāk
 tip-a6-interval-down = Sērijas bumbas izvietot 10 ft ciešāk

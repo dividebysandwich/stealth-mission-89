@@ -253,6 +253,7 @@ tip-a6-rocket = Atac cu rachete ochit cu vizorul; apasă din nou pentru a-l înc
 tip-a6-hi-loft = Atac loft: cabrează la semnal; apasă din nou pentru a-l încheia
 tip-a6-g-buttons = G-ul cabrării la atacul loft
 tip-a6-station-switch = Stație: bombe, oprit sau rachete
+tip-a6-station-empty = Gol
 tip-a6-release-mode = Lansează o bombă, o salvă sau o serie
 tip-a6-interval-up = Distanțează bombele seriei cu încă 10 ft
 tip-a6-interval-down = Apropie bombele seriei cu 10 ft

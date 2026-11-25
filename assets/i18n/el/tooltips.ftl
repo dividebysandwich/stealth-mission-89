@@ -253,6 +253,7 @@ tip-a6-rocket = Επίθεση με ρουκέτες μέσω του σκοπε�
 tip-a6-hi-loft = Επίθεση loft: ανόρθωση στο σήμα· πατήστε ξανά για τέλος
 tip-a6-g-buttons = G της ανόρθωσης του loft
 tip-a6-station-switch = Σταθμός: βόμβες, εκτός ή ρουκέτες
+tip-a6-station-empty = Κενός
 tip-a6-release-mode = Ρίχνει μία βόμβα, ομοβροντία ή σειρά
 tip-a6-interval-up = Οι βόμβες της σειράς 10 ft πιο αραιά
 tip-a6-interval-down = Οι βόμβες της σειράς 10 ft πιο πυκνά

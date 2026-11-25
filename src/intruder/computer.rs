@@ -78,6 +78,9 @@ pub struct Computer {
     /// An attack is on with no station to release.
     pub reselect: bool,
     pub landing: Option<Landing>,
+    /// The stores on the armament panel's stations (weapon type, rounds; None: the centre
+    /// line's pod), the crew's own or, in another's right seat, his.
+    pub stations: [Option<(i32, i32)>; 5],
 }
 
 /// The panel as it was, and what the weapon selection is being stepped to.
@@ -327,7 +330,15 @@ pub(super) fn compute(
     c.impact = cues.ccip_dir.or(cues.rocket.map(|r| r.dir));
     if let Some(sim) = sim {
         let me = sim.active_pilot();
-        let stations = match sim.crew_view(me).filter(|v| v.owner != me) {
+        let crew = sim.crew_view(me).filter(|v| v.owner != me);
+        c.stations = std::array::from_fn(|i| {
+            let b = STATION_BAYS[i]?;
+            Some(match crew {
+                Some(v) => v.stores.get(b).map_or((-1, 0), |s| (s.0 as i32, s.1 as i32)),
+                None => sim.bays().0.get(b).copied().unwrap_or((-1, 0)),
+            })
+        });
+        let stations = match crew {
             // In another's right seat: his stores, any station switched in that holds some.
             Some(v) => STATION_BAYS
                 .iter()

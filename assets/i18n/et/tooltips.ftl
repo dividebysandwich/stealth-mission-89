@@ -254,6 +254,7 @@ tip-a6-rocket = Sihikuga sihitud raketirünnak; lõpetamiseks vajuta uuesti
 tip-a6-hi-loft = Loft-rünnak: tõmba signaali peale üles; lõpetamiseks vajuta uuesti
 tip-a6-g-buttons = Lofti ülestõmbe G
 tip-a6-station-switch = Riputuspunkt: pommid, väljas või raketid
+tip-a6-station-empty = Tühi
 tip-a6-release-mode = Heidab ühe pommi, salvi või seeria
 tip-a6-interval-up = Seeria pommid 10 ft hõredamalt
 tip-a6-interval-down = Seeria pommid 10 ft tihedamalt

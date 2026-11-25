@@ -254,6 +254,7 @@ tip-a6-rocket = Serangan roket dibidik dengan pembidik; tekan lagi untuk mengakh
 tip-a6-hi-loft = Serangan loft: tarik naik saat isyarat; tekan lagi untuk mengakhiri
 tip-a6-g-buttons = G tarikan naik loft
 tip-a6-station-switch = Stasiun: bom, mati, atau roket
+tip-a6-station-empty = Kosong
 tip-a6-release-mode = Lepaskan satu bom, salvo, atau rentetan
 tip-a6-interval-up = Renggangkan bom rentetan 10 ft
 tip-a6-interval-down = Rapatkan bom rentetan 10 ft

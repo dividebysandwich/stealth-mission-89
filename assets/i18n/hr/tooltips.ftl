@@ -253,6 +253,7 @@ tip-a6-rocket = Raketni napad ciljan nišanom; pritisni ponovno za kraj
 tip-a6-hi-loft = Napad lobiranjem: povuci na znak; pritisni ponovno za kraj
 tip-a6-g-buttons = G povlačenja pri lobiranju
 tip-a6-station-switch = Nosač: bombe, isključeno ili rakete
+tip-a6-station-empty = Prazno
 tip-a6-release-mode = Ispusti jednu bombu, salvu ili niz
 tip-a6-interval-up = Razmakni bombe u nizu za 10 ft više
 tip-a6-interval-down = Približi bombe u nizu za 10 ft

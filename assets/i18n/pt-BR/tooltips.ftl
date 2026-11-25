@@ -253,6 +253,7 @@ tip-a6-rocket = Ataque de foguetes apontado com a mira; pressione de novo para e
 tip-a6-hi-loft = Ataque loft: cabrar no sinal; pressione de novo para encerrar
 tip-a6-g-buttons = G da cabragem do loft
 tip-a6-station-switch = Estação: bombas, desligada ou foguetes
+tip-a6-station-empty = Vazio
 tip-a6-release-mode = Lançar uma bomba, uma salva ou uma série
 tip-a6-interval-up = Espaçar as bombas da série 10 ft a mais
 tip-a6-interval-down = Espaçar as bombas da série 10 ft a menos

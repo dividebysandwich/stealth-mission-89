@@ -254,6 +254,7 @@ tip-a6-rocket = Attakk bir-rokits immirat bil-vista; erġa' agħfas biex tispiċ
 tip-a6-hi-loft = Attakk loft: tella' l-imnieħer mas-sinjal; erġa' agħfas biex tispiċċah
 tip-a6-g-buttons = Il-G tat-tlugħ tal-loft
 tip-a6-station-switch = Stazzjon: bombi, mitfi jew rokits
+tip-a6-station-empty = Vojt
 tip-a6-release-mode = Irrilaxxa bomba waħda, salvo jew sensiela
 tip-a6-interval-up = Ifred il-bombi tas-sensiela 10 ft aktar
 tip-a6-interval-down = Qarreb il-bombi tas-sensiela 10 ft
