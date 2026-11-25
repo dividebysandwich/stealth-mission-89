@@ -829,7 +829,7 @@ impl PanelLayout {
         // low beside the gear handle.
         put(Elem::GearLights, rect(-1395.0, 321.0, 40.0, 32.0), None, false);
         put(Elem::Dial(Dial::Airspeed), rect(-1440.0, 82.0, 46.0, 46.0), None, true);
-        put(Elem::Dial(Dial::Clock), rect(-1514.0, 111.0, 46.0, 46.0), None, true);
+        put(Elem::Dial(Dial::Clock), rect(-1522.0, 111.0, 46.0, 46.0), None, true);
         put(Elem::Dial(Dial::Altimeter), rect(-1447.0, 156.0, 60.0, 60.0), None, true);
         put(Elem::Dial(Dial::Aoa), rect(-1346.0, 167.0, 18.0, 52.0), None, false);
         put(Elem::Dial(Dial::Vvi), rect(-1324.0, 167.0, 18.0, 52.0), None, false);
