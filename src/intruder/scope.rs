@@ -1,6 +1,7 @@
 //! The A-6's round scopes: the pilot's horizontal display (PHD), the bombardier/navigator's
 //! direct view radar indicator (DVRI) and his sensor scope's overlay over the pod's picture.
 //! The round scopes show the search radar's ground map as a sector from the tube's foot (the
+//! objects and ground units it painted bright, the keyed target coordinates in a diamond, the
 //! cursors on the computer's target), the track radar's terrain clearance plan (the ground
 //! that stands into the clearance plane) and its elevation scan (the ground along the nose
 //! against the clearance line).
@@ -90,6 +91,8 @@ pub struct Scene<'a> {
     pub computer: &'a Computer,
     pub radar: &'a GroundRadar,
     pub scan: &'a TerrainScan,
+    /// The target's coordinates keyed into the computer (m east, north).
+    pub keyed: Option<DVec2>,
 }
 
 /// The sector pictures' foot under the tube's middle and their reach, in tube radii.
@@ -233,18 +236,33 @@ fn ground_map(c: &mut Canvas, s: &Scene, range: f32, amti: bool) {
         shades[radar.level(s.own.x + (sin * d) as f64, s.own.y + (cos * d) as f64) as usize]
     });
     range_marks(c, SCAN_HALF, 0.3);
-    if amti {
-        for ret in &radar.returns {
-            if !matches!(ret.target, RadarTarget::Unit(_)) {
-                continue;
-            }
-            let d = DVec2::new(ret.east, ret.north) - s.own;
-            let az = super::computer::wrap((d.x as f32).atan2(d.y as f32) - s.heading);
-            let r = d.length() as f32 / range;
-            if r < 1.0 && az.abs() < SCAN_HALF {
-                let p = place(c, az, r);
-                seg(c, p - Vec2::X * 2.0, p + Vec2::X * 2.0, 2.4, ink(1.0));
-            }
+    // A point's (m east, north) bearing and share of the range, if it is on the sector.
+    let polar = |e: f64, n: f64| {
+        let d = DVec2::new(e, n) - s.own;
+        let az = super::computer::wrap((d.x as f32).atan2(d.y as f32) - s.heading);
+        let r = d.length() as f32 / range;
+        (r < 1.0 && az.abs() < SCAN_HALF).then_some((az, r))
+    };
+    // What can be attacked stands out of the ground's clutter: the world's objects (the
+    // mission's targets among them) and the ground units the beam painted, bright; with AMTI
+    // only what moves.
+    for ret in &radar.returns {
+        let p = match ret.target {
+            RadarTarget::Unit(_) => polar(ret.east, ret.north),
+            RadarTarget::Object(_) if !amti => polar(ret.east, ret.north),
+            _ => None,
+        };
+        if let Some((az, r)) = p {
+            let p = place(c, az, r);
+            seg(c, p - Vec2::X * 2.0, p + Vec2::X * 2.0, 2.4, ink(1.0));
+        }
+    }
+    // The keyed coordinates: a diamond round the point.
+    if let Some((az, r)) = s.keyed.and_then(|k| polar(k.x, k.y)) {
+        let p = place(c, az, r);
+        let q = [p - Vec2::Y * 6.0, p + Vec2::X * 6.0, p + Vec2::Y * 6.0, p - Vec2::X * 6.0];
+        for i in 0..4 {
+            seg(c, q[i], q[(i + 1) % 4], 1.2, ink(0.9));
         }
     }
     let foot = place(c, 0.0, 0.0);
@@ -415,6 +433,55 @@ mod tests {
         c.px.iter().filter(|p| (ink(over)..=100).contains(*p)).count()
     }
 
+    /// The objects the radar painted and the keyed coordinates show on the ground map.
+    #[test]
+    fn ground_map_marks_targets_and_keyed_point() {
+        use crate::ground_radar::Return;
+        let computer = Computer::default();
+        let scan = TerrainScan::default();
+        let range = super::super::SearchRange::Mi15;
+        let metres = range.miles() as f64 * 1852.0;
+        let draw = |radar: &GroundRadar, keyed: Option<DVec2>| {
+            let panel = IntruderPanel { search_power: Power::On, search_range: range, ..default() };
+            let s = Scene {
+                own: DVec2::ZERO,
+                heading: 0.0,
+                alt: 1000.0,
+                climb: 0.0,
+                computer: &computer,
+                radar,
+                scan: &scan,
+                keyed,
+            };
+            let mut c = Canvas::scaled(CANVAS.0, CANVAS.1, SCALE);
+            draw_dvri(&mut c, &Fonts::builtin(), &panel, &s);
+            c
+        };
+        let bright = |c: &Canvas, at: Vec2| {
+            (-4..=4)
+                .flat_map(|dy| (-7..=7).map(move |dx| (dx, dy)))
+                .filter(|(dx, dy)| {
+                    let (x, y) = (at.x as i32 + dx, at.y as i32 + dy);
+                    let i = (y as usize * SCALE) * c.pw() + x as usize * SCALE;
+                    c.px[i] >= ink(0.85)
+                })
+                .count()
+        };
+        let mut radar = GroundRadar::default();
+        radar.on = true;
+        let empty = draw(&radar, None);
+        let probe = Canvas::scaled(CANVAS.0, CANVAS.1, SCALE);
+        let object = place(&probe, 0.0, 0.5);
+        let keyed = place(&probe, 0.3, 0.7);
+        assert_eq!(bright(&empty, object), 0);
+        assert_eq!(bright(&empty, keyed), 0);
+        radar.returns.push(Return::at(0.0, metres * 0.5, RadarTarget::Object(1)));
+        let k = DVec2::new(0.3f64.sin(), 0.3f64.cos()) * metres * 0.7;
+        let marked = draw(&radar, Some(k));
+        assert!(bright(&marked, object) > 3, "object");
+        assert!(bright(&marked, keyed) > 3, "keyed");
+    }
+
     /// Ground that stands into the clearance plane shows on the plan and over the clearance
     /// line of the elevation scan; flat ground far below shows on neither.
     #[test]
@@ -433,6 +500,7 @@ mod tests {
                 computer: &computer,
                 radar: &radar,
                 scan,
+                keyed: None,
             };
             let mut c = Canvas::scaled(CANVAS.0, CANVAS.1, SCALE);
             draw_phd(&mut c, &Fonts::builtin(), &panel, &s);

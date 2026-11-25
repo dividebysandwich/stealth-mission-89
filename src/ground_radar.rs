@@ -584,7 +584,9 @@ pub fn candidates(
 ) -> Vec<Candidate> {
     let near = |e: f64, n: f64| DVec2::new(e, n).distance_squared(own) < range * range;
     let mut out = Vec::new();
-    for (i, o) in sim.objects().iter().enumerate().skip(3) {
+    // Not scratch object 0 (the designated ground point); objects 1 and 2 are the mission's
+    // own targets where it places them (a tank column, say), else at 0, 0.
+    for (i, o) in sim.objects().iter().enumerate().skip(1) {
         if o.x == 0 && o.y == 0 {
             continue;
         }

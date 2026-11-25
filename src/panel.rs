@@ -1250,6 +1250,10 @@ impl PanelParams<'_, '_> {
             computer: &self.computer,
             radar: &self.ground_radar,
             scan: &self.scan,
+            keyed: self
+                .intruder
+                .keyed_waypoint()
+                .map(|k| bevy::math::DVec2::new(k.east, k.north) * crate::world::WU),
         }
     }
 
