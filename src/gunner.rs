@@ -155,7 +155,7 @@ const OBSTACLE_CLEARANCE: f32 = 60.0;
 pub fn seat_gunner(
     m: &Manning,
     combat: &Combat,
-    player: &mut Query<(&mut WorldPos, &mut Aircraft), With<Player>>,
+    player: &mut Query<(&mut WorldPos, &mut Aircraft, &mut Transform), With<Player>>,
     view: &mut ViewState,
     dt: f32,
 ) {
@@ -167,9 +167,12 @@ pub fn seat_gunner(
     let (at, rot) = crate::sim_render::remote_pose(combat, &p);
     let v = combat.remote_track.view_at(owner, combat.remote_time, p.view);
     let engine = combat.sim.crew_view(combat.sim.active_pilot()).map(|c| c.engine);
-    if let Ok((mut pos, mut a)) = player.single_mut() {
+    if let Ok((mut pos, mut a, mut tf)) = player.single_mut() {
         pos.0 = at;
         a.orientation = rot;
+        // The flight step, which turns the entity with its flight model, doesn't run here: the
+        // cockpit (its child) stayed facing the way it took off in.
+        tf.rotation = rot;
         a.altitude = v.alt as f32;
         a.ground_altitude = 0.0;
         a.velocity = v.velocity as f32;

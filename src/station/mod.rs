@@ -376,7 +376,7 @@ fn shelter(combat: &Combat, unit: usize) -> Option<(DVec3, f32)> {
 fn seat_operator(
     manning: Option<Res<Manning>>,
     combat: Option<Res<Combat>>,
-    mut player: Query<(&mut WorldPos, &mut Aircraft), With<Player>>,
+    mut player: Query<(&mut WorldPos, &mut Aircraft, &mut Transform), With<Player>>,
     mut view: ResMut<ViewState>,
     time: Res<Time>,
 ) {
@@ -386,7 +386,7 @@ fn seat_operator(
         return;
     }
     let Some((at, heading)) = shelter(&combat, m.unit) else { return };
-    if let Ok((mut pos, mut a)) = player.single_mut() {
+    if let Ok((mut pos, mut a, _)) = player.single_mut() {
         if pos.0 != at {
             pos.0 = at;
         }
