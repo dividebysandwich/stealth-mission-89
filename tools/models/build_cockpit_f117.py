@@ -612,6 +612,14 @@ SUNK_PLATES = [
         LIGHT_PANEL[3] + SUNK_REACH,
     ),
 ]
+# The round instruments' pods on the left wing (and the attitude indicator's, and the tapes'
+# beside them) black too, up to CASE_REACH round their faces.
+LEFT_DIALS = ("Item(Dial(Airspeed))", "Item(Dial(Clock))", "Item(Dial(Altimeter))")
+SUNK_PLATES += [around((key,), CASE_REACH) for key in LEFT_DIALS] + [
+    (x - CASE_REACH, y - CASE_REACH, x + w + CASE_REACH, y + h + CASE_REACH)
+    for x, y, w, h in (layout["screens"]["adi"], TAPES)
+]
+
 
 def colour_panel():
     shell.data.materials.append(mats["panel_light"])
