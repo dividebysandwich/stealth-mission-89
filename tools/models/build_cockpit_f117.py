@@ -569,7 +569,7 @@ surface = clear()
 # dark grey. The panel's face (what lies flat in its part's plane, up to PANEL_FACE m out of
 # it) is made light grey (`panel_light`); the displays' bezels standing further out
 # (BEZEL_FACE) and the round instruments' pods (`BOXED` but its first two) standing more
-# than POD_FACE m out black, as the engine instruments' plate (ENGINE_PLATE).
+# than POD_FACE m out black, as the engine and fuel instruments' plates (SUNK_PLATES).
 PANEL_FACE = (-0.012, 0.045)
 BEZEL_FACE = (0.045, 0.08)
 POD_FACE = 0.015
@@ -581,13 +581,17 @@ BEZEL_REACH = 45.0
 _cx, _cy, _cw, _ch = layout["screens"]["right"]
 CENTRE_BEZEL = (_cx - BEZEL_REACH, _cy - BEZEL_REACH, _cx + _cw + BEZEL_REACH, _cy)
 PODS = BOXED[2:]
-# The engine instruments' sunken plate shows through their face (`CUT`): black as the
-# displays' bezels, the plate (turned: `SPIN`) and the frame's rim round it, what lies
-# wholly within ENGINE_REACH mm round the face.
-ENGINE_REACH = 30.0
-_ex, _ey, _ew, _eh = next(f["rect"] for f in layout["faces"] if f["key"] == "Item(Dial(Engines))")
-ENGINE_PLATE = (_ex - ENGINE_REACH, _ey - ENGINE_REACH, _ex + _ew + ENGINE_REACH, _ey + _eh + ENGINE_REACH)
-
+# The engine instruments' and the fuel quantity indicator's sunken plates show through their
+# faces (`CUT`): black as the displays' bezels, the plates (turned: `SPIN`) and the frames'
+# rims round them, what lies wholly within SUNK_REACH mm round a face.
+SUNK_REACH = 30.0
+SUNK_PLATES = [
+    (x - SUNK_REACH, y - SUNK_REACH, x + w + SUNK_REACH, y + h + SUNK_REACH)
+    for x, y, w, h in (
+        next(f["rect"] for f in layout["faces"] if f["key"] == key)
+        for key in ("Item(Dial(Engines))", "Item(Dial(FuelQuantity))")
+    )
+]
 
 def colour_panel():
     shell.data.materials.append(mats["panel_light"])
@@ -606,17 +610,19 @@ def colour_panel():
             f.material_index = black
             counts[1] += 1
             continue
-        # The engine instruments' plate and frame, its walls too (all of the face inside: the
-        # panel's big faces round it reach in).
-        x0, y0, x1, y1 = ENGINE_PLATE
-        o, h, n, up = SECTIONS[section(x0)]
-        engine = all(
-            x0 <= (p - o).dot(h) * 1000 + SECTION_X[section(x0)] <= x1
-            and y0 <= -(p - o).dot(up) * 1000 <= y1
-            and PANEL_FACE[0] <= (p - o).dot(n) < BEZEL_FACE[1]
-            for p in (shell.data.vertices[i].co for i in f.vertices)
-        )
-        if engine:
+        # The engine and fuel instruments' plates and frames, their walls too (all of the face
+        # inside: the panel's big faces round them reach in).
+        def sunk(plate):
+            x0, y0, x1, y1 = plate
+            o, h, n, up = SECTIONS[section(x0)]
+            return all(
+                x0 <= (p - o).dot(h) * 1000 + SECTION_X[section(x0)] <= x1
+                and y0 <= -(p - o).dot(up) * 1000 <= y1
+                and PANEL_FACE[0] <= (p - o).dot(n) < BEZEL_FACE[1]
+                for p in (shell.data.vertices[i].co for i in f.vertices)
+            )
+
+        if any(sunk(p) for p in SUNK_PLATES):
             f.material_index = black
             counts[1] += 1
             continue
