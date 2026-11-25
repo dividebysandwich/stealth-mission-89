@@ -817,6 +817,7 @@ impl Sim {
             self.tile_damage = t.clone();
         }
         self.aaa_shells.extend_from_slice(&w.shells);
+        self.level_structures();
     }
 
     /// The pilot's own state from the host; his flight model's part stays the client's.

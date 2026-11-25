@@ -61,6 +61,10 @@ type Building = (Kind, Task<Option<ChunkMesh>>);
 pub struct Skin {
     chunks: HashMap<Key, (Kind, Entity)>,
     building: HashMap<Key, Building>,
+    /// The hills the chunks are built on (`Scenery::hills_gen`), and the chunks built on
+    /// earlier ones (they stay until built again).
+    hills_gen: u32,
+    stale: std::collections::HashSet<Key>,
 }
 
 /// A chunk's triangles, its skirts' too (chunk-local Bevy positions), and their model colours
@@ -201,6 +205,13 @@ pub(super) fn stream_skin(
         return;
     }
     let Ok(anchor) = anchor.single() else { return };
+    // New hills (a strategic facility's level grounds): every chunk is built again.
+    if skin.hills_gen != scenery.hills_gen {
+        skin.hills_gen = scenery.hills_gen;
+        let keys: Vec<Key> = skin.chunks.keys().copied().collect();
+        skin.stale.extend(keys);
+        skin.building.clear();
+    }
     let ground = |p: DVec3| {
         let (east, north, _) = bevy_to_wu(p);
         DVec2::new(east, north) * WU
@@ -235,6 +246,7 @@ pub(super) fn stream_skin(
         if let Some((_, old)) = skin.chunks.remove(&key) {
             commands.entity(old).try_despawn();
         }
+        skin.stale.remove(&key);
         if wanted.get(&key).is_none_or(|w| w.0 != kind) {
             continue;
         }
@@ -275,12 +287,15 @@ pub(super) fn stream_skin(
         }
         keep
     });
+    let Skin { chunks, stale, .. } = &mut *skin;
+    stale.retain(|k| chunks.contains_key(k));
     skin.building.retain(|k, (kind, _)| wanted.get(k).is_some_and(|w| w.0 == *kind));
     // Start the nearest builds missing.
     let mut todo: Vec<_> = wanted
         .iter()
         .filter(|(k, (kind, _))| {
-            skin.chunks.get(k).is_none_or(|c| c.0 != *kind) && !skin.building.contains_key(k)
+            (skin.chunks.get(k).is_none_or(|c| c.0 != *kind) || skin.stale.contains(k))
+                && !skin.building.contains_key(k)
         })
         .map(|(&k, &(kind, d))| (d, k, kind))
         .collect();
@@ -447,6 +462,7 @@ pub(super) fn cleanup(mut commands: Commands, mut skin: ResMut<Skin>) {
         commands.entity(e).try_despawn();
     }
     skin.building.clear();
+    skin.stale.clear();
 }
 
 /// Twice the signed area of a polygon.

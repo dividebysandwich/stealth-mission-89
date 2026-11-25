@@ -109,10 +109,16 @@ impl Hills {
         (bytes.len() == DIM * DIM).then(|| Self(Arc::new(bytes), None))
     }
 
+    /// These hills without their level pads.
+    pub fn bare(&self) -> Hills {
+        Hills(self.0.clone(), None)
+    }
+
     /// These hills with level ground under objects (discs: metres east, north, radius), as the
     /// scenery draws them: each object stands level on its own pad, and the pads of objects
-    /// close together are one. (The simulation's hills have none: its ground is a few metres
-    /// off there at most.)
+    /// close together are one. (The simulation's hills have only the strategic facilities':
+    /// its ground is a few metres off under the small objects at most.) Any pads these hills
+    /// had go.
     pub fn with_pads(&self, objects: &[(f64, f64, f64)]) -> Hills {
         let mut discs: Vec<Option<(f64, f64, f64)>> = objects
             .iter()
@@ -120,8 +126,9 @@ impl Hills {
             .filter(|&(e, n, r)| self.any_in(e, n, r))
             .map(Some)
             .collect();
+        let bare = self.bare();
         if discs.is_empty() {
-            return self.clone();
+            return bare;
         }
         // Overlapping discs become the smallest disc round both, until none overlap.
         loop {
@@ -162,7 +169,7 @@ impl Hills {
         let pads: Vec<Pad> = discs
             .into_iter()
             .flatten()
-            .map(|(e, n, r)| Pad { e, n, r, h: self.height_m(e, n) })
+            .map(|(e, n, r)| Pad { e, n, r, h: bare.height_m(e, n) })
             .collect();
         let mut cells: HashMap<(i32, i32), Vec<u32>> = HashMap::new();
         for (i, p) in pads.iter().enumerate() {

@@ -176,6 +176,12 @@ pub struct Scenery {
     blackouts: Vec<(DVec2, f64)>,
     /// The rolling hills the scenery stands on.
     hills: stealth_sim::hills::Hills,
+    /// The theater's small raised objects the hills are level under (metres east, north,
+    /// radius), and the strategic facilities' grounds besides them (`level_structures`).
+    pads: Arc<Vec<(f64, f64, f64)>>,
+    structures: Vec<(f64, f64, f64)>,
+    /// Counts the changes of `hills` (the skin's chunks are built again).
+    pub(crate) hills_gen: u32,
 }
 
 impl Scenery {
@@ -428,7 +434,7 @@ fn build_scenery(
     let key = &layout_key(&theater.id);
     cache.collect();
     let done = cache.get(key);
-    let Some(Layout { ground, net, airfields: fields, hills }) = done else {
+    let Some(Layout { ground, net, airfields: fields, hills, pads }) = done else {
         if !cache.making(&theater.id) && !hold.0 {
             let source = LayoutSource::gather(
                 &theater,
@@ -499,6 +505,9 @@ fn build_scenery(
         clearings: vec![],
         blackouts: vec![],
         hills,
+        pads,
+        structures: vec![],
+        hills_gen: 0,
     });
 }
 
@@ -548,8 +557,9 @@ pub struct Layout {
     ground: Arc<ground::Ground>,
     net: Arc<network::Network>,
     airfields: Arc<Vec<airfield::Airfield>>,
-    /// The theater's hills with level pads under its small raised objects.
+    /// The theater's hills with level pads under its small raised objects (`pads`).
     hills: stealth_sim::hills::Hills,
+    pads: Arc<Vec<(f64, f64, f64)>>,
 }
 
 /// What a layout is made from, taken from the theater and its loaded models; making it needs
@@ -621,7 +631,13 @@ impl LayoutSource {
             })
             .collect();
         let hills = self.hills.with_pads(&objects);
-        Layout { ground: Arc::new(ground), net: Arc::new(net), airfields: Arc::new(fields), hills }
+        Layout {
+            ground: Arc::new(ground),
+            net: Arc::new(net),
+            airfields: Arc::new(fields),
+            hills,
+            pads: Arc::new(objects),
+        }
     }
 }
 
@@ -1401,29 +1417,45 @@ pub fn map_metres(x: i32, y: i32) -> DVec2 {
     DVec2::new((x as f64 + 0.5) * m, (0x8000 as f64 - y as f64 - 0.5) * m)
 }
 
-/// The clearing (m) a strategic facility's grounds take (tools/models/facilities.py).
-fn facility_clearing(kind: stealth_sim::aaa::GroundKind) -> Option<f64> {
-    use stealth_sim::aaa::GroundKind as K;
-    Some(match kind {
-        K::AmmoDepot | K::FuelDepot | K::Headquarters => 70.0,
-        K::DroneFactory => 85.0,
-        K::PowerPlant | K::TankFactory => 115.0,
-        _ => return None,
-    })
-}
-
 /// The friendly air defence and the helipads of its new sites stand in clearings: the trees and
 /// buildings there go (the tree blocks are built again when the clearings change, at the start
-/// and when units or sites come or move; the town blocks a changed clearing touches too).
+/// and when units or sites come or move; the town blocks a changed clearing touches too). The
+/// strategic facilities' grounds are level, as the simulation's (`Sim::level_structures`).
+#[allow(clippy::too_many_arguments)]
 fn clear_air_defence(
     mut commands: Commands,
     mut scenery: ResMut<Scenery>,
+    theater: Option<ResMut<Theater>>,
+    mut lifted: Query<&mut WorldPos, With<crate::world::OnHills>>,
     combat: Option<Res<crate::combat::Combat>>,
     campaign: Option<Res<crate::campaign::ActiveCampaign>>,
     mut blocks: ResMut<Blocks>,
 ) {
-    let Some(combat) = combat else { return };
+    let (Some(combat), Some(mut theater)) = (combat, theater) else { return };
     let sim = &combat.sim;
+    let grounds = sim.structure_grounds();
+    if grounds != scenery.structures {
+        let pads: Vec<(f64, f64, f64)> =
+            scenery.pads.iter().chain(&grounds).chain(&scenery.structures).copied().collect();
+        let all: Vec<(f64, f64, f64)> = scenery.pads.iter().chain(&grounds).copied().collect();
+        let hills = scenery.hills.with_pads(&all);
+        // The objects standing on the old ground move to the new.
+        for mut p in &mut lifted {
+            let (e, n) = (p.0.x, -p.0.z);
+            p.0.y += (hills.ground_m(e, n) - theater.hills.ground_m(e, n)) as f64;
+        }
+        theater.hills = hills.clone();
+        scenery.hills = hills;
+        scenery.hills_gen += 1;
+        // The trees and buildings round the grounds come and went stand on the new ground.
+        let reach = stealth_sim::hills::PAD_MARGIN + stealth_sim::hills::PAD_BLEND;
+        let moved: Vec<(DVec2, f64)> = pads[scenery.pads.len()..]
+            .iter()
+            .map(|&(e, n, r)| (DVec2::new(e, n), r + reach))
+            .collect();
+        scenery.structures = grounds;
+        rebuild_towns(&mut commands, &mut blocks, &moved, true);
+    }
     let m = stealth_sim::aaa::M_PER_MAP;
     let pads = campaign.iter().flat_map(|c| &c.state().deployments).map(|d| {
         let at = map_metres(d.x, d.y - stealth_campaign::tuning::DEPLOY_UNIT_OFFSET / 2);
@@ -1441,7 +1473,7 @@ fn clear_air_defence(
         .map(|k| {
             let u = &sim.units()[k];
             let p = DVec2::new((u.x as f64 + 0.5) * m, (0x8000 as f64 - u.y as f64 - 0.5) * m);
-            (p, facility_clearing(u.kind).unwrap_or(AIR_DEFENCE_CLEARING))
+            (p, u.kind.grounds_m().unwrap_or(AIR_DEFENCE_CLEARING))
         })
         .chain(pads)
         .collect();

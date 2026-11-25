@@ -359,6 +359,17 @@ impl GroundKind {
         )
     }
 
+    /// The radius (m) of a strategic facility's grounds (tools/models/facilities.py): cleared
+    /// of trees and buildings, and level ground on the rolling hills.
+    pub fn grounds_m(self) -> Option<f64> {
+        Some(match self {
+            GroundKind::AmmoDepot | GroundKind::FuelDepot | GroundKind::Headquarters => 70.0,
+            GroundKind::DroneFactory => 85.0,
+            GroundKind::PowerPlant | GroundKind::TankFactory => 115.0,
+            _ => return None,
+        })
+    }
+
     /// A supply truck (no gun).
     pub fn truck(self) -> bool {
         matches!(self, GroundKind::CivTruck | GroundKind::ArmyTruck)

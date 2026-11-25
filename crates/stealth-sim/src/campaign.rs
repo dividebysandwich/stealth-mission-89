@@ -1245,6 +1245,7 @@ impl Sim {
         if self.aaa_rng.is_none() {
             self.aaa_rng = Some(Rng::new(self.rng.hold ^ 0x5EAD_AAA0));
         }
+        self.level_structures();
         Some(self.units.len() - 1)
     }
 
@@ -1263,6 +1264,7 @@ impl Sim {
             u.y = y.clamp(0x40, 0x7FC0);
             u.destroyed = true;
         }
+        self.level_structures();
     }
 
     /// Campaign: unit `k` changes sides (a facility of a place taken).

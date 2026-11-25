@@ -120,6 +120,10 @@ pub struct Sim {
     /// Where the ground units cannot stand (the host's terrain; not sent, not saved).
     #[serde(skip)]
     pub(crate) water: aaa::Water,
+    /// The strategic facilities' grounds the hills are level under (metres east, north,
+    /// radius: `level_structures`; not sent, not saved).
+    #[serde(skip)]
+    pub(crate) levelled: Vec<(f64, f64, f64)>,
     pub opts: SimOptions,
 
     // ---- mission settings ----
@@ -668,6 +672,7 @@ impl Sim {
             destroyed_at: Vec::new(),
             visual_light: None,
             units: Vec::new(),
+            levelled: Vec::new(),
             aaa_shells: Vec::new(),
             shell_impacts: Vec::new(),
             aaa_rng: None,
@@ -1243,9 +1248,7 @@ impl Sim {
 
     /// The theater made flat: no rolling hills (test set-ups that move things anywhere).
     pub fn flatten_hills(&mut self) {
-        if let Some(t) = self.tiles.as_mut() {
-            t.hills = Default::default();
-        }
+        self.set_hills(Default::default());
     }
 
     /// Other rolling hills for the theater (test set-ups).
@@ -1253,6 +1256,35 @@ impl Sim {
         if let Some(t) = self.tiles.as_mut() {
             t.hills = hills;
         }
+        self.levelled.clear();
+        self.level_structures();
+    }
+
+    /// The grounds of the strategic facilities' buildings (standing or in ruins): metres east,
+    /// north and the radius.
+    pub fn structure_grounds(&self) -> Vec<(f64, f64, f64)> {
+        self.units
+            .iter()
+            .filter_map(|u| {
+                let r = u.kind.grounds_m()?;
+                let [e, n, _] = u.metres();
+                Some((e, n, r))
+            })
+            .collect()
+    }
+
+    /// The hills are level under the strategic facilities' grounds (as the scenery draws them:
+    /// the buildings stand on their ground, and what hits them comes down on it). Again when
+    /// the facilities stand somewhere else.
+    pub fn level_structures(&mut self) {
+        let grounds = self.structure_grounds();
+        if grounds == self.levelled {
+            return;
+        }
+        if let Some(t) = self.tiles.as_mut() {
+            t.hills = t.hills.with_pads(&grounds);
+        }
+        self.levelled = grounds;
     }
 
     /// The theater's rolling hills (flat without).
@@ -1272,6 +1304,8 @@ impl Sim {
             t.relief = f.relief.clone();
             t.hills = f.hills.clone();
         }
+        self.levelled.clear();
+        self.level_structures();
     }
 
     pub fn flights(&self) -> &[FlightUnit] {

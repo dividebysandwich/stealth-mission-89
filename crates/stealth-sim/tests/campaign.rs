@@ -1846,6 +1846,46 @@ fn an_enemy_strike_bombs_a_facility() {
     assert!(!sim.units()[k].destroyed);
 }
 
+/// A facility's grounds are level on the rolling hills (its building stands on them, what hits
+/// it comes down there), and level again where it is moved to; the hills further off are as
+/// they were.
+#[test]
+fn a_facility_stands_on_level_ground() {
+    let (_, mut sim) = campaign();
+    quiet(&mut sim);
+    sim.set_hills(hills::Hills::from_bytes(vec![255; hills::DIM * hills::DIM]).unwrap());
+    let bare = sim.hills();
+    let m = stealth_sim::aaa::M_PER_MAP;
+    let at = |x: i32, y: i32| (x as f64 * m, (0x8000 - y) as f64 * m);
+    let spread = |h: &hills::Hills, (e, n): (f64, f64), r: f64| {
+        let pts = (0..16).map(|k| {
+            let t = k as f64 * std::f64::consts::TAU / 16.0;
+            h.ground_m(e + t.cos() * r, n + t.sin() * r)
+        });
+        let (lo, hi) = pts.fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(v), hi.max(v)));
+        hi - lo
+    };
+    // The steepest of a few spots.
+    let (x, y) = (0..64)
+        .map(|i| (0x2000 + i * 0x97, 0x3000))
+        .max_by(|a, b| {
+            spread(&bare, at(a.0, a.1), 70.0).total_cmp(&spread(&bare, at(b.0, b.1), 70.0))
+        })
+        .unwrap();
+    assert!(spread(&bare, at(x, y), 70.0) > 3.0, "no slope to stand on");
+    let k = sim.place_structure(GroundKind::FuelDepot, x, y, true, 0.0).unwrap();
+    let r = GroundKind::FuelDepot.grounds_m().unwrap();
+    assert!(spread(&sim.hills(), at(x, y), r) < 0.01, "the depot's grounds slope");
+    let far = at(x + 0x400, y + 0x400);
+    assert_eq!(sim.hills().height_m(far.0, far.1), bare.height_m(far.0, far.1));
+    // Moved: level there, the old grounds as they were.
+    let (x2, y2) = (x + 0x200, y);
+    sim.move_structure(k, x2, y2);
+    assert!(spread(&sim.hills(), at(x2, y2), r) < 0.01, "the new grounds slope");
+    let old = at(x, y);
+    assert_eq!(sim.hills().height_m(old.0 + 30.0, old.1), bare.height_m(old.0 + 30.0, old.1));
+}
+
 /// A Patriot battery without power and fuel is offline: it lets the raider through. With just
 /// its power cut it still fights.
 #[test]
