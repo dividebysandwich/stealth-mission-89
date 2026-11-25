@@ -621,6 +621,13 @@ fn send_aim(
                     cmds.push(CrewCmd::Fire { station });
                 }
             }
+            // The aircraft's dispensers: the owner's flares and chaff.
+            crate::input::Action::Flare => {
+                cmds.push(CrewCmd::Dispense { flare: true, chaff: false })
+            }
+            crate::input::Action::Chaff => {
+                cmds.push(CrewCmd::Dispense { flare: false, chaff: true })
+            }
             _ => {}
         }
     }

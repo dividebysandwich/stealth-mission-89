@@ -607,3 +607,22 @@ fn the_intruders_bombardier_lays_its_pod() {
     sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
     assert_eq!(sim.crew_view(0).unwrap().shared_panel, None);
 }
+
+#[test]
+fn the_gunner_releases_the_flares_and_hears_the_cockpit() {
+    let (mut sim, at) = crewed();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    let (flares, chaff, _) = sim.crew_view(1).expect("crew view").countermeasures;
+    assert!(flares > 0 && chaff > 0);
+    sim.crew_command(1, CrewCmd::Dispense { flare: true, chaff: true }).unwrap();
+    let events = sim.step_pilots(&[(0, orbit(at, false))], 15);
+    let (f, c, _) = sim.crew_view(1).unwrap().countermeasures;
+    assert_eq!((f, c), (flares - 1, chaff - 1), "the gunner's release");
+    // The pilot's cockpit sounds (the release's) are his gunner's too.
+    let heard = |k: u8| {
+        events.iter().filter(|e| e.pilot == k && matches!(e.event, SimEvent::Sound { .. })).count()
+    };
+    assert!(heard(0) > 0);
+    assert_eq!(heard(1), heard(0));
+}

@@ -644,6 +644,9 @@ fn collect_commands(
             Action::FireWeapon
                 if manning.as_deref().is_some_and(|m| m.console() || m.remote_gunner()) => {}
             Action::FireWeapon => c.fire = true,
+            // In another's aircraft its dispensers are his (`gunner::send_aim`).
+            Action::Flare | Action::Chaff
+                if manning.as_deref().is_some_and(|m| m.remote_gunner()) => {}
             Action::Flare => c.flare = true,
             Action::Chaff => c.chaff = true,
             Action::Decoy => c.decoy = true,
@@ -1675,7 +1678,15 @@ fn publish(
         avionics: bits & dmg::AV != 0,
         emv_warning: l.emv_warning,
     };
-    let (flares, chaff, decoys) = sim.stores();
+    // In another's aircraft (his gunner): its dispensers as the crew is told.
+    let me = sim.active_pilot();
+    let (flares, chaff, decoys) = match sim.crew_view(me).filter(|v| v.owner != me) {
+        Some(v) => {
+            let (f, c, d) = v.countermeasures;
+            (f as i32, c as i32, d as i32)
+        }
+        None => sim.stores(),
+    };
     let lamp = |on: bool| if on { 1.0 } else { 0.0 };
     *cm = Countermeasures {
         chaff: chaff.max(0) as u32,

@@ -342,6 +342,7 @@ mod tests {
                 track: Some(7),
             }),
             CrewCmd::Fire { station: 4 },
+            CrewCmd::Dispense { flare: true, chaff: false },
             CrewCmd::Designate { at: Some((0x1000, 0x2000)), unit: None },
             CrewCmd::Designate { at: None, unit: Some(17) },
         ] {

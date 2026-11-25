@@ -100,6 +100,8 @@ pub enum CrewCmd {
     Pod(SharedPod),
     /// The owner or his bombardier/navigator moved a control of the A-6's panel.
     Panel(SharedPanel),
+    /// The gunner releases the aircraft's flares or chaff (the owner's dispensers).
+    Dispense { flare: bool, chaff: bool },
 }
 
 /// What a crew member's client is told of the aircraft he is in (with his own state): the
@@ -131,6 +133,9 @@ pub struct CrewView {
     /// The A-6 crew's panel as the one who last moved a control has it.
     #[serde(default)]
     pub shared_panel: Option<SharedPanel>,
+    /// The aircraft's flares, chaff and decoys left (`Sim::stores`), for its crew's panel.
+    #[serde(default)]
+    pub countermeasures: (i16, i16, i16),
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
@@ -302,6 +307,14 @@ impl Sim {
                 });
                 Ok(())
             }
+            CrewCmd::Dispense { flare, chaff } => {
+                self.gunner_seat_of(player)?;
+                self.with_pilot(player, |sim| {
+                    sim.pl.crew_cmd.flare |= flare;
+                    sim.pl.crew_cmd.chaff |= chaff;
+                });
+                Ok(())
+            }
             CrewCmd::Fire { station } => {
                 self.gunner_seat_of(player)?;
                 self.with_pilot(player, |sim| sim.pl.crew_fire = Some(station));
@@ -427,6 +440,9 @@ impl Sim {
         {
             ps.jam = Some(j);
         }
+        // The flares and chaff he released: the owner's dispensers.
+        ps.cmd.flare |= cmd.flare;
+        ps.cmd.chaff |= cmd.chaff;
         if cmd.designate_at.is_some() || cmd.designate_unit.is_some() {
             ps.cmd.designate_at = cmd.designate_at;
             ps.cmd.designate_unit = cmd.designate_unit;
@@ -467,6 +483,10 @@ impl Sim {
             engine: owner.last_input.engine,
             shared_pod: owner.crew_pod.filter(|_| c.gunner.is_some()),
             shared_panel: owner.crew_panel.filter(|_| c.gunner.is_some()),
+            countermeasures: {
+                let n = |i: usize| owner.stores[i].clamp(0, i16::MAX as i32) as i16;
+                (n(1), n(2), n(3))
+            },
         })
     }
 

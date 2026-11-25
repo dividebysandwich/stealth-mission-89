@@ -1524,6 +1524,15 @@ pub(crate) fn sync_objects(
         .filter(|(_, c)| c.ttl > 0)
         .map(|(k, c)| ((usize::MAX, k), (c.x, c.y, c.kind), view_z))
         .chain(sim.ai_countermeasures().map(|(i, k, c)| ((i, k), (c.x, c.y, c.kind), c.alt as f32)))
+        // The other pilots' (released at their altitude when first seen).
+        .chain(sim.remote_pilots().into_iter().filter(|p| p.id != sim.active_pilot()).flat_map(
+            |p| {
+                let alt = p.view.view_z as f32;
+                p.cms.into_iter().enumerate().filter(|(_, c)| c.ttl > 0).map(move |(k, c)| {
+                    ((usize::MAX - 1 - p.id as usize, k), (c.x, c.y, c.kind), alt)
+                })
+            },
+        ))
         .collect();
     vis.cms.retain(|id, v| {
         let keep = live.iter().any(|(k, key, _)| k == id && *key == v.key);
