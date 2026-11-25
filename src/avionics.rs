@@ -3121,8 +3121,11 @@ fn unit_near(c: &crate::combat::Combat, p: DVec3, ground: &Terrain) -> Option<Sn
         ground.on(crate::world::wu_to_bevy(e + 16.0, n - 16.0, 0.0))
     };
     let flat = |q: DVec3| DVec2::new(q.x - p.x, q.z - p.z).length();
-    let objects = c.sim.objects().iter().enumerate().skip(3);
+    // Not scratch object 0 (the designated ground point); objects 1 and 2 are the mission's
+    // own targets where it places them (a tank column, say).
+    let objects = c.sim.objects().iter().enumerate().skip(1);
     let objects = objects
+        .filter(|&(i, o)| i >= 3 || (o.x, o.y) != (0, 0))
         .filter(|(_, o)| o.flags & (oflags::DESTROYED | oflags::AIRFIELD) == 0)
         .map(|(i, o)| (Snap::Object(i), centre(o.x, o.y)));
     let guns = (0..c.sim.units().len())

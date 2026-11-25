@@ -146,9 +146,10 @@ impl Sim {
         }
         if let Some((x, y)) = c.designate_at {
             self.pl.spi_unit = None;
-            // The object there (a world object, else a scenery tile), else the plain ground
-            // (scratch object 0).
-            let world = (3..self.objects.len())
+            // The object there (a world object, the mission's placed targets 1 and 2 among
+            // them, else a scenery tile), else the plain ground (scratch object 0).
+            let world = (1..self.objects.len())
+                .filter(|&i| i >= 3 || (self.objects[i].x, self.objects[i].y) != (0, 0))
                 .filter(|&i| self.objects[i].flags & oflags::DESTROYED == 0)
                 .map(|i| (i as i32, approx(self.objects[i].x - x, self.objects[i].y - y)))
                 .filter(|&(_, d)| d <= DESIGNATE_RADIUS)

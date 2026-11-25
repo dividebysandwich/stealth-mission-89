@@ -2681,6 +2681,26 @@ fn pod_designates_a_ground_point() {
     assert_eq!(sim.targeting().ground, Some(o));
 }
 
+/// The mission's own placed target (object 1 or 2, say a column of T-72s) is locked when the
+/// pod designates it, as any other object is, not the plain ground under it.
+#[test]
+fn pod_designates_the_missions_placed_target() {
+    let (mut sim, mx, my, mut p) = helicopter(true, true);
+    {
+        let ob = &mut sim.objects_mut()[1];
+        ob.x = mx + 300;
+        ob.y = my - 300;
+        ob.flags = 0;
+    }
+    p.altitude = 500;
+    p.height = p.altitude;
+    p.hud_mode = HudMode::Gnd;
+    p.pod = Some(PodAim { heading: 0x2000, pitch: -0x100, ground: Some((mx + 302, my - 298)) });
+    p.cmd.designate_at = Some((mx + 302, my - 298));
+    sim.step(&p, 15);
+    assert_eq!(sim.targeting().ground, Some(1));
+}
+
 /// Slewing the pod moves the launch zone's target with it (the SPI): the Hellfire's, and a
 /// Maverick's without a lock; the zone is against the lock again once the pod rests on it.
 #[test]
