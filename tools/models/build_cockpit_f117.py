@@ -848,7 +848,6 @@ def screen(mat, r, at, behind=None, round=False):
 # --- plates: groups of faces that do not fit what the model has there stand on a plate over
 # it (material, rectangle in layout mm)
 PLATES = (
-    ("dark", (156.0, 117.0, 176.0, 38.0)),  # fuel and thrust readouts, EMV
     ("black", TAPES),  # angle of attack and vertical velocity tapes
     ("dark", (-1399.0, 317.0, 48.0, 40.0)),  # gear lights
     ("black", (3025.0, 18.0, 130.0, 95.0)),  # the countermeasures, on the right console

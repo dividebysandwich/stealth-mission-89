@@ -410,71 +410,11 @@
     },
     {
       "control": null,
-      "key": "Item(Led(Fuel))",
-      "kind": null,
-      "rect": [
-        160.0,
-        121.0,
-        30.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"FUEL\", 47, 79))",
-      "kind": null,
-      "rect": [
-        192.0,
-        121.0,
-        34.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Lamp(LowFuel, Some(\"LOW\\nFUEL\")))",
-      "kind": null,
-      "rect": [
-        228.0,
-        121.0,
-        30.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Led(Thrust))",
-      "kind": null,
-      "rect": [
-        262.0,
-        121.0,
-        30.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"THRUST\", 47, 79))",
-      "kind": null,
-      "rect": [
-        294.0,
-        121.0,
-        34.0,
-        13.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
       "key": "Item(Label(\"EGR\\nEAR\", 47, 33))",
       "kind": null,
       "rect": [
-        172.0,
-        138.0,
+        160.0,
+        142.0,
         20.0,
         13.0
       ],
@@ -485,8 +425,8 @@
       "key": "LedBars",
       "kind": null,
       "rect": [
-        194.0,
-        138.0,
+        182.0,
+        142.0,
         84.0,
         13.0
       ],
@@ -497,8 +437,8 @@
       "key": "Item(Label(\"EMV\", 47, 33))",
       "kind": null,
       "rect": [
-        280.0,
-        138.0,
+        268.0,
+        142.0,
         20.0,
         13.0
       ],
@@ -509,8 +449,8 @@
       "key": "Item(Lamp(EmvWarn, None))",
       "kind": null,
       "rect": [
-        302.0,
-        138.0,
+        290.0,
+        142.0,
         18.0,
         13.0
       ],

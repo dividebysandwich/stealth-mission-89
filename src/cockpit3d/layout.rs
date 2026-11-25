@@ -709,8 +709,8 @@ impl PanelLayout {
     ///   HSI at first), the warning lights over their inner corners; the F-16's round
     ///   instruments down the outer edges (airspeed, altimeter, the AOA and vertical velocity
     ///   tapes and the clock left; RPM, FTIT, oil pressure and nozzle position right), the
-    ///   attitude indicator and the BAY cap under the left MFD, fuel quantity, the engine
-    ///   readouts and the EMV gauge under the right one.
+    ///   attitude indicator and the BAY cap under the left MFD, the EMV gauge, fuel quantity
+    ///   and oil pressure under the right one.
     /// - As in the F-16 the sloped panels from the consoles up to the main panel: the gear
     ///   lights with FLAPS, BRAKE and AUTO left (x <= -600, centred on -700; the gear handle and
     ///   the target buttons are modelled), the caution lights and the countermeasures right
@@ -816,17 +816,13 @@ impl PanelLayout {
                 false,
             );
         }
-        // Under the right MFD: the fuel and thrust readouts and the EMV gauge, the fuel
-        // quantity and oil pressure in the two instruments under them.
-        put(Elem::Led(LedId::Fuel), rect(160.0, 121.0, 30.0, 13.0), None, false);
-        put(Elem::Label("FUEL", 47, 79), rect(192.0, 121.0, 34.0, 13.0), None, false);
-        put(Elem::Lamp(LowFuel, Some("LOW\nFUEL")), rect(228.0, 121.0, 30.0, 13.0), None, false);
-        put(Elem::Led(LedId::Thrust), rect(262.0, 121.0, 30.0, 13.0), None, false);
-        put(Elem::Label("THRUST", 47, 79), rect(294.0, 121.0, 34.0, 13.0), None, false);
-        put(Elem::Label("EGR\nEAR", 47, 33), rect(172.0, 138.0, 20.0, 13.0), None, false);
-        put(Elem::Gauge, rect(194.0, 138.0, 84.0, 13.0), None, false);
-        put(Elem::Label("EMV", 47, 33), rect(280.0, 138.0, 20.0, 13.0), None, false);
-        put(Elem::Lamp(EmvWarn, None), rect(302.0, 138.0, 18.0, 13.0), None, false);
+        // Under the right MFD, on the panel and centred under its glass as the model has it: the EMV gauge (the radar
+        // cross section's bars); the fuel quantity and oil pressure in the two instruments
+        // under it.
+        put(Elem::Label("EGR\nEAR", 47, 33), rect(160.0, 142.0, 20.0, 13.0), None, false);
+        put(Elem::Gauge, rect(182.0, 142.0, 84.0, 13.0), None, false);
+        put(Elem::Label("EMV", 47, 33), rect(268.0, 142.0, 20.0, 13.0), None, false);
+        put(Elem::Lamp(EmvWarn, None), rect(290.0, 142.0, 18.0, 13.0), None, false);
         put(Elem::Dial(Dial::Fuel), rect(164.0, 182.0, 56.0, 56.0), None, true);
         put(Elem::Dial(Dial::Oil), rect(262.0, 209.0, 46.0, 46.0), None, true);
         // The left wing: the flight instruments round the attitude indicator, the gear lights
