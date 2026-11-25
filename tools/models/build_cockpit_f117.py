@@ -197,7 +197,8 @@ def coloured(name, like, rgb):
 
 # Guard covers and red buttons.
 coloured("red", "yellow", (0.55, 0.04, 0.03))
-# The panel's face, lighter than the shared panel grey: the F-117A's panel lies deep in the
+# The panel's face, lighter than the shared panel grey (the game's own `panel_light`, which
+# darkens to the grey at night): the F-117A's panel lies deep in the
 # shade of its glare shield (about sRGB 0.30 / 0.32 / 0.34).
 coloured("panel_light", "panel_grey", (0.073, 0.084, 0.095))
 

@@ -92,6 +92,7 @@ impl Plugin for Cockpit3dPlugin {
                 follow_eye,
                 sync_materials,
                 sync_shading,
+                panel_light,
                 cockpit_visibility,
                 console_stick,
                 pick::forget_shapes,
@@ -338,6 +339,9 @@ fn respawn_on_style_change(
 #[derive(Resource)]
 pub struct CockpitMaterials {
     pub panel_grey: Handle<CockpitMaterial>,
+    /// A lighter panel face (the F-117A's), as light as that only by day: it darkens to the
+    /// panel grey as the daylight goes (`panel_light`).
+    pub panel_light: Handle<CockpitMaterial>,
     pub dark: Handle<CockpitMaterial>,
     pub black: Handle<CockpitMaterial>,
     pub frame: Handle<CockpitMaterial>,
@@ -367,6 +371,7 @@ fn setup_materials(mut commands: Commands, mut materials: ResMut<Assets<CockpitM
         ))
     };
     let panel_grey = m(Color::srgb(0.20, 0.22, 0.24), 0.8, 0.0);
+    let panel_light = m(PANEL_LIGHT_DAY.into(), 0.8, 0.0);
     let dark = m(Color::srgb(0.09, 0.10, 0.11), 0.85, 0.0);
     let black = m(Color::srgb(0.02, 0.02, 0.02), 0.9, 0.0);
     let frame = m(Color::srgb(0.13, 0.14, 0.15), 0.7, 0.2);
@@ -393,6 +398,7 @@ fn setup_materials(mut commands: Commands, mut materials: ResMut<Assets<CockpitM
     }));
     commands.insert_resource(CockpitMaterials {
         panel_grey,
+        panel_light,
         dark,
         black,
         frame,
@@ -517,6 +523,31 @@ fn sync_shading(
             m.extension.retro = retro;
             m.extension.sharp = sharp_of(&m);
         }
+    }
+}
+
+/// The lighter panel face's colour by day (linear: about sRGB 0.30 / 0.32 / 0.34, the F-117A's
+/// panel deep in the shade of its glare shield), and at night (the panel grey's).
+const PANEL_LIGHT_DAY: LinearRgba = LinearRgba::rgb(0.073, 0.084, 0.095);
+const PANEL_LIGHT_NIGHT: LinearRgba = LinearRgba::rgb(0.0331, 0.0397, 0.0470);
+/// The daylight from which the face is fully light, and below which it is the panel grey.
+const PANEL_LIGHT_DAYLIGHT: (f32, f32) = (0.15, 0.6);
+
+/// The lighter panel face darkens with the daylight (in 1/16 steps: a change re-uploads the
+/// material): lit only by the ambient light and the flood light at night, it stood out much
+/// lighter than the rest of the cockpit.
+fn panel_light(
+    lighting: Res<crate::lighting::LightingState>,
+    mats: Res<CockpitMaterials>,
+    mut materials: ResMut<Assets<CockpitMaterial>>,
+) {
+    let (lo, hi) = PANEL_LIGHT_DAYLIGHT;
+    let t = q16(((lighting.daylight - lo) / (hi - lo)).clamp(0.0, 1.0));
+    let colour: Color = PANEL_LIGHT_NIGHT.mix(&PANEL_LIGHT_DAY, t).into();
+    if materials.get(&mats.panel_light).is_some_and(|m| m.base.base_color != colour)
+        && let Some(mut m) = materials.get_mut(&mats.panel_light)
+    {
+        m.base.base_color = colour;
     }
 }
 

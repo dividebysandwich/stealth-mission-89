@@ -17,8 +17,9 @@
 //! and by object custom properties (glTF extras):
 //!
 //! Materials:
-//! * `panel_grey`, `dark`, `black`, `frame`, `seat`, `cushion`, `yellow`, `rubber`, `metal`,
-//!   `highlight`: the shared cockpit materials (`CockpitMaterials`).
+//! * `panel_grey`, `panel_light` (a lighter face, darkening to the grey at night), `dark`,
+//!   `black`, `frame`, `seat`, `cushion`, `yellow`, `rubber`, `metal`, `highlight`: the shared
+//!   cockpit materials (`CockpitMaterials`).
 //! * `swatch`: the panel's solid parts, coloured by the live palette (UVs point at a cell of
 //!   the 16x16 palette swatch: index = row * 16 + column).
 //! * `atlas`: a lamp, readout, label or bezel button face drawn live into the instrument atlas.
@@ -119,6 +120,7 @@ impl CockpitMaterials {
     fn by_name(&self, name: &str) -> Option<&Handle<CockpitMaterial>> {
         Some(match name {
             "panel_grey" => &self.panel_grey,
+            "panel_light" => &self.panel_light,
             "dark" => &self.dark,
             "black" => &self.black,
             "frame" => &self.frame,
