@@ -634,12 +634,17 @@ SUNK_PLATES += [around((key,), CASE_REACH) for key in LEFT_DIALS] + [
 SUNK_PLATES.append(around(("Button(Flaps", "Button(Brake", "Button(Auto", "Button(Bay")))
 
 
+# How nearly parallel (the cosine of the angle between their normals) faces lie in one plane.
+COPLANAR = 0.9995
+
+
 def colour_panel():
     shell.data.materials.append(mats["panel_light"])
     slot = {s.material.name: i for i, s in enumerate(shell.material_slots)}
     grey, black = slot["panel_light"], slot["black"]
     repaint = {slot[m] for m in ("dark", "black", "frame") if m in slot}
     counts = [0, 0]
+    left = set()
     for f in shell.data.polygons:
         if f.material_index not in repaint:
             continue
@@ -683,6 +688,32 @@ def colour_panel():
         elif BEZEL_FACE[0] <= d < BEZEL_FACE[1]:
             f.material_index = black
             counts[1] += 1
+        else:
+            left.add(f.index)
+    # What is left of a light grey face's plane, though it stands further out (the centre
+    # column's front, sloping steeper than the panel below its controls), light grey with it.
+    polys = shell.data.polygons
+    by_edge = {}
+    for f in polys:
+        for k in f.edge_keys:
+            by_edge.setdefault(k, []).append(f.index)
+    grown = True
+    while grown:
+        grown = False
+        for i in sorted(left):
+            f = polys[i]
+            for k in f.edge_keys:
+                if any(
+                    polys[j].material_index == grey
+                    and polys[j].normal.dot(f.normal) > COPLANAR
+                    and abs((f.center - polys[j].center).dot(polys[j].normal)) < 0.001
+                    for j in by_edge[k]
+                ):
+                    f.material_index = grey
+                    left.discard(i)
+                    counts[0] += 1
+                    grown = True
+                    break
     print(f"panel: {counts[0]} faces light grey, {counts[1]} bezel black")
 
 
