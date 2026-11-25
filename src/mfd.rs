@@ -875,6 +875,7 @@ fn mfd_keys(
     hud: Res<crate::hud::HudState>,
     stores: Res<crate::hud::Stores>,
     mut zoom_axis: MessageReader<crate::hotas::TgpZoomAxis>,
+    combat: Option<Res<crate::combat::Combat>>,
 ) {
     let auto_zoom = cam.zoom.saturating_sub(1);
     // The TGP zoom axis sets the zoom step outright.
@@ -918,7 +919,7 @@ fn mfd_keys(
     let loaded = |w| stores.bays.iter().any(|b| b.weapon == w);
     let harm = HARM_PAGE_WEAPONS.into_iter().any(loaded);
     let slam = loaded(stealth_sim::SLAMER_WEAPON);
-    let jam = loaded(stealth_sim::jamming::ALQ99_WEAPON);
+    let jam = crate::jam_page::pods_aboard(&stores, combat.as_deref()) > 0;
     if (state.av.harm_loaded, state.av.slam_loaded, state.av.jam_loaded) != (harm, slam, jam) {
         state.av.set_stores(harm, slam, jam);
     }

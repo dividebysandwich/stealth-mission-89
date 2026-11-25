@@ -81,18 +81,39 @@ impl JamPage {
     }
 }
 
+/// The jammer pods aboard: the player's own, or in another's aircraft (its electronic warfare
+/// officer) its pilot's, as the crew is told.
+pub fn pods_aboard(stores: &crate::hud::Stores, combat: Option<&crate::combat::Combat>) -> u32 {
+    let ridden = combat.and_then(|c| {
+        let me = c.sim.active_pilot();
+        c.sim.crew_view(me).filter(|v| v.owner != me)
+    });
+    // (Its stores by station as everyone sees them: the crew's view has only the first six.)
+    match ridden.zip(combat) {
+        Some((v, c)) => c.sim.remote_pilots().iter().find(|p| p.id == v.owner).map_or(0, |p| {
+            p.stores
+                .iter()
+                .filter(|&&(w, _)| w as i32 == stealth_sim::jamming::ALQ99_WEAPON)
+                .map(|&(_, n)| n as u32)
+                .sum()
+        }),
+        None => stores
+            .bays
+            .iter()
+            .filter(|b| b.weapon == stealth_sim::jamming::ALQ99_WEAPON)
+            .map(|b| b.count)
+            .sum(),
+    }
+}
+
 /// Mirrors the pods aboard onto the page, and the radars heard for its buttons.
 pub fn update(
     stores: bevy::prelude::Res<crate::hud::Stores>,
+    combat: Option<bevy::prelude::Res<crate::combat::Combat>>,
     emitters: bevy::prelude::Res<crate::rwr::Emitters>,
     mut state: bevy::prelude::ResMut<MfdState>,
 ) {
-    let pods: u32 = stores
-        .bays
-        .iter()
-        .filter(|b| b.weapon == stealth_sim::jamming::ALQ99_WEAPON)
-        .map(|b| b.count)
-        .sum();
+    let pods = pods_aboard(&stores, combat.as_deref());
     let list: Vec<u16> = radars(&emitters).into_iter().map(site).collect();
     let page = &state.av.jam;
     if page.loaded as u32 != pods || page.list != list {
