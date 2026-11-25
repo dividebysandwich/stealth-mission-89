@@ -691,6 +691,9 @@ pub const HELLFIRE_SPOT_RADIUS: i32 = 6;
 /// An object this close to a point designated with the targeting pod (map units) is locked;
 /// farther, the point itself.
 pub const DESIGNATE_RADIUS: i32 = 8;
+/// The emitting radar this close to a point or object locked with the targeting pod (map
+/// units, about a kilometre) is the one the Shrike goes for.
+pub const SHRIKE_SPOT_RADIUS: i32 = 64;
 /// How far off its heading the Hellfire's seeker sees the spot (BAM, 45 degrees).
 pub const HELLFIRE_SEEKER: i32 = 0x2000;
 

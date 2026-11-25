@@ -626,9 +626,12 @@ impl Sim {
     /// in the circle, through the moments it falls silent, and loses it when it leaves. A lock
     /// made on purpose (the HARM display, the HSD) it looks at instead. The oval as for the
     /// Sidewinder: the radar within twice the LOCK oval's reach, red (the tone) within it.
-    /// The Shrike selected: its seeker takes the nearest radar on the air ahead by itself (no
-    /// target key needed), and keeps it while it transmits. A lock held on purpose on another
-    /// radar stays; one cleared (`Commands::clear_target`) stays cleared.
+    /// The Shrike selected: its seeker picks the radar it goes for by itself (no target key
+    /// needed). A radar locked on purpose (the targeting pod, a display) within its reach it
+    /// keeps; a point or other object locked on purpose gives way to the emitting radar nearest
+    /// it (within `SHRIKE_SPOT_RADIUS`); with nothing locked, the lock out of reach, or no
+    /// radar at the point, the nearest emitting radar within 45 degrees of the nose. A lock
+    /// cleared (`Commands::clear_target`) stays cleared.
     fn shrike_radar(&mut self) {
         let (w, count) = self.selected_weapon();
         if w != SHRIKE_WEAPON
@@ -639,35 +642,57 @@ impl Sim {
         {
             return;
         }
-        let radar = |i: usize| {
+        let site = |i: usize| {
             self.objects.get(i).is_some_and(|o| {
                 o.unit_type != 0
                     && i < self.ground_units
                     && o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) == 0
-            }) && !self.site_silent(i)
+            })
         };
-        let current = self.valid_gnd();
-        if current.is_some_and(radar) || (self.pl.target_hold && current.is_none()) {
-            return;
-        }
-        if self.pl.target_hold && current.is_some_and(|g| self.objects[g].unit_type != 0) {
-            return;
-        }
+        let emitting = |i: usize| site(i) && !self.site_silent(i);
         let reach = 2.0 * crate::dlz::GROUND_LOCK * self.missile(SHRIKE_SPEC).lock_range as f64;
         let (mx, my, alt) = (self.pl.p.mx, self.pl.p.my, self.pl.p.alt);
+        let heard = |i: usize| {
+            let o = self.objects[i];
+            let (r, b) = self.range_bearing(o.x, o.y);
+            ((r as f64) < reach && self.sight_from_ground(o.x, o.y, (mx, my, alt)))
+                .then_some((r, b))
+        };
+        let current = self.valid_gnd();
+        let held = self.pl.target_hold;
+        if held && current.is_none() {
+            return;
+        }
+        // A radar within reach: kept (one held on purpose through its silent moments).
+        if current.is_some_and(|g| (emitting(g) || (held && site(g))) && heard(g).is_some()) {
+            return;
+        }
+        // A point or object locked on purpose: the emitting radar nearest it.
+        let spot = current.filter(|&g| held && !site(g)).map(|g| {
+            let o = self.objects[g];
+            match self.pl.spi.filter(|_| g == 0) {
+                Some(p) => p,
+                None => (o.x, o.y),
+            }
+        });
+        let at_spot = spot.and_then(|(x, y)| {
+            (0..self.ground_units)
+                .filter(|&i| emitting(i) && heard(i).is_some())
+                .map(|i| (i, approx(s16(self.objects[i].x - x), s16(self.objects[i].y - y))))
+                .filter(|&(_, d)| d <= SHRIKE_SPOT_RADIUS)
+                .min_by_key(|&(_, d)| d)
+        });
         let heading = self.pl.p.heading;
-        let nearest = (0..self.ground_units)
-            .filter(|&i| radar(i))
-            .filter_map(|i| {
-                let o = self.objects[i];
-                let (r, b) = self.range_bearing(o.x, o.y);
-                ((r as f64) < reach
-                    && abs16(s16(b - heading)) < 0x2000
-                    && self.sight_from_ground(o.x, o.y, (mx, my, alt)))
-                .then_some((i, r))
-            })
-            .min_by_key(|&(_, r)| r);
-        if let Some((i, _)) = nearest {
+        let pick = at_spot.or_else(|| {
+            (0..self.ground_units)
+                .filter(|&i| emitting(i))
+                .filter_map(|i| {
+                    let (r, b) = heard(i)?;
+                    (abs16(s16(b - heading)) < 0x2000).then_some((i, r))
+                })
+                .min_by_key(|&(_, r)| r)
+        });
+        if let Some((i, _)) = pick {
             self.pl.gnd_lock = i as i32;
             self.pl.nearest_req = 0;
             self.pl.targeting.target_killed = false;

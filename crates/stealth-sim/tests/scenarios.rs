@@ -5375,6 +5375,52 @@ fn shrike_takes_the_nearest_radar_by_itself() {
     assert!(destroyed);
 }
 
+/// Emitting SA-2 sites 5 and 6 at (east, south) map-unit offsets `a` and `b` from an A-6 at
+/// 3000 ft heading northeast with Shrikes selected, after command `cmd` (a targeting pod's
+/// lock): the object its seeker picked.
+fn shrike_pick(a: (i32, i32), b: (i32, i32), cmd: impl Fn(i32, i32) -> Commands) -> Option<usize> {
+    use stealth_sim::SHRIKE_WEAPON;
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::with_options(&d.sim, &m, SimOptions::default());
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(SHRIKE_WEAPON, 2)]);
+    place_site(&mut sim, 5, 1, mx + a.0, my + a.1);
+    place_site(&mut sim, 6, 1, mx + b.0, my + b.1);
+    let mut p = player_at(mx, my, 3000, 0x2000, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    sim.step(&p, 15);
+    p.cmd = cmd(mx, my);
+    for _ in 0..15 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    sim.targeting().ground
+}
+
+/// The Shrike's own pick: the nearest emitting radar within 45 degrees of the nose (a nearer
+/// one off to the side is not it); a radar the pod locks within its reach; the radar nearest
+/// a ground point the pod locks; and a pod's radar out of its reach gives way to one ahead.
+#[test]
+fn shrike_picks_the_radar_the_pod_points_at() {
+    let none = |_, _| Commands::default();
+    // Ahead 800 units, and 400 units off to the east-south-east (90 degrees off the nose).
+    assert_eq!(shrike_pick((566, -566), (283, 283), none), Some(5), "cone");
+    // Two ahead: the pod's lock on the farther one stays.
+    let lock6 = |_, _| Commands { lock_object: Some(6), ..Default::default() };
+    assert_eq!(shrike_pick((400, -400), (600, -600), lock6), Some(6), "pod radar");
+    // The pod's point 30 units past the farther one: that radar.
+    let point = |mx: i32, my: i32| Commands {
+        designate_at: Some((mx + 630, my - 630)),
+        ..Default::default()
+    };
+    assert_eq!(shrike_pick((400, -400), (600, -600), point), Some(6), "pod point");
+    // The pod's radar far beyond the Shrike's reach: the one ahead within it.
+    assert_eq!(shrike_pick((400, -400), (2500, -2500), lock6), Some(5), "pod radar too far");
+}
+
 /// Bomb `w` dropped from a hover over the primary target of strike mission `m`, a truck
 /// `north` map units north of it: whether the target and the truck were destroyed.
 fn heavy_bomb(m: &Mission, w: i32, north: i32) -> (bool, bool) {
