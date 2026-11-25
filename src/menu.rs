@@ -1597,7 +1597,7 @@ fn download_url() -> String {
 
 /// The game's Discord server (also on the browser build's first screen, web/index.html).
 #[cfg(target_arch = "wasm32")]
-const DISCORD_URL: &str = "https://discord.gg/zjjGeKKpC";
+const DISCORD_URL: &str = "https://discord.gg/pzhVUNaxh4";
 
 /// A full-screen-width menu window in the terminal style.
 pub(crate) fn menu_window(ctx: &egui::Context, id: &str, width: f32) -> egui::Window<'static> {

@@ -25,11 +25,11 @@ A Rust/Bevy 0.19 remake of DOS-era 3D flight simulations with VR support
     <img alt="Discuss on Reddit" src="https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" />
   </a>
 
-  <a href="https://discord.gg/zjjGeKKpC">
+  <a href="https://discord.gg/pzhVUNaxh4">
     <img alt="Join us on Discord" src="https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" />
   </a>
   <br />
-  <sub>Fly together, report bugs, share missions and follow development on the <a href="https://discord.gg/zjjGeKKpC">Stealth Mission 89 Discord</a>.</sub>
+  <sub>Fly together, report bugs, share missions and follow development on the <a href="https://discord.gg/pzhVUNaxh4">Stealth Mission 89 Discord</a>.</sub>
 </p>
 
 ## Features
