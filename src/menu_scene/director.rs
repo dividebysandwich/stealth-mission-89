@@ -540,8 +540,9 @@ pub fn direct(
             l.hours,
             l.weather.sky
         );
+        // (Some hang under others and go with them.)
         for e in &things {
-            commands.entity(e).despawn();
+            commands.entity(e).try_despawn();
         }
         trails.clear(&mut commands);
         blasts.clear = true;

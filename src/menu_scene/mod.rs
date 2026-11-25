@@ -366,8 +366,9 @@ fn despawn_scene(
             .remove::<(ChildOf, crate::camera::EyeCamera)>()
             .insert(Transform::IDENTITY);
     }
+    // (Some are children of others, gone with them: the background sphere under the camera.)
     for e in &q {
-        commands.entity(e).despawn();
+        commands.entity(e).try_despawn();
     }
     commands.remove_resource::<MenuScene>();
     commands.remove_resource::<Director>();
