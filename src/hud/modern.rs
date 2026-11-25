@@ -211,7 +211,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         fpm
     };
     if !hover {
-        flight_path_marker(c, fpm, h, down, caged);
+        flight_path_marker(c, fpm, caged);
     }
     // Gun cross at the boresight.
     for d in [Vec2::X, Vec2::Y] {
@@ -404,7 +404,10 @@ fn nozzle(c: &mut Canvas, v: &super::VtolHud) {
     c.stroke(NOZZLE_GLYPH + Vec2::new(0.0, 24.0), NOZZLE_GLYPH + Vec2::new(0.0, 28.0), THIN, INK);
 }
 
-fn flight_path_marker(c: &mut Canvas, p: Vec2, h: Vec2, down: Vec2, caged: bool) {
+/// Drawn in the HUD's own frame, as on a real HUD: its wings stay parallel to the aircraft's
+/// and bank with it against the rolling ladder.
+fn flight_path_marker(c: &mut Canvas, p: Vec2, caged: bool) {
+    let (h, down) = (Vec2::X, Vec2::Y);
     let r = 9.0;
     c.ring(p, r, PEN, INK);
     c.stroke(p + h * r, p + h * (r + 17.0), PEN, INK);
