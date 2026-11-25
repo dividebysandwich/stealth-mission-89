@@ -724,6 +724,51 @@ def colour_panel():
     print(f"panel: {counts[0]} faces light grey, {counts[1]} bezel black")
 
 
+def even_tones():
+    """The model's dark tones (`DARK_TONES`) are taken from its picture face by face, which
+    shades its flat parts unevenly (the coaming's shoulders round the up-front display a
+    patchwork of black and dark triangles): each flat part (faces joined by their edges in one
+    plane) of mostly a dark tone is all that tone."""
+    slot = {s.material.name: i for i, s in enumerate(shell.material_slots)}
+    tones = {slot[m] for m in DARK_TONES if m in slot}
+    bm = bmesh.new()
+    bm.from_mesh(shell.data)
+    seen, changed = set(), 0
+    for f in bm.faces:
+        if f in seen:
+            continue
+        seen.add(f)
+        part, todo = [f], [f]
+        while todo:
+            g = todo.pop()
+            c = g.calc_center_median()
+            for e in g.edges:
+                for k in e.link_faces:
+                    if (
+                        k not in seen
+                        and k.normal.dot(g.normal) > COPLANAR
+                        and abs((k.calc_center_median() - c).dot(g.normal)) < 0.001
+                    ):
+                        seen.add(k)
+                        part.append(k)
+                        todo.append(k)
+        area = {}
+        for g in part:
+            area[g.material_index] = area.get(g.material_index, 0.0) + g.calc_area()
+        most = max(area, key=area.get)
+        if most not in tones:
+            continue
+        for g in part:
+            if g.material_index in tones and g.material_index != most:
+                g.material_index = most
+                changed += 1
+    bm.to_mesh(shell.data)
+    bm.free()
+    print(f"tones: {changed} faces evened")
+
+
+DARK_TONES = ("black", "dark", "frame")
+even_tones()
 colour_panel()
 # How far off its plane the model can stand under a face (m): what is further out is in front
 # of the panel, not on it (the up-front display stands a good way out of the panel's middle).
