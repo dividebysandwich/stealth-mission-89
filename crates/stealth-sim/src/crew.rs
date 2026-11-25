@@ -136,6 +136,20 @@ pub struct CrewView {
     /// The aircraft's flares, chaff and decoys left (`Sim::stores`), for its crew's panel.
     #[serde(default)]
     pub countermeasures: (i16, i16, i16),
+    /// The aircraft's warning lights, its damage (`dmg` bits), a radar tracking it and its
+    /// stall, for its crew's panel and alarms.
+    #[serde(default)]
+    pub lights: Lights,
+    #[serde(default)]
+    pub damage: u8,
+    #[serde(default)]
+    pub radar_track: bool,
+    #[serde(default)]
+    pub stalled: bool,
+    /// The pilot's Sidewinder (or Sidearm) seeker as it sounds: None silent, else (it sees a
+    /// target, it is locked in range).
+    #[serde(default)]
+    pub seeker: Option<(bool, bool)>,
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
@@ -487,7 +501,28 @@ impl Sim {
                 let n = |i: usize| owner.stores[i].clamp(0, i16::MAX as i32) as i16;
                 (n(1), n(2), n(3))
             },
+            lights: owner.lights,
+            damage: owner.damage,
+            radar_track: owner.tracking != 0,
+            stalled: owner.last_input.stalled,
+            seeker: self.seeker_of(owner),
         })
+    }
+
+    /// Pilot `p`'s Sidewinder seeker as `sound` plays it: Sidewinders selected in the
+    /// air-to-air HUD mode, or Sidearms in the air-to-ground one (seen, locked in range).
+    fn seeker_of(&self, p: &crate::Pilot) -> Option<(bool, bool)> {
+        if p.gun_selected || p.absent || p.eject != 0 {
+            return None;
+        }
+        let w = p.bays.get(p.cur_bay)?.0;
+        let rounds: i32 = p.bays.iter().filter(|b| b.0 == w).map(|b| b.1).sum();
+        let aim9 = self.weapon_types.get(w.max(0) as usize).is_some_and(|t| ir_aam(t.spec as i32));
+        let sidearm = w == SIDEARM_WEAPON;
+        let mode = if sidearm { HudMode::Gnd } else { HudMode::Air };
+        let t = p.targeting;
+        ((aim9 || sidearm) && w >= 0 && rounds > 0 && p.last_input.hud_mode == mode)
+            .then_some((t.lock_valid, t.lock_valid && t.in_range))
     }
 
     /// Campaign: the aircraft of pilot `from` (in the air) goes on with pilot `to` (out of the

@@ -626,3 +626,38 @@ fn the_gunner_releases_the_flares_and_hears_the_cockpit() {
     assert!(heard(0) > 0);
     assert_eq!(heard(1), heard(0));
 }
+
+/// The crew is told of the aircraft's alarms: its lights, damage and stall.
+#[test]
+fn the_crew_sees_the_aircrafts_warnings() {
+    let (mut sim, at) = crewed();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let stalled = PlayerState { stalled: true, ..orbit(at, false) };
+    sim.step_pilots(&[(0, stalled)], 15);
+    let v = sim.crew_view(1).expect("crew view");
+    assert!(v.stalled);
+    assert_eq!(v.lights, sim.crew_view(0).unwrap().lights);
+    assert_eq!(v.seeker, None, "no Sidewinders aboard");
+}
+
+/// The MH-60R's sensor operator, in the cabin, hears none of the pilot's cockpit sounds.
+#[test]
+fn the_seahawks_operator_hears_no_cockpit_sounds() {
+    let (mut sim, at) = crewed();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    let airframe =
+        Airframe { external_stores: true, helicopter: true, seahawk: true, ..Default::default() };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    let mut flares = orbit(at, false);
+    flares.cmd.flare = true;
+    let events = sim.step_pilots(&[(0, flares)], 15);
+    let heard = |k: u8| {
+        events.iter().filter(|e| e.pilot == k && matches!(e.event, SimEvent::Sound { .. })).count()
+    };
+    assert!(heard(0) > 0);
+    assert_eq!(heard(1), 0);
+}

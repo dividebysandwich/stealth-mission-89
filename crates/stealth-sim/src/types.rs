@@ -614,6 +614,9 @@ pub struct PlayerState {
     /// The JAM page (`crate::jamming`): the EA-18G's transmitters and its pods' targets.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jam: Option<crate::jamming::JamInput>,
+    /// The flight model is stalled (the stall horn), for the crew.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub stalled: bool,
     pub cmd: Commands,
 }
 

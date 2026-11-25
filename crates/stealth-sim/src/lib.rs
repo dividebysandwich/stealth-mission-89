@@ -1174,11 +1174,13 @@ impl Sim {
             .map(|(i, event)| PilotEvent { pilot: pilots.get(i).copied().unwrap_or(0), event })
             .collect();
         // Another player in an aircraft's crew hears what its pilot hears: the cockpit's
-        // sounds and the radar warning tones (the owner's private events).
+        // sounds and the radar warning tones (the owner's private events); not the MH-60R's
+        // sensor operator, in the cabin behind.
         if !self.mirror && self.crews().iter().any(|c| c.gunner.is_some()) {
             let shared: Vec<PilotEvent> = out
                 .iter()
                 .filter(|e| matches!(e.event, SimEvent::Sound { .. } | SimEvent::Rwr(_)))
+                .filter(|e| !self.pilot_ref(e.pilot as usize).seahawk)
                 .filter_map(|e| {
                     let g = self.gunner_of(e.pilot).filter(|&g| g != e.pilot)?;
                     Some(PilotEvent { pilot: g, event: e.event.clone() })

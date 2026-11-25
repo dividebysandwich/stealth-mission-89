@@ -739,6 +739,7 @@ fn player_state(
         radar: mfd.modern && mfd.av.radar_emitting(),
         slam: mfd.slam_input(),
         jam: mfd.jam_input(to_bam(h).round() as i32 as u16),
+        stalled: !a.on_ground && a.velocity < a.stall_speed,
         cmd: SimCommands { gun, trigger, ..cmd },
     }
 }
@@ -1660,14 +1661,18 @@ fn publish(
         egr: egr.map_or(0.0, |b| b.length.clamp(0, 99) as f32 / 99.0),
         ear: ear.map_or(0.0, |b| b.length.clamp(0, 99) as f32 / 99.0),
     };
-    let l = sim.lights();
-    let bits = d.bits;
+    // In another's aircraft (his crew): its lights and damage as the crew is told.
+    let me = sim.active_pilot();
+    let (l, bits, radar_track) = match sim.crew_view(me).filter(|v| v.owner != me) {
+        Some(v) => (v.lights, v.damage, v.radar_track),
+        None => (sim.lights(), d.bits, sim.identification().2 != 0),
+    };
     *warnings = Warnings {
         radar_missile: l.rad,
         ir_missile: l.ir,
         tracked: l.trak,
         lock: l.lock,
-        radar_track: sim.identification().2 != 0,
+        radar_track,
         missile_warning: bits & dmg::MW != 0,
         engine: bits & dmg::ENG != 0,
         fire_control: bits & dmg::FC != 0,
@@ -1679,7 +1684,6 @@ fn publish(
         emv_warning: l.emv_warning,
     };
     // In another's aircraft (his gunner): its dispensers as the crew is told.
-    let me = sim.active_pilot();
     let (flares, chaff, decoys) = match sim.crew_view(me).filter(|v| v.owner != me) {
         Some(v) => {
             let (f, c, d) = v.countermeasures;

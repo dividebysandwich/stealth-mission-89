@@ -9,6 +9,9 @@
 //!   requested id with no sample stays silent, so speech can be added later by dropping files in.
 //! - Radar warning tones come from `sounds/rwr/` (ids 100 and up); none at a gunner's console
 //!   (the AC-130's, the MH-60R's sensor station).
+//! - A crew member in another's aircraft hears its pilot's cockpit sounds and radar warning
+//!   tones (the server sends him the pilot's), its stall horn, fire siren and Sidewinder seeker
+//!   (from his `CrewView`); the MH-60R's sensor operator, in the cabin, only its fire siren.
 //! - The cannon (sound 6) holds a loop of its burst while it fires and plays the burst's decay
 //!   when it stops (`cannon_loop.flac`, `cannon_tail.flac`; the AH-64's 30 mm chain gun
 //!   `cannon30_loop.flac`, `cannon30_tail.flac`).
@@ -817,6 +820,26 @@ fn thunder(
 struct ThunderClap;
 
 /// The pilot has ejected.
+/// In another's aircraft (his crew): what the crew is told of it. None in the MH-60R's cabin,
+/// where its sensor operator hears none of the cockpit's alarms but the fire siren
+/// (`fire_siren` takes the view itself).
+fn crew_alarms(
+    combat: Option<&crate::combat::Combat>,
+    manning: Option<&crate::station::Manning>,
+) -> Option<stealth_sim::crew::CrewView> {
+    if manning.is_some_and(|m| m.asw()) {
+        return None;
+    }
+    ridden_view(combat)
+}
+
+/// What a crew member in another's aircraft is told of it (None in his own or alone).
+fn ridden_view(combat: Option<&crate::combat::Combat>) -> Option<stealth_sim::crew::CrewView> {
+    let c = combat?;
+    let me = c.sim.active_pilot();
+    c.sim.crew_view(me).filter(|v| v.owner != me)
+}
+
 fn has_ejected(combat: Option<&crate::combat::Combat>) -> bool {
     combat.is_some_and(|c| c.sim.chute().is_some())
 }
@@ -1006,6 +1029,7 @@ fn flight_sounds(
     mut said_land: Local<bool>,
     mut been_away: Local<bool>,
     settings: Res<crate::settings::Settings>,
+    (combat, manning): (Option<Res<crate::combat::Combat>>, Option<Res<crate::station::Manning>>),
 ) {
     let Ok((a, pos)) = player.single() else { return };
     let helicopter = settings.aircraft.spec().helicopter;
@@ -1030,8 +1054,10 @@ fn flight_sounds(
     if a.on_ground && !was_on_ground && (a.in_landing_corridor || helicopter) {
         out.write(PlaySound { id: 10, priority: 2 });
     }
-    // Stall horn while stalled (repeated every frame).
-    if !a.on_ground && a.velocity < a.stall_speed {
+    // Stall horn while stalled (repeated every frame); in another's aircraft while it is.
+    let crew_stalled =
+        crew_alarms(combat.as_deref(), manning.as_deref()).is_some_and(|v| v.stalled);
+    if (!a.on_ground && a.velocity < a.stall_speed) || crew_stalled {
         out.write(PlaySound { id: 14, priority: 1 });
     }
     // "Cleared for takeoff" about 2 s into the mission; "Cleared to land" once on approach.
@@ -1306,9 +1332,12 @@ fn fire_siren(
     settings: Res<crate::settings::Settings>,
     view: Option<Res<ViewState>>,
 ) {
-    let on_fire = combat
-        .as_deref()
-        .is_some_and(|c| c.sim.damage_effects().bits & stealth_sim::dmg::FIRE != 0);
+    // In another's aircraft (the MH-60R's cabin too): its fire.
+    let ridden = ridden_view(combat.as_deref());
+    let on_fire = combat.as_deref().is_some_and(|c| {
+        let bits = ridden.map_or(c.sim.damage_effects().bits, |v| v.damage);
+        bits & stealth_sim::dmg::FIRE != 0
+    });
     // The master caution silences this fire only.
     if !on_fire && alarms.fire_silenced {
         alarms.fire_silenced = false;
@@ -1316,7 +1345,9 @@ fn fire_siren(
     // Out of the aircraft: ejected, or (campaign) back at the board with the damage of the
     // sortie still on record until the next one.
     let burning = on_fire
-        && combat.as_deref().is_some_and(|c| c.end.is_none() && !c.sim.player_absent())
+        && combat
+            .as_deref()
+            .is_some_and(|c| c.end.is_none() && (!c.sim.player_absent() || ridden.is_some()))
         && !alarms.fire_silenced
         && !has_ejected(combat.as_deref())
         && player.single().is_ok_and(|a| a.ended.is_none())
@@ -1359,33 +1390,42 @@ fn sidewinder_tones(
     mut held: Local<((bool, bool), f32)>,
     settings: Res<crate::settings::Settings>,
     view: Option<Res<ViewState>>,
+    manning: Option<Res<crate::station::Manning>>,
 ) {
     let outside = external(view.as_deref());
-    // None: silent; Some(false): growl; Some(true): lock tone.
-    let state = combat.as_deref().and_then(|c| {
-        let sim = &c.sim;
-        let (groups, cur) = sim.weapon_groups();
-        let (w, rounds) = *groups.get(cur?)?;
-        let aim9 = sim
-            .weapon_types()
-            .get(w.max(0) as usize)
-            .is_some_and(|t| stealth_sim::ir_aam(t.spec as i32));
-        // The Sidearm's seeker in its visual mode growls at the radars as the Sidewinder's at
-        // the aircraft.
-        let sidearm = w == stealth_sim::SIDEARM_WEAPON;
-        let mode = if sidearm { crate::hud::HudMode::Gnd } else { crate::hud::HudMode::Air };
-        let on = (aim9 || sidearm)
-            && rounds > 0
-            && !sim.gun_selected()
-            && hud.mode == mode
-            && c.end.is_none()
-            && !sim.player_absent()
-            && !has_ejected(Some(c))
-            && player.single().is_ok_and(|a| a.ended.is_none())
-            && !outside
-            && level.0 > 0;
-        let t = sim.targeting();
-        on.then_some((t.lock_valid, t.lock_valid && t.in_range))
+    // In another's aircraft: its pilot's seeker, as the crew is told.
+    let crew = manning.as_deref().is_some_and(|m| m.remote_gunner()).then(|| {
+        crew_alarms(combat.as_deref(), manning.as_deref()).and_then(|v| v.seeker).filter(|_| {
+            combat.as_deref().is_some_and(|c| c.end.is_none()) && !outside && level.0 > 0
+        })
+    });
+    // None: silent; else (seen, locked).
+    let state = crew.unwrap_or_else(|| {
+        combat.as_deref().and_then(|c| {
+            let sim = &c.sim;
+            let (groups, cur) = sim.weapon_groups();
+            let (w, rounds) = *groups.get(cur?)?;
+            let aim9 = sim
+                .weapon_types()
+                .get(w.max(0) as usize)
+                .is_some_and(|t| stealth_sim::ir_aam(t.spec as i32));
+            // The Sidearm's seeker in its visual mode growls at the radars as the Sidewinder's at
+            // the aircraft.
+            let sidearm = w == stealth_sim::SIDEARM_WEAPON;
+            let mode = if sidearm { crate::hud::HudMode::Gnd } else { crate::hud::HudMode::Air };
+            let on = (aim9 || sidearm)
+                && rounds > 0
+                && !sim.gun_selected()
+                && hud.mode == mode
+                && c.end.is_none()
+                && !sim.player_absent()
+                && !has_ejected(Some(c))
+                && player.single().is_ok_and(|a| a.ended.is_none())
+                && !outside
+                && level.0 > 0;
+            let t = sim.targeting();
+            on.then_some((t.lock_valid, t.lock_valid && t.in_range))
+        })
     });
     let Some(now) = state else {
         *held = default();
