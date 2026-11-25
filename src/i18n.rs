@@ -68,7 +68,7 @@ pub fn opponents_facts(o: u8) -> &'static [&'static str] {
     tr_lines(&format!("opponents-{}.facts", o.min(3)))
 }
 
-/// The single mission's free flight (no enemy): its facts.
+/// The single mission's free flight (no enemy; a mission type of its own): its facts.
 pub fn free_flight_facts() -> &'static [&'static str] {
     tr_lines("opponents-free.facts")
 }

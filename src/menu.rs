@@ -1320,23 +1320,6 @@ pub(crate) fn opponent_options(ui: &mut egui::Ui, opponents: &mut u8) {
     dropdown(ui, "opponents", opponents, options);
 }
 
-/// The single mission's opponents: the four levels, then free flight (no enemy at all).
-fn single_opponent_options(ui: &mut egui::Ui, opponents: &mut u8, free_flight: &mut bool) {
-    section(ui, t!("section-opponents"));
-    let mut choice = if *free_flight { FREE_FLIGHT } else { *opponents };
-    let options = (0..4)
-        .map(|o| (o, crate::i18n::opponents_name(o), crate::i18n::opponents_facts(o)))
-        .chain([(FREE_FLIGHT, t!("opponents-free"), crate::i18n::free_flight_facts())]);
-    dropdown(ui, "opponents", &mut choice, options);
-    *free_flight = choice == FREE_FLIGHT;
-    if !*free_flight {
-        *opponents = choice;
-    }
-}
-
-/// [`single_opponent_options`]' free flight entry.
-const FREE_FLIGHT: u8 = 4;
-
 pub(crate) fn situation_options(ui: &mut egui::Ui, roe: &mut u8) {
     section(ui, t!("section-situation"));
     let options = (0..3).map(|r| (r, crate::i18n::roe_name(r), crate::i18n::roe_facts(r)));
@@ -1349,11 +1332,18 @@ fn mission_options(ui: &mut egui::Ui, state: &mut MenuState) {
     if !drones && state.kind == MissionKind::DroneDefense {
         state.kind = MissionKind::Air;
     }
+    // The mission kinds, then free flight (no enemy, a route over random places: None).
     let options = KINDS
         .into_iter()
         .filter(|k| *k != MissionKind::DroneDefense || drones)
-        .map(|k| (k, crate::i18n::kind_name(k), crate::i18n::kind_facts(k)));
-    dropdown(ui, "mission", &mut state.kind, options);
+        .map(|k| (Some(k), crate::i18n::kind_name(k), crate::i18n::kind_facts(k)))
+        .chain([(None, t!("opponents-free"), crate::i18n::free_flight_facts())]);
+    let mut choice = (!state.free_flight).then_some(state.kind);
+    dropdown(ui, "mission", &mut choice, options);
+    state.free_flight = choice.is_none();
+    if let Some(k) = choice {
+        state.kind = k;
+    }
 }
 
 /// The moon's phase (with the time of day switch on).
@@ -2031,11 +2021,10 @@ pub(crate) fn menu_ui(
                             theater_options(ui, &mut state.theater, theaters);
                             situation_options(ui, &mut state.roe);
                             let state = &mut *state;
-                            single_opponent_options(
-                                ui,
-                                &mut state.opponents,
-                                &mut state.free_flight,
-                            );
+                            // A free flight has no enemy to choose.
+                            ui.add_enabled_ui(!state.free_flight, |ui| {
+                                opponent_options(ui, &mut state.opponents);
+                            });
                             mission_options(ui, state);
                         });
                     });
@@ -2319,11 +2308,19 @@ fn mission_summary(ui: &mut egui::Ui, state: &MenuState, m: &Mission) {
     let rows = [
         (t!("summary-theater"), crate::i18n::theater_name(state.theater).to_string(), GREEN),
         (t!("summary-situation"), crate::i18n::roe_name(state.roe).to_string(), GREEN),
-        (t!("summary-mission"), crate::i18n::kind_name(state.kind).to_string(), GREEN),
+        (
+            t!("summary-mission"),
+            if m.settings.free_flight {
+                t!("opponents-free").to_string()
+            } else {
+                crate::i18n::kind_name(state.kind).to_string()
+            },
+            GREEN,
+        ),
         (
             t!("summary-opponents"),
             if m.settings.free_flight {
-                t!("opponents-free").to_string()
+                "\u{2014}".to_string()
             } else {
                 crate::i18n::opponents_name(state.opponents).to_string()
             },
