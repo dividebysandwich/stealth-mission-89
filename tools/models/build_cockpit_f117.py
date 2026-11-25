@@ -368,8 +368,14 @@ BOXED = [
     ((-1505.0, 220.0, -1255.0, 430.0), 0.35),
 ]
 CASE_REACH = 35.0
+# The pods on the left wing are made all alike: as wide round their faces (layout mm) as
+# POD_RIM (BOXED's index, the face's rect).
+POD_RIM = 7.0
+SIZED = {}
 for r in [f["rect"] for f in layout["faces"] if f["round"] and f["key"] not in FLUSH] + [layout["screens"]["adi"], TAPES]:
     x, y, w, h = r
+    if section(x) == -1:
+        SIZED[len(BOXED)] = r
     BOXED.append(((x - CASE_REACH, y - CASE_REACH, x + w + CASE_REACH, y + h + CASE_REACH), 0.2))
 # A box is at least this thick (m): a pod that is only its face.
 BOX_MIN = 0.003
@@ -417,10 +423,10 @@ def hull(vs, sec):
     return half(pts) + half(pts[::-1])
 
 
-def boxify(part, sec):
+def boxify(part, sec, face=None):
     """The box a part makes (a unit cube's matrix) and its material: turned as its largest
-    face, across as its part of the panel, over the part's extent; in its material with the
-    most area."""
+    face, across as its part of the panel, over the part's extent (across and up, over a
+    face's rect and POD_RIM round it instead); in its material with the most area."""
     o, h, n, up = SECTIONS[sec]
     fronts = [f for f in part if abs(f.normal.dot(n)) > 0.7]
     big = max(fronts, key=lambda f: f.calc_area()) if fronts else None
@@ -433,6 +439,11 @@ def boxify(part, sec):
     vs = [v.co.copy() for v in {v for f in part for v in f.verts}]
     lo = [min(v.dot(a) for v in vs) for a in axes]
     hi = [max(v.dot(a) for v in vs) for a in axes]
+    if face is not None:
+        x, y, w, h = face
+        corners = [point(u, v) for u in (x - POD_RIM, x + w + POD_RIM) for v in (y - POD_RIM, y + h + POD_RIM)]
+        for i in (0, 2):
+            lo[i], hi[i] = min(c.dot(axes[i]) for c in corners), max(c.dot(axes[i]) for c in corners)
     centre = sum(((l + u) / 2 * a for l, u, a in zip(lo, hi, axes)), Vector())
     rot = Matrix((across, -normal, upward)).transposed().to_4x4()
     m = Matrix.Translation(centre) @ rot @ Matrix.Diagonal((*(max(u - l, BOX_MIN) for l, u in zip(lo, hi)), 1.0))
@@ -493,7 +504,7 @@ def clear():
                 continue
             gone += part
             break
-    blocks = [boxify(plates_of[k][1], section(BOXED[k][0][0])) for k in sorted(plates_of)]
+    blocks = [boxify(plates_of[k][1], section(BOXED[k][0][0]), SIZED.get(k)) for k in sorted(plates_of)]
     bmesh.ops.delete(bm, geom=gone, context="FACES")
     for m, mat in blocks:
         made = bmesh.ops.create_cube(bm, size=1.0, matrix=m)
