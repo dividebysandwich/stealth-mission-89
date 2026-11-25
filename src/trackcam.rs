@@ -197,10 +197,7 @@ pub(crate) fn update_camera(
         // camera), the ground ahead of it.
         let flat = Vec3::new(eo.dir.x, 0.0, eo.dir.z).normalize_or_zero().as_dvec3();
         let site = eo.target.or_else(|| (!eo.idle).then(|| eo.eye + flat * CONSOLE_AHEAD));
-        if sites.pod != site {
-            sites.pod = site;
-        }
-        return;
+        return stream_footprint(&mut sites, site, pos.0, tf.rotation, &proj);
     }
     let ac = player.single().ok();
     let want = mfd.camera_shown() && view.view == View::Cockpit && combat.is_some() && ac.is_some();
@@ -213,14 +210,15 @@ pub(crate) fn update_camera(
     }
     // The ground looked at is streamed in like around the aircraft, so far-away targets show up.
     let mut look = None;
-    let site = |sites: &mut crate::world::StreamSites, p: Option<bevy::math::DVec3>| {
-        if sites.pod != p {
-            sites.pod = p;
+    // Nothing looked at: nothing streamed for the camera.
+    let unsite = |sites: &mut crate::world::StreamSites| {
+        if !sites.pod.is_empty() {
+            sites.pod.clear();
         }
     };
-    let (Some(combat), Some((a, apos))) = (combat, ac) else { return site(&mut sites, None) };
+    let (Some(combat), Some((a, apos))) = (combat, ac) else { return unsite(&mut sites) };
     if !want {
-        return site(&mut sites, None);
+        return unsite(&mut sites);
     }
     // A SLAM-ER's seeker: the camera rides the missile, looking along its nose, wings level.
     if let Some(r) = mfd.av.slam.picture().filter(|_| mfd.slam_picture())
@@ -239,7 +237,7 @@ pub(crate) fn update_camera(
         aim(&mut tf, &mut pos, &mut proj, dir, None, at, zoom, false);
         // The ground ahead of it streamed in in detail.
         let ahead = at + dir.as_dvec3() * r.range_m.map_or(CONSOLE_AHEAD, |m| m as f64);
-        return site(&mut sites, Some(ahead));
+        return stream_footprint(&mut sites, Some(ahead), pos.0, tf.rotation, &proj);
     }
     // The camera looks from the mast-mounted sight above the rotor where there is one.
     let eye = apos.0 + (a.orientation * settings.aircraft.spec().pod_origin()).as_dvec3();
@@ -265,7 +263,7 @@ pub(crate) fn update_camera(
                     focus: Some(wu_point(eye + v.dir.as_dvec3() * v.range_m as f64)),
                     ..default()
                 };
-                return site(&mut sites, None);
+                return unsite(&mut sites);
             }
             None => info.name = ["ILS".into(), "NO APPROACH".into()],
         }
@@ -303,7 +301,7 @@ pub(crate) fn update_camera(
             ..default()
         };
         aim(&mut tf, &mut pos, &mut proj, dir, None, eye, zoom, false);
-        return site(&mut sites, mfd.av.tgp.los_ground);
+        return stream_footprint(&mut sites, mfd.av.tgp.los_ground, pos.0, tf.rotation, &proj);
     }
     let sim = &combat.sim;
     let t = sim.targeting();
@@ -345,7 +343,80 @@ pub(crate) fn update_camera(
     // Only a target (or the runway on approach) is what the picture shows; bare terrain is not.
     info.focus = target.map(wu_point);
     aim(&mut tf, &mut pos, &mut proj, dir, None, eye, info.zoom.saturating_sub(1), false);
-    site(&mut sites, look);
+    stream_footprint(&mut sites, look, pos.0, tf.rotation, &proj);
+}
+
+/// Spacing of the stream sites over the picture's ground (metres): a site streams the
+/// ground within `scenery::SITE_RADIUS` of it, so sites at the centres of cells this size cover
+/// the cells whole.
+const FOOTPRINT_CELL: f64 = 2000.0;
+/// At most this many sites over the picture (the nearest to the point looked at).
+const FOOTPRINT_SITES: usize = 32;
+/// Rays cast across and down the picture to find the ground it shows.
+const FOOTPRINT_RAYS: (i32, i32) = (5, 48);
+
+/// Streams the ground the camera at `eye` (turned by `rot`, with `proj`) shows round the
+/// point it looks at (`aim`; None: nothing). At a shallow angle the zoomed picture spans many
+/// kilometres of ground along its line of sight, so not just the point but the ground the
+/// whole picture covers is streamed: at the centres of the `FOOTPRINT_CELL` cells it shows.
+fn stream_footprint(
+    sites: &mut crate::world::StreamSites,
+    aim: Option<bevy::math::DVec3>,
+    eye: bevy::math::DVec3,
+    rot: Quat,
+    proj: &Projection,
+) {
+    use bevy::math::{DVec2, DVec3};
+    let want = match (aim, proj) {
+        (Some(aim), Projection::Perspective(p)) => {
+            let tan_h = (p.fov * 0.5).tan() as f64;
+            let tan_w = tan_h * p.aspect_ratio as f64;
+            let (fwd, right, up) = (
+                (rot * Vec3::NEG_Z).as_dvec3(),
+                (rot * Vec3::X).as_dvec3(),
+                (rot * Vec3::Y).as_dvec3(),
+            );
+            // The ground as the plane through the point looked at; not much past it.
+            let range = (aim - eye).length();
+            let max = range * 1.5 + FOOTPRINT_CELL;
+            let cell = |p: DVec3| (DVec2::new(p.x, p.z) / FOOTPRINT_CELL).floor();
+            let mut cells = vec![cell(aim)];
+            let (nx, ny) = FOOTPRINT_RAYS;
+            for j in 0..ny {
+                let v = (j as f64 / (ny - 1) as f64) * 2.0 - 1.0;
+                for i in 0..nx {
+                    let u = (i as f64 / (nx - 1) as f64) * 2.0 - 1.0;
+                    let d = fwd + right * (u * tan_w) + up * (v * tan_h);
+                    if d.y > -1e-6 {
+                        continue;
+                    }
+                    let t = (aim.y - eye.y) / d.y;
+                    let hit = eye + d * t;
+                    if t > 0.0 && (hit - eye).length() <= max {
+                        let c = cell(hit);
+                        if !cells.contains(&c) {
+                            cells.push(c);
+                        }
+                    }
+                }
+            }
+            let centre = |c: DVec2| {
+                let m = (c + 0.5) * FOOTPRINT_CELL;
+                DVec3::new(m.x, aim.y, m.y)
+            };
+            // The point itself first, then the cells nearest to it (its own among them).
+            let mut sites: Vec<DVec3> = cells.iter().map(|&c| centre(c)).collect();
+            sites.sort_by(|a, b| a.distance(aim).total_cmp(&b.distance(aim)));
+            sites.truncate(FOOTPRINT_SITES - 1);
+            sites.insert(0, aim);
+            sites
+        }
+        (Some(aim), _) => vec![aim],
+        (None, _) => Vec::new(),
+    };
+    if sites.pod != want {
+        sites.pod = want;
+    }
 }
 
 /// A point in Bevy metres as world units east and north.

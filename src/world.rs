@@ -547,8 +547,9 @@ pub struct StreamSites {
     pub points: Vec<DVec3>,
     /// A unit watched from close by (the campaign's unit view), streamed while watched.
     pub follow: Option<DVec3>,
-    /// The ground point the tracking camera (targeting pod) looks at, streamed while it does.
-    pub pod: Option<DVec3>,
+    /// The ground point the tracking camera (targeting pod) looks at and the ground round it
+    /// its picture shows, streamed while it does (`trackcam::stream_footprint`).
+    pub pod: Vec<DVec3>,
     /// The free view's camera (`camera::FreeView`) while it is out: the world streams round it
     /// as round the anchor, and round the anchor as round a site.
     pub view: Option<DVec3>,
