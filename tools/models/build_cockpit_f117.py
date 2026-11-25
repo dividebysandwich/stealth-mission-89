@@ -569,7 +569,7 @@ surface = clear()
 # dark grey. The panel's face (what lies flat in its part's plane, up to PANEL_FACE m out of
 # it) is made light grey (`panel_light`); the displays' bezels standing further out
 # (BEZEL_FACE) and the round instruments' pods (`BOXED` but its first two) standing more
-# than POD_FACE m out black, as the engine and fuel instruments' plates (SUNK_PLATES).
+# than POD_FACE m out black, as the plates and pods in SUNK_PLATES.
 PANEL_FACE = (-0.012, 0.045)
 BEZEL_FACE = (0.045, 0.08)
 POD_FACE = 0.015
@@ -619,6 +619,8 @@ SUNK_PLATES += [around((key,), CASE_REACH) for key in LEFT_DIALS] + [
     (x - CASE_REACH, y - CASE_REACH, x + w + CASE_REACH, y + h + CASE_REACH)
     for x, y, w, h in (layout["screens"]["adi"], TAPES)
 ]
+# The plate under the left display that the flaps, brake, auto and bay buttons stand on.
+SUNK_PLATES.append(around(("Button(Flaps", "Button(Brake", "Button(Auto", "Button(Bay")))
 
 
 def colour_panel():
