@@ -100,6 +100,7 @@ impl Sim {
         }
         self.pl.select_req = false;
         self.nearest_target(ps);
+        self.shrike_radar();
         self.designate();
         self.lock_oval(ps);
         self.update_helmet_seeker(ps);
@@ -625,6 +626,55 @@ impl Sim {
     /// in the circle, through the moments it falls silent, and loses it when it leaves. A lock
     /// made on purpose (the HARM display, the HSD) it looks at instead. The oval as for the
     /// Sidewinder: the radar within twice the LOCK oval's reach, red (the tone) within it.
+    /// The Shrike selected: its seeker takes the nearest radar on the air ahead by itself (no
+    /// target key needed), and keeps it while it transmits. A lock held on purpose on another
+    /// radar stays; one cleared (`Commands::clear_target`) stays cleared.
+    fn shrike_radar(&mut self) {
+        let (w, count) = self.selected_weapon();
+        if w != SHRIKE_WEAPON
+            || count <= 0
+            || self.pl.gun_selected
+            || self.pl.hud_mode == HudMode::Air
+            || self.pl.external_view
+        {
+            return;
+        }
+        let radar = |i: usize| {
+            self.objects.get(i).is_some_and(|o| {
+                o.unit_type != 0
+                    && i < self.ground_units
+                    && o.flags & (oflags::DESTROYED | oflags::FRIENDLY | oflags::NEUTRAL) == 0
+            }) && !self.site_silent(i)
+        };
+        let current = self.valid_gnd();
+        if current.is_some_and(radar) || (self.pl.target_hold && current.is_none()) {
+            return;
+        }
+        if self.pl.target_hold && current.is_some_and(|g| self.objects[g].unit_type != 0) {
+            return;
+        }
+        let reach = 2.0 * crate::dlz::GROUND_LOCK * self.missile(SHRIKE_SPEC).lock_range as f64;
+        let (mx, my, alt) = (self.pl.p.mx, self.pl.p.my, self.pl.p.alt);
+        let heading = self.pl.p.heading;
+        let nearest = (0..self.ground_units)
+            .filter(|&i| radar(i))
+            .filter_map(|i| {
+                let o = self.objects[i];
+                let (r, b) = self.range_bearing(o.x, o.y);
+                ((r as f64) < reach
+                    && abs16(s16(b - heading)) < 0x2000
+                    && self.sight_from_ground(o.x, o.y, (mx, my, alt)))
+                .then_some((i, r))
+            })
+            .min_by_key(|&(_, r)| r);
+        if let Some((i, _)) = nearest {
+            self.pl.gnd_lock = i as i32;
+            self.pl.nearest_req = 0;
+            self.pl.targeting.target_killed = false;
+            self.pl.pflags &= !pflags::DESIGNATE;
+        }
+    }
+
     fn update_sidearm_seeker(&mut self, ps: &PlayerState) {
         let (w, count) = self.selected_weapon();
         if w != SIDEARM_WEAPON

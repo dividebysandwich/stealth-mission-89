@@ -5333,6 +5333,48 @@ fn sidearm_locks_the_radar_it_looks_at() {
     }
 }
 
+/// The Shrike selected, its seeker takes the nearest emitting radar ahead by itself (no target
+/// key pressed), and a Shrike fired then destroys it.
+#[test]
+fn shrike_takes_the_nearest_radar_by_itself() {
+    use stealth_sim::SHRIKE_WEAPON;
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let mut sim = Sim::with_options(&d.sim, &m, SimOptions::default());
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_training(true);
+    sim.set_loadout(&[(SHRIKE_WEAPON, 2)]);
+    let (near, far) = (5, 6);
+    place_site(&mut sim, far, 1, mx + 700, my - 700);
+    place_site(&mut sim, near, 1, mx + 566, my - 566);
+    let mut p = player_at(mx, my, 3000, 0x2000, 450);
+    p.hud_mode = HudMode::Gnd;
+    p.cmd.toggle_bay = true;
+    for _ in 0..4 {
+        sim.step(&p, 15);
+        p.cmd = Commands::default();
+    }
+    // Nose down onto the sites until the oval locks: no target key pressed.
+    let locked = (0..96).map(|k| -k * 64).any(|pitch| {
+        p.pitch = pitch as i16;
+        let angle = pitch as f64 * std::f64::consts::TAU / 65536.0;
+        p.climb_rate = (450.0 * 27.0 / 16.0 * angle.sin()).round() as i32;
+        sim.step(&p, 15);
+        let tg = sim.targeting();
+        tg.ground == Some(near) && tg.lock_valid
+    });
+    assert!(locked, "locked: {:?}", sim.targeting().ground);
+    p.cmd.fire = true;
+    let mut destroyed = false;
+    for _ in 0..15 * 120 {
+        for e in sim.step(&p, 15) {
+            destroyed |= matches!(e, SimEvent::GroundDestroyed { object, .. } if object == near);
+        }
+        p.cmd = Commands::default();
+    }
+    assert!(destroyed);
+}
+
 /// Bomb `w` dropped from a hover over the primary target of strike mission `m`, a truck
 /// `north` map units north of it: whether the target and the truck were destroyed.
 fn heavy_bomb(m: &Mission, w: i32, north: i32) -> (bool, bool) {
