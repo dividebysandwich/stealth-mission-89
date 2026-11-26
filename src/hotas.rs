@@ -108,6 +108,25 @@ impl AxisControl {
         AxisControl::ViewZoom,
     ];
 
+    /// The two actions buttons work the control with instead of an axis, in the order the
+    /// axis's row binds them (a hat: the direction pressed the first, the other the second).
+    pub fn buttons(self) -> (Action, Action) {
+        use Action as A;
+        match self {
+            AxisControl::Roll => (A::RollLeft, A::RollRight),
+            AxisControl::Pitch => (A::PitchDown, A::PitchUp),
+            AxisControl::Yaw => (A::YawLeft, A::YawRight),
+            AxisControl::Throttle => (A::ThrottleUp, A::ThrottleDown),
+            AxisControl::Nozzle => (A::NozzleDown, A::NozzleAft),
+            AxisControl::SlewX => (A::SlewLeft, A::SlewRight),
+            AxisControl::SlewY => (A::SlewUp, A::SlewDown),
+            AxisControl::TgpZoom => (A::CameraZoomIn, A::CameraZoomOut),
+            AxisControl::LookX => (A::PanLeft, A::PanRight),
+            AxisControl::LookY => (A::PanUp, A::PanDown),
+            AxisControl::ViewZoom => (A::ViewZoomIn, A::ViewZoomOut),
+        }
+    }
+
     /// The axis's name in the player's language.
     pub fn name(self) -> &'static str {
         stealth_i18n::t!(match self {
@@ -143,6 +162,15 @@ pub enum Source {
 }
 
 impl Source {
+    /// The other direction of an axis used as a button (a hat's); None for a button.
+    pub fn opposite(self) -> Option<Source> {
+        match self {
+            Source::Button(_) => None,
+            Source::AxisPositive(c) => Some(Source::AxisNegative(c)),
+            Source::AxisNegative(c) => Some(Source::AxisPositive(c)),
+        }
+    }
+
     pub fn label(self) -> String {
         match self {
             Source::Button(c) => stealth_i18n::t!("input-button", n = c & 0xffff),

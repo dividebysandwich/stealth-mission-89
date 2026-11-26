@@ -168,6 +168,9 @@ struct Capture {
     past: HashMap<AxisId, (f64, bool)>,
     /// Axes that just turned out jittery (`NOISY_SPIKES`), to tell the player.
     ignored: Vec<AxisId>,
+    /// The second button of an axis row's pair (`AxisControl::buttons`) being bound: the row,
+    /// and the mapping before its first (what UNDO puts back).
+    pair: Option<(AxisControl, InputConfig)>,
 }
 
 impl Capture {
@@ -178,6 +181,7 @@ impl Capture {
             buttons: HashSet::new(),
             past: HashMap::new(),
             ignored: Vec::new(),
+            pair: None,
         };
         for d in devices {
             c.axes.extend(d.axes.iter().map(|(code, v)| ((d.key.clone(), *code), *v)));
@@ -188,7 +192,8 @@ impl Capture {
 
     /// The first input that moved since the capture started, at `now` (seconds): a button as
     /// soon as pressed, an axis once held past half way for `AXIS_HOLD_S`. `spikes` counts each
-    /// axis's shorter excursions; one with `NOISY_SPIKES` of them is left out.
+    /// axis's shorter excursions; one with `NOISY_SPIKES` of them is left out. An axis's row
+    /// takes a digital button or a hat direction too (as its pair of buttons).
     fn poll<'a>(
         &mut self,
         devices: impl IntoIterator<Item = &'a Device>,
@@ -200,9 +205,13 @@ impl Capture {
             // Buttons held at the start count again once released.
             self.buttons.retain(|(n, c)| *n != d.key || d.buttons.contains(c));
             for &code in &d.buttons {
-                if matches!(self.what, Binding::Button(_))
-                    && !self.buttons.contains(&(d.key.clone(), code))
-                {
+                // An analog trigger binds to an axis's row as the axis.
+                let takes = match self.what {
+                    Binding::Button(_) => true,
+                    Binding::Axis(_) => !d.button_axes.contains(&code),
+                    Binding::Key(_) => false,
+                };
+                if takes && !self.buttons.contains(&(d.key.clone(), code)) {
                     found = found.or(Some((d.key.clone(), Found::Button(Source::Button(code)))));
                 }
             }
@@ -239,12 +248,16 @@ impl Capture {
                     (None, None) => false,
                 };
                 if held {
+                    let hat = crate::hotas_profiles::is_hat(code);
                     let input = match self.what {
-                        Binding::Axis(_) => Found::Axis(code),
-                        Binding::Button(_) if v > 0.5 => Found::Button(Source::AxisPositive(code)),
-                        Binding::Button(_) if v < -0.5 => Found::Button(Source::AxisNegative(code)),
-                        Binding::Button(_) => continue,
-                        Binding::Key(_) => continue,
+                        Binding::Axis(_) if !hat => Found::Axis(code),
+                        Binding::Axis(_) | Binding::Button(_) if v > 0.5 => {
+                            Found::Button(Source::AxisPositive(code))
+                        }
+                        Binding::Axis(_) | Binding::Button(_) if v < -0.5 => {
+                            Found::Button(Source::AxisNegative(code))
+                        }
+                        _ => continue,
                     };
                     found = found.or(Some((d.key.clone(), input)));
                 }
@@ -329,15 +342,64 @@ mod tests {
         }
     }
 
+    /// An axis's row binds an analog trigger as the axis, even pulled all the way at once, and a
+    /// digital button as the first of its pair of buttons.
     #[test]
-    fn axis_capture_accepts_triggers_but_not_digital_buttons() {
+    fn axis_capture_takes_triggers_as_axes_and_buttons_as_a_pair() {
         let mut d = Device::default();
         d.button_changed(2, 0.0, true);
         let mut capture = Capture::new(Binding::Axis(AxisControl::Throttle), [&d]);
-        d.button_changed(10, 1.0, false);
-        assert!(poll_held(&mut capture, &d).is_none());
-        d.button_changed(2, 0.5, true);
+        d.button_changed(2, 1.0, true);
         assert!(matches!(poll_held(&mut capture, &d), Some((_, Found::Axis(2)))));
+        let mut capture = Capture::new(Binding::Axis(AxisControl::TgpZoom), [&d]);
+        d.button_changed(10, 1.0, false);
+        assert!(matches!(
+            poll(&mut capture, &d, 0.0),
+            Some((_, Found::Button(Source::Button(10))))
+        ));
+    }
+
+    /// A button pressed on the TGP zoom's row takes over from the (jittery) axis bound there
+    /// as zoom in, the next button pressed as zoom out; UNDO puts the axis back.
+    #[test]
+    fn axis_row_binds_a_pair_of_buttons() {
+        let mut config = InputConfig::default();
+        config.bind_axis(AxisControl::TgpZoom, "Throttle".into(), 7);
+        let original = config.clone();
+        let hotas = Hotas::empty();
+        let mut d = Device::default();
+        d.key = "Throttle".into();
+        let mut cap = Capture::new(Binding::Axis(AxisControl::TgpZoom), [&d]);
+        let made =
+            bind_found(&mut config, &hotas, &mut cap, "Throttle", Found::Button(Source::Button(3)));
+        let zoom_in = ButtonTarget::Action(Action::CameraZoomIn);
+        let zoom_out = ButtonTarget::Action(Action::CameraZoomOut);
+        assert!(made.what == Binding::Button(zoom_in));
+        assert!(config.axes.iter().all(|m| m.control != AxisControl::TgpZoom));
+        assert_eq!(config.button(zoom_in).map(|m| m.source), Some(Source::Button(3)));
+        let mut cap = made.next.expect("the second button");
+        assert!(cap.what == Binding::Button(zoom_out));
+        let made =
+            bind_found(&mut config, &hotas, &mut cap, "Throttle", Found::Button(Source::Button(4)));
+        assert!(made.next.is_none());
+        assert_eq!(config.button(zoom_out).map(|m| m.source), Some(Source::Button(4)));
+        assert_eq!(made.before, original);
+    }
+
+    /// A hat pushed on an axis's row binds as buttons (both its directions), not as an axis.
+    #[test]
+    fn hat_on_an_axis_row_binds_buttons() {
+        use crate::hotas_profiles::{Dir, In, PLATFORM};
+        let Some(Source::AxisNegative(code)) = PLATFORM.and_then(|p| p.source(In::Hat(0, Dir::Up)))
+        else {
+            return;
+        };
+        let mut d = Device::default();
+        d.axes.insert(code, 0.0);
+        let mut capture = Capture::new(Binding::Axis(AxisControl::ViewZoom), [&d]);
+        d.axes.insert(code, -1.0);
+        let found = poll_held(&mut capture, &d);
+        assert!(matches!(found, Some((_, Found::Button(Source::AxisNegative(c)))) if c == code));
     }
 
     #[test]
@@ -433,6 +495,81 @@ fn losing(config: &InputConfig, hotas: &Hotas, what: Binding, input: Taking) -> 
     };
     names.dedup();
     names
+}
+
+/// Takes the axis away from an axis's row (the built-in layout's too), as its pair of buttons
+/// takes over.
+fn clear_axis(config: &mut InputConfig, hotas: &Hotas, control: AxisControl) {
+    let builtin = hotas.default_axis(config, control).is_some();
+    config.axes.retain(|m| m.control != control);
+    if builtin && !config.cleared_defaults.contains(&Slot::Axis(control)) {
+        config.cleared_defaults.push(Slot::Axis(control));
+    }
+}
+
+/// A binding made from a capture's input: what it bound (for the status), the input's label,
+/// what lost the input, the mapping before (UNDO's), and the capture to go on with (an axis
+/// row's second button).
+struct Made {
+    what: Binding,
+    label: String,
+    lost: Vec<String>,
+    before: InputConfig,
+    next: Option<Capture>,
+}
+
+/// Binds the input a capture found on `device`.
+fn bind_found(
+    config: &mut InputConfig,
+    hotas: &Hotas,
+    cap: &mut Capture,
+    device: &str,
+    input: Found,
+) -> Made {
+    let what = cap.what;
+    let mut next = None;
+    let before = cap.pair.take().map_or_else(|| config.clone(), |(_, before)| before);
+    let (what, label, lost) = match (what, input) {
+        (Binding::Axis(control), Found::Axis(code)) => {
+            let lost = losing(config, hotas, what, Taking::Axis(device, code));
+            config.bind_axis(control, device.to_string(), code);
+            (what, t!("input-axis", n = code & 0xffff).to_string(), lost)
+        }
+        // A button on an axis's row: the first of its pair, instead of the axis; a hat's
+        // other direction the second, else the next button pressed.
+        (Binding::Axis(control), Found::Button(source)) => {
+            let (first, second) = control.buttons();
+            let (first, second) = (ButtonTarget::Action(first), ButtonTarget::Action(second));
+            let mut lost =
+                losing(config, hotas, Binding::Button(first), Taking::Button(device, source));
+            clear_axis(config, hotas, control);
+            config.bind_button(first, device.to_string(), source);
+            let shown = match source.opposite() {
+                Some(other) => {
+                    let taking = Taking::Button(device, other);
+                    lost.extend(losing(config, hotas, Binding::Button(second), taking));
+                    config.bind_button(second, device.to_string(), other);
+                    (what, format!("{} / {}", source.label(), other.label()))
+                }
+                None => {
+                    let mut cap = Capture::new(Binding::Button(second), hotas.devices());
+                    cap.pair = Some((control, before.clone()));
+                    next = Some(cap);
+                    (Binding::Button(first), source.label())
+                }
+            };
+            let pair = [Binding::Key(first).name(), Binding::Key(second).name()];
+            lost.retain(|l| !pair.contains(l));
+            (shown.0, shown.1, lost)
+        }
+        (Binding::Button(target), Found::Button(source)) => {
+            let lost = losing(config, hotas, what, Taking::Button(device, source));
+            config.bind_button(target, device.to_string(), source);
+            (what, source.label(), lost)
+        }
+        _ => unreachable!("capture only reports inputs of its binding's kind"),
+    };
+    Made { what, label, lost, before, next }
 }
 
 /// "Device: Axis 1", the device name shortened but its ids and number kept.
@@ -636,24 +773,10 @@ pub fn show(
             }
             found
         } {
-            let what = cap.what;
-            let before = config.clone();
-            let (label, lost) = match (what, input) {
-                (Binding::Axis(control), Found::Axis(code)) => {
-                    let lost = losing(config, hotas, what, Taking::Axis(&device, code));
-                    config.bind_axis(control, device.clone(), code);
-                    (t!("input-axis", n = code & 0xffff), lost)
-                }
-                (Binding::Button(target), Found::Button(source)) => {
-                    let lost = losing(config, hotas, what, Taking::Button(&device, source));
-                    config.bind_button(target, device.clone(), source);
-                    (source.label(), lost)
-                }
-                _ => unreachable!("capture only reports inputs of its binding's kind"),
-            };
-            dialog.undo = Some((before, config.clone()));
-            dialog.bound(what, &binding_label(&device, &label), lost);
-            dialog.capture = None;
+            let made = bind_found(config, hotas, cap, &device, input);
+            dialog.undo = Some((made.before, config.clone()));
+            dialog.bound(made.what, &binding_label(&device, &made.label), made.lost);
+            dialog.capture = made.next;
         }
         // Keep polling while nothing else redraws the window.
         ctx.request_repaint();
@@ -793,39 +916,99 @@ pub fn show(
                         for &control in &axes {
                             let what = Binding::Axis(control);
                             ui.label(control.name());
-                            let capturing = dialog.capture.as_ref().is_some_and(|c| c.what == what);
+                            let (first, second) = control.buttons();
+                            let pair = [ButtonTarget::Action(first), ButtonTarget::Action(second)];
+                            // Waiting for an axis or the first button, or for the second.
+                            let prompt = match &dialog.capture {
+                                Some(c) if c.what == what => Some(t!(
+                                    "input-axis-or-button",
+                                    action = action_name(first).to_uppercase()
+                                )),
+                                Some(Capture { pair: Some((row, _)), .. }) if *row == control => {
+                                    Some(t!(
+                                        "input-button-for",
+                                        action = action_name(second).to_uppercase()
+                                    ))
+                                }
+                                _ => None,
+                            };
+                            let capturing = prompt.is_some();
                             let builtin = hotas.default_axis(config, control).cloned();
+                            let axis = config.axes.iter().any(|m| m.control == control)
+                                || builtin.is_some();
+                            // The pair of buttons, shown while no axis is bound.
+                            let buttons = pair.map(|t| {
+                                config.button(t).map(|m| (m.clone(), false)).or_else(|| {
+                                    hotas.default_button(config, t).map(|m| (m.clone(), true))
+                                })
+                            });
                             let mapping = config.axes.iter_mut().find(|m| m.control == control);
-                            match (mapping, builtin) {
-                                (Some(m), _) => axis_cells(ui, m, hotas, false),
+                            match (prompt, mapping, builtin) {
+                                (Some(prompt), _, _) => {
+                                    ui.label(egui::RichText::new(prompt).color(DIM));
+                                    ui.label("");
+                                    ui.label("");
+                                    ui.label("");
+                                }
+                                (None, Some(m), _) => axis_cells(ui, m, hotas, false),
                                 // The built-in layout's: changing its invert or dead zone makes
                                 // it the player's.
-                                (None, Some(mut m)) => {
+                                (None, None, Some(mut m)) => {
                                     let before = m.clone();
                                     axis_cells(ui, &mut m, hotas, true);
                                     if m != before {
                                         config.axes.push(m);
                                     }
                                 }
-                                (None, None) => {
-                                    ui.label(
-                                        egui::RichText::new(if capturing {
-                                            t!("input-move-axis")
-                                        } else {
-                                            "-"
-                                        })
-                                        .color(DIM),
-                                    );
+                                (None, None, None) => {
+                                    let bound: Vec<&(crate::hotas::ButtonMapping, bool)> =
+                                        buttons.iter().flatten().collect();
+                                    match bound.first() {
+                                        Some((m, _)) => {
+                                            let text = buttons
+                                                .iter()
+                                                .map(|b| {
+                                                    b.as_ref().map_or("-".to_string(), |(m, _)| {
+                                                        m.source.label()
+                                                    })
+                                                })
+                                                .collect::<Vec<_>>()
+                                                .join(" / ");
+                                            let builtin = bound.iter().all(|(_, b)| *b);
+                                            binding_cell(ui, &m.device, &text, builtin)
+                                                .on_hover_text(format!(
+                                                    "{} / {}",
+                                                    action_name(first),
+                                                    action_name(second)
+                                                ));
+                                        }
+                                        None => {
+                                            ui.label(egui::RichText::new("-").color(DIM));
+                                        }
+                                    }
                                     ui.label("");
                                     ui.label("");
                                     ui.label("");
                                 }
                             }
+                            // CLEAR takes what the row shows: the axis, else its buttons.
                             row_buttons(ui, what, capturing, &mut start, || {
                                 if config.axes.iter().any(|m| m.control == control) {
                                     config.axes.retain(|m| m.control != control);
-                                } else {
+                                } else if axis {
                                     config.cleared_defaults.push(Slot::Axis(control));
+                                } else {
+                                    for (t, b) in pair.into_iter().zip(&buttons) {
+                                        match b {
+                                            Some((_, false)) => {
+                                                config.buttons.retain(|m| m.target != t)
+                                            }
+                                            Some((_, true)) => {
+                                                config.cleared_defaults.push(Slot::Button(t))
+                                            }
+                                            None => {}
+                                        }
+                                    }
                                 }
                             });
                             ui.end_row();

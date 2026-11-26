@@ -84,6 +84,18 @@ const BTN_JOYSTICK: u32 = 0x120;
 const BTN_TRIGGER_HAPPY: u32 = 0x2c0;
 const BTN_TRIGGER_HAPPY40: u32 = 0x2e7;
 
+/// Whether a raw axis code is a hat's (each hat two axes reading -1, 0 or 1), as the platform's
+/// gilrs backend numbers them; false where that isn't known.
+pub fn is_hat(code: u32) -> bool {
+    match PLATFORM {
+        Some(Platform::Linux) => {
+            code & !0xffff == EV_ABS && (ABS_HAT0X..ABS_HAT0X + 8).contains(&(code & 0xffff))
+        }
+        Some(Platform::Windows) => code >> 16 == 2,
+        None => false,
+    }
+}
+
 impl Platform {
     /// The raw code of an axis of `p`.
     pub fn axis(self, p: &Profile, a: Hid) -> Option<u32> {
