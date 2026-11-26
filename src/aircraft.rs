@@ -314,6 +314,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
     match model {
         3 | 26 => Some(1.65),
         7 => Some(1.7),
+        21 => Some(1.92),
         23 => Some(F16_LIFT - RUNWAY_Y),
         45 => Some(TORNADO_LIFT - RUNWAY_Y),
         32 => Some(A10_LIFT - RUNWAY_Y),
@@ -336,6 +337,7 @@ pub fn landing_light(model: i32) -> Vec3 {
     match model {
         3 | 26 => Vec3::new(0.0, -0.62, -4.0),
         7 => Vec3::new(0.0, -0.57, -4.6),
+        21 => Vec3::new(0.0, -0.55, -3.2),
         23 => f16_point(0.0, 2.20, -1.04) - Vec3::Y * F16_LIFT,
         24 => f117_point(0.0, 4.45, -0.02) - Vec3::Y * F117_LIFT,
         25 => uh60_point(0.0, 3.0, 0.53) - Vec3::Y * UH60_LIFT,

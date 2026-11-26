@@ -9,7 +9,7 @@ z up): the airframe, optional afterburner flames, the anchors for the navigation
 red / left, 151 green / right). The stores and the wreck are built the same way. Every model is
 drawn at its real size (`K` model units per metre) with one detail level: the airframe, its hot
 nozzle exits in `_exhaust` and the afterburner flames in `_s13v1` (the game flickers both), a
-missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's, F/A-18's and
+missile's motor flame in `_s14v1`, the landing gear down in `_s5v1` (the F-16's, F/A-18's, F-15's and
 MiG-23's), the navigation lights in `_s12v1`; anticollision.py adds the flashing lights
 afterwards. The F-117A (24, f117.py), the UH-60 (25, uh60.py), the AH-1Z (43, ah1z.py), the RAH-66 (46,
 comanche.py) and the OH-58D (48, kiowa.py) have generators of their own. The flyable F-16 (23), A-10 (32) and Tornado (45) set the eye, lift,
@@ -269,21 +269,177 @@ class RailPylon:
 # Fighters
 
 
+# The F-15C Eagle from its three-view (19.43 m long, 13.05 m span, all three views 54.2 px/m):
+# points as (x, s m aft of the nose, z), z 0 the nose tip's height (1.92 m above the ground).
+# The long radome, the bubble canopy high on the narrow forward fuselage, the raked box intakes
+# either side of it, the wide flat body under the shoulder wing, the engines' humps, and the
+# booms outboard of the nozzles carrying the fins and the stabilators.
+F15_NOSE = 9.70
+F15_GROUND = -1.92
+# The round nose: (s, top, bottom, half width).
+F15_RADOME = [(0.28, 0.18, -0.07, 0.11), (0.55, 0.31, -0.15, 0.20), (0.83, 0.42, -0.20, 0.28), (1.11, 0.54, -0.24, 0.35),
+              (1.66, 0.70, -0.30, 0.46), (2.21, 0.85, -0.30, 0.54), (2.77, 1.00, -0.30, 0.60), (3.04, 1.07, -0.28, 0.64)]
+# The forward fuselage under the canopy and between the intakes: (s, half width, bottom); its
+# top is the canopy's sill.
+F15_FORWARD = [(3.30, 0.64, -0.28), (3.80, 0.65, -0.28), (4.70, 0.66, -0.28), (5.26, 0.70, -0.30), (6.40, 0.74, -0.30),
+               (7.47, 0.76, -0.33)]
+# The wide body, right half from the spine round to the keel: (s, ten (x, z) points: the top,
+# the spine's foot, the deck's break (aft: the engine's hump), the deck's edge, the wing root
+# fairing's edge (aft: the boom's), back in under it, the flank, the lower flank, the bottom
+# corner (aft: under the engine), the keel).
+F15_BODY = [
+    (7.60, [(0.0, 1.28), (0.42, 1.26), (0.80, 1.03), (1.55, 0.99), (1.75, 0.86), (1.72, 0.70), (1.70, 0.30), (1.68, -0.18),
+            (1.45, -0.39), (0.0, -0.38)]),
+    (8.30, [(0.0, 1.18), (0.40, 1.17), (0.85, 1.00), (1.65, 0.96), (1.90, 0.84), (1.75, 0.72), (1.70, 0.30), (1.68, -0.28),
+            (1.45, -0.48), (0.0, -0.45)]),
+    (9.13, [(0.0, 1.07), (0.38, 1.07), (0.90, 0.97), (1.70, 0.93), (1.96, 0.82), (1.76, 0.70), (1.70, 0.30), (1.68, -0.34),
+            (1.45, -0.54), (0.0, -0.48)]),
+    (10.50, [(0.0, 0.96), (0.32, 0.96), (0.90, 0.94), (1.70, 0.92), (1.96, 0.81), (1.76, 0.69), (1.70, 0.30), (1.68, -0.36),
+             (1.45, -0.55), (0.0, -0.48)]),
+    (12.20, [(0.0, 0.86), (0.30, 0.87), (0.69, 0.88), (1.60, 0.87), (1.96, 0.80), (1.76, 0.68), (1.68, 0.30), (1.64, -0.36),
+             (1.40, -0.55), (0.0, -0.48)]),
+    (13.60, [(0.0, 0.84), (0.25, 0.86), (0.69, 0.92), (1.45, 0.84), (1.97, 0.78), (1.78, 0.62), (1.60, 0.25), (1.52, -0.32),
+             (1.25, -0.53), (0.0, -0.44)]),
+    (14.90, [(0.0, 0.80), (0.22, 0.84), (0.69, 0.96), (1.32, 0.74), (1.97, 0.66), (1.90, 0.42), (1.42, 0.18), (1.34, -0.25),
+             (0.95, -0.46), (0.0, -0.34)]),
+    (16.05, [(0.0, 0.68), (0.20, 0.78), (0.69, 0.93), (1.28, 0.58), (1.97, 0.50), (1.95, 0.20), (1.36, 0.08), (1.27, -0.15),
+             (0.80, -0.38), (0.0, -0.22)]),
+    (16.60, [(0.0, 0.60), (0.18, 0.72), (0.69, 0.84), (1.25, 0.50), (1.93, 0.46), (1.93, 0.12), (1.30, 0.08), (1.20, -0.05),
+             (0.75, -0.32), (0.0, -0.15)]),
+]
+# The canopy: (s, sill z, half width at the sill, top), the windscreen's bow at s 4.15; the spine
+# behind it (s, foot z, half width, top) starts on the glass' last ring and sinks into the deck.
+F15_CANOPY = [(3.10, 1.04, 0.12, 1.07), (3.45, 0.99, 0.36, 1.27), (3.80, 1.00, 0.43, 1.45), (4.15, 1.03, 0.46, 1.64),
+              (4.70, 1.07, 0.47, 1.79), (5.26, 1.11, 0.47, 1.79), (6.09, 1.19, 0.46, 1.68), (6.80, 1.25, 0.44, 1.55),
+              (7.47, 1.28, 0.40, 1.40)]
+F15_SPINE = [(7.47, 1.28, 0.40, 1.40), (7.75, 1.25, 0.40, 1.37), (8.30, 1.17, 0.40, 1.29), (9.13, 1.07, 0.38, 1.18),
+             (10.50, 0.96, 0.32, 1.03), (11.60, 0.90, 0.22, 0.93), (12.20, 0.87, 0.10, 0.89)]
+# The intakes: the lips' corners (x, s, z), the upper lip far ahead of the lower one, and the
+# box's corners where it runs into the wide body: top inner, top outer, bottom outer, bottom inner.
+F15_LIP = [(0.62, 5.24, 0.83), (1.44, 5.24, 0.81), (1.60, 7.47, -0.15), (0.78, 7.47, -0.15)]
+F15_TRUNK = [(0.62, 7.66, 1.04), (1.68, 7.66, 0.92), (1.66, 7.66, -0.36), (0.78, 7.66, -0.36)]
+F15_ENGINE = (0.69, 0.22)
+F15_FIN_X = 1.73
+
+
+def f15_p(x, s, z):
+    return Vector((x, F15_NOSE - s, z))
+
+
+def f15_ring(right):
+    left = [(-x, z) for x, z in reversed(right[1:-1])]
+    return right + left
+
+
+def f15_sill(s):
+    """The canopy sill's (z, half width) at s."""
+    for (s0, z0, w0, _), (s1, z1, w1, _) in zip(F15_CANOPY, F15_CANOPY[1:]):
+        if s <= s1:
+            t = (s - s0) / (s1 - s0)
+            return z0 + (z1 - z0) * t, w0 + (w1 - w0) * t
+    return F15_CANOPY[-1][1:3]
+
+
+def f15_rings():
+    rings = [(0.0, [(0.0, 0.0)] * 10)]
+    for s, top, bottom, hw in F15_RADOME:
+        zc = 0.5 * (top + bottom)
+        right = []
+        for a in (90, 68, 46, 24, 8, -8, -30, -52, -72, -90):
+            r = math.radians(a)
+            right.append((hw * abs(math.cos(r)) ** (2 / 2.2),
+                          zc + math.copysign(abs(math.sin(r)) ** (2 / 2.2), r) * (top - bottom) / 2))
+        rings.append((s, right))
+    for s, hw, bottom in F15_FORWARD:
+        sill, sw = f15_sill(s)
+        sill -= 0.01
+        rings.append((s, [(0.0, sill + 0.01), (sw, sill), (0.93 * hw, sill - 0.22), (hw, sill - 0.50), (hw, 0.35), (hw, 0.10),
+                          (0.97 * hw, -0.08), (0.85 * hw, bottom + 0.10), (0.55 * hw, bottom), (0.0, bottom)]))
+    return rings + F15_BODY
+
+
+def f15_glass(s, sill, hw, top):
+    right = [(hw * w, sill + (top - sill) * t) for t, w in FA18E_GLASS]
+    left = [(-x, z) for x, z in reversed(right[:-1])]
+    return [f15_p(x, s, z) for x, z in right + left]
+
+
+def f15_panel(sections, paint):
+    """A wing from streamwise sections (x, s of the leading edge, s of the trailing edge, z,
+    thickness), its ridge at 35% of the chord."""
+    rings = []
+    for x, le, te, z, t in sections:
+        mid = le + 0.35 * (te - le)
+        d = Vector((0, 0, t / 2))
+        rings.append([f15_p(x, le, z), f15_p(x, mid, z) + d, f15_p(x, te, z), f15_p(x, mid, z) - d])
+    return tube(rings, paint)
+
+
 def f15():
-    g = loft([(9.7, 0.1, 0.0, 0.0), (8.9, 0.1, 0.32, 0.3), (7.6, 0.15, 0.55, 0.55), (6.0, 0.2, 0.65, 0.7), (4.4, 0.25, 0.75, 0.75),
-              (2.8, 0.3, 1.1, 0.7), (0.0, 0.3, 1.55, 0.65), (-4.0, 0.25, 1.6, 0.6), (-7.6, 0.2, 1.45, 0.55), (-8.5, 0.15, 1.3, 0.5)],
-             GREY, n=8, power=2.6)
-    g.add(loft([(9.7, 0.1, 0, 0), (8.9, 0.1, 0.32, 0.3), (8.2, 0.12, 0.42, 0.4)], RADOME, n=8))
-    for s in (-1, 1):
-        g.add(box_intake(s * 1.75, 4.0, -1.5, -0.05, 0.55, 0.75, slant=0.9))
-        g.add(nozzle(s * 0.65, -8.4, 0.1, 0.58, 1.3))
-    g.add(canopy(6.8, 3.6, 0.75, 0.42, 0.5))
-    g.add(wing((1.5, 1.6, 0.25), 6.6, (6.5, -3.4, 0.15), 1.9, GREY, t=0.05))
-    g.add(wing((1.5, -6.3, 0.1), 3.0, (4.3, -8.4, 0.05), 1.3, GREY, t=0.05))
-    for s in (-1, 1):
-        g.add(wing((s * 1.45, -5.2, 0.75), 3.3, (s * 1.85, -7.4, 3.4), 1.3, GREY, t=0.06, vertical=True, mirror=False))
-    fl = Geo().add(flame(0.65, -9.7, 0.1, 0.5, 3.0)).add(flame(-0.65, -9.7, 0.1, 0.5, 3.0))
-    return Craft(g, (-6.5, -4.6, 0.15), (6.5, -4.6, 0.15), [(-1.85, -8.6, 3.4), (1.85, -8.6, 3.4)], fl)
+    table = f15_rings()
+    rings = [[f15_p(x, s, z) for x, z in f15_ring(right)] for s, right in table]
+    # The radome as far as the windscreen's foot.
+    paints = [RADOME if s < 3.0 else GREY for s, _ in table[:-1]]
+    g = Geo().add(tube(rings, GREY, cap1=False, paints=paints, wound=True))
+    g.face(rings[-1], DARK, f15_p(0, 15.0, 0.2))
+    g.add(tube([f15_glass(*r) for r in F15_CANOPY], CANOPY, cap1=False))
+    bow = [p + Vector((0, 0, 0.012)) for p in f15_glass(4.15, 1.03, 0.47, 1.65)]
+    g.add(tube([bow, [p - Vector((0, 0.06, 0)) for p in bow]], DARK, cap0=False, cap1=False))
+    g.add(tube([f15_glass(*r) for r in F15_SPINE], GREY, cap0=False))
+    # A skirt from the glass' and the spine's sills down into the fuselage.
+    sills = F15_CANOPY + F15_SPINE[1:]
+    for sx in (-1, 1):
+        edge = [(f15_p(sx * hw, s, sill), f15_p(sx * hw, s, sill - 0.10)) for s, sill, hw, _ in sills]
+        for (a, b), (c, d) in zip(edge, edge[1:]):
+            g.face([a, c, d, b], GREY, Vector((0, 0.5 * (a.y + c.y), a.z)))
+    # The intakes: the boxes' walls from the raked lips back into the wide body, grey outside,
+    # dark inside, the mouth a black plane just inside the lips.
+    for sx in (-1, 1):
+        lip = [f15_p(sx * x, s, z) for x, s, z in F15_LIP]
+        aft = [f15_p(sx * x, s, z) for x, s, z in F15_TRUNK]
+        inside = f15_p(sx * 1.15, 7.0, 0.40)
+        for a, b in ((0, 1), (1, 2), (2, 3), (3, 0)):
+            wall = [lip[a], lip[b], aft[b], aft[a]]
+            g.face(wall, GREY if (a, b) != (3, 0) else DARK, inside)
+            g.face(wall, DARK, sum(wall, Vector()) / 2 - inside)
+        g.face([p + Vector((0, -0.04, -0.02)) for p in lip], BLACK, inside + Vector((0, -1.0, 3.0)))
+    # The wings with their raked tips, the stabilators with their dogteeth, the upright fins.
+    g.add(mirror(f15_panel([(1.50, 8.68, 14.87, 0.80, 0.22), (1.96, 9.13, 14.87, 0.80, 0.20), (3.97, 11.11, 14.87, 0.70, 0.13),
+                            (5.87, 12.99, 15.24, 0.61, 0.07), (6.20, 13.32, 14.57, 0.595, 0.05),
+                            (6.46, 13.60, 14.04, 0.58, 0.03), (6.52, 13.75, 13.92, 0.58, 0.02)], GREY)))
+    g.add(mirror(f15_panel([(1.60, 15.70, 18.93, 0.20, 0.14), (2.67, 16.85, 19.12, 0.19, 0.10)], GREY)))
+    g.add(mirror(f15_panel([(2.67, 16.46, 19.12, 0.19, 0.10), (3.80, 17.75, 19.39, 0.175, 0.06),
+                            (4.10, 18.08, 19.15, 0.17, 0.04), (4.26, 18.27, 18.85, 0.17, 0.03),
+                            (4.31, 18.42, 18.62, 0.17, 0.02)], GREY)))
+    g.add(wing(tuple(f15_p(F15_FIN_X, 14.76, 0.45)), 3.15, tuple(f15_p(F15_FIN_X, 17.15, 3.73)), 1.01, GREY, t=0.05,
+               vertical=True))
+    # The fin tips' pods: the left one's long, the right one's short.
+    for x, s0, s1, r in ((-F15_FIN_X, 16.85, 18.25, 0.085), (F15_FIN_X, 17.05, 17.75, 0.06)):
+        z = 3.885 - r
+        g.add(frustum(tuple(f15_p(x, s0, z)), tuple(f15_p(x, s1, z)), r, r, GREY, n=6))
+        g.add(frustum(tuple(f15_p(x, s0 - 0.2, z)), tuple(f15_p(x, s0, z)), 0.01, r, GREY, n=6, caps=False))
+    # The booms outboard of the nozzles and the fairing between them.
+    boom = [(16.60, 1.25, 1.93, 0.10, 0.46), (17.55, 1.24, 1.85, 0.08, 0.45), (18.20, 1.50, 1.81, 0.10, 0.40),
+            (18.93, 1.74, 1.80, 0.15, 0.20)]
+    g.add(mirror(tube([[f15_p(x0, s, z0), f15_p(x1, s, z0), f15_p(x1, s, z1), f15_p(x0, s, z1)]
+                       for s, x0, x1, z0, z1 in boom], GREY, cap0=False)))
+    g.add(tube([[f15_p(-hw, s, z0), f15_p(hw, s, z0), f15_p(hw, s, z1), f15_p(-hw, s, z1)]
+                for s, hw, z0, z1 in ((16.60, 0.17, -0.05, 0.62), (17.30, 0.14, 0.10, 0.52), (17.93, 0.02, 0.28, 0.34))],
+               GREY, cap0=False))
+    # The nozzles: petals round the hot exit.
+    ex, ez = F15_ENGINE
+    for sx in (-1, 1):
+        g.add(frustum(tuple(f15_p(sx * ex, 16.55, ez)), tuple(f15_p(sx * ex, 17.90, ez)), 0.56, 0.42, DARK, n=12,
+                      caps=False))
+        g.face([f15_p(sx * ex + 0.37 * math.cos(a), 17.75, ez + 0.37 * math.sin(a))
+                for a in (2 * math.pi * k / 12 for k in range(12))], FLAME, f15_p(sx * ex, 15.0, ez))
+    fl = Geo()
+    for sx in (-1, 1):
+        fl.add(flame(sx * ex, F15_NOSE - 18.0, ez, 0.42, 3.2))
+    gear = tricycle(F15_GROUND, (F15_NOSE - 6.56, -0.28, 0.28, False), (F15_NOSE - 11.77, 1.30, -0.50, 1.375, 0.44), GREY)
+    tip = lambda sx: (sx * 6.50, F15_NOSE - 13.85, 0.58)
+    fin = lambda sx: (sx * F15_FIN_X, F15_NOSE - 17.6, 3.80)
+    return Craft(g, tip(-1), tip(1), [fin(-1), fin(1)], fl, gear=gear)
 
 
 # The F-16C from the three-view in "Aviatsiya i Vremya" 3/99 (Block 50/52): stations along y,

@@ -553,6 +553,15 @@ fn test_watch(
             ),
             None => return,
         },
+        // The first friendly F-15 up (the sim's aircraft type 21).
+        Some("f15") => match pic.friendly.iter().find(|a| a.spec == 21) {
+            Some(a) => (
+                UnitRef::Flight { index: a.unit, spec: a.spec },
+                sim.aircraft_name(a.spec).to_string(),
+                true,
+            ),
+            None => return,
+        },
         Some("zsu") => match ground(stealth_sim::aaa::GroundKind::Zsu, false, true) {
             Some(k) => (UnitRef::Aaa(k), "ZSU-23-4".to_string(), true),
             None => return,
