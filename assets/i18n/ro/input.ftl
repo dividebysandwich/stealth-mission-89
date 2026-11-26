@@ -56,6 +56,7 @@ input-saturation = Saturație
 input-curve-straight = DREAPTĂ
 input-move-it = mișcați-o
 input-move-axis = MIȘCAȚI O AXĂ...
+input-noisy-axis = { $axis } este ignorată: tremură singură
 input-buttons = BUTOANE
 input-keyboard = TASTATURĂ
 input-joystick = JOYSTICK

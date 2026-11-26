@@ -56,6 +56,7 @@ input-saturation = Verzadiging
 input-curve-straight = RECHT
 input-move-it = beweeg hem
 input-move-axis = BEWEEG EEN AS...
+input-noisy-axis = { $axis } genegeerd: hij trilt uit zichzelf
 input-buttons = KNOPPEN
 input-keyboard = TOETSENBORD
 input-joystick = JOYSTICK

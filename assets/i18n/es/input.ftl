@@ -56,6 +56,7 @@ input-saturation = Saturación
 input-curve-straight = RECTA
 input-move-it = muévalo
 input-move-axis = MUEVA UN EJE...
+input-noisy-axis = Se ignora { $axis }: oscila por sí solo
 input-buttons = BOTONES
 input-keyboard = TECLADO
 input-joystick = JOYSTICK

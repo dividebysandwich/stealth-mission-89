@@ -56,6 +56,7 @@ input-saturation = Įsotinimas
 input-curve-straight = TIESĖ
 input-move-it = pajudinkite
 input-move-axis = PAJUDINKITE AŠĮ...
+input-noisy-axis = { $axis } praleidžiama: ji pati virpa
 input-buttons = MYGTUKAI
 input-keyboard = KLAVIATŪRA
 input-joystick = VALDIKLIS

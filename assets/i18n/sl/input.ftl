@@ -56,6 +56,7 @@ input-saturation = Nasičenje
 input-curve-straight = RAVNA
 input-move-it = premaknite jo
 input-move-axis = PREMAKNITE OS...
+input-noisy-axis = { $axis } se prezre: sama od sebe trepeta
 input-buttons = GUMBI
 input-keyboard = TIPKOVNICA
 input-joystick = PALICA

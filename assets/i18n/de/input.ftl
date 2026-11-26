@@ -56,6 +56,7 @@ input-saturation = Sättigung
 input-curve-straight = GERADE
 input-move-it = bewegen
 input-move-axis = ACHSE BEWEGEN...
+input-noisy-axis = { $axis } wird ignoriert: sie zittert von selbst
 input-buttons = KNÖPFE
 input-keyboard = TASTATUR
 input-joystick = JOYSTICK

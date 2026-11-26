@@ -56,6 +56,7 @@ input-saturation = Насищане
 input-curve-straight = ПРАВА
 input-move-it = преместете я
 input-move-axis = ПРЕМЕСТЕТЕ ОС...
+input-noisy-axis = { $axis } се пропуска: трепти само
 input-buttons = БУТОНИ
 input-keyboard = КЛАВИАТУРА
 input-joystick = ДЖОЙСТИК

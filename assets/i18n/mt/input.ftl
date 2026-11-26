@@ -56,6 +56,7 @@ input-saturation = Saturazzjoni
 input-curve-straight = DRITTA
 input-move-it = mexxih
 input-move-axis = MEXXI ASSI...
+input-noisy-axis = { $axis } qed jiġi injorata: tirtogħod waħedha
 input-buttons = BUTTUNI
 input-keyboard = TASTIERA
 input-joystick = JOYSTICK

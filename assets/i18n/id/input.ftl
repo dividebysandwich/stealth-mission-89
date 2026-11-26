@@ -56,6 +56,7 @@ input-saturation = Saturasi
 input-curve-straight = LURUS
 input-move-it = gerakkan
 input-move-axis = GERAKKAN SUATU SUMBU...
+input-noisy-axis = { $axis } diabaikan: bergetar sendiri
 input-buttons = TOMBOL
 input-keyboard = PAPAN KETIK
 input-joystick = JOYSTICK

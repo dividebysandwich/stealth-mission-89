@@ -56,6 +56,7 @@ input-saturation = 饱和
 input-curve-straight = 直线
 input-move-it = 请移动它
 input-move-axis = 请移动一个轴...
+input-noisy-axis = 已忽略 { $axis }：它自行抖动
 input-buttons = 按钮
 input-keyboard = 键盘
 input-joystick = 摇杆

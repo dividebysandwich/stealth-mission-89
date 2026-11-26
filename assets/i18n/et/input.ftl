@@ -56,6 +56,7 @@ input-saturation = Küllastus
 input-curve-straight = SIRGE
 input-move-it = liiguta seda
 input-move-axis = LIIGUTA TELGE...
+input-noisy-axis = { $axis } jäetakse vahele: see väriseb iseenesest
 input-buttons = NUPUD
 input-keyboard = KLAVIATUUR
 input-joystick = JUHTKANG

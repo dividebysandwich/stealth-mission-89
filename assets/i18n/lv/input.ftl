@@ -56,6 +56,7 @@ input-saturation = Piesātinājums
 input-curve-straight = TAISNE
 input-move-it = pavirziet to
 input-move-axis = PAVIRZIET ASI...
+input-noisy-axis = { $axis } tiek ignorēta: tā pati trīc
 input-buttons = POGAS
 input-keyboard = TASTATŪRA
 input-joystick = KURSORSVIRA

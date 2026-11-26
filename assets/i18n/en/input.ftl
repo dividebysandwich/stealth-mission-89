@@ -59,6 +59,7 @@ input-saturation = Saturation
 input-curve-straight = STRAIGHT
 input-move-it = move it
 input-move-axis = MOVE AN AXIS...
+input-noisy-axis = Ignoring { $axis }: it jitters on its own
 input-buttons = BUTTONS
 input-keyboard = KEYBOARD
 input-joystick = JOYSTICK

@@ -56,6 +56,7 @@ input-saturation = 포화
 input-curve-straight = 직선
 input-move-it = 움직이십시오
 input-move-axis = 축을 움직이십시오...
+input-noisy-axis = { $axis } 무시: 저절로 흔들립니다
 input-buttons = 버튼
 input-keyboard = 키보드
 input-joystick = 조이스틱

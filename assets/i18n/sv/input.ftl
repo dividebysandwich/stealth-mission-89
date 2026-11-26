@@ -56,6 +56,7 @@ input-saturation = Mättnad
 input-curve-straight = RAK
 input-move-it = flytta den
 input-move-axis = FLYTTA EN AXEL...
+input-noisy-axis = { $axis } ignoreras: den darrar av sig själv
 input-buttons = KNAPPAR
 input-keyboard = TANGENTBORD
 input-joystick = JOYSTICK

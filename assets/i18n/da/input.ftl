@@ -56,6 +56,7 @@ input-saturation = Mætning
 input-curve-straight = LIGE
 input-move-it = bevæg den
 input-move-axis = BEVÆG EN AKSE...
+input-noisy-axis = { $axis } ignoreres: den svinger af sig selv
 input-buttons = KNAPPER
 input-keyboard = TASTATUR
 input-joystick = JOYSTICK

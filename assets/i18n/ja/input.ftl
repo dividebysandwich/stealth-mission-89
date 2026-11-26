@@ -56,6 +56,7 @@ input-saturation = 飽和
 input-curve-straight = 直線
 input-move-it = 動かしてください
 input-move-axis = 軸を動かしてください...
+input-noisy-axis = { $axis } を無視します: 勝手に揺れています
 input-buttons = ボタン
 input-keyboard = キーボード
 input-joystick = ジョイスティック

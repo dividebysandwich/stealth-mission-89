@@ -38,6 +38,9 @@ pub struct InputDialog {
     /// UNDO: the mapping before the last binding or reset, and after it (UNDO is offered while
     /// nothing else changed it).
     undo: Option<(InputConfig, InputConfig)>,
+    /// The axes' spikes seen while capturing (`Capture::poll`), kept while the game runs: a
+    /// jittery sensor stays out of the next captures too.
+    spikes: HashMap<AxisId, u8>,
 }
 
 impl InputDialog {
@@ -146,17 +149,36 @@ enum Found {
     Button(Source),
 }
 
+/// How long (seconds) an axis must stay past half way to bind, so that a sensor's spike does not.
+const AXIS_HOLD_S: f64 = 0.06;
+/// Spikes (past half way and back sooner than `AXIS_HOLD_S`) after which an axis is taken for a
+/// jittery sensor and no longer binds while the game runs.
+const NOISY_SPIKES: u8 = 3;
+
+/// A device's axis: its device key and code.
+type AxisId = (String, u32);
+
 /// Waiting for a device input to bind; the state when it started is the baseline, so axes
 /// resting off centre (throttles) and buttons already held don't bind.
 struct Capture {
     what: Binding,
-    axes: HashMap<(String, u32), f32>,
+    axes: HashMap<AxisId, f32>,
     buttons: HashSet<(String, u32)>,
+    /// Axes past half way from their baseline: since when (seconds) and on which side.
+    past: HashMap<AxisId, (f64, bool)>,
+    /// Axes that just turned out jittery (`NOISY_SPIKES`), to tell the player.
+    ignored: Vec<AxisId>,
 }
 
 impl Capture {
     fn new<'a>(what: Binding, devices: impl IntoIterator<Item = &'a Device>) -> Self {
-        let mut c = Self { what, axes: HashMap::new(), buttons: HashSet::new() };
+        let mut c = Self {
+            what,
+            axes: HashMap::new(),
+            buttons: HashSet::new(),
+            past: HashMap::new(),
+            ignored: Vec::new(),
+        };
         for d in devices {
             c.axes.extend(d.axes.iter().map(|(code, v)| ((d.key.clone(), *code), *v)));
             c.buttons.extend(d.buttons.iter().map(|code| (d.key.clone(), *code)));
@@ -164,10 +186,14 @@ impl Capture {
         c
     }
 
-    /// The first input that moved since the capture started.
+    /// The first input that moved since the capture started, at `now` (seconds): a button as
+    /// soon as pressed, an axis once held past half way for `AXIS_HOLD_S`. `spikes` counts each
+    /// axis's shorter excursions; one with `NOISY_SPIKES` of them is left out.
     fn poll<'a>(
         &mut self,
         devices: impl IntoIterator<Item = &'a Device>,
+        now: f64,
+        spikes: &mut HashMap<AxisId, u8>,
     ) -> Option<(String, Found)> {
         let mut found = None;
         for d in devices {
@@ -186,9 +212,33 @@ impl Capture {
                 if matches!(self.what, Binding::Button(_)) && d.button_axes.contains(&code) {
                     continue;
                 }
+                let id = (d.key.clone(), code);
+                if spikes.get(&id).is_some_and(|&n| n >= NOISY_SPIKES) {
+                    continue;
+                }
                 // An axis seen for the first time is its own baseline.
-                let base = *self.axes.entry((d.key.clone(), code)).or_insert(v);
-                if (v - base).abs() > 0.5 {
+                let base = *self.axes.entry(id.clone()).or_insert(v);
+                let side = ((v - base).abs() > 0.5).then_some(v > base);
+                let held = match (side, self.past.get(&id).copied()) {
+                    (Some(side), Some((since, was))) if side == was => now - since >= AXIS_HOLD_S,
+                    (Some(side), past) => {
+                        // Across to the other side at once: a spike too.
+                        if past.is_some() {
+                            self.spike(&id, spikes);
+                        }
+                        self.past.insert(id, (now, side));
+                        false
+                    }
+                    (None, Some((since, _))) => {
+                        self.past.remove(&id);
+                        if now - since < AXIS_HOLD_S {
+                            self.spike(&id, spikes);
+                        }
+                        false
+                    }
+                    (None, None) => false,
+                };
+                if held {
                     let input = match self.what {
                         Binding::Axis(_) => Found::Axis(code),
                         Binding::Button(_) if v > 0.5 => Found::Button(Source::AxisPositive(code)),
@@ -202,11 +252,31 @@ impl Capture {
         }
         found
     }
+
+    /// Counts a spike of an axis, noting it once it makes the axis jittery.
+    fn spike(&mut self, id: &AxisId, spikes: &mut HashMap<AxisId, u8>) {
+        let n = spikes.entry(id.clone()).or_default();
+        *n = n.saturating_add(1);
+        if *n == NOISY_SPIKES {
+            self.past.remove(id);
+            self.ignored.push(id.clone());
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Polls a capture at `t` seconds with no spikes seen before.
+    fn poll(c: &mut Capture, d: &Device, t: f64) -> Option<(String, Found)> {
+        c.poll([d], t, &mut HashMap::new())
+    }
+
+    /// Polls a capture as the input is moved and then held long enough to bind.
+    fn poll_held(c: &mut Capture, d: &Device) -> Option<(String, Found)> {
+        poll(c, d, 0.0).or_else(|| poll(c, d, AXIS_HOLD_S))
+    }
 
     /// A key or mouse button bound to another action names the action that had it.
     #[test]
@@ -239,18 +309,21 @@ mod tests {
             let mut capture = Capture::new(what, [&d]);
             d.button_changed(code, 1.0, true);
             assert!(matches!(
-                capture.poll([&d]),
+                poll(&mut capture, &d, 0.0),
                 Some((_, Found::Button(Source::Button(c)))) if c == code
             ));
 
             // Start another capture while still holding the trigger from the first binding.
             let mut capture = Capture::new(what, [&d]);
-            assert!(capture.poll([&d]).is_none());
+            assert!(poll_held(&mut capture, &d).is_none());
             d.button_changed(code, 0.0, true);
-            assert!(capture.poll([&d]).is_none(), "release is not an axis-negative binding");
+            assert!(
+                poll_held(&mut capture, &d).is_none(),
+                "release is not an axis-negative binding"
+            );
             d.button_changed(code, 1.0, true);
             assert!(matches!(
-                capture.poll([&d]),
+                poll(&mut capture, &d, 1.0),
                 Some((_, Found::Button(Source::Button(c)))) if c == code
             ));
         }
@@ -262,9 +335,9 @@ mod tests {
         d.button_changed(2, 0.0, true);
         let mut capture = Capture::new(Binding::Axis(AxisControl::Throttle), [&d]);
         d.button_changed(10, 1.0, false);
-        assert!(capture.poll([&d]).is_none());
+        assert!(poll_held(&mut capture, &d).is_none());
         d.button_changed(2, 0.5, true);
-        assert!(matches!(capture.poll([&d]), Some((_, Found::Axis(2)))));
+        assert!(matches!(poll_held(&mut capture, &d), Some((_, Found::Axis(2)))));
     }
 
     #[test]
@@ -277,9 +350,43 @@ mod tests {
             d.axes.insert(42, value);
             let expected =
                 if value > 0.0 { Source::AxisPositive(42) } else { Source::AxisNegative(42) };
-            assert!(matches!(button.poll([&d]), Some((_, Found::Button(s))) if s == expected));
-            assert!(matches!(axis.poll([&d]), Some((_, Found::Axis(42)))));
+            assert!(
+                matches!(poll_held(&mut button, &d), Some((_, Found::Button(s))) if s == expected)
+            );
+            assert!(matches!(poll_held(&mut axis, &d), Some((_, Found::Axis(42)))));
         }
+    }
+
+    /// A sensor's spike past half way does not bind; a jittery axis is left out after a few,
+    /// so the axis the player then moves binds.
+    #[test]
+    fn jittery_axis_does_not_bind() {
+        let mut d = Device::default();
+        d.axes.insert(5, 0.0);
+        d.axes.insert(1, 0.0);
+        let mut spikes = HashMap::new();
+        let mut capture = Capture::new(Binding::Axis(AxisControl::TgpZoom), [&d]);
+        let mut t = 0.0;
+        for _ in 0..NOISY_SPIKES {
+            d.axes.insert(5, 0.9);
+            assert!(capture.poll([&d], t, &mut spikes).is_none());
+            t += 0.01;
+            d.axes.insert(5, 0.0);
+            assert!(capture.poll([&d], t, &mut spikes).is_none());
+            t += 0.01;
+        }
+        assert_eq!(capture.ignored, vec![(String::new(), 5)]);
+        // It now stays past half way, and so does the axis the player moves: that one binds.
+        d.axes.insert(5, 0.9);
+        d.axes.insert(1, -1.0);
+        assert!(capture.poll([&d], t, &mut spikes).is_none());
+        let found = capture.poll([&d], t + 2.0 * AXIS_HOLD_S, &mut spikes);
+        assert!(matches!(found, Some((_, Found::Axis(1)))));
+        // A later capture leaves it out from the start.
+        let mut capture = Capture::new(Binding::Button(ButtonTarget::Gun), [&d]);
+        d.axes.insert(5, -0.9);
+        assert!(capture.poll([&d], 0.0, &mut spikes).is_none());
+        assert!(capture.poll([&d], 1.0, &mut spikes).is_none());
     }
 }
 
@@ -519,7 +626,16 @@ pub fn show(
                 dialog.bound(what, &crate::input::key_label(mods, key), lost);
                 dialog.capture = None;
             }
-        } else if let Some((device, input)) = cap.poll(hotas.devices()) {
+        } else if let Some((device, input)) = {
+            let found = cap.poll(hotas.devices(), ctx.input(|i| i.time), &mut dialog.spikes);
+            if let Some((device, code)) = cap.ignored.pop() {
+                dialog.status = Some(t!(
+                    "input-noisy-axis",
+                    axis = binding_label(&device, &t!("input-axis", n = code & 0xffff))
+                ));
+            }
+            found
+        } {
             let what = cap.what;
             let before = config.clone();
             let (label, lost) = match (what, input) {

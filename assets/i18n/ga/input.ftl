@@ -56,6 +56,7 @@ input-saturation = Sáithiú
 input-curve-straight = DÍREACH
 input-move-it = bog é
 input-move-axis = BOG AIS...
+input-noisy-axis = Ag déanamh neamhaird de { $axis }: bíonn sé ag crith leis féin
 input-buttons = CNAIPÍ
 input-keyboard = CLÁRLACH
 input-joystick = LUAMHÁN

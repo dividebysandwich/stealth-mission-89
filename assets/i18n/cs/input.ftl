@@ -56,6 +56,7 @@ input-saturation = Saturace
 input-curve-straight = PŘÍMKA
 input-move-it = pohněte jí
 input-move-axis = POHNĚTE OSOU...
+input-noisy-axis = { $axis } se přeskakuje: sama od sebe kolísá
 input-buttons = TLAČÍTKA
 input-keyboard = KLÁVESNICE
 input-joystick = JOYSTICK

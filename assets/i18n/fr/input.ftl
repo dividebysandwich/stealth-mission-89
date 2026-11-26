@@ -56,6 +56,7 @@ input-saturation = Saturation
 input-curve-straight = DROITE
 input-move-it = bougez-le
 input-move-axis = BOUGEZ UN AXE...
+input-noisy-axis = { $axis } ignoré : il tremble tout seul
 input-buttons = BOUTONS
 input-keyboard = CLAVIER
 input-joystick = JOYSTICK

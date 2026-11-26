@@ -56,6 +56,7 @@ input-saturation = Насыщение
 input-curve-straight = ПРЯМАЯ
 input-move-it = подвигайте ею
 input-move-axis = ПОДВИГАЙТЕ ОСЬЮ...
+input-noisy-axis = { $axis } пропускается: дрожит сама по себе
 input-buttons = КНОПКИ
 input-keyboard = КЛАВИАТУРА
 input-joystick = ДЖОЙСТИК

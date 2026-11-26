@@ -56,6 +56,7 @@ input-saturation = Zasićenje
 input-curve-straight = RAVNA
 input-move-it = pomaknite je
 input-move-axis = POMAKNITE OS...
+input-noisy-axis = { $axis } se zanemaruje: sama od sebe podrhtava
 input-buttons = TIPKE
 input-keyboard = TIPKOVNICA
 input-joystick = JOYSTICK

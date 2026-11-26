@@ -56,6 +56,7 @@ input-saturation = Telítés
 input-curve-straight = EGYENES
 input-move-it = mozgasd
 input-move-axis = MOZGASS EGY TENGELYT...
+input-noisy-axis = { $axis } kihagyva: magától remeg
 input-buttons = GOMBOK
 input-keyboard = BILLENTYŰZET
 input-joystick = JOYSTICK

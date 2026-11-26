@@ -56,6 +56,7 @@ input-saturation = Κορεσμός
 input-curve-straight = ΕΥΘΕΙΑ
 input-move-it = μετακινήστε τον
 input-move-axis = ΜΕΤΑΚΙΝΗΣΤΕ ΕΝΑΝ ΑΞΟΝΑ...
+input-noisy-axis = Το { $axis } αγνοείται: τρεμοπαίζει μόνο του
 input-buttons = ΚΟΥΜΠΙΑ
 input-keyboard = ΠΛΗΚΤΡΟΛΟΓΙΟ
 input-joystick = JOYSTICK

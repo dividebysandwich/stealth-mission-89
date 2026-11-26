@@ -56,6 +56,7 @@ input-saturation = Kyllästys
 input-curve-straight = SUORA
 input-move-it = liikuta sitä
 input-move-axis = LIIKUTA AKSELIA...
+input-noisy-axis = { $axis } ohitetaan: se värisee itsestään
 input-buttons = PAINIKKEET
 input-keyboard = NÄPPÄIMISTÖ
 input-joystick = OHJAINSAUVA
