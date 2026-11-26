@@ -11,6 +11,7 @@ axis-tgp-zoom = Zum TGP-a
 axis-look-x = Pogled lijevo / desno
 axis-look-y = Pogled gore / dolje
 axis-view-zoom = Zumiranje pogleda približi / udalji
+axis-antenna-elevation = Elevacija antene radara
 input-button = Tipka { $n }
 input-axis = Os { $n }
 vr-trigger = Okidač

@@ -68,6 +68,7 @@ kg-cam-left = Seurantakamera vasemmalle
 kg-cam-right = Seurantakamera oikealle
 kg-camera-zoom-in = Kotelon / kameran zoomaus lähemmäs / kauemmas (tai SOI:n)
 kg-slew = Siirrä sensorin kursoria (pidetty)
+kg-antenna = Kallista tutka-antennia ylös / alas (pidetty)
 kg-lock-cursor = Lukitse kursorin alla oleva maali
 kg-swap-soi = Kiinnostuksen kohteena oleva anturi toiselle MFD:lle
 kg-pod-to-helmet = Maalinosoitin sinne, minne kypärätähtäin katsoo

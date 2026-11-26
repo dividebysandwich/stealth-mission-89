@@ -66,6 +66,7 @@ kg-cam-left = Kamera śledząca w lewo
 kg-cam-right = Kamera śledząca w prawo
 kg-camera-zoom-in = Zbliżenie gondoli / kamery bliżej / dalej (lub SOI)
 kg-slew = Przesuwanie kursora sensora (trzymane)
+kg-antenna = Pochylanie anteny radaru w górę / w dół (trzymane)
 kg-lock-cursor = Namierzyć cel pod kursorem
 kg-swap-soi = Czujnik główny (SOI) na drugi MFD
 kg-pod-to-helmet = Zasobnik celowniczy tam, gdzie patrzy celownik nahełmowy

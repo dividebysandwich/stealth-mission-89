@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP zoom
 axis-look-x = Look left / right
 axis-look-y = Look up / down
 axis-view-zoom = View zoom in / out
+axis-antenna-elevation = Radar antenna elevation
 input-button = Button { $n }
 input-axis = Axis { $n }
 vr-trigger = Trigger

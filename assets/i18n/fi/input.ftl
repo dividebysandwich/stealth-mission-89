@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP:n zoomaus
 axis-look-x = Katso vasemmalle / oikealle
 axis-look-y = Katso ylös / alas
 axis-view-zoom = Näkymän zoomaus lähemmäs / kauemmas
+axis-antenna-elevation = Tutka-antennin korotus
 input-button = Painike { $n }
 input-axis = Akseli { $n }
 vr-trigger = Liipaisin

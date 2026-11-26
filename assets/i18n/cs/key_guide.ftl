@@ -68,6 +68,7 @@ kg-cam-left = Sledovací kamera vlevo
 kg-cam-right = Sledovací kamera vpravo
 kg-camera-zoom-in = Zoom kontejneru / kamery přiblížit / oddálit (nebo SOI)
 kg-slew = Posun kurzoru senzoru (držet)
+kg-antenna = Naklonění antény radaru nahoru / dolů (držet)
 kg-lock-cursor = Zaměřit cíl pod kurzorem
 kg-swap-soi = Sensor of interest na druhé MFD
 kg-pod-to-helmet = Zaměřovací pod tam, kam se díváte přes helmu

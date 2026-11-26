@@ -11,6 +11,7 @@ axis-tgp-zoom = TGPズーム
 axis-look-x = 左右を見る
 axis-look-y = 上下を見る
 axis-view-zoom = 視界ズーム 拡大 / 縮小
+axis-antenna-elevation = レーダーアンテナ仰角
 input-button = ボタン { $n }
 input-axis = 軸 { $n }
 vr-trigger = トリガー

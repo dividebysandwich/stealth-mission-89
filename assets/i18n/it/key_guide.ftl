@@ -66,6 +66,7 @@ kg-cam-left = Telecamera di puntamento a sinistra
 kg-cam-right = Telecamera di puntamento a destra
 kg-camera-zoom-in = Zoom del pod / della camera avanti / indietro (o quello del SOI)
 kg-slew = Muovere il cursore del sensore (tenuto)
+kg-antenna = Inclinare l'antenna radar su / giù (tenuto)
 kg-lock-cursor = Agganciare il bersaglio sotto il cursore
 kg-swap-soi = Sensore d'interesse (SOI) sull'altro MFD
 kg-pod-to-helmet = Pod di puntamento dove guarda il mirino del casco

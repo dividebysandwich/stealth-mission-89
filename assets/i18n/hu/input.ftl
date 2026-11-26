@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP nagyítás
 axis-look-x = Nézés balra / jobbra
 axis-look-y = Nézés fel / le
 axis-view-zoom = Nézet nagyítása / kicsinyítése
+axis-antenna-elevation = Radarantenna emelkedési szöge
 input-button = { $n }. gomb
 input-axis = { $n }. tengely
 vr-trigger = Ravasz

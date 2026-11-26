@@ -86,6 +86,8 @@ pub enum AxisControl {
     /// Zooming the view (as the view zoom keys): how fast the cockpit view narrows or an
     /// external view's camera moves in; in.
     ViewZoom,
+    /// The A-A radar's antenna elevation knob: -1 the lowest .. 1 the highest.
+    AntennaElevation,
 }
 
 impl AxisControl {
@@ -94,7 +96,7 @@ impl AxisControl {
         matches!(self, AxisControl::Throttle | AxisControl::Nozzle | AxisControl::TgpZoom)
     }
 
-    pub const ALL: [AxisControl; 11] = [
+    pub const ALL: [AxisControl; 12] = [
         AxisControl::Roll,
         AxisControl::Pitch,
         AxisControl::Yaw,
@@ -103,6 +105,7 @@ impl AxisControl {
         AxisControl::SlewX,
         AxisControl::SlewY,
         AxisControl::TgpZoom,
+        AxisControl::AntennaElevation,
         AxisControl::LookX,
         AxisControl::LookY,
         AxisControl::ViewZoom,
@@ -124,6 +127,7 @@ impl AxisControl {
             AxisControl::LookX => (A::PanLeft, A::PanRight),
             AxisControl::LookY => (A::PanUp, A::PanDown),
             AxisControl::ViewZoom => (A::ViewZoomIn, A::ViewZoomOut),
+            AxisControl::AntennaElevation => (A::AntennaUp, A::AntennaDown),
         }
     }
 
@@ -141,6 +145,7 @@ impl AxisControl {
             AxisControl::LookX => "axis-look-x",
             AxisControl::LookY => "axis-look-y",
             AxisControl::ViewZoom => "axis-view-zoom",
+            AxisControl::AntennaElevation => "axis-antenna-elevation",
         })
     }
 }
@@ -226,6 +231,8 @@ impl AxisMapping {
             | AxisControl::LookX
             | AxisControl::LookY
             | AxisControl::ViewZoom => 0.1,
+            // A knob's centre detent.
+            AxisControl::AntennaElevation => 0.02,
             _ => 0.05,
         };
         Self { control, device, code, invert, deadzone, expo: 0.0, saturation: 1.0 }
@@ -579,8 +586,9 @@ pub struct InputConfig {
 /// click talks on the radio instead of moving the bay doors. 13: the view zoom keys (Numpad *
 /// and /). 14: the RWR priority and target separate keys (Alt + W, Alt + E). 15: the helmet
 /// display mode key (H). 16: the HUD colour key (Shift + H). 17: the padlock and fly-by view keys
-/// (Shift + P, Shift + F12). 18: the cursor slew keys, fixed before (the keypad).
-const VERSION: u32 = 18;
+/// (Shift + P, Shift + F12). 18: the cursor slew keys, fixed before (the keypad). 19: the radar
+/// antenna elevation keys (Alt + PageUp / PageDown).
+const VERSION: u32 = 19;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -1139,6 +1147,9 @@ pub struct Hotas {
     nozzle_seen: Option<f32>,
     /// The TGP zoom axis's zoom step (the first only noted, like the nozzles').
     zoom_seen: Option<u8>,
+    /// The antenna elevation axis's last value, so the EL buttons and the antenna keys work
+    /// until it moves.
+    antenna_seen: Option<f32>,
     /// The stick's and the throttle's axes where they last moved (device, code, raw value), and
     /// how often they moved (`flown`).
     flight_seen: Vec<(String, u32, f32)>,
@@ -1155,6 +1166,7 @@ impl Hotas {
             throttle_applied: None,
             nozzle_seen: None,
             zoom_seen: None,
+            antenna_seen: None,
             flight_seen: Vec::new(),
             flown: 0,
         }
@@ -1186,6 +1198,7 @@ impl Hotas {
             throttle_applied: None,
             nozzle_seen: None,
             zoom_seen: None,
+            antenna_seen: None,
             flight_seen: Vec::new(),
             flown: 0,
         }
@@ -1478,6 +1491,12 @@ pub fn read_hotas(
                 }
                 hotas.zoom_seen = Some(step);
             }
+            AxisControl::AntennaElevation
+                if hotas.antenna_seen.is_none_or(|a| (a - v).abs() > 0.01) =>
+            {
+                hotas.antenna_seen = Some(v);
+                controls.antenna = Some(v);
+            }
             _ => {}
         }
     }
@@ -1521,6 +1540,12 @@ pub fn hold_button(
         controls.view_zoom = 1.0;
     } else if now && a == Action::ViewZoomOut {
         controls.view_zoom = -1.0;
+    }
+    if let Some(d) = a.antenna_direction() {
+        if now && !console {
+            controls.antenna_rate = (controls.antenna_rate + d).clamp(-1.0, 1.0);
+        }
+        return;
     }
     // The cursor slew, held (at a console a drone's TGP).
     if let Some(d) = a.slew_direction() {

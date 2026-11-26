@@ -68,6 +68,7 @@ kg-cam-left = Sporingskamera til venstre
 kg-cam-right = Sporingskamera til højre
 kg-camera-zoom-in = Zoom for beholder / kamera ind / ud (eller SOI's)
 kg-slew = Flyt sensorens markør (holdt)
+kg-antenna = Vip radarantennen op / ned (holdt)
 kg-lock-cursor = Lås på målet under markøren
 kg-swap-soi = Sensor of interest til den anden MFD
 kg-pod-to-helmet = Målpod'en derhen, hvor hjelmsigtet kigger

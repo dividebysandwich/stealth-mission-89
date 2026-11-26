@@ -214,6 +214,10 @@ pub enum Action {
     SlewRight,
     SlewUp,
     SlewDown,
+    /// Modern avionics: the A-A radar's antenna elevation knob turned up or down (held, not a
+    /// discrete action).
+    AntennaUp,
+    AntennaDown,
     /// Keyboard stick (held, not a discrete action): the arrow keys.
     PitchDown,
     PitchUp,
@@ -269,6 +273,16 @@ impl Action {
             Action::SlewRight => Some(Vec2::new(1.0, 0.0)),
             Action::SlewUp => Some(Vec2::new(0.0, 1.0)),
             Action::SlewDown => Some(Vec2::new(0.0, -1.0)),
+            _ => None,
+        }
+    }
+
+    /// The way a held antenna elevation action turns the knob (1 up, -1 down); None for the
+    /// others.
+    pub fn antenna_direction(self) -> Option<f32> {
+        match self {
+            Action::AntennaUp => Some(1.0),
+            Action::AntennaDown => Some(-1.0),
             _ => None,
         }
     }
@@ -406,6 +420,10 @@ pub struct FlightControls {
     pub fire: bool,
     /// Sensor/cursor slew, -1..1 (x right, y up): moves the sensor of interest's cursor.
     pub slew: Vec2,
+    /// The A-A radar's antenna elevation: an antenna axis's position -1..1 (the whole range)
+    /// when it moved this frame, else None; the antenna keys and buttons held, -1 (down) .. 1.
+    pub antenna: Option<f32>,
+    pub antenna_rate: f32,
     /// "Lock cursor target" held (held on the HSD or HARM display: a zoomed view to aim with).
     pub mark: bool,
     /// The radio's push-to-talk held (coop, `voice`).
@@ -523,6 +541,8 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (Shift, K::F8, ResetWaypoint),
         (None, K::PageUp, LastWaypoint),
         (None, K::PageDown, NextWaypoint),
+        (Alt, K::PageUp, AntennaUp),
+        (Alt, K::PageDown, AntennaDown),
         (None, K::Insert, StickSensitivity),
         (None, K::F1, ViewCockpit),
         (Shift, K::Slash, LookAhead),
@@ -649,6 +669,7 @@ fn read_keyboard(
         if (block.0 && !matches!(action, Action::Menu | Action::RecordGif))
             || action.stick_direction().is_some()
             || action.slew_direction().is_some()
+            || action.antenna_direction().is_some()
             || camera_key(m.key)
             || (radio.0 && RADIO_KEYS.contains(&m.key))
         {
@@ -782,6 +803,19 @@ fn read_keyboard(
         .clamp(Vec2::splat(-1.0), Vec2::ONE);
     controls.slew = key_slew(&config, &keys, true);
     controls.console_slew = Vec2::ZERO;
+    // The antenna keys with the modifier they were bound with (plain PageUp/PageDown step the
+    // waypoints).
+    controls.antenna = None;
+    controls.antenna_rate = config
+        .keys
+        .iter()
+        .filter_map(|m| {
+            let crate::hotas::ButtonTarget::Action(a) = m.target else { return None };
+            let d = a.antenna_direction()?;
+            (m.mods == mods && keys.pressed(m.key)).then_some(d)
+        })
+        .sum::<f32>()
+        .clamp(-1.0, 1.0);
     if block.0 {
         // At a console: only the stick, the rudder and the triggers and the throttle and slew
         // keys (a drone's).
@@ -796,6 +830,7 @@ fn read_keyboard(
         controls.trim = Vec2::ZERO;
         controls.slew = Vec2::ZERO;
         controls.look = Vec2::ZERO;
+        controls.antenna_rate = 0.0;
     }
 }
 

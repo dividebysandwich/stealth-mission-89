@@ -11,6 +11,7 @@ axis-tgp-zoom = Zoom TGP
 axis-look-x = Pohled vlevo / vpravo
 axis-look-y = Pohled nahoru / dolů
 axis-view-zoom = Zoom pohledu přiblížit / oddálit
+axis-antenna-elevation = Elevace antény radaru
 input-button = Tlačítko { $n }
 input-axis = Osa { $n }
 vr-trigger = Spoušť

@@ -69,6 +69,7 @@ kg-cam-left = Cámara de seguimiento a la izquierda
 kg-cam-right = Cámara de seguimiento a la derecha
 kg-camera-zoom-in = Zoom de la vaina / cámara acercar / alejar (o el del SOI)
 kg-slew = Mover el cursor del sensor (mantenido)
+kg-antenna = Inclinar la antena del radar arriba / abajo (mantenido)
 kg-lock-cursor = Fijar el blanco bajo el cursor
 kg-swap-soi = Sensor de interés (SOI) al otro MFD
 kg-pod-to-helmet = Pod de designación hacia donde mira la mira del casco

@@ -11,6 +11,7 @@ axis-tgp-zoom = Zoom TGP
 axis-look-x = Patrzeć w lewo / w prawo
 axis-look-y = Patrzeć w górę / w dół
 axis-view-zoom = Przybliżenie / oddalenie widoku
+axis-antenna-elevation = Elewacja anteny radaru
 input-button = Przycisk { $n }
 input-axis = Oś { $n }
 vr-trigger = Spust

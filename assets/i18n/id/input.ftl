@@ -11,6 +11,7 @@ axis-tgp-zoom = Zoom TGP
 axis-look-x = Lihat kiri / kanan
 axis-look-y = Lihat atas / bawah
 axis-view-zoom = Zoom tampilan perbesar / perkecil
+axis-antenna-elevation = Elevasi antena radar
 input-button = Tombol { $n }
 input-axis = Sumbu { $n }
 vr-trigger = Pelatuk

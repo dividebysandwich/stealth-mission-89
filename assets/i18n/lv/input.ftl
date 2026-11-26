@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP tālummaiņa
 axis-look-x = Skatīties pa kreisi / pa labi
 axis-look-y = Skatīties augšup / lejup
 axis-view-zoom = Skata tālummaiņa tuvināt / tālināt
+axis-antenna-elevation = Radara antenas pacēluma leņķis
 input-button = Poga { $n }
 input-axis = Ass { $n }
 vr-trigger = Mēlīte

@@ -11,6 +11,7 @@ axis-tgp-zoom = Zoom tat-TGP
 axis-look-x = Ħares xellug / lemin
 axis-look-y = Ħares 'il fuq / 'l isfel
 axis-view-zoom = Zoom tal-veduta ersaq / bogħod
+axis-antenna-elevation = Elevazzjoni tal-antenna tar-radar
 input-button = Buttuna { $n }
 input-axis = Assi { $n }
 vr-trigger = Trigger

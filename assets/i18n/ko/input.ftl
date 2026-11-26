@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP 줌
 axis-look-x = 좌 / 우 보기
 axis-look-y = 위 / 아래 보기
 axis-view-zoom = 시점 확대 / 축소
+axis-antenna-elevation = 레이더 안테나 고각
 input-button = 버튼 { $n }
 input-axis = 축 { $n }
 vr-trigger = 트리거

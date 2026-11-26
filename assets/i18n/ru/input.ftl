@@ -11,6 +11,7 @@ axis-tgp-zoom = Зум TGP
 axis-look-x = Смотреть влево / вправо
 axis-look-y = Смотреть вверх / вниз
 axis-view-zoom = Приближение / отдаление вида
+axis-antenna-elevation = Угол места антенны радара
 input-button = Кнопка { $n }
 input-axis = Ось { $n }
 vr-trigger = Курок

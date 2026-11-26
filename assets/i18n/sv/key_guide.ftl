@@ -66,6 +66,7 @@ kg-cam-left = Följekamera åt vänster
 kg-cam-right = Följekamera åt höger
 kg-camera-zoom-in = Zoom för behållare / kamera in / ut (eller SOI:s)
 kg-slew = Flytta sensorns markör (hållen)
+kg-antenna = Luta radarantennen upp / ned (hållen)
 kg-lock-cursor = Lås på målet under markören
 kg-swap-soi = Intressesensor (SOI) till den andra MFD:n
 kg-pod-to-helmet = Målpoden dit hjälmsiktet tittar

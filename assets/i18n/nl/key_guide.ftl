@@ -66,6 +66,7 @@ kg-cam-left = Volgcamera links
 kg-cam-right = Volgcamera rechts
 kg-camera-zoom-in = Zoom van pod / camera in / uit (of die van de SOI)
 kg-slew = De cursor van de sensor bewegen (ingedrukt)
+kg-antenna = De radarantenne omhoog / omlaag kantelen (ingedrukt)
 kg-lock-cursor = Het doel onder de cursor vergrendelen
 kg-swap-soi = Sensor of interest (SOI) naar de andere MFD
 kg-pod-to-helmet = Targeting pod naar waar het helmvizier kijkt

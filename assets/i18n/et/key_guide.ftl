@@ -68,6 +68,7 @@ kg-cam-left = Jälgimiskaamera vasakule
 kg-cam-right = Jälgimiskaamera paremale
 kg-camera-zoom-in = Konteineri / kaamera suum lähemale / kaugemale (või SOI oma)
 kg-slew = Anduri kursori liigutamine (hoitud)
+kg-antenna = Radari antenni kallutamine üles / alla (hoitud)
 kg-lock-cursor = Lukusta sihtmärk kursori all
 kg-swap-soi = Sensor of interest teisele MFD-le
 kg-pod-to-helmet = Sihtimiskonteiner sinna, kuhu kiivrisiht vaatab

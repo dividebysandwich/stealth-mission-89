@@ -251,14 +251,31 @@ pub const FCR_AZ_DEG: [f32; 3] = [60.0, 30.0, 10.0];
 const FCR_AZ_LABELS: [&str; 3] = ["A6", "A3", "A1"];
 pub const FCR_BARS: [u8; 3] = [4, 2, 1];
 const FCR_BAR_LABELS: [&str; 3] = ["4B", "2B", "1B"];
-/// The A-A radar's antenna elevation over the horizon: steps of `FCR_EL_STEP` degrees, at most
-/// `FCR_EL_MAX` steps up or down.
+/// The A-A radar's antenna elevation over the horizon (degrees): the EL buttons step it
+/// `FCR_EL_STEP`, the antenna keys move it `FCR_EL_RATE` a second, an axis sets it; at most
+/// `FCR_EL_MAX` up or down (the gimbals).
 pub const FCR_EL_STEP: f32 = 2.0;
-const FCR_EL_MAX: i8 = 10;
-const FCR_EL_LABELS: [&str; 21] = [
-    "-20", "-18", "-16", "-14", "-12", "-10", "-8", "-6", "-4", "-2", "0", "+2", "+4", "+6", "+8",
-    "+10", "+12", "+14", "+16", "+18", "+20",
-];
+pub const FCR_EL_MAX: f32 = 60.0;
+pub const FCR_EL_RATE: f32 = 10.0;
+/// The antenna elevation's readouts, whole degrees from -`FCR_EL_MAX` to +`FCR_EL_MAX`.
+static FCR_EL_LABELS: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| {
+    let max = FCR_EL_MAX as i32;
+    (-max..=max).map(|d| if d > 0 { format!("+{d}") } else { d.to_string() }).collect()
+});
+
+/// The antenna elevation's readout for `el` degrees.
+fn fcr_el_label(el: f32) -> &'static str {
+    let max = FCR_EL_MAX as i32;
+    &FCR_EL_LABELS[((el.round() as i32).clamp(-max, max) + max) as usize]
+}
+
+/// The antenna elevation after an EL button press (`d` up or down): the next whole step that
+/// way (on the steps again after a key or an axis left it between two).
+pub fn fcr_el_step(el: f32, d: i8) -> f32 {
+    let k = el / FCR_EL_STEP;
+    let next = if d > 0 { (k + 1e-3).floor() + 1.0 } else { (k - 1e-3).ceil() - 1.0 };
+    (next * FCR_EL_STEP).clamp(-FCR_EL_MAX, FCR_EL_MAX)
+}
 
 #[derive(Debug, Clone)]
 pub struct AvionicsState {
@@ -322,11 +339,11 @@ pub struct AvionicsState {
     pub gm_cursor: Vec2,
     gm_view: Option<HsdView>,
     /// The A-A radar's range, scan width and bars (indices into `FCR_RANGES_NM`, `FCR_AZ_DEG`,
-    /// `FCR_BARS`), antenna elevation (`FCR_EL_STEP` steps) and cursor (display pixels).
+    /// `FCR_BARS`), antenna elevation (degrees over the horizon) and cursor (display pixels).
     pub fcr_range: usize,
     pub fcr_az: usize,
     pub fcr_bars: usize,
-    pub fcr_el: i8,
+    pub fcr_el: f32,
     pub fcr_cursor: Vec2,
     /// The RCS page's range (index into `RCS_RANGES`).
     pub rcs_range: usize,
@@ -669,7 +686,7 @@ impl Default for AvionicsState {
             fcr_range: 2,
             fcr_az: 0,
             fcr_bars: 0,
-            fcr_el: 0,
+            fcr_el: 0.0,
             fcr_cursor: centre,
             rcs_range: 0,
             master: None,
@@ -748,13 +765,26 @@ impl AvionicsState {
         FCR_RANGES_NM[self.fcr_range.min(FCR_RANGES_NM.len() - 1)] * 1852.0
     }
 
-    /// The A-A radar's scan: its half width, bars and antenna elevation (radians).
+    /// The A-A radar's scan: its half width, bars and antenna elevation (radians; the top and
+    /// bottom bars kept inside the gimbals).
     pub fn fcr_scan(&self) -> crate::aa_radar::Scan {
+        use crate::aa_radar::{BAR_SPACING, GIMBAL};
+        let bars = FCR_BARS[self.fcr_bars.min(FCR_BARS.len() - 1)];
+        let reach = GIMBAL - (bars.max(1) - 1) as f32 / 2.0 * BAR_SPACING;
         crate::aa_radar::Scan {
             az_half: FCR_AZ_DEG[self.fcr_az.min(FCR_AZ_DEG.len() - 1)].to_radians(),
-            bars: FCR_BARS[self.fcr_bars.min(FCR_BARS.len() - 1)],
-            elevation: (self.fcr_el as f32 * FCR_EL_STEP).to_radians(),
+            bars,
+            elevation: self.fcr_el.to_radians().clamp(-reach, reach),
         }
+    }
+
+    /// Moves the A-A radar's antenna: to `axis` (-1..1 the whole range) when an antenna axis
+    /// moved, then `rate` (-1..1, the antenna keys held) of `FCR_EL_RATE` for `dt` seconds.
+    pub fn move_antenna(&mut self, axis: Option<f32>, rate: f32, dt: f32) {
+        if let Some(v) = axis {
+            self.fcr_el = v.clamp(-1.0, 1.0) * FCR_EL_MAX;
+        }
+        self.fcr_el = (self.fcr_el + rate * FCR_EL_RATE * dt).clamp(-FCR_EL_MAX, FCR_EL_MAX);
     }
 
     /// The formats on an MFD's bottom bezel buttons.
@@ -1128,7 +1158,7 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         }
         MfdCmd::FcrAz => av.fcr_az = (av.fcr_az + 1) % FCR_AZ_DEG.len(),
         MfdCmd::FcrBars => av.fcr_bars = (av.fcr_bars + 1) % FCR_BARS.len(),
-        MfdCmd::FcrElevation(d) => av.fcr_el = (av.fcr_el + d).clamp(-FCR_EL_MAX, FCR_EL_MAX),
+        MfdCmd::FcrElevation(d) => av.fcr_el = fcr_el_step(av.fcr_el, d),
         MfdCmd::MapZoom(d) => {
             state.map_zoom = (state.map_zoom + d as i32).clamp(2, state.max_map_zoom());
             raster.invalidate();
@@ -1302,7 +1332,7 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         (Format::Fcr, 13) => (FCR_AZ_LABELS[av.fcr_az], Cmd(MfdCmd::FcrAz), false),
         (Format::Fcr, 14) => (FCR_BAR_LABELS[av.fcr_bars], Cmd(MfdCmd::FcrBars), false),
         (Format::Fcr, 15) => ("EL+", Cmd(MfdCmd::FcrElevation(1)), false),
-        (Format::Fcr, 16) => (FCR_EL_LABELS[(av.fcr_el + FCR_EL_MAX) as usize], Readout, false),
+        (Format::Fcr, 16) => (fcr_el_label(av.fcr_el), Readout, false),
         (Format::Fcr, 17) => ("EL-", Cmd(MfdCmd::FcrElevation(-1)), false),
         (Format::Hsd | Format::Harm | Format::Tgp | Format::Gm | Format::Fcr, 4) => soi,
         // The cargo page: the ramp up or down (the bay doors' key).
@@ -2262,9 +2292,17 @@ fn draw_fcr(p: &MfdParams, c: &mut Canvas, ac: Option<(&Aircraft, &WorldPos)>, s
         let (low, high) = scan.coverage();
         let alt = |el: f32| ((pos.0.y as f32 + r * el.tan()) * FT / 1000.0).round() as i32;
         let at = cursor + Vec2::new(6.0, 0.0);
-        stroke_text_at(c, at.x, at.y - 5.0, &alt(high).to_string(), 6.0, 1.0, WHITE, Align::Left);
-        stroke_text_at(c, at.x, at.y + 5.0, &alt(low).to_string(), 6.0, 1.0, WHITE, Align::Left);
+        for (kft, dy) in [(alt(high), -5.0), (alt(low), 5.0)] {
+            let colour = cover_colour(kft);
+            stroke_text_at(c, at.x, at.y + dy, &kft.to_string(), 6.0, 1.0, colour, Align::Left);
+        }
     }
+}
+
+/// The colour of an altitude the scan covers at the cursor (thousands of feet): red below
+/// sea level.
+fn cover_colour(kft: i32) -> u8 {
+    if kft < 0 { RED } else { WHITE }
 }
 
 /// The A-A radar's search bricks (old ones dimmer, friendly ones green) and the locked
@@ -3327,6 +3365,10 @@ fn slew_and_lock(
         .soi_format()
         .filter(|f| matches!(f, Format::Hsd | Format::Harm | Format::Gm | Format::Fcr));
     let av = &mut state.av;
+    // The antenna elevation knob (keys, buttons, an axis), whatever format is up.
+    if av.radar && (controls.antenna.is_some() || controls.antenna_rate != 0.0) {
+        av.move_antenna(controls.antenna, controls.antenna_rate, time.delta_secs());
+    }
     // Holding the lock shows the zoomed window and slews finely; letting go locks again, now
     // picking only what is right under the cursor in the window.
     let zoomed = av.zoom_window();
@@ -3994,6 +4036,36 @@ mod tests {
 
     /// The A-A radar's cursor pushed down past the scope's bottom steps the range in once per
     /// push (not on down to the shortest while held), and past its sides the scan's width.
+    /// The antenna elevation: an axis sets it over the gimbals, the keys move it, the EL
+    /// buttons step back onto the 2 degree steps; the bars stay inside the gimbals.
+    #[test]
+    fn fcr_antenna_elevation_controls() {
+        use crate::aa_radar::{BAR_SPACING, GIMBAL};
+        let mut av = AvionicsState { radar: true, ..Default::default() };
+        av.move_antenna(Some(0.5), 0.0, 0.1);
+        assert_eq!(av.fcr_el, 30.0);
+        assert_eq!(fcr_el_label(av.fcr_el), "+30");
+        av.move_antenna(None, -1.0, 0.5);
+        assert_eq!(av.fcr_el, 30.0 - FCR_EL_RATE * 0.5);
+        av.fcr_el = 3.3;
+        assert_eq!(fcr_el_step(av.fcr_el, 1), 4.0);
+        assert_eq!(fcr_el_step(av.fcr_el, -1), 2.0);
+        assert_eq!(fcr_el_step(4.0, 1), 6.0);
+        assert_eq!(fcr_el_step(-4.0, -1), -6.0);
+        assert_eq!(fcr_el_step(FCR_EL_MAX, 1), FCR_EL_MAX);
+        assert_eq!(fcr_el_label(-0.4), "0");
+        assert_eq!(fcr_el_label(-12.0), "-12");
+        av.move_antenna(Some(-1.0), -1.0, 1.0);
+        assert_eq!(av.fcr_el, -FCR_EL_MAX);
+        // 4 bars at the bottom: the lowest bar on the gimbal limit.
+        let scan = av.fcr_scan();
+        let low = scan.bar_elevation(scan.bars - 1);
+        assert!((low + GIMBAL).abs() < 1e-5, "{low}");
+        assert!((scan.elevation + GIMBAL - 1.5 * BAR_SPACING).abs() < 1e-5);
+        // Altitudes below sea level at the cursor are red.
+        assert_eq!((cover_colour(-1), cover_colour(0), cover_colour(20)), (RED, WHITE, WHITE));
+    }
+
     #[test]
     fn fcr_cursor_edges_step_range_and_azimuth() {
         let (lo, hi) = fcr_scope();

@@ -11,6 +11,7 @@ axis-tgp-zoom = Súmáil TGP
 axis-look-x = Féach ar chlé / ar dheis
 axis-look-y = Féach suas / síos
 axis-view-zoom = Súmáil an radhairc isteach / amach
+axis-antenna-elevation = Airde aeróg an radair
 input-button = Cnaipe { $n }
 input-axis = Ais { $n }
 vr-trigger = Truicear

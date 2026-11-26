@@ -805,6 +805,12 @@ pub(super) fn grab_levers(
                         controls.trim += a.trim_direction().unwrap_or_default();
                     }
                 }
+                ButtonTarget::Action(a) if a.antenna_direction().is_some() => {
+                    if held && !block.0 {
+                        let d = a.antenna_direction().unwrap_or_default();
+                        controls.antenna_rate = (controls.antenna_rate + d).clamp(-1.0, 1.0);
+                    }
+                }
                 ButtonTarget::Action(a) if pressed && (!block.0 || a == Action::Menu) => {
                     actions.write(ActionEvent(a));
                 }

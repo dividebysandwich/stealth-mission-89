@@ -67,6 +67,7 @@ kg-cam-left = 跟踪摄像机朝左
 kg-cam-right = 跟踪摄像机朝右
 kg-camera-zoom-in = 吊舱/摄像机缩放 拉近 / 拉远（或 SOI 的）
 kg-slew = 移动传感器光标（按住）
+kg-antenna = 雷达天线上仰 / 下俯（按住）
 kg-lock-cursor = 锁定光标下的目标
 kg-swap-soi = 将 sensor of interest 切换到另一块 MFD
 kg-pod-to-helmet = 瞄准吊舱转向头盔瞄准具所看之处

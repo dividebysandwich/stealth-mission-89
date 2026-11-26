@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP-zoom
 axis-look-x = Links / rechts kijken
 axis-look-y = Omhoog / omlaag kijken
 axis-view-zoom = Beeldzoom in / uit
+axis-antenna-elevation = Elevatie van de radarantenne
 input-button = Knop { $n }
 input-axis = As { $n }
 vr-trigger = Trigger

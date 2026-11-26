@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP-Zoom
 axis-look-x = Umschauen links / rechts
 axis-look-y = Umschauen oben / unten
 axis-view-zoom = Ansichtszoom hinein / hinaus
+axis-antenna-elevation = Radarantennen-Elevation
 input-button = Knopf { $n }
 input-axis = Achse { $n }
 vr-trigger = Abzug

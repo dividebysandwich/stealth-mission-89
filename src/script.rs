@@ -57,6 +57,8 @@ enum Step {
     /// Sensor/cursor slew right and up (`slewx=`, `slewy=`).
     SlewX(f32),
     SlewY(f32),
+    /// The radar antenna elevation axis moved to -1..1 (`antenna=`).
+    Antenna(f32),
     /// Presses a 3D-cockpit control bound to this action (`press=Gear`).
     Press(String),
     /// Holds (true) or releases the fire button (`trigger=1`, `trigger=0`).
@@ -108,6 +110,7 @@ struct Axes {
     yaw: f32,
     throttle: Option<f32>,
     slew: Vec2,
+    antenna: Option<f32>,
     trigger: bool,
     gun: bool,
     mark: bool,
@@ -128,6 +131,8 @@ fn parse_step(what: &str) -> Option<Step> {
         Step::SlewX(x.parse().ok()?)
     } else if let Some(x) = what.strip_prefix("slewy=") {
         Step::SlewY(x.parse().ok()?)
+    } else if let Some(x) = what.strip_prefix("antenna=") {
+        Step::Antenna(x.parse().ok()?)
     } else if let Some(x) = what.strip_prefix("throttle=").or(what.strip_prefix("collective=")) {
         Step::Throttle(x.parse().ok()?)
     } else if let Some(x) = what.strip_prefix("trigger=") {
@@ -227,6 +232,7 @@ fn apply(
         Step::Throttle(t) => axes.throttle = Some(*t),
         Step::SlewX(x) => axes.slew.x = *x,
         Step::SlewY(y) => axes.slew.y = *y,
+        Step::Antenna(a) => axes.antenna = Some(*a),
         Step::Trigger(t) => axes.trigger = *t,
         Step::Gun(t) => axes.gun = *t,
         Step::Mark(t) => axes.mark = *t,
@@ -361,6 +367,9 @@ fn run_script(
     controls.yaw = script.axes.yaw;
     controls.slew = script.axes.slew;
     controls.console_slew = script.axes.slew;
+    if script.axes.antenna.is_some() {
+        controls.antenna = script.axes.antenna;
+    }
     controls.fire |= script.axes.trigger;
     controls.gun |= script.axes.gun;
     controls.mark |= script.axes.mark;
@@ -379,6 +388,7 @@ fn step_name(s: &Step) -> String {
         Step::Throttle(t) => format!("throttle={t}"),
         Step::SlewX(x) => format!("slewx={x}"),
         Step::SlewY(y) => format!("slewy={y}"),
+        Step::Antenna(a) => format!("antenna={a}"),
         Step::Press(a) => format!("press={a}"),
         Step::Trigger(t) => format!("trigger={}", *t as u8),
         Step::Gun(t) => format!("gun={}", *t as u8),

@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP-zoom
 axis-look-x = Titta vänster / höger
 axis-look-y = Titta upp / ned
 axis-view-zoom = Bildzoom in / ut
+axis-antenna-elevation = Radarantennens elevation
 input-button = Knapp { $n }
 input-axis = Axel { $n }
 vr-trigger = Avtryckare

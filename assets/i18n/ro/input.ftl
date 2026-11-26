@@ -11,6 +11,7 @@ axis-tgp-zoom = Zoom TGP
 axis-look-x = Privire stânga / dreapta
 axis-look-y = Privire sus / jos
 axis-view-zoom = Zoom vizualizare apropie / depărtează
+axis-antenna-elevation = Elevația antenei radarului
 input-button = Buton { $n }
 input-axis = Axa { $n }
 vr-trigger = Trăgaci

@@ -11,6 +11,7 @@ axis-tgp-zoom = TGP mastelis
 axis-look-x = Žiūrėti kairėn / dešinėn
 axis-look-y = Žiūrėti aukštyn / žemyn
 axis-view-zoom = Vaizdo mastelis artinti / tolinti
+axis-antenna-elevation = Radaro antenos pakilimo kampas
 input-button = Mygtukas { $n }
 input-axis = Ašis { $n }
 vr-trigger = Gaidukas
