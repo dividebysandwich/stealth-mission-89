@@ -198,7 +198,7 @@ fn dial_text(dial: Dial, value: f32) -> String {
         Dial::GMeter => format!("{value:.1} g"),
         Dial::TurnSlip => format!("{value:+.1}°/s"),
         Dial::Climb => format!("{} ft/min", signed(v)),
-        Dial::AoaUnits => format!("{value:.1}"),
+        Dial::AoaUnits | Dial::AoaTape => format!("{value:.1}"),
         Dial::TapeRpm => format!("{v} %"),
         Dial::TapeEgt => format!("{v} °C"),
         Dial::TapeOil => format!("{v} psi"),
@@ -629,7 +629,7 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::GMeter => "tip-dial-g",
                 Dial::TurnSlip | Dial::Slip => "tip-dial-turn-slip",
                 Dial::Climb => "tip-dial-vvi",
-                Dial::AoaUnits => "tip-dial-aoa",
+                Dial::AoaUnits | Dial::AoaTape => "tip-dial-aoa",
                 Dial::TapeRpm => "tip-dial-rpm",
                 Dial::TapeEgt => "tip-dial-egt",
                 Dial::TapeFlow => "tip-dial-fuel-flow",
@@ -1274,6 +1274,7 @@ mod tests {
             TapeFlow,
             TapeOil,
             Sweep,
+            AoaTape,
             AntennaEl,
         ] {
             let text = dial_text(dial, 950.0);

@@ -4,11 +4,12 @@
 //!
 //! - The pilot's: the ACM panel across the top (the ACM jettison guard, the GUN RATE, SW COOL,
 //!   MSL PREP and MSL MODE lit buttons, master arm, the master caution and the station lights)
-//!   between the angle of attack indicator and the wing sweep indicator with its mode switch
-//!   and handle keys; the vertical display indicator (VDI) in the middle with the vertical
-//!   speed, airspeed, radar and barometric altimeters left of it, the standby attitude
-//!   indicator, the accelerometer, the bearing-distance-heading indicator and the radar warning
-//!   scope right of it, the caution and threat lights outboard; under them the horizontal
+//!   between the angle of attack indicator's tape and the wing sweep indicator with its mode
+//!   switch and handle keys, the caution lights outboard of the one and the threat lights
+//!   outboard of the other; the vertical display indicator (VDI) in the middle with the
+//!   vertical speed, airspeed, radar and barometric altimeters and the landing checklist left
+//!   of it, the standby attitude indicator, the accelerometer, the bearing-distance-heading
+//!   indicator and the radar warning scope right of it; under them the horizontal
 //!   situation display (HSD) between the engine tapes and the fuel quantity, its BINGO and
 //!   TOTAL counters and the clock; the DISPLAYS panel low on the right (the steering MODE and
 //!   STEER CMD pushbuttons that turn 45 degrees, the HUD's, VDI's and HSD's switches); the gear
@@ -42,6 +43,9 @@ const KNOB: f32 = 22.0;
 /// White legends on the black panels; black legends on the grey keys.
 const LEGEND: (u8, u8) = (15, 5);
 const KEYCAP: (u8, u8) = (5, 7);
+
+/// The pilot's landing checklist's placard.
+const CHECKLIST: &str = "LAND\nARMT\nFUEL\nHOOK\nANTI SKID\nWINGS\nWHEELS\nFLAPS\nTHROT";
 
 /// A legend's size by its text alone (so equal texts are one atlas face): 8 mm a line and 4 mm
 /// a letter at the font's double size.
@@ -176,9 +180,9 @@ fn acm(it: &mut Items) {
         let x = -100.0 + 25.0 * n as f32;
         it.put(Elem::TomcatLight(Light::Station(n)), rect(x, -210.0, 20.0, 12.0), None, false);
     }
-    // Angle of attack (units) on the left, the wing sweep indicator on the right with the
+    // Angle of attack (units, a tape) on the left, the wing sweep indicator on the right with the
     // sweep mode switch and the handle's keys.
-    it.put(Elem::Dial(Dial::AoaUnits), rect(-236.0, -266.0, 62.0, 62.0), None, true);
+    it.put(Elem::Dial(Dial::AoaTape), rect(-192.0, -268.0, 30.0, 86.0), None, false);
     it.put(Elem::Dial(Dial::Sweep), rect(130.0, -268.0, 32.0, 86.0), None, false);
     it.switch(Key::SweepMode, 172.0, -264.0);
     it.positions(172.0, -264.0, &["AUTO", "MAN"], true);
@@ -190,12 +194,20 @@ fn acm(it: &mut Items) {
 /// The pilot's flight instruments round the VDI, the cautions and threat lights outboard.
 fn flight(it: &mut Items) {
     use LampId::*;
-    it.put(Elem::Dial(Dial::Climb), rect(-250.0, -178.0, 72.0, 72.0), None, true);
-    it.put(Elem::Dial(Dial::Mach), rect(-170.0, -180.0, 76.0, 76.0), None, true);
-    it.put(Elem::Dial(Dial::RadarAlt), rect(-250.0, -96.0, 76.0, 76.0), None, true);
-    it.put(Elem::Dial(Dial::Altimeter), rect(-170.0, -96.0, 76.0, 76.0), None, true);
-    it.put(Elem::Dial(Dial::GMeter), rect(178.0, -176.0, 62.0, 62.0), None, true);
-    // The caution lights left, the threat lights right.
+    // Clear of the VDI's housing, which stands out of the panel with its knobs either side of
+    // the tube: the small vertical speed indicator, the large radar altimeter.
+    it.put(Elem::Dial(Dial::Climb), rect(-272.0, -172.0, 60.0, 60.0), None, true);
+    it.put(Elem::Dial(Dial::Mach), rect(-202.0, -180.0, 76.0, 76.0), None, true);
+    it.put(Elem::Dial(Dial::RadarAlt), rect(-294.0, -100.0, 82.0, 82.0), None, true);
+    it.put(Elem::Dial(Dial::Altimeter), rect(-202.0, -96.0, 76.0, 76.0), None, true);
+    it.put(Elem::Dial(Dial::GMeter), rect(206.0, -176.0, 62.0, 62.0), None, true);
+    // The landing checklist's placard left of the radar altimeter.
+    it.legend(CHECKLIST, -324.0, -62.0, At::Centre);
+    // The VDI's housing's trim knobs' names (the knobs are the model's).
+    it.legend("HUD\nTRIM", 102.0, -128.0, At::Centre);
+    it.legend("VDI\nTRIM", 102.0, -74.0, At::Centre);
+    // The caution lights high on the left, the threat lights high on the right, over the fire
+    // handles.
     for (i, elem) in [
         Elem::Lamp(Fire, None),
         Elem::Lamp(Eng, Some("ENGINE")),
@@ -207,7 +219,7 @@ fn flight(it: &mut Items) {
     .into_iter()
     .enumerate()
     {
-        let r = rect(-345.0 + 31.0 * (i % 2) as f32, -176.0 + 15.0 * (i / 2) as f32, 29.0, 13.0);
+        let r = rect(-272.0 + 31.0 * (i % 2) as f32, -264.0 + 15.0 * (i / 2) as f32, 29.0, 13.0);
         it.put(elem, r, None, false);
     }
     for (i, elem) in [
@@ -221,7 +233,7 @@ fn flight(it: &mut Items) {
     .into_iter()
     .enumerate()
     {
-        let r = rect(262.0 + 31.0 * (i % 2) as f32, -176.0 + 15.0 * (i / 2) as f32, 29.0, 13.0);
+        let r = rect(226.0 + 31.0 * (i % 2) as f32, -264.0 + 15.0 * (i / 2) as f32, 29.0, 13.0);
         it.put(elem, r, None, false);
     }
 }
@@ -274,9 +286,12 @@ fn lower(it: &mut Items) {
     );
 }
 
-/// The pilot's DISPLAYS panel, low on the right.
+/// The pilot's DISPLAYS panel (the model sets it on the right knee panel, which is narrow): the
+/// steering MODE pushbuttons down its left, the HUD's, the VDI's and the HSD's pairs of
+/// switches in three rows right of them, the STEER CMD row and the pitch ladder's knob under
+/// them.
 fn displays(it: &mut Items) {
-    it.legend("DISPLAYS", 215.0, 112.0, At::Centre);
+    it.legend("DISPLAYS", 170.0, 112.0, At::Centre);
     it.legend("MODE", 136.0, 126.0, At::Centre);
     for (i, m) in STEER_MODES.into_iter().enumerate() {
         let y = 132.0 + 16.0 * i as f32;
@@ -284,34 +299,45 @@ fn displays(it: &mut Items) {
         it.legend(key.label(), 128.0, y + PUSH / 2.0, At::Right);
         it.push(key, 130.0, y);
     }
-    // The HUD's, the VDI's and the HSD's switches in three columns.
-    for (i, name) in ["HUD", "VDI", "HSD"].into_iter().enumerate() {
-        it.legend(name, 166.0 + 56.0 * i as f32, 126.0, At::Centre);
+    // A row a display: its name, then each switch under its own.
+    for (i, (name, left, right)) in [
+        (
+            "HUD",
+            (Key::HudDeclutter, "DCLTR", &["ON", "OFF"][..]),
+            (Key::HudAwl, "AWL", &["ILS", "ACL"][..]),
+        ),
+        (
+            "VDI",
+            (Key::VdiMode, "MODE", &["TV", "NORM"][..]),
+            (Key::VdiAwl, "AWL", &["ILS", "ACL"][..]),
+        ),
+        (
+            "HSD",
+            (Key::HsdMode, "MODE", &["NAV", "TID", "ECM"][..]),
+            (Key::HsdEcmOverride, "ORIDE", &["ON", "OFF"][..]),
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let y = 134.0 + 38.0 * i as f32;
+        it.legend(name, 153.0, y + SWITCH.1 / 2.0, At::Centre);
+        for (x, (key, title, pos)) in [(164.0, left), (208.0, right)] {
+            it.legend(title, x + SWITCH.0 / 2.0, y - 5.0, At::Centre);
+            it.switch(key, x, y);
+            it.positions(x, y, pos, true);
+        }
     }
-    for (key, x, y, pos) in [
-        (Key::HudDeclutter, 158.0, 132.0, &["ON", "OFF"][..]),
-        (Key::VdiMode, 214.0, 132.0, &["TV", "NORM"][..]),
-        (Key::HsdMode, 270.0, 132.0, &["NAV", "TID", "ECM"][..]),
-        (Key::HudAwl, 158.0, 170.0, &["ILS", "ACL"][..]),
-        (Key::VdiAwl, 214.0, 170.0, &["ILS", "ACL"][..]),
-        (Key::HsdEcmOverride, 270.0, 170.0, &["ON", "OFF"][..]),
-    ] {
-        it.switch(key, x, y);
-        it.positions(x, y, pos, true);
-    }
-    it.legend("DCLTR", 166.0, 163.0, At::Centre);
-    it.legend("AWL", 194.0, 163.0, At::Centre);
-    it.legend("ORIDE", 278.0, 201.0, At::Centre);
     // The STEER CMD row.
     for (i, c) in STEER_CMDS.into_iter().enumerate() {
-        let x = 150.0 + 34.0 * i as f32;
+        let x = 98.0 + 27.0 * i as f32;
         let key = Key::SteerCmd(c);
-        it.legend(key.label(), x + PUSH / 2.0, 218.0, At::Centre);
-        it.push(key, x, 228.0);
+        it.legend(key.label(), x + PUSH / 2.0, 248.0, At::Centre);
+        it.push(key, x, 258.0);
     }
-    it.legend("STEER CMD", 224.0, 250.0, At::Centre);
-    it.control(Key::PitchLadder, rect(312.0, 216.0, KNOB, KNOB));
-    it.legend("PITCH LAD", 323.0, 246.0, At::Centre);
+    it.legend("STEER CMD", 158.0, 280.0, At::Centre);
+    it.control(Key::PitchLadder, rect(224.0, 246.0, KNOB, KNOB));
+    it.legend("PITCH LAD", 224.0, 280.0, At::Centre);
 }
 
 /// The RIO's radar panel round the DDD.
@@ -484,10 +510,10 @@ impl PanelLayout {
         Self {
             style: PanelStyle::F14,
             items: it.0,
-            adi: rect(92.0, -178.0, 72.0, 72.0),
+            adi: rect(124.0, -178.0, 72.0, 72.0),
             mfds: Vec::new(),
-            rwr: Some(rect(178.0, -94.0, 72.0, 72.0)),
-            hsi: Some(rect(88.0, -98.0, 80.0, 80.0)),
+            rwr: Some(rect(210.0, -94.0, 72.0, 72.0)),
+            hsi: Some(rect(122.0, -98.0, 80.0, 80.0)),
             tfr: None,
             ded: None,
             lmpd: None,

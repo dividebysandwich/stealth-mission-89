@@ -145,18 +145,24 @@ class Shift:
 class Slope:
     """A knee panel: it leaves the panel along the row v = fold and slopes down towards the
     crew, `angle` degrees off the panel. The layout's rows from v = top on run down it (its
-    columns moved du)."""
+    columns moved du). Its head stands `out` m out of the panel (on a ledge). Canted: turned
+    `cant` degrees about its own length to face the centre line, about its edge at u = pivot
+    (the side wall's: the inboard edge lies deeper)."""
 
-    def __init__(self, base, top, fold, angle, du=0.0):
-        a = math.radians(angle)
-        self.base, self.top, self.fold, self.du = base, top, fold, du
+    def __init__(self, base, top, fold, angle, du=0.0, out=0.0, cant=0.0, pivot=0.0):
+        a, c = math.radians(angle), math.radians(cant)
+        self.base, self.top, self.fold, self.du, self.out, self.pivot = base, top, fold, du, out, pivot
         self.down = -base.up * math.cos(a) + base.normal * math.sin(a)
-        self.normal = base.normal * math.cos(a) + base.up * math.sin(a)
+        flat = base.normal * math.cos(a) + base.up * math.sin(a)
+        side = 1.0 if pivot > 0.0 else -1.0
+        self.right = RIGHT * math.cos(c) + flat * (side * math.sin(c))
+        self.normal = flat * math.cos(c) - RIGHT * (side * math.sin(c))
         self.up = -self.down
-        self.rot = Matrix((RIGHT, -self.normal, self.up)).transposed().to_quaternion()
+        self.rot = Matrix((self.right, -self.normal, self.up)).transposed().to_quaternion()
 
     def point(self, u, v, offset=0.0):
-        return self.base.point(u + self.du, self.fold) + self.down * ((v - self.top) / 1000) + self.normal * offset
+        head = self.base.point(self.pivot, self.fold, self.out)
+        return head + self.right * ((u + self.du - self.pivot) / 1000) + self.down * ((v - self.top) / 1000) + self.normal * offset
 
 
 RIGHT = Vector((1.0, 0.0, 0.0))
@@ -173,6 +179,38 @@ KNEE = 40.0
 RIO_RADAR_V = -116.0
 RIO_RADAR_OUT = 0.06
 SHROUD = 0.08
+# The pilot's centre stack stands out of his panel in steps: the ACM panel's box under the glare
+# shield furthest, the VDI's housing (wider than its tube: a strip of knobs either side) under
+# it, the HSD's least: (layout rectangle, m out of the panel).
+ACM_BOX = ((-152.0, -272.0, 264.0, 78.0), 0.070)
+VDI_BOX = ((-114.0, -196.0, 228.0, 182.0), 0.045)
+HSD_BOX = ((-85.0, -12.0, 170.0, 164.0), 0.025)
+STACK = [ACM_BOX, VDI_BOX, HSD_BOX]
+# The fire handles (FUEL SHUT OFF, PULL) either side of the ACM panel: layout (u, v).
+FIRE_HANDLES = ((-232.0, -197.0), (252.0, -197.0))
+# The pilot's knee panels (fitted to a photograph of the cockpit from the pilot's eye): each a
+# box against its side wall, its head on a ledge KNEE_OUT m out of the panel along the row
+# KNEE_FOLD (a little over the HSD's top), its face sloping KNEE_PILOT degrees off the panel down
+# to the consoles' fronts, KNEE_LEN mm long, and turned KNEE_CANT degrees to face the centre
+# line; a little wider at its foot: its inboard edge KNEE_IN mm from the centre line (head,
+# foot), its outboard one on the wall (KNEE_WALL).
+KNEE_PILOT = 33.0
+KNEE_CANT = 8.0
+KNEE_OUT = 0.085
+KNEE_FOLD = -25.0
+KNEE_LEN = 308.0
+KNEE_IN = (289.0, 276.0)
+KNEE_WALL = 445.0
+# The RIO's: the TID's housing (layout rectangle, m out of the panel) and the hood round its
+# tube (m out of the housing: low and thin, clear of the buttons round it and of the eye's
+# line to the knobs under it); his knee boxes (see `rio_knee`).
+TID_BOX = ((-162.0, -112.0, 324.0, 298.0), 0.045)
+TID_HOOD = 0.012
+RIO_KNEES = {-1: (-100.0, 52.0), 1: (-102.0, 16.0)}
+RIO_KNEE_OUT = 0.04
+RIO_KNEE_IN = 180.0
+RIO_KNEE_LEN = 250.0
+RIO_WALL = 398.0
 # The parts of the layout built elsewhere than where it draws them: (u from, to, v from, to) of
 # the layout and their panel. The pilot's: the right knee panel (the DISPLAYS panel), the left
 # one (the knee panel with the gear handle). The RIO's: the flight instruments go up beside the
@@ -180,21 +218,37 @@ SHROUD = 0.08
 # ECM panel with the ECMD slopes under it.
 if RIO:
     RADAR = Raised(MAIN, RIO_RADAR_OUT)
+    # His knee panels are boxes like the pilot's (RIO_KNEES: the layout's row at the box's
+    # head, the row it leaves the panel along), from RIO_KNEE_IN mm off the centre line out to
+    # the wall, RIO_KNEE_LEN mm down to the consoles' fronts: wider and longer than the layout's
+    # parts on them (the rest of their faces is dressing).
+    def rio_knee(side, du=0.0):
+        top, fold = RIO_KNEES[side]
+        return Slope(MAIN, top, fold, KNEE_PILOT, du, RIO_KNEE_OUT, KNEE_CANT, side * RIO_WALL)
+
     PARTS = [
-        ((-346.0, -140.0, 118.0, 256.0), Shift(MAIN, -46.0, -204.0)),
-        ((-348.0, -230.0, -104.0, 100.0), Slope(MAIN, -100.0, 52.0, KNEE, -40.0)),
-        ((124.0, 348.0, 110.0, 256.0), Shift(MAIN, 46.0, -194.0)),
-        ((186.0, 348.0, -106.0, 110.0), Slope(MAIN, -102.0, 16.0, KNEE, 40.0)),
+        ((-346.0, -140.0, 118.0, 256.0), Shift(MAIN, -52.0, -204.0)),
+        ((-348.0, -230.0, -104.0, 100.0), rio_knee(-1, -48.0)),
+        ((124.0, 348.0, 110.0, 256.0), Shift(MAIN, 52.0, -194.0)),
+        ((186.0, 348.0, -106.0, 110.0), rio_knee(1, 52.0)),
+        # The TID's housing stands out of the panel with its buttons and knobs.
+        ((TID_BOX[0][0], TID_BOX[0][0] + TID_BOX[0][2], TID_BOX[0][1], TID_BOX[0][1] + TID_BOX[0][3]), Raised(MAIN, TID_BOX[1])),
     ]
-    # The knee panels' solids: (u from, to, the slope's length in mm).
-    KNEES = [(PARTS[1][1], -346.0, -232.0, 198.0), (PARTS[3][1], 188.0, 342.0, 212.0)]
+    KNEES = []
 else:
     RADAR = None
+    # The layout's rows run down the knee panels as they are drawn (v = mm down the slope): the
+    # DISPLAYS panel moved out onto the right one under the emergency gear handle's plate (the
+    # model's); the knee panel's column and the gear handle's plate under it on the left one.
+    def knee_part(du, side):
+        return Slope(MAIN, 0.0, KNEE_FOLD, KNEE_PILOT, du, KNEE_OUT, KNEE_CANT, side * KNEE_WALL)
+
     PARTS = [
-        ((90.0, 350.0, 100.0, 268.0), Slope(MAIN, 100.0, 100.0, KNEE)),
-        ((-356.0, -272.0, -2.0, 268.0), Slope(MAIN, 0.0, 0.0, KNEE)),
-    ]
-    KNEES = [(PARTS[0][1], 92.0, 346.0, 168.0), (PARTS[1][1], -354.0, -284.0, 266.0)]
+        ((90.0, 300.0, 100.0, 300.0), knee_part(192.0, 1)),
+        ((-356.0, -272.0, 156.0, 268.0), knee_part(-34.0, -1)),
+        ((-356.0, -272.0, -2.0, 156.0), knee_part(-46.0, -1)),
+    ] + [((r[0], r[0] + r[2], r[1], r[1] + r[3]), Raised(MAIN, d)) for r, d in STACK]
+    KNEES = []
 
 
 def panel_at(u, v):
@@ -337,6 +391,10 @@ for n in SCREENS:
     material(n, "adi")
 coloured("red", "yellow", (0.55, 0.04, 0.03))
 coloured("white", "yellow", (0.80, 0.80, 0.76))
+# The pilot's panel's light grey face (the black instruments' cases stand on it).
+coloured("panel_light", "panel_grey", (0.72, 0.74, 0.72))
+# The VDI's pale knobs.
+coloured("knob_pale", "yellow", (0.55, 0.56, 0.54))
 # A dark tube's glass (the other seat's dressing).
 coloured("tube", "yellow", (0.012, 0.022, 0.016), 0.2)
 
@@ -470,6 +528,10 @@ def rod(name, a, b, radius, mat, parent=root, n=KNOB):
 
 
 # --- panel helpers (the live panel's layout)
+# The flight instruments are in square cases.
+SQUARE = True
+
+
 def point(u, v, offset=0.0):
     return PANEL.point(u, v, offset)
 
@@ -497,11 +559,20 @@ def panel_box(name, mat, r, raise_m, margin=0.0, base=0.0):
 
 def bezel(r, offset, height=0.008, lip=0.003, case="dark"):
     """A round black bezel standing `height` out of the panel at `offset` round the rectangle r's
-    inscribed circle, the instrument's octagonal case behind it."""
+    inscribed circle, the instrument's case behind it: octagonal, or (the pilot's, `SQUARE`) a
+    square black one with a screw in each corner."""
     x, y, w, h = r
     me = cylinder_mesh("black", min(w, h) / 2000 + lip, height, "black", n=ROUND)
     mesh_object("black", me, rect_point(r, offset), PANEL.rot)
     flat = min(w, h) / 2000 + lip + 0.002
+    if SQUARE:
+        deep = offset + 0.004
+        mesh_object("black", box_mesh("black", (2 * flat, deep, 2 * flat), "black", (0.0, -deep / 2, 0.0)), rect_point(r, 0.0), PANEL.rot)
+        for sx in (-1, 1):
+            for sz in (-1, 1):
+                p = Vector((sx * (flat - 0.0045), -deep, sz * (flat - 0.0045)))
+                mesh_object("metal", cylinder_mesh("metal", 0.0022, 0.001, "metal", n=KNOB), rect_point(r, 0.0) + PANEL.rot @ p, PANEL.rot)
+        return
     me = cylinder_mesh(case, flat / math.cos(math.pi / 8), offset + 0.003, case, n=8)
     me.transform(Matrix.Rotation(math.pi / 8, 4, "Y"))
     mesh_object(case, me, rect_point(r, 0.0), PANEL.rot)
@@ -779,7 +850,7 @@ pane_frame()
 
 # --- the pilot's panel and glare shield (in both cockpits: from the back seat its glare shield
 # shows over the RIO's panel)
-panel_body("panel_grey", "panel_grey", PILOT_PANEL, PILOT_OUTLINE, PANEL_DEPTH)
+panel_body("panel_light", "panel_light", PILOT_PANEL, PILOT_OUTLINE, PANEL_DEPTH)
 THICK = 0.014
 LIP = 0.035
 xs = [-0.44, -0.40, -0.366, -0.33, -0.28, -0.14, 0.0, 0.14, 0.28, 0.33, 0.366, 0.40, 0.44]
@@ -832,7 +903,7 @@ for dx in (-0.12, 0.12):
     cbox("frame", (dx - 0.008, dx + 0.008), (low_s - 0.095, low_s - 0.08), (PILOT_FLOOR, PILOT_FLOOR + 0.14))
 
 # --- the RIO's panel under its hood (in both cockpits: from the front seat its back shows)
-panel_body("panel_grey", "panel_grey", RIO_PANEL, RIO_OUTLINE, PANEL_DEPTH + 0.05)
+panel_body("panel_light", "panel_light", RIO_PANEL, RIO_OUTLINE, PANEL_DEPTH + 0.05)
 top_v = RIO_OUTLINE[0][1]
 # The radar section standing out of it (the DDD and its controls) and the shroud over its top
 # and down its sides: deep at the top, shallower at the radar section's foot.
@@ -871,6 +942,20 @@ for knee, u0, u1, length in KNEES:
         foot = a_ + (-MAIN.up) * ((a_.z - b_.z) / MAIN.up.z)
         secs.append([a_, b_, foot])
     loft("panel_grey", "panel_grey", secs)
+# The knee boxes: from the panel out to the ledge, down the sloping face, straight down to the
+# level of the panel's foot and back to it; the inboard side follows the face's taper.
+foot_v = OUTLINE[-1][1]
+for side in (-1, 1):
+    if RIO:
+        slope, fold, length, edges = rio_knee(side), RIO_KNEES[side][1], RIO_KNEE_LEN, ((RIO_WALL, RIO_WALL), (RIO_KNEE_IN, RIO_KNEE_IN))
+    else:
+        slope, fold, length, edges = knee_part(0.0, side), KNEE_FOLD, KNEE_LEN, ((KNEE_WALL, KNEE_WALL), KNEE_IN)
+    secs = []
+    for head, foot in edges:
+        a_, b_ = slope.point(side * head, slope.top), slope.point(side * foot, slope.top + length)
+        low = MAIN.point(side * foot, foot_v)
+        secs.append([MAIN.point(side * head, fold), a_, b_, Vector((b_.x, b_.y, low.z)), low])
+    loft("panel_light", "panel_light", secs)
 
 # --- the consoles either side of each seat, with their fittings
 def fitting(c, p):
@@ -1049,15 +1134,14 @@ if RIO:
         ("black", (190.0, -102.0, 150.0, 210.0)),  # ECM
         ("black", (126.0, 114.0, 218.0, 92.0)),  # LANTIRN
         ("black", (-124.0, 136.0, 244.0, 44.0)),  # the TID's knobs
-        ("dark", (-340.0, 122.0, 196.0, 128.0)),  # the flight instruments
     ]
 else:
     plates = [
         ("black", (-152.0, -272.0, 264.0, 78.0)),  # the ACM panel
         ("black", (126.0, -272.0, 90.0, 104.0)),  # wing sweep
-        ("black", (94.0, 104.0, 250.0, 160.0)),  # DISPLAYS
-        ("dark", (-350.0, -182.0, 68.0, 56.0)),  # cautions
-        ("dark", (256.0, -182.0, 72.0, 56.0)),  # threats
+        ("black", (94.0, 104.0, 154.0, 186.0)),  # DISPLAYS
+        ("dark", (-276.0, -268.0, 68.0, 53.0)),  # cautions
+        ("dark", (222.0, -268.0, 68.0, 53.0)),  # threats
         ("black", (-352.0, 0.0, 66.0, 152.0)),  # the left knee panel
         ("black", (-350.0, 158.0, 44.0, 106.0)),  # the gear handle's, low on the knee panel
         ("black", (-256.0, 2.0, 174.0, 186.0)),  # the engine tapes and keys
@@ -1066,6 +1150,30 @@ else:
 for mat, r in plates:
     use(r)
     panel_box(mat, mat, r, PLATE)
+use()
+if RIO:
+    # The TID's housing out of the panel, down to the hand controller's pedestal; the knee
+    # boxes' black faces.
+    plane_box("dark", "dark", TID_BOX[0], -0.002, TID_BOX[1])
+    use(TID_BOX[0])
+    panel_box("black", "black", TID_BOX[0], PLATE - 0.001)
+    use()
+    foot = TID_BOX[0][1] + TID_BOX[0][3]
+    loft("dark", "dark", [[RP.point(sx * 95.0, foot, 0.0), RP.point(sx * 95.0, foot, TID_BOX[1]), C(sx * PED[0], PED[1], PED[3]), C(sx * PED[0], PED[1], PED[3] - 0.08)]
+                          for sx in (-1, 1)])
+    for side in (-1, 1):
+        PANEL = rio_knee(side)
+        x0 = min(side * RIO_KNEE_IN, side * RIO_WALL) + 4.0
+        plane_box("black", "black", (x0, PANEL.top + 4.0, RIO_WALL - RIO_KNEE_IN - 8.0, RIO_KNEE_LEN - 8.0), 0.0, PLATE - 0.001)
+    use()
+if not RIO:
+    # The centre stack's boxes out of the panel (their faces carry the parts built on them).
+    for r, d in STACK:
+        plane_box("dark", "dark", r, -0.002, d)
+    for r, d in (VDI_BOX, HSD_BOX):
+        use(r)
+        panel_box("black", "black", r, PLATE)
+    use()
 
 
 def screen(build, name, *a, **k):
@@ -1077,6 +1185,12 @@ def screen(build, name, *a, **k):
 if RIO:
     screen(square_tube, "screen_ddd", 12.0, 0.020)
     screen(round_screen, "screen_tid", PLATE, trackcam=True, lip=0.008, height=0.012)
+    # The hood round the TID's tube.
+    tid_r = min(scr["tid"][2], scr["tid"][3]) / 2000
+    ring = lambda r: (lambda th: (r * math.cos(th), r * math.sin(th)))
+    use(scr["tid"])
+    mesh_object("black", bezel_ring("black", "black", ring(tid_r + 0.004), ring(tid_r + 0.010), PLATE + 0.012 + TID_HOOD, PLATE + 0.010, 0.0), rect_point(scr["tid"], 0.0), PANEL.rot)
+    use()
     # The ECMD: a square tube at the head of the right knee panel.
     screen(square_tube, "screen_ecmd", 8.0, 0.014)
     screen(round_screen, "adi", PLATE)
@@ -1115,18 +1229,75 @@ use()
 # --- dressing: what the layouts do not carry
 if RIO:
     # The DDD's and TID's brightness knobs, the TID's cursor and offset knobs.
-    for u, v in ((-140.0, -110.0), (120.0, -110.0), (-140.0, 112.0), (140.0, 112.0)):
+    for u, v in ((-146.0, -106.0), (146.0, -106.0), (-146.0, 104.0), (146.0, 104.0)):
         use(at=(u, v))
         knob(u, v, 0.006, 0.010, "dark", offset=PLATE)
-else:
-    # The VDI's and HUD's brightness and trim knobs either side of the VDI, the fire warning
-    # handles at the ACM panel's corners.
-    for u, v in ((-86.0, -150.0), (-86.0, -60.0), (86.0, -150.0), (86.0, -60.0)):
-        use(at=(u, v))
-        knob(u, v, 0.006, 0.010, "dark", offset=PLATE)
+
+    def toggle(u, v):
+        """A toggle switch with a pale tip (dressing)."""
+        knob(u, v, 0.0045, 0.003, "metal", offset=PLATE)
+        knob(u, v, 0.0022, 0.013, "metal", offset=PLATE)
+        knob(u, v, 0.0032, 0.005, "white", offset=PLATE + 0.012)
+
+    # The armament panel's face inboard of and under the layout's part: the attack mode and fuze
+    # knobs, the delivery switches, the interval and quantity counters, the station selects.
+    PANEL = rio_knee(-1)
+    for v in (-62.0, -8.0):
+        knob(-232.0, v, 0.013, 0.004, "dark", offset=PLATE)
+        knob(-232.0, v, 0.010, 0.016, "knob_pale", offset=PLATE)
+    for u in (-256.0, -232.0, -208.0):
+        toggle(u, 34.0)
+    for u in (-262.0, -224.0):
+        plane_box("tube", "tube", (u, 58.0, 30.0, 14.0), PLATE, PLATE + 0.002)
+    for i_ in range(6):
+        toggle(-378.0 + 36.0 * i_, 118.0)
+    # The ECM panel's: switches inboard of the ECMD, a keyboard under the layout's part.
+    PANEL = rio_knee(1)
+    for v in (-80.0, -50.0, -20.0):
+        toggle(210.0, v)
+    for v in (20.0, 60.0):
+        knob(210.0, v, 0.009, 0.014, "dark", offset=PLATE)
+    for row in range(2):
+        for i_ in range(7):
+            plane_box("dark", "dark", (196.0 + 27.0 * i_, 112.0 + 17.0 * row, 20.0, 13.0), PLATE, PLATE + 0.004)
     use()
-    for u in (-200.0, 230.0):
-        mesh_object("yellow", box_mesh("yellow", (0.036, 0.006, 0.014), "yellow"), point(u, -190.0, PLATE + 0.003), PANEL.rot)
+else:
+    # On the VDI's housing: the three pale knobs down the strip left of the tube under a
+    # placard, the HUD's and VDI's trim knobs on the strip right of it.
+    use(VDI_BOX[0])
+    for v in (-96.0, -62.0, -28.0):
+        knob(-102.0, v, 0.007, 0.013, "knob_pale", offset=PLATE)
+    plane_box("metal", "metal", (-110.0, -186.0, 16.0, 62.0), PLATE, PLATE + 0.002)
+    for v in (-106.0, -52.0):
+        knob(102.0, v, 0.006, 0.011, "dark", offset=PLATE)
+    # On the right knee panel over the DISPLAYS panel: the emergency gear handle's plate with
+    # its yellow placard and the pale handle standing out of it.
+    use(at=(200.0, 200.0))
+    plane_box("black", "black", (110.0, 14.0, 118.0, 80.0), 0.0, PLATE)
+    plane_box("yellow", "yellow", (118.0, 34.0, 26.0, 44.0), PLATE, PLATE + 0.001)
+    plane_box("dark", "dark", (152.0, 30.0, 16.0, 50.0), PLATE, PLATE + 0.004)
+    rod("white", point(160.0, 40.0, PLATE), point(160.0, 30.0, 0.05), 0.007, "white")
+    # The fire handles either side of the ACM panel: a stem out of the panel and a yellow grip
+    # across it with black stripes, turned a little towards the pilot.
+    use()
+    for u, v in FIRE_HANDLES:
+        turn = Euler((0.0, 0.0, math.radians(-14.0 if u < 0.0 else 14.0))).to_quaternion()
+        rot = PANEL.rot @ turn
+        at = point(u, v)
+        gw, gh, reach, deep = 0.046, 0.020, 0.038, 0.014
+        mesh_object("dark", box_mesh("dark", (0.026, reach, 0.012), "dark", (0.0, -reach / 2, 0.0)), at, rot)
+        mesh_object("yellow", box_mesh("yellow", (gw, deep, gh), "yellow", (0.0, -reach - deep / 2, 0.0)), at, rot)
+        # The stripes: slanted bars on the grip's face, cut off at its ends.
+        bm = bmesh.new()
+        y = -reach - deep - 0.0004
+        bar, lean, n = 0.0046, 0.010, 6
+        for k in range(n):
+            x0 = -gw / 2 - lean + (gw + lean) * (k + 0.25) / n
+            xs_ = [min(max(x, -gw / 2), gw / 2) for x in (x0, x0 + bar, x0 + bar + lean, x0 + lean)]
+            if xs_[1] - xs_[0] < 1e-4 and xs_[2] - xs_[3] < 1e-4:
+                continue
+            bm.faces.new([bm.verts.new(p) for p in ((xs_[0], y, -gh / 2), (xs_[1], y, -gh / 2), (xs_[2], y, gh / 2), (xs_[3], y, gh / 2))])
+        mesh_object("black", finish("black", bm, "black"), at, rot, props={"no_shadow": True})
 
 use()
 # --- the kept parts

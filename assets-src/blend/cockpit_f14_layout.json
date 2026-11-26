@@ -314,15 +314,15 @@
     },
     {
       "control": null,
-      "key": "Item(Dial(AoaUnits))",
+      "key": "Item(Dial(AoaTape))",
       "kind": null,
       "rect": [
-        -236.0,
-        -266.0,
-        62.0,
-        62.0
+        -192.0,
+        -268.0,
+        30.0,
+        86.0
       ],
-      "round": true
+      "round": false
     },
     {
       "control": null,
@@ -413,10 +413,10 @@
       "key": "Item(Dial(Climb))",
       "kind": null,
       "rect": [
-        -250.0,
-        -178.0,
-        72.0,
-        72.0
+        -272.0,
+        -172.0,
+        60.0,
+        60.0
       ],
       "round": true
     },
@@ -425,7 +425,7 @@
       "key": "Item(Dial(Mach))",
       "kind": null,
       "rect": [
-        -170.0,
+        -202.0,
         -180.0,
         76.0,
         76.0
@@ -437,10 +437,10 @@
       "key": "Item(Dial(RadarAlt))",
       "kind": null,
       "rect": [
-        -250.0,
-        -96.0,
-        76.0,
-        76.0
+        -294.0,
+        -100.0,
+        82.0,
+        82.0
       ],
       "round": true
     },
@@ -449,7 +449,7 @@
       "key": "Item(Dial(Altimeter))",
       "kind": null,
       "rect": [
-        -170.0,
+        -202.0,
         -96.0,
         76.0,
         76.0
@@ -461,7 +461,7 @@
       "key": "Item(Dial(GMeter))",
       "kind": null,
       "rect": [
-        178.0,
+        206.0,
         -176.0,
         62.0,
         62.0
@@ -470,11 +470,47 @@
     },
     {
       "control": null,
+      "key": "Item(Label(\"LAND\\nARMT\\nFUEL\\nHOOK\\nANTI SKID\\nWINGS\\nWHEELS\\nFLAPS\\nTHROT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -343.5,
+        -89.5,
+        39.0,
+        55.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"HUD\\nTRIM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        92.5,
+        -134.5,
+        19.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"VDI\\nTRIM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        92.5,
+        -80.5,
+        19.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
       "key": "Item(Lamp(Fire, None))",
       "kind": null,
       "rect": [
-        -345.0,
-        -176.0,
+        -272.0,
+        -264.0,
         29.0,
         13.0
       ],
@@ -485,8 +521,8 @@
       "key": "Item(Lamp(Eng, Some(\"ENGINE\")))",
       "kind": null,
       "rect": [
-        -314.0,
-        -176.0,
+        -241.0,
+        -264.0,
         29.0,
         13.0
       ],
@@ -497,8 +533,8 @@
       "key": "Item(Lamp(Fc, Some(\"FLT\\nCTL\")))",
       "kind": null,
       "rect": [
-        -345.0,
-        -161.0,
+        -272.0,
+        -249.0,
         29.0,
         13.0
       ],
@@ -509,8 +545,8 @@
       "key": "Item(Lamp(Fuel, None))",
       "kind": null,
       "rect": [
-        -314.0,
-        -161.0,
+        -241.0,
+        -249.0,
         29.0,
         13.0
       ],
@@ -521,8 +557,8 @@
       "key": "Item(Lamp(LowFuel, Some(\"LOW\\nFUEL\")))",
       "kind": null,
       "rect": [
-        -345.0,
-        -146.0,
+        -272.0,
+        -234.0,
         29.0,
         13.0
       ],
@@ -533,8 +569,8 @@
       "key": "Item(Lamp(Stall, None))",
       "kind": null,
       "rect": [
-        -314.0,
-        -146.0,
+        -241.0,
+        -234.0,
         29.0,
         13.0
       ],
@@ -545,8 +581,8 @@
       "key": "Item(Lamp(Lock, None))",
       "kind": null,
       "rect": [
-        262.0,
-        -176.0,
+        226.0,
+        -264.0,
         29.0,
         13.0
       ],
@@ -557,8 +593,8 @@
       "key": "Item(Lamp(Rad, Some(\"LAUNCH\")))",
       "kind": null,
       "rect": [
-        293.0,
-        -176.0,
+        257.0,
+        -264.0,
         29.0,
         13.0
       ],
@@ -569,8 +605,8 @@
       "key": "Item(Lamp(Trak, Some(\"TRACK\")))",
       "kind": null,
       "rect": [
-        262.0,
-        -161.0,
+        226.0,
+        -249.0,
         29.0,
         13.0
       ],
@@ -581,8 +617,8 @@
       "key": "Item(Lamp(Ir, Some(\"IR\")))",
       "kind": null,
       "rect": [
-        293.0,
-        -161.0,
+        257.0,
+        -249.0,
         29.0,
         13.0
       ],
@@ -593,8 +629,8 @@
       "key": "Item(Lamp(Jam, None))",
       "kind": null,
       "rect": [
-        262.0,
-        -146.0,
+        226.0,
+        -234.0,
         29.0,
         13.0
       ],
@@ -605,8 +641,8 @@
       "key": "Item(Lamp(EmvWarn, Some(\"EMV\")))",
       "kind": null,
       "rect": [
-        293.0,
-        -146.0,
+        257.0,
+        -234.0,
         29.0,
         13.0
       ],
@@ -941,7 +977,7 @@
       "key": "Item(Label(\"DISPLAYS\", 15, 5))",
       "kind": null,
       "rect": [
-        197.5,
+        152.5,
         108.0,
         35.0,
         8.0
@@ -1085,260 +1121,8 @@
       "key": "Item(Label(\"HUD\", 15, 5))",
       "kind": null,
       "rect": [
-        158.5,
-        122.0,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"VDI\", 15, 5))",
-      "kind": null,
-      "rect": [
-        214.5,
-        122.0,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"HSD\", 15, 5))",
-      "kind": null,
-      "rect": [
-        270.5,
-        122.0,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Tomcat(HudDeclutter)",
-      "key": "Item(Tomcat(HudDeclutter))",
-      "kind": "switch",
-      "rect": [
-        158.0,
-        132.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ON\", 15, 5))",
-      "kind": null,
-      "rect": [
-        176.0,
-        134.5,
-        11.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"OFF\", 15, 5))",
-      "kind": null,
-      "rect": [
-        176.0,
-        147.5,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Tomcat(VdiMode)",
-      "key": "Item(Tomcat(VdiMode))",
-      "kind": "switch",
-      "rect": [
-        214.0,
-        132.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"TV\", 15, 5))",
-      "kind": null,
-      "rect": [
-        232.0,
-        134.5,
-        11.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"NORM\", 15, 5))",
-      "kind": null,
-      "rect": [
-        232.0,
-        147.5,
-        19.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Tomcat(HsdMode)",
-      "key": "Item(Tomcat(HsdMode))",
-      "kind": "switch",
-      "rect": [
-        270.0,
-        132.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"NAV\", 15, 5))",
-      "kind": null,
-      "rect": [
-        288.0,
-        132.3333282470703,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"TID\", 15, 5))",
-      "kind": null,
-      "rect": [
-        288.0,
-        141.0,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ECM\", 15, 5))",
-      "kind": null,
-      "rect": [
-        288.0,
-        149.6666717529297,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Tomcat(HudAwl)",
-      "key": "Item(Tomcat(HudAwl))",
-      "kind": "switch",
-      "rect": [
-        158.0,
-        170.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ILS\", 15, 5))",
-      "kind": null,
-      "rect": [
-        176.0,
-        172.5,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ACL\", 15, 5))",
-      "kind": null,
-      "rect": [
-        176.0,
-        185.5,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Tomcat(VdiAwl)",
-      "key": "Item(Tomcat(VdiAwl))",
-      "kind": "switch",
-      "rect": [
-        214.0,
-        170.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ILS\", 15, 5))",
-      "kind": null,
-      "rect": [
-        232.0,
-        172.5,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ACL\", 15, 5))",
-      "kind": null,
-      "rect": [
-        232.0,
-        185.5,
-        15.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": "Tomcat(HsdEcmOverride)",
-      "key": "Item(Tomcat(HsdEcmOverride))",
-      "kind": "switch",
-      "rect": [
-        270.0,
-        170.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"ON\", 15, 5))",
-      "kind": null,
-      "rect": [
-        288.0,
-        172.5,
-        11.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"OFF\", 15, 5))",
-      "kind": null,
-      "rect": [
-        288.0,
-        185.5,
+        145.5,
+        143.0,
         15.0,
         8.0
       ],
@@ -1349,9 +1133,45 @@
       "key": "Item(Label(\"DCLTR\", 15, 5))",
       "kind": null,
       "rect": [
-        154.5,
-        159.0,
+        160.5,
+        125.0,
         23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(HudDeclutter)",
+      "key": "Item(Tomcat(HudDeclutter))",
+      "kind": "switch",
+      "rect": [
+        164.0,
+        134.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ON\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        136.5,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OFF\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        149.5,
+        15.0,
         8.0
       ],
       "round": false
@@ -1361,8 +1181,224 @@
       "key": "Item(Label(\"AWL\", 15, 5))",
       "kind": null,
       "rect": [
-        186.5,
-        159.0,
+        208.5,
+        125.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(HudAwl)",
+      "key": "Item(Tomcat(HudAwl))",
+      "kind": "switch",
+      "rect": [
+        208.0,
+        134.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ILS\", 15, 5))",
+      "kind": null,
+      "rect": [
+        226.0,
+        136.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ACL\", 15, 5))",
+      "kind": null,
+      "rect": [
+        226.0,
+        149.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"VDI\", 15, 5))",
+      "kind": null,
+      "rect": [
+        145.5,
+        181.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"MODE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        162.5,
+        163.0,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(VdiMode)",
+      "key": "Item(Tomcat(VdiMode))",
+      "kind": "switch",
+      "rect": [
+        164.0,
+        172.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TV\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        174.5,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"NORM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        187.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"AWL\", 15, 5))",
+      "kind": null,
+      "rect": [
+        208.5,
+        163.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(VdiAwl)",
+      "key": "Item(Tomcat(VdiAwl))",
+      "kind": "switch",
+      "rect": [
+        208.0,
+        172.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ILS\", 15, 5))",
+      "kind": null,
+      "rect": [
+        226.0,
+        174.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ACL\", 15, 5))",
+      "kind": null,
+      "rect": [
+        226.0,
+        187.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"HSD\", 15, 5))",
+      "kind": null,
+      "rect": [
+        145.5,
+        219.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"MODE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        162.5,
+        201.0,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(HsdMode)",
+      "key": "Item(Tomcat(HsdMode))",
+      "kind": "switch",
+      "rect": [
+        164.0,
+        210.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"NAV\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        210.3333282470703,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TID\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        219.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ECM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        182.0,
+        227.6666717529297,
         15.0,
         8.0
       ],
@@ -1373,9 +1409,45 @@
       "key": "Item(Label(\"ORIDE\", 15, 5))",
       "kind": null,
       "rect": [
-        266.5,
-        197.0,
+        204.5,
+        201.0,
         23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(HsdEcmOverride)",
+      "key": "Item(Tomcat(HsdEcmOverride))",
+      "kind": "switch",
+      "rect": [
+        208.0,
+        210.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ON\", 15, 5))",
+      "kind": null,
+      "rect": [
+        226.0,
+        212.5,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OFF\", 15, 5))",
+      "kind": null,
+      "rect": [
+        226.0,
+        225.5,
+        15.0,
         8.0
       ],
       "round": false
@@ -1385,8 +1457,8 @@
       "key": "Item(Label(\"TACAN\", 15, 5))",
       "kind": null,
       "rect": [
-        144.5,
-        214.0,
+        92.5,
+        244.0,
         23.0,
         8.0
       ],
@@ -1397,8 +1469,8 @@
       "key": "Item(Tomcat(SteerCmd(Tacan)))",
       "kind": "twist",
       "rect": [
-        150.0,
-        228.0,
+        98.0,
+        258.0,
         12.0,
         12.0
       ],
@@ -1409,8 +1481,8 @@
       "key": "Item(Label(\"DEST\", 15, 5))",
       "kind": null,
       "rect": [
-        180.5,
-        214.0,
+        121.5,
+        244.0,
         19.0,
         8.0
       ],
@@ -1421,8 +1493,8 @@
       "key": "Item(Tomcat(SteerCmd(Dest)))",
       "kind": "twist",
       "rect": [
-        184.0,
-        228.0,
+        125.0,
+        258.0,
         12.0,
         12.0
       ],
@@ -1433,8 +1505,8 @@
       "key": "Item(Label(\"AWL\\nPCD\", 15, 5))",
       "kind": null,
       "rect": [
-        216.5,
-        211.5,
+        150.5,
+        241.5,
         15.0,
         13.0
       ],
@@ -1445,8 +1517,8 @@
       "key": "Item(Tomcat(SteerCmd(Awl)))",
       "kind": "twist",
       "rect": [
-        218.0,
-        228.0,
+        152.0,
+        258.0,
         12.0,
         12.0
       ],
@@ -1457,8 +1529,8 @@
       "key": "Item(Label(\"VEC\", 15, 5))",
       "kind": null,
       "rect": [
-        250.5,
-        214.0,
+        177.5,
+        244.0,
         15.0,
         8.0
       ],
@@ -1469,8 +1541,8 @@
       "key": "Item(Tomcat(SteerCmd(Vec)))",
       "kind": "twist",
       "rect": [
-        252.0,
-        228.0,
+        179.0,
+        258.0,
         12.0,
         12.0
       ],
@@ -1481,8 +1553,8 @@
       "key": "Item(Label(\"MAN\", 15, 5))",
       "kind": null,
       "rect": [
-        284.5,
-        214.0,
+        204.5,
+        244.0,
         15.0,
         8.0
       ],
@@ -1493,8 +1565,8 @@
       "key": "Item(Tomcat(SteerCmd(Man)))",
       "kind": "twist",
       "rect": [
-        286.0,
-        228.0,
+        206.0,
+        258.0,
         12.0,
         12.0
       ],
@@ -1505,8 +1577,8 @@
       "key": "Item(Label(\"STEER CMD\", 15, 5))",
       "kind": null,
       "rect": [
-        204.5,
-        246.0,
+        138.5,
+        276.0,
         39.0,
         8.0
       ],
@@ -1517,8 +1589,8 @@
       "key": "Item(Tomcat(PitchLadder))",
       "kind": "knob",
       "rect": [
-        312.0,
-        216.0,
+        224.0,
+        246.0,
         22.0,
         22.0
       ],
@@ -1529,8 +1601,8 @@
       "key": "Item(Label(\"PITCH LAD\", 15, 5))",
       "kind": null,
       "rect": [
-        303.5,
-        242.0,
+        204.5,
+        276.0,
         39.0,
         8.0
       ],
@@ -1539,7 +1611,7 @@
   ],
   "screens": {
     "adi": [
-      92.0,
+      124.0,
       -178.0,
       72.0,
       72.0
@@ -1557,13 +1629,13 @@
       150.0
     ],
     "hsi": [
-      88.0,
+      122.0,
       -98.0,
       80.0,
       80.0
     ],
     "rwr": [
-      178.0,
+      210.0,
       -94.0,
       72.0,
       72.0

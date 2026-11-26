@@ -290,6 +290,8 @@ pub enum Dial {
     /// The F-14's wing sweep indicator: a vertical scale of 20 to 68 degrees, the wing's sweep
     /// on a pointer, the sweep commanded (the schedule's, or the handle's) on a second one.
     Sweep,
+    /// The F-14's angle of attack indicator: a vertical scale of 0 to 30 units, 30 at the top.
+    AoaTape,
     /// The F-14 RIO's antenna elevation indicator: a vertical scale of -60 to +60 degrees, the
     /// antenna's elevation set (the keys and the thumbwheel's) and where it scans (the bars kept
     /// inside the gimbals).

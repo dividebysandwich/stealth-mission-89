@@ -1167,7 +1167,7 @@ impl PanelParams<'_, '_> {
                 (9.81 * roll.clamp(-1.4, 1.4).tan() / v).to_degrees()
             }
             Dial::Climb => a.climb_rate * 60.0,
-            Dial::AoaUnits => aoa_units(Self::aoa(a)),
+            Dial::AoaUnits | Dial::AoaTape => aoa_units(Self::aoa(a)),
             // The ball: the rudder's skid (no sideslip in the flight models to show).
             Dial::Slip => 0.0,
             Dial::TapeRpm | Dial::TapeEgt | Dial::TapeFlow | Dial::TapeOil => {
@@ -1415,7 +1415,9 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
         Dial::Slip => return draw_slip(c, r, value),
         Dial::TurnSlip => return draw_turn_slip(c, r, value, aux),
         Dial::FuelQuantity => return draw_fuel_quantity(c, r, value, aux),
-        Dial::Sweep | Dial::AntennaEl => return draw_pointer_scale(c, r, dial, value, aux),
+        Dial::Sweep | Dial::AntennaEl | Dial::AoaTape => {
+            return draw_pointer_scale(c, r, dial, value, aux);
+        }
         // Drawn with all the engines' readings (`draw_engine_counters`).
         Dial::Engines => return,
         _ => {}
@@ -1501,6 +1503,7 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
         | Dial::Engines
         | Dial::FuelQuantity
         | Dial::Sweep
+        | Dial::AoaTape
         | Dial::AntennaEl => return,
     };
     let dir = |deg: f32| {
@@ -1576,7 +1579,7 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
 pub const SWEEP_DEG: (f32, f32) = (20.0, 68.0);
 
 /// A vertical scale with two pointers (the F-14's wing sweep and antenna elevation
-/// indicators): on black, its name over a scale labelled down its left, a white pointer from
+/// indicators; its angle of attack indicator, with one): on black, its name over a scale labelled down its left, a white pointer from
 /// the right at `value` and a hollow one at `aux` (the sweep commanded; where the antenna
 /// scans).
 fn draw_pointer_scale(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) {
@@ -1588,6 +1591,7 @@ fn draw_pointer_scale(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: 
     // Name, the scale's top and bottom values, the labelled step, the ticks' step.
     let (name, top, bottom, step, tick): (&str, f32, f32, f32, f32) = match dial {
         Dial::Sweep => ("SWEEP", SWEEP_DEG.0, SWEEP_DEG.1, 10.0, 5.0),
+        Dial::AoaTape => ("AOA", 30.0, 0.0, 10.0, 5.0),
         _ => ("EL", crate::avionics::FCR_EL_MAX, -crate::avionics::FCR_EL_MAX, 20.0, 10.0),
     };
     stroke_text_at(c, x0 + w / 2.0, y0 + h * 0.05, name, w * 0.2, pen, 7, Align::Centre);
@@ -1619,7 +1623,10 @@ fn draw_pointer_scale(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: 
             c.polyline(&[pts[0], pts[1], pts[2], pts[0]], pen, 17);
         }
     };
-    pointer(c, aux, false);
+    // (The angle of attack has no second one.)
+    if dial != Dial::AoaTape {
+        pointer(c, aux, false);
+    }
     pointer(c, value, true);
 }
 
