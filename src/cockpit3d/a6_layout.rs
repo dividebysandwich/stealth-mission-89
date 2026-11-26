@@ -449,6 +449,7 @@ impl PanelLayout {
                 dvri: Some(DVRI),
                 sensor: Some(SENSOR),
             }),
+            f14: None,
         }
     }
 

@@ -1,0 +1,1662 @@
+{
+  "faces": [
+    {
+      "control": null,
+      "key": "Item(Label(\"RANGE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -11.5,
+        -270.0,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddRange(Nm5))",
+      "key": "Item(Tomcat(DddRange(Nm5)))",
+      "kind": "lamp",
+      "rect": [
+        -87.5,
+        -292.0,
+        20.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddRange(Nm10))",
+      "key": "Item(Tomcat(DddRange(Nm10)))",
+      "kind": "lamp",
+      "rect": [
+        -57.5,
+        -292.0,
+        20.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddRange(Nm20))",
+      "key": "Item(Tomcat(DddRange(Nm20)))",
+      "kind": "lamp",
+      "rect": [
+        -27.5,
+        -292.0,
+        20.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddRange(Nm50))",
+      "key": "Item(Tomcat(DddRange(Nm50)))",
+      "kind": "lamp",
+      "rect": [
+        2.5,
+        -292.0,
+        20.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddRange(Nm100))",
+      "key": "Item(Tomcat(DddRange(Nm100)))",
+      "kind": "lamp",
+      "rect": [
+        32.5,
+        -292.0,
+        20.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddRange(Nm200))",
+      "key": "Item(Tomcat(DddRange(Nm200)))",
+      "kind": "lamp",
+      "rect": [
+        62.5,
+        -292.0,
+        20.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddMode(PulseVideo))",
+      "key": "Item(Tomcat(DddMode(PulseVideo)))",
+      "kind": "lamp",
+      "rect": [
+        -102.0,
+        -248.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddMode(Pd))",
+      "key": "Item(Tomcat(DddMode(Pd)))",
+      "kind": "lamp",
+      "rect": [
+        -102.0,
+        -224.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddMode(AntTrk))",
+      "key": "Item(Tomcat(DddMode(AntTrk)))",
+      "kind": "lamp",
+      "rect": [
+        -102.0,
+        -200.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddMode(Rdrot))",
+      "key": "Item(Tomcat(DddMode(Rdrot)))",
+      "kind": "lamp",
+      "rect": [
+        74.0,
+        -248.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddMode(Jat))",
+      "key": "Item(Tomcat(DddMode(Jat)))",
+      "kind": "lamp",
+      "rect": [
+        74.0,
+        -224.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(DddMode(Irot))",
+      "key": "Item(Tomcat(DddMode(Irot)))",
+      "kind": "lamp",
+      "rect": [
+        74.0,
+        -200.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Aspect)",
+      "key": "Item(Tomcat(Aspect))",
+      "kind": "switch",
+      "rect": [
+        -132.0,
+        -176.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"NOSE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -153.0,
+        -175.6666717529297,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"BEAM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -153.0,
+        -167.0,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TAIL\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -153.0,
+        -158.3333282470703,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ASPECT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -137.5,
+        -190.0,
+        27.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(VcScale)",
+      "key": "Item(Tomcat(VcScale))",
+      "kind": "switch",
+      "rect": [
+        116.0,
+        -176.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"2X\", 15, 5))",
+      "kind": null,
+      "rect": [
+        134.0,
+        -173.5,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"NORM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        134.0,
+        -160.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"Vc\", 15, 5))",
+      "kind": null,
+      "rect": [
+        118.5,
+        -190.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(Bright))",
+      "key": "Item(Tomcat(Knob(Bright)))",
+      "kind": "knob",
+      "rect": [
+        104.0,
+        -288.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"BRIGHT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        101.5,
+        -297.5,
+        27.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(PulseGain))",
+      "key": "Item(Tomcat(Knob(PulseGain)))",
+      "kind": "knob",
+      "rect": [
+        -100.0,
+        -150.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"PULSE\\nGAIN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -100.5,
+        -164.5,
+        23.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(Erase))",
+      "key": "Item(Tomcat(Knob(Erase)))",
+      "kind": "knob",
+      "rect": [
+        78.0,
+        -150.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ERASE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        77.5,
+        -159.5,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"PD THRLD\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -313.5,
+        -300.0,
+        35.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(PdClear))",
+      "key": "Item(Tomcat(Knob(PdClear)))",
+      "kind": "knob",
+      "rect": [
+        -328.0,
+        -278.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"CLEAR\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -328.5,
+        -287.5,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(PdClutter))",
+      "key": "Item(Tomcat(Knob(PdClutter)))",
+      "kind": "knob",
+      "rect": [
+        -286.0,
+        -278.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"CLUTTER\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -290.5,
+        -287.5,
+        31.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(JamJet))",
+      "key": "Item(Tomcat(Knob(JamJet)))",
+      "kind": "knob",
+      "rect": [
+        -328.0,
+        -232.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"JAM/JET\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -332.5,
+        -241.5,
+        31.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(AcmThreshold))",
+      "key": "Item(Tomcat(Knob(AcmThreshold)))",
+      "kind": "knob",
+      "rect": [
+        -286.0,
+        -232.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ACM\\nTHRLD\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -286.5,
+        -246.5,
+        23.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"CCM MODES\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -309.5,
+        -198.0,
+        39.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Ccm(Spl))",
+      "key": "Item(Tomcat(Ccm(Spl)))",
+      "kind": "lamp",
+      "rect": [
+        -334.0,
+        -186.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Ccm(AltOff))",
+      "key": "Item(Tomcat(Ccm(AltOff)))",
+      "kind": "lamp",
+      "rect": [
+        -302.0,
+        -186.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Ccm(Vgs))",
+      "key": "Item(Tomcat(Ccm(Vgs)))",
+      "kind": "lamp",
+      "rect": [
+        -270.0,
+        -186.0,
+        28.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(AntennaEl))",
+      "kind": null,
+      "rect": [
+        -238.0,
+        -292.0,
+        30.0,
+        130.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"EL\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -228.5,
+        -156.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(AntennaUp)",
+      "key": "Item(Tomcat(AntennaUp))",
+      "kind": "cap",
+      "rect": [
+        -204.0,
+        -244.0,
+        28.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(AntennaDown)",
+      "key": "Item(Tomcat(AntennaDown))",
+      "kind": "cap",
+      "rect": [
+        -204.0,
+        -228.0,
+        28.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(IrGain))",
+      "key": "Item(Tomcat(Knob(IrGain)))",
+      "kind": "knob",
+      "rect": [
+        142.0,
+        -288.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"IR GAIN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        137.5,
+        -297.5,
+        31.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(Volume))",
+      "key": "Item(Tomcat(Knob(Volume)))",
+      "kind": "knob",
+      "rect": [
+        180.0,
+        -288.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"VOL\", 15, 5))",
+      "kind": null,
+      "rect": [
+        183.5,
+        -297.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Knob(MslAudio))",
+      "key": "Item(Tomcat(Knob(MslAudio)))",
+      "kind": "knob",
+      "rect": [
+        218.0,
+        -288.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"MSL\\nAUDIO\", 15, 5))",
+      "kind": null,
+      "rect": [
+        217.5,
+        -302.5,
+        23.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"XMTR\\nCHAN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        266.5,
+        -296.5,
+        19.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(XmtrChan)",
+      "key": "Item(Tomcat(XmtrChan))",
+      "kind": "cap",
+      "rect": [
+        268.0,
+        -278.0,
+        16.0,
+        22.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"MSL\\nCHAN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        300.5,
+        -296.5,
+        19.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(MslChan)",
+      "key": "Item(Tomcat(MslChan))",
+      "kind": "cap",
+      "rect": [
+        302.0,
+        -278.0,
+        16.0,
+        22.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"WCS MODE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        210.5,
+        -236.0,
+        35.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(PdSearch))",
+      "key": "Item(Tomcat(Wcs(PdSearch)))",
+      "kind": "lamp",
+      "rect": [
+        148.0,
+        -224.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(Rws))",
+      "key": "Item(Tomcat(Wcs(Rws)))",
+      "kind": "lamp",
+      "rect": [
+        194.0,
+        -224.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(TwsManual))",
+      "key": "Item(Tomcat(Wcs(TwsManual)))",
+      "kind": "lamp",
+      "rect": [
+        240.0,
+        -224.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(TwsAuto))",
+      "key": "Item(Tomcat(Wcs(TwsAuto)))",
+      "kind": "lamp",
+      "rect": [
+        286.0,
+        -224.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(PdStt))",
+      "key": "Item(Tomcat(Wcs(PdStt)))",
+      "kind": "lamp",
+      "rect": [
+        148.0,
+        -200.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(PulseSearch))",
+      "key": "Item(Tomcat(Wcs(PulseSearch)))",
+      "kind": "lamp",
+      "rect": [
+        194.0,
+        -200.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Wcs(PulseStt))",
+      "key": "Item(Tomcat(Wcs(PulseStt)))",
+      "kind": "lamp",
+      "rect": [
+        240.0,
+        -200.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(Clsn))",
+      "key": "Item(Tomcat(TidOption(Clsn)))",
+      "kind": "lamp",
+      "rect": [
+        -158.0,
+        -86.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(TidAuto))",
+      "key": "Item(Tomcat(TidOption(TidAuto)))",
+      "kind": "lamp",
+      "rect": [
+        -158.0,
+        -56.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(NonAttack))",
+      "key": "Item(Tomcat(TidOption(NonAttack)))",
+      "kind": "lamp",
+      "rect": [
+        -158.0,
+        -26.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(JamStrobe))",
+      "key": "Item(Tomcat(TidOption(JamStrobe)))",
+      "kind": "lamp",
+      "rect": [
+        -158.0,
+        4.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(DataLink))",
+      "key": "Item(Tomcat(TidOption(DataLink)))",
+      "kind": "lamp",
+      "rect": [
+        126.0,
+        -86.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(SymElem))",
+      "key": "Item(Tomcat(TidOption(SymElem)))",
+      "kind": "lamp",
+      "rect": [
+        126.0,
+        -56.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(AltNum))",
+      "key": "Item(Tomcat(TidOption(AltNum)))",
+      "kind": "lamp",
+      "rect": [
+        126.0,
+        -26.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidOption(VelVector))",
+      "key": "Item(Tomcat(TidOption(VelVector)))",
+      "kind": "lamp",
+      "rect": [
+        126.0,
+        4.0,
+        32.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidMode)",
+      "key": "Item(Tomcat(TidMode))",
+      "kind": "knob",
+      "rect": [
+        -110.0,
+        152.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TID MODE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -116.5,
+        142.5,
+        35.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidRange)",
+      "key": "Item(Tomcat(TidRange))",
+      "kind": "knob",
+      "rect": [
+        -40.0,
+        152.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TID RANGE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -48.5,
+        142.5,
+        39.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidReadout)",
+      "key": "Item(Tomcat(TidReadout))",
+      "kind": "knob",
+      "rect": [
+        30.0,
+        152.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"READOUT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        25.5,
+        142.5,
+        31.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(TidHook)",
+      "key": "Item(Tomcat(TidHook))",
+      "kind": "lamp",
+      "rect": [
+        84.0,
+        152.0,
+        30.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ARMAMENT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -281.5,
+        -98.0,
+        35.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(PhAct)",
+      "key": "Item(Tomcat(PhAct))",
+      "kind": "switch",
+      "rect": [
+        -334.0,
+        -84.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ON\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -316.0,
+        -81.5,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OFF\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -316.0,
+        -68.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"PH ACT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -339.5,
+        -54.0,
+        27.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(TomcatLight(MslPrep))",
+      "kind": null,
+      "rect": [
+        -280.0,
+        -82.0,
+        34.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(MissileOption)",
+      "key": "Item(Tomcat(MissileOption))",
+      "kind": "knob",
+      "rect": [
+        -330.0,
+        -26.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"MSL\\nOPTIONS\", 15, 5))",
+      "kind": null,
+      "rect": [
+        -334.5,
+        -40.5,
+        31.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Launch)",
+      "key": "Item(Tomcat(Launch))",
+      "kind": "lamp",
+      "rect": [
+        -280.0,
+        -30.0,
+        40.0,
+        24.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(MasterCaution)",
+      "key": "Item(Lamp(Mw, Some(\"MASTER\\nCAUTION\")))",
+      "kind": "cap",
+      "rect": [
+        -334.0,
+        16.0,
+        36.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Menu)",
+      "key": "Item(Label(\"MENU\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        -334.0,
+        40.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Nvg)",
+      "key": "Item(Label(\"NVG\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        -334.0,
+        58.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Volume)",
+      "key": "Item(Label(\"VOL\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        -334.0,
+        76.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Alq126)",
+      "key": "Item(Tomcat(Alq126))",
+      "kind": "knob",
+      "rect": [
+        300.0,
+        10.0,
+        22.0,
+        22.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ALQ-126\", 15, 5))",
+      "kind": null,
+      "rect": [
+        295.5,
+        0.5,
+        31.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Rad, Some(\"LAUNCH\")))",
+      "kind": null,
+      "rect": [
+        196.0,
+        4.0,
+        29.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Trak, Some(\"TRACK\")))",
+      "kind": null,
+      "rect": [
+        227.0,
+        4.0,
+        29.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Ir, Some(\"IR\")))",
+      "kind": null,
+      "rect": [
+        196.0,
+        19.0,
+        29.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Jam, None))",
+      "kind": null,
+      "rect": [
+        227.0,
+        19.0,
+        29.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(Lock, None))",
+      "kind": null,
+      "rect": [
+        196.0,
+        34.0,
+        29.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(EmvWarn, Some(\"EMV\")))",
+      "kind": null,
+      "rect": [
+        227.0,
+        34.0,
+        29.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Chaff)",
+      "key": "Item(Label(\"CHAFF\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        196.0,
+        56.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Chaff))",
+      "kind": null,
+      "rect": [
+        228.0,
+        56.0,
+        24.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(ChaffAct, None))",
+      "kind": null,
+      "rect": [
+        254.0,
+        56.0,
+        16.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Flare)",
+      "key": "Item(Label(\"FLARE\", 5, 7))",
+      "kind": "cap",
+      "rect": [
+        196.0,
+        72.0,
+        30.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Led(Flares))",
+      "kind": null,
+      "rect": [
+        228.0,
+        72.0,
+        24.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Lamp(FlareAct, None))",
+      "kind": null,
+      "rect": [
+        254.0,
+        72.0,
+        16.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Action(Ecm)",
+      "key": "Button(Ecm, None)",
+      "kind": "cap",
+      "rect": [
+        196.0,
+        90.0,
+        36.0,
+        13.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Airspeed))",
+      "kind": null,
+      "rect": [
+        -334.0,
+        128.0,
+        60.0,
+        60.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Altimeter))",
+      "kind": null,
+      "rect": [
+        -268.0,
+        128.0,
+        60.0,
+        60.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Dial(Clock))",
+      "kind": null,
+      "rect": [
+        -200.0,
+        134.0,
+        46.0,
+        46.0
+      ],
+      "round": true
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"LANTIRN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        216.5,
+        118.0,
+        31.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Hazard)",
+      "kind": null,
+      "rect": [
+        222.0,
+        128.0,
+        22.0,
+        5.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(LtsPower)",
+      "key": "Item(Tomcat(LtsPower))",
+      "kind": "switch",
+      "rect": [
+        130.0,
+        136.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ON\", 15, 5))",
+      "kind": null,
+      "rect": [
+        148.0,
+        136.3333282470703,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"STBY\", 15, 5))",
+      "kind": null,
+      "rect": [
+        148.0,
+        145.0,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"OFF\", 15, 5))",
+      "kind": null,
+      "rect": [
+        148.0,
+        153.6666717529297,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"POWER\", 15, 5))",
+      "kind": null,
+      "rect": [
+        130.5,
+        166.0,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(LtsVideo)",
+      "key": "Item(Tomcat(LtsVideo))",
+      "kind": "switch",
+      "rect": [
+        174.0,
+        136.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"FLIR\", 15, 5))",
+      "kind": null,
+      "rect": [
+        192.0,
+        138.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"TCS\", 15, 5))",
+      "kind": null,
+      "rect": [
+        192.0,
+        151.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"VIDEO\", 15, 5))",
+      "kind": null,
+      "rect": [
+        174.5,
+        166.0,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(LaserArm)",
+      "key": "Item(Tomcat(LaserArm))",
+      "kind": "switch",
+      "rect": [
+        218.0,
+        136.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"ARM\", 15, 5))",
+      "kind": null,
+      "rect": [
+        236.0,
+        138.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"SAFE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        236.0,
+        151.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"LASER\", 15, 5))",
+      "kind": null,
+      "rect": [
+        218.5,
+        166.0,
+        23.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Polarity)",
+      "key": "Item(Tomcat(Polarity))",
+      "kind": "switch",
+      "rect": [
+        262.0,
+        136.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"BHOT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        280.0,
+        138.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"WHOT\", 15, 5))",
+      "kind": null,
+      "rect": [
+        280.0,
+        151.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"POLARITY\", 15, 5))",
+      "kind": null,
+      "rect": [
+        256.5,
+        166.0,
+        35.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Fov)",
+      "key": "Item(Tomcat(Fov))",
+      "kind": "switch",
+      "rect": [
+        306.0,
+        136.0,
+        16.0,
+        26.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"NAR\", 15, 5))",
+      "kind": null,
+      "rect": [
+        324.0,
+        138.5,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"WIDE\", 15, 5))",
+      "kind": null,
+      "rect": [
+        324.0,
+        151.5,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"FOV\", 15, 5))",
+      "kind": null,
+      "rect": [
+        310.5,
+        166.0,
+        15.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(LtsMode(AirToGround))",
+      "key": "Item(Tomcat(LtsMode(AirToGround)))",
+      "kind": "lamp",
+      "rect": [
+        136.0,
+        182.0,
+        30.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(LtsMode(AirToAir))",
+      "key": "Item(Tomcat(LtsMode(AirToAir)))",
+      "kind": "lamp",
+      "rect": [
+        172.0,
+        182.0,
+        30.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(LtsOper)",
+      "key": "Item(Tomcat(LtsOper))",
+      "kind": "lamp",
+      "rect": [
+        208.0,
+        182.0,
+        30.0,
+        18.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(TomcatLight(LaserArmed))",
+      "kind": null,
+      "rect": [
+        250.0,
+        182.0,
+        36.0,
+        18.0
+      ],
+      "round": false
+    }
+  ],
+  "screens": {
+    "adi": [
+      -334.0,
+      194.0,
+      50.0,
+      50.0
+    ],
+    "ddd": [
+      -62.5,
+      -252.0,
+      125.0,
+      125.0
+    ],
+    "ecmd": [
+      200.0,
+      -98.0,
+      90.0,
+      90.0
+    ],
+    "tid": [
+      -115.0,
+      -100.0,
+      230.0,
+      230.0
+    ]
+  }
+}

@@ -228,6 +228,11 @@ aircraft-ea18g =
         Attaque électronique, depuis les porte-avions
         Brouille les radars ennemis pour le raid
         Deux places : pilote et officier de guerre électronique
+aircraft-f14 =
+    .facts =
+        Chasseur embarqué de défense de la flotte, deux membres d'équipage en tandem
+        Mach 1,9, ailes à géométrie variable, missiles Phoenix
+        Cockpit analogique, les écrans radar du RIO
 aircraft-a6 =
     .facts =
         Avion d'attaque embarqué tout temps, deux membres d'équipage côte à côte

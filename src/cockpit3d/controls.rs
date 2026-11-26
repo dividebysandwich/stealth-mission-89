@@ -7,9 +7,11 @@
 //! its face. A VR fingertip touching a control highlights it (with a light haptic tick) and
 //! pulling the trigger then fires it; a mouse click or a script `press=` fires it directly.
 //!
-//! The A-6's controls (`Effect::Intruder`) show the state they latch in (`intruder`): its square
-//! pushbuttons stay in, turned 45 degrees (`twist`), its toggle switches and knobs stand at
-//! their position (`switch`, `knob`), its address keys stay down.
+//! The A-6's and the F-14's controls (`Effect::Intruder`, `Effect::Tomcat`) show the state they
+//! latch in (their panels, `PanelKeys`): the square pushbuttons stay in, turned 45 degrees
+//! (`twist`), the F-14's lit pushbuttons stay in with their legends lit (`lamp`), the toggle
+//! switches and knobs stand at their position (`switch`, `knob`), the A-6's address keys stay
+//! down.
 
 use bevy::prelude::*;
 
@@ -21,6 +23,39 @@ use crate::flight::{Aircraft, Player};
 use crate::hud::{HudMode, HudState};
 use crate::input::{Action, ActionEvent};
 use crate::mfd::{CamDir, MfdCmd, MfdCommand, MfdState, OsbFn, cmd_action, osb};
+
+/// What a panel's control does besides changing its panel's state: a game action, a display
+/// command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PanelOut {
+    Action(Action),
+    Mfd(MfdCmd),
+}
+
+/// A control of a cockpit's own panel (the A-6's `intruder::Key`, the F-14's `tomcat::Key`): how
+/// it is modelled (`twist`, `lamp`, `switch`, `knob`, `cap`), its legend and its tooltip's
+/// message.
+pub trait PanelKey: Copy {
+    #[cfg_attr(not(test), allow(dead_code))]
+    fn kind(self) -> &'static str;
+    fn label(self) -> &'static str;
+    fn tip(self) -> &'static str;
+}
+
+/// A cockpit's own panel of latching controls (the A-6's `IntruderPanel`, the F-14's
+/// `TomcatPanel`): a control pressed (and what it does besides), whether a button stays in, a
+/// switch's or knob's position and how many it has (the first up, or fully anticlockwise).
+pub trait PanelKeys {
+    type Key: PanelKey;
+    fn press(&mut self, key: Self::Key) -> Option<PanelOut>;
+    fn latched(&self, key: Self::Key) -> bool;
+    fn position(&self, key: Self::Key) -> Option<(u8, u8)>;
+}
+
+/// A panel control's shown state: its position (switches, knobs) and whether it is in.
+fn shown<P: PanelKeys>(panel: &P, key: P::Key) -> (Option<(u8, u8)>, bool) {
+    (panel.position(key), panel.latched(key))
+}
 
 /// Presses the 3D-cockpit control bound to an action (scripts).
 #[derive(Message, Debug, Clone, Copy)]
@@ -80,7 +115,7 @@ impl Effect {
             Effect::LeftPage(_) => Action::Maps,
             Effect::CamCycle => Action::CamAhead,
             Effect::TimeToggle => Action::TimeAccel,
-            Effect::Console(_) | Effect::Intruder(_) => return None,
+            Effect::Console(_) | Effect::Intruder(_) | Effect::Tomcat(_) => return None,
             Effect::Osb(side, slot) => match osb(side, slot, mfd)?.1 {
                 // The slew buttons have no key action (F8 is the MOV button's).
                 OsbFn::Cmd(MfdCmd::WaypointNudge(..)) => return None,
@@ -89,6 +124,17 @@ impl Effect {
                 OsbFn::Readout => return None,
             },
         })
+    }
+
+    /// A panel control's kind, as its model has it (the A-6's and the F-14's controls; the
+    /// layout files' tests write it).
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn panel_kind(self) -> Option<&'static str> {
+        match self {
+            Effect::Intruder(k) => Some(PanelKey::kind(k)),
+            Effect::Tomcat(k) => Some(PanelKey::kind(k)),
+            _ => None,
+        }
     }
 }
 
@@ -112,6 +158,8 @@ enum Kind {
     Switch,
     /// A rotary knob: its `moving` part turned to its position, the first fully anticlockwise.
     Knob,
+    /// The F-14's lit pushbutton: latched in, it sits deeper (its legend lit, `tomcat`).
+    Lamp,
 }
 
 /// Seconds a pushbutton takes to turn its 45 degrees (a switch or knob to its next position).
@@ -161,7 +209,7 @@ pub(super) struct Highlight;
 
 impl Control {
     /// A control from the cockpit model's object properties: `kind` (cap, osb, side, gear,
-    /// eject; the A-6's twist, switch, knob), `control` (the effect, e.g. `Action(Gear)`,
+    /// eject; the A-6's and the F-14's twist, switch, knob; the F-14's lamp), `control` (the effect, e.g. `Action(Gear)`,
     /// `HudMode(1)`, `Osb(Left, 3)`, `Intruder(MasterArm)`), `half` (half width and height of the
     /// face, metres), `height` (face above the origin) and `travel` (press depth).
     pub(super) fn from_model(extras: &serde_json::Value) -> Option<Self> {
@@ -174,6 +222,7 @@ impl Control {
             "twist" => Kind::Twist,
             "switch" => Kind::Switch,
             "knob" => Kind::Knob,
+            "lamp" => Kind::Lamp,
             _ => return None,
         };
         let effect = parse_effect(extras["control"].as_str()?)?;
@@ -233,6 +282,7 @@ pub(super) fn parse_effect(s: &str) -> Option<Effect> {
         ("LeftPage", ["Tac"]) => Effect::LeftPage(crate::mfd::LeftMfd::Tac),
         ("CamCycle", []) => Effect::CamCycle,
         ("Intruder", [key]) => Effect::Intruder(crate::intruder::Key::parse(key)?),
+        ("Tomcat", [key]) => Effect::Tomcat(crate::tomcat::Key::parse(key)?),
         ("Console", [key, rest @ ..]) => {
             use super::layout::ConsoleKey as K;
             let n = || rest.first().and_then(|n| n.parse::<u8>().ok());
@@ -297,6 +347,9 @@ pub(super) struct Fire<'w, 's> {
     /// The A-6's panel and the scripts' presses of its controls.
     intruder: ResMut<'w, crate::intruder::IntruderPanel>,
     keys: MessageReader<'w, 's, crate::intruder::PressKey>,
+    /// The F-14's.
+    tomcat: ResMut<'w, crate::tomcat::TomcatPanel>,
+    tomcat_keys: MessageReader<'w, 's, crate::tomcat::PressKey>,
 }
 
 impl Fire<'_, '_> {
@@ -351,7 +404,36 @@ impl Fire<'_, '_> {
             Effect::Console(key) => {
                 self.console.write(ConsoleButton(key));
             }
-            Effect::Intruder(key) => self.intruder.press(key),
+            Effect::Intruder(key) => {
+                let out = PanelKeys::press(&mut *self.intruder, key);
+                self.out(out);
+            }
+            Effect::Tomcat(key) => {
+                let out = PanelKeys::press(&mut *self.tomcat, key);
+                self.out(out);
+            }
+        }
+    }
+
+    /// What a panel's control does besides.
+    fn out(&mut self, out: Option<PanelOut>) {
+        match out {
+            Some(PanelOut::Action(a)) => {
+                self.actions.write(ActionEvent(a));
+            }
+            Some(PanelOut::Mfd(c)) => {
+                self.mfd_commands.write(MfdCommand(c));
+            }
+            None => {}
+        }
+    }
+
+    /// A panel control's shown state (None: not a panel's control).
+    fn shown(&self, effect: Effect) -> Option<(Option<(u8, u8)>, bool)> {
+        match effect {
+            Effect::Intruder(k) => Some(shown(&*self.intruder, k)),
+            Effect::Tomcat(k) => Some(shown(&*self.tomcat, k)),
+            _ => None,
         }
     }
 }
@@ -384,6 +466,7 @@ pub(super) fn interact(
     if hide.is_some_and(|h| h.0) {
         presses.clear();
         fire.keys.clear();
+        fire.tomcat_keys.clear();
         for hand in hands.hands.iter_mut() {
             hand.touching = false;
         }
@@ -418,11 +501,15 @@ pub(super) fn interact(
             warn!("no 3D cockpit control for {a:?}");
         }
     }
-    // A script's press of an A-6 control: in whichever seat it is (the control goes in if this
-    // cockpit has it).
-    let keys: Vec<_> = fire.keys.read().map(|k| k.0).collect();
-    for key in keys {
-        let effect = Effect::Intruder(key);
+    // A script's press of an A-6 or F-14 control: in whichever seat it is (the control goes in
+    // if this cockpit has it).
+    let keys: Vec<_> = fire
+        .keys
+        .read()
+        .map(|k| Effect::Intruder(k.0))
+        .chain(fire.tomcat_keys.read().map(|k| Effect::Tomcat(k.0)))
+        .collect();
+    for effect in keys {
         if let Some((_, mut c, _)) = controls.iter_mut().find(|(_, c, _)| c.effect == effect) {
             c.click = CLICK_SECONDS;
         }
@@ -537,14 +624,14 @@ pub(super) fn interact(
             }
         }
         c.depth = if c.click > 0.0 { c.travel } else { 0.0 };
-        // An A-6 control goes to the state it latched in.
-        if let Effect::Intruder(key) = c.effect {
-            let target = match fire.intruder.position(key) {
+        // A panel's control (the A-6's, the F-14's) goes to the state it latched in.
+        if let Some((position, latched)) = fire.shown(c.effect) {
+            let target = match position {
                 Some((at, n)) => {
                     c.positions = n;
                     at as f32
                 }
-                None => fire.intruder.latched(key) as u8 as f32,
+                None => latched as u8 as f32,
             };
             let step = dt / TURN_SECONDS;
             c.pos = if (target - c.pos).abs() <= step {
@@ -552,7 +639,7 @@ pub(super) fn interact(
             } else {
                 c.pos + step * (target - c.pos).signum()
             };
-            if matches!(c.kind, Kind::Twist | Kind::Cap) {
+            if matches!(c.kind, Kind::Twist | Kind::Cap | Kind::Lamp) {
                 c.depth = c.depth.max(c.travel * LATCH_DEPTH * c.pos.clamp(0.0, 1.0));
             }
         }

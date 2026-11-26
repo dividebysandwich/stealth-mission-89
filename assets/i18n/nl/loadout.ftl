@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, linker buitenvleugel
 hardpoint-a6-2-left-inner-wing = Station 2, linker binnenvleugel
 hardpoint-a6-4-right-inner-wing = Station 4, rechter binnenvleugel
 hardpoint-a6-5-right-outer-wing = Station 5, rechter buitenvleugel
+hardpoint-f14-1a-left-shoulder = Station 1A, linker schouderrail
+hardpoint-f14-1b-left-glove = Station 1B, linker vleugelwortelpyloon
+hardpoint-f14-2-left-nacelle = Station 2, linker motorgondel
+hardpoint-f14-3-left-front-tunnel = Station 3, voorste tunnel, links
+hardpoint-f14-4-left-rear-tunnel = Station 4, achterste tunnel, links
+hardpoint-f14-5-right-rear-tunnel = Station 5, achterste tunnel, rechts
+hardpoint-f14-6-right-front-tunnel = Station 6, voorste tunnel, rechts
+hardpoint-f14-7-right-nacelle = Station 7, rechter motorgondel
+hardpoint-f14-8b-right-glove = Station 8B, rechter vleugelwortelpyloon
+hardpoint-f14-8a-right-shoulder = Station 8A, rechter schouderrail
 hardpoint-c5-hold = Laadruim (afwerppallets)
 hardpoint-ch47-cabin = Cabine (parachutisten)
 weapon-role-21 = Lucht-lucht, infraroodgeleiding, zeer kort bereik
@@ -233,5 +243,15 @@ weapon-role-37 = Anti-radarraket op basis van de Sidewinder: radars en SAM-stell
 employment-37 =
     Bereik: 1-10 km
     Onder 1.000 ft klimt hij op en duikt van bovenaf op de radar
+# AIM-54C Phoenix
+weapon-role-38 = Lucht-lucht, radargeleid, groot bereik: tot zes doelen tegelijk
+employment-38 =
+    Bereik: 2-76 km, verder van voren
+    De radar geleidt hem op zijn spoor; zijn eigen zoekkop vanaf 10 nmi (PH ACT: vanaf de rail)
+# AIM-7M Sparrow
+weapon-role-39 = Lucht-lucht, semi-actieve radargeleiding, middellange afstand
+employment-39 =
+    Bereik: 1-31 km, verder van voren
+    Houd de enkeldoelvolging van de radar vast tot de inslag
 loadout-wingman = WINGMAN
     .facts = Een AI-wingman in hetzelfde toestel met dezelfde bewapening sluit in de lucht aan; het radiomenu (\) geeft hem opdrachten

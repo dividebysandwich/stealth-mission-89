@@ -207,6 +207,7 @@ fn drive(
     combat: Option<Res<crate::combat::Combat>>,
     manning: Option<Res<crate::station::Manning>>,
     aircraft: Query<&Aircraft, With<Player>>,
+    wake: Option<Res<crate::trails::WakeTurbulence>>,
 ) {
     if ffb.worker.is_none() {
         return;
@@ -235,7 +236,8 @@ fn drive(
     let mut f = forces(&FlightFeel {
         knots: a.velocity / 27.0,
         on_ground: a.on_ground,
-        buffet: crate::shake::stall_buffet(a),
+        // A missile's wake shakes the stick as a deep buffet.
+        buffet: crate::shake::stall_buffet(a).max(2.0 * wake.map_or(0.0, |w| w.0)),
         heli: k.is_some_and(|k| k.heli.is_some()),
         gun,
         kick: feel.kick,

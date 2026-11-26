@@ -922,6 +922,7 @@ fn callsign(kind: crate::aircraft::AircraftKind, (flight, position): (u8, u8)) -
         K::FA18E => "Rhino",
         K::EA18G => "Growler",
         K::A6 => "Intruder",
+        K::F14 => "Tomcat",
         K::C5 => "Reach",
         K::AC130 => "Spectre",
         K::AH64 => "Apache",

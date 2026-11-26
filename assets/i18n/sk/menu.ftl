@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronický útok, z lietadlových lodí
         Ruší nepriateľské rádiolokátory pre úder
         Dve sedadlá: pilot a dôstojník elektronického boja
+aircraft-f14 =
+    .facts =
+        Palubný stíhač na obranu flotily, dvaja členovia posádky za sebou
+        Mach 1,9, krídla s premennou geometriou, strely Phoenix
+        Analógový kokpit, radarové obrazovky RIO
 aircraft-a6 =
     .facts =
         Palubné útočné lietadlo do každého počasia, dvaja členovia posádky vedľa seba

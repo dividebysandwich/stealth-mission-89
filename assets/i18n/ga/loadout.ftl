@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stáisiún 1, sciathán clé seachtrach
 hardpoint-a6-2-left-inner-wing = Stáisiún 2, sciathán clé istigh
 hardpoint-a6-4-right-inner-wing = Stáisiún 4, sciathán deas istigh
 hardpoint-a6-5-right-outer-wing = Stáisiún 5, sciathán deas seachtrach
+hardpoint-f14-1a-left-shoulder = Stáisiún 1A, ráille gualainne clé
+hardpoint-f14-1b-left-glove = Stáisiún 1B, pílón fréimhe sciatháin clé
+hardpoint-f14-2-left-nacelle = Stáisiún 2, nasaille clé
+hardpoint-f14-3-left-front-tunnel = Stáisiún 3, tollán tosaigh, clé
+hardpoint-f14-4-left-rear-tunnel = Stáisiún 4, tollán deiridh, clé
+hardpoint-f14-5-right-rear-tunnel = Stáisiún 5, tollán deiridh, deas
+hardpoint-f14-6-right-front-tunnel = Stáisiún 6, tollán tosaigh, deas
+hardpoint-f14-7-right-nacelle = Stáisiún 7, nasaille deas
+hardpoint-f14-8b-right-glove = Stáisiún 8B, pílón fréimhe sciatháin deas
+hardpoint-f14-8a-right-shoulder = Stáisiún 8A, ráille gualainne deas
 hardpoint-c5-hold = Coimeádán lasta (pailléid aerscaoilte)
 hardpoint-ch47-cabin = Cábán (paraitrooperí)
 weapon-role-21 = Aer-aer, treorú infridhearg, raon an-ghearr
@@ -233,5 +243,15 @@ weapon-role-37 = Diúracán frith-radair déanta as Sidewinder: radair agus lái
 employment-37 =
     Raon: 1-10 km
     Faoi 1,000 ft éiríonn sé suas agus tumann sé ar an radar ó thuas
+# AIM-54C Phoenix
+weapon-role-38 = Aer-go-haer, faoi stiúir radair, raon fada: suas le sé sprioc ag an am céanna
+employment-38 =
+    Raon: 2-76 km, níos faide ar aghaidh
+    Stiúrann an radar é ar a rian; a lorgaire féin ó 10 mhuirmhíle (PH ACT: ón ráille)
+# AIM-7M Sparrow
+weapon-role-39 = Aer-go-haer, baile radair leathghníomhach, raon meánach
+employment-39 =
+    Raon: 1-31 km, níos faide ar aghaidh
+    Coinnigh rianú sprice aonair an radair go mbuailfidh sé
 loadout-wingman = SCIATHÁNAÍ
     .facts = Tagann sciathánaí IS san aerárthach céanna leis an armlón céanna leat san aer; tugann an roghchlár raidió (\) orduithe dó

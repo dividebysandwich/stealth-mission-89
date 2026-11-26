@@ -54,6 +54,7 @@ centers and remotely pilot recon, attack and interceptor drones, quadrotors and 
 | [14. Anti-Submarine Warfare](#14-anti-submarine-warfare) | The MH-60R's hunt: MAD, sonobuoys, the dipping sonar, the operator's console, torpedoes |
 | [15. Electronic War, Stand-off Weapons and the Fleet](#15-electronic-war-stand-off-weapons-and-the-fleet) | JSOW, MALD, the EA-18G Growler, enemy jammers, the fleet's defence, paratroopers |
 | [16. The A-6C Intruder](#16-the-a-6c-intruder) | Two seats and no MFDs: the VDI, the round scopes, the sight, the armament panel, and how to attack with each weapon and mode |
+| [17. The F-14B Tomcat](#17-the-f-14b-tomcat) | Swing wings, the AWG-9 radar and its two displays, six Phoenixes at six targets, the LANTIRN pod, and the RIO in the back seat |
 | [Appendices](#appendices) | Keys, your files, glossary |
 
 
@@ -4890,6 +4891,185 @@ Approach at about 115 kt with flaps and gear down. On the carrier the meatball a
 - No camera: the Intruder cannot fly photo reconnaissance missions.
 - The keyboard takes only target coordinates and route point numbers: no check points, aim
   points, wind or altitudes.
+
+# 17. THE F-14B TOMCAT
+
+The Grumman F-14 was the US Navy's fleet defence fighter: a big twin-engined jet with wings that
+sweep back as it accelerates, built round the AWG-9 radar and the AIM-54 Phoenix missile so that
+one aircraft could shoot at six bombers at once from beyond sixty miles. It takes two to work
+it. The pilot flies and fights close in; the **radar intercept officer** (RIO) behind him runs
+the radar, builds the picture and launches the long-range missiles. Late in its life it also
+carried the LANTIRN targeting pod and dropped laser-guided bombs.
+
+In the game the Tomcat is a carrier fighter with a HUD and a gun but no MFDs: the radar, the
+missiles and the pod are worked from the panels described here. It reaches 660 kt at sea level
+without afterburner and 817 kt with it (Mach 1.85 high up) and pulls 6.7 g. It carries Phoenixes
+or Sparrows on the glove pylons and under the fuselage, Sidewinders on the shoulder rails, tanks
+under the nacelles, bombs on the tunnel stations, and the LANTIRN pod under the right glove.
+
+## 17.1 The wings
+
+The wings sweep by themselves: forward (20 degrees) below Mach 0.6, fully aft (68 degrees) by
+Mach 0.95. The tape beside the ACM panel shows where they are.
+
+- **Alt+G** sweeps them further aft by hand, a quarter of the travel a press, **Alt+F** forward
+  again. By hand the wings only ever go further aft than the schedule, never further forward.
+- **Alt+H**, or the sweep switch back to AUTO, hands them back to the schedule.
+
+Swept wings turn worse and land faster: let them come forward for the approach.
+
+## 17.2 The crew
+
+The pilot sits in front, the RIO behind. As in the A-6 (16.1) you can fly it alone in front
+with an **automatic RIO** (17.8), alone in the back seat with the autopilot flying the route
+(**GUNNER'S SEAT** in the in-flight menu, `--seat gunner[@seconds]`), or with a friend who joins
+from the campaign's FLIGHTS tab. There is **one panel for both of you**: a control either moves,
+moves in the other's cockpit.
+
+- The **pilot** keeps the gun, the Sidewinders and the trigger.
+- The **RIO** sets the radar, hooks tracks and presses **LAUNCH** for the Phoenix or Sparrow the
+  pilot has selected. He also lays the LANTIRN pod.
+- If the pilot leaves the aircraft in the air, it flies on with the RIO.
+
+The pilot's DISPLAYS panel uses the A-6's square pushbuttons that turn 45 degrees when in. The
+RIO's lit pushbuttons sink and light their legend. Switches and knobs go to their next position
+at a click.
+
+## 17.3 The radar
+
+The **WCS MODE** buttons on the RIO's radar panel set the AWG-9:
+
+| Button | Mode | What it does |
+|---|---|---|
+| PULSE SRCH | Pulse search | Ranges at every aspect, shorter reach, blind looking down into the ground's clutter |
+| PD SRCH | Pulse Doppler search | The longest reach; shows closing speed, not range. Aircraft flying across your nose below you drop out |
+| RWS | Range while search | Pulse Doppler with ranges |
+| TWS AUTO | Track while scan | Keeps a numbered track on up to 24 aircraft and ranks the six most urgent for the Phoenixes |
+| TWS MAN | Track while scan | The same; the track you hook is shot first |
+| PD STT / P STT | Single target track | Locks one aircraft: the Sparrow needs this all the way |
+
+Aircraft seen further away than a mode's reach, behind a hill or outside the scan are not
+tracked. A track not seen for a few sweeps is carried on by its last course, then dropped.
+
+**Antenna elevation:** the EL UP / EL DN keys beside the elevation scale (or the antenna keys)
+tilt the scan. **Range:** the buttons over the DDD.
+
+**ACM.** The pilot raises the **ACM cover** on his panel: the radar scans wide ahead and locks
+the first aircraft inside 5 nmi by itself. The antenna keys then step the mode down to the
+vertical scan low, or up to the boresight (lock what the nose points at) and the vertical scan
+high (for a target above you in a turn). Closing the cover gives the radar back to the RIO.
+
+## 17.4 The RIO's displays
+
+**The DDD** (detail data display, above) is the radar's raw picture: azimuth across, range up
+(in PD SRCH closing speed up), a bar for each return, the scan's limits dashed, the antenna's
+carets on the edges. In a single target track it shows the gates on the target, and its range,
+closing speed and speed along the top.
+
+**The TID** (tactical information display, the big round tube) is the picture the computer
+builds: your aircraft, the tracks with their numbers, the scan's limits and the route. Hostile
+tracks wear a peaked hat, friendly ones a round one, unknown ones a square one. The **TID MODE**
+knob turns the picture: north up, nose up, nose up with you at the foot (ATTK), or the pod's
+video (TV). **TID RANGE** sets how far it reaches. **VEL VECTOR** adds a line showing where each
+track is going, **ALT NUM** its altitude in thousands of feet.
+
+**The hand controller and HOOK.** The stick on the pedestal between your knees moves a cursor
+(the slew keys do the same):
+
+- In the **search modes** (PULSE SRCH, PD SRCH, RWS) it moves the two bars of the acquisition
+  cursor on the **DDD**: left and right in azimuth, up and down the scope.
+- In **track while scan** and in a single target track it moves the open cross on the **TID**.
+- With the TID in **TV** it slews the pod instead.
+
+**HOOK**, or the **lock** control you use for the targeting pod and the radar (Numpad Enter, your
+HOTAS button, the VR controller's stick click), takes the return or the track under the cursor: it is boxed on both displays, and a
+track's bearing and range, altitude, course and speed are written along the TID's foot. With
+nothing under the cursor HOOK steps to the next track. What you hook is what **PD STT** or
+**P STT** then locks, what the TCS looks at, and in TWS MAN what the next Phoenix goes for. The
+pilot's displays and radar follow the same hooked aircraft. A Phoenix in flight shows its
+seconds to go at its track: to its own seeker coming on, then to impact.
+
+**The ECMD** (the small round tube) shows the radars painting you round your aircraft, the most
+dangerous in a diamond near the middle, those tracking you inside the others; a launch flashes.
+
+## 17.5 The pilot's displays
+
+**The VDI** shows the horizon and pitch ladder, or with its switch at **TV** the pod's video.
+**The HSD** below it shows the compass rose with the course to the steering point, its range top
+left and the destination's bearing, range and your speeds in the middle. Its mode switch puts
+the TID's picture or the threats on it instead; **ECM ORIDE** brings the threats up by
+themselves when a radar paints you. The station lights under the ACM panel show which stations
+hold the selected weapon once MASTER ARM is on.
+
+**The HUD** is the usual one (chapter 4) with the radar's cues added in air-to-air mode:
+
+- The radar's mode is written under the weapon at the lower left.
+- In track while scan, with nothing locked, a **circle** marks the track the next Phoenix will go
+  for, its track number above and its range in kilometres below; the steering dot points to it.
+- A locked target's box shows its range and under it the closing speed (VC, knots).
+- In the ACM modes the boresight beam is a small circle on the nose and a vertical scan a narrow
+  strip up the glass: put the target inside it.
+- With radar missiles in flight the lower right shows how many, and the soonest one's seconds:
+  **ACT** until its seeker comes on, then **TTI** until impact.
+
+## 17.6 Phoenix and Sparrow
+
+**AIM-54 Phoenix.** In track while scan, select the Phoenix and fire (or the RIO presses LAUNCH).
+Each press sends one missile at the next ranked track that has none flying at it, so six presses
+engage six aircraft. The radar guides each to its own track; ten miles from the target the
+missile's own seeker comes on and it no longer needs you. Until then **keep the tracks in the
+scan**: a missile whose track is dropped flies to where the target was last and looks there.
+
+- Inside ten miles, or with **PH ACT** on, the Phoenix is active off the rail.
+- It climbs high and comes down on its target: give it range to do so. Fired from far out it
+  takes a minute or two.
+- Flying through a Phoenix's smoke shakes the aircraft.
+
+**AIM-7 Sparrow.** It homes on your radar's reflection from one target, all the way. Lock the
+target (single target track), fire, and hold the lock until it hits. Break the lock and the
+missile is lost.
+
+## 17.7 The LANTIRN pod
+
+On the RIO's LANTIRN panel set **POWER** to ON and **VIDEO** to the pod, then turn the TID to
+TV (the pilot: the VDI to TV). The picture is always black and white; the FLIR key switches
+between the television and the infrared picture, and **POLARITY** shows the infrared one white
+hot or black hot. The pod is slewed and locked like any
+targeting pod (5.2), and guides laser-guided bombs to the point it holds.
+
+Over the picture: the pod's point in latitude and longitude, your altitude, ground speed and
+dive angle top left, the heading top middle, the sensor and the field of view at the left, the
+slant range, the pod's azimuth and elevation and the clock along the foot.
+
+The fine line drawn across the picture is the pod's **field of regard**, a fixed map with
+straight down in the middle and the nose up. The **dot** is where the pod looks now. The pod
+hangs under the right wing glove, so the fuselage hides the ground to the left: when the dot
+crosses the line, MASK flashes and the picture is of your own aircraft's belly. Turn towards the
+target to keep it on the pod's side.
+
+**The TCS.** With VIDEO at TCS the TV modes show the television camera under the nose instead.
+It needs no pod and no power switch. It looks at the radar's single target track, else at the
+hooked track, else at the track the next Phoenix would go for; with nothing tracked it looks
+along the nose (BRST). **FOV** switches its wide and narrow fields of view; the track's range is
+written at the lower right. Use it to see what a contact is before you shoot at it.
+
+## 17.8 The automatic RIO
+
+With nobody in the back seat an automatic RIO does the routine work:
+
+- He keeps the radar in **TWS AUTO**, with the DDD's and the TID's ranges and the antenna on the
+  nearest hostile aircraft.
+- With a **Sparrow selected and a lock of yours**, he takes a single target track on it, and
+  goes back to track while scan when the lock is gone.
+- With a **bomb selected** he switches the LANTIRN on and designates the mission's target, or
+  the route point you steer to, once it lies within 20 nmi ahead.
+
+He never touches the radar while your ACM cover is up, never fires, and stops the moment anyone
+sits in the back seat.
+
+## 17.9 What it does not have
+
+- No MFD pages: the radar, the stores and the pod are worked from the panels only.
 
 # APPENDICES
 

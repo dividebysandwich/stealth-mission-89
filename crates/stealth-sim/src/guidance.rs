@@ -91,7 +91,11 @@ pub fn profile(spec: i32) -> Option<Profile> {
         27 => rocket(4.0, 1.0, 15.0), // Maverick
         // Hellfire: light and blunt, it slows fast once burnt out (some 7 km from low down).
         47 => Profile { drag: 12.0, ..rocket(2.5, 1.0, 20.0) },
-        31 => rocket(15.0, 4.0, 25.0),   // AIM-7
+        31 => rocket(15.0, 4.0, 25.0),           // AIM-7
+        SPARROW_SPEC => rocket(15.0, 4.0, 25.0), // AIM-7M, the F-14's
+        // Phoenix: a long-burning motor in a big, low-drag airframe, little pull; lofted high
+        // it coasts down onto targets far beyond an AMRAAM's reach.
+        PHOENIX_SPEC => Profile { drag: PHOENIX_DRAG, ..rocket(PHOENIX_BURN, 6.0, 18.0) },
         41 => vertical(15.0, 4.0, 25.0), // SA-21
         43 => rocket(2.0, 2.0, 30.0),    // SA-22: a booster, then the dart glides
         44 => vertical(5.0, 2.0, 30.0),  // SA-15
@@ -132,6 +136,12 @@ const PAC3_DRAG: f64 = 1.38;
 const NASAMS_BURN: f64 = 8.0;
 const NASAMS_DRAG: f64 = 3.6;
 const NASAMS_STALL: f64 = 800.0;
+/// Phoenix: motor burn (s), drag as a multiple of [`DRAG`], the widest loft angle (radians)
+/// and how long it flies at most (s).
+const PHOENIX_BURN: f64 = 20.0;
+const PHOENIX_DRAG: f64 = 0.55;
+const PHOENIX_LOFT: f64 = 0.85;
+pub(crate) const PHOENIX_SECS: i32 = 200;
 /// AIM-9: drag as a multiple of [`DRAG`]. A small, finned airframe: burnt out it slows fast,
 /// some 18 km head-on from medium altitude, well under half that chasing a target's tail.
 const AIM9_DRAG: f64 = 12.0;
@@ -318,7 +328,7 @@ impl Sim {
         let range = r[0].hypot(r[1]);
         let elev = r[2].atan2(range);
         // The lock range in world units (lock range x 32 map units).
-        let loft = loft_angle(range, elev, self.reach(spec));
+        let loft = loft_angle(range, elev, self.reach(spec), LOFT_MAX);
         let up = if prof.vertical { 1.5 } else { (elev + RAIL_ABOVE).max(RAIL_LOWEST).max(loft) };
         let h = self.proj[s].heading;
         let dir = direction(h, (up.min(1.5) * BAM) as i32);
@@ -338,11 +348,17 @@ impl Sim {
     /// a loft, the missile climbing at the angle for the range before diving on the target (a
     /// pull up before firing leaves it less to turn).
     pub(crate) fn loft_launch(&self, pm: &mut Projectile, tgt: V3) {
-        let Some(f) = pm.flight.as_mut().filter(|_| pm.spec == 22) else { return };
+        let widest = match pm.spec {
+            22 => LOFT_MAX,
+            // The Phoenix climbs higher still.
+            PHOENIX_SPEC => PHOENIX_LOFT,
+            _ => return,
+        };
+        let Some(f) = pm.flight.as_mut() else { return };
         let fine = ROUND_FINE as f64;
         let r = sub(tgt, [f.x as f64 / fine, f.y as f64 / fine, f.alt as f64 / fine]);
         let range = r[0].hypot(r[1]);
-        f.loft = (loft_angle(range, r[2].atan2(range), self.reach(pm.spec)) * BAM) as i32;
+        f.loft = (loft_angle(range, r[2].atan2(range), self.reach(pm.spec), widest) * BAM) as i32;
     }
 
     /// One frame of a realistic flight: steers for `guide` (when the seeker has its target),
@@ -396,9 +412,9 @@ pub(crate) fn launch_ai(spec: i32, pos: V3, dir: V3, fs: i32) -> Projectile {
 /// The loft angle (radians) against a target `range` wu away and `elev` radians above, for a
 /// missile with lock range `reach` (wu): none close in, growing with the range. Not worth it
 /// against a target above the loft path.
-fn loft_angle(range: f64, elev: f64, reach: f64) -> f64 {
+fn loft_angle(range: f64, elev: f64, reach: f64, widest: f64) -> f64 {
     let share = ((range / reach.max(1.0) - LOFT_FROM) / (1.0 - LOFT_FROM)).clamp(0.0, 1.0);
-    let loft = if share > 0.0 { 0.25 + (LOFT_MAX - 0.25) * share } else { 0.0 };
+    let loft = if share > 0.0 { 0.25 + (widest - 0.25) * share } else { 0.0 };
     if elev > loft * 0.5 { 0.0 } else { loft }
 }
 

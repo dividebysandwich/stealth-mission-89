@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stacija 1, kreisais ārējais spārns
 hardpoint-a6-2-left-inner-wing = Stacija 2, kreisais iekšējais spārns
 hardpoint-a6-4-right-inner-wing = Stacija 4, labais iekšējais spārns
 hardpoint-a6-5-right-outer-wing = Stacija 5, labais ārējais spārns
+hardpoint-f14-1a-left-shoulder = Stacija 1A, kreisā pleca sliede
+hardpoint-f14-1b-left-glove = Stacija 1B, kreisais spārna saknes pilons
+hardpoint-f14-2-left-nacelle = Stacija 2, kreisā dzinēja gondola
+hardpoint-f14-3-left-front-tunnel = Stacija 3, priekšējais tunelis, kreisais
+hardpoint-f14-4-left-rear-tunnel = Stacija 4, aizmugurējais tunelis, kreisais
+hardpoint-f14-5-right-rear-tunnel = Stacija 5, aizmugurējais tunelis, labais
+hardpoint-f14-6-right-front-tunnel = Stacija 6, priekšējais tunelis, labais
+hardpoint-f14-7-right-nacelle = Stacija 7, labā dzinēja gondola
+hardpoint-f14-8b-right-glove = Stacija 8B, labais spārna saknes pilons
+hardpoint-f14-8a-right-shoulder = Stacija 8A, labā pleca sliede
 hardpoint-c5-hold = Kravas nodalījums (nometamās paletes)
 hardpoint-ch47-cabin = Salons (desantnieki)
 weapon-role-21 = Gaiss-gaiss, infrasarkanā vadība, ļoti mazs darbības rādiuss
@@ -233,5 +243,15 @@ weapon-role-37 = No Sidewinder veidota pretradara raķete: radari un SAM pozīci
 employment-37 =
     Rādiuss: 1-10 km
     Zem 1 000 ft tā paceļas un uzbrūk radaram no augšas
+# AIM-54C Phoenix
+weapon-role-38 = Gaiss-gaiss, radara vadīta, liels rādiuss: līdz sešiem mērķiem vienlaikus
+employment-38 =
+    Rādiuss: 2-76 km, tālāk pret pretinieku
+    Radars to vada pa tās trasi; pašas meklētājgalva no 10 jūras jūdzēm (PH ACT: no sliedes)
+# AIM-7M Sparrow
+weapon-role-39 = Gaiss-gaiss, pusaktīva radara vadība, vidējs rādiuss
+employment-39 =
+    Rādiuss: 1-31 km, tālāk pret pretinieku
+    Turiet radara viena mērķa sekošanu līdz trāpījumam
 loadout-wingman = PĀRINIEKS
     .facts = MI pārinieks tajā pašā lidmašīnā ar tādu pašu bruņojumu pievienojas gaisā; radio izvēlne (\) dod tam pavēles

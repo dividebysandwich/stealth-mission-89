@@ -129,6 +129,20 @@ const HELICOPTER_MODEL: i32 = 25;
 /// The remake's own aircraft models (the Geran drones, the Hind) are numbered from here, in
 /// `models/drones.glb` (tools/models/drones.py).
 const REMAKE_MODELS: i32 = 100;
+/// The speed of sound (knots) the AI's swing wings are scheduled by: the AI's height is not
+/// worth the atmosphere's for this, its middle heights' is near enough.
+const AI_SOUND_KNOTS: f32 = 620.0;
+
+/// The swing wing of an AI aircraft model with one (the F-14's, the Tornado's).
+fn swing_wing_of(model: i32) -> Option<crate::flight::modern::SwingWing> {
+    use crate::aircraft::AircraftKind;
+    let kind = match model {
+        5 => AircraftKind::F14,
+        45 => AircraftKind::Tornado,
+        _ => return None,
+    };
+    kind.spec().flight().aero.swing_wing
+}
 /// The low-level air defences' models (ZSU-23-4, S-60, MANPADS team) are numbered from here,
 /// in `models/aaa.glb` (tools/models/air_defence.py).
 const AAA_MODELS: i32 = 110;
@@ -1433,6 +1447,17 @@ pub(crate) fn sync_objects(
                         s.0[k] = x;
                     }
                 }
+                // A swing-wing model (the F-14, the Tornado) swept as its schedule puts it for
+                // its speed (forward with its gear down).
+                if let Some(w) = swing_wing_of(model) {
+                    let knots = u.speed.max(0) as f32 * crate::world::WU as f32 / 0.514_444;
+                    let at = w.scheduled(knots / AI_SOUND_KNOTS, gear);
+                    let (r, l) = crate::aircraft::wing_slot_values(at, w.forward, w.back);
+                    let (sr, sl) = crate::aircraft::WING_SLOTS;
+                    if (s.0[sr], s.0[sl]) != (r, l) {
+                        (s.0[sr], s.0[sl]) = (r, l);
+                    }
+                }
             }
         }
     }
@@ -2342,8 +2367,9 @@ pub(crate) fn sync_remote_pilots(
                 // As the own model: the gear (slots 5, 6: down 3 .. up 0), the bay doors, the
                 // lights.
                 let gear = if p.gear_up && !p.on_ground { 0 } else { 3 };
-                // (The A-6's slot 28 group is its TRIM pod: on every flown one, stores or not.)
-                let hung = loads.is_some() || p.intruder;
+                // (The A-6's slot 28 group is its TRIM pod, the F-14's its LANTIRN pod: on every
+                // flown one, stores or not.)
+                let hung = loads.is_some() || p.intruder || p.tomcat;
                 let v = [
                     (5, (gear != 0) as i16),
                     (6, gear - 1),
@@ -2358,11 +2384,16 @@ pub(crate) fn sync_remote_pilots(
                     }
                 }
                 // A swing wing where his schedule puts it for his speed (forward with the
-                // gear down: his flaps are out).
+                // gear down: his flaps are out); the F-14's as he sweeps it (he may sweep it
+                // back by hand).
                 if let Some(w) = spec.swing_wing.then(|| spec.flight().aero.swing_wing).flatten() {
                     let (_, sound) = crate::flight::modern::atmosphere(p.view.alt as f32);
                     let mach = p.view.knots as f32 * 27.0 / 16.0 / sound;
-                    let at = w.scheduled(mach, !p.gear_up || p.on_ground);
+                    let at = if p.tomcat {
+                        p.sweep as f32 / 255.0
+                    } else {
+                        w.scheduled(mach, !p.gear_up || p.on_ground)
+                    };
                     let (r, l) = crate::aircraft::wing_slot_values(at, w.forward, w.back);
                     let (sr, sl) = crate::aircraft::WING_SLOTS;
                     if (s.0[sr], s.0[sl]) != (r, l) {

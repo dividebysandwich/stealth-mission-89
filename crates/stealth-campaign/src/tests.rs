@@ -1649,6 +1649,7 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
         Aircraft::AH64,
         Aircraft::FA18E,
         Aircraft::A6,
+        Aircraft::F14,
     ];
     for k in kinds {
         for last in all {
@@ -1693,6 +1694,14 @@ fn the_briefing_picks_an_aircraft_made_for_the_mission() {
     assert_eq!(AntiShip.pick(Aircraft::A6), Aircraft::A6);
     assert_eq!(Cas.pick(Aircraft::A6), Aircraft::A6);
     assert_eq!(Cap.pick(Aircraft::A6), Aircraft::F16);
+    // The F-14B flies the fighters' missions and strikes, never close support or SEAD.
+    assert_eq!(Cap.pick(Aircraft::F14), Aircraft::F14);
+    assert_eq!(Intercept.pick(Aircraft::F14), Aircraft::F14);
+    assert_eq!(Escort.pick(Aircraft::F14), Aircraft::F14);
+    assert_eq!(Strike.pick(Aircraft::F14), Aircraft::F14);
+    assert_eq!(Interdiction.pick(Aircraft::F14), Aircraft::F14);
+    assert_eq!(Cas.pick(Aircraft::F14), Aircraft::A10);
+    assert_eq!(Sead.pick(Aircraft::F14), Aircraft::F16);
     // The CH-47 and the C-5 drop paratroopers on an insertion's place.
     assert_eq!(Insertion.pick(Aircraft::CH47), Aircraft::CH47);
     assert_eq!(Insertion.pick(Aircraft::C5), Aircraft::C5);
@@ -3546,6 +3555,7 @@ fn the_war_starts_with_every_airfield_stocked_and_a_production_base_in_the_rear(
         (35, Munition::Shrike, 16),
         (36, Munition::Zuni, 64),
         (37, Munition::Sidearm, 16),
+        (38, Munition::Aim54, 24),
     ] {
         assert_eq!(Munition::of_weapon(w), Some(m));
         assert!(Munition::of_side(Side::Blue).contains(&m));

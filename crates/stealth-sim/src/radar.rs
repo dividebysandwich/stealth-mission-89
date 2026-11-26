@@ -623,6 +623,7 @@ impl Sim {
             glide: None,
             intercept: None,
             sea: None,
+            midcourse: None,
             popup: Popup::Off,
         };
         if self.guided(spec) {
@@ -759,6 +760,7 @@ impl Sim {
             glide: None,
             intercept: None,
             sea: None,
+            midcourse: None,
             popup: Popup::Off,
         };
         if self.guided(u.missile) {

@@ -32,9 +32,12 @@ K = aircraft.K
 # The ground under the wheels (m below the origin), the Harrier's along its nose-up attitude.
 GROUND = {23: lambda y: aircraft.F16_GROUND, 32: lambda y: aircraft.A10_GROUND, 45: lambda y: aircraft.TORNADO_GROUND,
           47: lambda y: aircraft.harrier_ground(y), 79: lambda y: aircraft.FA18E_GROUND,
-          81: lambda y: aircraft.FA18E_GROUND, 27: lambda y: aircraft.A6_GROUND}
-# Full aft sweep of the Tornado's outer wings (degrees from fully forward).
-SWEEP = 42.0
+          81: lambda y: aircraft.FA18E_GROUND, 27: lambda y: aircraft.A6_GROUND,
+          5: lambda y: aircraft.F14_GROUND}
+# Full aft sweep of the swing-wing jets' outer wings (degrees from fully forward): the
+# Tornado's, the F-14's (68 degrees, 48.9 in the model: its stores hang from the gloves
+# and the body, which the wings sweep past).
+SWEEP = {45: [42.0], 5: [48.9]}
 # The least gap (m) between a store and the ground under the wheels.
 GROUND_GAP = 0.10
 
@@ -133,7 +136,7 @@ def rounds_only(table, jet, frames, st, w, inset=0.0, only=None):
 def check(table):
     failures = []
     for jet in sorted(int(j) for j in table["jets"]):
-        sweeps = [0.0, SWEEP] if jet == 45 else [0.0]
+        sweeps = [0.0] + SWEEP.get(jet, [])
         stations = table["jets"][str(jet)]
         for sweep in sweeps:
             body, gear, frames = airframe(jet, sweep)

@@ -4,6 +4,8 @@
 pub const WEBGL2: bool = cfg!(all(target_arch = "wasm32", not(feature = "webgpu")));
 
 mod aa_radar;
+mod awg9;
+mod f14_scopes;
 mod afterburner_flame;
 mod aircraft;
 mod aircraft_preview;
@@ -138,6 +140,7 @@ mod tacview_real_time;
 mod terrain;
 mod text_entry;
 mod tfr;
+mod tomcat;
 mod touch;
 mod trackcam;
 mod trails;
@@ -350,8 +353,10 @@ pub fn run() {
             avionics::AvionicsPlugin,
             ground_radar::GroundRadarPlugin,
             aa_radar::AaRadarPlugin,
+            awg9::Awg9Plugin,
             panel::PanelPlugin,
             intruder::IntruderPlugin,
+            tomcat::TomcatPlugin,
         ))
         .add_plugins((
             combat::CombatPlugin,

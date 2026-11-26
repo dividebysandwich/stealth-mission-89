@@ -21,6 +21,7 @@
 mod a6_layout;
 mod controls;
 mod displays;
+mod f14_layout;
 pub(crate) mod hud_glass;
 pub mod layout;
 pub mod levers;
@@ -44,7 +45,10 @@ use crate::flight::Player;
 use crate::input::{Action, ActionEvent};
 use crate::settings::{AppState, Settings};
 
-pub use controls::{ConsoleButton, ConsolePanel, DragPhase, PressControl, ScreenClick, ScreenDrag};
+pub use controls::{
+    ConsoleButton, ConsolePanel, DragPhase, PanelKey, PanelKeys, PanelOut, PressControl,
+    ScreenClick, ScreenDrag,
+};
 pub use displays::{
     BOARD_CANVAS, ConsoleCanvas, ConsoleScreen, EO_CANVAS, FEED_CANVAS, INFO_CANVAS, MAP_CANVAS,
     SCOPE_CANVAS,
@@ -535,7 +539,10 @@ fn sync_shading(
     mut materials: ResMut<Assets<CockpitMaterial>>,
     bursts: Res<crate::flashes::Bursts>,
     warnings: Option<Res<crate::panel::Warnings>>,
+    mfd: Option<Res<crate::mfd::MfdState>>,
 ) {
+    // The F-14's FLIR picture black hot: its grey picture inverted.
+    let invert = mfd.is_some_and(|m| m.black_hot && m.flir_on());
     // Bevy's full lighting (the clustered point light loop) only for local lights: on the
     // Steam Frame it costs about 10 ms of GPU time.
     let full = settings.local_lights;
@@ -576,7 +583,8 @@ fn sync_shading(
     // Pixelize: the parts it leaves sharp.
     let sharp_of = |m: &CockpitMaterial| {
         let sharp = m.extension.part.is_some_and(|p| crate::palette::pixel_sharp(&settings, p));
-        Vec4::new(sharp as u32 as f32, 0.0, 0.0, 0.0)
+        let mono = if m.extension.mono { 1.0 + invert as u32 as f32 } else { 0.0 };
+        Vec4::new(sharp as u32 as f32, mono, 0.0, 0.0)
     };
     let flood_of = |m: &CockpitMaterial| if m.extension.bright { Vec4::ZERO } else { flood };
     let stale: Vec<_> = materials

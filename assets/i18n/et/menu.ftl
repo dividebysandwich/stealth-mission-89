@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektrooniline rünnak, lennukikandjatelt
         Segab rünnaku eel vaenlase radareid
         Kaks istet: piloot ja elektroonilise sõjapidamise ohvitser
+aircraft-f14 =
+    .facts =
+        Lennukikandja laevastikukaitse hävitaja, kaks meeskonnaliiget järjestikku
+        Mach 1,9, muutuva noolsusega tiivad, Phoenixi raketid
+        Analoogkokpit, RIO radariekraanid
 aircraft-a6 =
     .facts =
         Lennukikandjate iga ilma ründelennuk, kaks meeskonnaliiget kõrvuti

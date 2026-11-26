@@ -39,7 +39,7 @@ const ATLAS: usize = 512;
 /// The instrument atlas's height (texels): twice the width in the OH-58D's, the MH-60R's and the
 /// F/A-18E's cockpits, whose four MFDs' bezel buttons (and the F/A-18E's soft keys) don't fit
 /// the square one and in the F-117A's modern one; three times in the A-6's (the whole panel
-/// in either seat).
+/// in either seat); twice in the F-14's (its many round instruments and lit buttons).
 fn atlas_rows(style: PanelStyle) -> usize {
     match style {
         PanelStyle::Oh58 | PanelStyle::Oh58Cpg | PanelStyle::Mh60r | PanelStyle::Fa18e => 2 * ATLAS,
@@ -47,6 +47,7 @@ fn atlas_rows(style: PanelStyle) -> usize {
         PanelStyle::Modern => 2 * ATLAS,
         // The A-6's many round instruments, pushbuttons and legends.
         PanelStyle::A6 | PanelStyle::A6Bn => 3 * ATLAS,
+        PanelStyle::F14 | PanelStyle::F14Rio => 2 * ATLAS,
         _ => ATLAS,
     }
 }
@@ -84,6 +85,14 @@ pub(super) enum CanvasRole {
     Phd,
     Dvri,
     Sensor,
+    /// The F-14's displays (`tomcat::displays`): the pilot's vertical display indicator and
+    /// horizontal situation display, the radar intercept officer's detail data display,
+    /// tactical information display and electronic countermeasures display.
+    F14Vdi,
+    F14Hsd,
+    Ddd,
+    Tid,
+    Ecmd,
     /// An air defence console's screens (`station` draws them).
     Console(ConsoleScreen),
 }
@@ -335,7 +344,9 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         | PanelStyle::Fa18e
         | PanelStyle::Ea18gEwo
         | PanelStyle::A6
-        | PanelStyle::A6Bn => MM_TEXELS,
+        | PanelStyle::A6Bn
+        | PanelStyle::F14
+        | PanelStyle::F14Rio => MM_TEXELS,
     }
 }
 
@@ -445,6 +456,26 @@ pub(super) fn screen(
                 if there.is_some() { Canvas::scaled(w, h, scale) } else { Canvas::new(8, 8) };
             (canvas, role == CanvasRole::Sensor)
         }
+        // Only the F-14 has these.
+        CanvasRole::F14Vdi
+        | CanvasRole::F14Hsd
+        | CanvasRole::Ddd
+        | CanvasRole::Tid
+        | CanvasRole::Ecmd => {
+            use crate::tomcat::displays as d;
+            let f14 = layout.f14.unwrap_or_default();
+            let (there, (w, h)) = match role {
+                CanvasRole::F14Vdi => (f14.vdi, d::VDI_CANVAS),
+                CanvasRole::F14Hsd => (f14.hsd, d::HSD_CANVAS),
+                CanvasRole::Ddd => (f14.ddd, d::DDD_CANVAS),
+                CanvasRole::Tid => (f14.tid, d::TID_CANVAS),
+                _ => (f14.ecmd, d::ECMD_CANVAS),
+            };
+            let canvas =
+                if there.is_some() { Canvas::scaled(w, h, d::SCALE) } else { Canvas::new(8, 8) };
+            // The TID and the VDI show the pod's picture through them in TV mode.
+            (canvas, matches!(role, CanvasRole::Tid | CanvasRole::F14Vdi))
+        }
         // The classic cockpit has no data entry display.
         CanvasRole::Ded => (
             if layout.ded.is_some() {
@@ -464,6 +495,11 @@ pub(super) fn screen(
         CanvasRole::Phd => Some(crate::intruder::scope::phd_colours()),
         CanvasRole::Dvri => Some(crate::intruder::scope::dvri_colours()),
         CanvasRole::Sensor => Some(crate::intruder::scope::sensor_colours()),
+        CanvasRole::F14Vdi
+        | CanvasRole::F14Hsd
+        | CanvasRole::Ddd
+        | CanvasRole::Tid
+        | CanvasRole::Ecmd => Some(crate::tomcat::displays::colours()),
         _ => None,
     };
     let material = materials.add(cockpit_part(
@@ -483,21 +519,22 @@ pub(super) fn screen(
     (tex, material)
 }
 
-/// The tracking camera picture behind the right screen (seen where its page is see-through).
+/// The tracking camera picture behind the right screen (seen where its page is see-through),
+/// in grey with `mono` (the F-14's LANTIRN).
 pub(super) fn trackcam_material(
     materials: &mut Assets<CockpitMaterial>,
     tc_image: Option<&crate::trackcam::TrackCamImage>,
+    mono: bool,
 ) -> Handle<CockpitMaterial> {
-    materials.add(in_part(
-        cockpit_material_bright(StandardMaterial {
-            base_color_texture: tc_image.map(|i| i.0.clone()),
-            unlit: true,
-            cull_mode: None,
-            fog_enabled: false,
-            ..default()
-        }),
-        ViewPart::Gauges,
-    ))
+    let mut m = cockpit_material_bright(StandardMaterial {
+        base_color_texture: tc_image.map(|i| i.0.clone()),
+        unlit: true,
+        cull_mode: None,
+        fog_enabled: false,
+        ..default()
+    });
+    m.extension.mono = mono;
+    materials.add(in_part(m, ViewPart::Gauges))
 }
 
 /// A side panel button label (the button's text on a green cap).
@@ -680,6 +717,9 @@ pub(super) fn update_displays(
     // it (the cockpit has no MFDs to tell them apart).
     let sensor = matches!(settings.cockpit().0, PanelStyle::A6 | PanelStyle::A6Bn)
         && [MfdSide::Left, MfdSide::Right].into_iter().any(|s| d.mfd.camera_see_through(s));
+    // The F-14's pod picture behind the TID (the RIO's) or the VDI (the pilot's) in TV mode.
+    let tv = crate::tomcat::avionics::tv_shown(&d.panel.tomcat, settings.cockpit().0);
+    let sensor = sensor || tv;
     for (screen, mut v) in &mut tc {
         v.set_if_neq(
             if sensor
@@ -723,6 +763,11 @@ pub(super) fn update_displays(
         CanvasRole::Phd,
         CanvasRole::Dvri,
         CanvasRole::Sensor,
+        CanvasRole::F14Vdi,
+        CanvasRole::F14Hsd,
+        CanvasRole::Ddd,
+        CanvasRole::Tid,
+        CanvasRole::Ecmd,
     ] {
         if settings.vr && half(role).is_some_and(|h| h != *frame % 2) {
             continue;
@@ -763,6 +808,40 @@ pub(super) fn update_displays(
             CanvasRole::Phd => d.panel.draw_phd(&mut tex.canvas, &fonts),
             CanvasRole::Dvri => d.panel.draw_dvri(&mut tex.canvas, &fonts),
             CanvasRole::Sensor => d.panel.draw_sensor(&mut tex.canvas, &fonts),
+            CanvasRole::F14Vdi
+            | CanvasRole::F14Hsd
+            | CanvasRole::Ddd
+            | CanvasRole::Tid
+            | CanvasRole::Ecmd => {
+                use crate::tomcat::displays as f14;
+                let p = &d.panel;
+                let panel = &*p.tomcat;
+                let inputs = f14::Inputs {
+                    fonts: &fonts,
+                    panel,
+                    scene: &p.tomcat_scene,
+                    radar: &p.awg9,
+                    controls: &p.awg9_controls,
+                    emitters: &p.emitters.list,
+                    t: p.time.elapsed_secs(),
+                };
+                let c = &mut tex.canvas;
+                match role {
+                    CanvasRole::F14Vdi => f14::draw_vdi(c, &inputs),
+                    CanvasRole::F14Hsd => f14::draw_hsd(c, &inputs),
+                    CanvasRole::Ddd => f14::draw_ddd(c, &inputs),
+                    CanvasRole::Tid => f14::draw_tid(c, &inputs),
+                    _ => f14::draw_ecmd(c, &inputs),
+                }
+                // See-through while the pod's picture is up behind it.
+                let video = crate::tomcat::avionics::video_up(panel);
+                tex.transparent = video
+                    && match role {
+                        CanvasRole::Tid => panel.tid_mode == crate::tomcat::TidMode::Tv,
+                        CanvasRole::F14Vdi => panel.vdi_mode == crate::tomcat::VdiMode::Tv,
+                        _ => false,
+                    };
+            }
             CanvasRole::Hud => {
                 tex.canvas.px.fill(0);
                 if let Some(frame) = d.hud.frame(d.mfd.state.camera_shown()) {
@@ -896,6 +975,20 @@ pub(super) fn update_displays(
                 crate::intruder::draw_readout(c, r, &text);
                 backlit
             }
+            Face::Item(Elem::Tomcat(key)) => {
+                crate::tomcat::draw_control(c, &fonts, r, key, &d.panel.tomcat, k) || backlit
+            }
+            Face::Item(Elem::TomcatLight(light)) => {
+                let on = crate::tomcat::lit(light, &d.panel.tomcat, &d.panel.tomcat_status);
+                crate::tomcat::draw_light(c, &fonts, r, light, on);
+                on
+            }
+            Face::Item(Elem::TomcatReadout(readout)) => {
+                let fuel = d.panel.dial_value(Dial::Fuel);
+                let text = crate::tomcat::readout(readout, fuel, d.panel.bingo());
+                crate::intruder::draw_readout(c, r, &text);
+                backlit
+            }
             // Modern avionics: blank caps, the labels are on the display.
             Face::Osb(..) if d.mfd.state.modern => {
                 osb_cap(c, r, k);
@@ -965,6 +1058,8 @@ mod tests {
             PanelStyle::Ea18gEwo,
             PanelStyle::A6,
             PanelStyle::A6Bn,
+            PanelStyle::F14,
+            PanelStyle::F14Rio,
         ] {
             let layout = PanelLayout::for_style(style);
             let k = atlas_scale(style);

@@ -228,6 +228,11 @@ aircraft-ea18g =
         Ataque eletrônico, dos porta-aviões
         Interfere nos radares inimigos para o ataque
         Dois assentos: piloto e oficial de guerra eletrônica
+aircraft-f14 =
+    .facts =
+        Caça embarcado de defesa da frota, dois tripulantes em tandem
+        Mach 1,9, asas de geometria variável, mísseis Phoenix
+        Cabine analógica, as telas de radar do RIO
 aircraft-a6 =
     .facts =
         Aeronave de ataque embarcada para qualquer tempo, dois tripulantes lado a lado

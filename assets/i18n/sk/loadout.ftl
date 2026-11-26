@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stanica 1, ľavé vonkajšie krídlo
 hardpoint-a6-2-left-inner-wing = Stanica 2, ľavé vnútorné krídlo
 hardpoint-a6-4-right-inner-wing = Stanica 4, pravé vnútorné krídlo
 hardpoint-a6-5-right-outer-wing = Stanica 5, pravé vonkajšie krídlo
+hardpoint-f14-1a-left-shoulder = Stanica 1A, ľavá ramenná koľajnica
+hardpoint-f14-1b-left-glove = Stanica 1B, ľavý pylón koreňa krídla
+hardpoint-f14-2-left-nacelle = Stanica 2, ľavá gondola motora
+hardpoint-f14-3-left-front-tunnel = Stanica 3, predný tunel, vľavo
+hardpoint-f14-4-left-rear-tunnel = Stanica 4, zadný tunel, vľavo
+hardpoint-f14-5-right-rear-tunnel = Stanica 5, zadný tunel, vpravo
+hardpoint-f14-6-right-front-tunnel = Stanica 6, predný tunel, vpravo
+hardpoint-f14-7-right-nacelle = Stanica 7, pravá gondola motora
+hardpoint-f14-8b-right-glove = Stanica 8B, pravý pylón koreňa krídla
+hardpoint-f14-8a-right-shoulder = Stanica 8A, pravá ramenná koľajnica
 hardpoint-c5-hold = Nákladový priestor (palety na zhoz)
 hardpoint-ch47-cabin = Kabína (výsadkári)
 weapon-role-21 = Vzduch-vzduch, infračervené navádzanie, veľmi krátky dosah
@@ -233,5 +243,15 @@ weapon-role-37 = Protiradarová raketa zo Sidewinderu: radary a pozície SAM, z 
 employment-37 =
     Dosah: 1-10 km
     Pod 1 000 ft vystúpi a strmhlav zaútočí na radar zhora
+# AIM-54C Phoenix
+weapon-role-38 = Vzduch-vzduch, radarom navádzaná, veľký dosah: až šesť cieľov naraz
+employment-38 =
+    Dosah: 2-76 km, vo vzájomnom čelnom kurze väčší
+    Radar ju navádza po jej stope; vlastná hlavica od 10 nmi (PH ACT: hneď z koľajnice)
+# AIM-7M Sparrow
+weapon-role-39 = Vzduch-vzduch, poloaktívne radarové navádzanie, stredný dosah
+employment-39 =
+    Dosah: 1-31 km, vo vzájomnom čelnom kurze väčší
+    Držte radarové sledovanie jedného cieľa až do zásahu
 loadout-wingman = WINGMAN
     .facts = AI wingman v rovnakom lietadle s rovnakou výzbrojou sa k vám pripojí vo vzduchu; rádiové menu (\) mu dáva rozkazy

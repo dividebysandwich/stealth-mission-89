@@ -47,28 +47,28 @@ pub const GIMBAL: f32 = 60.0 * std::f32::consts::PI / 180.0;
 pub const BAR_SPACING: f32 = 2.2 * std::f32::consts::PI / 180.0;
 pub const BEAM_HALF: f32 = 1.75 * std::f32::consts::PI / 180.0;
 /// The scan rate (radians per second): a 4-bar scan across A6 takes about 7 s.
-const SCAN_RATE: f32 = 70.0 * std::f32::consts::PI / 180.0;
+pub(crate) const SCAN_RATE: f32 = 70.0 * std::f32::consts::PI / 180.0;
 /// Detection range (metres) of a fighter, and of an attack drone.
 const FIGHTER_M: f64 = 74_000.0;
 const DRONE_M: f64 = 18_000.0;
 /// The detection range's edge from pass to pass: always seen inside this fraction of it,
 /// never beyond `1 / FADE_IN` of it.
-const FADE_IN: f64 = 0.8;
+pub(crate) const FADE_IN: f64 = 0.8;
 /// A track holds out to this many detection ranges.
 const TRACK_RANGE: f64 = 1.2;
 /// Speeds (m/s) towards or away from the radar under which a target looked down on is lost in
 /// the ground clutter.
-const NOTCH: f64 = 30.0;
+pub(crate) const NOTCH: f64 = 30.0;
 /// The sight line to a target is checked against the ground every this many metres.
 const SIGHT_STEP: f64 = 250.0;
 /// Seconds over which the targets' velocities are smoothed (from their positions).
-const VEL_TAU: f64 = 0.5;
+pub(crate) const VEL_TAU: f64 = 0.5;
 /// Frames of the scan a brick is kept.
 const KEEP_FRAMES: f32 = 2.0;
 /// The range (metres) inside which the radar burns through a fighter's jamming
 /// (`combat::BURN_THROUGH_MAP`), and how far out (detection ranges) its noise is seen.
 pub const BURN_M: f64 = crate::combat::BURN_THROUGH_MAP as f64 * 15.625;
-const JAM_HEARD: f64 = 2.0;
+pub(crate) const JAM_HEARD: f64 = 2.0;
 
 /// The scan the pilot set: its half width, bars and the antenna's elevation (radians over the
 /// horizon).
@@ -210,14 +210,14 @@ fn reset(mut radar: ResMut<AaRadar>) {
 
 /// Where a target is from the aircraft: azimuth off the nose, elevation over the horizon and
 /// range.
-fn geometry(own: DVec3, heading: f32, pos: DVec3) -> (f32, f32, f64) {
+pub(crate) fn geometry(own: DVec3, heading: f32, pos: DVec3) -> (f32, f32, f64) {
     let d = pos - own;
     let ground = d.x.hypot(d.y);
     let bearing = d.x.atan2(d.y) as f32;
     (angle_diff(bearing, heading), d.z.atan2(ground) as f32, d.length())
 }
 
-fn seed(t: ContactRef) -> u32 {
+pub(crate) fn seed(t: ContactRef) -> u32 {
     match t {
         ContactRef::Unit(i) => i as u32,
         ContactRef::Pilot(k) => 0x1_0000 + k as u32,
@@ -411,7 +411,7 @@ fn targets(contacts: &Contacts) -> Vec<Target> {
 }
 
 /// The ground leaves the line from `a` to `b` (metres east, north, up) open.
-fn sight_open(ground: &impl Ground, a: DVec3, b: DVec3) -> bool {
+pub(crate) fn sight_open(ground: &impl Ground, a: DVec3, b: DVec3) -> bool {
     let n = ((a.distance(b) / SIGHT_STEP) as usize).min(600);
     (1..n).all(|i| {
         let p = a.lerp(b, i as f64 / n as f64);
@@ -428,9 +428,13 @@ fn scan(
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
     combat: Option<Res<crate::combat::Combat>>,
     theater: Option<Res<crate::world::Theater>>,
+    settings: Res<crate::settings::Settings>,
 ) {
     let flying = aircraft.single().ok().filter(|(a, _)| !a.on_ground && a.ended.is_none());
-    let (Some((a, pos)), Some(combat), true) = (flying, combat, state.modern && state.av.fcr_on())
+    // The F-14's radar is its AWG-9 (`crate::awg9`).
+    let own = settings.aircraft != crate::aircraft::AircraftKind::F14;
+    let (Some((a, pos)), Some(combat), true) =
+        (flying, combat, own && state.modern && state.av.fcr_on())
     else {
         if radar.on {
             radar.clear();

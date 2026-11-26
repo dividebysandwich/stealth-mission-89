@@ -309,13 +309,13 @@ information. The name is what counts.
 | 5 | Aircraft with a gear | 1 while the gear is not fully up: [landing gear](#landing-gear). The AI's: on the ground, taking off and landing. |
 | 6, 7 | The flown aircraft (6 also other pilots') | 6: the gear's travel, -1 up, 0 and 1 on the way, 2 fully down; 7: 1 while braking on the ground. |
 | 8 | The flown aircraft, other pilots' | [Weapon bay doors](#weapon-bays): 0 shut, 1 half open, 2 open. |
-| 28 | Flyable jets | 1 on the flown aircraft and other pilots' with stores: the game hangs [the stores](#external-stores), so geometry under `_s28v0` (an AI's baked missiles) is hidden. Geometry under `_s28v1` is only on the flown aircraft, the other pilots' too (the A-6C's TRIM pod, which the AI's A-6 does not carry). |
+| 28 | Flyable jets | 1 on the flown aircraft and other pilots' with stores: the game hangs [the stores](#external-stores), so geometry under `_s28v0` (an AI's baked missiles) is hidden. Geometry under `_s28v1` is only on the flown aircraft, the other pilots' too (the A-6C's TRIM pod, the F-14B's LANTIRN pod, which the AI's A-6 and F-14 do not carry). |
 | 18 | Aircraft | White strobe, single flash once a second (fighters' fin tips). |
 | 19 | Aircraft | White strobe, double flash (transports' wingtips). |
 | 20 | Aircraft | Red rotating beacon (top and bottom of the fuselage). |
 | 15, 16 | Everything (global) | Continuously turning angles for radar antennas (16 is the usual one). |
 | 17 | Aircraft | Rotor and propeller angle. |
-| 21, 22 | AAA units; swing-wing aircraft | Turret azimuth, gun elevation (aimed at the target); the right and left outer wing's sweep (the Tornado, [moving parts](#moving-parts-of-flyable-aircraft)). |
+| 21, 22 | AAA units; swing-wing aircraft | Turret azimuth, gun elevation (aimed at the target); the right and left outer wing's sweep (the Tornado, the F-14 (AI ones too, by their speed), [moving parts](#moving-parts-of-flyable-aircraft)). |
 | 23, 24 | The player's RAH-66 | The stores on the left and right bay door: 0 three Hellfires, 1 six Stingers, 2 none (with slot 8 for the door's angle). |
 | 26, 27 | The OH-58D (own and other pilots') | The left and right weapons pylon: 0 none (no pylon), 1 two Hellfires, 2 two Stingers, 3 the .50 cal gun pod; plus 4 for each missile fired (`Sim::pylon_looks`). |
 | 25 | The AV-8B (own and other pilots') | Nozzle angle down from aft, negative (`aircraft::nozzle_slot_value`): its four nozzle parts turn about x (axis 1). |

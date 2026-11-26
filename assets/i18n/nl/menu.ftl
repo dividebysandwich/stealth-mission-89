@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronische aanval, vanaf de vliegdekschepen
         Stoort de vijandelijke radars voor de aanval
         Twee zitplaatsen: piloot en officier elektronische oorlogvoering
+aircraft-f14 =
+    .facts =
+        Vlootverdedigingsjager van de vliegdekschepen, twee bemanningsleden achter elkaar
+        Mach 1,9, zwenkvleugels, Phoenix-raketten
+        Analoge cockpit, de radarschermen van de RIO
 aircraft-a6 =
     .facts =
         Alweer-aanvalsvliegtuig van de vliegdekschepen, twee man naast elkaar

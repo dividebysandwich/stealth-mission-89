@@ -228,6 +228,11 @@ aircraft-ea18g =
         Ionsaí leictreonach, ó na hiompróirí
         Cuireann sé isteach ar radair an namhad don ruathar
         Dhá shuíochán: píolóta agus oifigeach cogaíochta leictreonaí
+aircraft-f14 =
+    .facts =
+        Trodaire iompróra chun an cabhlach a chosaint, beirt foirne i ndiaidh a chéile
+        Mach 1.9, sciatháin luascacha, diúracáin Phoenix
+        Cockpit analógach, scáileáin radair an RIO
 aircraft-a6 =
     .facts =
         Aerárthach ionsaithe uile-aimsire ó na hiompróirí, beirt chriú taobh le taobh

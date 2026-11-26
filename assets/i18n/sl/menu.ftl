@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronski napad, z letalonosilk
         Moti sovražne radarje za napad
         Dva sedeža: pilot in častnik za elektronsko bojevanje
+aircraft-f14 =
+    .facts =
+        Palubni lovec za obrambo flote, dva člana posadke v tandemu
+        Mach 1,9, krila s spremenljivo geometrijo, izstrelki Phoenix
+        Analogni kokpit, radarski zasloni RIO
 aircraft-a6 =
     .facts =
         Palubno jurišno letalo za vse vremenske razmere, dva člana posadke drug ob drugem

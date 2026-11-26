@@ -823,6 +823,12 @@ pub struct PanelParams<'w, 's> {
     pub scan: Res<'w, crate::intruder::terrain::TerrainScan>,
     pub stream: Res<'w, crate::intruder::vdi::Stream>,
     pub ground_radar: Res<'w, crate::ground_radar::GroundRadar>,
+    /// The F-14's panel (`tomcat`) and what lights its lights.
+    pub tomcat: Res<'w, crate::tomcat::TomcatPanel>,
+    pub tomcat_status: Res<'w, crate::tomcat::TomcatStatus>,
+    pub tomcat_scene: Res<'w, crate::tomcat::avionics::TomcatScene>,
+    pub awg9: Res<'w, crate::awg9::Awg9>,
+    pub awg9_controls: Res<'w, crate::awg9::Awg9Controls>,
 }
 
 impl PanelParams<'_, '_> {
@@ -1169,7 +1175,21 @@ impl PanelParams<'_, '_> {
             }
             Dial::Engines => self.engines().map_or(0.0, |e| e.core[0]),
             Dial::FuelQuantity => a.fuel.max(0.0),
+            // The wing's sweep (degrees: 20 fully forward, 68 fully back).
+            Dial::Sweep => SWEEP_DEG.0 + (SWEEP_DEG.1 - SWEEP_DEG.0) * a.wing_sweep,
+            // The antenna's elevation set (degrees).
+            Dial::AntennaEl => self.mfd.av.fcr_el,
         }
+    }
+
+    /// A swing wing's sweep commanded (0..1): the schedule's for the Mach number, or the sweep
+    /// handle's where it is further back.
+    fn sweep_commanded(&self, a: &Aircraft) -> f32 {
+        let k = self.settings.aircraft.spec().flight();
+        let Some(w) = k.aero.swing_wing else { return a.wing_sweep };
+        let (_, sound) = crate::flight::modern::atmosphere(a.altitude);
+        let auto = w.scheduled(a.velocity / 16.0 / sound, a.flaps);
+        a.sweep_command.map_or(auto, |c| c.max(auto))
     }
 
     /// The engines' readings (`eng_page::Eng`).
@@ -1194,6 +1214,9 @@ impl PanelParams<'_, '_> {
             }
             Dial::Engines => self.engines().map_or(0.0, |e| e.core[1]),
             Dial::FuelQuantity => self.bingo(),
+            Dial::Sweep => SWEEP_DEG.0 + (SWEEP_DEG.1 - SWEEP_DEG.0) * self.sweep_commanded(a),
+            // Where the antenna scans (degrees: the bars kept inside the gimbals).
+            Dial::AntennaEl => self.mfd.av.fcr_scan().elevation.to_degrees(),
             _ => 0.0,
         }
     }
@@ -1392,6 +1415,7 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
         Dial::Slip => return draw_slip(c, r, value),
         Dial::TurnSlip => return draw_turn_slip(c, r, value, aux),
         Dial::FuelQuantity => return draw_fuel_quantity(c, r, value, aux),
+        Dial::Sweep | Dial::AntennaEl => return draw_pointer_scale(c, r, dial, value, aux),
         // Drawn with all the engines' readings (`draw_engine_counters`).
         Dial::Engines => return,
         _ => {}
@@ -1475,7 +1499,9 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
         | Dial::TapeFlow
         | Dial::TapeOil
         | Dial::Engines
-        | Dial::FuelQuantity => return,
+        | Dial::FuelQuantity
+        | Dial::Sweep
+        | Dial::AntennaEl => return,
     };
     let dir = |deg: f32| {
         let a = deg.to_radians();
@@ -1543,6 +1569,58 @@ pub fn draw_dial(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) 
     let d = dir(start + sweep * t.clamp(0.0, 1.0));
     c.stroke(centre - d * rad * 0.12, centre + d * rad * 0.8, pen * 1.5, 15);
     c.circle(centre.x, centre.y, pen * 2.0, 7);
+}
+
+/// The F-14's wing sweep indicator's scale (degrees of leading edge sweep, the flight model's
+/// 21.6..70.5 shown as the real aircraft's 20..68).
+pub const SWEEP_DEG: (f32, f32) = (20.0, 68.0);
+
+/// A vertical scale with two pointers (the F-14's wing sweep and antenna elevation
+/// indicators): on black, its name over a scale labelled down its left, a white pointer from
+/// the right at `value` and a hollow one at `aux` (the sweep commanded; where the antenna
+/// scans).
+fn draw_pointer_scale(c: &mut Canvas, r: [i32; 4], dial: Dial, value: f32, aux: f32) {
+    use crate::font::{Align, stroke_text_at};
+    let [x, y, w, h] = r;
+    c.fill_rect(x, y, w, h, 5);
+    let (x0, y0, w, h) = (x as f32, y as f32, w as f32, h as f32);
+    let pen = (w / 30.0).max(1.0);
+    // Name, the scale's top and bottom values, the labelled step, the ticks' step.
+    let (name, top, bottom, step, tick): (&str, f32, f32, f32, f32) = match dial {
+        Dial::Sweep => ("SWEEP", SWEEP_DEG.0, SWEEP_DEG.1, 10.0, 5.0),
+        _ => ("EL", crate::avionics::FCR_EL_MAX, -crate::avionics::FCR_EL_MAX, 20.0, 10.0),
+    };
+    stroke_text_at(c, x0 + w / 2.0, y0 + h * 0.05, name, w * 0.2, pen, 7, Align::Centre);
+    let (ty, by) = (y0 + h * 0.12, y0 + h * 0.96);
+    let to_y = |v: f32| ty + ((v - top) / (bottom - top)).clamp(0.0, 1.0) * (by - ty);
+    let sx = x0 + w * 0.5;
+    c.stroke(Vec2::new(sx, ty), Vec2::new(sx, by), pen, 15);
+    let n = ((bottom - top).abs() / tick).round() as i32;
+    for i in 0..=n {
+        let v = top + (bottom - top) * i as f32 / n as f32;
+        let yy = to_y(v);
+        let major = (v / step).fract().abs() < 1e-3;
+        let len = if major { w * 0.16 } else { w * 0.08 };
+        c.stroke(Vec2::new(sx - len, yy), Vec2::new(sx, yy), pen, 15);
+        if major {
+            let label = format!("{}", v.abs().round() as i32);
+            stroke_text_at(c, x0 + w * 0.2, yy, &label, w * 0.17, pen * 0.8, 15, Align::Centre);
+        }
+    }
+    // The pointers from the right: the value's solid, the other's an outline.
+    let pointer = |c: &mut Canvas, v: f32, solid: bool| {
+        let py = to_y(v);
+        let tip = Vec2::new(sx + pen, py);
+        let back = Vec2::new(x0 + w * 0.92, py);
+        let pts = [tip, back + Vec2::Y * w * 0.12, back - Vec2::Y * w * 0.12];
+        if solid {
+            c.triangle(pts, 15);
+        } else {
+            c.polyline(&[pts[0], pts[1], pts[2], pts[0]], pen, 17);
+        }
+    };
+    pointer(c, aux, false);
+    pointer(c, value, true);
 }
 
 /// The radar altimeter's needle's fraction of its sweep at a height (feet): its scale is spread

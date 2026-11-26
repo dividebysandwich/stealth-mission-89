@@ -608,6 +608,37 @@ fn the_intruders_bombardier_lays_its_pod() {
     assert_eq!(sim.crew_view(0).unwrap().shared_panel, None);
 }
 
+/// The F-14 has a radar intercept officer's seat: the pilot keeps his trigger (the RIO's
+/// LAUNCH comes to the pilot's client through the crew's panel), the RIO's pod is the
+/// aircraft's, and the owner may sit in the back himself.
+#[test]
+fn the_tomcats_rio_shares_the_panel() {
+    let (mut sim, at) = crewed();
+    let base = (3..sim.objects().len())
+        .find(|&i| sim.objects()[i].flags & 0xF0F == 0x401)
+        .expect("friendly base");
+    let airframe = Airframe { external_stores: true, tomcat: true, ..Default::default() };
+    sim.respawn_pilot(0, base, None, airframe);
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    assert!(sim.gunner_seat_free(0));
+    sim.crew_command(0, CrewCmd::Seat(Seat::Gunner)).unwrap();
+    assert_eq!(sim.owner_seat(0), Seat::Gunner);
+    sim.crew_command(0, CrewCmd::Seat(Seat::Pilot)).unwrap();
+    sim.crew_command(1, CrewCmd::Join { owner: 0 }).unwrap();
+    assert_eq!(sim.crew_of(1), Some((0, Seat::Gunner)));
+    let pod = pod_on(at, 40);
+    let aim = GunnerAim { pod: Some(pod), trigger: true, ..Default::default() };
+    sim.crew_command(1, CrewCmd::Aim(aim)).unwrap();
+    sim.step_pilots(&[(0, orbit(at, false))], 15);
+    assert_eq!(sim.pilot_input(0).pod, Some(pod), "the RIO's pod");
+    assert!(!sim.pilot_input(0).cmd.trigger, "his trigger fires nothing");
+    sim.step_pilots(&[(0, orbit(at, true))], 15);
+    assert!(sim.pilot_input(0).cmd.trigger, "the pilot keeps his trigger");
+    let panel = SharedPanel { by: 1, bits: [5; 16] };
+    sim.crew_command(1, CrewCmd::Panel(panel)).unwrap();
+    assert_eq!(sim.crew_view(0).unwrap().shared_panel, Some(panel), "the RIO's panel");
+}
+
 #[test]
 fn the_gunner_releases_the_flares_and_hears_the_cockpit() {
     let (mut sim, at) = crewed();

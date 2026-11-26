@@ -440,6 +440,7 @@ mod tests {
             AircraftKind::FA18E,
             AircraftKind::EA18G,
             AircraftKind::A6,
+            AircraftKind::F14,
             AircraftKind::Tornado,
             AircraftKind::A10,
             AircraftKind::AV8B,

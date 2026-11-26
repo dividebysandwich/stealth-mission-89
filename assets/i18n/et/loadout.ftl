@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, vasak välistiib
 hardpoint-a6-2-left-inner-wing = Station 2, vasak siseosa tiib
 hardpoint-a6-4-right-inner-wing = Station 4, parem siseosa tiib
 hardpoint-a6-5-right-outer-wing = Station 5, parem välistiib
+hardpoint-f14-1a-left-shoulder = Station 1A, vasak õlarööbas
+hardpoint-f14-1b-left-glove = Station 1B, vasak tiivajuure pülon
+hardpoint-f14-2-left-nacelle = Station 2, vasak mootorigondel
+hardpoint-f14-3-left-front-tunnel = Station 3, eesmine tunnel, vasak
+hardpoint-f14-4-left-rear-tunnel = Station 4, tagumine tunnel, vasak
+hardpoint-f14-5-right-rear-tunnel = Station 5, tagumine tunnel, parem
+hardpoint-f14-6-right-front-tunnel = Station 6, eesmine tunnel, parem
+hardpoint-f14-7-right-nacelle = Station 7, parem mootorigondel
+hardpoint-f14-8b-right-glove = Station 8B, parem tiivajuure pülon
+hardpoint-f14-8a-right-shoulder = Station 8A, parem õlarööbas
 hardpoint-c5-hold = Lastiruum (heiteaalused)
 hardpoint-ch47-cabin = Kabiin (langevarjurid)
 weapon-role-21 = Õhk-õhk, infrapunajuhtimine, väga lühike ulatus
@@ -233,5 +243,15 @@ weapon-role-37 = Sidewinderist tehtud radarivastane rakett: radarid ja SAM-kohad
 employment-37 =
     Kaugus: 1-10 km
     Alla 1 000 ft tõuseb üles ja sukeldub radarile ülalt
+# AIM-54C Phoenix
+weapon-role-38 = Õhk-õhk, radarjuhitav, suur laskekaugus: kuni kuus sihtmärki korraga
+employment-38 =
+    Kaugus: 2-76 km, kaugemale otse vastu
+    Radar juhib seda tema jäljel; oma otsija alates 10 meremiilist (PH ACT: kohe rööpalt)
+# AIM-7M Sparrow
+weapon-role-39 = Õhk-õhk, poolaktiivne radarjuhtimine, keskmine laskekaugus
+employment-39 =
+    Kaugus: 1-31 km, kaugemale otse vastu
+    Hoidke radari ühe sihtmärgi jälgimist tabamuseni
 loadout-wingman = TIIVAMEES
     .facts = Sama lennuki ja relvastusega tehisintellektiga tiivamees liitub õhus; raadiomenüü (\) annab talle käske

@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stacja 1, lewe skrzydło zewnętrzna
 hardpoint-a6-2-left-inner-wing = Stacja 2, lewe skrzydło wewnętrzna
 hardpoint-a6-4-right-inner-wing = Stacja 4, prawe skrzydło wewnętrzna
 hardpoint-a6-5-right-outer-wing = Stacja 5, prawe skrzydło zewnętrzna
+hardpoint-f14-1a-left-shoulder = Stacja 1A, lewa szyna barkowa
+hardpoint-f14-1b-left-glove = Stacja 1B, lewy pylon nasady skrzydła
+hardpoint-f14-2-left-nacelle = Stacja 2, lewa gondola silnika
+hardpoint-f14-3-left-front-tunnel = Stacja 3, przedni tunel, lewa strona
+hardpoint-f14-4-left-rear-tunnel = Stacja 4, tylny tunel, lewa strona
+hardpoint-f14-5-right-rear-tunnel = Stacja 5, tylny tunel, prawa strona
+hardpoint-f14-6-right-front-tunnel = Stacja 6, przedni tunel, prawa strona
+hardpoint-f14-7-right-nacelle = Stacja 7, prawa gondola silnika
+hardpoint-f14-8b-right-glove = Stacja 8B, prawy pylon nasady skrzydła
+hardpoint-f14-8a-right-shoulder = Stacja 8A, prawa szyna barkowa
 hardpoint-c5-hold = Ładownia (palety zrzutowe)
 hardpoint-ch47-cabin = Kabina (spadochroniarze)
 weapon-role-21 = Powietrze-powietrze, naprowadzanie na podczerwień, bardzo krótki zasięg
@@ -233,5 +243,15 @@ weapon-role-37 = Pocisk przeciwradarowy z Sidewindera: radary i stanowiska SAM, 
 employment-37 =
     Zasięg: 1-10 km
     Poniżej 1 000 ft wznosi się i nurkuje na radar z góry
+# AIM-54C Phoenix
+weapon-role-38 = Powietrze-powietrze, naprowadzany radarowo, duży zasięg: do sześciu celów naraz
+employment-38 =
+    Zasięg: 2-76 km, większy przy ataku z przedniej półsfery
+    Radar prowadzi go po jego śladzie; własna głowica od 10 Mm (PH ACT: od szyny)
+# AIM-7M Sparrow
+weapon-role-39 = Powietrze-powietrze, półaktywne naprowadzanie radarowe, średni zasięg
+employment-39 =
+    Zasięg: 1-31 km, większy przy ataku z przedniej półsfery
+    Utrzymuj śledzenie pojedynczego celu radarem aż do trafienia
 loadout-wingman = SKRZYDŁOWY
     .facts = Skrzydłowy SI w tym samym samolocie i z tym samym uzbrojeniem dołącza w powietrzu; menu radiowe (\) wydaje mu rozkazy

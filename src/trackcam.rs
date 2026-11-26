@@ -239,6 +239,13 @@ pub(crate) fn update_camera(
         let ahead = at + dir.as_dvec3() * r.range_m.map_or(CONSOLE_AHEAD, |m| m as f64);
         return stream_footprint(&mut sites, Some(ahead), pos.0, tf.rotation, &proj);
     }
+    // The F-14's TCS: the camera under the nose, along the radar's track.
+    if let Some((at, dir, zoom)) = mfd.tcs {
+        let eye = apos.0 + (a.orientation * at).as_dvec3();
+        *info = TrackCam { live: true, zoom: zoom + 1, ..default() };
+        aim(&mut tf, &mut pos, &mut proj, dir, None, eye, zoom, false);
+        return unsite(&mut sites);
+    }
     // The camera looks from the mast-mounted sight above the rotor where there is one.
     let eye = apos.0 + (a.orientation * settings.aircraft.spec().pod_origin()).as_dvec3();
     if mfd.ils {

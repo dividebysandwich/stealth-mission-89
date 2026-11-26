@@ -377,6 +377,7 @@ fn start_combat(
     );
     let growler = settings.aircraft == crate::aircraft::AircraftKind::EA18G;
     let intruder = settings.aircraft == crate::aircraft::AircraftKind::A6;
+    let tomcat = settings.aircraft == crate::aircraft::AircraftKind::F14;
     let opts = match &campaign {
         // A campaign's rules are its host's (a coop server's for everybody).
         Some(c) => SimOptions {
@@ -397,6 +398,7 @@ fn start_combat(
             hornet,
             growler,
             intruder,
+            tomcat,
             ..c.rules.sim_options()
         },
         None => SimOptions {
@@ -419,6 +421,7 @@ fn start_combat(
             hornet,
             growler,
             intruder,
+            tomcat,
             realistic_damage: settings.realistic_damage,
             realistic_guidance: settings.realistic_guidance,
             realistic_ai_flight: settings.realistic_ai_flight,
@@ -732,12 +735,19 @@ fn player_state(
         pod: pod_aim(&mfd.av.tgp),
         helmet: mfd.av.helmet.map(|d| sight_aim(d, None)),
         nozzle: a.nozzle.to_degrees().round().clamp(0.0, 255.0) as u8,
+        sweep: (a.wing_sweep * 255.0).round().clamp(0.0, 255.0) as u8,
         catapult: a.catapult_report(),
         engine: [0; 3],
         // Realistic avionics: each weapon in its own HUD mode, no automatic locks.
         mode_weapons: mfd.modern,
         radar: mfd.modern && mfd.av.radar_emitting(),
         slam: mfd.slam_input(),
+        // The F-14's AWG-9 tracks and the next track to shoot at (`awg9::report`).
+        support: Vec::new(),
+        support_pilots: Vec::new(),
+        launch_unit: None,
+        launch_pilot: None,
+        ph_active: false,
         jam: mfd.jam_input(to_bam(h).round() as i32 as u16),
         stalled: !a.on_ground && a.velocity < a.stall_speed,
         cmd: SimCommands { gun, trigger, ..cmd },
@@ -778,6 +788,7 @@ struct StepParams<'w, 's> {
     sounds: MessageWriter<'w, crate::sound::PlaySound>,
     link: Option<ResMut<'w, NetLink>>,
     inbox: ResMut<'w, NetInbox>,
+    awg9: Option<Res<'w, crate::awg9::Awg9>>,
 }
 
 /// The player is inside a world object (the "camera inside an object" test, feeding the
@@ -892,6 +903,7 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         mut sounds,
         mut link,
         mut inbox,
+        awg9,
     } = p;
     let combat = &mut *combat;
     combat.explosions.clear();
@@ -955,6 +967,9 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
             );
             ps.mode_weapons &= !settings.gunner_cockpit;
             ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
+            if let Some(r) = awg9.as_deref() {
+                crate::awg9::report(r, &combat.sim, &mut ps);
+            }
             client.send_input(&ps);
             // His own rounds fly here; what they hit on his screen he reports.
             combat.sim.set_local_player(&ps);
@@ -1050,6 +1065,9 @@ fn step_combat(mut combat: ResMut<Combat>, p: StepParams) {
         // The AH-64's gunner fires whatever the pilot's master mode (`gunner`).
         ps.mode_weapons &= !settings.gunner_cockpit;
         ps.engine = a.engine_report(settings.aircraft.spec().helicopter);
+        if let Some(r) = awg9.as_deref() {
+            crate::awg9::report(r, &combat.sim, &mut ps);
+        }
         combat.prev_flights.clear();
         combat.prev_flights.extend_from_slice(combat.sim.flights());
         combat.prev_fine = fines(&combat.sim);
@@ -1306,6 +1324,8 @@ pub fn remote_motion(combat: &Combat, id: u8) -> Option<((f64, f64, f64), DVec3,
         "F/A-18E"
     } else if p.intruder {
         "A-6C"
+    } else if p.tomcat {
+        "F-14B"
     } else if p.galaxy {
         "C-5"
     } else if p.spectre {

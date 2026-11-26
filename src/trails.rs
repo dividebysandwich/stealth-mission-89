@@ -11,6 +11,8 @@
 //! * So do the other pilots' (coop) missiles and damaged aircraft.
 //! * Pulling hard (`Effects::vapour`) the player's wingtips trail short vortices of vapour,
 //!   sooner in moist air than over the deserts.
+//! * A Phoenix's trail is a wake: flying through it shakes the aircraft ([`WakeTurbulence`],
+//!   felt through `shake`, the VR controllers and a force feedback stick).
 
 use std::collections::HashMap;
 
@@ -54,6 +56,7 @@ impl Plugin for TrailsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<TrailMaterial>::default())
             .init_resource::<Trails>()
+            .init_resource::<WakeTurbulence>()
             .add_systems(OnExit(AppState::Flight), cleanup)
             .add_systems(OnExit(AppState::Menu), cleanup)
             .add_systems(
@@ -234,6 +237,8 @@ fn wingtips(kind: crate::aircraft::AircraftKind, sweep: f32) -> Option<[Vec3; 2]
         FA18E | EA18G => (6.6, 3.2),
         A10 => (8.7, 0.5),
         A6 => (8.1, 1.1),
+        // The tips from 20 to 68 degrees of sweep (the swept span 11.2 m).
+        F14 => (9.6 - 4.0 * sweep, 2.6 + 4.2 * sweep),
         AV8B => (4.5, 1.6),
         Tornado => (6.9 - 2.6 * sweep, 1.0 + 1.5 * sweep),
         UH60 | MH60R | AH1Z | AH64 | RAH66 | OH58 | CH47 | C5 | AC130 => return None,
@@ -354,6 +359,8 @@ struct Trail {
     points: Vec<(DVec3, f32)>,
     /// The emitter's position this frame (None once detached).
     head: Option<DVec3>,
+    /// A big missile's (the Phoenix's): its fresh part is turbulent air.
+    wake: bool,
 }
 
 impl Trail {
@@ -445,7 +452,43 @@ fn cleanup(mut commands: Commands, mut trails: ResMut<Trails>) {
     trails.clear(&mut commands);
 }
 
+/// The wake's reach from a trail's line (m) and how long its air stays turbulent (s).
+const WAKE_RADIUS: f64 = 30.0;
+const WAKE_LIFE: f32 = 10.0;
+
+/// How hard the wake of a missile shakes the player's aircraft this frame (0 none .. 1 in the
+/// middle of a fresh one; `update_trails`): `shake`, the VR controllers' haptics and a force
+/// feedback stick add it to the stall buffet's.
+#[derive(Resource, Default)]
+pub struct WakeTurbulence(pub f32);
+
 impl Trails {
+    /// How deep into a wake (a Phoenix's trail) a point is: 1 on the line of a fresh one, none
+    /// `WAKE_RADIUS` off it or once its air is `WAKE_LIFE` old.
+    pub fn wake_at(&self, at: DVec3, now: f32) -> f32 {
+        let mut worst = 0.0f32;
+        for t in self.active.values().chain(&self.detached).filter(|t| t.wake) {
+            let head = t.head.map(|h| (h, now));
+            let pts: Vec<(DVec3, f32)> = t.points.iter().copied().chain(head).collect();
+            for w in pts.windows(2) {
+                let ((a, ta), (b, tb)) = (w[0], w[1]);
+                let age = now - ta.max(tb);
+                if age >= WAKE_LIFE {
+                    continue;
+                }
+                let ab = b - a;
+                let k = ((at - a).dot(ab) / ab.length_squared().max(1e-6)).clamp(0.0, 1.0);
+                let d = (at - (a + ab * k)).length();
+                if d >= WAKE_RADIUS {
+                    continue;
+                }
+                let near = (1.0 - d / WAKE_RADIUS) as f32;
+                worst = worst.max(near * near * (1.0 - age / WAKE_LIFE));
+            }
+        }
+        worst
+    }
+
     /// Every trail goes (a menu scene's at its end).
     pub fn clear(&mut self, commands: &mut Commands) {
         for t in self.active.values().chain(&self.detached) {
@@ -468,6 +511,7 @@ fn update_trails(
     settings: Res<crate::settings::Settings>,
     mut visibility: Query<&mut Visibility>,
     theater: Option<Res<crate::world::Theater>>,
+    mut wake: ResMut<WakeTurbulence>,
 ) {
     let trails = &mut *trails;
     let sim = &combat.sim;
@@ -586,6 +630,10 @@ fn update_trails(
     for (e, drawn) in drive(trails, emitters, now, &mut ctx) {
         show(&mut visibility, e, drawn);
     }
+    // The player's aircraft in a missile's wake.
+    wake.0 = player.single().map_or(0.0, |(a, pos)| {
+        if a.ended.is_some() || a.on_ground { 0.0 } else { trails.wake_at(pos.0, now) }
+    });
 }
 
 /// Shows a ribbon once it has a segment (empty meshes upset some GPU drivers).
@@ -645,9 +693,11 @@ fn drive(
                 entity.insert(crate::sim_render::SimObject);
             }
             let entity = entity.id();
+            let wake = matches!(src, Source::Missile(_, s) | Source::RemoteMissile(_, s)
+                if s == stealth_sim::PHOENIX_SPEC);
             trails.active.insert(
                 src,
-                Trail { entity, mesh, style, anchor: p, points: vec![(p, now)], head: None },
+                Trail { entity, mesh, style, anchor: p, points: vec![(p, now)], head: None, wake },
             );
         }
         let t = trails.active.get_mut(&src).unwrap();
@@ -672,4 +722,39 @@ fn drive(
         shown.push((t.entity, drawn));
     }
     shown
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn trail(points: Vec<(DVec3, f32)>, wake: bool) -> Trail {
+        Trail {
+            entity: Entity::PLACEHOLDER,
+            mesh: Handle::default(),
+            style: &SMOKE,
+            anchor: DVec3::ZERO,
+            points,
+            head: None,
+            wake,
+        }
+    }
+
+    /// A Phoenix's fresh trail shakes hardest on its line, less off it, none 30 m off or once
+    /// its air is 10 s old; another missile's trail is no wake.
+    #[test]
+    fn a_phoenix_trail_is_a_wake() {
+        let line = vec![(DVec3::ZERO, 10.0), (DVec3::new(0.0, 0.0, -1000.0), 10.0)];
+        let mut t = Trails::default();
+        t.detached.push(trail(line.clone(), true));
+        let on = t.wake_at(DVec3::new(0.0, 0.0, -500.0), 10.0);
+        let off = t.wake_at(DVec3::new(15.0, 0.0, -500.0), 10.0);
+        assert!((on - 1.0).abs() < 1e-3 && (0.2..0.3).contains(&off), "{on} {off}");
+        assert_eq!(t.wake_at(DVec3::new(31.0, 0.0, -500.0), 10.0), 0.0);
+        assert!(t.wake_at(DVec3::new(0.0, 0.0, -500.0), 15.0) < 0.6);
+        assert_eq!(t.wake_at(DVec3::new(0.0, 0.0, -500.0), 20.5), 0.0);
+        let mut other = Trails::default();
+        other.detached.push(trail(line, false));
+        assert_eq!(other.wake_at(DVec3::new(0.0, 0.0, -500.0), 10.0), 0.0);
+    }
 }

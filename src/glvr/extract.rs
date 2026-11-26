@@ -58,7 +58,8 @@ pub struct LitItem {
     pub emissive: Vec4,
     pub base_texture: Option<AssetId<Image>>,
     pub emissive_texture: Option<AssetId<Image>>,
-    /// lit.glsl's `u_flags` bits 2.. (unlit 4, never darkened 8, alpha mask 16).
+    /// lit.glsl's `u_flags` bits 2.. (unlit 4, never darkened 8, alpha mask 16, grey 32,
+    /// grey inverted 64).
     pub flags: u32,
     pub cutoff: f32,
     /// The cockpit's night darkness (`CockpitShading::night`) and flood light
@@ -821,11 +822,16 @@ impl Extractor {
         for (common, material) in q.cockpit.iter(world) {
             let Some(m) = materials.get(&material.0) else { continue };
             let bright = if m.extension.bright { 8 } else { 0 };
+            let mono = match (m.extension.mono, m.extension.sharp.y > 1.5) {
+                (false, _) => 0,
+                (true, false) => 32,
+                (true, true) => 32 | 64,
+            };
             let lit = Lit {
                 m: &m.base,
                 night: m.extension.night,
                 flood: m.extension.flood,
-                flags: bright,
+                flags: bright | mono,
             };
             self.lit_item(cull, list, meshes, images, &common, lit);
         }

@@ -15,7 +15,7 @@ use stealth_i18n::{t, t_lines};
 
 /// The weapons (index = weapon type): name (the real one, in every language), the message of
 /// what it is for.
-pub const WEAPONS: [(&str, &str); 38] = [
+pub const WEAPONS: [(&str, &str); 40] = [
     ("AIM-9M Sidewinder", "weapon-role-0"),
     ("AIM-120A AMRAAM", "weapon-role-1"),
     ("AGM-88A HARM", "weapon-role-2"),
@@ -54,6 +54,8 @@ pub const WEAPONS: [(&str, &str); 38] = [
     ("AGM-45 Shrike", "weapon-role-35"),
     ("Zuni rockets", "weapon-role-36"),
     ("AGM-122 Sidearm", "weapon-role-37"),
+    ("AIM-54C Phoenix", "weapon-role-38"),
+    ("AIM-7M Sparrow", "weapon-role-39"),
 ];
 /// How each weapon is used (index = weapon type; message ids, "" for nothing to say), shown
 /// under its role; ranges in the HUD's km.
@@ -66,7 +68,7 @@ pub const WEAPONS: [(&str, &str); 38] = [
 /// The window's size, frame included.
 const LOADOUT_SIZE: egui::Vec2 = egui::vec2(1132.0, 792.0);
 
-const EMPLOYMENT: [&str; 38] = [
+const EMPLOYMENT: [&str; 40] = [
     "employment-0",
     "employment-1",
     "employment-2",
@@ -105,6 +107,8 @@ const EMPLOYMENT: [&str; 38] = [
     "employment-35",
     "employment-36",
     "employment-37",
+    "employment-38",
+    "employment-39",
 ];
 const GUIDED_CLUSTER: &str = "employment-guided-cluster";
 const MEDIUM_RETARDED: &str = "employment-medium-retarded";
@@ -121,18 +125,18 @@ fn employment(w: usize) -> &'static [&'static str] {
 }
 
 /// Weapon types kept out of the real F-117A's bays (realistic weapons).
-const AIR_TO_AIR: [u8; 3] = [0, 1, STINGER];
+pub(crate) const AIR_TO_AIR: [u8; 5] = [0, 1, STINGER, PHOENIX, SPARROW];
 /// Rounds of each weapon a bay holds.
-const BAY_QTY: [u8; 38] = [
+const BAY_QTY: [u8; 40] = [
     4, 3, 1, 2, 1, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1, 1, 4, 6, 1, 2, 1, 1, 1, 1, 1, 1, 1, 7,
-    7, 2, 1, 1, 4, 2,
+    7, 2, 1, 1, 4, 2, 1, 2,
 ];
 /// Rounds on a pylon (with a triple ejector rack for the 500 lb bombs, a four-rail launcher for
 /// the Hellfires, a twin launcher for the Stingers, a 7-tube pod of 70 mm rockets, a 4-tube pod
 /// of Zunis; the 1,000 and 2,000 lb bombs one to a pylon).
-const PYLON_QTY: [u8; 38] = [
+const PYLON_QTY: [u8; 40] = [
     1, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 2, 2, 1, 2, 1, 1, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7,
-    7, 1, 1, 1, 4, 1,
+    7, 1, 1, 1, 4, 1, 1, 1,
 ];
 /// The Hellfire's, the Stinger's, the machine gun pod's and the CBU-105's weapon types.
 pub const HELLFIRE: u8 = 20;
@@ -166,6 +170,10 @@ pub const ZUNI: u8 = 36;
 /// The AGM-122 Sidearm's weapon type: the helicopters' and the Harrier's anti-radiation
 /// missile, a Sidewinder with a radar seeker, one to a rail (`stealth_sim::SIDEARM_WEAPON`).
 pub const SIDEARM: u8 = 37;
+/// The F-14's AIM-54C Phoenix and AIM-7M Sparrow (`stealth_sim::PHOENIX_WEAPON`,
+/// `SPARROW_WEAPON`): radar guided, one to a station.
+pub const PHOENIX: u8 = 38;
+pub const SPARROW: u8 = 39;
 
 /// A rocket pod: hung as one pod, its rounds the rockets in it.
 #[cfg(test)]
@@ -1285,6 +1293,113 @@ static A6_STATIONS: [Hardpoint; 4] = [
     pylon("hardpoint-a6-4-right-inner-wing", "4", 2.50, 6.70, Some(1), &A6_WING),
     pylon("hardpoint-a6-5-right-outer-wing", "5", 3.68, 6.95, Some(0), &A6_WING),
 ];
+/// The F-14's Sidewinder rails on the glove pylons' outboard sides.
+const F14_RAIL: [u8; 1] = [0];
+/// The F-14's glove pylons: the Phoenix, the Sparrow (the Sidewinders on the rails beside them).
+const F14_GLOVE: [u8; 2] = [PHOENIX, SPARROW];
+/// The F-14's nacelle stations: the tanks.
+const F14_NACELLE: [u8; 1] = [17];
+/// The F-14's tunnel stations between the nacelles: Phoenixes on their pallets, Sparrows
+/// semi-recessed, bomb racks; station 5 (rear right) the TARPS reconnaissance pod (the camera)
+/// too.
+const F14_TUNNEL: [u8; 6] = [PHOENIX, SPARROW, 6, 9, MK83, MK84];
+const F14_TARPS: [u8; 7] = [PHOENIX, SPARROW, 6, 9, 16, MK83, MK84];
+/// One bomb to a tunnel station (BRU-32 racks, no ejector racks between the nacelles).
+const F14_TUNNEL_QTY: [(u8, u8); 1] = [(9, 1)];
+/// The F-14's stations 1A to 8A: the glove pylons with the Sidewinder rails on their outboard
+/// sides (1A, 1B; 8B, 8A), the nacelles (2, 7), the tunnel fore and aft (3 and 6, 4 and 5).
+static F14_STATIONS: [Hardpoint; 10] = [
+    pylon("hardpoint-f14-1a-left-shoulder", "1A", -3.15, 10.12, Some(9), &F14_RAIL),
+    pylon("hardpoint-f14-1b-left-glove", "1B", -2.85, 10.12, Some(8), &F14_GLOVE),
+    pylon("hardpoint-f14-2-left-nacelle", "2", -1.42, 7.92, Some(7), &F14_NACELLE),
+    pylon("hardpoint-f14-3-left-front-tunnel", "3", -0.45, 8.62, Some(6), &F14_TUNNEL)
+        .carrying(&F14_TUNNEL_QTY),
+    pylon("hardpoint-f14-4-left-rear-tunnel", "4", -0.45, 12.62, Some(5), &F14_TUNNEL)
+        .carrying(&F14_TUNNEL_QTY),
+    pylon("hardpoint-f14-5-right-rear-tunnel", "5", 0.45, 12.62, Some(4), &F14_TARPS)
+        .carrying(&F14_TUNNEL_QTY),
+    pylon("hardpoint-f14-6-right-front-tunnel", "6", 0.45, 8.62, Some(3), &F14_TUNNEL)
+        .carrying(&F14_TUNNEL_QTY),
+    pylon("hardpoint-f14-7-right-nacelle", "7", 1.42, 7.92, Some(2), &F14_NACELLE),
+    pylon("hardpoint-f14-8b-right-glove", "8B", 2.85, 10.12, Some(1), &F14_GLOVE),
+    pylon("hardpoint-f14-8a-right-shoulder", "8A", 3.15, 10.12, Some(0), &F14_RAIL),
+];
+/// aircraft_005 (tools/models/aircraft.py `f14`) seen from above, its wings forward: half span
+/// 9.64 m, length 19.12 m.
+const F14_OUTLINE: &[(f32, f32)] = &[
+    (0.00, 0.00),
+    (0.00, 0.32),
+    (0.16, 0.58),
+    (0.40, 1.32),
+    (0.64, 2.68),
+    (0.76, 3.90),
+    (0.78, 5.86),
+    (1.00, 6.28),
+    (1.66, 6.30),
+    (2.48, 8.66),
+    (2.70, 8.68),
+    (2.72, 8.48),
+    (2.96, 8.48),
+    (3.02, 9.16),
+    (3.14, 9.18),
+    (3.18, 10.64),
+    (8.86, 12.90),
+    (9.44, 13.34),
+    (9.64, 13.80),
+    (9.64, 14.20),
+    (9.56, 14.20),
+    (2.22, 13.72),
+    (2.20, 15.06),
+    (4.40, 17.94),
+    (4.78, 18.32),
+    (4.78, 18.82),
+    (4.42, 18.96),
+    (2.08, 17.76),
+    (1.88, 17.76),
+    (1.70, 17.84),
+    (1.68, 18.94),
+    (1.54, 18.40),
+    (0.88, 18.36),
+    (0.78, 17.76),
+    (0.56, 17.74),
+    (0.50, 19.12),
+    (0.00, 19.12),
+    (-0.50, 19.12),
+    (-0.56, 17.74),
+    (-0.78, 17.76),
+    (-0.88, 18.36),
+    (-1.54, 18.40),
+    (-1.68, 18.94),
+    (-1.70, 17.84),
+    (-1.88, 17.76),
+    (-2.08, 17.76),
+    (-4.42, 18.96),
+    (-4.78, 18.82),
+    (-4.78, 18.32),
+    (-4.40, 17.94),
+    (-2.20, 15.06),
+    (-2.22, 13.72),
+    (-9.56, 14.20),
+    (-9.64, 14.20),
+    (-9.64, 13.80),
+    (-9.44, 13.34),
+    (-8.86, 12.90),
+    (-3.18, 10.64),
+    (-3.14, 9.18),
+    (-3.02, 9.16),
+    (-2.96, 8.48),
+    (-2.72, 8.48),
+    (-2.70, 8.68),
+    (-2.48, 8.66),
+    (-1.66, 6.30),
+    (-1.00, 6.28),
+    (-0.78, 5.86),
+    (-0.76, 3.90),
+    (-0.64, 2.68),
+    (-0.40, 1.32),
+    (-0.16, 0.58),
+    (-0.00, 0.32),
+];
 /// aircraft_027 (tools/models/aircraft.py `a6`) seen from above: half span 8.12 m, length
 /// 16.36 m.
 const A6_OUTLINE: &[(f32, f32)] = &[
@@ -1337,6 +1452,8 @@ const A6_OUTLINE: &[(f32, f32)] = &[
 ];
 static A6_LAYOUT: Layout =
     Layout { outline: A6_OUTLINE, half_span: 8.12, length: 16.36, hardpoints: &A6_STATIONS };
+static F14_LAYOUT: Layout =
+    Layout { outline: F14_OUTLINE, half_span: 9.64, length: 19.12, hardpoints: &F14_STATIONS };
 /// The EA-18G's stations 2 to 10 (its wingtips hold the ALQ-218 receivers): the ALQ-99 pods on
 /// the centreline and the middle wing pylons, HARMs and MALDs outboard, AMRAAMs on the
 /// nacelles, tanks inboard.
@@ -1803,6 +1920,7 @@ pub fn layout(aircraft: AircraftKind, realistic: bool) -> &'static Layout {
         AircraftKind::FA18E => &FA18E_LAYOUT,
         AircraftKind::EA18G => &EA18G_LAYOUT,
         AircraftKind::A6 => &A6_LAYOUT,
+        AircraftKind::F14 => &F14_LAYOUT,
         AircraftKind::UH60 => &UH60_LAYOUT,
         AircraftKind::MH60R => &MH60R_LAYOUT,
         AircraftKind::AH1Z => &AH1Z_LAYOUT,
@@ -1960,6 +2078,32 @@ impl PlannedLoadout {
                     (8, 2),
                 ] {
                     stores[i] = Some(w);
+                }
+            }
+            // The Sidewinders on the shoulder rails, Phoenixes on the glove pylons, the tanks on
+            // the nacelles if briefed, the briefed stores in the tunnel (front pair first), else
+            // Phoenixes there too.
+            AircraftKind::F14 => {
+                stores[0] = Some(0);
+                stores[9] = Some(0);
+                stores[1] = Some(PHOENIX);
+                stores[8] = Some(PHOENIX);
+                let briefed: Vec<u8> = briefed.collect();
+                if briefed.contains(&17) {
+                    stores[2] = Some(17);
+                    stores[7] = Some(17);
+                }
+                let tunnel: Vec<u8> =
+                    briefed.into_iter().filter(|w| F14_TARPS.contains(w)).collect();
+                for (k, (i, j)) in [(3usize, 6usize), (4, 5)].into_iter().enumerate() {
+                    let w = tunnel.get(k).or(tunnel.first()).copied().unwrap_or(PHOENIX);
+                    // One camera pod (TARPS) on the rear right station.
+                    if w == 16 {
+                        stores[5] = Some(16);
+                        continue;
+                    }
+                    stores[i] = Some(w);
+                    stores[j] = Some(w);
                 }
             }
             AircraftKind::F16
@@ -2707,7 +2851,8 @@ mod tests {
     #[test]
     fn missile_ranges_match_the_lock_ranges() {
         let sim = stealth_host::theater::sim_tables().expect("sim tables");
-        for w in [0, 1, 2, 3, 4, 5, STINGER as usize, SHRIKE as usize, SIDEARM as usize] {
+        for w in [0, 1, 2, 3, 4, 5, STINGER, SHRIKE, SIDEARM, PHOENIX, SPARROW].map(|w| w as usize)
+        {
             let lock = sim.missile(sim.weapons[w].spec as i32).lock_range as f64;
             // 7/8 of it against the ground, less a little for the height.
             let km =

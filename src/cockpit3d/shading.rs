@@ -77,10 +77,13 @@ pub struct CockpitShading {
     pub retro: Vec4,
     /// Never darkened.
     pub bright: bool,
+    /// Shown in grey (the F-14 LANTIRN's black and white picture).
+    pub mono: bool,
     /// The part of the view it belongs to (None: left as it is, e.g. the flash and the VR hands).
     pub part: Option<ViewPart>,
     /// Pixelize: x = 1 where the pass leaves this material's part sharp. Such a surface draws
-    /// an alpha of 0, which the pass reads as "keep this pixel" (pixelize.wgsl).
+    /// an alpha of 0, which the pass reads as "keep this pixel" (pixelize.wgsl). y = 1: `mono`,
+    /// 2: `mono` inverted (black hot).
     #[uniform(103)]
     pub sharp: Vec4,
 }

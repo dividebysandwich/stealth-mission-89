@@ -60,6 +60,9 @@ pub enum Aircraft {
     EA18G,
     /// The A-6C Intruder: the carriers' all-weather attack aircraft, stores on its wings.
     A6,
+    /// The F-14B Tomcat: the carriers' long-range fighter with its swing wings, the Phoenix
+    /// and, as the "Bombcat", the LANTIRN pod and bombs.
+    F14,
 }
 
 impl Aircraft {
@@ -83,6 +86,7 @@ impl Aircraft {
             Aircraft::FA18E => "F/A-18E",
             Aircraft::EA18G => "EA-18G",
             Aircraft::A6 => "A-6C",
+            Aircraft::F14 => "F-14B",
         }
     }
 
@@ -121,6 +125,7 @@ impl Aircraft {
                 | Aircraft::MH60R
                 | Aircraft::EA18G
                 | Aircraft::A6
+                | Aircraft::F14
         )
     }
 
@@ -368,17 +373,19 @@ impl MissionKind {
         use Aircraft::*;
         match self {
             MissionKind::Recon | MissionKind::Strike => {
-                &[F117, F16, Tornado, A10, AV8B, F22, FA18E]
+                &[F117, F16, Tornado, A10, AV8B, F22, FA18E, F14]
             }
             MissionKind::AntiShip => &[F117, F16, Tornado, F22, FA18E, A6],
-            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22, FA18E, A6],
+            MissionKind::Interdiction => &[F117, Tornado, F16, A10, F22, FA18E, A6, F14],
             MissionKind::Sead => &[F16, EA18G, Tornado, F117, F22, FA18E, A6],
-            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22, FA18E],
-            MissionKind::Intercept => &[F16, F22, FA18E, AH1Z, AH64, RAH66, OH58],
+            MissionKind::Cap | MissionKind::Defend | MissionKind::Awacs => &[F16, F22, FA18E, F14],
+            MissionKind::Intercept => &[F16, F22, FA18E, F14, AH1Z, AH64, RAH66, OH58],
             MissionKind::Cas => {
                 &[A10, AV8B, AH64, AH1Z, RAH66, OH58, F16, FA18E, Tornado, F117, A6]
             }
-            MissionKind::Escort => &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, FA18E, EA18G, A10],
+            MissionKind::Escort => {
+                &[AH1Z, AH64, RAH66, OH58, AV8B, F16, F22, FA18E, EA18G, A10, F14]
+            }
             MissionKind::Insertion => &[UH60, CH47, C5],
             MissionKind::Csar => &[UH60],
             MissionKind::Resupply | MissionKind::Logistics => &[UH60, CH47],

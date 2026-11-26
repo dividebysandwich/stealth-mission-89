@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = 1. állomás, bal külső szárny
 hardpoint-a6-2-left-inner-wing = 2. állomás, bal belső szárny
 hardpoint-a6-4-right-inner-wing = 4. állomás, jobb belső szárny
 hardpoint-a6-5-right-outer-wing = 5. állomás, jobb külső szárny
+hardpoint-f14-1a-left-shoulder = 1A. állomás, bal vállsín
+hardpoint-f14-1b-left-glove = 1B. állomás, bal szárnytőpilon
+hardpoint-f14-2-left-nacelle = 2. állomás, bal hajtóműgondola
+hardpoint-f14-3-left-front-tunnel = 3. állomás, elülső alagút, bal
+hardpoint-f14-4-left-rear-tunnel = 4. állomás, hátsó alagút, bal
+hardpoint-f14-5-right-rear-tunnel = 5. állomás, hátsó alagút, jobb
+hardpoint-f14-6-right-front-tunnel = 6. állomás, elülső alagút, jobb
+hardpoint-f14-7-right-nacelle = 7. állomás, jobb hajtóműgondola
+hardpoint-f14-8b-right-glove = 8B. állomás, jobb szárnytőpilon
+hardpoint-f14-8a-right-shoulder = 8A. állomás, jobb vállsín
 hardpoint-c5-hold = Raktér (ledobható raklapok)
 hardpoint-ch47-cabin = Utastér (ejtőernyősök)
 weapon-role-21 = Levegő-levegő, infravörös önirányítás, nagyon rövid hatótáv
@@ -233,5 +243,15 @@ weapon-role-37 = Sidewinderből készült radarelhárító rakéta: radarok és 
 employment-37 =
     Hatótávolság: 1-10 km
     1 000 ft alatt felemelkedik, és felülről zuhan a radarra
+# AIM-54C Phoenix
+weapon-role-38 = Levegő-levegő, radarirányítású, nagy hatótávolság: egyszerre akár hat célra
+employment-38 =
+    Hatótávolság: 2-76 km, szemből nagyobb
+    A radar a nyomvonalán vezeti; saját keresőfeje 10 tengeri mérföldtől (PH ACT: már a sínről)
+# AIM-7M Sparrow
+weapon-role-39 = Levegő-levegő, félaktív radaros önirányítás, közepes hatótávolság
+employment-39 =
+    Hatótávolság: 1-31 km, szemből nagyobb
+    Tartsa a radar egycélos követését a találatig
 loadout-wingman = KÍSÉRŐ
     .facts = Egy MI kísérő ugyanazzal a géppel és fegyverzettel a levegőben csatlakozik; a rádiómenü (\) adja ki a parancsait

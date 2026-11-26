@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stazione 1, ala sinistra esterna
 hardpoint-a6-2-left-inner-wing = Stazione 2, ala sinistra interna
 hardpoint-a6-4-right-inner-wing = Stazione 4, ala destra interna
 hardpoint-a6-5-right-outer-wing = Stazione 5, ala destra esterna
+hardpoint-f14-1a-left-shoulder = Stazione 1A, rotaia di spalla sinistra
+hardpoint-f14-1b-left-glove = Stazione 1B, pilone della radice alare sinistro
+hardpoint-f14-2-left-nacelle = Stazione 2, gondola sinistra
+hardpoint-f14-3-left-front-tunnel = Stazione 3, tunnel anteriore, sinistra
+hardpoint-f14-4-left-rear-tunnel = Stazione 4, tunnel posteriore, sinistra
+hardpoint-f14-5-right-rear-tunnel = Stazione 5, tunnel posteriore, destra
+hardpoint-f14-6-right-front-tunnel = Stazione 6, tunnel anteriore, destra
+hardpoint-f14-7-right-nacelle = Stazione 7, gondola destra
+hardpoint-f14-8b-right-glove = Stazione 8B, pilone della radice alare destro
+hardpoint-f14-8a-right-shoulder = Stazione 8A, rotaia di spalla destra
 hardpoint-c5-hold = Stiva (pallet da aviolancio)
 hardpoint-ch47-cabin = Cabina (paracadutisti)
 weapon-role-21 = Aria-aria, guida a infrarossi, gittata molto breve
@@ -233,5 +243,15 @@ weapon-role-37 = Missile antiradiazione derivato dal Sidewinder: radar e siti SA
 employment-37 =
     Portata: 1-10 km
     Sotto i 1.000 ft cabra e si tuffa sul radar dall'alto
+# AIM-54C Phoenix
+weapon-role-38 = Aria-aria, guida radar, lungo raggio: fino a sei bersagli insieme
+employment-38 =
+    Portata: 2-76 km, di più frontalmente
+    Il radar lo guida sulla sua traccia; il suo autocercante da 10 nmi (PH ACT: dalla rotaia)
+# AIM-7M Sparrow
+weapon-role-39 = Aria-aria, guida radar semiattiva, medio raggio
+employment-39 =
+    Portata: 1-31 km, di più frontalmente
+    Mantieni l'inseguimento a bersaglio singolo del radar fino all'impatto
 loadout-wingman = GREGARIO
     .facts = Un gregario IA sullo stesso aereo con lo stesso armamento ti raggiunge in volo; il menu radio (\) gli dà gli ordini

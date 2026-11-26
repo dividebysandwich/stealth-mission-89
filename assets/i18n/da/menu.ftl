@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronisk angreb, fra hangarskibene
         Forstyrrer fjendens radarer for angrebet
         To sæder: pilot og officer for elektronisk krigsførelse
+aircraft-f14 =
+    .facts =
+        Hangarskibsjager til flådeforsvar, to besætningsmedlemmer i tandem
+        Mach 1,9, svingvinger, Phoenix-missiler
+        Analogt cockpit, RIO'ens radarskærme
 aircraft-a6 =
     .facts =
         Hangarskibsbaseret altvejrs-angrebsfly, to mand side om side

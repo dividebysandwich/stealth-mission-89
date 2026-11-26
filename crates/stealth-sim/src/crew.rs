@@ -98,7 +98,8 @@ pub enum CrewCmd {
     Fire { station: u8 },
     /// The owner or his gunner moved the crew's targeting pod (sent while it is his).
     Pod(SharedPod),
-    /// The owner or his bombardier/navigator moved a control of the A-6's panel.
+    /// The owner or his bombardier/navigator (the A-6) or RIO (the F-14) moved a control of
+    /// the crew's panel.
     Panel(SharedPanel),
     /// The gunner releases the aircraft's flares or chaff (the owner's dispensers).
     Dispense { flare: bool, chaff: bool },
@@ -198,7 +199,7 @@ impl Sim {
                         p.spectre,
                         p.apache,
                         p.kiowa,
-                        p.comanche || p.seahawk || p.growler || p.intruder,
+                        p.comanche || p.seahawk || p.growler || p.intruder || p.tomcat,
                     )
                     && p.chute.is_none()
             })
@@ -211,7 +212,7 @@ impl Sim {
                     p.spectre,
                     p.apache,
                     p.kiowa,
-                    p.comanche || p.seahawk || p.growler || p.intruder,
+                    p.comanche || p.seahawk || p.growler || p.intruder || p.tomcat,
                 )
         };
         spectre && self.owner_seat(owner) == Seat::Pilot && self.gunner_of(owner).is_none()
@@ -297,7 +298,7 @@ impl Sim {
                         p.spectre,
                         p.apache,
                         p.kiowa,
-                        p.comanche || p.seahawk || p.growler || p.intruder,
+                        p.comanche || p.seahawk || p.growler || p.intruder || p.tomcat,
                     ) {
                         return Err(text!("crew-no-such-seat"));
                     }
@@ -441,9 +442,13 @@ impl Sim {
             if fire.is_some() {
                 self.pl.crew_launch = fire;
             }
-        } else if !self.pilot_ref(k).growler && !self.pilot_ref(k).intruder {
+        } else if !self.pilot_ref(k).growler
+            && !self.pilot_ref(k).intruder
+            && !self.pilot_ref(k).tomcat
+        {
             // (The Growler's EWO fires nothing: its pilot keeps his weapons. Nor does the A-6's
-            // bombardier/navigator: he lays the pod and designates.)
+            // bombardier/navigator: he lays the pod and designates; nor the F-14's RIO, whose
+            // LAUNCH reaches the pilot's client through the crew's panel.)
             ps.cmd.trigger = aim.trigger;
             ps.cmd.gun = false;
             ps.cmd.fire = false;

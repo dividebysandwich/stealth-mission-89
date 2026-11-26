@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stazzjon 1, ġewnaħ ta' barra tax-xellug
 hardpoint-a6-2-left-inner-wing = Stazzjon 2, ġewnaħ ta' ġewwa tax-xellug
 hardpoint-a6-4-right-inner-wing = Stazzjon 4, ġewnaħ ta' ġewwa tal-lemin
 hardpoint-a6-5-right-outer-wing = Stazzjon 5, ġewnaħ ta' barra tal-lemin
+hardpoint-f14-1a-left-shoulder = Stazzjon 1A, linja tal-ispalla tax-xellug
+hardpoint-f14-1b-left-glove = Stazzjon 1B, pilun tal-għerq tal-ġewnaħ tax-xellug
+hardpoint-f14-2-left-nacelle = Stazzjon 2, nacelle tax-xellug
+hardpoint-f14-3-left-front-tunnel = Stazzjon 3, mina ta' quddiem, xellug
+hardpoint-f14-4-left-rear-tunnel = Stazzjon 4, mina ta' wara, xellug
+hardpoint-f14-5-right-rear-tunnel = Stazzjon 5, mina ta' wara, lemin
+hardpoint-f14-6-right-front-tunnel = Stazzjon 6, mina ta' quddiem, lemin
+hardpoint-f14-7-right-nacelle = Stazzjon 7, nacelle tal-lemin
+hardpoint-f14-8b-right-glove = Stazzjon 8B, pilun tal-għerq tal-ġewnaħ tal-lemin
+hardpoint-f14-8a-right-shoulder = Stazzjon 8A, linja tal-ispalla tal-lemin
 hardpoint-c5-hold = Stiva tal-merkanzija (pallets għall-waqgħa mill-ajru)
 hardpoint-ch47-cabin = Kabina (paraxutisti)
 weapon-role-21 = Arja-arja, gwida infraħamra, firxa qasira ħafna
@@ -233,5 +243,15 @@ weapon-role-37 = Missila kontra r-radar mibnija minn Sidewinder: radars u siti S
 employment-37 =
     Firxa: 1-10 km
     Taħt 1,000 ft titla' 'l fuq u tiġi fuq ir-radar minn fuq
+# AIM-54C Phoenix
+weapon-role-38 = Ajru-ajru, iggwidat bir-radar, firxa twila: sa sitt miri f'daqqa
+employment-38 =
+    Firxa: 2-76 km, aktar bogħod head-on
+    Ir-radar jiggwidah fuq it-traċċa tiegħu; is-seeker tiegħu stess minn 10 nmi (PH ACT: mill-linja)
+# AIM-7M Sparrow
+weapon-role-39 = Ajru-ajru, homing bir-radar semi-attiv, firxa medja
+employment-39 =
+    Firxa: 1-31 km, aktar bogħod head-on
+    Żomm it-traċċar ta' mira waħda tar-radar sakemm jolqot
 loadout-wingman = WINGMAN
     .facts = Wingman tal-IA fl-istess ajruplan bl-istess armi jingħaqad miegħek fl-ajru; il-menu tar-radju (\) jagħtih l-ordnijiet

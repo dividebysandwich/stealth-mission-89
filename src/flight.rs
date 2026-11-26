@@ -232,6 +232,25 @@ impl FlightConstants {
         }
     }
 
+    /// F-14B Tomcat: Mach 1.2 low down and about Mach 1.9 high up with the afterburners, a
+    /// slow approach with its wings forward and its flaps out, 6.5-7 g, 16,200 lb of fuel for
+    /// its two F110s; its wings sweep back with the Mach number.
+    pub fn f14b() -> Self {
+        Self {
+            gravity_term: 80.0,
+            thrust_to_knots: 7.0,
+            max_knots: 1200.0,
+            stall_knots: 120.0,
+            fuel_div: 900.0,
+            fuel: 16200.0,
+            bingo: 3000.0,
+            max_gees: 120.0,
+            roll_rate: 1.2,
+            aero: modern::Aero::F14B,
+            ..default()
+        }
+    }
+
     /// Tornado IDS: as the F-16's, a little slower to roll and pull, 11,000 lb of fuel; the
     /// autopilot follows the terrain.
     pub fn tornado() -> Self {
@@ -442,6 +461,11 @@ pub struct Aircraft {
     /// A swing wing's position (`modern::SwingWing`): 0 fully forward .. 1 fully back.
     #[serde(default)]
     pub wing_sweep: f32,
+    /// The wing sweep handle out of AUTO (the sweep keys): the wing sweeps back to this (0..1)
+    /// or further where the schedule wants it further back, never forward of the schedule.
+    /// None: AUTO.
+    #[serde(default)]
+    pub sweep_command: Option<f32>,
     /// A V/STOL type's nozzle lever (0 forward: the nozzles aft .. 1 pulled back to the braking
     /// stop, `modern::Vtol::max_nozzle`), and the nozzles' angle down from aft following it (rad).
     #[serde(default)]
@@ -576,6 +600,7 @@ impl Aircraft {
             set_afterburner: None,
             afterburner: 0.0,
             wing_sweep: 0.0,
+            sweep_command: None,
             nozzle_lever: 0.0,
             nozzle: 0.0,
             altitude: 0.0,
@@ -886,6 +911,19 @@ fn handle_actions(
                 }
             }
             Action::Flaps => a.flaps = !a.flaps,
+            // A swing wing's sweep handle: back or forward a step (a quarter of the travel; never
+            // forward of where the schedule puts it), or back to AUTO.
+            Action::WingSweepAft if k.aero.swing_wing.is_some() => {
+                let from = a.sweep_command.unwrap_or(0.0).max(a.wing_sweep);
+                a.sweep_command =
+                    Some(((from / SWEEP_STEP).floor() + 1.0).min(1.0 / SWEEP_STEP) * SWEEP_STEP);
+            }
+            Action::WingSweepForward if k.aero.swing_wing.is_some() => {
+                if let Some(c) = a.sweep_command {
+                    a.sweep_command = Some(((c / SWEEP_STEP).ceil() - 1.0).max(0.0) * SWEEP_STEP);
+                }
+            }
+            Action::WingSweepAuto => a.sweep_command = None,
             Action::TrimReset => a.stick_trim = Vec2::ZERO,
             Action::Brakes => a.brakes = !a.brakes,
             // Bay doors (8) are run by the combat simulation, which mirrors them into `bay_open`.
@@ -899,6 +937,9 @@ fn handle_actions(
         }
     }
 }
+
+/// A step of the wing sweep handle (of the travel: 12 degrees of the F-14's 48).
+const SWEEP_STEP: f32 = 0.25;
 
 /// Largest trim (fractions of full stick), and how fast the trim switch moves it (per second).
 const TRIM_MAX: f32 = 0.6;
@@ -930,7 +971,8 @@ impl Aircraft {
             return;
         }
         let (_, sound) = modern::atmosphere(self.altitude);
-        let target = w.scheduled(self.velocity / 16.0 / sound, self.flaps);
+        let auto = w.scheduled(self.velocity / 16.0 / sound, self.flaps);
+        let target = self.sweep_command.map_or(auto, |c| c.max(auto));
         let step = dt / w.travel;
         self.wing_sweep += (target - self.wing_sweep).clamp(-step, step);
     }
@@ -2187,6 +2229,65 @@ mod tests {
         // The classic model draws them too.
         let (c, _) = fly_with(k(), true, level(airborne(5000.0, 600.0, 100.0)), 10.0, |_, _| {});
         assert!(c.wing_sweep > 0.95, "classic: {}", c.wing_sweep);
+    }
+
+    /// F-14B (modern): Mach 1.2 class low down and about Mach 1.9 high up with the
+    /// afterburners, subsonic without; a slow approach with the wings forward and the flaps
+    /// out; 6.5-7 g.
+    #[test]
+    fn f14b_performance() {
+        let k = FlightConstants::f14b;
+        assert!(k().afterburner() && k().aero.swing_wing.is_some());
+        let run = |a: Aircraft, secs: f32| fly_with(k(), false, level(a), secs, |_, _| {}).0;
+        let a = run(airborne(1000.0, 500.0, 100.0), 240.0);
+        println!("F-14B: dry max speed at 1000 ft: {:.0} kt, sweep {:.2}", a.knots(), a.wing_sweep);
+        assert!((560.0..680.0).contains(&a.knots()), "dry sea level {}", a.knots());
+        let a = run(reheat(airborne(1000.0, 650.0, 100.0)), 240.0);
+        println!("F-14B: max speed at 1000 ft: {:.0} kt, sweep {:.2}", a.knots(), a.wing_sweep);
+        assert!((720.0..820.0).contains(&a.knots()), "sea level {}", a.knots());
+        assert!(a.wing_sweep > 0.99, "swept back {}", a.wing_sweep);
+        let a = run(reheat(airborne(36000.0, 800.0, 100.0)), 300.0);
+        let mach = a.knots() / 573.6;
+        println!(
+            "F-14B: max speed at 36000 ft: {:.0} kt (Mach {mach:.2}), fuel {:.0} lb",
+            a.knots(),
+            a.fuel
+        );
+        assert!((1.75..2.05).contains(&mach), "at altitude {}", a.knots());
+        let mut slow = airborne(1000.0, 180.0, 60.0);
+        let clean = run(slow.clone(), 2.0);
+        slow.flaps = true;
+        let flaps = run(slow, 6.0);
+        let (clean, flaps) = (clean.stall_speed / 27.0, flaps.stall_speed / 27.0);
+        println!("F-14B: stall {clean:.0} kt clean, {flaps:.0} kt with the flaps");
+        assert!((95.0..125.0).contains(&flaps), "flaps {flaps}");
+        let mut peak: f32 = 0.0;
+        fly_with(k(), false, airborne(10000.0, 450.0, 100.0), 5.0, |a, c| {
+            c.pitch = 1.0;
+            peak = peak.max(a.gees / 16.0);
+        });
+        println!("F-14B: peak load {peak:.1} g");
+        assert!((6.3..7.1).contains(&peak), "peak {peak}");
+    }
+
+    /// The F-14's wing sweep handle: out of AUTO it holds the wing back, never forward of the
+    /// schedule; back in AUTO the schedule has it again.
+    #[test]
+    fn f14_sweep_handle() {
+        let k = FlightConstants::f14b;
+        let mut a = airborne(5000.0, 300.0, 70.0);
+        a.sweep_command = Some(1.0);
+        let (a, _) = fly_with(k(), false, level(a), 10.0, |_, _| {});
+        assert!(a.wing_sweep > 0.99, "held back slow: {}", a.wing_sweep);
+        let mut b = a.clone();
+        b.sweep_command = None;
+        let (b, _) = fly_with(k(), false, level(b), 10.0, |_, _| {});
+        assert_eq!(b.wing_sweep, 0.0, "AUTO slow");
+        // Fast, a forward command does not bring it forward of the schedule.
+        let mut c = reheat(airborne(20000.0, 650.0, 100.0));
+        c.sweep_command = Some(0.0);
+        let (c, _) = fly_with(k(), false, level(c), 10.0, |_, _| {});
+        assert!(c.wing_sweep > 0.95, "schedule wins: {}", c.wing_sweep);
     }
 
     #[test]

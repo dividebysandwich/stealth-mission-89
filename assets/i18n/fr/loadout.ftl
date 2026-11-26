@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, aile gauche extérieure
 hardpoint-a6-2-left-inner-wing = Station 2, aile gauche intérieure
 hardpoint-a6-4-right-inner-wing = Station 4, aile droite intérieure
 hardpoint-a6-5-right-outer-wing = Station 5, aile droite extérieure
+hardpoint-f14-1a-left-shoulder = Station 1A, rail d'épaule gauche
+hardpoint-f14-1b-left-glove = Station 1B, pylône d'emplanture gauche
+hardpoint-f14-2-left-nacelle = Station 2, nacelle gauche
+hardpoint-f14-3-left-front-tunnel = Station 3, tunnel avant, gauche
+hardpoint-f14-4-left-rear-tunnel = Station 4, tunnel arrière, gauche
+hardpoint-f14-5-right-rear-tunnel = Station 5, tunnel arrière, droite
+hardpoint-f14-6-right-front-tunnel = Station 6, tunnel avant, droite
+hardpoint-f14-7-right-nacelle = Station 7, nacelle droite
+hardpoint-f14-8b-right-glove = Station 8B, pylône d'emplanture droit
+hardpoint-f14-8a-right-shoulder = Station 8A, rail d'épaule droit
 hardpoint-c5-hold = Soute (palettes de largage)
 hardpoint-ch47-cabin = Cabine (parachutistes)
 weapon-role-21 = Air-air, guidage infrarouge, très courte portée
@@ -233,5 +243,15 @@ weapon-role-37 = Missile antiradar dérivé du Sidewinder : radars et sites SAM,
 employment-37 =
     Portée : 1-10 km
     Sous 1 000 ft, il cabre puis plonge sur le radar par le dessus
+# AIM-54C Phoenix
+weapon-role-38 = Air-air, guidage radar, longue portée : jusqu'à six cibles à la fois
+employment-38 =
+    Portée : 2-76 km, plus de face
+    Le radar le guide sur sa piste ; son propre autodirecteur dès 10 nm (PH ACT : dès le rail)
+# AIM-7M Sparrow
+weapon-role-39 = Air-air, autoguidage radar semi-actif, moyenne portée
+employment-39 =
+    Portée : 1-31 km, plus de face
+    Gardez la poursuite monocible du radar jusqu'à l'impact
 loadout-wingman = AILIER
     .facts = Un ailier IA du même avion avec le même armement vous rejoint une fois en l'air ; le menu radio (\) lui donne ses ordres

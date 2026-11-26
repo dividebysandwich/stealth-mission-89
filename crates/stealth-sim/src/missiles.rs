@@ -242,6 +242,8 @@ impl Sim {
         let mut hit: i32 = -1;
         // Another pilot this one homes on (and whether on his decoy).
         let mut pilot_hit: Option<(u8, bool)> = None;
+        // A Phoenix flying on to where its target was last seen (wu: east, south, altitude).
+        let mut point: Option<(i32, i32, i32)> = None;
         if s < 8 {
             // ---- enemy missile ----
             alt0 = self.pl.p.view_z;
@@ -310,7 +312,27 @@ impl Sim {
         } else {
             // ---- player weapon ----
             best = 0x7FFF;
-            if cls == 7 {
+            // The Phoenix and the Sparrow: guided by the radar's track of their own target.
+            let radar_guided = cls == 7 && matches!(spec, PHOENIX_SPEC | SPARROW_SPEC);
+            if radar_guided {
+                let h = self.radar_homing(s);
+                if let Some((x, y, z)) = h.at {
+                    aim = h.aim;
+                    best = h.range;
+                    alt0 = z;
+                    locked = true;
+                    hit = h.unit.map_or(-1, |j| j as i32);
+                    pilot_hit = h.pilot.map(|k| (k, false));
+                    point = h.point.then_some((x, y, z));
+                    if hit >= 0 && best < 0x180 {
+                        self.flights[hit as usize].flags |= fflags::HIT;
+                    }
+                }
+                if let Some(k) = pilot_hit {
+                    let close = (self.proj[s].speed << 4) > best;
+                    self.pilot_threats.push((k.0, close));
+                }
+            } else if cls == 7 {
                 for j in 0..self.flights.len() {
                     let u = self.flights[j];
                     if u.flags & fflags::AIRBORNE == 0 || u.speed == 0 {
@@ -492,6 +514,8 @@ impl Sim {
                 } else {
                     self.pilot_target(k)
                 })
+            } else if let Some((x, y, z)) = point {
+                Some(crate::guidance::Target { p: [x as f64, y as f64, z as f64], v: [0.0; 3] })
             } else if hit < 0 {
                 None
             } else if cls == 7 {
@@ -505,6 +529,9 @@ impl Sim {
                 None
             } else if s < 8 && !self.decoy_active() {
                 Some(self.player_target())
+            } else if point.is_some() {
+                // Nothing to burst at where the target was.
+                None
             } else {
                 target
             };
@@ -519,7 +546,7 @@ impl Sim {
                 self.classic_drop(&mut m);
                 false
             } else {
-                self.classic_step(&mut m, s < 8, locked, aim, best, alt0)
+                self.classic_step(&mut m, s < 8, locked && point.is_none(), aim, best, alt0)
             };
             self.proj[s] = m;
             // Terrain contact: the flat world and the rolling hills, objects are not tested.
@@ -897,6 +924,144 @@ impl Sim {
 }
 
 /// Range (map units), bearing and angle off the heading of (tx, ty) from missile `m`.
+/// What a radar-guided missile (the Phoenix, the Sparrow) homes on this frame
+/// ([`Sim::radar_homing`]).
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct RadarHoming {
+    /// Where it steers (wu: east, south, the altitude its target is drawn at), None: nowhere
+    /// (it flies on unguided).
+    pub at: Option<(i32, i32, i32)>,
+    /// A flight unit or another pilot at `at`, or only the point (`point`: a Phoenix whose
+    /// track was lost flying on to where its target was).
+    pub unit: Option<usize>,
+    pub pilot: Option<u8>,
+    pub point: bool,
+    /// The bearing (BAM) and range (map units) to it.
+    pub aim: i32,
+    pub range: i32,
+}
+
+impl Sim {
+    /// The radar-guided missile in slot `s` (the player's Phoenix or Sparrow): what it homes on.
+    ///
+    /// - The Sparrow (semi-active) homes on its target while the radar's single target track
+    ///   holds it (the air lock, or the locked pilot) and its seeker sees it; else it flies on.
+    /// - The Phoenix in midcourse homes on its target while the radar tracks it
+    ///   (`PlayerState::support`, the air lock too), remembering where it is; with the track
+    ///   lost it flies on to that point. Within [`PHOENIX_ACTIVE`] of it its own seeker comes
+    ///   on, and from then it homes on whatever aircraft that seeker sees within that range
+    ///   ahead (its target first), as an AMRAAM does.
+    pub(crate) fn radar_homing(&mut self, s: usize) -> RadarHoming {
+        let m = self.proj[s];
+        let t = m.target;
+        let alive = |sim: &Sim, j: i32| {
+            j >= 0
+                && (j as usize) < sim.flights.len()
+                && sim.flights[j as usize].flags & fflags::AIRBORNE != 0
+                && sim.flights[j as usize].flags & fflags::DESTROYED == 0
+                && sim.flights[j as usize].speed != 0
+        };
+        let unit_at = |sim: &Sim, j: usize| {
+            let tg = sim.unit_target(j);
+            (tg.p[0] as i32, tg.p[1] as i32, tg.p[2] as i32)
+        };
+        let pilot = m.target_pilot.filter(|&k| self.pilot_airborne(k));
+        let pilot_at = |sim: &Sim, k: u8| {
+            let tg = sim.pilot_target(k);
+            (tg.p[0] as i32, tg.p[1] as i32, tg.p[2] as i32)
+        };
+        let map = |(x, y, _): (i32, i32, i32)| (x >> 5, y >> 5);
+        let geometry = |at: (i32, i32, i32)| {
+            let (x, y) = map(at);
+            let (r, aim, off) = seeker_geometry(&m, x, y);
+            (r, aim, off)
+        };
+        let home = |at, unit, pilot, point| {
+            let (range, aim, _) = geometry(at);
+            RadarHoming { at: Some(at), unit, pilot, point, aim, range }
+        };
+        let input = &self.pl.last_input;
+        let tracked =
+            alive(self, t) && (self.pl.air_lock == t || input.support.contains(&(t as u16)));
+        let pilot_tracked =
+            pilot.filter(|&k| self.pl.pilot_lock == Some(k) || input.support_pilots.contains(&k));
+        if m.spec == SPARROW_SPEC {
+            // Lit by the radar's single target track only.
+            let stt = if let Some(k) = pilot.filter(|&k| self.pl.pilot_lock == Some(k)) {
+                Some((pilot_at(self, k), None, Some(k)))
+            } else if alive(self, t) && self.pl.air_lock == t {
+                Some((unit_at(self, t as usize), Some(t as usize), None))
+            } else {
+                None
+            };
+            let Some((at, unit, pk)) = stt else { return RadarHoming::default() };
+            let (x, y) = map(at);
+            if !self.acquire(s, x, y, at.2, 7) {
+                return RadarHoming::default();
+            }
+            return home(at, unit, pk, false);
+        }
+        // The Phoenix.
+        if let Some(mut mc) = m.midcourse {
+            let seen = if let Some(k) = pilot_tracked {
+                Some((pilot_at(self, k), None, Some(k)))
+            } else if tracked {
+                Some((unit_at(self, t as usize), Some(t as usize), None))
+            } else {
+                None
+            };
+            let (at, unit, pk, point) = match seen {
+                Some((at, unit, pk)) => {
+                    mc.at = at;
+                    (at, unit, pk, false)
+                }
+                None => (mc.at, None, None, true),
+            };
+            let (range, ..) = geometry(at);
+            if range > PHOENIX_ACTIVE {
+                self.proj[s].midcourse = Some(mc);
+                return home(at, unit, pk, point);
+            }
+            // Close enough: its own seeker comes on.
+            self.proj[s].midcourse = None;
+        }
+        // Active: its target while its seeker sees it within its range, else the nearest it
+        // sees (not the campaign's friends).
+        if let Some(k) = pilot {
+            let at = pilot_at(self, k);
+            let (x, y) = map(at);
+            if self.acquire(s, x, y, at.2, 7) && self.acq_range <= PHOENIX_ACTIVE {
+                return home(at, None, Some(k), false);
+            }
+        }
+        let mut best: Option<(i32, usize)> = None;
+        for j in 0..self.flights.len() {
+            if !alive(self, j as i32) {
+                continue;
+            }
+            let friend = self.campaign_flight(j).is_some_and(|f| f.blue);
+            if friend && t != j as i32 {
+                continue;
+            }
+            let u = self.flights[j];
+            if !self.acquire(s, u.x, u.y, u.alt, 7) || self.acq_range > PHOENIX_ACTIVE {
+                continue;
+            }
+            // Its own target wins while it sees it.
+            let r = if j as i32 == t { -1 } else { self.acq_range };
+            if best.is_none_or(|(b, _)| r < b) {
+                best = Some((r, j));
+            }
+        }
+        match best {
+            Some((_, j)) if !(self.opts.realistic_ai_flight && self.unit_homed(s, j, 7)) => {
+                home(unit_at(self, j), Some(j), None, false)
+            }
+            _ => RadarHoming::default(),
+        }
+    }
+}
+
 pub(crate) fn seeker_geometry(m: &Projectile, tx: i32, ty: i32) -> (i32, i32, i32) {
     let dx = s16(tx - m.x);
     let dy = s16(ty - m.y);

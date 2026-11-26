@@ -161,6 +161,14 @@ void main() {
         rgb += base.rgb * (u_flood.rgb + vec3(0.1, 0.05, 0.0) * pulse);
     }
     rgb = nvg(rgb);
+    // A black and white picture (cockpit.wgsl's `sharp.y`).
+    if ((u_flags & 32u) != 0u) {
+        float grey = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+        if ((u_flags & 64u) != 0u) {
+            grey = pow(1.0 - pow(clamp(grey, 0.0, 1.0), 1.0 / 2.2), 2.2);
+        }
+        rgb = vec3(grey);
+    }
     // VGA colours (palette.glsl `retro`).
     if (g.retro.x > 0.0) {
         uvec2 p = uvec2(gl_FragCoord.xy) & 3u;

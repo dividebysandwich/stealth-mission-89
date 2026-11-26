@@ -659,6 +659,30 @@ fn air_to_air(c: &mut Canvas, f: &HudFrame) {
         if let Some(r) = f.target_range_km {
             small(c, q.x, q.y + s + 16.0, &format!("{r:.1}"), Align::Centre);
         }
+        // The F-14's single target track: the closing speed under the range.
+        if let Some(v) = f.tomcat.as_ref().and_then(|t| t.closure) {
+            small(c, q.x, q.y + s + 32.0, &format!("VC {v:+.0}"), Align::Centre);
+        }
+    }
+    // The F-14 in track while scan with nothing locked: the track the next Phoenix goes for, a
+    // circle with its number over it and its range under it (crossed out at the field's edge).
+    let track =
+        f.tomcat.as_ref().and_then(|t| t.next).filter(|_| target.is_none()).and_then(
+            |(d, km, n)| project(f.orientation.inverse() * d, f.scale).map(|p| (p, km, n)),
+        );
+    if let Some((p, km, n)) = track {
+        let q = p.clamp(fld.0, fld.1);
+        let r = 16.0;
+        c.ring(q, r, PEN, INK);
+        if q != p {
+            cross_out(c, q, r);
+        }
+        small(c, q.x, q.y - r - 12.0, &format!("{n}"), Align::Centre);
+        small(c, q.x, q.y + r + 14.0, &format!("{km:.1}"), Align::Centre);
+    }
+    let target = target.or(track.map(|t| t.0));
+    if let Some(t) = &f.tomcat {
+        tomcat(c, f, t);
     }
     if f.weapon_air_to_air {
         // Allowable steering error circle and the steering dot towards the target.
@@ -682,6 +706,41 @@ fn air_to_air(c: &mut Canvas, f: &HudFrame) {
             Some(z) => dynamic_launch_zone(c, z),
             None => launch_zone(c, f),
         }
+    }
+}
+
+/// The F-14's radar on the glass: its mode under the weapons at the lower left, an ACM mode's
+/// scan against the nose (the boresight beam's circle, a vertical scan's strip as far as the
+/// field shows it), and at the lower right the radar missiles in flight with the soonest one's
+/// seconds to go (ACT: to its seeker coming on; TTI: to impact).
+fn tomcat(c: &mut Canvas, f: &HudFrame, t: &super::TomcatHud) {
+    text(c, 270.0, 470.0, t.mode, Align::Left);
+    let fld = field(f);
+    match t.acm {
+        Some(super::AcmScan::Boresight(half)) => {
+            c.ring(Vec2::new(CX, CY), half.tan() * f.scale, THIN, INK);
+        }
+        Some(super::AcmScan::Vertical(half, low, high)) => {
+            let w = half.tan() * f.scale;
+            let y = |el: f32| (CY - el.tan() * f.scale).clamp(fld.0.y, fld.1.y);
+            let (top, bottom) = (y(high), y(low));
+            for x in [CX - w, CX + w] {
+                c.stroke(Vec2::new(x, top), Vec2::new(x, bottom), THIN, INK);
+            }
+            // The ends the field shows are closed.
+            for (el, yy) in [(high, top), (low, bottom)] {
+                if (CY - el.tan() * f.scale - yy).abs() < 0.5 {
+                    c.stroke(Vec2::new(CX - w, yy), Vec2::new(CX + w, yy), THIN, INK);
+                }
+            }
+        }
+        Some(super::AcmScan::Wide) | None => {}
+    }
+    let soonest = t.in_flight.iter().copied().min_by(|a, b| a.abs().total_cmp(&b.abs()));
+    if let Some(s) = soonest {
+        let word = if s < 0.0 { "ACT" } else { "TTI" };
+        let line = format!("{} {word} {:.0}", t.in_flight.len(), s.abs().min(999.0));
+        text(c, 1010.0, 470.0, &line, Align::Right);
     }
 }
 
@@ -1137,6 +1196,52 @@ mod tests {
             target_range_km: Some(5.0),
             ..Default::default()
         }
+    }
+
+    /// The F-14 in AA: the next Phoenix's track is circled where it is, an ACM scan and the
+    /// missiles' time to go are drawn, and none of it shows in NAV.
+    #[test]
+    fn tomcat_cues_show_in_air_to_air() {
+        use crate::hud::{AcmScan, TomcatHud};
+        let ink = |f: &HudFrame| {
+            let mut c = Canvas::new(WIDTH, HEIGHT);
+            draw(&mut c, f);
+            c.px
+        };
+        let at = |px: &[u8], p: Vec2, r: i32| {
+            (-r..=r).any(|dy| {
+                (-r..=r).any(|dx| {
+                    px[(p.y as i32 + dy) as usize * WIDTH + (p.x as i32 + dx) as usize] != 0
+                })
+            })
+        };
+        let plain = ink(&frame(HudMode::Air));
+        let dir = Vec3::new(0.1, 0.05, -1.0);
+        let cue = TomcatHud {
+            mode: "TWS AUTO",
+            next: Some((dir, 74.0, 3)),
+            in_flight: vec![-12.0, 40.0],
+            ..Default::default()
+        };
+        let mut f = frame(HudMode::Air);
+        f.tomcat = Some(cue.clone());
+        let tws = ink(&f);
+        assert_ne!(tws, plain);
+        // The track's circle: ink on its rim, where the plain HUD has none.
+        let p = project(dir, SCALE).unwrap() + Vec2::X * 16.0;
+        assert!(at(&tws, p, 2) && !at(&plain, p, 2));
+        // The boresight beam's circle and a vertical scan's strip.
+        f.tomcat = Some(TomcatHud { acm: Some(AcmScan::Boresight(0.04)), ..cue.clone() });
+        let rim = Vec2::new(CX + 0.04f32.tan() * SCALE, CY);
+        assert!(at(&ink(&f), rim, 3));
+        f.tomcat = Some(TomcatHud { acm: Some(AcmScan::Vertical(0.06, 0.05, 0.9)), ..cue.clone() });
+        let strip = Vec2::new(CX + 0.06f32.tan() * SCALE, CY - 120.0);
+        assert!(at(&ink(&f), strip, 2) && !at(&tws, strip, 2));
+        // Nothing of it in NAV.
+        let mut nav = frame(HudMode::Nav);
+        let before = ink(&nav);
+        nav.tomcat = Some(cue);
+        assert_eq!(ink(&nav), before);
     }
 
     /// Sidearms selected in AG: the seeker's circle where it looks, its size the seeker's view.

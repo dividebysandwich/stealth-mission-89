@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektroninen hyökkäys, lentotukialuksilta
         Häiritsee vihollisen tutkia iskun tieltä
         Kaksi istuinta: lentäjä ja elektronisen sodankäynnin upseeri
+aircraft-f14 =
+    .facts =
+        Lentotukialuksen laivastonpuolustushävittäjä, kaksi miehistön jäsentä peräkkäin
+        Mach 1,9, kääntösiivet, Phoenix-ohjukset
+        Analoginen ohjaamo, RIO:n tutkanäytöt
 aircraft-a6 =
     .facts =
         Lentotukialusten jokasään rynnäkkökone, kaksi miehistön jäsentä rinnakkain

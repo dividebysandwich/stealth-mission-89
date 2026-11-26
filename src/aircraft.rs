@@ -29,6 +29,7 @@ pub enum AircraftKind {
     FA18E,
     EA18G,
     A6,
+    F14,
 }
 
 /// The exterior model drawn from the cockpit: without its canopy glass, and without the parts
@@ -82,6 +83,9 @@ pub struct AircraftSpec {
     /// A mast-mounted sight (aircraft frame, m): the targeting pod looks from there, always up
     /// and slaved as a turret's sight is (the OH-58D's).
     pub sight: Option<Vec3>,
+    /// A targeting pod hung off the centre (aircraft frame, m): the F-14's LANTIRN under its
+    /// right glove. It looks from there but is not slaved as a `sight` is.
+    pub pod: Option<Vec3>,
     /// A helmet-mounted display (`hmd.rs`).
     pub hmd: Hmd,
     /// The cannon's muzzle (aircraft frame, m), where it is not at the nose.
@@ -270,7 +274,7 @@ impl AircraftSpec {
 
     /// Where the targeting pod looks from (aircraft frame, m from the aircraft's position).
     pub fn pod_origin(&self) -> Vec3 {
-        self.sight.unwrap_or(Vec3::ZERO)
+        self.sight.or(self.pod).unwrap_or(Vec3::ZERO)
     }
 
     /// The cockpit flown with the cockpit style setting (aircraft with one cockpit ignore it).
@@ -317,6 +321,7 @@ pub fn gear_depth(model: i32) -> Option<f32> {
         75 => Some(F22_LIFT - RUNWAY_Y),
         79 | 81 => Some(FA18E_LIFT - RUNWAY_Y),
         27 => Some(A6_LIFT - RUNWAY_Y),
+        5 => Some(F14_LIFT - RUNWAY_Y),
         30 => Some(C5_LIFT - RUNWAY_Y),
         76 => Some(C130_LIFT - RUNWAY_Y),
         24 => Some(F117_LIFT - RUNWAY_Y),
@@ -345,6 +350,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         75 => f22_point(0.0, 5.30, -1.05) - Vec3::Y * F22_LIFT,
         79 | 81 => fa18e_point(0.0, 5.75, -0.50) - Vec3::Y * FA18E_LIFT,
         27 => a6_point(0.0, 2.25, -1.00) - Vec3::Y * A6_LIFT,
+        5 => f14_point(0.0, 4.95, -0.85) - Vec3::Y * F14_LIFT,
         30 => c5_point(0.0, 27.0, -3.9) - Vec3::Y * C5_LIFT,
         76 => c130_point(0.0, 11.35, -2.0) - Vec3::Y * C130_LIFT,
         // The Hind (tools/models/mi24.py, its origin on the ground).
@@ -400,6 +406,7 @@ static F117: AircraftSpec = AircraftSpec {
     bomb_bay: true,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     sight: None,
@@ -439,6 +446,7 @@ static F16: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::Hmcs,
     muzzle: None,
     // The nozzle.
@@ -489,6 +497,7 @@ static UH60: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: true,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     sight: None,
@@ -526,6 +535,7 @@ static MH60R: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: true,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     sight: None,
@@ -575,6 +585,7 @@ static AH1Z: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: true,
     turret: true,
+    pod: None,
     hmd: Hmd::Full,
     // The chin turret's barrels.
     muzzle: Some(ah1z_point(0.0, 5.30, 0.58)),
@@ -624,6 +635,7 @@ static RAH66: AircraftSpec = AircraftSpec {
     bomb_bay: true,
     helicopter: true,
     turret: true,
+    pod: None,
     hmd: Hmd::Full,
     // The chin turret's barrels.
     muzzle: Some(rah66_point(0.0, 4.75, 0.56)),
@@ -680,6 +692,7 @@ static OH58: AircraftSpec = AircraftSpec {
     turret: false,
     // The mast-mounted sight's ball above the rotor.
     sight: Some(oh58_point(0.0, 0.04, 3.62)),
+    pod: None,
     hmd: Hmd::Full,
     // The machine gun pods fire along the nose.
     muzzle: None,
@@ -733,6 +746,7 @@ static AH64: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: true,
     turret: true,
+    pod: None,
     hmd: Hmd::Full,
     // The M230's muzzle under the gunner's seat.
     muzzle: Some(ah64_point(0.0, 3.98, 0.88)),
@@ -791,6 +805,7 @@ static CH47: AircraftSpec = AircraftSpec {
     helicopter: true,
     turret: false,
     sight: None,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     // The engines' exhausts on the aft pylon's sides.
@@ -843,6 +858,7 @@ static TORNADO: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     // Between the two nozzles.
@@ -892,6 +908,7 @@ static A10: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     // The GAU-8's muzzle under the nose.
     muzzle: Some(a10_point(0.0, 8.36, -0.34)),
@@ -945,6 +962,7 @@ static AV8B: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     // The GAU-12 in the left pod.
     muzzle: Some(harrier_point(-0.38, 2.95, -0.85)),
@@ -995,6 +1013,7 @@ static F22: AircraftSpec = AircraftSpec {
     bomb_bay: true,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     // The M61 above the right intake, ahead of the wing root.
     muzzle: Some(f22_point(1.55, 7.9, 0.15)),
@@ -1047,6 +1066,7 @@ static FA18E: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::Hmcs,
     // The M61 in the nose's top, ahead of the windscreen.
     muzzle: Some(fa18e_point(0.0, 1.0, 0.42)),
@@ -1090,6 +1110,7 @@ static EA18G: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::Hmcs,
     // No gun.
     muzzle: None,
@@ -1149,6 +1170,7 @@ static A6: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     // No gun.
     muzzle: None,
@@ -1171,6 +1193,73 @@ static A6: AircraftSpec = AircraftSpec {
     }),
     console: None,
     flight: FlightConstants::a6,
+};
+
+/// The F-14's wheels are 1.80 m below its model origin (tools/models/aircraft.py `F14_GROUND`).
+const F14_LIFT: f32 = 1.80 + RUNWAY_Y;
+/// A point of the F-14's builder (tools/models/aircraft.py `f14`: metres, x right, s aft of the
+/// radome's tip, z up from it) in the aircraft frame: the model is centred on its length, its
+/// middle 9.265 m behind the radome's tip.
+const fn f14_point(x: f32, s: f32, z: f32) -> Vec3 {
+    const K: f32 = 16.384;
+    model_point(F14_LIFT, x * K, z * K, -(9.265 - s) * K)
+}
+
+/// The F-14's television camera set, in its pod under the nose.
+pub const F14_TCS: Vec3 = f14_point(0.0, 2.2, -0.75);
+
+/// The F-14B Tomcat: the pilot in the front of its two tandem seats, the radar intercept officer
+/// in the back one, swing wings, an M61 on the left of the nose.
+static F14: AircraftSpec = AircraftSpec {
+    model: "aircraft_005",
+    model_lift: F14_LIFT,
+    // The front seat under the one-piece canopy (s 3.88..7.55 m, sill z 0.97, top 1.79 m), 0.40
+    // m under its top.
+    eye: f14_point(0.0, 4.75, 1.36),
+    cockpit_view: Some(CockpitView {
+        canopy_colours: &[144, 145],
+        // Round both seats (the radar intercept officer's is 1.6 m aft), inside the canopy's
+        // glass (half width 0.51 m).
+        cut: (Vec3::new(-0.45, -1.15, -0.90), Vec3::new(0.45, 0.40, 2.40)),
+        two_sided: false,
+        // The outer wings.
+        parts: true,
+    }),
+    cockpits: &[(PanelStyle::F14, "cockpit_f14")],
+    cockpit_size: 1.0,
+    vr_scale: 1.25 * 0.7,
+    vr_eye_height: None,
+    // The combiner on the glare shield is the Tornado's at the same angular size
+    // (tools/models/build_cockpit_f14.py `HUD_*`).
+    hud_scale: 2080.0,
+    vr_hud_scale: 2080.0,
+    bomb_bay: false,
+    helicopter: false,
+    turret: false,
+    // The LANTIRN's turret at the front of its pod on the right glove pylon (station 8B).
+    pod: Some(f14_point(2.85, 8.30, 0.05)),
+    hmd: Hmd::None,
+    // The M61's muzzle low on the left of the nose, ahead of the windscreen.
+    muzzle: Some(f14_point(-0.62, 3.30, -0.30)),
+    sight: None,
+    // Between the two nozzles.
+    exhaust: f14_point(0.0, 18.10, -0.28),
+    nozzles: &[f14_point(1.24, 18.10, -0.28), f14_point(-1.24, 18.10, -0.28)],
+    nozzle_radius: 0.34,
+    nozzle_rect: None,
+    swing_wing: true,
+    vtol: false,
+    ground_radar: true,
+    asw: false,
+    // The radar intercept officer's (rear) seat: 1.6 m aft of the pilot's and a little higher
+    // (tools/models/build_cockpit_f14.py `--seat rio`).
+    gunner_seat: Some(CrewSeat {
+        style: PanelStyle::F14Rio,
+        model: "cockpit_f14_rio",
+        eye: f14_point(0.0, 6.35, 1.42),
+    }),
+    console: None,
+    flight: FlightConstants::f14b,
 };
 
 /// The C-5's wheels are 5.72 m below its model origin (tools/models/aircraft.py `C5_GROUND`).
@@ -1218,6 +1307,7 @@ static C5: AircraftSpec = AircraftSpec {
     bomb_bay: true,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     sight: None,
@@ -1280,6 +1370,7 @@ static AC130: AircraftSpec = AircraftSpec {
     bomb_bay: false,
     helicopter: false,
     turret: false,
+    pod: None,
     hmd: Hmd::None,
     muzzle: None,
     sight: None,
@@ -1352,19 +1443,20 @@ impl AircraftKind {
             || self.kiowa()
             || self.comanche()
             || self.seahawk()
-            || matches!(self, AircraftKind::EA18G | AircraftKind::A6)
+            || matches!(self, AircraftKind::EA18G | AircraftKind::A6 | AircraftKind::F14)
     }
 
     pub fn rcs_page(self) -> bool {
         matches!(self, AircraftKind::F117 | AircraftKind::F22 | AircraftKind::RAH66)
     }
 
-    pub const ALL: [AircraftKind; 18] = [
+    pub const ALL: [AircraftKind; 19] = [
         AircraftKind::F117,
         AircraftKind::F16,
         AircraftKind::F22,
         AircraftKind::FA18E,
         AircraftKind::EA18G,
+        AircraftKind::F14,
         AircraftKind::A6,
         AircraftKind::Tornado,
         AircraftKind::A10,
@@ -1410,6 +1502,8 @@ impl AircraftKind {
             AircraftKind::FA18E
         } else if p.intruder {
             AircraftKind::A6
+        } else if p.tomcat {
+            AircraftKind::F14
         } else if p.galaxy {
             AircraftKind::C5
         } else if p.spectre {
@@ -1441,6 +1535,7 @@ impl AircraftKind {
             AircraftKind::FA18E => &FA18E,
             AircraftKind::EA18G => &EA18G,
             AircraftKind::A6 => &A6,
+            AircraftKind::F14 => &F14,
         }
     }
 
@@ -1465,6 +1560,7 @@ impl AircraftKind {
             AircraftKind::FA18E => "fa18e",
             AircraftKind::EA18G => "ea18g",
             AircraftKind::A6 => "a6",
+            AircraftKind::F14 => "f14",
         }
     }
 
@@ -1497,6 +1593,8 @@ impl AircraftKind {
                     && *k == AircraftKind::EA18G)
                 || (matches!(s.as_str(), "intruder" | "a6c" | "a6e" | "a6a")
                     && *k == AircraftKind::A6)
+                || (matches!(s.as_str(), "tomcat" | "f14b" | "f14a" | "f14d" | "bombcat")
+                    && *k == AircraftKind::F14)
                 || (matches!(s.as_str(), "galaxy" | "c5a" | "c5b" | "c5m")
                     && *k == AircraftKind::C5)
                 || (matches!(s.as_str(), "c130" | "gunship" | "spectre" | "ac130h" | "ac130u")
@@ -1524,6 +1622,7 @@ impl AircraftKind {
             AircraftKind::FA18E => "F/A-18E Super Hornet",
             AircraftKind::EA18G => "EA-18G Growler",
             AircraftKind::A6 => "A-6C Intruder",
+            AircraftKind::F14 => "F-14B Tomcat",
         }
     }
 }
@@ -1609,6 +1708,7 @@ mod tests {
             AircraftKind::FA18E,
             AircraftKind::EA18G,
             AircraftKind::A6,
+            AircraftKind::F14,
         ] {
             let spec = kind.spec();
             let (lo, hi) = primitive_bounds(
@@ -1761,6 +1861,8 @@ mod tests {
         assert_eq!(AircraftKind::parse("Galaxy"), Some(AircraftKind::C5));
         assert_eq!(AircraftKind::parse("A-6C"), Some(AircraftKind::A6));
         assert_eq!(AircraftKind::parse("Intruder"), Some(AircraftKind::A6));
+        assert_eq!(AircraftKind::parse("F-14B"), Some(AircraftKind::F14));
+        assert_eq!(AircraftKind::parse("Tomcat"), Some(AircraftKind::F14));
     }
 
     /// The C-5's eye: in the left seat behind the windscreen's band, under the flight deck's
@@ -1858,5 +1960,31 @@ mod tests {
         let angle = -(r as u16 as f32) / 65536.0 * std::f32::consts::TAU;
         let tip = Quat::from_rotation_y(angle) * Vec3::X;
         assert!(tip.z > 0.6 && (angle.to_degrees() + 42.0).abs() < 0.1, "{tip} {angle}");
+    }
+
+    /// The F-14's outer wings are parts on the sweep slots, their pivots in the gloves, and
+    /// fully swept they turn back 48.9 degrees (the model's leading edge from 21.6 to 70.5,
+    /// in line with the glove's).
+    #[test]
+    fn f14_wings_are_parts() {
+        let path = crate::asset_path::asset("models/aircraft.glb");
+        let data = std::fs::read(&path).unwrap();
+        let len = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+        let j: serde_json::Value = serde_json::from_slice(&data[20..20 + len]).unwrap();
+        let node = |name: &str| {
+            j["nodes"].as_array().unwrap().iter().find(|n| n["name"] == name).unwrap().clone()
+        };
+        let spec = AircraftKind::F14.spec();
+        assert!(spec.swing_wing);
+        for (part, slot, side) in [("_part1", WING_SLOTS.0, 1.0), ("_part2", WING_SLOTS.1, -1.0)] {
+            let n = node(&format!("{}_lod0{part}", spec.model));
+            assert_eq!(n["extras"]["state_slot"].as_u64(), Some(slot as u64), "{part}");
+            let x = n["translation"][0].as_f64().unwrap() as f32 / 16.384;
+            assert!((x * side - 2.345).abs() < 0.01, "{part} pivot {x} m out");
+        }
+        let w = spec.flight().aero.swing_wing.unwrap();
+        let (r, _) = wing_slot_values(1.0, w.forward, w.back);
+        let angle = (r as f32) / 65536.0 * 360.0;
+        assert!((angle - 48.9).abs() < 0.1, "{angle}");
     }
 }

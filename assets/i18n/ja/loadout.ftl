@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = ステーション 1、左翼外側
 hardpoint-a6-2-left-inner-wing = ステーション 2、左翼内側
 hardpoint-a6-4-right-inner-wing = ステーション 4、右翼内側
 hardpoint-a6-5-right-outer-wing = ステーション 5、右翼外側
+hardpoint-f14-1a-left-shoulder = ステーション 1A、左ショルダーレール
+hardpoint-f14-1b-left-glove = ステーション 1B、左グローブパイロン
+hardpoint-f14-2-left-nacelle = ステーション 2、左ナセル
+hardpoint-f14-3-left-front-tunnel = ステーション 3、前部トンネル、左
+hardpoint-f14-4-left-rear-tunnel = ステーション 4、後部トンネル、左
+hardpoint-f14-5-right-rear-tunnel = ステーション 5、後部トンネル、右
+hardpoint-f14-6-right-front-tunnel = ステーション 6、前部トンネル、右
+hardpoint-f14-7-right-nacelle = ステーション 7、右ナセル
+hardpoint-f14-8b-right-glove = ステーション 8B、右グローブパイロン
+hardpoint-f14-8a-right-shoulder = ステーション 8A、右ショルダーレール
 hardpoint-c5-hold = 貨物室 (空中投下パレット)
 hardpoint-ch47-cabin = キャビン (空挺部隊)
 weapon-role-21 = 空対空、赤外線誘導、非常に短射程
@@ -233,5 +243,15 @@ weapon-role-37 = サイドワインダー改造の対レーダーミサイル：
 employment-37 =
     射程：1-10 km
     1,000 ft 未満で発射すると上昇し、レーダーへ真上から突入する
+# AIM-54C Phoenix
+weapon-role-38 = 空対空、レーダー誘導、長射程：最大 6 目標同時
+employment-38 =
+    射程：2-76 km、正面ならさらに遠く
+    レーダーが航跡で誘導、10 海里から自らのシーカー（PH ACT：レールから）
+# AIM-7M Sparrow
+weapon-role-39 = 空対空、セミアクティブレーダーホーミング、中射程
+employment-39 =
+    射程：1-31 km、正面ならさらに遠く
+    命中までレーダーの単一目標追尾を維持
 loadout-wingman = 僚機
     .facts = 同じ機体と兵装のAI僚機が離陸後に合流する。無線メニュー(\)で指示を出す

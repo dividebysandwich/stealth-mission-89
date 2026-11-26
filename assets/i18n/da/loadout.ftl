@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, venstre ydre vinge
 hardpoint-a6-2-left-inner-wing = Station 2, venstre indre vinge
 hardpoint-a6-4-right-inner-wing = Station 4, højre indre vinge
 hardpoint-a6-5-right-outer-wing = Station 5, højre ydre vinge
+hardpoint-f14-1a-left-shoulder = Station 1A, venstre skulderskinne
+hardpoint-f14-1b-left-glove = Station 1B, venstre vingerodspylon
+hardpoint-f14-2-left-nacelle = Station 2, venstre motorgondol
+hardpoint-f14-3-left-front-tunnel = Station 3, forreste tunnel, venstre
+hardpoint-f14-4-left-rear-tunnel = Station 4, bagerste tunnel, venstre
+hardpoint-f14-5-right-rear-tunnel = Station 5, bagerste tunnel, højre
+hardpoint-f14-6-right-front-tunnel = Station 6, forreste tunnel, højre
+hardpoint-f14-7-right-nacelle = Station 7, højre motorgondol
+hardpoint-f14-8b-right-glove = Station 8B, højre vingerodspylon
+hardpoint-f14-8a-right-shoulder = Station 8A, højre skulderskinne
 hardpoint-c5-hold = Lastrum (nedkastningspaller)
 hardpoint-ch47-cabin = Kabine (faldskærmstropper)
 weapon-role-21 = Luft-luft, infrarød målsøgning, meget kort rækkevidde
@@ -233,5 +243,15 @@ weapon-role-37 = Antiradarmissil bygget på Sidewinder: radarer og SAM-stillinge
 employment-37 =
     Rækkevidde: 1-10 km
     Under 1.000 ft stiger den op og dykker ned på radaren ovenfra
+# AIM-54C Phoenix
+weapon-role-38 = Luft-til-luft, radarstyret, lang rækkevidde: op til seks mål på én gang
+employment-38 =
+    Rækkevidde: 2-76 km, længere forfra
+    Radaren styrer den på dens spor; dens egen målsøger fra 10 sømil (PH ACT: fra skinnen)
+# AIM-7M Sparrow
+weapon-role-39 = Luft-til-luft, semiaktiv radarmålsøgning, mellemlang rækkevidde
+employment-39 =
+    Rækkevidde: 1-31 km, længere forfra
+    Hold radarens enkeltmålsfølgning, til den rammer
 loadout-wingman = WINGMAN
     .facts = En AI-wingman i samme fly med samme bevæbning slutter sig til dig i luften; radiomenuen (\) giver den ordrer

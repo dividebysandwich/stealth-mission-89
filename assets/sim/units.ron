@@ -190,6 +190,13 @@
         // AIM-9C airframe with a passive radar seeker, a short reach (about half the Shrike's)
         // and a small warhead. Fired low it pops up and dives on the radar (guidance.rs).
         (id: "sidearm", name: "Sidearm", family: Ground, range_km: 20, mach: 2.3, g: 35, seeker: AntiRadiation, model: 1),
+        // The F-14's AIM-54C Phoenix: guided by the AWG-9 to its target (each of six on its own
+        // track-while-scan track), then by its own radar seeker from 10 nmi; a long-burning
+        // motor and a high loft (guidance.rs), some 150 km head-on from high up.
+        (id: "aim54", name: "AIM-54", family: Air, range_km: 160, mach: 5.0, g: 18, seeker: PlayerAam, model: 1),
+        // The F-14's AIM-7M Sparrow: semi-active, it needs the radar's single target track all
+        // the way.
+        (id: "aim7m", name: "AIM-7M", family: Air, range_km: 60, mach: 4.0, g: 25, seeker: PlayerAam, model: 1),
     ],
     // The player's stores. `missile`: the round it fires ("camera", "fuel" or "guns" for those),
     // `picture`: its side view on the weapons display, `bay`: rounds in a bay. `effect`: how well
@@ -303,6 +310,9 @@
         // picture), its small blast fragmentation warhead of use against a radar only.
         (id: "sidearm", short: "AGM-122", long: "Sidearm", missile: "sidearm", picture: 0, bay: 2,
             effect: {"radar": 4}),
+        // The F-14's long-range and medium-range air-to-air missiles (the AMRAAM's picture).
+        (id: "aim54", short: "AIM-54C", long: "Phoenix", missile: "aim54", picture: 3, bay: 1),
+        (id: "aim7m", short: "AIM-7M", long: "Sparrow", missile: "aim7m", picture: 3, bay: 2),
     ],
     // What the player carries besides the stores: the dispensers' flares, chaff and towed
     // decoys, and the cannon's rounds (an F-16's ALE-40 and M61).

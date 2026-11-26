@@ -12,7 +12,8 @@
 //! target button, `talk=1` / `talk=0` the coop radio's push-to-talk, `SaveMission` saves the flight (as the in-flight menu's SAVE MISSION), `LoadMission` opens the list of saves over the menu (as its LOAD MISSION; `Menu` first opens the menu),
 //! `lockpilot=1` locks another player's aircraft (pilot id 1, as a display
 //! lock does), `press=Gear` pushes the 3D-cockpit control bound to that action
-//! (`press=Intruder(Vdi(Off))` an A-6 control, `intruder::Key`) and `osb=r2`
+//! (`press=Intruder(Vdi(Off))` an A-6 control, `intruder::Key`; `press=Tomcat(Wcs(Rws))` an
+//! F-14 control, `tomcat::Key`) and `osb=r2`
 //! pushes an MFD bezel button (`l` / `r` / `t`: the left, right or third MFD; 0..4 along the
 //! top, 5..9 along the bottom, 10..14 down the left edge, 15..19 down the right). In a coop game `say=Hello there` sends a chat message and
 //! `type=Hello` opens the chat field with that text (no commas in either).
@@ -203,10 +204,12 @@ fn parse(s: &str) -> (Vec<(f32, Step)>, Vec<(f32, Cond, Step, bool)>) {
     (v, conds)
 }
 
-/// The 3D-cockpit presses a script makes: a control by its action, an A-6 control by its key.
+/// The 3D-cockpit presses a script makes: a control by its action, an A-6 or an F-14 control by
+/// its key.
 type Presses<'w> = (
     MessageWriter<'w, crate::cockpit3d::PressControl>,
     MessageWriter<'w, crate::intruder::PressKey>,
+    MessageWriter<'w, crate::tomcat::PressKey>,
 );
 
 fn apply(
@@ -252,6 +255,13 @@ fn apply(
             {
                 // An A-6 control (`press=Intruder(Flight(Land))`).
                 presses.1.write(crate::intruder::PressKey(key));
+            } else if let Some(key) = name
+                .strip_prefix("Tomcat(")
+                .and_then(|k| k.strip_suffix(')'))
+                .and_then(crate::tomcat::Key::parse)
+            {
+                // An F-14 control (`press=Tomcat(Wcs(TwsAuto))`).
+                presses.2.write(crate::tomcat::PressKey(key));
             } else {
                 warn!("script: unknown action {name}");
             }

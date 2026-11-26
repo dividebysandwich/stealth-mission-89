@@ -173,6 +173,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, left outer wing
 hardpoint-a6-2-left-inner-wing = Station 2, left inner wing
 hardpoint-a6-4-right-inner-wing = Station 4, right inner wing
 hardpoint-a6-5-right-outer-wing = Station 5, right outer wing
+hardpoint-f14-1a-left-shoulder = Station 1A, left shoulder rail
+hardpoint-f14-1b-left-glove = Station 1B, left glove pylon
+hardpoint-f14-2-left-nacelle = Station 2, left nacelle
+hardpoint-f14-3-left-front-tunnel = Station 3, front tunnel, left
+hardpoint-f14-4-left-rear-tunnel = Station 4, rear tunnel, left
+hardpoint-f14-5-right-rear-tunnel = Station 5, rear tunnel, right
+hardpoint-f14-6-right-front-tunnel = Station 6, front tunnel, right
+hardpoint-f14-7-right-nacelle = Station 7, right nacelle
+hardpoint-f14-8b-right-glove = Station 8B, right glove pylon
+hardpoint-f14-8a-right-shoulder = Station 8A, right shoulder rail
 hardpoint-c5-hold = Cargo hold (airdrop pallets)
 hardpoint-ch47-cabin = Cabin (paratroopers)
 weapon-role-21 = Air-to-air, infrared homing, very short range
@@ -233,5 +243,15 @@ weapon-role-37 = Anti-radiation missile built from a Sidewinder: radars and SAM 
 employment-37 =
     Range: 1-10 km
     Below 1,000 ft it pops up and dives on the radar from above
+# AIM-54C Phoenix
+weapon-role-38 = Air-to-air, radar guided, long range: up to six targets at once
+employment-38 =
+    Range: 2-76 km, farther head-on
+    The radar guides it on its track; its own seeker from 10 nmi (PH ACT: off the rail)
+# AIM-7M Sparrow
+weapon-role-39 = Air-to-air, semi-active radar homing, medium range
+employment-39 =
+    Range: 1-31 km, farther head-on
+    Hold the radar's single target track until it hits
 loadout-wingman = WINGMAN
     .facts = An AI wingman in the same aircraft with the same stores joins you once you are up; the radio menu (\) gives it its orders

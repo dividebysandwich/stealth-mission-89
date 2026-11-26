@@ -468,12 +468,14 @@ fn orbit(
         state.orbit_throttle = None;
         return;
     }
-    // The EA-18G with its pilot in the back seat (the A-6 with its pilot in the right one): its
-    // autopilot flies on along the route at the altitude and speed it had (over the terrain
-    // ahead), no orbit.
+    // The EA-18G with its pilot in the back seat (the A-6 with its pilot in the right one, the
+    // F-14 in its radar intercept officer's): its autopilot flies on along the route at the
+    // altitude and speed it had (over the terrain ahead), no orbit.
     if matches!(
         settings.aircraft,
-        crate::aircraft::AircraftKind::EA18G | crate::aircraft::AircraftKind::A6
+        crate::aircraft::AircraftKind::EA18G
+            | crate::aircraft::AircraftKind::A6
+            | crate::aircraft::AircraftKind::F14
     ) {
         // (Also when the pilot had engaged the autopilot himself: the speed is set here.)
         if !state.cruising || !a.autopilot() {

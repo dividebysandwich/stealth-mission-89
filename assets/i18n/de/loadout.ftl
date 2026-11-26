@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, linker Außenflügel
 hardpoint-a6-2-left-inner-wing = Station 2, linker Innenflügel
 hardpoint-a6-4-right-inner-wing = Station 4, rechter Innenflügel
 hardpoint-a6-5-right-outer-wing = Station 5, rechter Außenflügel
+hardpoint-f14-1a-left-shoulder = Station 1A, linke Schulterschiene
+hardpoint-f14-1b-left-glove = Station 1B, linker Flügelhandschuh-Pylon
+hardpoint-f14-2-left-nacelle = Station 2, linke Triebwerksgondel
+hardpoint-f14-3-left-front-tunnel = Station 3, vorderer Tunnel, links
+hardpoint-f14-4-left-rear-tunnel = Station 4, hinterer Tunnel, links
+hardpoint-f14-5-right-rear-tunnel = Station 5, hinterer Tunnel, rechts
+hardpoint-f14-6-right-front-tunnel = Station 6, vorderer Tunnel, rechts
+hardpoint-f14-7-right-nacelle = Station 7, rechte Triebwerksgondel
+hardpoint-f14-8b-right-glove = Station 8B, rechter Flügelhandschuh-Pylon
+hardpoint-f14-8a-right-shoulder = Station 8A, rechte Schulterschiene
 hardpoint-c5-hold = Frachtraum (Abwurfpaletten)
 hardpoint-ch47-cabin = Kabine (Fallschirmjäger)
 weapon-role-21 = Luft-Luft, Infrarot-Suchkopf, sehr kurze Reichweite
@@ -233,5 +243,15 @@ weapon-role-37 = Radarbekämpfungsrakete auf Sidewinder-Basis: Radare und SAM-St
 employment-37 =
     Reichweite: 1-10 km
     Unter 1.000 ft steigt sie hoch und stürzt sich von oben auf das Radar
+# AIM-54C Phoenix
+weapon-role-38 = Luft-Luft, radargelenkt, große Reichweite: bis zu sechs Ziele zugleich
+employment-38 =
+    Reichweite: 2-76 km, frontal weiter
+    Das Radar führt sie auf ihrer Spur; ihr eigener Suchkopf ab 10 nmi (PH ACT: ab der Schiene)
+# AIM-7M Sparrow
+weapon-role-39 = Luft-Luft, halbaktiver Radarsuchkopf, mittlere Reichweite
+employment-39 =
+    Reichweite: 1-31 km, frontal weiter
+    Die Einzelzielverfolgung des Radars bis zum Treffer halten
 loadout-wingman = ROTTENFLIEGER
     .facts = Ein KI-Rottenflieger im selben Flugzeug mit denselben Waffen schließt nach dem Start auf; das Funkmenü (\) gibt ihm Befehle

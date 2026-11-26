@@ -1057,3 +1057,109 @@ fn a_gunner_crews_another_players_comanche_and_takes_it_over() {
         "his stores went with the aircraft"
     );
 }
+
+/// Another player sits in the back seat of a player's F-14 as its RIO: the crew's panel goes
+/// both ways through the server, and when the pilot leaves the aircraft goes on with him.
+#[test]
+fn a_rio_crews_another_players_tomcat_and_takes_it_over() {
+    use stealth_campaign::MissionKind;
+    use stealth_sim::crew::{CrewCmd, Seat, SharedPanel};
+    let mut w = world();
+    let port = w.server.port().unwrap();
+    let addr = format!("127.0.0.1:{port}");
+    let mut a = Client::connect(&addr, "Alpha").unwrap();
+    let mut b = Client::connect(&addr, "Bravo").unwrap();
+    let mut now = Instant::now();
+    let mut ids = [None, None];
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let ClientEvent::Welcome { id, .. } = e {
+            ids[k] = Some(*id);
+        }
+        ids.iter().all(Option::is_some)
+    }));
+    let (pa, pb) = (ids[0].unwrap(), ids[1].unwrap());
+    // Alpha flies a combat air patrol in an F-14.
+    let mut started = false;
+    for _ in 0..15 * 600 {
+        now += Duration::from_millis(66);
+        serve(&mut w, now);
+        for c in [&mut a, &mut b] {
+            c.flush(now);
+            c.poll(now);
+        }
+        let offers: Vec<u32> = w
+            .host
+            .state
+            .board
+            .iter()
+            .filter(|o| matches!(o.kind, MissionKind::Cap | MissionKind::Intercept))
+            .map(|o| o.id)
+            .collect();
+        for offer in offers {
+            if let Ok(ev) = w.host.take_mission(&mut w.sim, pa, offer, None, Aircraft::F14, None) {
+                w.server.route(&ev);
+                started = true;
+                break;
+            }
+        }
+        if started {
+            break;
+        }
+    }
+    assert!(started, "a fighter mission for the F-14");
+    // Phoenixes and Sidewinders.
+    w.sim.set_pilot_loadout(pa.0, &[(stealth_sim::PHOENIX_WEAPON, 4), (1, 2)], 0);
+    // At 20,000 ft, 400 kt.
+    let mut ps = w.sim.pilot_input(pa.0);
+    ps.altitude = (6000.0 / 0.488) as u16;
+    ps.height = ps.altitude;
+    ps.on_ground = false;
+    ps.gear_up = true;
+    ps.velocity = 400 * 27;
+    let fly = |w: &mut World, a: &mut Client, b: &mut Client, now: &mut Instant, n: usize| {
+        for _ in 0..n {
+            *now += Duration::from_millis(66);
+            serve(w, *now);
+            a.send_input(&ps);
+            for c in [&mut *a, &mut *b] {
+                c.flush(*now);
+                c.poll(*now);
+            }
+        }
+    };
+    fly(&mut w, &mut a, &mut b, &mut now, 30);
+    assert!(w.sim.pilot_in_the_air(pa.0));
+    assert!(w.sim.gunner_seat_free(pa.0), "the RIO's seat is free");
+    // Bravo takes the back seat.
+    b.send(&ToServer::Crew(CrewCmd::Join { owner: pa.0 }));
+    fly(&mut w, &mut a, &mut b, &mut now, 15);
+    assert_eq!(w.sim.crew_of(pb.0), Some((pa.0, Seat::Gunner)));
+    // One panel: Bravo's controls reach the pilot, the pilot's reach Bravo.
+    let rio = SharedPanel { by: pb.0, bits: [0x21; 16] };
+    b.send(&ToServer::Crew(CrewCmd::Panel(rio)));
+    fly(&mut w, &mut a, &mut b, &mut now, 10);
+    assert_eq!(w.sim.crew_view(pa.0).and_then(|v| v.shared_panel), Some(rio), "the RIO's panel");
+    let pilot = SharedPanel { by: pa.0, bits: [0x12; 16] };
+    a.send(&ToServer::Crew(CrewCmd::Panel(pilot)));
+    fly(&mut w, &mut a, &mut b, &mut now, 10);
+    assert_eq!(w.sim.crew_view(pb.0).and_then(|v| v.shared_panel), Some(pilot), "the pilot's");
+    // Alpha leaves the aircraft: it goes on with Bravo in the back seat.
+    a.send(&ToServer::LeaveAircraft);
+    let mut taken = false;
+    assert!(until(&mut w, &mut [&mut a, &mut b], &mut now, |k, e| {
+        if let ClientEvent::Host(HostEvent::SortieStarted { player, .. }) = e
+            && k == 1
+        {
+            assert_eq!(*player, pb);
+            taken = true;
+        }
+        taken
+    }));
+    assert!(w.sim.pilot_absent(pa.0) && w.sim.pilot_in_the_air(pb.0));
+    assert_eq!(w.sim.owner_seat(pb.0), Seat::Gunner);
+    assert_eq!(
+        w.sim.pilot_bays(pb.0)[0],
+        (stealth_sim::PHOENIX_WEAPON, 4),
+        "his Phoenixes went with the aircraft"
+    );
+}

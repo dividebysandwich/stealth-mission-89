@@ -1,0 +1,1304 @@
+# Builds the F-14B Tomcat's two cockpit masters from the panel layouts, with parts of the F-117A's
+# modern cockpit: the pilot's (front seat)
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
+#       --python tools/models/build_cockpit_f14.py -- \
+#       assets-src/blend/cockpit_f14_layout.json assets-src/blend/cockpit_f14.blend
+# and the radar intercept officer's (rear seat)
+#   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
+#       --python tools/models/build_cockpit_f14.py -- \
+#       assets-src/blend/cockpit_f14_rio_layout.json assets-src/blend/cockpit_f14_rio.blend \
+#       --seat rio
+# then tools/models/export.sh cockpit_f14 cockpit_f14_rio. The layout JSONs are written by
+# `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::f14` / `f14_rio`
+# (src/cockpit3d/f14_layout.rs). Each seat's cockpit has its own panel live; the other seat's
+# panel is its plate only (from the front seat the RIO's panel is behind the pilot, from the
+# back seat the pilot's is behind the pilot's seat and under its glare shield).
+#
+# One cabin for both: the geometry is laid out in the exterior's frame (tools/models/aircraft.py
+# `f14`: x right of the centre line, s aft of the radome's tip, z up from it, metres) and built
+# round the seat's eye (`AircraftSpec::eye` / its `gunner_seat`): the pilot's (0, 4.75, 1.36), the
+# RIO's (0, 6.35, 1.42), 1.6 m aft and a little higher. Life size (the F-117A's cockpit is built
+# larger than life: its kept parts are scaled down by F117_SCALE about the eye).
+#
+# Kept, with their materials and control properties: the seat with the ejection handle (copied
+# for the other seat), the stick (the pilot's centre stick on the centre line; in the RIO's
+# cockpit his hand controller on its pedestal on the centre line is the `stick`, a tilt
+# sensing one: `tilt`), the throttle with its rails
+# on the pilot's left console (the RIO has none), the gear handle on the pilot's left knee panel,
+# the HUD glass (the pilot's combiner on the glare shield), the approach indexer and the flood
+# lamps. Built here, low-poly: the tub under the one-piece canopy (walls up to the glass's
+# sill, the canopy's sill rails, the windscreen's bow and posts, the turtledeck behind the RIO),
+# the windscreen's front pane (an oval window in its heavy frame), both instrument panels (the
+# pilot's under its glare shield with the HUD's combiner; the RIO's with its radar section
+# standing out under a shroud), the knee panels sloping down from them towards the crew (the
+# pilot's gear and DISPLAYS panels, the RIO's armament and ECM panels: `PARTS` moves those parts
+# of the flat layouts there), the consoles, the rudder pedals; on the live panel its displays
+# (the square tubes of the VDI, the HSD, the DDD and the ECMD in deep bezels, the round TID, the
+# round standby instruments), the round instruments and tapes, the steering pushbuttons (`twist`), the lit
+# pushbuttons (`lamp`), the toggle switches (`switch`), the knobs (`knob`) and keys (`cap`).
+#
+# Blender frame: eye at the origin, x right, y forward, z up, metres. A control's face points
+# along its local -Y (towards the crew), local Z is up the panel.
+import json
+import math
+import sys
+
+import bmesh
+import bpy
+from mathutils import Euler, Matrix, Quaternion, Vector
+
+args = sys.argv[sys.argv.index("--") + 1:]
+layout_path, out = args[:2]
+layout = json.load(open(layout_path))
+RIO = "--seat" in args and args[args.index("--seat") + 1] == "rio"
+root = bpy.data.objects["cockpit"]
+
+F117_SCALE = 1.4706
+# The seats' eyes (x, s, z).
+PILOT_EYE = (0.0, 4.75, 1.36)
+RIO_EYE = (0.0, 6.35, 1.42)
+EYE = RIO_EYE if RIO else PILOT_EYE
+OTHER_EYE = PILOT_EYE if RIO else RIO_EYE
+
+
+def C(x, s, z):
+    """A point of the cabin (x right of the centre line, s aft of the radome's tip, z up) in the
+    eye's frame."""
+    return Vector((x - EYE[0], EYE[1] - s, z - EYE[2]))
+
+
+# The canopy's glass (tools/models/aircraft.py F14_CANOPY, F14_GLASS): (s, sill z, half width at
+# the sill, top) and the section's shape (fraction of the height, of the half width).
+CANOPY = [(2.95, 0.97, 0.20, 0.99), (3.30, 0.97, 0.36, 1.14), (3.60, 0.97, 0.44, 1.29),
+          (3.88, 0.97, 0.48, 1.44), (4.30, 0.97, 0.50, 1.62), (4.80, 0.97, 0.51, 1.74),
+          (5.40, 0.97, 0.51, 1.79), (6.20, 0.97, 0.51, 1.79), (6.80, 0.97, 0.50, 1.74),
+          (7.20, 0.97, 0.48, 1.63), (7.55, 0.97, 0.46, 1.49)]
+GLASS = [(0.0, 1.0), (0.25, 0.99), (0.45, 0.95), (0.62, 0.87), (0.76, 0.75), (0.87, 0.59), (0.95, 0.36),
+         (1.0, 0.0)]
+BOW_S = 3.88
+
+
+def interp(table, x):
+    """Linear through a table of (x, y...) rows at x."""
+    for a, b in zip(table, table[1:]):
+        if x <= b[0]:
+            t = min(max((x - a[0]) / (b[0] - a[0]), 0.0), 1.0)
+            return tuple(p + (q - p) * t for p, q in zip(a[1:], b[1:]))
+    return tuple(table[-1][1:])
+
+
+def canopy(s):
+    """(sill z, half width at the sill, top z) of the glass at s."""
+    return interp(CANOPY, s)
+
+
+def glass_half(s, z):
+    """The glass's half width at height z at s (0 over its top)."""
+    sill, hw, top = canopy(s)
+    t = (z - sill) / (top - sill)
+    if t <= 0.0:
+        return hw
+    return hw * interp(GLASS, min(t, 1.0))[0]
+
+
+# --- the instrument panels: the layout's origin on the centre line, the top leaning away
+class Panel:
+    def __init__(self, origin, tilt_deg):
+        t = math.radians(tilt_deg)
+        self.origin = origin
+        self.up = Vector((0.0, math.sin(t), math.cos(t)))
+        self.normal = Vector((0.0, -math.cos(t), math.sin(t)))
+        self.rot = Matrix((RIGHT, -self.normal, self.up)).transposed().to_quaternion()
+
+    def point(self, u, v, offset=0.0):
+        """A panel point: layout millimetres (u right, v down), raised `offset` m off it."""
+        return self.origin + RIGHT * (u / 1000) - self.up * (v / 1000) + self.normal * offset
+
+    def cabin(self, u, v):
+        """A panel point's (s, z) in the cabin."""
+        p = self.point(u, v)
+        return EYE[1] - p.y, p.z + EYE[2]
+
+
+class Raised:
+    """A part of a panel standing `d` m out of it towards the crew (the RIO's radar section)."""
+
+    def __init__(self, base, d):
+        self.base, self.d = base, d
+        self.up, self.normal, self.rot = base.up, base.normal, base.rot
+
+    def point(self, u, v, offset=0.0):
+        return self.base.point(u, v, offset + self.d)
+
+
+class Shift:
+    """A part of a panel moved over it: layout (u, v) is built at (u + du, v + dv)."""
+
+    def __init__(self, base, du, dv):
+        self.base, self.du, self.dv = base, du, dv
+        self.up, self.normal, self.rot = base.up, base.normal, base.rot
+
+    def point(self, u, v, offset=0.0):
+        return self.base.point(u + self.du, v + self.dv, offset)
+
+
+class Slope:
+    """A knee panel: it leaves the panel along the row v = fold and slopes down towards the
+    crew, `angle` degrees off the panel. The layout's rows from v = top on run down it (its
+    columns moved du)."""
+
+    def __init__(self, base, top, fold, angle, du=0.0):
+        a = math.radians(angle)
+        self.base, self.top, self.fold, self.du = base, top, fold, du
+        self.down = -base.up * math.cos(a) + base.normal * math.sin(a)
+        self.normal = base.normal * math.cos(a) + base.up * math.sin(a)
+        self.up = -self.down
+        self.rot = Matrix((RIGHT, -self.normal, self.up)).transposed().to_quaternion()
+
+    def point(self, u, v, offset=0.0):
+        return self.base.point(u + self.du, self.fold) + self.down * ((v - self.top) / 1000) + self.normal * offset
+
+
+RIGHT = Vector((1.0, 0.0, 0.0))
+PILOT_PANEL = Panel(C(0.0, 4.13, 0.86), 15.0)
+RIO_PANEL = Panel(C(0.0, 5.80, 0.98), 10.0)
+MAIN = RIO_PANEL if RIO else PILOT_PANEL
+# The panel the layout's helpers build on (`use` picks a control's).
+PANEL = MAIN
+# The knee panels slope down towards the crew from the foot of the vertical panel, this many
+# degrees off it.
+KNEE = 40.0
+# The RIO's radar section (the DDD and its panel: layout v above this) stands out of the panel
+# under its shroud.
+RIO_RADAR_V = -116.0
+RIO_RADAR_OUT = 0.06
+SHROUD = 0.08
+# The parts of the layout built elsewhere than where it draws them: (u from, to, v from, to) of
+# the layout and their panel. The pilot's: the right knee panel (the DISPLAYS panel), the left
+# one (the knee panel with the gear handle). The RIO's: the flight instruments go up beside the
+# TID and the armament panel slopes under them; the LANTIRN panel goes up on the right and the
+# ECM panel with the ECMD slopes under it.
+if RIO:
+    RADAR = Raised(MAIN, RIO_RADAR_OUT)
+    PARTS = [
+        ((-346.0, -140.0, 118.0, 256.0), Shift(MAIN, -46.0, -204.0)),
+        ((-348.0, -230.0, -104.0, 100.0), Slope(MAIN, -100.0, 52.0, KNEE, -40.0)),
+        ((124.0, 348.0, 110.0, 256.0), Shift(MAIN, 46.0, -194.0)),
+        ((186.0, 348.0, -106.0, 110.0), Slope(MAIN, -102.0, 16.0, KNEE, 40.0)),
+    ]
+    # The knee panels' solids: (u from, to, the slope's length in mm).
+    KNEES = [(PARTS[1][1], -346.0, -232.0, 198.0), (PARTS[3][1], 188.0, 342.0, 212.0)]
+else:
+    RADAR = None
+    PARTS = [
+        ((90.0, 350.0, 100.0, 268.0), Slope(MAIN, 100.0, 100.0, KNEE)),
+        ((-356.0, -272.0, -2.0, 268.0), Slope(MAIN, 0.0, 0.0, KNEE)),
+    ]
+    KNEES = [(PARTS[0][1], 92.0, 346.0, 168.0), (PARTS[1][1], -354.0, -284.0, 266.0)]
+
+
+def panel_at(u, v):
+    """The panel a layout point is on: the radar section, a moved or sloped part, else the flat
+    one."""
+    if RADAR is not None and v < RIO_RADAR_V:
+        return RADAR
+    for (u0, u1, v0, v1), part in PARTS:
+        if u0 < u < u1 and v0 < v < v1:
+            return part
+    return MAIN
+
+
+def use(r=None, at=None):
+    """Builds on the panel the layout rectangle r (or point `at`) is on; nothing: the flat one."""
+    global PANEL
+    if r is not None:
+        at = (r[0] + r[2] / 2.0, r[1] + r[3] / 2.0)
+    PANEL = MAIN if at is None else panel_at(*at)
+# The panels' outlines (layout mm, the right half; the left one mirrored).
+PILOT_OUTLINE = [(0.0, -275.0), (280.0, -275.0), (330.0, -235.0), (372.0, -190.0), (440.0, -120.0), (445.0, 268.0), (0.0, 268.0)]
+# (Wider under the radar section: the flight instruments and the LANTIRN panel stand outboard
+# of the TID's buttons.)
+RIO_OUTLINE = [(0.0, -306.0), (300.0, -306.0), (344.0, -262.0), (348.0, -116.0), (398.0, -110.0), (398.0, 256.0), (0.0, 256.0)]
+OUTLINE = RIO_OUTLINE if RIO else PILOT_OUTLINE
+# How deep a panel's body is behind its face.
+PANEL_DEPTH = 0.22
+# Floors: the pilot's, the RIO's (raised), the step between them.
+PILOT_FLOOR = 0.30
+RIO_FLOOR = 0.42
+STEP_S = 5.45
+# The tub: from under the glare shield's front back to the bulkhead behind the RIO; the walls
+# stand WALL_IN inside the glass's sill.
+FRONT_S = 3.45
+REAR_S = 7.12
+WALL_IN = 0.035
+# The turtledeck behind the RIO under the glass, to the exterior's spine.
+DECK_Z = 1.45
+DECK_END = 7.62
+# Consoles: (inner and outer x, s from and to, top z) of each seat's.
+# (They start behind the knee panels.)
+PILOT_CONSOLE = (0.27, 0.45, 4.50, 5.40, 0.80)
+RIO_CONSOLE = (0.25, 0.45, 6.02, 6.95, 0.86)
+# Seat: its cushion's top under the eye.
+SEAT_TOP = -0.80
+# The pilot's centre stick: its pivot on the floor, the kept grip raised on a shaft.
+STICK_S = 4.42
+STICK_RAISE = 0.36
+# The throttle on the pilot's left console: the handle at idle, its travel forward.
+THROTTLE = (-0.36, 4.74, PILOT_CONSOLE[4] + 0.089)
+THROTTLE_TRAVEL = 0.17
+# The pilot's HUD combiner on the glare shield: its distance ahead of the eye and its half
+# width, bottom and top off the eye: the Tornado's combiner at the same angular size
+# (AircraftSpec::hud_scale 2080 fits the symbology into it).
+HUD_Y = 0.78
+# The glass reaches lower than the Tornado's, down to its body on the shield (its frame only
+# clips the picture, the scale is the angular size across; the clipped corners are outside the
+# symbology's field, src/hud/modern.rs FIELD).
+HUD_GLASS = (0.18 * HUD_Y / 0.80, -0.165, 0.095 * HUD_Y / 0.80)
+# The combiner's clipped top corners (share of its half width, of its height).
+HUD_CLIP = (0.30, 0.22)
+HUD_BODY = (0.16, 0.09)
+HUD_BAR = 0.010
+# The glare shield's front edge (s) and its height there (centre, at its side).
+SHADE_FRONT = 3.45
+# Segments of the round parts (bezels, buttons, knobs): low-poly.
+ROUND = 16
+KNOB = 8
+PLATE = 0.004
+
+# --- keep, drop
+KEEP = (
+    "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
+    "black_549", "metal_550", "metal_551", "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
+)
+SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
+RAILS = ("black_549", "metal_550", "metal_551")
+
+
+def drop(o):
+    for c in list(o.children):
+        drop(c)
+    bpy.data.objects.remove(o, do_unlink=True)
+
+
+for o in list(root.children):
+    if not o.name.startswith(KEEP):
+        drop(o)
+old = set(root.children)
+
+# The kept parts to life size about the eye: positions and meshes, the controls' sizes.
+SIZE_PROPS = ("height", "travel", "grip")
+scaled = set()
+
+
+def scale(o, k):
+    o.location = o.location * k
+    if o.type == "MESH" and o.data.name not in scaled:
+        o.data.transform(Matrix.Scale(k, 4))
+        scaled.add(o.data.name)
+    for p in SIZE_PROPS:
+        if p in o.keys():
+            o[p] = o[p] * k
+    if "half" in o.keys():
+        o["half"] = [h * k for h in o["half"]]
+    for c in o.children:
+        scale(c, k)
+
+
+for o in old:
+    scale(o, 1.0 / F117_SCALE)
+objs = {o.name: o for o in root.children}
+
+# --- materials
+mats = bpy.data.materials
+
+
+def material(name, like):
+    m = mats.get(name)
+    if m is None:
+        m = mats[like].copy()
+        m.name = name
+    return m
+
+
+def coloured(name, like, rgb, roughness=None):
+    """A material of its own colour (not a shared one: the game takes its look from the model)."""
+    m = material(name, like)
+    m.diffuse_color = (*rgb, 1.0)
+    for nd in m.node_tree.nodes if m.use_nodes else ():
+        if nd.type == "BSDF_PRINCIPLED":
+            nd.inputs["Base Color"].default_value = m.diffuse_color
+            if roughness is not None:
+                nd.inputs["Roughness"].default_value = roughness
+    return m
+
+
+SCREENS = ("hsi", "screen_rwr", "screen_f14vdi", "screen_f14hsd", "screen_ddd", "screen_tid", "screen_ecmd")
+for n in SCREENS:
+    material(n, "adi")
+coloured("red", "yellow", (0.55, 0.04, 0.03))
+coloured("white", "yellow", (0.80, 0.80, 0.76))
+# A dark tube's glass (the other seat's dressing).
+coloured("tube", "yellow", (0.012, 0.022, 0.016), 0.2)
+
+
+# --- building blocks
+def quat(rot):
+    return rot if isinstance(rot, Quaternion) else rot.to_quaternion()
+
+
+def mesh_object(name, mesh, loc, rot=Euler((0, 0, 0)), parent=root, props=None):
+    o = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(o)
+    o.parent = parent
+    o.rotation_mode = "QUATERNION"
+    o.location = loc
+    o.rotation_quaternion = quat(rot)
+    for k, v in (props or {}).items():
+        o[k] = v
+    return o
+
+
+def empty(name, loc, rot=Euler((0, 0, 0)), parent=root, props=None):
+    o = bpy.data.objects.new(name, None)
+    bpy.context.scene.collection.objects.link(o)
+    o.parent = parent
+    o.rotation_mode = "QUATERNION"
+    o.location = loc
+    o.rotation_quaternion = quat(rot)
+    for k, v in (props or {}).items():
+        o[k] = v
+    return o
+
+
+def finish(name, bm, mat, smooth=False):
+    """The mesh of a bmesh (freed), with flat UVs where it has none."""
+    me = bpy.data.meshes.new(name)
+    uv = bm.loops.layers.uv.verify()
+    del uv
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(mats[mat])
+    if smooth:
+        for p in me.polygons:
+            p.use_smooth = True
+    return me
+
+
+def box_mesh(name, size, mat, centre=(0.0, 0.0, 0.0), rot=None):
+    bm = bmesh.new()
+    m = Matrix.Translation(centre) @ (rot.to_matrix().to_4x4() if rot is not None else Matrix.Identity(4)) @ Matrix.Diagonal((*size, 1.0))
+    bmesh.ops.create_cube(bm, size=1.0, matrix=m)
+    uv = bm.loops.layers.uv.new()
+    for f in bm.faces:
+        for i, l in enumerate(f.loops):
+            l[uv].uv = ((0, 0), (1, 0), (1, 1), (0, 1))[i % 4]
+    return finish(name, bm, mat)
+
+
+def quad_mesh(name, w, h, mat, y=0.0):
+    """A quad in the local XZ plane at local y (faces -Y), UVs 0..1 with (0, 0) bottom left."""
+    me = bpy.data.meshes.new(name)
+    v = [(-w / 2, y, -h / 2), (w / 2, y, -h / 2), (w / 2, y, h / 2), (-w / 2, y, h / 2)]
+    me.from_pydata(v, [], [(0, 1, 2, 3)])
+    uv = me.uv_layers.new()
+    for i, d in enumerate(uv.data):
+        d.uv = ((0, 0), (1, 0), (1, 1), (0, 1))[i]
+    me.materials.append(mats[mat])
+    return me
+
+
+def disc_mesh(name, r, mat, y=0.0, n=ROUND):
+    """An n-gon in the local XZ plane at local y (faces -Y); its UVs map the 0..1 square's
+    inscribed circle onto it, so a square texture face shows round."""
+    me = bpy.data.meshes.new(name)
+    v, uvs = [], []
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        v.append((r * math.cos(a), y, r * math.sin(a)))
+        uvs.append((0.5 + 0.5 * math.cos(a), 0.5 + 0.5 * math.sin(a)))
+    me.from_pydata(v, [], [tuple(range(n))])
+    uv = me.uv_layers.new()
+    for i, d in enumerate(uv.data):
+        d.uv = uvs[i]
+    me.materials.append(mats[mat])
+    return me
+
+
+def cylinder_mesh(name, r, h, mat, axis="-Y", centre=(0.0, 0.0, 0.0), n=KNOB):
+    """A closed cylinder of radius r and height h from `centre` along `axis` (local)."""
+    bm = bmesh.new()
+    rot = {"Z": Matrix.Identity(4), "-Y": Matrix.Rotation(math.radians(90.0), 4, "X")}[axis]
+    m = Matrix.Translation(centre) @ rot @ Matrix.Translation((0.0, 0.0, h / 2))
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=n, radius1=r, radius2=r, depth=h, matrix=m)
+    return finish(name, bm, mat)
+
+
+def box(name, mat, centre, size, rot=Euler((0, 0, 0)), parent=root):
+    return mesh_object(name, box_mesh(name, size, mat), centre, rot, parent=parent)
+
+
+def cbox(mat, x, s, z):
+    """A box between two corners of the cabin: (x0, x1), (s0, s1), (z0, z1)."""
+    a, b = C(x[0], s[0], z[0]), C(x[1], s[1], z[1])
+    return box(mat, mat, (a + b) / 2, (abs(b.x - a.x), abs(b.y - a.y), abs(b.z - a.z)))
+
+
+def loft(name, mat, sections, smooth=False):
+    """A closed solid through equal-length outlines (lists of points), capped at both ends."""
+    bm = bmesh.new()
+    rings = [[bm.verts.new(p) for p in sec] for sec in sections]
+    n = len(rings[0])
+    for a, b in zip(rings, rings[1:]):
+        for i in range(n):
+            j = (i + 1) % n
+            bm.faces.new((a[i], a[j], b[j], b[i]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return mesh_object(name, finish(name, bm, mat, smooth), (0, 0, 0))
+
+
+def rod(name, a, b, radius, mat, parent=root, n=KNOB):
+    """A cylinder from a to b (parent frame)."""
+    a, b = Vector(a), Vector(b)
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=radius, radius2=radius, depth=(b - a).length)
+    me = finish(name, bm, mat)
+    rot = Vector((0, 0, 1)).rotation_difference((b - a).normalized()).to_matrix().to_4x4()
+    me.transform(Matrix.Translation((a + b) / 2) @ rot)
+    return mesh_object(name, me, (0, 0, 0), parent=parent)
+
+
+# --- panel helpers (the live panel's layout)
+def point(u, v, offset=0.0):
+    return PANEL.point(u, v, offset)
+
+
+def rotation(u=0.0, v=0.0):
+    return PANEL.rot
+
+
+def centre(r):
+    x, y, w, h = r
+    return x + w / 2.0, y + h / 2.0
+
+
+def rect_point(r, offset=0.0):
+    return point(*centre(r), offset)
+
+
+def panel_box(name, mat, r, raise_m, margin=0.0, base=0.0):
+    """A plate from `base` to `base + raise_m` off the panel over the rectangle r (mm) grown by
+    `margin` mm."""
+    x, y, w, h = r
+    c = rect_point(r, base + raise_m / 2)
+    return box(name, mat, c, ((w + 2 * margin) / 1000, abs(raise_m), (h + 2 * margin) / 1000), PANEL.rot)
+
+
+def bezel(r, offset, height=0.008, lip=0.003, case="dark"):
+    """A round black bezel standing `height` out of the panel at `offset` round the rectangle r's
+    inscribed circle, the instrument's octagonal case behind it."""
+    x, y, w, h = r
+    me = cylinder_mesh("black", min(w, h) / 2000 + lip, height, "black", n=ROUND)
+    mesh_object("black", me, rect_point(r, offset), PANEL.rot)
+    flat = min(w, h) / 2000 + lip + 0.002
+    me = cylinder_mesh(case, flat / math.cos(math.pi / 8), offset + 0.003, case, n=8)
+    me.transform(Matrix.Rotation(math.pi / 8, 4, "Y"))
+    mesh_object(case, me, rect_point(r, 0.0), PANEL.rot)
+
+
+def face(key, r, offset, round=False):
+    """An atlas face over the rectangle r; round ones are discs in a bezel (the instruments)."""
+    x, y, w, h = r
+    if round:
+        bezel(r, offset)
+        me = disc_mesh("atlas", min(w, h) / 2000, "atlas")
+        offset += 0.0085
+    else:
+        me = quad_mesh("atlas", w / 1000, h / 1000, "atlas")
+    mesh_object("atlas", me, rect_point(r, offset), PANEL.rot, props={"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
+
+
+def highlight(c, hw, hh, height):
+    """The frame shown round a control while a fingertip touches it."""
+    hl = empty("highlight", (0, 0, 0), parent=c, props={"highlight": True})
+    t = 0.002
+    for (cx, cz, sx, sz) in ((0, hh + t, 2 * hw + 2 * t, t), (0, -hh - t, 2 * hw + 2 * t, t), (hw + t, 0, t, 2 * hh), (-hw - t, 0, t, 2 * hh)):
+        mesh_object("highlight", box_mesh("highlight", (sx, t, sz), "highlight"), (cx, -height, cz), parent=hl, props={"no_shadow": True})
+
+
+def control_name(effect):
+    return "control_" + "".join(ch if ch.isalnum() else "_" for ch in effect)
+
+
+def control(key, r, offset, effect, kind):
+    """A push button or key: origin on the surface, its face `height` out; a cap body under the
+    face and a highlight frame. A `twist` one (the steering pushbutton that latches in turned 45
+    degrees) stands taller with a grey body; a `lamp` one (a lit pushbutton) a dark one."""
+    x, y, w, h = r
+    hw, hh = w / 2000, h / 2000
+    height, travel = {"twist": (0.008, 0.004), "lamp": (0.007, 0.004)}.get(kind, (0.006, 0.004))
+    body = "frame" if kind == "twist" else "dark"
+    c = empty(control_name(effect), rect_point(r, offset), PANEL.rot, props={"control": effect, "kind": kind, "half": [hw, hh], "height": height, "travel": travel})
+    moving = empty("moving", (0, 0, 0), parent=c, props={"moving": True})
+    mesh_object("atlas", quad_mesh("atlas", 2 * hw, 2 * hh, "atlas", -height), (0, 0, 0), parent=moving, props={"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
+    mesh_object(body, box_mesh(body, (2 * hw, height - 0.0004, 2 * hh), body, (0, -(height - 0.0004) / 2, 0)), (0, 0, 0), parent=moving)
+    highlight(c, hw, hh, height)
+
+
+def switch(key, r, offset, effect):
+    """A toggle switch: its plate (the atlas face) on the surface, a collar and the lever (the
+    `moving` part, leaning to its position about the control's X)."""
+    x, y, w, h = r
+    hw, hh = w / 2000, h / 2000
+    c = empty(control_name(effect), rect_point(r, offset), PANEL.rot, props={"control": effect, "kind": "switch", "half": [hw, hh], "height": 0.014, "travel": 0.0})
+    mesh_object("atlas", quad_mesh("atlas", 2 * hw, 2 * hh, "atlas", -0.0004), (0, 0, 0), parent=c, props={"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
+    mesh_object("metal", cylinder_mesh("metal", 0.0045, 0.003, "metal", n=KNOB), (0, 0, 0), parent=c)
+    moving = empty("moving", (0, 0, 0), parent=c, props={"moving": True})
+    mesh_object("metal", box_mesh("metal", (0.0036, 0.017, 0.0036), "metal", (0.0, -0.0085, 0.0)), (0, 0, 0), parent=moving)
+    mesh_object("metal", cylinder_mesh("metal", 0.0028, 0.004, "metal", centre=(0.0, -0.015, 0.0), n=KNOB), (0, 0, 0), parent=moving)
+    highlight(c, hw, hh, 0.001)
+
+
+def knob_control(key, r, offset, effect):
+    """A rotary knob: a dark skirt, the knob (the `moving` part, turned to its position about
+    the control's face normal) with its top the atlas face (its index)."""
+    x, y, w, h = r
+    rad = min(w, h) / 2000
+    height = 0.014
+    c = empty(control_name(effect), rect_point(r, offset), PANEL.rot, props={"control": effect, "kind": "knob", "half": [rad, rad], "height": height, "travel": 0.0})
+    mesh_object("black", cylinder_mesh("black", rad + 0.002, 0.003, "black", n=ROUND), (0, 0, 0), parent=c)
+    moving = empty("moving", (0, 0, 0), parent=c, props={"moving": True})
+    mesh_object("dark", cylinder_mesh("dark", rad, height - 0.0004, "dark", n=ROUND), (0, 0, 0), parent=moving)
+    mesh_object("atlas", disc_mesh("atlas", rad, "atlas", -height), (0, 0, 0), parent=moving, props={"atlas_face": key, "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
+    highlight(c, rad, rad, 0.001)
+
+
+def plane_box(name, mat, r, d0, d1):
+    """A box over the rectangle r (layout mm) from d0 to d1 m off the panel plane."""
+    x, y, w, h = r
+    c = point(x + w / 2, y + h / 2, (d0 + d1) / 2)
+    return box(name, mat, c, (w / 1000, abs(d1 - d0), h / 1000), PANEL.rot)
+
+
+def frame(mat, outer, inner, d0, d1):
+    """A rectangular frame (layout mm, outer and inner rectangles) from d0 to d1 m off the
+    panel plane."""
+    ox, oy, ow, oh = outer
+    ix, iy, iw, ih = inner
+    for r in ((ox, oy, ow, iy - oy), (ox, iy + ih, ow, oy + oh - iy - ih), (ox, iy, ix - ox, ih), (ix + iw, iy, ox + ow - ix - iw, ih)):
+        plane_box(mat, mat, r, d0, d1)
+
+
+def knob(u, v, r=0.006, h=0.012, mat="metal", offset=0.0):
+    """A round knob standing out of the panel at layout (u, v) (dressing)."""
+    mesh_object(mat, cylinder_mesh(mat, r, h, mat, n=KNOB), point(u, v, offset), PANEL.rot)
+
+
+def panel_body(name, mat, panel, outline, depth):
+    """A panel's plate: its face on the panel plane from the outline (right half, mirrored), its
+    body `depth` m deep behind it."""
+    half = [(u, v) for u, v in outline]
+    loop = [(-u, v) for u, v in reversed(half[1:-1])] + half[1:-1]
+    loop = [(-half[0][0], half[0][1])] + loop if half[0][0] != 0.0 else loop
+    bm = bmesh.new()
+    front = [bm.verts.new(panel.point(u, v)) for u, v in loop]
+    back = [bm.verts.new(panel.point(u, v) - panel.normal * depth) for u, v in loop]
+    bm.faces.new(front)
+    bm.faces.new(back[::-1])
+    for i in range(len(loop)):
+        j = (i + 1) % len(loop)
+        bm.faces.new((front[i], back[i], back[j], front[j]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return mesh_object(name, finish(name, bm, mat), (0, 0, 0))
+
+
+def glass_section(s, zmax, inset, floor):
+    """The cabin's section at s inside the glass: from the left floor up the wall and the glass
+    (inset `inset` m) to zmax, across, down the right side to the floor."""
+    sill, hw, top = canopy(s)
+    zmax = min(zmax, top - inset)
+    right = [(hw - inset, floor), (hw - inset, sill)]
+    for t in (0.25, 0.45, 0.62, 0.76, 0.87, 0.95):
+        z = sill + (top - sill) * t
+        if z >= zmax:
+            break
+        right.append((glass_half(s, z) - inset, z))
+    right.append((max(glass_half(s, zmax) - inset, 0.02), zmax))
+    left = [(-x, z) for x, z in reversed(right)]
+    return [C(x, s, z) for x, z in left + right]
+
+
+# --- the tub: floors, walls up to the glass's sill, the canopy's rails
+cbox("dark", (-0.47, 0.47), (FRONT_S, STEP_S), (PILOT_FLOOR - 0.02, PILOT_FLOOR))
+cbox("dark", (-0.47, 0.47), (STEP_S, REAR_S + 0.02), (RIO_FLOOR - 0.02, RIO_FLOOR))
+cbox("dark", (-0.47, 0.47), (STEP_S - 0.02, STEP_S), (PILOT_FLOOR, RIO_FLOOR))
+STATIONS = [FRONT_S, 3.60, 3.88, 4.30, 4.80, 5.40, 6.20, 6.80, REAR_S]
+for side in (-1, 1):
+    wall, rail = [], []
+    for s in STATIONS:
+        sill, hw, _ = canopy(s)
+        xi = hw - WALL_IN
+        wall.append([C(side * a, s, b) for a, b in ((xi, PILOT_FLOOR - 0.02), (xi, sill + 0.004), (xi + 0.025, sill + 0.004), (xi + 0.025, PILOT_FLOOR - 0.02))])
+    for s in [2.95, 3.30] + STATIONS[1:] + [7.20, 7.55]:
+        sill, hw, _ = canopy(s)
+        xi = hw - WALL_IN
+        rail.append([C(side * a, s, b) for a, b in ((xi - 0.012, sill - 0.024), (xi - 0.012, sill + 0.012), (xi + 0.03, sill + 0.012), (xi + 0.03, sill - 0.024))])
+    loft("panel_grey", "panel_grey", wall)
+    loft("frame", "frame", rail)
+
+# The turtledeck behind the RIO: a bulkhead at REAR_S up to DECK_Z under the glass, its lid back
+# to the exterior's spine.
+loft("panel_grey", "panel_grey", [glass_section(s, DECK_Z - (s - REAR_S) * 0.05, 0.03, RIO_FLOOR) for s in (REAR_S, 7.30, 7.50, DECK_END)])
+
+# --- the canopy's frames from inside (the exterior's are cut away round the cockpit,
+# `CockpitView::cut` in src/aircraft.rs): the windscreen's bow, its two posts.
+# (A heavy arch: the real one carries the mirrors.)
+BOW_W = 0.085
+BOW_DEPTH = 0.042
+
+
+def bow(s, width, depth, inset=0.012):
+    """An arch from sill to sill just inside the glass at s, `width` m along the cabin."""
+    sill, hw, top = canopy(s)
+    # The glass's section from the right sill over the top to the left one.
+    pts = []
+    for i in range(25):
+        t = i / 24
+        z = sill + 0.012 + (top - sill - 0.012) * (1.0 - abs(1.0 - 2.0 * t)) ** 0.6
+        x = glass_half(s, z) * (1.0 if t < 0.5 else -1.0)
+        pts.append((x, z))
+    secs = []
+    for ds in (-width / 2, width / 2):
+        outer, inner = [], []
+        for x, z in pts:
+            d = Vector((x, 0.0, z - (sill + 0.05))).normalized() if abs(x) > 1e-6 or z > sill else Vector((0, 0, 1))
+            o = Vector((x, 0.0, z)) - d * inset
+            q = o - d * depth
+            outer.append(C(o.x, s + ds, o.z))
+            inner.append(C(q.x, s + ds, q.z))
+        secs.append((outer, inner))
+    bm = bmesh.new()
+    vs = [[[bm.verts.new(p) for p in row] for row in pair] for pair in secs]
+    m = len(pts)
+    for i in range(m - 1):
+        (fo, fi), (bo, bi) = vs
+        for quad in ((fo[i], fo[i + 1], bo[i + 1], bo[i]), (fi[i], bi[i], bi[i + 1], fi[i + 1]),
+                     (fo[i], fi[i], fi[i + 1], fo[i + 1]), (bo[i], bo[i + 1], bi[i + 1], bi[i])):
+            bm.faces.new(quad)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return mesh_object("frame", finish("frame", bm, "frame"), (0, 0, 0))
+
+
+bow(BOW_S + 0.03, BOW_W, BOW_DEPTH)
+# The windscreen's posts between its front pane and its side panes, along the glass.
+for side in (-1, 1):
+    a = (0.17, 3.02)
+    b = (0.20, BOW_S)
+    pts = []
+    for k in range(5):
+        f = k / 4
+        x, s = a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f
+        sill, hw, top = canopy(s)
+        # The height where the glass is x wide, a little inside it.
+        lo, hi = sill, top
+        for _ in range(30):
+            mid = (lo + hi) / 2
+            if glass_half(s, mid) > x:
+                lo = mid
+            else:
+                hi = mid
+        pts.append(C(side * (x - 0.006), s, lo - 0.008))
+    for p, q in zip(pts, pts[1:]):
+        rod("frame", p, q, 0.011, "frame", n=6)
+
+# The windscreen's front pane: an oval window in the heavy frame between the posts, from the
+# glare shield's front up to the bow (the frame lies on the inside of the glass).
+PANE_S = (3.50, 0.375)
+PANE_X = 0.165
+PANE_ROUND = 2.6
+PANE_THICK = 0.022
+
+
+def glass_z(s, x):
+    """The glass's height at s where it is x from the centre line (its sill where narrower)."""
+    sill, hw, top = canopy(s)
+    lo, hi = sill, top
+    for _ in range(30):
+        mid = (lo + hi) / 2
+        if glass_half(s, mid) > abs(x):
+            lo = mid
+        else:
+            hi = mid
+    return lo
+
+
+def pane_frame():
+    edge_s = (3.02, BOW_S + 0.02)
+
+    def edge_x(s):
+        return 0.17 + 0.03 * (s - 3.02) / (BOW_S - 3.02)
+
+    n = 40
+    inner, outer = [], []
+    for k in range(n):
+        a = 2 * math.pi * k / n
+        c, sn = math.cos(a), math.sin(a)
+        r = (abs(c) ** PANE_ROUND + abs(sn) ** PANE_ROUND) ** (-1.0 / PANE_ROUND)
+        inner.append((PANE_X * r * c, PANE_S[0] + PANE_S[1] * r * sn))
+        # Out along the same ray to the posts, the front or the bow.
+        t = 10.0
+        if abs(sn) > 1e-6:
+            t = min(t, ((edge_s[1] if sn > 0 else edge_s[0]) - PANE_S[0]) / (PANE_S[1] * sn))
+        if abs(c) > 1e-6:
+            # The posts' lines widen aft: step to where the ray meets them.
+            lo, hi = 0.0, t
+            for _ in range(30):
+                mid = (lo + hi) / 2
+                if abs(PANE_X * mid * c) < edge_x(PANE_S[0] + PANE_S[1] * mid * sn):
+                    lo = mid
+                else:
+                    hi = mid
+            t = lo
+        outer.append((PANE_X * t * c, PANE_S[0] + PANE_S[1] * t * sn))
+    bm = bmesh.new()
+
+    def ring(loop, drop_):
+        return [bm.verts.new(C(x, s_, glass_z(s_, x) - 0.010 - drop_)) for x, s_ in loop]
+
+    ti, to, bi, bo = ring(inner, 0.0), ring(outer, 0.0), ring(inner, PANE_THICK), ring(outer, PANE_THICK)
+    for k in range(n):
+        m = (k + 1) % n
+        for quad in ((ti[k], ti[m], to[m], to[k]), (bi[k], bo[k], bo[m], bi[m]), (ti[k], bi[k], bi[m], ti[m]), (to[k], to[m], bo[m], bo[k])):
+            bm.faces.new(quad)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    mesh_object("frame", finish("frame", bm, "frame"), (0, 0, 0))
+
+
+pane_frame()
+
+# --- the pilot's panel and glare shield (in both cockpits: from the back seat its glare shield
+# shows over the RIO's panel)
+panel_body("panel_grey", "panel_grey", PILOT_PANEL, PILOT_OUTLINE, PANEL_DEPTH)
+THICK = 0.014
+LIP = 0.035
+xs = [-0.44, -0.40, -0.366, -0.33, -0.28, -0.14, 0.0, 0.14, 0.28, 0.33, 0.366, 0.40, 0.44]
+
+
+def pilot_top_v(u):
+    """The pilot's panel's top edge (layout v) at layout u."""
+    a = abs(u)
+    half = PILOT_OUTLINE[1:-2]
+    if a <= half[0][0]:
+        return half[0][1]
+    return interp(half, a)[0]
+
+
+shade_back = [PILOT_PANEL.point(x * 1000, pilot_top_v(x * 1000)) + PILOT_PANEL.up * THICK + PILOT_PANEL.normal * LIP for x in xs]
+lip_low = [PILOT_PANEL.point(x * 1000, pilot_top_v(x * 1000)) + PILOT_PANEL.normal * LIP - PILOT_PANEL.up * 0.006 for x in xs]
+front_half = glass_half(SHADE_FRONT, 0.99) - 0.03
+shade_front = []
+for x in xs:
+    xf = x * front_half / 0.44
+    shade_front.append(C(xf, SHADE_FRONT, 0.99 + 0.05 * (1.0 - (xf / front_half) ** 2)))
+down = Vector((0.0, 0.0, -THICK))
+loft("black", "black", [[b, f, f + down, l] for b, f, l in zip(shade_back, shade_front, lip_low)])
+# Its cheeks down to the tub's walls.
+for side in (0, -1):
+    b, f = shade_back[side], shade_front[side]
+    cheek = [b, f, Vector((f.x, f.y, C(0, 0, 0.90).z)), Vector((b.x, b.y, C(0, 0, 0.90).z))]
+    loft("black", "black", [cheek, [p + Vector((0.012 if side == 0 else -0.012, 0, 0)) for p in cheek]])
+
+
+def shade_z(x, y):
+    """The glare shield's top at eye-frame (x, y)."""
+    X = x + EYE[0]
+    for i in range(len(xs) - 1):
+        if xs[i] <= X <= xs[i + 1]:
+            t = (X - xs[i]) / (xs[i + 1] - xs[i])
+            b = shade_back[i].lerp(shade_back[i + 1], t)
+            f = shade_front[i].lerp(shade_front[i + 1], t)
+            k = min(max((y - b.y) / (f.y - b.y), 0.0), 1.0)
+            return b.z + (f.z - b.z) * k
+    return shade_back[0].z
+
+
+# Under the pilot's panel: the knee wall and its lid; the rudder pedals.
+low_s, low_z = PILOT_PANEL.cabin(0.0, PILOT_OUTLINE[-1][1])
+cbox("dark", (-0.44, 0.44), (low_s - 0.12, low_s - 0.10), (PILOT_FLOOR, low_z))
+cbox("dark", (-0.44, 0.44), (low_s - 0.12, low_s + 0.004), (low_z - 0.02, low_z))
+for dx in (-0.12, 0.12):
+    cbox("black", (dx - 0.045, dx + 0.045), (low_s - 0.08, low_s - 0.065), (PILOT_FLOOR + 0.08, PILOT_FLOOR + 0.20))
+    cbox("frame", (dx - 0.008, dx + 0.008), (low_s - 0.095, low_s - 0.08), (PILOT_FLOOR, PILOT_FLOOR + 0.14))
+
+# --- the RIO's panel under its hood (in both cockpits: from the front seat its back shows)
+panel_body("panel_grey", "panel_grey", RIO_PANEL, RIO_OUTLINE, PANEL_DEPTH + 0.05)
+top_v = RIO_OUTLINE[0][1]
+# The radar section standing out of it (the DDD and its controls) and the shroud over its top
+# and down its sides: deep at the top, shallower at the radar section's foot.
+RP = RIO_PANEL
+
+
+def rio_slab(mat, corners):
+    """A solid through layout corners (u, v, m off the panel) given as sections of points."""
+    loft(mat, mat, [[RP.point(u, v, d) for u, v, d in sec] for sec in corners])
+
+
+ru, rt, rb = 344.0, top_v, RIO_RADAR_V
+rio_slab("panel_grey", [[(-ru, rt, 0.0), (-ru, rb, 0.0), (-ru, rb, RIO_RADAR_OUT), (-ru, rt, RIO_RADAR_OUT)],
+                        [(ru, rt, 0.0), (ru, rb, 0.0), (ru, rb, RIO_RADAR_OUT), (ru, rt, RIO_RADAR_OUT)]])
+deep, shallow, thick = RIO_RADAR_OUT + SHROUD, RIO_RADAR_OUT + 0.03, 14.0
+# Its top, a little longer in the middle, and its sides.
+rio_slab("black", [[(u, rt - thick, 0.0), (u, rt, 0.0), (u, rt, deep + k), (u, rt - thick, deep + k)]
+                   for u, k in ((-ru - thick, 0.0), (-ru * 0.5, 0.025), (ru * 0.5, 0.025), (ru + thick, 0.0))])
+for side in (-1, 1):
+    rio_slab("black", [[(side * u, rt - thick, 0.0), (side * u, rb + 30.0, 0.0), (side * u, rb + 30.0, shallow), (side * u, rt - thick, deep)]
+                       for u in (ru, ru + thick)])
+rlow_s, rlow_z = RIO_PANEL.cabin(0.0, RIO_OUTLINE[-1][1])
+cbox("dark", (-0.40, 0.40), (rlow_s - 0.10, rlow_s - 0.08), (RIO_FLOOR, rlow_z))
+cbox("dark", (-0.40, 0.40), (rlow_s - 0.10, rlow_s + 0.004), (rlow_z - 0.02, rlow_z))
+# The RIO's foot rests.
+for dx in (-0.12, 0.12):
+    cbox("black", (dx - 0.05, dx + 0.05), (rlow_s - 0.06, rlow_s - 0.04), (RIO_FLOOR, RIO_FLOOR + 0.10))
+
+# The live panel's knee panels: a wedge from the vertical panel under each sloped face.
+for knee, u0, u1, length in KNEES:
+    v0 = knee.top
+    secs = []
+    for u in (u0, u1):
+        a_, b_ = knee.point(u, v0), knee.point(u, v0 + length)
+        # Straight down the vertical panel under the fold to the level of the slope's foot.
+        foot = a_ + (-MAIN.up) * ((a_.z - b_.z) / MAIN.up.z)
+        secs.append([a_, b_, foot])
+    loft("panel_grey", "panel_grey", secs)
+
+# --- the consoles either side of each seat, with their fittings
+def fitting(c, p):
+    """A console fitting at p (on a panel's top): k / K small / large knob, t / T toggle leaning
+    forward / back, g red guard, r red button, b a keypad key, w a counter's window."""
+    if c in "kK":
+        r, h = (0.006, 0.010) if c == "k" else (0.009, 0.013)
+        mesh_object("dark", cylinder_mesh("dark", r + 0.003, 0.002, "dark", axis="Z", n=KNOB), p)
+        mesh_object("metal", cylinder_mesh("metal", r, h, "metal", axis="Z", n=KNOB), p + Vector((0.0, 0.0, 0.002)))
+    elif c in "tT":
+        mesh_object("dark", cylinder_mesh("dark", 0.005, 0.004, "dark", axis="Z", n=KNOB), p)
+        lean = Euler((math.radians(-30.0 if c == "t" else 30.0), 0.0, 0.0)).to_quaternion()
+        mesh_object("metal", box_mesh("metal", (0.004, 0.004, 0.016), "metal", (0.0, 0.0, 0.008), lean), p + Vector((0.0, 0.0, 0.003)))
+    elif c == "g":
+        mesh_object("red", box_mesh("red", (0.013, 0.022, 0.012), "red", (0.0, 0.0, 0.006)), p)
+    elif c == "r":
+        mesh_object("red", cylinder_mesh("red", 0.005, 0.006, "red", axis="Z", n=KNOB), p)
+    elif c == "b":
+        mesh_object("dark", box_mesh("dark", (0.011, 0.009, 0.005), "dark", (0.0, 0.0, 0.0025)), p)
+    elif c == "w":
+        mesh_object("tube", box_mesh("tube", (0.026, 0.010, 0.002), "tube", (0.0, 0.0, 0.001)), p)
+
+
+def console_panel(x0, x1, s0, s1, top, rows, h=0.006):
+    """A plate over x0..x1, s0..s1 (cabin, m) on a console, its fittings in rows from the front."""
+    cbox("black", (x0, x1), (s0, s1), (top, top + h))
+    for i, row in enumerate(rows):
+        s = s0 + (s1 - s0) * (i + 0.5) / len(rows)
+        for j, c in enumerate(row):
+            fitting(c, C(x0 + (x1 - x0) * (j + 0.5) / len(row), s, top + h))
+
+
+for (xin, xout, s0, s1, top), floor in ((PILOT_CONSOLE, PILOT_FLOOR), (RIO_CONSOLE, RIO_FLOOR)):
+    for side in (-1, 1):
+        x = sorted((side * xin, side * xout))
+        cbox("panel_grey", x, (s0, s1), (floor, top))
+        cbox("dark", (x[0] + 0.006, x[1] - 0.006), (s0 + 0.01, s1 - 0.01), (top, top + 0.004))
+PC = PILOT_CONSOLE[4] + 0.004
+RC = RIO_CONSOLE[4] + 0.004
+# The pilot's left console: the panels round the throttle; his right console: radios, lights.
+console_panel(-0.44, -0.28, 4.96, 5.16, PC, ["kKk", "tttt", "ww"])
+console_panel(-0.44, -0.41, 4.54, 4.92, PC, ["k", "t", "r"])
+console_panel(-0.44, -0.28, 5.20, 5.36, PC, ["tTtg", "kkk"])
+console_panel(0.28, 0.44, 4.54, 4.98, PC, ["ww", "kKKk", "tttt", "bbbbb"])
+console_panel(0.28, 0.44, 5.02, 5.36, PC, ["tgtg", "KkkK", "kttk"])
+# The RIO's: his left console's radios and navigation panels, the right one's.
+console_panel(-0.44, -0.26, 6.05, 6.24, RC, ["kKKk", "tttt"])
+console_panel(-0.44, -0.26, 6.28, 6.56, RC, ["kkk", "bbbbb", "bbbbb"])
+console_panel(-0.44, -0.26, 6.60, 6.90, RC, ["tTtg", "kkKk"])
+console_panel(0.26, 0.44, 6.05, 6.36, RC, ["tttt", "kKk", "bbbbb"])
+console_panel(0.26, 0.44, 6.40, 6.90, RC, ["kKk", "tttt", "ww", "kkk"])
+
+# The RIO's hand controller on its pedestal on the centre line under the TID: the pedestal's
+# box from the floor with its keys' plate, a boot, and the grip standing straight on it (no
+# shaft: in his cockpit it is the `stick`, sensing the hand's tilt).
+PED = (0.10, 5.87, 6.12, 0.70)
+cbox("panel_grey", (-PED[0], PED[0]), (PED[1], PED[2]), (RIO_FLOOR, PED[3]))
+cbox("black", (-PED[0] + 0.008, PED[0] - 0.008), (PED[1] + 0.008, PED[2] - 0.008), (PED[3], PED[3] + 0.004))
+for j_, c in enumerate("bbbb"):
+    fitting(c, C(-0.054 + 0.036 * j_, PED[1] + 0.035, PED[3] + 0.004))
+for j_, c in enumerate("tt"):
+    fitting(c, C(-0.07 + 0.14 * j_, PED[1] + 0.085, PED[3] + 0.004))
+hc = C(0.0, PED[2] - 0.085, PED[3] + 0.004)
+mesh_object("rubber", cylinder_mesh("rubber", 0.030, 0.022, "rubber", axis="Z", n=12), hc)
+HC_PIVOT = hc + Vector((0, 0, 0.018))
+hc_tip = hc + Vector((0.0, -0.006, 0.070))
+hc_parts = [
+    rod("rubber", hc + Vector((0.0, 0.0, 0.018)), hc_tip + Vector((0.0, -0.006, 0.032)), 0.019, "rubber", n=10),
+    mesh_object("red", cylinder_mesh("red", 0.005, 0.005, "red", axis="Z", n=KNOB), hc_tip + Vector((0.0, -0.006, 0.032))),
+]
+HC_GRIP = (hc_tip + Vector((0.0, -0.006, 0.005)) - HC_PIVOT).z
+
+# --- the live panel's displays
+scr = layout["screens"]
+
+
+def superellipse(theta, a, b, n):
+    c, s_ = abs(math.cos(theta)), abs(math.sin(theta))
+    return ((c / a) ** n + (s_ / b) ** n) ** (-1.0 / n)
+
+
+TUBE_N = 4.2
+TUBE_BULGE = 0.006
+SEG = 56
+
+
+def tube_mesh(name, a, b, mat, bulge=TUBE_BULGE, rings=7):
+    """A square tube's glass: a pillowed face inside the superellipse (half axes a, b, m) in the
+    local XZ plane, its middle `bulge` towards the crew (-Y), UVs 0..1 across its rectangle."""
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new()
+    coords = {}
+
+    def vert(k, i):
+        f = k / rings
+        th = 2 * math.pi * i / SEG
+        r = f * superellipse(th, a, b, TUBE_N)
+        v = bm.verts.new((r * math.cos(th), -bulge * (1.0 - f * f), r * math.sin(th)))
+        coords[v] = (0.5 + r * math.cos(th) / (2 * a), 0.5 + r * math.sin(th) / (2 * b))
+        return v
+
+    mid = bm.verts.new((0.0, -bulge, 0.0))
+    coords[mid] = (0.5, 0.5)
+    loops = [[vert(k, i) for i in range(SEG)] for k in range(1, rings + 1)]
+    for i in range(SEG):
+        j = (i + 1) % SEG
+        bm.faces.new((mid, loops[0][i], loops[0][j]))
+        for a_, b_ in zip(loops, loops[1:]):
+            bm.faces.new((a_[i], b_[i], b_[j], a_[j]))
+    for f in bm.faces:
+        for l in f.loops:
+            l[uv].uv = coords[l.vert]
+    return finish(name, bm, mat, smooth=True)
+
+
+def bezel_ring(name, mat, inner, outer, front, inner_back, outer_back):
+    """A bezel between two outlines (functions of the angle giving (x, z), m) in the local XZ
+    plane: its front face at local y -front, its inner wall back to -inner_back and its outer
+    wall back to -outer_back."""
+    bm = bmesh.new()
+    rows = []
+    for i in range(SEG):
+        th = 2 * math.pi * i / SEG
+        (ix, iz), (ox, oz) = inner(th), outer(th)
+        rows.append([bm.verts.new(p) for p in ((ix, -inner_back, iz), (ix, -front, iz), (ox, -front, oz), (ox, -outer_back, oz))])
+    for i in range(SEG):
+        a, b = rows[i], rows[(i + 1) % SEG]
+        for k in range(3):
+            bm.faces.new((a[k], a[k + 1], b[k + 1], b[k]))
+    return finish(name, bm, mat)
+
+
+def at_angle(a, b, n, cx=0.0, cz=0.0):
+    return lambda th: (cx + superellipse(th, a, b, n) * math.cos(th), cz + superellipse(th, a, b, n) * math.sin(th))
+
+
+def square_tube(mat, rect, margin, front, trackcam=False):
+    """A square tube (the VDI, the DDD): its pillowed face in a deep bezel `margin` mm wide
+    standing `front` m out of the panel, screws at its corners; the pod's picture (`trackcam`)
+    just behind the face when it shows through."""
+    x, y, w, h = rect
+    a, b = w / 2000, h / 2000
+    origin = rect_point(rect, 0.0)
+    mesh_object(mat, tube_mesh(mat, a, b, mat), rect_point(rect, PLATE + 0.004), PANEL.rot, props={"no_shadow": True})
+    if trackcam:
+        mesh_object("trackcam", quad_mesh("trackcam", w / 1000, h / 1000, "trackcam"), rect_point(rect, PLATE + 0.002), PANEL.rot, props={"no_shadow": True})
+    inner = at_angle(a + 0.0015, b + 0.0015, TUBE_N)
+    ha, hb = a + margin / 1000, b + margin / 1000
+    outer = at_angle(ha, hb, 12.0)
+    mesh_object("black", bezel_ring("black", "black", inner, outer, front, PLATE + 0.002, -0.001), origin, PANEL.rot)
+    rim = at_angle(ha + 0.004, hb + 0.004, 12.0)
+    mesh_object("dark", bezel_ring("dark", "dark", outer, rim, front - 0.006, 0.0, -0.001), origin, PANEL.rot)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            p = Vector((sx * (ha - 0.007), -front, sz * (hb - 0.007)))
+            mesh_object("metal", cylinder_mesh("metal", 0.003, 0.0015, "metal", n=KNOB), origin + PANEL.rot @ p, PANEL.rot)
+
+
+def round_screen(mat, r, offset, trackcam=False, lip=0.004, height=0.010):
+    """A round display (a CRT, a standby instrument): a disc in a bezel; the pod's picture
+    (`trackcam`, its circle) just behind it when it shows through (in front of the bezel's
+    closed cylinder, whose cap would hide it)."""
+    bezel(r, offset, height, lip)
+    rad = min(r[2], r[3]) / 2000
+    face = offset + height + (0.0012 if trackcam else 0.0005)
+    mesh_object(mat, disc_mesh(mat, rad, mat, n=40), rect_point(r, face), PANEL.rot, props={"no_shadow": True})
+    if trackcam:
+        mesh_object("trackcam", disc_mesh("trackcam", rad, "trackcam", n=40), rect_point(r, offset + height + 0.0006), PANEL.rot, props={"no_shadow": True})
+
+
+# The plates under the panel's groups.
+if RIO:
+    plates = [
+        ("black", (-344.0, -302.0, 688.0, 186.0)),  # the radar panel round the DDD
+        ("black", (-344.0, -100.0, 110.0, 196.0)),  # armament
+        ("black", (190.0, -102.0, 150.0, 210.0)),  # ECM
+        ("black", (126.0, 114.0, 218.0, 92.0)),  # LANTIRN
+        ("black", (-124.0, 136.0, 244.0, 44.0)),  # the TID's knobs
+        ("dark", (-340.0, 122.0, 196.0, 128.0)),  # the flight instruments
+    ]
+else:
+    plates = [
+        ("black", (-152.0, -272.0, 264.0, 78.0)),  # the ACM panel
+        ("black", (126.0, -272.0, 90.0, 104.0)),  # wing sweep
+        ("black", (94.0, 104.0, 250.0, 160.0)),  # DISPLAYS
+        ("dark", (-350.0, -182.0, 68.0, 56.0)),  # cautions
+        ("dark", (256.0, -182.0, 72.0, 56.0)),  # threats
+        ("black", (-352.0, 0.0, 66.0, 152.0)),  # the left knee panel
+        ("black", (-350.0, 158.0, 44.0, 106.0)),  # the gear handle's, low on the knee panel
+        ("black", (-256.0, 2.0, 174.0, 186.0)),  # the engine tapes and keys
+        ("black", (84.0, 0.0, 212.0, 88.0)),  # fuel
+    ]
+for mat, r in plates:
+    use(r)
+    panel_box(mat, mat, r, PLATE)
+
+
+def screen(build, name, *a, **k):
+    """A display built on its rectangle's panel."""
+    use(scr[name.removeprefix("screen_")])
+    build(name, scr[name.removeprefix("screen_")], *a, **k)
+
+
+if RIO:
+    screen(square_tube, "screen_ddd", 12.0, 0.020)
+    screen(round_screen, "screen_tid", PLATE, trackcam=True, lip=0.008, height=0.012)
+    # The ECMD: a square tube at the head of the right knee panel.
+    screen(square_tube, "screen_ecmd", 8.0, 0.014)
+    screen(round_screen, "adi", PLATE)
+else:
+    screen(square_tube, "screen_f14vdi", 14.0, 0.018, trackcam=True)
+    # The HSD is a square tube like the VDI (its bezel clear of the plates either side).
+    screen(square_tube, "screen_f14hsd", 11.0, 0.018)
+    screen(round_screen, "adi", PLATE)
+    screen(round_screen, "hsi", PLATE)
+    screen(round_screen, "screen_rwr", PLATE)
+
+# --- faces and controls
+for f in layout["faces"]:
+    r = f["rect"]
+    use(r)
+    off = PLATE
+    key = f["key"]
+    if f["control"] is None:
+        if key.startswith(("Item(Light(", "Item(Readout(", "Item(Lamp(", "Item(Led(", "Item(Gauge", "LedBars", "Item(GearLights", "Item(TomcatLight(", "Item(TomcatReadout(")):
+            # A light or window: a black frame round it.
+            x, y, w, h = r
+            frame("black", (x - 1.5, y - 1.5, w + 3.0, h + 3.0), (x, y, w, h), off - 0.001, off + 0.002)
+        face(key, r, off + 0.0005, f["round"])
+        if key.startswith("Item(Dial(") and not f["round"]:
+            # The tapes' and the fuel quantity's black window frames.
+            x, y, w, h = r
+            frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), off - 0.001, off + 0.004)
+    elif f["kind"] == "switch":
+        switch(key, r, off, f["control"])
+    elif f["kind"] == "knob":
+        knob_control(key, r, off, f["control"])
+    else:
+        control(key, r, off, f["control"], f["kind"])
+
+use()
+# --- dressing: what the layouts do not carry
+if RIO:
+    # The DDD's and TID's brightness knobs, the TID's cursor and offset knobs.
+    for u, v in ((-140.0, -110.0), (120.0, -110.0), (-140.0, 112.0), (140.0, 112.0)):
+        use(at=(u, v))
+        knob(u, v, 0.006, 0.010, "dark", offset=PLATE)
+else:
+    # The VDI's and HUD's brightness and trim knobs either side of the VDI, the fire warning
+    # handles at the ACM panel's corners.
+    for u, v in ((-86.0, -150.0), (-86.0, -60.0), (86.0, -150.0), (86.0, -60.0)):
+        use(at=(u, v))
+        knob(u, v, 0.006, 0.010, "dark", offset=PLATE)
+    use()
+    for u in (-200.0, 230.0):
+        mesh_object("yellow", box_mesh("yellow", (0.036, 0.006, 0.014), "yellow"), point(u, -190.0, PLATE + 0.003), PANEL.rot)
+
+use()
+# --- the kept parts
+# Seats: the cushion's top at SEAT_TOP under each eye, on a pedestal from the floor; the other
+# seat a copy without the handle's control.
+seat = [o for o in old if o.name.startswith(SEAT)]
+bpy.context.view_layer.update()
+cushion = min((o for o in seat if o.name.startswith("cushion_")), key=lambda o: o.location.z)
+cushion_top = max((cushion.matrix_world @ v.co).z for v in cushion.data.vertices)
+for o in seat:
+    o.location.z += SEAT_TOP - cushion_top
+bpy.context.view_layer.update()
+bottom = min((o.matrix_world @ v.co).z for o in seat if o.type == "MESH" for v in o.data.vertices)
+to_other = Vector((OTHER_EYE[0] - EYE[0], EYE[1] - OTHER_EYE[1], OTHER_EYE[2] - EYE[2]))
+floors = {EYE: RIO_FLOOR if RIO else PILOT_FLOOR, OTHER_EYE: PILOT_FLOOR if RIO else RIO_FLOOR}
+for shift, eye in ((Vector((0.0, 0.0, 0.0)), EYE), (to_other, OTHER_EYE)):
+    floor_z = floors[eye] - EYE[2]
+    box("dark", "dark", Vector((shift.x, shift.y - 0.06, (bottom + shift.z + floor_z) / 2)), (0.34, 0.30, bottom + shift.z - floor_z))
+
+
+def copy_of(o, loc):
+    """A copy of a mesh object (sharing its mesh) under the root at loc."""
+    c = o.copy()
+    bpy.context.scene.collection.objects.link(c)
+    c.parent = root
+    c.location = loc
+    return c
+
+
+for o in seat:
+    if o.type == "MESH":
+        copy_of(o, o.location + to_other)
+handle = objs["control_Action_Eject_"]
+for m in handle.children:
+    for part in m.children:
+        copy_of(part, handle.location + m.location + part.location + to_other)
+
+stick = objs["stick"]
+throttle = objs["throttle"]
+full = objs["throttle_full"]
+if RIO:
+    # The RIO has no flight controls: his hand controller is the `stick` (it slews the pod and
+    # the TID's cursor).
+    for c in list(stick.children):
+        drop(c)
+    stick.location = HC_PIVOT
+    for o in hc_parts:
+        o.parent = stick
+        o.location = o.location - HC_PIVOT
+    stick["grip"] = HC_GRIP
+    stick["tilt"] = True
+    for o in [throttle, full] + [objs[n] for n in RAILS] + [objs["control_Action_Gear_.001"]]:
+        drop(o)
+else:
+    # Centre stick: pivot on the floor on the centre line, the grip raised on a shaft, a boot.
+    pivot = C(0.0, STICK_S, PILOT_FLOOR + 0.01)
+    stick.location = pivot
+    for c in stick.children:
+        c.location.z += STICK_RAISE
+    stick["grip"] = float(stick["grip"]) + STICK_RAISE
+    rod("metal", (0, 0, 0), (0, 0, STICK_RAISE + 0.02), 0.011, "metal", stick)
+    rod("rubber", pivot, pivot + Vector((0, 0, 0.06)), 0.04, "rubber")
+    box("dark", "dark", pivot + Vector((0.0, 0.0, -0.004)), (0.12, 0.12, 0.008))
+    # Throttle: on the left console, the kept handle's travel lengthened, its rails along it.
+    move = C(*THROTTLE) - throttle.location
+    throttle.location = C(*THROTTLE)
+    full.location = throttle.location + Vector((0.0, THROTTLE_TRAVEL, 0.0))
+    y0, y1 = throttle.location.y - 0.03, full.location.y + 0.03
+    for n in RAILS:
+        o = objs[n]
+        o.data = o.data.copy()
+        vs = [v.co.y for v in o.data.vertices]
+        k = (y1 - y0) / (max(vs) - min(vs))
+        o.data.transform(Matrix.Diagonal((1.0, k, 1.0, 1.0)))
+        o.location = o.location + move
+        o.location.y = (y0 + y1) / 2
+    # The gear handle on the left knee panel.
+    g = objs["control_Action_Gear_.001"]
+    use(at=(-328.0, 211.0))
+    g.location = point(-328.0, 211.0, 0.0)
+    g.rotation_mode = "QUATERNION"
+    g.rotation_quaternion = PANEL.rot
+    use()
+
+# The HUD on the glare shield: its body sunk in the shield, the combiner glass (the pilot's
+# cockpit's HUD glass; from the back seat its frame only), the posts and the top bar round it.
+hud = next(o for n, o in objs.items() if n.startswith("hud_glass"))
+hud_y = C(0, PILOT_EYE[1], 0).y + HUD_Y
+hud_z = PILOT_EYE[2] - EYE[2]
+half_x, glass_lo, glass_hi = HUD_GLASS
+
+
+def hud_outline(grow=0.0):
+    """The combiner's outline (x, z) anticlockwise from the lower left as the pilot sees it: a
+    plate with its top corners clipped; `grow` m outside it."""
+    hx = half_x + grow
+    lo_z, hi_z = hud_z + glass_lo - grow, hud_z + glass_hi + grow
+    cx, cz = hx * HUD_CLIP[0], (hi_z - lo_z) * HUD_CLIP[1]
+    return [(-hx, lo_z), (hx, lo_z), (hx, hi_z - cz), (hx - cx, hi_z), (-hx + cx, hi_z), (-hx, hi_z - cz)]
+
+
+if RIO:
+    drop(hud)
+else:
+    # The kept glass's picture (its UVs across its rectangle) on the new outline.
+    me = hud.data
+    xs_ = [v.co.x for v in me.vertices]
+    zs_ = [v.co.z for v in me.vertices]
+    # (Without UVs the game lays the picture over the mesh's bounds: the outline's are the
+    # rectangle's.)
+    uvs = me.uv_layers.active.data if me.uv_layers.active else None
+    corner = {}
+    for l in me.loops if uvs else ():
+        co = me.vertices[l.vertex_index].co
+        corner[(co.x > (min(xs_) + max(xs_)) / 2, co.z > (min(zs_) + max(zs_)) / 2)] = uvs[l.index].uv.copy()
+    facing = sum((pl.normal.y for pl in me.polygons), 0.0)
+
+    def hud_uv(x, z):
+        tx = (x + half_x) / (2 * half_x)
+        tz = (z - hud_z - glass_lo) / (glass_hi - glass_lo)
+        low = corner[(False, False)].lerp(corner[(True, False)], tx)
+        high = corner[(False, True)].lerp(corner[(True, True)], tx)
+        return low.lerp(high, tz)
+
+    bm = bmesh.new()
+    outline = hud_outline()
+    vs = [bm.verts.new((x, hud_y, z)) for x, z in outline]
+    face_ = bm.faces.new(vs)
+    face_.normal_update()
+    if face_.normal.y * facing < 0.0:
+        face_.normal_flip()
+    if uvs:
+        uv = bm.loops.layers.uv.new()
+        for l in face_.loops:
+            l[uv].uv = hud_uv(l.vert.co.x, l.vert.co.z)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    new = bpy.data.meshes.new(me.name)
+    bm.to_mesh(new)
+    bm.free()
+    for m in me.materials:
+        new.materials.append(m)
+    hud.location = (0.0, 0.0, 0.0)
+    hud.data = new
+# Its arms: a thin strut up each side from the projector's body to the clipped corner.
+post_x = half_x + HUD_BAR / 2
+for sx in (-1, 1):
+    foot = shade_z(sx * post_x, hud_y)
+    top = hud_z + glass_hi - (glass_hi - glass_lo) * HUD_CLIP[1]
+    rod("frame", (sx * post_x, hud_y, foot), (sx * post_x, hud_y, top), HUD_BAR / 2, "frame", n=6)
+    rod("frame", (sx * post_x, hud_y, hud_z + glass_lo + 0.02), (sx * post_x * 0.9, hud_y + 0.07, foot), HUD_BAR / 2, "frame", n=6)
+hud_low = shade_z(0.0, hud_y + 0.03)
+body_top = hud_z + glass_lo - 0.004
+box("dark", "dark", (0.0, hud_y + HUD_BODY[1] / 2 - 0.01, (hud_low - 0.01 + body_top) / 2), (HUD_BODY[0], HUD_BODY[1], body_top - hud_low + 0.01))
+# The approach indexer left of the HUD on a stalk (the pilot's only).
+for o in [o for n, o in objs.items() if n.startswith("approach")]:
+    if RIO:
+        drop(o)
+        continue
+    at = Vector((-(post_x + 0.045), hud_y + 0.01, 0.0))
+    at.z = shade_z(at.x, at.y) + 0.06
+    o.location = at
+    box("dark", "dark", at + Vector((0, 0.007, 0)), (0.028, 0.010, 0.068))
+    box("dark", "dark", at + Vector((0, 0.007, -0.047)), (0.010, 0.010, 0.03))
+# Flood lamps: either side behind the head, one under the hood over the panel.
+objs["lamp"].location = Vector((-0.25, -0.05, -0.12))
+objs["lamp.001"].location = Vector((0.25, -0.05, -0.12))
+objs["lamp.002"].location = point(0.0, -150.0, 0.14)
+
+bpy.data.orphans_purge(do_recursive=True)
+bpy.context.view_layer.update()
+print(f"seat {'rio' if RIO else 'pilot'}: stick grip {stick['grip']:.3f} m at {tuple(round(c, 3) for c in stick.location)}; "
+      f"pilot panel bottom s {low_s:.3f} z {low_z:.3f}; RIO panel bottom s {rlow_s:.3f} z {rlow_z:.3f}; "
+      f"HUD y {hud_y:.3f} on the shield at z {hud_low + EYE[2]:.3f}")
+bpy.ops.wm.save_as_mainfile(filepath=out)
+print("built", out, "objects", len(bpy.data.objects))

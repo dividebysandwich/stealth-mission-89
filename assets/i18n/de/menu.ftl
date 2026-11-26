@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronischer Kampf, von den Trägern
         Stört die feindlichen Radare für den Angriff
         Zwei Sitze: Pilot und Waffensystemoffizier für elektronische Kampfführung
+aircraft-f14 =
+    .facts =
+        Trägergestützter Jäger zur Flottenverteidigung, zwei Mann hintereinander
+        Mach 1,9, Schwenkflügel, Phoenix-Raketen
+        Analoges Cockpit, die Radarschirme des RIO
 aircraft-a6 =
     .facts =
         Trägergestütztes Allwetter-Angriffsflugzeug, zwei Mann nebeneinander

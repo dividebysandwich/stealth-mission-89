@@ -143,6 +143,13 @@ pub struct MfdState {
     /// Modern avionics: the MFDs show `av`'s formats.
     pub modern: bool,
     pub av: crate::avionics::AvionicsState,
+    /// The F-14's LANTIRN picture is up on a display of this cockpit (None: not an F-14).
+    pub tomcat_tv: Option<bool>,
+    /// The F-14's TCS (the television camera under its nose) is the picture: where it is on
+    /// the aircraft (aircraft frame), where it looks (world) and its zoom step.
+    pub tcs: Option<(Vec3, Vec3, u8)>,
+    /// The F-14's FLIR picture is shown black hot (the cockpit's screens invert it).
+    pub black_hot: bool,
     /// The A-6's armament panel (`intruder::computer`): its release switch and interval
     /// counter set the stick of bombs (bombs a release, feet between them) instead of the
     /// weapons page, and its master arm switch holds the trigger while it is off.
@@ -179,6 +186,9 @@ impl Default for MfdState {
             cam_zoom: None,
             modern: false,
             av: default(),
+            tomcat_tv: None,
+            tcs: None,
+            black_hot: false,
             ccrp: false,
             air: false,
             ground: false,
@@ -196,6 +206,10 @@ impl MfdState {
     /// The tracking camera page is up (classic: the right MFD's camera page; modern: the
     /// targeting pod on either MFD).
     pub fn camera_shown(&self) -> bool {
+        // The F-14's: while its TID or VDI shows the LANTIRN's picture (`tomcat::avionics`).
+        if let Some(tv) = self.tomcat_tv {
+            return tv;
+        }
         if self.modern {
             self.slam_picture() || self.av.shown(crate::avionics::Format::Tgp).is_some()
         } else {
@@ -212,7 +226,8 @@ impl MfdState {
 
     /// The tracking camera's picture is FLIR: switched on, or a SLAM-ER's seeker (always).
     pub fn flir_on(&self) -> bool {
-        self.flir || self.slam_picture()
+        // (The F-14's TCS is a television camera.)
+        (self.flir && self.tcs.is_none()) || self.slam_picture()
     }
 
     /// The SLAM-ER page's report to the simulation (the F/A-18E with the modern avionics).

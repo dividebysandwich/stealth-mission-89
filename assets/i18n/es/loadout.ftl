@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Estación 1, ala izquierda exterior
 hardpoint-a6-2-left-inner-wing = Estación 2, ala izquierda interior
 hardpoint-a6-4-right-inner-wing = Estación 4, ala derecha interior
 hardpoint-a6-5-right-outer-wing = Estación 5, ala derecha exterior
+hardpoint-f14-1a-left-shoulder = Estación 1A, riel de hombro izquierdo
+hardpoint-f14-1b-left-glove = Estación 1B, pilón de la raíz del ala izquierdo
+hardpoint-f14-2-left-nacelle = Estación 2, góndola izquierda
+hardpoint-f14-3-left-front-tunnel = Estación 3, túnel delantero, izquierda
+hardpoint-f14-4-left-rear-tunnel = Estación 4, túnel trasero, izquierda
+hardpoint-f14-5-right-rear-tunnel = Estación 5, túnel trasero, derecha
+hardpoint-f14-6-right-front-tunnel = Estación 6, túnel delantero, derecha
+hardpoint-f14-7-right-nacelle = Estación 7, góndola derecha
+hardpoint-f14-8b-right-glove = Estación 8B, pilón de la raíz del ala derecho
+hardpoint-f14-8a-right-shoulder = Estación 8A, riel de hombro derecho
 hardpoint-c5-hold = Bodega de carga (palés de lanzamiento)
 hardpoint-ch47-cabin = Cabina (paracaidistas)
 weapon-role-21 = Aire-aire, guiado infrarrojo, alcance muy corto
@@ -233,5 +243,15 @@ weapon-role-37 = Misil antirradiación derivado del Sidewinder: radares y emplaz
 employment-37 =
     Alcance: 1-10 km
     Por debajo de 1000 ft asciende y cae en picado sobre el radar
+# AIM-54C Phoenix
+weapon-role-38 = Aire-aire, guiado por radar, largo alcance: hasta seis blancos a la vez
+employment-38 =
+    Alcance: 2-76 km, más de frente
+    El radar lo guía sobre su traza; su propio buscador desde 10 nmi (PH ACT: desde el riel)
+# AIM-7M Sparrow
+weapon-role-39 = Aire-aire, guiado radar semiactivo, medio alcance
+employment-39 =
+    Alcance: 1-31 km, más de frente
+    Mantenga el seguimiento de un solo blanco del radar hasta el impacto
 loadout-wingman = PUNTO
     .facts = Un punto IA en el mismo avión y con el mismo armamento se te une en el aire; el menú de radio (\) le da órdenes

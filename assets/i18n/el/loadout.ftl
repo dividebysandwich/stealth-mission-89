@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Θέση 1, αριστερή πτέρυγα ε�
 hardpoint-a6-2-left-inner-wing = Θέση 2, αριστερή πτέρυγα εσωτερικά
 hardpoint-a6-4-right-inner-wing = Θέση 4, δεξιά πτέρυγα εσωτερικά
 hardpoint-a6-5-right-outer-wing = Θέση 5, δεξιά πτέρυγα εξωτερικά
+hardpoint-f14-1a-left-shoulder = Θέση 1A, αριστερή πλευρική ράγα
+hardpoint-f14-1b-left-glove = Θέση 1B, αριστερός πυλώνας ρίζας πτέρυγας
+hardpoint-f14-2-left-nacelle = Θέση 2, αριστερή άτρακτος κινητήρα
+hardpoint-f14-3-left-front-tunnel = Θέση 3, εμπρός τούνελ, αριστερά
+hardpoint-f14-4-left-rear-tunnel = Θέση 4, πίσω τούνελ, αριστερά
+hardpoint-f14-5-right-rear-tunnel = Θέση 5, πίσω τούνελ, δεξιά
+hardpoint-f14-6-right-front-tunnel = Θέση 6, εμπρός τούνελ, δεξιά
+hardpoint-f14-7-right-nacelle = Θέση 7, δεξιά άτρακτος κινητήρα
+hardpoint-f14-8b-right-glove = Θέση 8B, δεξιός πυλώνας ρίζας πτέρυγας
+hardpoint-f14-8a-right-shoulder = Θέση 8A, δεξιά πλευρική ράγα
 hardpoint-c5-hold = Χώρος φορτίου (παλέτες ρίψης)
 hardpoint-ch47-cabin = Καμπίνα (αλεξιπτωτιστές)
 weapon-role-21 = Αέρος-αέρος, υπέρυθρη καθοδήγηση, πολύ μικρό βεληνεκές
@@ -233,5 +243,15 @@ weapon-role-37 = Αντιραδιοβολιακός πύραυλος από Side
 employment-37 =
     Εμβέλεια: 1-10 km
     Κάτω από 1.000 ft ανεβαίνει και εφορμά στο radar από ψηλά
+# AIM-54C Phoenix
+weapon-role-38 = Αέρος-αέρος, καθοδήγηση radar, μεγάλη εμβέλεια: έως έξι στόχοι ταυτόχρονα
+employment-38 =
+    Εμβέλεια: 2-76 km, μεγαλύτερη κατά μέτωπο
+    Το radar τον καθοδηγεί στο ίχνος του· η δική του κεφαλή από 10 nmi (PH ACT: από τη ράγα)
+# AIM-7M Sparrow
+weapon-role-39 = Αέρος-αέρος, ημιενεργή καθοδήγηση radar, μέση εμβέλεια
+employment-39 =
+    Εμβέλεια: 1-31 km, μεγαλύτερη κατά μέτωπο
+    Κρατήστε την παρακολούθηση μεμονωμένου στόχου του radar ως την πρόσκρουση
 loadout-wingman = ΣΜΗΝΙΑΣ
     .facts = Ένας σμηνίας ΤΝ στο ίδιο αεροσκάφος με τον ίδιο οπλισμό σε ακολουθεί στον αέρα· το μενού ασυρμάτου (\) του δίνει εντολές

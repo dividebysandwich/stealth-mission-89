@@ -140,7 +140,8 @@ fn tornado(
         };
         let spec = AircraftKind::Tornado.spec();
         let mut state = stage::flying();
-        let (r, l) = crate::aircraft::wing_slot_values(1.0, 25f32.to_radians(), 67f32.to_radians());
+        let w = spec.flight().aero.swing_wing.expect("a swing wing");
+        let (r, l) = crate::aircraft::wing_slot_values(1.0, w.forward, w.back);
         let (sr, sl) = crate::aircraft::WING_SLOTS;
         (state.0[sr], state.0[sl]) = (r, l);
         if let Some(e) = stage.model(stage::AIRCRAFT, spec.model, spec.model_lift, state) {

@@ -1,7 +1,8 @@
 //! Camera shake and airframe buffet (`Effects::shake`), all on the CPU: the gun firing, blasts
 //! near the aircraft (flak, bombs, kills, hits), the buffet approaching the stall, touchdowns and
-//! the rumble of the wheels on the ground. Short events add "trauma" that dies away; the gun,
-//! the buffet and the ground roll hold a level while they last.
+//! the rumble of the wheels on the ground, a missile's wake (`trails::WakeTurbulence`). Short
+//! events add "trauma" that dies away; the gun, the buffet, the wake and the ground roll hold a
+//! level while they last.
 //!
 //! On the desktop the head (cockpit views) or the camera (external views) jitters. In VR the
 //! head never moves (that makes people sick): the cockpit model jitters around it instead.
@@ -45,6 +46,8 @@ const VR_TRAVEL: f32 = 0.004;
 const GUN: f32 = 0.35;
 const BUFFET: f32 = 0.22;
 const GROUND: f32 = 0.09;
+/// A missile's wake at its worst (`trails::WakeTurbulence` 1): a hard rattle.
+const WAKE: f32 = 0.6;
 /// The buffet starts this far above the stall speed at the load pulled (ratio) and is full at
 /// it: about 85% of the angle of attack the limiter allows (the lift goes as the speed squared).
 const BUFFET_FROM: f32 = 1.08;
@@ -109,6 +112,7 @@ fn shake(
     combat: Option<Res<crate::combat::Combat>>,
     manning: Option<Res<crate::station::Manning>>,
     aircraft: Query<(&Aircraft, &WorldPos), With<Player>>,
+    wake: Option<Res<crate::trails::WakeTurbulence>>,
     mut head: Query<&mut Transform, (With<HeadAnchor>, Without<EyeCamera>)>,
     mut cam: Query<&mut Transform, (With<EyeCamera>, Without<HeadAnchor>)>,
     mut roots: Query<&mut Transform, (With<CockpitRoot>, Without<HeadAnchor>, Without<EyeCamera>)>,
@@ -152,6 +156,9 @@ fn shake(
     } else {
         let b = stall_buffet(a).min(1.0);
         held = held.max(BUFFET * b * b);
+        if let Some(w) = wake.as_deref() {
+            held = held.max(WAKE * w.0.min(1.0));
+        }
     }
     s.on_ground = a.on_ground;
     s.climb = a.climb_rate;

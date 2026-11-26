@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stația 1, aripa stângă exterioară
 hardpoint-a6-2-left-inner-wing = Stația 2, aripa stângă interioară
 hardpoint-a6-4-right-inner-wing = Stația 4, aripa dreaptă interioară
 hardpoint-a6-5-right-outer-wing = Stația 5, aripa dreaptă exterioară
+hardpoint-f14-1a-left-shoulder = Stația 1A, șina de umăr stângă
+hardpoint-f14-1b-left-glove = Stația 1B, pilonul stâng al rădăcinii aripii
+hardpoint-f14-2-left-nacelle = Stația 2, nacela stângă
+hardpoint-f14-3-left-front-tunnel = Stația 3, tunelul din față, stânga
+hardpoint-f14-4-left-rear-tunnel = Stația 4, tunelul din spate, stânga
+hardpoint-f14-5-right-rear-tunnel = Stația 5, tunelul din spate, dreapta
+hardpoint-f14-6-right-front-tunnel = Stația 6, tunelul din față, dreapta
+hardpoint-f14-7-right-nacelle = Stația 7, nacela dreaptă
+hardpoint-f14-8b-right-glove = Stația 8B, pilonul drept al rădăcinii aripii
+hardpoint-f14-8a-right-shoulder = Stația 8A, șina de umăr dreaptă
 hardpoint-c5-hold = Cală de marfă (paleți pentru parașutare)
 hardpoint-ch47-cabin = Cabină (parașutiști)
 weapon-role-21 = Aer-aer, ghidare în infraroșu, rază foarte scurtă
@@ -233,5 +243,15 @@ weapon-role-37 = Rachetă antiradiație din Sidewinder: radare și situri SAM, d
 employment-37 =
     Distanță: 1-10 km
     Sub 1 000 ft urcă și plonjează pe radar de sus
+# AIM-54C Phoenix
+weapon-role-38 = Aer-aer, ghidat radar, rază lungă: până la șase ținte deodată
+employment-38 =
+    Distanță: 2-76 km, mai mare din față
+    Radarul îl ghidează pe urma sa; propriul cap de căutare de la 10 nmi (PH ACT: de pe șină)
+# AIM-7M Sparrow
+weapon-role-39 = Aer-aer, ghidare radar semiactivă, rază medie
+employment-39 =
+    Distanță: 1-31 km, mai mare din față
+    Păstrați urmărirea radar a unei singure ținte până la impact
 loadout-wingman = COECHIPIER
     .facts = Un coechipier IA în același avion și cu același armament ți se alătură în aer; meniul radio (\) îi dă ordine

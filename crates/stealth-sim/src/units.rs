@@ -347,9 +347,20 @@ mod tests {
         assert_eq!(t.aircraft[crate::ai_missions::FA18E as usize].model, 79);
         assert_eq!(t.aircraft[crate::ai_missions::EA18G as usize].model, 81);
         assert_eq!(t.aircraft[crate::ai_missions::A6 as usize].model, 27);
-        assert_eq!(t.missiles.len(), 61);
+        // The blue F-14 (units.ron `f14_blue`): the friendly one, model 5.
+        let f14 = &t.aircraft[crate::ai_missions::F14 as usize];
+        assert_eq!((f14.model, f14.radar), (5, -1));
+        assert_eq!(t.missiles.len(), 63);
         assert_eq!(t.missiles[crate::naval::SEA_MISSILE_SPEC as usize].name, "3M-54");
-        assert_eq!((t.weapons.len(), t.compat.len()), (38, 38));
+        assert_eq!((t.weapons.len(), t.compat.len()), (40, 40));
+        // The F-14's Phoenix and Sparrow: the player's air-to-air seeker, the Phoenix reaching
+        // twice as far as the AMRAAM at least.
+        use crate::types::{PHOENIX_SPEC, PHOENIX_WEAPON, SPARROW_SPEC, SPARROW_WEAPON};
+        assert_eq!(t.weapons[PHOENIX_WEAPON as usize].spec as i32, PHOENIX_SPEC);
+        assert_eq!(t.weapons[SPARROW_WEAPON as usize].spec as i32, SPARROW_SPEC);
+        let (aim54, aim120) = (&t.missiles[PHOENIX_SPEC as usize], &t.missiles[22]);
+        assert_eq!((aim54.class, t.missiles[SPARROW_SPEC as usize].class), (7, 7));
+        assert!(aim54.lock_range >= 2 * aim120.lock_range);
         // The Mk 83 and the Mk 84 fall like the Mk 82 and do more to everything it harms.
         let (mk83, mk84) = (crate::types::MK83_WEAPON as usize, crate::types::MK84_WEAPON as usize);
         for (w, less) in [(mk83, 9), (mk84, mk83)] {

@@ -116,11 +116,60 @@ impl IntruderPanel {
 
 /// What of the panel went where, and when I last moved a control.
 #[derive(Default)]
-pub(super) struct Shared {
+pub(crate) struct Shared {
     /// The panel as it last agreed with the crew's.
     known: Option<[u8; 16]>,
     moved: Option<f32>,
     sent: f32,
+}
+
+/// Me and the crew's panel as the server has it (`CrewView::shared_panel`), when another player
+/// is aboard my aircraft or I am aboard his (None alone, or not in a crew). Newly in another's
+/// seat there is none yet either: the panel is the owner's as he has it (his comes first; mine
+/// sent now would swap the two).
+pub(crate) fn crew_panel(combat: &crate::combat::Combat) -> Option<(u8, Option<SharedPanel>)> {
+    let me = combat.sim.active_pilot();
+    let v = combat.sim.crew_view(me)?;
+    let other = if v.owner == me { v.gunner } else { Some(v.owner) };
+    other
+        .filter(|&o| o != me && (v.owner == me || v.shared_panel.is_some()))
+        .map(|_| (me, v.shared_panel))
+}
+
+/// A frame of the crew's one panel (any aircraft's, packed in 16 bytes): my panel `mine`
+/// against the server's `shared`. Returns the other seat's panel to take (unless I am just
+/// moving a control) and the command that sends mine (again until the server has it).
+pub(crate) fn share_step(
+    now: f32,
+    me: u8,
+    shared: Option<SharedPanel>,
+    mine: [u8; 16],
+    state: &mut Shared,
+) -> (Option<[u8; 16]>, Option<CrewCmd>) {
+    if state.known.is_some_and(|k| k != mine) {
+        state.moved = Some(now);
+    }
+    let moving = state.moved.is_some_and(|t| now - t < GRACE);
+    match shared {
+        // The other seat's, unless I am just moving a control.
+        Some(s) if s.by != me && s.bits != mine && !moving => {
+            state.known = Some(s.bits);
+            (Some(s.bits), None)
+        }
+        // Mine has not arrived (or a new crew has none yet): again.
+        _ if (moving || state.known.is_none())
+            && shared.is_none_or(|s| s.bits != mine)
+            && now - state.sent >= REPEAT =>
+        {
+            state.sent = now;
+            state.known = Some(mine);
+            (None, Some(CrewCmd::Panel(SharedPanel { by: me, bits: mine })))
+        }
+        _ => {
+            state.known = Some(mine);
+            (None, None)
+        }
+    }
 }
 
 /// The crew's one panel: a control I move goes to the server for the other seat, the other's
@@ -133,39 +182,18 @@ pub(super) fn share(
     mut panel: ResMut<IntruderPanel>,
     mut state: Local<Shared>,
 ) {
-    let crew = combat.as_deref().filter(|_| settings.aircraft == AircraftKind::A6).and_then(|c| {
-        let me = c.sim.active_pilot();
-        let v = c.sim.crew_view(me)?;
-        let other = if v.owner == me { v.gunner } else { Some(v.owner) };
-        other.filter(|&o| o != me).map(|_| (me, v.shared_panel))
-    });
+    let crew =
+        combat.as_deref().filter(|_| settings.aircraft == AircraftKind::A6).and_then(crew_panel);
     let (Some((me, shared)), Some(c)) = (crew, campaign.as_deref_mut()) else {
         *state = Shared::default();
         return;
     };
-    let now = time.elapsed_secs();
-    let mine = panel.pack();
-    if state.known.is_some_and(|k| k != mine) {
-        state.moved = Some(now);
+    let (take, send) = share_step(time.elapsed_secs(), me, shared, panel.pack(), &mut state);
+    if let Some(bits) = take {
+        panel.unpack(&bits);
     }
-    let moving = state.moved.is_some_and(|t| now - t < GRACE);
-    match shared {
-        // The other seat's, unless I am just moving a control.
-        Some(s) if s.by != me && s.bits != mine && !moving => {
-            panel.unpack(&s.bits);
-            state.known = Some(s.bits);
-        }
-        // Mine has not arrived (or a new crew has none yet): again.
-        _ if (moving || state.known.is_none())
-            && shared.is_none_or(|s| s.bits != mine)
-            && now - state.sent >= REPEAT =>
-        {
-            state.sent = now;
-            state.known = Some(mine);
-            let cmd = CrewCmd::Panel(SharedPanel { by: me, bits: mine });
-            c.actions.push(crate::campaign::Action::Crew(cmd));
-        }
-        _ => state.known = Some(mine),
+    if let Some(cmd) = send {
+        c.actions.push(crate::campaign::Action::Crew(cmd));
     }
 }
 

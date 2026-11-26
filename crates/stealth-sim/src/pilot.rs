@@ -74,6 +74,9 @@ pub struct Pilot {
     /// The aircraft is the A-6 Intruder (`SimOptions::intruder` for pilot 0): no cannon.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) intruder: bool,
+    /// The aircraft is the F-14B (`SimOptions::tomcat` for pilot 0).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) tomcat: bool,
     /// The AC-130's side guns.
     #[serde(default, skip_serializing_if = "crate::gunship::SideGuns::is_default")]
     pub(crate) side_guns: crate::gunship::SideGuns,
@@ -214,6 +217,11 @@ pub struct Pilot {
     /// Air lock on another pilot (`Commands::lock_pilot`), while `air_lock` is none.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) pilot_lock: Option<u8>,
+    /// This frame's report of what an air-to-air missile fired now goes for, where it is not
+    /// the air lock, and whether a Phoenix goes active off the rail (`PlayerState::launch_unit`,
+    /// `launch_pilot`, `ph_active`): taken in before the trigger, which `last_input` is not yet.
+    #[serde(skip)]
+    pub(crate) launch: (Option<u16>, Option<u8>, bool),
     pub(crate) targeting: TargetingState,
     /// Where the Sidewinder seeker following the helmet sight looks (`Sim::helmet_seeker`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -417,6 +425,7 @@ impl Sim {
             hornet: p0.hornet,
             growler: p0.growler,
             intruder: p0.intruder,
+            tomcat: p0.tomcat,
             hits: 2,
             air_lock: -1,
             gnd_lock: -1,

@@ -11,7 +11,8 @@
 //! `build_cockpit_ah64_cpg.py` (the gunner's, `cockpit_ah64_cpg.glb`), the MH-60R's by
 //! `build_cockpit_mh60r.py`, the F/A-18E's by `build_cockpit_fa18e.py`, the A-6's two by
 //! `build_cockpit_a6.py`: `cockpit_a6.glb`, the pilot's, and `cockpit_a6_bn.glb`, the
-//! bombardier/navigator's).
+//! bombardier/navigator's, the F-14's two by `build_cockpit_f14.py`: `cockpit_f14.glb`, the
+//! pilot's, and `cockpit_f14_rio.glb`, the radar intercept officer's).
 //!
 //! Every visible part comes from the model. The game binds behaviour to it by material name
 //! and by object custom properties (glTF extras):
@@ -40,6 +41,12 @@
 //!   indicator (both a round scope in its heading ring: UVs 0..1 over the ring's square, the
 //!   tube `intruder::scope::TUBE` of its radius) and his sensor scope's overlay, the pod's
 //!   picture (`trackcam`) a few millimetres behind it.
+//! * `screen_f14vdi`, `screen_f14hsd`, `screen_ddd`, `screen_tid`, `screen_ecmd`: the F-14's
+//!   displays (`tomcat::displays`): the pilot's vertical display indicator (a pillowed square
+//!   tube face, UVs 0..1 across it) and horizontal situation display, the radar intercept
+//!   officer's detail data display (square), tactical information display and electronic
+//!   countermeasures display (the round ones discs whose UVs map the inscribed circle of the
+//!   0..1 square); the pod's picture (`trackcam`) behind the TID and the VDI.
 //! * `hud_glass`: the HUD combiner glass (the HUD is drawn collimated through it).
 //! * `label_<TEXT>`: a side panel button label showing TEXT.
 //! * `legend_<TEXT>`: TEXT printed on the panel (a section's name, a placard), not a key.
@@ -47,7 +54,9 @@
 //!
 //! Object properties:
 //! * `control` (effect, e.g. `Action(Gear)`, `HudMode(1)`, `Osb(Left, 3)`; the A-6's
-//!   `Intruder(Flight(Land))`, `intruder::Key`), `kind` (cap, osb, side, gear, eject; the A-6's
+//!   `Intruder(Flight(Land))`, `intruder::Key`; the F-14's `Tomcat(Wcs(Rws))`, `tomcat::Key`),
+//!   `kind` (cap, osb, side, gear, eject; the F-14's `lamp`: a lit pushbutton sinking while it is
+//!   in; the A-6's
 //!   `twist`: a square pushbutton that latches in turned 45 degrees about its +Z, `switch`: a
 //!   toggle whose `moving` lever leans to its position about its X, `knob`: turned to its
 //!   position about its Z), `half` ([x, y] half size of the face in metres), `height` (face above
@@ -55,7 +64,8 @@
 //!   Its `moving` child is what moves when pressed; a `highlight` object under it is shown
 //!   while a VR fingertip touches the control.
 //! * `stick`, `throttle`: the levers (their origins: the stick pivot, the throttle handle at
-//!   idle; the stick's `grip`: its grip centre above the pivot, metres). `yoke` in place of
+//!   idle; the stick's `grip`: its grip centre above the pivot, metres; its `tilt`: it senses
+//!   the VR controller's tilt even on the centre line). `yoke` in place of
 //!   `stick` (the C-5M's): its column, its origin the floor pivot it swings fore and aft about,
 //!   with a `yoke_wheel` under it, its origin the wheel's hub, turning about its local Z; `anchor:
 //!   "throttle_full"`: the handle at full thrust; `anchor: "throttle_pivot"`: a collective's
@@ -203,6 +213,8 @@ impl<'a> Spawner<'a> {
         hud_materials: &'a mut Assets<HudGlassMaterial>,
         images: &'a mut Assets<Image>,
     ) -> Self {
+        let no_throttle = layout.style == super::layout::PanelStyle::F14Rio;
+        let default_anchors = CockpitAnchors::default();
         Self {
             mats,
             panel,
@@ -220,7 +232,21 @@ impl<'a> Spawner<'a> {
             images,
             modelled: HashMap::new(),
             left_trackcam_missing: false,
-            anchors: CockpitAnchors { eject_handle: false, ..default() },
+            anchors: CockpitAnchors {
+                eject_handle: false,
+                // The F-14's radar intercept officer has no throttle: none for a hand to take.
+                throttle_idle: if no_throttle {
+                    Vec3::splat(1.0e4)
+                } else {
+                    default_anchors.throttle_idle
+                },
+                throttle_full: if no_throttle {
+                    Vec3::splat(1.0e4)
+                } else {
+                    default_anchors.throttle_full
+                },
+                ..default_anchors
+            },
             faces: displays::atlas_faces(layout)
                 .into_iter()
                 .map(|(f, _)| (format!("{f:?}"), f))
@@ -338,6 +364,7 @@ impl<'a> Spawner<'a> {
             if let Some(g) = extras["grip"].as_f64() {
                 self.anchors.grip_height = g as f32;
             }
+            self.anchors.tilt_stick = extras["tilt"].as_bool() == Some(true);
         }
         if extras["yoke"].as_bool() == Some(true) {
             ec.insert((Yoke, tooltips::stick_tip()));
@@ -494,7 +521,8 @@ impl<'a> Spawner<'a> {
             }
             "screen_left" | "screen_right" | "screen_third" | "screen_fourth" | "adi"
             | "approach" | "screen_rwr" | "hsi" | "screen_tfr" | "ded" | "screen_lmpd"
-            | "screen_rmpd" | "screen_vdi" | "screen_phd" | "screen_dvri" | "screen_sensor" => {
+            | "screen_rmpd" | "screen_vdi" | "screen_phd" | "screen_dvri" | "screen_sensor"
+            | "screen_f14vdi" | "screen_f14hsd" | "screen_ddd" | "screen_tid" | "screen_ecmd" => {
                 let role = match name {
                     "screen_left" => CanvasRole::Left,
                     "screen_right" => CanvasRole::Right,
@@ -511,6 +539,11 @@ impl<'a> Spawner<'a> {
                     "screen_phd" => CanvasRole::Phd,
                     "screen_dvri" => CanvasRole::Dvri,
                     "screen_sensor" => CanvasRole::Sensor,
+                    "screen_f14vdi" => CanvasRole::F14Vdi,
+                    "screen_f14hsd" => CanvasRole::F14Hsd,
+                    "screen_ddd" => CanvasRole::Ddd,
+                    "screen_tid" => CanvasRole::Tid,
+                    "screen_ecmd" => CanvasRole::Ecmd,
                     _ => CanvasRole::Approach,
                 };
                 let (tex, m) =
@@ -530,12 +563,12 @@ impl<'a> Spawner<'a> {
             "trackcam_pip" => {
                 ec.insert(Visibility::Hidden);
                 still = false;
-                displays::trackcam_material(self.materials, self.tc_wide.as_ref())
+                displays::trackcam_material(self.materials, self.tc_wide.as_ref(), false)
             }
             "trackcam_wide" => {
                 ec.insert((TrackCamScreen(crate::mfd::MfdSide::Right), Visibility::Hidden));
                 still = false;
-                displays::trackcam_material(self.materials, self.tc_wide.as_ref())
+                displays::trackcam_material(self.materials, self.tc_wide.as_ref(), false)
             }
             "trackcam" | "trackcam_left" | "trackcam_third" | "trackcam_fourth" => {
                 let side = match name {
@@ -546,7 +579,11 @@ impl<'a> Spawner<'a> {
                 };
                 ec.insert((TrackCamScreen(side), Visibility::Hidden));
                 still = false;
-                displays::trackcam_material(self.materials, self.tc_image)
+                displays::trackcam_material(
+                    self.materials,
+                    self.tc_image,
+                    self.layout.style.mono_pod(),
+                )
             }
             "hud_glass" => {
                 let (tex, m) = displays::hud_material(
@@ -644,7 +681,11 @@ impl<'a> Spawner<'a> {
         if n.dot(-centre) < 0.0 {
             n = -n;
         }
-        let material = displays::trackcam_material(self.materials, self.tc_image);
+        let material = displays::trackcam_material(
+            self.materials,
+            self.tc_image,
+            self.layout.style.mono_pod(),
+        );
         let child = commands
             .spawn((
                 Mesh3d(mesh.clone()),
@@ -871,11 +912,9 @@ mod tests {
             .map(|(i, (face, rect))| {
                 let (control, kind) = match face {
                     Face::Osb(side, slot) => (Some(Effect::Osb(*side, *slot)), Some("osb")),
-                    // The A-6's controls: pushbuttons, switches and knobs.
+                    // The A-6's and the F-14's controls: pushbuttons, switches and knobs.
                     _ => match l.items.get(i).and_then(|p| p.cap) {
-                        Some(Effect::Intruder(key)) => {
-                            (Some(Effect::Intruder(key)), Some(key.kind()))
-                        }
+                        Some(e) if e.panel_kind().is_some() => (Some(e), e.panel_kind()),
                         cap => (cap, Some("cap")),
                     },
                 };
@@ -895,6 +934,7 @@ mod tests {
             screens[key] = r(&m.screen);
         }
         let a6 = l.a6.unwrap_or_default();
+        let f14 = l.f14.unwrap_or_default();
         for (rect, key) in [
             (l.ded, "ded"),
             (l.hsi, "hsi"),
@@ -906,6 +946,11 @@ mod tests {
             (a6.phd, "phd"),
             (a6.dvri, "dvri"),
             (a6.sensor, "sensor"),
+            (f14.vdi, "f14vdi"),
+            (f14.hsd, "f14hsd"),
+            (f14.ddd, "ddd"),
+            (f14.tid, "tid"),
+            (f14.ecmd, "ecmd"),
         ] {
             if let Some(rect) = rect {
                 screens[key] = r(&rect);
@@ -942,6 +987,8 @@ mod tests {
             (PanelStyle::Ea18gEwo, "cockpit_ea18g_ewo", "build_cockpit_ea18g_ewo"),
             (PanelStyle::A6, "cockpit_a6", "build_cockpit_a6"),
             (PanelStyle::A6Bn, "cockpit_a6_bn", "build_cockpit_a6"),
+            (PanelStyle::F14, "cockpit_f14", "build_cockpit_f14"),
+            (PanelStyle::F14Rio, "cockpit_f14_rio", "build_cockpit_f14"),
         ] {
             let path =
                 format!("{}/assets-src/blend/{name}_layout.json", env!("CARGO_MANIFEST_DIR"));
@@ -984,6 +1031,8 @@ mod tests {
             ("cockpit_ea18g_ewo", PanelStyle::Ea18gEwo),
             ("cockpit_a6", PanelStyle::A6),
             ("cockpit_a6_bn", PanelStyle::A6Bn),
+            ("cockpit_f14", PanelStyle::F14),
+            ("cockpit_f14_rio", PanelStyle::F14Rio),
         ] {
             let j = gltf_json(name);
             let nodes = j["nodes"].as_array().unwrap();
@@ -1009,21 +1058,41 @@ mod tests {
                     "screen_sensor",
                     "screen_rwr",
                 ],
+                // The F-14's: the pilot's VDI and HSD with the pod's picture behind the VDI,
+                // the standby attitude indicator, the BDHI and the radar warning scope; the
+                // RIO's DDD, TID (the pod's picture behind it) and ECMD, his standby attitude
+                // indicator.
+                PanelStyle::F14 => vec![
+                    "atlas",
+                    "adi",
+                    "hsi",
+                    "trackcam",
+                    "screen_f14vdi",
+                    "screen_f14hsd",
+                    "screen_rwr",
+                ],
+                PanelStyle::F14Rio => {
+                    vec!["atlas", "adi", "trackcam", "screen_ddd", "screen_tid", "screen_ecmd"]
+                }
                 _ => vec!["atlas", "screen_left", "screen_right", "adi", "trackcam"],
             };
-            if matches!(style, PanelStyle::A6 | PanelStyle::A6Bn) {
+            if matches!(
+                style,
+                PanelStyle::A6 | PanelStyle::A6Bn | PanelStyle::F14 | PanelStyle::F14Rio
+            ) {
                 for m in ["screen_left", "screen_right", "screen_third", "screen_fourth"] {
                     assert!(!materials.contains(&m), "{name}: an MFD ({m})");
                 }
             }
-            // The helicopters, the EA-18G's back seat and the A-6's right seat have no approach
-            // indexer.
+            // The helicopters, the EA-18G's back seat, the A-6's right seat and the F-14's back
+            // seat have no approach indexer.
             let approach = materials.contains(&"approach");
-            let indexer =
-                !style.helicopter() && !matches!(style, PanelStyle::Ea18gEwo | PanelStyle::A6Bn);
+            let indexer = !style.helicopter()
+                && !matches!(style, PanelStyle::Ea18gEwo | PanelStyle::A6Bn | PanelStyle::F14Rio);
             assert_eq!(approach, indexer, "{name}: approach indexer");
-            // The OH-58D, the RAH-66's gunner, the EA-18G's back seat and the A-6's
-            // bombardier/navigator have no HUD (the helicopters' helmet displays only).
+            // The OH-58D, the RAH-66's gunner, the EA-18G's back seat, the A-6's
+            // bombardier/navigator and the F-14's radar intercept officer have no HUD (the
+            // helicopters' helmet displays only).
             if !matches!(
                 style,
                 PanelStyle::Oh58
@@ -1031,6 +1100,7 @@ mod tests {
                     | PanelStyle::Rah66Cpg
                     | PanelStyle::Ea18gEwo
                     | PanelStyle::A6Bn
+                    | PanelStyle::F14Rio
             ) {
                 required.push("hud_glass");
             }
@@ -1095,17 +1165,28 @@ mod tests {
                     vec!["screen_third", "ded", "trackcam_left", "trackcam_third", "label_NEAR"]
                 }
                 PanelStyle::Classic => vec!["swatch", "label_MENU"],
-                PanelStyle::A6 | PanelStyle::A6Bn => Vec::new(),
+                PanelStyle::A6 | PanelStyle::A6Bn | PanelStyle::F14 | PanelStyle::F14Rio => {
+                    Vec::new()
+                }
             });
             for m in required {
                 assert!(materials.contains(&m), "{name}: no material {m}");
             }
             let has = |k: &str| extras.iter().filter(|x| x.get(k).is_some()).count();
-            // A stick, or a yoke (the C-5M's, the AC-130's) with its wheel.
+            // A stick (the F-14's radar intercept officer's hand controller), or a yoke (the
+            // C-5M's, the AC-130's) with its wheel.
             let yoke = matches!(style, PanelStyle::C5 | PanelStyle::C130);
             assert_eq!(has("stick"), !yoke as usize, "{name}: stick");
             assert_eq!(has("yoke"), yoke as usize, "{name}: yoke");
             assert_eq!(has("yoke_wheel"), yoke as usize, "{name}: yoke wheel");
+            // The F-14's radar intercept officer has no throttle.
+            if style == PanelStyle::F14Rio {
+                assert_eq!(has("throttle"), 0, "{name}: throttle");
+                assert!(extras.iter().any(|x| x["kind"] == "eject"), "{name}: ejection handle");
+                assert!(extras.iter().any(|x| x["control"] == "Action(Menu)"), "{name}: MENU");
+                faces_of(name, style, &extras);
+                continue;
+            }
             assert_eq!(has("throttle"), 1, "{name}: throttle");
             assert!(
                 extras.iter().any(|x| x["anchor"] == "throttle_full"),
@@ -1142,37 +1223,40 @@ mod tests {
                 "{name}: ejection handle"
             );
             assert!(extras.iter().any(|x| x["control"] == "Action(Menu)"), "{name}: MENU button");
-            assert!(
-                extras.iter().any(|x| x["control"] == "Action(MasterCaution)"),
-                "{name}: master caution button"
-            );
-            let keys: Vec<String> = atlas_faces(&PanelLayout::for_style(style))
-                .iter()
-                .map(|(f, _)| format!("{f:?}"))
-                .collect();
-            for x in &extras {
-                if let Some(c) = x["control"].as_str() {
-                    assert!(parse_effect(c).is_some(), "{name}: control {c}");
-                    assert!(
-                        super::super::controls::Control::from_model(x).is_some(),
-                        "{name}: control {x}"
-                    );
-                }
-                if let Some(f) = x["atlas_face"].as_str() {
-                    assert!(
-                        keys.iter().any(|k| k == f),
-                        "{name}: atlas face {f} not in the layout"
-                    );
-                }
+            faces_of(name, style, &extras);
+        }
+    }
+
+    /// A cockpit model has the master caution, its controls are all readable and its atlas
+    /// faces are its layout's (a generated one has every face of its layout).
+    fn faces_of(name: &str, style: PanelStyle, extras: &[&serde_json::Value]) {
+        assert!(
+            extras.iter().any(|x| x["control"] == "Action(MasterCaution)"),
+            "{name}: master caution button"
+        );
+        let keys: Vec<String> = atlas_faces(&PanelLayout::for_style(style))
+            .iter()
+            .map(|(f, _)| format!("{f:?}"))
+            .collect();
+        for x in extras {
+            if let Some(c) = x["control"].as_str() {
+                assert!(parse_effect(c).is_some(), "{name}: control {c}");
+                assert!(
+                    super::super::controls::Control::from_model(x).is_some(),
+                    "{name}: control {x}"
+                );
             }
-            if style != PanelStyle::Classic {
-                // The generated models have every face of their layouts.
-                for k in &keys {
-                    assert!(
-                        extras.iter().any(|x| x["atlas_face"].as_str() == Some(k)),
-                        "{name}: no atlas face {k}"
-                    );
-                }
+            if let Some(f) = x["atlas_face"].as_str() {
+                assert!(keys.iter().any(|k| k == f), "{name}: atlas face {f} not in the layout");
+            }
+        }
+        if style != PanelStyle::Classic {
+            // The generated models have every face of their layouts.
+            for k in &keys {
+                assert!(
+                    extras.iter().any(|x| x["atlas_face"].as_str() == Some(k)),
+                    "{name}: no atlas face {k}"
+                );
             }
         }
     }

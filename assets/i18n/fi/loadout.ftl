@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Asema 1, vasen ulkosiipi
 hardpoint-a6-2-left-inner-wing = Asema 2, vasen sisäsiipi
 hardpoint-a6-4-right-inner-wing = Asema 4, oikea sisäsiipi
 hardpoint-a6-5-right-outer-wing = Asema 5, oikea ulkosiipi
+hardpoint-f14-1a-left-shoulder = Asema 1A, vasen olkakisko
+hardpoint-f14-1b-left-glove = Asema 1B, vasen siiventyvipyloni
+hardpoint-f14-2-left-nacelle = Asema 2, vasen moottorigondoli
+hardpoint-f14-3-left-front-tunnel = Asema 3, etummainen tunneli, vasen
+hardpoint-f14-4-left-rear-tunnel = Asema 4, takimmainen tunneli, vasen
+hardpoint-f14-5-right-rear-tunnel = Asema 5, takimmainen tunneli, oikea
+hardpoint-f14-6-right-front-tunnel = Asema 6, etummainen tunneli, oikea
+hardpoint-f14-7-right-nacelle = Asema 7, oikea moottorigondoli
+hardpoint-f14-8b-right-glove = Asema 8B, oikea siiventyvipyloni
+hardpoint-f14-8a-right-shoulder = Asema 8A, oikea olkakisko
 hardpoint-c5-hold = Ruuma (pudotuslavat)
 hardpoint-ch47-cabin = Matkustamo (laskuvarjojääkärit)
 weapon-role-21 = Ilma-ilma, infrapunaohjaus, hyvin lyhyt kantama
@@ -233,5 +243,15 @@ weapon-role-37 = Sidewinderista tehty tutkantorjuntaohjus: tutkat ja SAM-asemat,
 employment-37 =
     Kantama: 1-10 km
     Alle 1 000 ft:n korkeudelta se nousee ja syöksyy tutkaan ylhäältä
+# AIM-54C Phoenix
+weapon-role-38 = Ilma-ilma, tutkaohjattu, pitkä kantama: jopa kuusi maalia kerralla
+employment-38 =
+    Kantama: 2-76 km, kauempana vastakkain
+    Tutka ohjaa sitä sen maalinseurantaan; oma hakupää 10 mpk:sta (PH ACT: heti kiskolta)
+# AIM-7M Sparrow
+weapon-role-39 = Ilma-ilma, puoliaktiivinen tutkahakeutuva, keskipitkä kantama
+employment-39 =
+    Kantama: 1-31 km, kauempana vastakkain
+    Pidä tutkan yksittäismaalin seuranta osumaan asti
 loadout-wingman = SIIPIMIES
     .facts = Tekoälysiipimies samalla koneella ja samoilla aseilla liittyy seuraasi ilmassa; radiovalikko (\) antaa sille käskyt

@@ -230,7 +230,7 @@ pub fn draw(c: &mut Canvas, kind: AircraftKind, e: &Eng) {
         }
         AircraftKind::F117 => sweep_arcs(c, w, top, e),
         AircraftKind::F16 => round_dials(c, w, top, e),
-        AircraftKind::Tornado => horizontal_bars(c, w, top, e),
+        AircraftKind::Tornado | AircraftKind::F14 => horizontal_bars(c, w, top, e),
         AircraftKind::A10 | AircraftKind::A6 => pointer_scales(c, w, top, bottom - 14.0, e),
         AircraftKind::AV8B => harrier(c, w, top, e),
         AircraftKind::AH1Z => horizontal_pointers(c, w, top, e),
@@ -969,7 +969,8 @@ mod tests {
             for (k2, p2) in &pages[i + 1..] {
                 // The F-22's own page is avionics' (this one is the RAH-66's fallback); the
                 // F/A-18E shares the RAH-66's two thick bars, the A-6 the A-10's pointer scales
-                // (its cockpit is the A-10's for now).
+                // (its cockpit is the A-10's for now), the F-14 the Tornado's bars (its cockpit
+                // is the Tornado's for now).
                 let own = |k: &AircraftKind| {
                     matches!(
                         k,
@@ -977,6 +978,7 @@ mod tests {
                             | AircraftKind::FA18E
                             | AircraftKind::EA18G
                             | AircraftKind::A6
+                            | AircraftKind::F14
                     )
                 };
                 if !own(k1) && !own(k2) {

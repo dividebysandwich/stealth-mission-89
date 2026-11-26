@@ -10,7 +10,7 @@
 //! Nor is the UH-60A's (`uh60`, the modern faces rearranged). Their models are generated from
 //! these layouts (`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`,
 //! `build_cockpit_uh60.py`, `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`,
-//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py`, `build_cockpit_fa18e.py`, `build_cockpit_ea18g_ewo.py` and `build_cockpit_a6.py` (the A-6's two cockpits, `a6_layout`) read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
+//! `build_cockpit_a10.py`, `build_cockpit_rah66.py`, `build_cockpit_av8b.py`, `build_cockpit_oh58.py`, `build_cockpit_ch47.py`, `build_cockpit_f22.py`, `build_cockpit_c5.py`, `build_cockpit_c130.py`, `build_cockpit_ah64.py`, `build_cockpit_ah64_cpg.py`, `build_cockpit_mh60r.py`, `build_cockpit_fa18e.py`, `build_cockpit_ea18g_ewo.py`, `build_cockpit_a6.py` (the A-6's two cockpits, `a6_layout`) and `build_cockpit_f14.py` (the F-14's two, `f14_layout`) read `assets-src/blend/cockpit_<name>_layout.json`, which a test keeps
 //! in step with the layouts).
 
 use crate::input::Action;
@@ -86,6 +86,17 @@ pub enum PanelStyle {
     /// view radar indicator (DVRI) in front of him with the sensor scope beside it, the radar
     /// controls under it and the computer keyboard on the pedestal between his knees.
     A6Bn,
+    /// The F-14B's pilot's (front) cockpit: no MFDs: the vertical display indicator (VDI) over
+    /// the horizontal situation display (HSD) in the middle of the panel, the round flight
+    /// instruments either side, the ACM panel over them, the engine tapes under them and the
+    /// DISPLAYS panel with its steering pushbuttons low on the right; a centre stick
+    /// (`f14_layout`).
+    F14,
+    /// The F-14B's radar intercept officer's (rear) cockpit: the detail data display (DDD) with
+    /// the radar's controls round it high on the panel, the large round tactical information
+    /// display (TID) under it, the armament, ECM and LANTIRN panels either side; no flight
+    /// controls, the hand controller on the right console.
+    F14Rio,
 }
 
 /// A rectangle in panel pixels.
@@ -127,6 +138,9 @@ pub enum Effect {
     /// A control of the A-6's cockpits (`intruder`): a square pushbutton that latches in turned
     /// 45 degrees, a switch, a knob or a key.
     Intruder(crate::intruder::Key),
+    /// A control of the F-14's cockpits (`tomcat`): the A-6's pushbuttons, a lit pushbutton, a
+    /// switch, a knob, a key or a thumbwheel.
+    Tomcat(crate::tomcat::Key),
 }
 
 /// The buttons of an air defence console or the drone command center's (`Console(Fire)`,
@@ -216,6 +230,10 @@ pub enum Elem {
     /// An A-6 advisory light and counter (`intruder`).
     Light(crate::intruder::Light),
     Readout(crate::intruder::Readout),
+    /// An F-14 control's face (`tomcat::draw_control`), its lights and readouts.
+    Tomcat(crate::tomcat::Key),
+    TomcatLight(crate::tomcat::Light),
+    TomcatReadout(crate::tomcat::Readout),
 }
 
 /// The glyphs of `Elem::Arrow`: the four directions and the arrow back (reset).
@@ -269,6 +287,13 @@ pub enum Dial {
     /// The F-117A's fuel quantity indicator: the total on a needle and a counter, the bingo
     /// fuel in a counter.
     FuelQuantity,
+    /// The F-14's wing sweep indicator: a vertical scale of 20 to 68 degrees, the wing's sweep
+    /// on a pointer, the sweep commanded (the schedule's, or the handle's) on a second one.
+    Sweep,
+    /// The F-14 RIO's antenna elevation indicator: a vertical scale of -60 to +60 degrees, the
+    /// antenna's elevation set (the keys and the thumbwheel's) and where it scans (the bars kept
+    /// inside the gimbals).
+    AntennaEl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -309,6 +334,22 @@ pub struct PanelLayout {
     pub rmpd: Option<PxRect>,
     /// The A-6's displays (`a6_layout`).
     pub a6: Option<A6Screens>,
+    /// The F-14's displays (`f14_layout`).
+    pub f14: Option<F14Screens>,
+}
+
+/// The F-14's displays: the pilot's vertical display indicator (VDI, a square tube) and his
+/// horizontal situation display (HSD, round), the radar intercept officer's detail data
+/// display (DDD, a square tube), tactical information display (TID, large and round) and
+/// electronic countermeasures display (ECMD, small and round). The round ones' rectangles are
+/// the tube's square.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct F14Screens {
+    pub vdi: Option<PxRect>,
+    pub hsd: Option<PxRect>,
+    pub ddd: Option<PxRect>,
+    pub tid: Option<PxRect>,
+    pub ecmd: Option<PxRect>,
 }
 
 /// The A-6's displays: the pilot's vertical display (the tube's face) and his horizontal
@@ -442,8 +483,13 @@ impl PanelStyle {
         )
     }
 
+    /// The pod's picture on its screens is black and white (the F-14's LANTIRN).
+    pub fn mono_pod(self) -> bool {
+        matches!(self, PanelStyle::F14 | PanelStyle::F14Rio)
+    }
+
     /// The cockpit's MFDs: 3 with a third (`MfdSide::Third`), 4 with a fourth too
-    /// (`MfdSide::Fourth`), none in the A-6.
+    /// (`MfdSide::Fourth`), none in the A-6 and the F-14.
     pub fn mfd_count(self) -> usize {
         match self {
             PanelStyle::F22
@@ -456,8 +502,8 @@ impl PanelStyle {
             | PanelStyle::Tornado
             | PanelStyle::Ah64Cpg
             | PanelStyle::Ea18gEwo => 3,
-            // The A-6 has none.
-            PanelStyle::A6 | PanelStyle::A6Bn => 0,
+            // The A-6 and the F-14 have none.
+            PanelStyle::A6 | PanelStyle::A6Bn | PanelStyle::F14 | PanelStyle::F14Rio => 0,
             _ => 2,
         }
     }
@@ -489,6 +535,8 @@ impl PanelLayout {
             PanelStyle::Ea18gEwo => Self::ea18g_ewo(),
             PanelStyle::A6 => Self::a6(),
             PanelStyle::A6Bn => Self::a6_bn(),
+            PanelStyle::F14 => Self::f14(),
+            PanelStyle::F14Rio => Self::f14_rio(),
         }
     }
 
@@ -695,6 +743,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -903,6 +952,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -1083,6 +1133,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -1172,6 +1223,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -1251,6 +1303,7 @@ impl PanelLayout {
             adi: rect(u.adi.x + DX, u.adi.y, u.adi.w, u.adi.h),
             rmpd: Some(rect(-685.0, -95.0, 130.0, 182.0)),
             a6: None,
+            f14: None,
             // Centred over the engine gauges (x -370..-278), its top level with the attitude
             // indicator's and the warning lights', 8 mm above them as they are apart.
             rwr: Some(rect(-360.0, -125.0, 72.0, 72.0)),
@@ -1521,6 +1574,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -1755,6 +1809,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -1998,6 +2053,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -2184,6 +2240,7 @@ impl PanelLayout {
             lmpd: Some(rect(-162.0, -176.0, 64.0, 90.0)),
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -2377,6 +2434,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -2477,6 +2535,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -2681,6 +2740,7 @@ impl PanelLayout {
             lmpd: Some(rect(279.0, -105.0, 72.0, 101.0)),
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -2870,6 +2930,7 @@ impl PanelLayout {
             lmpd: Some(rect(258.0, -108.0, 72.0, 101.0)),
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -3008,6 +3069,7 @@ impl PanelLayout {
             lmpd: Some(rect(-378.0, -44.0, 100.0, 140.0)),
             rmpd: Some(rect(278.0, -44.0, 100.0, 140.0)),
             a6: None,
+            f14: None,
         }
     }
 
@@ -3150,6 +3212,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 
@@ -3514,6 +3577,7 @@ impl PanelLayout {
             lmpd: None,
             rmpd: None,
             a6: None,
+            f14: None,
         }
     }
 }
@@ -3544,7 +3608,7 @@ mod tests {
     use super::*;
     use crate::mfd::{MfdState, RightMfd, osb};
 
-    fn all() -> [PanelLayout; 22] {
+    fn all() -> [PanelLayout; 24] {
         [
             PanelLayout::classic(),
             PanelLayout::modern(),
@@ -3568,6 +3632,8 @@ mod tests {
             PanelLayout::ea18g_ewo(),
             PanelLayout::a6(),
             PanelLayout::a6_bn(),
+            PanelLayout::f14(),
+            PanelLayout::f14_rio(),
         ]
     }
 
@@ -3579,6 +3645,8 @@ mod tests {
             rects.push(l.adi);
             rects.extend(l.rwr.iter().chain(&l.hsi).chain(&l.tfr).chain(&l.ded));
             rects.extend(l.lmpd.iter().chain(&l.rmpd));
+            let f14 = l.f14.unwrap_or_default();
+            rects.extend([f14.vdi, f14.hsd, f14.ddd, f14.tid, f14.ecmd].into_iter().flatten());
             for m in &l.mfds {
                 rects.push(m.screen);
                 rects.extend(l.osbs(m).into_iter().map(|(_, r)| r));

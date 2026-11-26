@@ -587,8 +587,8 @@ pub struct InputConfig {
 /// and /). 14: the RWR priority and target separate keys (Alt + W, Alt + E). 15: the helmet
 /// display mode key (H). 16: the HUD colour key (Shift + H). 17: the padlock and fly-by view keys
 /// (Shift + P, Shift + F12). 18: the cursor slew keys, fixed before (the keypad). 19: the radar
-/// antenna elevation keys (Alt + PageUp / PageDown).
-const VERSION: u32 = 19;
+/// antenna elevation keys (Alt + PageUp / PageDown). 20: the wing sweep keys (Alt + G / F / H).
+const VERSION: u32 = 20;
 
 impl Default for InputConfig {
     fn default() -> Self {

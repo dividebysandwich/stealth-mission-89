@@ -32,6 +32,9 @@ const AIR_LOCK: i32 = 64;
 /// Air-to-air: farthest range searched, the farthest the radar locks on from (select_air; a
 /// missile fired head-on at a fast target reaches well beyond the oval's lock range).
 const AIR_SEARCH: i32 = 0x12C0;
+/// The Phoenix's: the AWG-9 tracks far beyond, and the Phoenix reaches some 150 km (map units,
+/// about 176 km).
+const PHOENIX_SEARCH: i32 = 0x2C00;
 /// Map units an aircraft target draws away from a missile's closest approach before the
 /// missile counts as beaten (more than the rounding of the positions).
 const DRAWING_AWAY: i32 = 4;
@@ -208,7 +211,8 @@ impl Sim {
             let d = (r / NEAR_MISS_SPREAD).max(NEAR_MISS_MIN);
             hits(r, v) || (hits(r - d, v) && hits(r + d, v))
         };
-        let zone = find_zone(AIR_SEARCH, 1, |r| at(r, tg.v));
+        let search = if spec == PHOENIX_SPEC { PHOENIX_SEARCH } else { AIR_SEARCH };
+        let zone = find_zone(search, 1, |r| at(r, tg.v));
         // Turning tail: away from the launch at its speed.
         let vh = tg.v[0].hypot(tg.v[1]);
         let away = [ux * vh, uy * vh, tg.v[2]];

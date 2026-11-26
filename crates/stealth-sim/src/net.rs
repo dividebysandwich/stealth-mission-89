@@ -81,6 +81,11 @@ pub struct RemotePilot {
     /// The A-6 Intruder (with `external_stores`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub intruder: bool,
+    /// The F-14B Tomcat (with `external_stores`), and its wings' sweep (0 forward .. 255 back).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tomcat: bool,
+    #[serde(default)]
+    pub sweep: u8,
     pub gun_firing: bool,
     /// Where his turret points while it fires (BAM heading, pitch), else along the nose.
     pub gun_aim: Option<(i32, i32)>,
@@ -105,8 +110,8 @@ pub struct RemotePilot {
 /// bay doors, parachute, missiles by slot, the live countermeasures by slot, the turret's aim,
 /// the nozzle angle, the OH-58D's pylons (left in the low four bits), a jet's stores, more
 /// aircraft types (bit 0 the F-22A, bit 1 the C-5, bit 2 the AC-130, bit 3 the AH-64, bit 4
-/// the MH-60R, bit 5 the F/A-18E, bit 6 the EA-18G, bit 7 the A-6: the byte's last free bit, the
-/// next type needs another), the catapult launch.
+/// the MH-60R, bit 5 the F/A-18E, bit 6 the EA-18G, bit 7 the A-6), the catapult launch, still
+/// more aircraft types (bit 0 the F-14B), a swing wing's sweep.
 
 #[derive(Serialize, Deserialize)]
 struct RemoteWire(
@@ -121,6 +126,8 @@ struct RemoteWire(
     #[serde(default)] u8,
     #[serde(default)] u8,
     #[serde(default)] Vec<(u8, u8)>,
+    #[serde(default)] u8,
+    #[serde(default)] u8,
     #[serde(default)] u8,
     #[serde(default)] u8,
 );
@@ -169,6 +176,8 @@ impl From<RemotePilot> for RemoteWire {
                 | (p.growler as u8) << 6
                 | (p.intruder as u8) << 7,
             p.catapult,
+            p.tomcat as u8,
+            p.sweep,
         )
     }
 }
@@ -189,6 +198,8 @@ impl From<RemoteWire> for RemotePilot {
             stores,
             kinds,
             catapult,
+            kinds2,
+            sweep,
         ) = w;
         let [wx, wy, mx, my, alt, view_z, heading, pitch, roll, velocity, knots, climb] = v;
         let bit = |k: u8| flags & (1 << k) != 0;
@@ -243,6 +254,8 @@ impl From<RemoteWire> for RemotePilot {
             hornet: kinds & 32 != 0,
             growler: kinds & 64 != 0,
             intruder: kinds & 128 != 0,
+            tomcat: kinds2 & 1 != 0,
+            sweep,
             gun_aim,
             catapult,
             chute,
@@ -475,6 +488,8 @@ impl Sim {
                     hornet: p.hornet,
                     growler: p.growler,
                     intruder: p.intruder,
+                    tomcat: p.tomcat,
+                    sweep: if p.tomcat { p.last_input.sweep } else { 0 },
                     gun_firing: p.gun_firing,
                     gun_aim: p.gun_aim,
                     burning: p.fire_frames > 0 || p.breakup_frames > 0,

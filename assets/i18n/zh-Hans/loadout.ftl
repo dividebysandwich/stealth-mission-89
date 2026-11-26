@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = 1 号挂点，左外翼
 hardpoint-a6-2-left-inner-wing = 2 号挂点，左内翼
 hardpoint-a6-4-right-inner-wing = 4 号挂点，右内翼
 hardpoint-a6-5-right-outer-wing = 5 号挂点，右外翼
+hardpoint-f14-1a-left-shoulder = 1A 号挂点，左肩部导轨
+hardpoint-f14-1b-left-glove = 1B 号挂点，左翼套挂架
+hardpoint-f14-2-left-nacelle = 2 号挂点，左发动机舱
+hardpoint-f14-3-left-front-tunnel = 3 号挂点，前隧道，左侧
+hardpoint-f14-4-left-rear-tunnel = 4 号挂点，后隧道，左侧
+hardpoint-f14-5-right-rear-tunnel = 5 号挂点，后隧道，右侧
+hardpoint-f14-6-right-front-tunnel = 6 号挂点，前隧道，右侧
+hardpoint-f14-7-right-nacelle = 7 号挂点，右发动机舱
+hardpoint-f14-8b-right-glove = 8B 号挂点，右翼套挂架
+hardpoint-f14-8a-right-shoulder = 8A 号挂点，右肩部导轨
 hardpoint-c5-hold = 货舱 (空投货盘)
 hardpoint-ch47-cabin = 机舱（伞兵）
 weapon-role-21 = 空对空，红外制导，射程很短
@@ -233,5 +243,15 @@ weapon-role-37 = 由响尾蛇改成的反辐射导弹：打击雷达和 SAM 阵�
 employment-37 =
     射程：1-10 km
     低于 1,000 ft 发射时先跃升，再从上方俯冲攻击雷达
+# AIM-54C Phoenix
+weapon-role-38 = 空对空，雷达制导，远程：同时最多六个目标
+employment-38 =
+    射程：2-76 km，迎头时更远
+    雷达沿航迹制导；10 海里起使用自身导引头（PH ACT：离轨即主动）
+# AIM-7M Sparrow
+weapon-role-39 = 空对空，半主动雷达制导，中程
+employment-39 =
+    射程：1-31 km，迎头时更远
+    保持雷达单目标跟踪直到命中
 loadout-wingman = 僚机
     .facts = 一架同型号、同挂载的AI僚机在你升空后加入;用无线电菜单(\)下达命令

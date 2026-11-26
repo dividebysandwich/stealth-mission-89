@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektroniskais uzbrukums, no aviobāzes kuģiem
         Traucē ienaidnieka radarus triecienam
         Divas sēdekļi: pilots un elektroniskās karadarbības virsnieks
+aircraft-f14 =
+    .facts =
+        Bāzeskuģa flotes aizsardzības iznīcinātājs, divi apkalpes locekļi viens aiz otra
+        Mach 1,9, mainīgas bultveidības spārni, Phoenix raķetes
+        Analoga kabīne, RIO radara ekrāni
 aircraft-a6 =
     .facts =
         Bāzeskuģu visu laikapstākļu triecienlidmašīna, divi apkalpes locekļi blakus

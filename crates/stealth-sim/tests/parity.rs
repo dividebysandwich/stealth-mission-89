@@ -286,7 +286,7 @@ fn single_player_parity() {
     const GOLDEN: &[u64] = &[
         0xa3583fea5eb2e362,
         0xade78a138f8d0210,
-        0xa0473c02306b51d2,
+        0xb76af7e7bcc7e3c1,
         0x3053710436c79053,
         0xcc2ab195a7125cd3,
         0x335ca86d5d3d6f0a,
@@ -301,16 +301,16 @@ fn single_player_parity() {
         0xb8b97b566cb6662d,
         0xc31a08c5a082ca69,
         0x3c452085b9fd0977,
-        0xabc1ea865671b662,
-        0x63f745e2eb9fc6a0,
-        0x2039091c2609bfbb,
-        0x0dcf4006b5658edb,
+        0x80d996530998f0f7,
+        0x9ed563569a85ae5e,
+        0x5754d69bf3afc67c,
+        0x4492427166e9e08e,
         0x10f285f008caabe0,
         0x478014abef43713d,
-        0x96c60321f426e0bf,
-        0x0843d028a7d0f3af,
+        0xdb1a9c673f327b3e,
+        0xbec0866a1c786770,
         0x5b5fc1045d1f7d0a,
-        0x1de77078ff05cb32,
+        0x78bc0a196b4bb258,
         0x25da7b9d5cfce308,
     ];
     let mut got = missions();
@@ -325,12 +325,12 @@ fn single_player_parity() {
 fn ai_flight_parity() {
     const GOLDEN: &[u64] = &[
         0xd3b91c4fb2c9e2e7,
-        0xfbe43a839afe59f3,
+        0xce94a36e7e0d55ac,
         0x7bd690fe1aa44370,
         0x22890021c3f0f1e2,
         0x91367a8bd06a5a90,
         0x06c86a8c060e8190,
-        0xe9978ed9ec3a1594,
+        0xa8c2041ba65fee06,
         0x1b2a5fded34ee0a9,
         0xba18965bcacf6195,
     ];

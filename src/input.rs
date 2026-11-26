@@ -74,6 +74,11 @@ pub enum Action {
     NozzleAft,
     NozzleHover,
     NozzleFullAft,
+    /// A swing wing's sweep handle (the F-14's): a step back or forward of the schedule, or
+    /// back to AUTO.
+    WingSweepAft,
+    WingSweepForward,
+    WingSweepAuto,
     SelectWeapon,
     FireWeapon,
     Flare,
@@ -482,6 +487,10 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::KeyR, NozzleAft),
         (Shift, K::KeyF, NozzleHover),
         (Shift, K::KeyR, NozzleFullAft),
+        // Remake: the wing sweep handle (F-14), beside the nozzle lever.
+        (Alt, K::KeyG, WingSweepAft),
+        (Alt, K::KeyF, WingSweepForward),
+        (Alt, K::KeyH, WingSweepAuto),
         (None, K::Space, SelectWeapon),
         (None, K::Enter, FireWeapon),
         (None, K::NumpadEnter, LockCursor),

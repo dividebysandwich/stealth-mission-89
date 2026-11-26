@@ -447,6 +447,64 @@ impl Aero {
         vtol: None,
     };
 
+    /// F-14B Tomcat: two F110-GE-400s (16,600 lb dry, 27,000 lb in afterburner each) against
+    /// 56,000 lb with full internal fuel (16,200 lb), a big high aspect ratio wing forward
+    /// (565 ft^2, 99 lb/ft^2) with slats and full-span flaps: slow on the approach, Mach 1.2 low
+    /// down and about Mach 1.9 high up; swept back the wing loses lift slope and its wave drag
+    /// comes later and lower. The sweep's angles are the model's leading edge's (21.6 to 70.5,
+    /// in line with the glove's: tools/models/aircraft.py `F14_PIVOT`), the real wing's 20 to 68.
+    pub const F14B: Aero = Aero {
+        wing_loading: 99.0,
+        dry_weight: 43_700.0,
+        ref_weight: 56_000.0,
+        thrust_ratio: 0.56,
+        ab_thrust_ratio: 0.96,
+        ab_thrust_mach: 0.6,
+        thrust_mach: 0.0,
+        cl_alpha: 4.8,
+        alpha_stall: 0.58,
+        alpha_stall_neg: -0.28,
+        alpha_limit: 0.52,
+        alpha_limit_neg: -0.22,
+        cl_flaps: 0.45,
+        alpha_flaps: 0.04,
+        cd0: 0.023,
+        cd_k: 0.085,
+        cd_sep: 0.5,
+        cl_sep: 1.1,
+        cd_gear: 0.025,
+        cd_flaps: 0.06,
+        cd_speed_brake: 0.12,
+        cd_bay: 0.0,
+        cd_idle: 0.024,
+        cy_beta: 0.8,
+        drag_rise: DragRise::Supersonic {
+            start: 0.78,
+            peak_mach: 1.05,
+            peak: 0.06,
+            supersonic: 0.04,
+        },
+        // The design limit; flown it reaches about 6.5-7 g (it bleeds speed in a full pull).
+        n_max: 7.5,
+        n_min: -3.0,
+        roll_rate: 2.8,
+        pitch_rate_max: 0.75,
+        push_rate: 0.6,
+        yaw_rate_max: 0.5,
+        rotate_rate: ROTATE_RATE,
+        swing_wing: Some(SwingWing {
+            forward: 21.6 * std::f32::consts::PI / 180.0,
+            back: 70.5 * std::f32::consts::PI / 180.0,
+            mach: (0.6, 0.95),
+            travel: 7.0,
+            cl_alpha: 3.0,
+            cd_k: 0.22,
+            drag_rise_later: 0.10,
+            wave_drag: 0.55,
+        }),
+        vtol: None,
+    };
+
     pub const TORNADO: Aero = Aero {
         wing_loading: 147.0,
         dry_weight: 31_000.0,

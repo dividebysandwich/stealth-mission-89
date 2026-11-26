@@ -931,6 +931,32 @@ impl IntruderPanel {
     }
 }
 
+impl crate::cockpit3d::PanelKey for Key {
+    fn kind(self) -> &'static str {
+        Key::kind(self)
+    }
+    fn label(self) -> &'static str {
+        Key::label(self)
+    }
+    fn tip(self) -> &'static str {
+        Key::tip(self)
+    }
+}
+
+impl crate::cockpit3d::PanelKeys for IntruderPanel {
+    type Key = Key;
+    fn press(&mut self, key: Key) -> Option<crate::cockpit3d::PanelOut> {
+        IntruderPanel::press(self, key);
+        None
+    }
+    fn latched(&self, key: Key) -> bool {
+        IntruderPanel::latched(self, key)
+    }
+    fn position(&self, key: Key) -> Option<(u8, u8)> {
+        IntruderPanel::position(self, key)
+    }
+}
+
 /// The advisory lights of the A-6's panels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Light {

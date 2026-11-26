@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronikus támadás, a repülőgép-hordozókról
         Zavarja az ellenség radarjait a csapás előtt
         Két ülés: pilóta és elektronikai hadviselési tiszt
+aircraft-f14 =
+    .facts =
+        Hordozóalapú flottavédelmi vadászgép, két fős személyzet egymás mögött
+        1,9 Mach, változtatható nyilazású szárny, Phoenix rakéták
+        Analóg pilótafülke, a RIO radarképernyői
 aircraft-a6 =
     .facts =
         Hordozófedélzeti, minden időjárási csapásmérő repülőgép, kétfős személyzet egymás mellett

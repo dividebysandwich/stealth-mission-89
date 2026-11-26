@@ -63,6 +63,9 @@ pub struct CockpitAnchors {
     pub stick_pivot: Vec3,
     /// The stick's grip centre above the pivot.
     pub grip_height: f32,
+    /// The stick senses the controller's tilt wherever it stands (the model's `tilt`: the
+    /// F-14 RIO's hand controller on its pedestal on the centre line), not the hand's position.
+    pub tilt_stick: bool,
     pub throttle_idle: Vec3,
     pub throttle_full: Vec3,
     /// The collective's pivot (none: the throttle slides along its rail).
@@ -90,6 +93,7 @@ impl Default for CockpitAnchors {
         Self {
             stick_pivot: Vec3::new(0.40, -0.48, -0.22),
             grip_height: GRIP_HEIGHT,
+            tilt_stick: false,
             throttle_idle: Vec3::new(-0.40, -0.40, -0.12),
             throttle_full: Vec3::new(-0.40, -0.40, -0.30),
             throttle_pivot: None,
@@ -253,6 +257,8 @@ fn ab_shake(ab: f32, t: f32) -> f32 {
 
 /// The stall buffet's depth (`shake::stall_buffet`) at which the stick's rumble is full.
 const BUFFET_DEEP: f32 = 2.0;
+/// A missile's wake (`trails::WakeTurbulence` 1) rattles the hands as a buffet this deep.
+const WAKE_DEPTH: f32 = 2.0;
 /// Knock length (s) and the gap between knocks (s, shortening as the stall deepens).
 const BUFFET_KNOCK: (f32, f32) = (0.03, 0.09);
 const BUFFET_GAP: (f32, f32) = (0.05, 0.35);
@@ -388,8 +394,11 @@ fn stick_angles_moved(p0: Vec3, p: Vec3) -> (f32, f32) {
 }
 
 /// How much the hand's position (rather than the controller's tilt) moves a stick: fully a
-/// centre stick, a side stick by its length.
-fn stick_follow(pivot: Vec3, grip_height: f32) -> f32 {
+/// centre stick, a side stick by its length; a `tilt` sensing one not at all.
+fn stick_follow(pivot: Vec3, grip_height: f32, tilt: bool) -> f32 {
+    if tilt {
+        return 0.0;
+    }
     if pivot.x.abs() < CENTRE_STICK {
         return 1.0;
     }
@@ -397,8 +406,8 @@ fn stick_follow(pivot: Vec3, grip_height: f32) -> f32 {
 }
 
 /// A stick's full deflection (radians): a centre stick's by its grip's travel.
-fn stick_tilt(pivot: Vec3, grip_height: f32) -> f32 {
-    if pivot.x.abs() < CENTRE_STICK {
+fn stick_tilt(pivot: Vec3, grip_height: f32, tilt: bool) -> f32 {
+    if !tilt && pivot.x.abs() < CENTRE_STICK {
         return (CENTRE_STICK_TRAVEL / grip_height.max(0.01)).atan().min(STICK_TILT);
     }
     STICK_TILT
@@ -431,9 +440,10 @@ pub(super) fn grab_levers(
     (block, console): (Res<crate::input::InputBlock>, Res<crate::input::ConsoleStick>),
     console_throttle: Res<crate::input::ConsoleThrottle>,
     anchors: Res<CockpitAnchors>,
-    (hide, manning): (
+    (hide, manning, wake): (
         Option<Res<crate::camera::HideOwnAircraft>>,
         Option<Res<crate::station::Manning>>,
+        Option<Res<crate::trails::WakeTurbulence>>,
     ),
     k: Res<FlightConstants>,
     time: Res<Time>,
@@ -572,9 +582,9 @@ pub(super) fn grab_levers(
         let delta = sh.grip.rotation * g.rot0.inverse();
         let (tp, tr) = stick_angles(delta);
         let (mp, mr) = stick_angles_moved(g.p0, sh.grip.translation - anchors.stick_pivot);
-        let w = stick_follow(anchors.stick_pivot, anchors.grip_height);
+        let w = stick_follow(anchors.stick_pivot, anchors.grip_height, anchors.tilt_stick);
         let (p, r) = (tp + (mp - tp) * w, tr + (mr - tr) * w);
-        let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
+        let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height, anchors.tilt_stick);
         controls.pitch = (p / tilt).clamp(-1.0, 1.0);
         controls.roll = (r / tilt).clamp(-1.0, 1.0);
         // Twisting clockwise (seen from above) = nose right.
@@ -683,17 +693,20 @@ pub(super) fn grab_levers(
             *t += time.delta_secs();
         }
     }
-    // The stall buffet shakes the hand on the stick.
+    // The stall buffet shakes the hand on the stick; a missile's wake rattles the whole
+    // airframe, both hands whatever they hold.
     let depth = aircraft
         .single()
         .ok()
         .filter(|a| a.ended.is_none() && (grabs.stick.is_some() || grabs.yoke_other.is_some()))
         .map_or(0.0, crate::shake::stall_buffet);
+    let wake = wake.map_or(0.0, |w| w.0);
+    let depth = depth.max(WAKE_DEPTH * wake);
     let buffet = stall_rumble(depth, time.delta_secs(), &mut grabs.buffet, rand::random::<f32>);
-    if grabs.stick.is_some() {
+    if grabs.stick.is_some() || wake > 0.0 {
         sh.haptic = sh.haptic.max(buffet);
     }
-    if grabs.yoke_other.is_some() {
+    if grabs.yoke_other.is_some() || wake > 0.0 {
         th.haptic = th.haptic.max(buffet);
     }
     let shake = aircraft
@@ -898,7 +911,7 @@ pub(super) fn animate_levers(
         tf.rotation = turn;
     }
     if let Ok(mut tf) = stick.single_mut() {
-        let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height);
+        let tilt = stick_tilt(anchors.stick_pivot, anchors.grip_height, anchors.tilt_stick);
         // A gunner's cockpit's stick (the A-6's slew stick) as his hand has it: it slews the
         // pod, the AI flies.
         let (pitch, roll, yaw) = match gunner.stick {
@@ -1116,11 +1129,11 @@ mod tests {
     #[test]
     fn centre_stick_follows_the_hand() {
         let side = Vec3::new(0.28, -0.66, -0.22);
-        assert_eq!(stick_follow(side, 0.11), 0.0);
-        assert_eq!(stick_follow(side, 0.59), 1.0);
+        assert_eq!(stick_follow(side, 0.11, false), 0.0);
+        assert_eq!(stick_follow(side, 0.59, false), 1.0);
         let centre = Vec3::new(0.0, -0.99, -0.32);
         for height in [0.39, 0.59] {
-            assert_eq!(stick_follow(centre, height), 1.0, "{height}");
+            assert_eq!(stick_follow(centre, height, false), 1.0, "{height}");
         }
         let height = 0.39;
         let p0 = Vec3::Y * height;
@@ -1132,7 +1145,11 @@ mod tests {
         assert!(roll > 0.0, "hand right = roll right");
         // Full deflection with the grip 8 cm off centre; a side stick keeps its throw.
         let (pitch, _) = stick_angles_moved(p0, p0 + Vec3::new(0.0, 0.0, CENTRE_STICK_TRAVEL));
-        assert!((pitch / stick_tilt(centre, height) - 1.0).abs() < 0.05, "{pitch}");
-        assert_eq!(stick_tilt(side, 0.11), STICK_TILT);
+        assert!((pitch / stick_tilt(centre, height, false) - 1.0).abs() < 0.05, "{pitch}");
+        assert_eq!(stick_tilt(side, 0.11, false), STICK_TILT);
+        // A tilt sensing stick on the centre line (the F-14 RIO's hand controller) goes by the
+        // controller's tilt with the full throw.
+        assert_eq!(stick_follow(centre, 0.10, true), 0.0);
+        assert_eq!(stick_tilt(centre, 0.10, true), STICK_TILT);
     }
 }

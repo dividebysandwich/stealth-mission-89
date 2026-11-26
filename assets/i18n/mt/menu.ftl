@@ -228,6 +228,11 @@ aircraft-ea18g =
         Attakk elettroniku, mill-ġarriera
         Jxekkel ir-radars tal-għadu għall-attakk
         Żewġ sedili: pilota u uffiċjal tal-gwerra elettronika
+aircraft-f14 =
+    .facts =
+        Ġlied tal-ġarrier għad-difiża tal-flotta, żewġ membri tal-ekwipaġġ wieħed wara l-ieħor
+        Mach 1.9, ġwienaħ li jitbandlu, missili Phoenix
+        Cockpit analogu, l-iskrins tar-radar tar-RIO
 aircraft-a6 =
     .facts =
         Ajruplan tal-attakk għal kull temp mill-ġarrieri tal-ajruplani, żewġ ekwipaġġ ħdejn xulxin

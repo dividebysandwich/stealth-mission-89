@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Postaja 1, levo zunanje krilo
 hardpoint-a6-2-left-inner-wing = Postaja 2, levo notranje krilo
 hardpoint-a6-4-right-inner-wing = Postaja 4, desno notranje krilo
 hardpoint-a6-5-right-outer-wing = Postaja 5, desno zunanje krilo
+hardpoint-f14-1a-left-shoulder = Postaja 1A, levo ramensko vodilo
+hardpoint-f14-1b-left-glove = Postaja 1B, levi pilon korena krila
+hardpoint-f14-2-left-nacelle = Postaja 2, leva motorna gondola
+hardpoint-f14-3-left-front-tunnel = Postaja 3, sprednji tunel, levo
+hardpoint-f14-4-left-rear-tunnel = Postaja 4, zadnji tunel, levo
+hardpoint-f14-5-right-rear-tunnel = Postaja 5, zadnji tunel, desno
+hardpoint-f14-6-right-front-tunnel = Postaja 6, sprednji tunel, desno
+hardpoint-f14-7-right-nacelle = Postaja 7, desna motorna gondola
+hardpoint-f14-8b-right-glove = Postaja 8B, desni pilon korena krila
+hardpoint-f14-8a-right-shoulder = Postaja 8A, desno ramensko vodilo
 hardpoint-c5-hold = Tovorni prostor (palete za odmet)
 hardpoint-ch47-cabin = Kabina (padalci)
 weapon-role-21 = Zrak-zrak, infrardeče navajanje, zelo kratek doseg
@@ -233,5 +243,15 @@ weapon-role-37 = Protiradarski izstrelek iz Sidewinderja: radarji in položaji S
 employment-37 =
     Doseg: 1-10 km
     Pod 1 000 ft se dvigne in strmoglavi na radar od zgoraj
+# AIM-54C Phoenix
+weapon-role-38 = Zrak-zrak, radarsko vodena, velik doseg: do šest ciljev hkrati
+employment-38 =
+    Doseg: 2-76 km, dlje čelno
+    Radar jo vodi po njeni sledi; lastna glava od 10 nmi (PH ACT: že z vodila)
+# AIM-7M Sparrow
+weapon-role-39 = Zrak-zrak, polaktivno radarsko samonavajanje, srednji doseg
+employment-39 =
+    Doseg: 1-31 km, dlje čelno
+    Držite radarsko sledenje enemu cilju do zadetka
 loadout-wingman = KRILNI PILOT
     .facts = Krilni pilot UI v istem letalu z isto oborožitvijo se vam pridruži v zraku; radijski meni (\) mu daje ukaze

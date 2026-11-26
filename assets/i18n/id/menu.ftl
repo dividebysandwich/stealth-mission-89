@@ -228,6 +228,11 @@ aircraft-ea18g =
         Serangan elektronik, dari kapal induk
         Mengacau radar musuh untuk serangan
         Dua kursi: pilot dan perwira peperangan elektronik
+aircraft-f14 =
+    .facts =
+        Pesawat tempur kapal induk untuk pertahanan armada, dua awak bertandem
+        Mach 1,9, sayap ayun, rudal Phoenix
+        Kokpit analog, layar radar RIO
 aircraft-a6 =
     .facts =
         Pesawat serang segala cuaca dari kapal induk, dua awak berdampingan

@@ -64,6 +64,9 @@ pub enum Munition {
     Zuni,
     /// The helicopters' and the Harrier's AGM-122 Sidearm anti-radiation missile.
     Sidearm,
+    /// The F-14's AIM-54C Phoenix long-range air-to-air missile (its AIM-7M Sparrow is the
+    /// AIM-7's stock).
+    Aim54,
     /// The drone command centers' drones (made by the side's drone factory): Stork surveillance
     /// drones, FP-2 attack drones, interceptor drones and X-12s.
     Stork,
@@ -74,7 +77,7 @@ pub enum Munition {
     Geran,
 }
 
-const BLUE: [Munition; 29] = [
+const BLUE: [Munition; 30] = [
     Munition::Aim120,
     Munition::Aim7,
     Munition::Harm,
@@ -100,6 +103,7 @@ const BLUE: [Munition; 29] = [
     Munition::Shrike,
     Munition::Zuni,
     Munition::Sidearm,
+    Munition::Aim54,
     Munition::Stork,
     Munition::Fp2,
     Munition::Interceptor,
@@ -174,6 +178,7 @@ impl Munition {
             Shrike => "AGM-45 Shrike",
             Zuni => "Zuni",
             Sidearm => "AGM-122 Sidearm",
+            Aim54 => "AIM-54C Phoenix",
             Stork => "Stork",
             Fp2 => "FP-2",
             Interceptor => "Interceptor",
@@ -225,6 +230,7 @@ impl Munition {
             Shrike => 16.0,
             Zuni => 64.0,
             Sidearm => 16.0,
+            Aim54 => 24.0,
             // A drone command center's load of each.
             Stork => DRONE_CENTER_STOCK[0] as f64,
             Fp2 => DRONE_CENTER_STOCK[1] as f64,
@@ -267,6 +273,7 @@ impl Munition {
             Shrike => 8.0,
             Zuni => 16.0,
             Sidearm => 8.0,
+            Aim54 => 4.0,
             Stork => DRONES_PER_HOUR[0],
             Fp2 => DRONES_PER_HOUR[1],
             Interceptor => DRONES_PER_HOUR[2],
@@ -331,6 +338,8 @@ impl Munition {
             35 => Shrike,
             36 => Zuni,
             37 => Sidearm,
+            38 => Aim54,
+            39 => Aim7,
             _ => return None,
         })
     }

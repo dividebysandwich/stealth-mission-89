@@ -228,6 +228,11 @@ aircraft-ea18g =
         Atak elektroniczny, z lotniskowców
         Zakłóca wrogie radary przed uderzeniem
         Dwa miejsca: pilot i oficer walki elektronicznej
+aircraft-f14 =
+    .facts =
+        Pokładowy myśliwiec obrony floty, dwóch członków załogi w tandemie
+        Mach 1,9, skrzydła o zmiennej geometrii, pociski Phoenix
+        Analogowy kokpit, ekrany radaru RIO
 aircraft-a6 =
     .facts =
         Pokładowy samolot szturmowy na każdą pogodę, dwóch członków załogi obok siebie

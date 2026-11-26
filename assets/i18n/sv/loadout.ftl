@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, vänster yttervinge
 hardpoint-a6-2-left-inner-wing = Station 2, vänster innervinge
 hardpoint-a6-4-right-inner-wing = Station 4, höger innervinge
 hardpoint-a6-5-right-outer-wing = Station 5, höger yttervinge
+hardpoint-f14-1a-left-shoulder = Station 1A, vänster axelskena
+hardpoint-f14-1b-left-glove = Station 1B, vänster vingrotspylon
+hardpoint-f14-2-left-nacelle = Station 2, vänster motorgondol
+hardpoint-f14-3-left-front-tunnel = Station 3, främre tunneln, vänster
+hardpoint-f14-4-left-rear-tunnel = Station 4, bakre tunneln, vänster
+hardpoint-f14-5-right-rear-tunnel = Station 5, bakre tunneln, höger
+hardpoint-f14-6-right-front-tunnel = Station 6, främre tunneln, höger
+hardpoint-f14-7-right-nacelle = Station 7, höger motorgondol
+hardpoint-f14-8b-right-glove = Station 8B, höger vingrotspylon
+hardpoint-f14-8a-right-shoulder = Station 8A, höger axelskena
 hardpoint-c5-hold = Lastrum (fällningspallar)
 hardpoint-ch47-cabin = Kabin (fallskärmsjägare)
 weapon-role-21 = Luft-luft, infraröd målsökning, mycket kort räckvidd
@@ -233,5 +243,15 @@ weapon-role-37 = Antiradarrobot byggd på Sidewinder: radarer och SAM-ställning
 employment-37 =
     Räckvidd: 1-10 km
     Under 1 000 ft stiger den och dyker på radarn uppifrån
+# AIM-54C Phoenix
+weapon-role-38 = Luft-luft, radarstyrd, lång räckvidd: upp till sex mål på en gång
+employment-38 =
+    Räckvidd: 2-76 km, längre rakt framifrån
+    Radarn styr den på dess spår; dess egen målsökare från 10 nm (PH ACT: från skenan)
+# AIM-7M Sparrow
+weapon-role-39 = Luft-luft, semiaktiv radarmålsökning, medellång räckvidd
+employment-39 =
+    Räckvidd: 1-31 km, längre rakt framifrån
+    Håll radarns enmålsföljning tills den träffar
 loadout-wingman = ROTEKAMRAT
     .facts = En AI-rotekamrat i samma flygplan med samma beväpning ansluter i luften; radiomenyn (\) ger den order

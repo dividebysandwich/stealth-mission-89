@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektronisk attack, från hangarfartygen
         Stör fiendens radar inför anfallet
         Två säten: pilot och telekrigsofficer
+aircraft-f14 =
+    .facts =
+        Hangarfartygsbaserat flottförsvarsjaktplan, två besättningsmän i tandem
+        Mach 1,9, svängvingar, Phoenix-robotar
+        Analog cockpit, RIO:ns radarskärmar
 aircraft-a6 =
     .facts =
         Hangarfartygsbaserat allvädersattackflygplan, två mans besättning sida vid sida

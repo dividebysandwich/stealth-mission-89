@@ -214,6 +214,7 @@ pub fn ai_spec(aircraft: Aircraft) -> i32 {
         Aircraft::FA18E => t::FA18E,
         Aircraft::EA18G => t::EA18G,
         Aircraft::A6 => t::A6,
+        Aircraft::F14 => t::F14,
         // The AI flies a Seahawk a player left as the UH-60 it is built on.
         Aircraft::MH60R => t::UH60,
         // Player-only: the AI flies it (a player who left it) as a transport.

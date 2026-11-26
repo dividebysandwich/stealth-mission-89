@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Stotis 1, kairysis išorinis sparnas
 hardpoint-a6-2-left-inner-wing = Stotis 2, kairysis vidinis sparnas
 hardpoint-a6-4-right-inner-wing = Stotis 4, dešinysis vidinis sparnas
 hardpoint-a6-5-right-outer-wing = Stotis 5, dešinysis išorinis sparnas
+hardpoint-f14-1a-left-shoulder = Stotis 1A, kairysis peties bėgis
+hardpoint-f14-1b-left-glove = Stotis 1B, kairysis sparno šaknies pilonas
+hardpoint-f14-2-left-nacelle = Stotis 2, kairioji variklio gondola
+hardpoint-f14-3-left-front-tunnel = Stotis 3, priekinis tunelis, kairė
+hardpoint-f14-4-left-rear-tunnel = Stotis 4, galinis tunelis, kairė
+hardpoint-f14-5-right-rear-tunnel = Stotis 5, galinis tunelis, dešinė
+hardpoint-f14-6-right-front-tunnel = Stotis 6, priekinis tunelis, dešinė
+hardpoint-f14-7-right-nacelle = Stotis 7, dešinioji variklio gondola
+hardpoint-f14-8b-right-glove = Stotis 8B, dešinysis sparno šaknies pilonas
+hardpoint-f14-8a-right-shoulder = Stotis 8A, dešinysis peties bėgis
 hardpoint-c5-hold = Krovinių skyrius (numetami padėklai)
 hardpoint-ch47-cabin = Salonas (parašiutininkai)
 weapon-role-21 = Oras-oras, infraraudonųjų spindulių vedimas, labai trumpas nuotolis
@@ -233,5 +243,15 @@ weapon-role-37 = Iš Sidewinder padaryta priešradarinė raketa: radarai ir SAM 
 employment-37 =
     Nuotolis: 1-10 km
     Žemiau 1 000 ft ji pakyla ir smenga į radarą iš viršaus
+# AIM-54C Phoenix
+weapon-role-38 = Oras-oras, radaru valdoma, didelis nuotolis: iki šešių taikinių vienu metu
+employment-38 =
+    Nuotolis: 2-76 km, toliau iš priekio
+    Radaras ją veda jos pėdsaku; savo galvutė nuo 10 jūrmylių (PH ACT: nuo bėgio)
+# AIM-7M Sparrow
+weapon-role-39 = Oras-oras, pusiau aktyvus radaro vedimas, vidutinis nuotolis
+employment-39 =
+    Nuotolis: 1-31 km, toliau iš priekio
+    Laikykite radaro vieno taikinio sekimą iki pataikymo
 loadout-wingman = SPARNININKAS
     .facts = DI sparnininkas tuo pačiu orlaiviu su ta pačia ginkluote prisijungia ore; radijo meniu (\) duoda jam įsakymus

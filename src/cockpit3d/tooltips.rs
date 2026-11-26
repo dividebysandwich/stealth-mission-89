@@ -115,6 +115,12 @@ fn readout_text(readout: Readout, panel: &PanelParams) -> String {
             panel.dial_aux(Dial::TapeFlow).round() as i32
         ),
         Readout::Dial(Dial::FuelQuantity) => dial_text(Dial::Fuel, a.fuel),
+        // Where it is and where it is commanded or scans.
+        Readout::Dial(dial @ (Dial::Sweep | Dial::AntennaEl)) => format!(
+            "{} / {}",
+            dial_text(dial, panel.dial_value(dial)),
+            dial_text(dial, panel.dial_aux(dial))
+        ),
         Readout::Dial(dial @ (Dial::TapeRpm | Dial::TapeEgt | Dial::TapeOil | Dial::Engines)) => {
             format!(
                 "{} / {}",
@@ -198,6 +204,8 @@ fn dial_text(dial: Dial, value: f32) -> String {
         Dial::TapeOil => format!("{v} psi"),
         Dial::Engines => format!("{v} %"),
         Dial::FuelQuantity => format!("{} lbs", v.max(0)),
+        Dial::Sweep => format!("{v}°"),
+        Dial::AntennaEl => format!("{}°", signed(v)),
     }
 }
 
@@ -483,7 +491,10 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
             (title.to_string(), detail.to_string())
         }
         // An A-6 control: its legend (English, as on the panel) and what it does.
-        Effect::Intruder(k) => (k.label().replace('\n', " "), t!(k.tip()).to_string()),
+        Effect::Intruder(k) => panel_key_text(k),
+        // An F-14 control: its legend (as on the panel; a lit button's with the panel's name
+        // for it) and what it does.
+        Effect::Tomcat(k) => (tomcat_title(k), t!(k.tip()).to_string()),
         Effect::Osb(side, slot) => {
             let (label, f, _) = osb(side, slot, mfd)?;
             let detail = match f {
@@ -523,6 +534,34 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
         _ => None,
     };
     Some(Tip { title, readout, detail, actions })
+}
+
+/// A panel control's legend (as on the panel) and what it does.
+fn panel_key_text<K: super::controls::PanelKey>(k: K) -> (String, String) {
+    (k.label().replace('\n', " "), t!(k.tip()).to_string())
+}
+
+/// An F-14 control's tooltip title: its legend; the lit buttons whose legend is their state
+/// (ON, HIGH) and the knobs named by the panel with the panel's name for them.
+fn tomcat_title(k: crate::tomcat::Key) -> String {
+    use crate::tomcat::{Key, RioKnob};
+    let name = match k {
+        Key::GunRate => "GUN RATE",
+        Key::SwCool => "SW COOL",
+        Key::MslPrep => "MSL PREP",
+        Key::MslMode => "MSL MODE",
+        Key::Knob(RioKnob::PdClear) => "PD THRLD CLEAR",
+        Key::Knob(RioKnob::PdClutter) => "PD THRLD CLUTTER",
+        Key::Steer(_) => return format!("MODE {}", k.label().replace('\n', " ")),
+        Key::SteerCmd(_) => return format!("STEER CMD {}", k.label().replace('\n', " ")),
+        Key::DddRange(_) => return format!("RANGE {}", k.label()),
+        Key::Wcs(_) => return format!("WCS {}", k.label().replace('\n', " ")),
+        Key::LtsMode(_) | Key::LtsOper => {
+            return format!("LANTIRN {}", k.label().replace('\n', " "));
+        }
+        _ => return k.label().replace('\n', " "),
+    };
+    name.to_string()
 }
 
 /// The tooltip of an instrument atlas face that is not a button (None: a plain label).
@@ -597,6 +636,8 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
                 Dial::TapeOil => "tip-dial-oil",
                 Dial::Engines => "tip-dial-rpm",
                 Dial::FuelQuantity => "tip-dial-fuel",
+                Dial::Sweep => "tip-dial-sweep",
+                Dial::AntennaEl => "tip-dial-antenna",
             };
             // The ball shows no number.
             if dial == Dial::Slip {
@@ -608,11 +649,15 @@ pub(super) fn face_tip(face: Face) -> Option<Tip> {
         // show. (Its controls are buttons: `control_tip`.)
         Elem::Light(light) => (light.label().replace('\n', " "), t!(light.tip())),
         Elem::Readout(r) => (r.label().to_string(), t!(r.tip())),
+        // The F-14's lights and counters.
+        Elem::TomcatLight(light) => (light.label().replace('\n', " "), t!(light.tip())),
+        Elem::TomcatReadout(r) => (r.label().to_string(), t!(r.tip())),
         Elem::Label(..)
         | Elem::SoftKey(..)
         | Elem::Arrow(..)
         | Elem::Hazard
-        | Elem::Control(..) => {
+        | Elem::Control(..)
+        | Elem::Tomcat(..) => {
             return None;
         }
     };
@@ -650,6 +695,11 @@ pub(super) fn display_tip(role: CanvasRole, style: PanelStyle) -> Option<Tip> {
         CanvasRole::Phd => "tip-display-phd",
         CanvasRole::Dvri => "tip-display-dvri",
         CanvasRole::Sensor => "tip-display-sensor",
+        CanvasRole::F14Vdi => "tip-display-vdi",
+        CanvasRole::F14Hsd => "tip-display-hsd",
+        CanvasRole::Ddd => "tip-display-ddd",
+        CanvasRole::Tid => "tip-display-tid",
+        CanvasRole::Ecmd => "tip-display-ecmd",
         CanvasRole::Console(ConsoleScreen::Scope) => "tip-display-scope",
         CanvasRole::Console(ConsoleScreen::Board) => "tip-display-board",
         CanvasRole::Console(ConsoleScreen::Eo) => "tip-display-eo",
@@ -1167,6 +1217,8 @@ mod tests {
             PanelStyle::Ea18gEwo,
             PanelStyle::A6,
             PanelStyle::A6Bn,
+            PanelStyle::F14,
+            PanelStyle::F14Rio,
         ] {
             for effect in PanelLayout::for_style(style).items.iter().filter_map(|p| p.cap) {
                 let tip = control_tip(effect, &mfd, style).unwrap_or_else(|| panic!("{effect:?}"));
@@ -1221,6 +1273,8 @@ mod tests {
             TapeEgt,
             TapeFlow,
             TapeOil,
+            Sweep,
+            AntennaEl,
         ] {
             let text = dial_text(dial, 950.0);
             assert!(drawable(&text), "{text}");

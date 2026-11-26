@@ -163,6 +163,32 @@ def harm():
     return Store(hang(g, 0.0, r), hang(motor_flame(t, r, 1.3), 0.0, r))
 
 
+def aim54():
+    """AIM-54C Phoenix: the big white body, its ogive radome, the four long low wings along the
+    rear half and the control fins at its tail."""
+    L, r = 3.96, 0.19
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.12, 0.08), (n - 0.40, 0.155), (n - 0.75, r), (t + 0.10, r), (t, 0.17)], WHITE,
+             bands=[(n - 1.10, n - 1.18, YELLOW), (n - 2.20, n - 2.28, BROWN)])
+    fins(g, n - 1.55, t + 0.55, r, 0.17, WHITE, tip=(t + 0.75, t + 0.55))
+    fins(g, t + 0.42, t + 0.03, r, 0.24, WHITE, tip=(t + 0.18, t + 0.03))
+    lugs(g, 0.0, r, spacing=1.0)
+    return Store(hang(g, 0.0, r), hang(motor_flame(t, 0.15, 1.6), 0.0, r))
+
+
+def aim7():
+    """AIM-7M Sparrow: the white body with its ogive radome, the big delta wings at mid-body that
+    steer it, the fixed tail fins."""
+    L, r = 3.66, 0.1015
+    n, t = L / 2, -L / 2
+    g = body([(n, 0.0), (n - 0.10, 0.045), (n - 0.32, 0.085), (n - 0.55, r), (t, r)], WHITE,
+             bands=[(n - 0.85, n - 0.93, YELLOW), (n - 2.05, n - 2.13, BROWN)])
+    fins(g, n - 1.05, n - 1.65, r, 0.40, WHITE, tip=(n - 1.52, n - 1.65))
+    fins(g, t + 0.38, t + 0.02, r, 0.30, WHITE, tip=(t + 0.14, t + 0.02))
+    lugs(g, 0.0, r, spacing=0.9)
+    return Store(hang(g, 0.0, r), hang(motor_flame(t, r, 1.2), 0.0, r))
+
+
 def shrike():
     """AGM-45 Shrike: a Sparrow-sized white body, the grey ogive radome of its seeker, the four
     big cropped delta wings at mid-body that steer it, the small fixed tail fins."""
@@ -805,6 +831,8 @@ WEAPON_MODELS = {
     31: (86, lau131), 32: (86, lau131), 33: (91, mk83), 34: (92, mk84), 35: (93, shrike), 36: (94, lau10),
     # The AGM-122 Sidearm: a Sidewinder with a radar seeker, drawn as the AIM-9.
     37: (50, aim9),
+    # The F-14's AIM-54C Phoenix and AIM-7M Sparrow.
+    38: (95, aim54), 39: (96, aim7),
 }
 # The rocket pods: hung as one pod whatever their rounds (the rockets inside it).
 ROCKET_PODS = (31, 32, 36)
@@ -812,7 +840,7 @@ ROCKET_PODS = (31, 32, 36)
 RADIUS = {0: 0.0635, 1: 0.089, 2: 0.127, 3: 0.14, 4: 0.1715, 5: 0.1525, 6: 0.1365, 7: 0.1675, 8: 0.1115, 9: 0.1365,
           10: 0.1365, 11: 0.1675, 12: 0.24, 13: 0.20, 14: 0.20, 15: 0.20, 16: 0.20, 17: 0.33, 18: 0.24,
           20: 0.089, 23: 0.20, 25: 0.1715, 26: 0.19, 27: 0.15, 29: 0.34, 30: 0.28, 31: 0.13, 32: 0.13,
-          33: 0.1785, 34: 0.229, 35: 0.1015, 36: 0.18, 37: 0.0635}
+          33: 0.1785, 34: 0.229, 35: 0.1015, 36: 0.18, 37: 0.0635, 38: 0.19, 39: 0.1015}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -924,7 +952,7 @@ LOADOUT_RS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."
 # The weapon type constants of src/loadout.rs.
 NAMED = {"HELLFIRE": 20, "STINGER": 21, "GUN_POD": 22, "CBU105": 23, "MK54": 24, "SLAMER": 25, "JSOW": 26,
          "MALD": 27, "PARA": 28, "ALQ99": 29, "JP233": 30, "HYDRA": 31, "APKWS": 32,
-         "MK83": 33, "MK84": 34, "SHRIKE": 35, "ZUNI": 36, "SIDEARM": 37}
+         "MK83": 33, "MK84": 34, "SHRIKE": 35, "ZUNI": 36, "SIDEARM": 37, "PHOENIX": 38, "SPARROW": 39}
 
 
 def _loadout_text():

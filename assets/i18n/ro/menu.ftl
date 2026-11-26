@@ -228,6 +228,11 @@ aircraft-ea18g =
         Atac electronic, de pe portavioane
         Bruiază radarele inamice pentru lovitură
         Două locuri: pilot și ofițer de război electronic
+aircraft-f14 =
+    .facts =
+        Avion de vânătoare îmbarcat pentru apărarea flotei, doi membri ai echipajului în tandem
+        Mach 1,9, aripi cu geometrie variabilă, rachete Phoenix
+        Carlingă analogică, ecranele radar ale RIO
 aircraft-a6 =
     .facts =
         Aeronavă de atac ambarcată pentru orice vreme, doi membri de echipaj alături

@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Nosač 1, lijevo vanjsko krilo
 hardpoint-a6-2-left-inner-wing = Nosač 2, lijevo unutarnje krilo
 hardpoint-a6-4-right-inner-wing = Nosač 4, desno unutarnje krilo
 hardpoint-a6-5-right-outer-wing = Nosač 5, desno vanjsko krilo
+hardpoint-f14-1a-left-shoulder = Nosač 1A, lijeva bočna tračnica
+hardpoint-f14-1b-left-glove = Nosač 1B, lijevi pilon korijena krila
+hardpoint-f14-2-left-nacelle = Nosač 2, lijeva gondola motora
+hardpoint-f14-3-left-front-tunnel = Nosač 3, prednji tunel, lijevo
+hardpoint-f14-4-left-rear-tunnel = Nosač 4, stražnji tunel, lijevo
+hardpoint-f14-5-right-rear-tunnel = Nosač 5, stražnji tunel, desno
+hardpoint-f14-6-right-front-tunnel = Nosač 6, prednji tunel, desno
+hardpoint-f14-7-right-nacelle = Nosač 7, desna gondola motora
+hardpoint-f14-8b-right-glove = Nosač 8B, desni pilon korijena krila
+hardpoint-f14-8a-right-shoulder = Nosač 8A, desna bočna tračnica
 hardpoint-c5-hold = Teretni prostor (palete za izbacivanje)
 hardpoint-ch47-cabin = Kabina (padobranci)
 weapon-role-21 = Zrak-zrak, infracrveno navođenje, vrlo kratak domet
@@ -233,5 +243,15 @@ weapon-role-37 = Proturadarski projektil od Sidewindera: radari i SAM položaji,
 employment-37 =
     Domet: 1-10 km
     Ispod 1.000 ft se uspne i obruši na radar odozgo
+# AIM-54C Phoenix
+weapon-role-38 = Zrak-zrak, radarski vođen, veliki domet: do šest ciljeva odjednom
+employment-38 =
+    Domet: 2-76 km, dalje čeono
+    Radar ga vodi po njegovom tragu; vlastita glava od 10 nmi (PH ACT: odmah s tračnice)
+# AIM-7M Sparrow
+weapon-role-39 = Zrak-zrak, poluaktivno radarsko samonavođenje, srednji domet
+employment-39 =
+    Domet: 1-31 km, dalje čeono
+    Držite radarsko praćenje jednog cilja do pogotka
 loadout-wingman = PRATITELJ
     .facts = UI pratitelj u istom zrakoplovu s istim naoružanjem pridružuje vam se u zraku; radijski izbornik (\) mu daje zapovijedi

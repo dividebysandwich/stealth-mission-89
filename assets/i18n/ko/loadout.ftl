@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = 스테이션 1, 왼쪽 바깥 날개
 hardpoint-a6-2-left-inner-wing = 스테이션 2, 왼쪽 안쪽 날개
 hardpoint-a6-4-right-inner-wing = 스테이션 4, 오른쪽 안쪽 날개
 hardpoint-a6-5-right-outer-wing = 스테이션 5, 오른쪽 바깥 날개
+hardpoint-f14-1a-left-shoulder = 스테이션 1A, 왼쪽 숄더 레일
+hardpoint-f14-1b-left-glove = 스테이션 1B, 왼쪽 글러브 파일런
+hardpoint-f14-2-left-nacelle = 스테이션 2, 왼쪽 나셀
+hardpoint-f14-3-left-front-tunnel = 스테이션 3, 앞쪽 터널, 왼쪽
+hardpoint-f14-4-left-rear-tunnel = 스테이션 4, 뒤쪽 터널, 왼쪽
+hardpoint-f14-5-right-rear-tunnel = 스테이션 5, 뒤쪽 터널, 오른쪽
+hardpoint-f14-6-right-front-tunnel = 스테이션 6, 앞쪽 터널, 오른쪽
+hardpoint-f14-7-right-nacelle = 스테이션 7, 오른쪽 나셀
+hardpoint-f14-8b-right-glove = 스테이션 8B, 오른쪽 글러브 파일런
+hardpoint-f14-8a-right-shoulder = 스테이션 8A, 오른쪽 숄더 레일
 hardpoint-c5-hold = 화물칸 (공중 투하 팔레트)
 hardpoint-ch47-cabin = 객실 (공수부대)
 weapon-role-21 = 공대공, 적외선 유도, 매우 짧은 사거리
@@ -233,5 +243,15 @@ weapon-role-37 = 사이드와인더 기반 대레이더 미사일: 레이더와 
 employment-37 =
     사거리: 1-10 km
     1,000 ft 아래에서 쏘면 솟구쳤다가 레이더 위에서 내리꽂는다
+# AIM-54C Phoenix
+weapon-role-38 = 공대공, 레이더 유도, 장거리: 최대 6개 표적 동시
+employment-38 =
+    사거리: 2-76 km, 정면 교전 시 더 멀리
+    레이더가 항적으로 유도, 10해리부터 자체 탐색기 (PH ACT: 레일에서부터)
+# AIM-7M Sparrow
+weapon-role-39 = 공대공, 반능동 레이더 유도, 중거리
+employment-39 =
+    사거리: 1-31 km, 정면 교전 시 더 멀리
+    명중할 때까지 레이더의 단일 표적 추적 유지
 loadout-wingman = 윙맨
     .facts = 같은 기체와 무장의 AI 윙맨이 이륙 후 합류한다. 무선 메뉴(\)로 명령한다

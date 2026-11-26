@@ -138,13 +138,15 @@ class Station:
     `side`: on a rail on the side of that station's pylon, `out` m from its middle."""
 
     def __init__(self, depth, chord=1.4, w=0.07, kind="pylon", part=None, side=None, out=0.32, rail=None, top=None,
-                 edge=False):
+                 edge=False, outboard=False):
         # `top`: z of the structure the pylon hangs from, where its surface is not the lowest
         # above the station (the Harrier's outrigger fairings). `edge`: a wingtip launcher
         # rail on the tip's edge, the missile lying on its side against it (its lugs inboard,
         # its axis at the station's x and level with the wing at z `top`).
         self.depth, self.chord, self.w, self.kind, self.part = depth, chord, w, kind, part
         self.side, self.out, self.rail, self.top, self.edge = side, out, rail, top, edge
+        # `outboard`: the side rail on the pylon's outboard side (the F-14's shoulder rails).
+        self.outboard = outboard
 
 
 def underside(geos, x, y, top=10.0):
@@ -193,6 +195,8 @@ def hang_stations(craft, paint):
             z = underside([craft.body], x, y) if st.top is None else st.top
             if st.depth > 0:
                 craft.body.add(store_pylon(x, y, st.chord, z + 0.06, z - st.depth, st.w, paint))
+                # A pylon on the body: rails on its sides hang from the body too.
+                pylons[i] = (None, Vector((x, y, z)))
             if st.rail is not None:
                 craft.body.add(st.rail(x, y, z - st.depth))
                 hung.append((i, None, (x, y, z - st.depth - st.rail.depth), 0.0))
@@ -215,10 +219,17 @@ def hang_stations(craft, paint):
         # side (its lugs on the rail).
         sub, local = pylons[st.side]
         inboard = -1.0 if local.x > 0 else 1.0
+        if st.outboard:
+            inboard = -inboard
         z = -stations[st.side].depth * 0.5
         rail = block(min(0, inboard * st.out), max(0, inboard * st.out), -0.9, 0.9, z - 0.035, z + 0.035, DARK)
         rail.add(block(min(0, inboard * stations[st.side].w), max(0, inboard * stations[st.side].w), -1.0, 1.0,
                        z - 0.05, z + 0.05, paint))
+        if sub is None:
+            # On a pylon of the body's: the rail at the pylon's place, the store hung from the body.
+            craft.body.add(rail.transformed(lambda q: q + local))
+            hung.append((i, None, tuple(local + Vector((inboard * st.out, 0.0, z))), -90.0 * inboard))
+            continue
         craft.subparts[sub][1].add(rail)
         hung.append((i, (stations[st.side].part, sub), (inboard * st.out, 0.0, z), -90.0 * inboard))
     return sorted(hung)
@@ -610,22 +621,287 @@ def mig25():
     return Craft(g, (-7.0, -5.3, 0.6), (7.0, -5.3, 0.6), [(-2.4, -7.6, 4.2), (2.4, -7.6, 4.2)], fl)
 
 
+# The F-14 Tomcat from its three-view (an F-14A drawing; 19.10 m long with the pitot, 19.54 m
+# span at 20 degrees of sweep, 11.65 m at 68, 4.88 m high; all three views ~154.5 px/m): points
+# as (x, s m aft of the radome's tip, z), z 0 the radome tip's height (1.80 m above the ground).
+# The long nose and tandem cockpit ahead of the flat "pancake" centre body, the box intakes under
+# the gloves running back into the widely spaced nacelles, the tunnel between them, the outer
+# wings pivoting in the gloves, the twin fins canted out on the nacelles, the tailerons on
+# shelves outboard of them.
+F14_NOSE = 9.40
+F14_GREY = Ramp(230, 236)
+F14_GROUND = -1.80
+# Fuselage rings, right half from the spine round to the keel: (s, nine (x, z) points: the top,
+# the deck's edge under the canopy's sill, the shoulder, the side, the chine, the lower side,
+# the bottom corner, the keel's side, the keel); "round" rings ahead of the cockpit (top,
+# bottom, half width, centre). Aft of the intakes the bottom is the tunnel's roof between the
+# nacelles, the sides inside the nacelles and the gloves.
+F14_BODY = [
+    (0.00, [(0.0, 0.0)] * 9),
+    (0.30, "round", 0.13, -0.13, 0.17, 0.00),
+    (0.60, "round", 0.31, -0.25, 0.28, 0.03),
+    (1.00, "round", 0.47, -0.34, 0.40, 0.06),
+    (1.40, "round", 0.61, -0.40, 0.48, 0.10),
+    (1.94, "round", 0.76, -0.45, 0.57, 0.15),
+    (2.40, "round", 0.87, -0.50, 0.65, 0.18),
+    (2.95, [(0.0, 0.98), (0.30, 0.97), (0.55, 0.86), (0.69, 0.60), (0.72, 0.25), (0.70, -0.15), (0.60, -0.42),
+            (0.38, -0.51), (0.0, -0.53)]),
+    (3.40, [(0.0, 0.97), (0.47, 0.97), (0.64, 0.84), (0.74, 0.55), (0.76, 0.20), (0.74, -0.22), (0.64, -0.48),
+            (0.40, -0.55), (0.0, -0.57)]),
+    (4.30, [(0.0, 0.97), (0.50, 0.97), (0.68, 0.85), (0.78, 0.55), (0.80, 0.20), (0.78, -0.22), (0.68, -0.50),
+            (0.42, -0.57), (0.0, -0.59)]),
+    (5.60, [(0.0, 0.97), (0.51, 0.97), (0.70, 0.86), (0.80, 0.58), (0.81, 0.22), (0.79, -0.22), (0.70, -0.52),
+            (0.44, -0.61), (0.0, -0.63)]),
+    (6.40, [(0.0, 0.97), (0.51, 0.97), (0.72, 0.86), (0.82, 0.60), (0.82, 0.22), (0.80, -0.20), (0.74, -0.50),
+            (0.46, -0.58), (0.0, -0.60)]),
+    (7.55, [(0.0, 0.97), (0.48, 0.97), (0.80, 0.86), (0.92, 0.62), (0.94, 0.22), (0.94, -0.15), (0.92, -0.38),
+            (0.50, -0.41), (0.0, -0.42)]),
+    (10.50, [(0.0, 0.84), (0.20, 0.84), (0.80, 0.80), (0.96, 0.62), (0.98, 0.22), (0.98, -0.15), (0.96, -0.38),
+             (0.50, -0.40), (0.0, -0.40)]),
+    (13.00, [(0.0, 0.70), (0.30, 0.70), (0.80, 0.66), (0.96, 0.55), (0.98, 0.22), (0.98, -0.15), (0.96, -0.38),
+             (0.50, -0.40), (0.0, -0.40)]),
+    (15.50, [(0.0, 0.52), (0.30, 0.52), (0.70, 0.50), (0.85, 0.42), (0.88, 0.20), (0.88, -0.15), (0.86, -0.38),
+             (0.50, -0.42), (0.0, -0.42)]),
+    (17.20, [(0.0, 0.42), (0.30, 0.42), (0.50, 0.40), (0.56, 0.32), (0.58, 0.15), (0.58, -0.10), (0.56, -0.30),
+             (0.40, -0.36), (0.0, -0.37)]),
+    (18.85, [(0.0, 0.12), (0.30, 0.12), (0.45, 0.11), (0.50, 0.08), (0.51, 0.04), (0.51, -0.02), (0.50, -0.06),
+             (0.35, -0.08), (0.0, -0.08)]),
+]
+# The canopy's glass, (s, sill z, half width at the sill, top): the windscreen from s 2.95 to its
+# bow at s 3.88, the one-piece bubble over both seats to s 7.55; the spine behind it (s, foot z,
+# half width, top) down onto the centre body.
+F14_CANOPY = [(2.95, 0.97, 0.20, 0.99), (3.30, 0.97, 0.36, 1.14), (3.60, 0.97, 0.44, 1.29),
+              (3.88, 0.97, 0.48, 1.44), (4.30, 0.97, 0.50, 1.62), (4.80, 0.97, 0.51, 1.74),
+              (5.40, 0.97, 0.51, 1.79), (6.20, 0.97, 0.51, 1.79), (6.80, 0.97, 0.50, 1.74),
+              (7.20, 0.97, 0.48, 1.63), (7.55, 0.97, 0.46, 1.49)]
+F14_GLASS = [(0.0, 1.0), (0.25, 0.99), (0.45, 0.95), (0.62, 0.87), (0.76, 0.75), (0.87, 0.59), (0.95, 0.36),
+             (1.0, 0.0)]
+F14_SPINE = [(7.55, 0.97, 0.46, 1.49), (8.00, 0.95, 0.45, 1.33), (8.50, 0.93, 0.43, 1.21), (9.00, 0.91, 0.40, 1.11),
+             (9.50, 0.89, 0.36, 1.01), (10.00, 0.86, 0.30, 0.93), (10.50, 0.84, 0.16, 0.86)]
+# The nacelles from the intakes' lips back to the nozzles: (s, centre x, centre z, half width,
+# half height, squareness). The box intakes stand off the fuselage's sides (the splitter's gap).
+F14_NACELLE = [(6.10, 1.32, 0.075, 0.34, 0.50, 8.0), (6.80, 1.35, 0.06, 0.37, 0.50, 6.0),
+               (8.00, 1.39, -0.02, 0.43, 0.54, 4.0), (9.50, 1.42, -0.12, 0.48, 0.62, 3.2),
+               (11.50, 1.42, -0.20, 0.55, 0.77, 2.6), (14.00, 1.38, -0.27, 0.60, 0.78, 2.4),
+               (16.00, 1.30, -0.28, 0.60, 0.72, 2.3), (16.90, 1.24, -0.28, 0.60, 0.64, 2.1)]
+# The intake lips' rake: the top lip at s 6.10, the bottom one at s 6.37.
+F14_LIP_S = (6.10, 6.37)
+# The nozzles: (s of the base, s of the exit, radius at the base, at the exit), on the engines'
+# axes at the nacelles' last ring.
+F14_NOZZLE = (16.90, 18.10, 0.60, 0.36)
+# The gloves and the upper skin over the nacelles: streamwise sections (x, s of the leading
+# edge, s of the trailing edge, z at the leading edge, z of the top at the ridge, z at the
+# trailing edge, z of the bottom at the ridge).
+# The glove's leading edge is straight (`F14_GLOVE_LE`), the swept outer wing's lining up with it.
+F14_GLOVE = [(0.70, 5.40, 16.50, 0.80, 0.86, 0.55, 0.20), (1.00, 6.00, 16.60, 0.70, 0.80, 0.55, 0.45),
+             (1.66, 6.00, 13.40, 0.66, 0.76, 0.58, 0.50), (2.05, 7.10, 12.40, 0.64, 0.73, 0.60, 0.52),
+             (2.70, 8.94, 11.60, 0.63, 0.70, 0.62, 0.55), (3.209, 10.384, 10.60, 0.63, 0.65, 0.63, 0.61)]
+# The shelves outboard of the nacelles carrying the tailerons: (x, s of the front, s of the back,
+# z, thickness).
+F14_SHELF = [(1.60, 12.40, 17.60, -0.18, 0.18), (2.22, 12.90, 17.40, -0.18, 0.14)]
+# The tailerons: (x, s of the leading edge, s of the trailing edge, z, thickness).
+F14_TAILERON = [(2.10, 14.62, 17.55, -0.18, 0.10), (4.45, 17.70, 18.70, -0.18, 0.05), (4.80, 18.05, 18.55, -0.18, 0.03)]
+# The outer wing's pivot in the glove (x, s; the wings' plane z), its sweep in the model (fully
+# forward, 20 degrees) and the sweep slots: right, left (src/aircraft.rs `F14_*`). The pivot is
+# where turning the wing's leading edge (21.6 degrees in the drawing) back by 48.9 degrees lays
+# it on the glove's (70.5): fully swept, wing and glove make one straight leading edge.
+F14_PIVOT = (2.345, 11.216)
+F14_WING_Z = 0.62
+F14_WING_SLOTS = (21, 22)
+# The right outer wing at 20 degrees: (x, s of the leading edge, s of the trailing edge, z,
+# thickness), the root deep in the glove and back to the nacelle (no gap behind it when forward;
+# swept, it slides into the centre body), the tip rounded.
+F14_WING = [(2.00, 9.905, 13.45, F14_WING_Z, 0.12), (3.209, 10.384, 13.50, F14_WING_Z, 0.13),
+            (8.93, 12.65, 13.88, F14_WING_Z, 0.07), (9.45, 13.05, 13.92, F14_WING_Z, 0.05),
+            (9.66, 13.55, 13.94, F14_WING_Z, 0.03)]
+# The F-14's stations 1A to 8A (src/loadout.rs `F14_STATIONS`): the Sidewinder rails on the glove
+# pylons' outboard sides, the glove pylons, the nacelles, the tunnel's four (pallets for the
+# Phoenix, fore and aft).
+F14_STATIONS = [Station(0.0, side=1, out=0.30, outboard=True), Station(0.65, chord=1.6, w=0.09),
+                Station(0.36, chord=1.3, w=0.06), Station(0.28, chord=2.2, w=0.08), Station(0.28, chord=2.2, w=0.08)]
+F14_STATIONS = F14_STATIONS + [Station(0.28, chord=2.2, w=0.08), Station(0.28, chord=2.2, w=0.08),
+                               Station(0.36, chord=1.3, w=0.06), Station(0.65, chord=1.6, w=0.09),
+                               Station(0.0, side=8, out=0.30, outboard=True)]
+
+
+def f14_p(x, s, z):
+    return Vector((x, F14_NOSE - s, z))
+
+
+def f14_ring(s, *spec):
+    if spec[0] == "round":
+        top, bottom, hw, zc = spec[1:]
+        right = []
+        for a in (90, 66, 42, 14, 0, -24, -48, -70, -90):
+            r = math.radians(a)
+            c, sn = math.cos(r), math.sin(r)
+            h = top - zc if sn > 0 else zc - bottom
+            right.append((hw * abs(c) ** (2 / 2.3), zc + math.copysign(abs(sn) ** (2 / 2.3), sn) * h))
+    else:
+        right = spec[0]
+    left = [(-x, z) for x, z in reversed(right[1:-1])]
+    return [f14_p(x, s, z) for x, z in right + left]
+
+
+def f14_glass(s, sill, hw, top):
+    right = [(hw * w, sill + (top - sill) * t) for t, w in F14_GLASS]
+    left = [(-x, z) for x, z in reversed(right[:-1])]
+    return [f14_p(x, s, z) for x, z in right + left]
+
+
+def f14_panel(sections, paint):
+    """A wing from streamwise sections (x, s of the leading edge, s of the trailing edge, z,
+    thickness), its ridge at 35% of the chord."""
+    rings = []
+    for x, le, te, z, t in sections:
+        mid = le + 0.35 * (te - le)
+        d = Vector((0, 0, t / 2))
+        rings.append([f14_p(x, le, z), f14_p(x, mid, z) + d, f14_p(x, te, z), f14_p(x, mid, z) - d])
+    return tube(rings, paint)
+
+
+def f14_glove(paint):
+    """The right glove and the upper skin inboard of it, from `F14_GLOVE`'s sections."""
+    rings = []
+    for x, le, te, zl, zt, zte, zb in F14_GLOVE:
+        mid = le + 0.30 * (te - le)
+        rings.append([f14_p(x, le, zl), f14_p(x, mid, zt), f14_p(x, te, zte), f14_p(x, mid, zb)])
+    return tube(rings, paint)
+
+
+def f14_nacelle(sx, paint):
+    """A nacelle (`sx` -1 left, 1 right): the box intake's lip raked back from the top, the
+    walls grey outside and dark inside, the black mouth, the body rounding back to the nozzle."""
+    n = 16
+    rings = []
+    for s, x, z, hw, hh, sq in F14_NACELLE:
+        rings.append(ring((sx * x, F14_NOSE - s, z), hw, hh, n=n, power=sq))
+    s0, s1 = F14_LIP_S
+    zt, zb = F14_NACELLE[0][2] + F14_NACELLE[0][4], F14_NACELLE[0][2] - F14_NACELLE[0][4]
+    lip = [Vector((p.x, F14_NOSE - (s0 + (zt - p.z) / (zt - zb) * (s1 - s0)), p.z)) for p in rings[0]]
+    g = tube([lip] + rings[1:], paint, cap0=False, wound=True)
+    # The inside: the same walls a little in, dark and turned inwards, to the black mouth.
+    inner = [ring((sx * x, F14_NOSE - s, z), hw - 0.04, hh - 0.04, n=n, power=sq) for s, x, z, hw, hh, sq in
+             F14_NACELLE[:2]]
+    lip_in = [Vector((p.x, q.y - 0.01, p.z)) for p, q in zip(inner[0], lip)]
+    walls = tube([lip_in, inner[1]], DARK, cap0=False, cap1=False, wound=True)
+    walls.faces = [(list(reversed(pts)), c) for pts, c in walls.faces]
+    g.add(walls)
+    # The lip's thickness between the outer and inner walls.
+    for k in range(n):
+        k1 = (k + 1) % n
+        g.face([lip[k], lip_in[k], lip_in[k1], lip[k1]], paint, f14_p(sx * F14_NACELLE[0][1], s0 + 2.0, 0.0))
+    # The mouth faces forward (its normal away from a point behind it).
+    g.face(inner[1], BLACK, f14_p(sx * 1.3, 10.0, 0.0))
+    return g
+
+
+def f14_nozzle(sx):
+    s0, s1, r0, r1 = F14_NOZZLE
+    _, x, z, *_ = F14_NACELLE[-1]
+    g = frustum(tuple(f14_p(sx * x, s0, z)), tuple(f14_p(sx * x, s1, z)), r0, r1, DARK, n=14, caps=False)
+    g.face([f14_p(sx * x + (r1 - 0.04) * math.cos(a), s1 - 0.12, z + (r1 - 0.04) * math.sin(a))
+            for a in (2 * math.pi * k / 14 for k in range(14))], FLAME, f14_p(sx * x, s0, z))
+    return g
+
+
+def f14_wing():
+    """The right outer wing at 20 degrees of sweep, about its pivot (the left one mirrored): its
+    root slides into the glove and over the nacelle as it sweeps back."""
+    px, ps = F14_PIVOT
+    g = f14_panel(F14_WING, F14_GREY)
+    return g.transformed(lambda p: p - f14_p(px, ps, F14_WING_Z))
+
+
+def f14_lantirn():
+    """The LANTIRN targeting pod on station 8B (the right glove pylon), the flown F-14B's (slot
+    28): the long body, the dark window of the turret at its nose."""
+    x, s, z = 2.85, 9.50, 0.05
+    g = loft([(F14_NOSE - s + 1.05, z, 0.12, 0.12), (F14_NOSE - s + 0.85, z, 0.19, 0.19),
+              (F14_NOSE - s - 1.00, z, 0.19, 0.19), (F14_NOSE - s - 1.25, z, 0.10, 0.10)], GREY_L, n=10, x=x)
+    g.add(frustum(tuple(f14_p(x, s - 1.05, z)), tuple(f14_p(x, s - 1.30, z)), 0.15, 0.13, DARK, n=10))
+    # The pylon adapter up to the glove pylon.
+    g.add(block(x - 0.05, x + 0.05, F14_NOSE - s - 0.50, F14_NOSE - s + 0.50, z + 0.15, z + 0.30, GREY_L))
+    return g
+
+
 def f14():
-    g = loft([(9.5, 0.2, 0, 0), (8.5, 0.2, 0.4, 0.4), (6.5, 0.3, 0.65, 0.7), (4.0, 0.35, 0.8, 0.8), (1.5, 0.3, 1.0, 0.6),
-              (-3.0, 0.2, 1.0, 0.4), (-7.0, 0.15, 0.8, 0.3)], GREY_L, n=8, power=2.4)
-    g.add(loft([(9.5, 0.2, 0, 0), (8.5, 0.2, 0.4, 0.4), (7.6, 0.22, 0.55, 0.55)], RADOME, n=8))
-    for s in (-1, 1):
-        g.add(box_intake(s * 1.9, 3.0, 0.0, -0.2, 0.55, 0.7, slant=1.0, paint=GREY_L))
-        g.add(loft([(0.0, -0.2, 0.55, 0.7), (-5.0, -0.1, 0.65, 0.65), (-8.1, -0.1, 0.62, 0.62)], GREY_L, n=8, power=2.6, x=s * 1.9))
-        g.add(nozzle(s * 1.9, -8.1, -0.1, 0.62, 1.1))
-        g.add(wing((s * 2.0, -3.6, 0.5), 3.6, (s * 2.6, -6.6, 3.4), 1.4, GREY_L, t=0.05, vertical=True, mirror=False))
-    g.add(canopy(6.8, 2.8, 0.9, 0.45, 0.5))
-    # glove + half-swept outer wing
-    g.add(wing((0.9, 4.6, 0.3), 6.0, (2.6, 0.4, 0.3), 3.2, GREY_L, t=0.04))
-    g.add(wing((2.6, 0.4, 0.3), 3.0, (7.6, -3.6, 0.3), 1.6, GREY_L, t=0.05))
-    g.add(wing((2.4, -5.8, 0.0), 3.4, (5.0, -8.4, 0.0), 1.4, GREY_L, t=0.04))
-    fl = Geo().add(flame(1.9, -9.2, -0.1, 0.55, 3.2)).add(flame(-1.9, -9.2, -0.1, 0.55, 3.2))
-    return Craft(g, (-7.6, -4.6, 0.3), (7.6, -4.6, 0.3), [(-2.6, -7.2, 3.4), (2.6, -7.2, 3.4)], fl)
+    p = F14_GREY
+    rings = [f14_ring(s, *spec) if spec[0] == "round" else f14_ring(s, spec[0]) for s, *spec in F14_BODY]
+    g = Geo().add(tube(rings, p, paints=[RADOME] * 5 + [p] * (len(rings) - 6), wound=True))
+    # The pitot probe on the radome's tip.
+    g.add(frustum(tuple(f14_p(0, 0.02, 0.0)), tuple(f14_p(0, -0.32, 0.0)), 0.025, 0.008, GREY_L, n=5))
+    # The chin pod (TCS) under the nose, its dark window ahead.
+    g.add(loft([(F14_NOSE - 1.86, -0.60, 0.05, 0.05), (F14_NOSE - 2.05, -0.62, 0.14, 0.15),
+                (F14_NOSE - 2.95, -0.60, 0.14, 0.15), (F14_NOSE - 3.10, -0.52, 0.08, 0.08)], p, n=8))
+    g.face2([f14_p(-0.07, 1.90, -0.55), f14_p(0.07, 1.90, -0.55), f14_p(0.07, 1.92, -0.68), f14_p(-0.07, 1.92, -0.68)],
+            BLACK)
+    # The canopy, the windscreen's bow and the sills' frames, the spine behind.
+    g.add(tube([f14_glass(*r) for r in F14_CANOPY], CANOPY, cap1=False))
+    bow = [q + Vector((0, 0, 0.012)) for q in f14_glass(3.88, 0.97, 0.49, 1.45)]
+    g.add(tube([bow, [q - Vector((0, 0.07, 0)) for q in bow]], DARK, cap0=False, cap1=False))
+    g.add(tube([f14_glass(*r) for r in F14_SPINE], p, cap0=False))
+    sills = F14_CANOPY + F14_SPINE[1:]
+    for sx in (-1, 1):
+        edge = [(f14_p(sx * hw, s, sill), f14_p(sx * hw, s, sill - 0.10)) for s, sill, hw, _ in sills]
+        for (a, b), (c, d) in zip(edge, edge[1:]):
+            g.face([a, c, d, b], p, Vector((0, 0.5 * (a.y + c.y), a.z)))
+    for sx in (-1, 1):
+        g.add(f14_nacelle(sx, p))
+        g.add(f14_nozzle(sx))
+    g.add(mirror(f14_glove(p)))
+    g.add(mirror(f14_panel(F14_SHELF, p)))
+    g.add(mirror(f14_panel(F14_TAILERON, p)))
+    # The fins canted out on the nacelles, the ventral fins under them.
+    for sx in (-1, 1):
+        g.add(wing(tuple(f14_p(sx * 1.47, 14.99, 0.50)), 2.91, tuple(f14_p(sx * 1.70, 17.54, 3.05)), 1.18, p, t=0.05,
+                   vertical=True, mirror=False))
+        g.add(wing(tuple(f14_p(sx * 1.40, 13.40, -0.95)), 1.70, tuple(f14_p(sx * 1.44, 14.40, -1.30)), 0.70, p, t=0.06,
+                   vertical=True, mirror=False))
+    # The arresting hook stowed under the beaver tail.
+    g.add(block(-0.05, 0.05, F14_NOSE - 18.30, F14_NOSE - 16.60, -0.47, -0.40, DARK))
+    fl = Geo()
+    for sx in (-1, 1):
+        _, x, z, *_ = F14_NACELLE[-1]
+        fl.add(flame(sx * x, F14_NOSE - 18.20, z, 0.34, 3.6))
+    right = f14_wing()
+    px, ps = F14_PIVOT
+    parts = [(right, tuple(f14_p(px, ps, F14_WING_Z)), F14_WING_SLOTS[0]),
+             (right.mirrored(), tuple(f14_p(-px, ps, F14_WING_Z)), F14_WING_SLOTS[1])]
+    # The navigation lights on the gloves' tips (the outer wings move), the white ones on the fins.
+    tip = lambda sx: tuple(f14_p(sx * 3.20, 10.45, F14_WING_Z))
+    fin = lambda sx: tuple(f14_p(sx * 1.70, 18.70, 3.05))
+    return Craft(g, tip(-1), tip(1), [fin(-1), fin(1)], fl, gear=f14_gear(), parts=parts,
+                 stations=("F14_STATIONS", F14_STATIONS, p), groups=[([(STORES_SLOT, 1)], f14_lantirn())])
+
+
+def f14_gear():
+    """The gear down: the nose leg with its twin wheels and launch bar, the main legs from the
+    gloves' undersides slanting out to the wheels, their doors."""
+    g = Geo()
+    r = 0.29
+    axle = f14_p(0, 5.10, F14_GROUND + r)
+    for x in (-0.15, 0.15):
+        g.add(mklib.wheel((x, axle.y, axle.z), r, 0.15, BLACK, n=8))
+    g.add(frustum(tuple(f14_p(0, 4.85, -0.70)), tuple(axle + Vector((0, 0, 0.08))), 0.08, 0.07, GREY_L, n=5))
+    g.add(frustum(tuple(f14_p(0, 4.20, -0.70)), tuple(f14_p(0, 4.80, -1.15)), 0.04, 0.04, GREY_L, n=4))
+    # The launch bar, down and forward to the deck.
+    g.add(frustum(tuple(axle + Vector((0, 0.05, 0.12))), tuple(f14_p(0, 4.30, F14_GROUND + 0.08)), 0.03, 0.03, GREY_L,
+                  n=4))
+    for sx in (-1, 1):
+        g.face2([f14_p(sx * 0.30, 4.30, -0.70), f14_p(sx * 0.30, 5.70, -0.72), f14_p(sx * 0.32, 5.70, -1.10),
+                 f14_p(sx * 0.32, 4.30, -1.08)], F14_GREY)
+    r = 0.47
+    for sx in (-1, 1):
+        axle = f14_p(sx * 2.45, 12.15, F14_GROUND + r)
+        g.add(mklib.wheel(tuple(axle), r, 0.28, BLACK, n=10))
+        g.add(frustum(tuple(f14_p(sx * 2.05, 11.90, 0.45)), tuple(axle + Vector((-sx * 0.18, 0, 0.12))), 0.10, 0.09,
+                      GREY_L, n=5))
+        g.add(frustum(tuple(f14_p(sx * 1.95, 11.00, 0.10)), tuple(axle + Vector((-sx * 0.18, 0, 0.55))), 0.05, 0.05,
+                      GREY_L, n=4))
+        g.face2([f14_p(sx * 2.28, 11.10, 0.45), f14_p(sx * 2.28, 12.60, 0.45), f14_p(sx * 2.36, 12.60, -0.25),
+                 f14_p(sx * 2.36, 11.10, -0.25)], F14_GREY)
+    return g
 
 
 def f4():

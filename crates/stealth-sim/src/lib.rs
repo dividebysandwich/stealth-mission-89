@@ -70,8 +70,9 @@ use math::{s16, view_z};
 use serde::{Deserialize, Serialize};
 use stealth_mission::Mission;
 
-/// Number of projectile slots (0..7 enemy, 8..11 the active pilot's).
-pub const N_PROJ: usize = 12;
+/// Number of projectile slots (0..7 enemy, 8..13 the active pilot's: six, for an F-14's
+/// Phoenix salvo).
+pub const N_PROJ: usize = 14;
 /// Enemy missile slots (shared by all the pilots they go for) and each pilot's own.
 pub const ENEMY_SLOTS: usize = 8;
 pub const PILOT_SLOTS: usize = N_PROJ - ENEMY_SLOTS;
@@ -463,6 +464,7 @@ impl Sim {
         let hornet = opts.hornet;
         let growler = opts.growler;
         let intruder = opts.intruder;
+        let tomcat = opts.tomcat;
         let mut sim = Self {
             threats: data.threats.clone(),
             aircraft_types: data.aircraft.clone(),
@@ -518,6 +520,7 @@ impl Sim {
                 hornet,
                 growler,
                 intruder,
+                tomcat,
                 side_guns: Default::default(),
                 cargo_tag: None,
                 unload: [0; 2],
@@ -590,6 +593,7 @@ impl Sim {
                 launches: 0,
                 air_lock: -1,
                 pilot_lock: None,
+                launch: (None, None, false),
                 helmet_seeker: None,
                 sidearm_seeker: None,
                 gnd_lock: -1,
@@ -965,6 +969,7 @@ impl Sim {
 
     /// Copy the flight model's state into the per-frame player view and flags.
     pub(crate) fn ingest(&mut self, ps: &PlayerState) {
+        self.pl.launch = (ps.launch_unit, ps.launch_pilot, ps.ph_active);
         let alt = ps.altitude as i32;
         self.pl.p = PlayerView {
             wx: ps.x,

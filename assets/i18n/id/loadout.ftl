@@ -165,6 +165,16 @@ hardpoint-a6-1-left-outer-wing = Station 1, sayap kiri luar
 hardpoint-a6-2-left-inner-wing = Station 2, sayap kiri dalam
 hardpoint-a6-4-right-inner-wing = Station 4, sayap kanan dalam
 hardpoint-a6-5-right-outer-wing = Station 5, sayap kanan luar
+hardpoint-f14-1a-left-shoulder = Station 1A, rel bahu kiri
+hardpoint-f14-1b-left-glove = Station 1B, pilon pangkal sayap kiri
+hardpoint-f14-2-left-nacelle = Station 2, nacelle kiri
+hardpoint-f14-3-left-front-tunnel = Station 3, terowongan depan, kiri
+hardpoint-f14-4-left-rear-tunnel = Station 4, terowongan belakang, kiri
+hardpoint-f14-5-right-rear-tunnel = Station 5, terowongan belakang, kanan
+hardpoint-f14-6-right-front-tunnel = Station 6, terowongan depan, kanan
+hardpoint-f14-7-right-nacelle = Station 7, nacelle kanan
+hardpoint-f14-8b-right-glove = Station 8B, pilon pangkal sayap kanan
+hardpoint-f14-8a-right-shoulder = Station 8A, rel bahu kanan
 hardpoint-c5-hold = Ruang kargo (palet jatuhan udara)
 hardpoint-ch47-cabin = Kabin (pasukan payung)
 weapon-role-21 = Udara-ke-udara, pengarah inframerah, jangkauan sangat pendek
@@ -233,5 +243,15 @@ weapon-role-37 = Rudal anti-radiasi dari Sidewinder: radar dan situs SAM, dari h
 employment-37 =
     Jangkauan: 1-10 km
     Di bawah 1.000 ft ia menanjak lalu menukik ke radar dari atas
+# AIM-54C Phoenix
+weapon-role-38 = Udara-ke-udara, dipandu radar, jarak jauh: hingga enam sasaran sekaligus
+employment-38 =
+    Jangkauan: 2-76 km, lebih jauh dari depan
+    Radar memandunya di jejaknya; pencarinya sendiri dari 10 nmi (PH ACT: sejak lepas rel)
+# AIM-7M Sparrow
+weapon-role-39 = Udara-ke-udara, pemandu radar semi-aktif, jarak menengah
+employment-39 =
+    Jangkauan: 1-31 km, lebih jauh dari depan
+    Pertahankan pelacakan sasaran tunggal radar sampai kena
 loadout-wingman = WINGMAN
     .facts = Wingman AI dengan pesawat dan persenjataan yang sama bergabung di udara; menu radio (\) memberinya perintah

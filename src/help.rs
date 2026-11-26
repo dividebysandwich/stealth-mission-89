@@ -47,7 +47,7 @@ Starting
                                view direction (default 0, -15)
 
 Aircraft and rules
-  --aircraft f117|f16|f22|fa18e|ea18g|a6|tornado|a10|av8b|c5|ac130|uh60|mh60r|ch47|ah1z|ah64|
+  --aircraft f117|f16|f22|fa18e|ea18g|f14|a6|tornado|a10|av8b|c5|ac130|uh60|mh60r|ch47|ah1z|ah64|
              rah66|oh58
                                the flown aircraft (default f117)
   --asw-scenario blockade|convoy|carrier

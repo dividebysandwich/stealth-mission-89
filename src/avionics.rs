@@ -408,7 +408,7 @@ pub struct TgpState {
 }
 
 impl TgpMode {
-    fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             TgpMode::Slaved => "SLV",
             TgpMode::Area(_) => "AREA",

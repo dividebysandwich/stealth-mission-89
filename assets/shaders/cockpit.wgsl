@@ -207,6 +207,15 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     out.color = vec4<f32>(out.color.rgb + flood_light(pbr_input.material.base_color.rgb), out.color.a);
     out.color = vec4<f32>(nvg(out.color.rgb, in.position), out.color.a);
     out.color = main_pass_post_lighting_processing(pbr_input, out.color);
+    // A black and white picture (shading.rs `CockpitShading::mono`).
+    if (sharp.y > 0.0) {
+        var grey = dot(out.color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+        // Black hot: inverted as seen (not in linear light).
+        if (sharp.y > 1.5) {
+            grey = pow(1.0 - pow(clamp(grey, 0.0, 1.0), 1.0 / 2.2), 2.2);
+        }
+        out.color = vec4<f32>(vec3<f32>(grey), out.color.a);
+    }
     out.color = vec4<f32>(retro(out.color.rgb, in.position.xy), out.color.a * (1.0 - sharp.x));
     return out;
 }

@@ -26,6 +26,8 @@ pub const FA18E: i32 = 46;
 pub const EA18G: i32 = 47;
 /// The A-6 Intruder: an AI type from the start (units.ron), flown by players too.
 pub const A6: i32 = 24;
+/// The F-14B Tomcat: the blue F-14 (units.ron `f14_blue`), flown by players too.
+pub const F14: i32 = 12;
 
 /// The other side's ground units this close to a CAS flight's point are its targets (map
 /// units, 5 km).

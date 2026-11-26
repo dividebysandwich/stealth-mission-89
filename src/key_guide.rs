@@ -42,6 +42,8 @@ const SECTIONS: &[(&str, &[(Keys, &str)])] = {
                 (Actions(&[NozzleDown, NozzleAft]), "kg-nozzle-down"),
                 (Actions(&[NozzleHover]), "kg-nozzle-hover"),
                 (Actions(&[NozzleFullAft]), "kg-nozzle-full-aft"),
+                (Actions(&[WingSweepAft, WingSweepForward]), "kg-wing-sweep"),
+                (Actions(&[WingSweepAuto]), "kg-wing-sweep-auto"),
                 (Actions(&[Autopilot]), "kg-autopilot"),
                 (Actions(&[Hover]), "kg-hover"),
             ],

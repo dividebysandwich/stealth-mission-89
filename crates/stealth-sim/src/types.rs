@@ -130,7 +130,7 @@ pub struct FlightUnit {
     pub cat: i32,
 }
 
-/// Projectile. Slots 0..7 enemy, 8..11 player.
+/// Projectile. Slots 0..7 enemy, 8..13 player.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Projectile {
     pub x: i32,
@@ -191,12 +191,27 @@ pub struct Projectile {
     /// An enemy missile fired at one of its pilot's stand-off weapons: that weapon's slot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intercept: Option<u8>,
+    /// A Phoenix before its own seeker is on: guided to its target by the launcher's radar
+    /// ([`Midcourse`]). None once it is active (or for any other missile).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub midcourse: Option<Midcourse>,
     /// A submarine's sea-skimmer at a ship (`crate::naval`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sea: Option<crate::naval::SeaGuide>,
     /// A Sidearm fired low: its pop-up program ([`Popup`]).
     #[serde(default, skip_serializing_if = "Popup::is_off")]
     pub popup: Popup,
+}
+
+/// A Phoenix's midcourse guidance: the launcher's radar tracks its target and tells it where
+/// the target is (`PlayerState::support`); once that track is lost it flies on to where the
+/// target was last. Within [`PHOENIX_ACTIVE`] of that its own radar seeker comes on and it is
+/// on its own (`crate::missiles`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct Midcourse {
+    /// Where the target was last seen by the launcher's radar (wu: east, south, and the
+    /// altitude it is drawn at, as [`crate::guidance::Target`]).
+    pub at: (i32, i32, i32),
 }
 
 /// The Sidearm's pop-up program: fired low at a radar it climbs away from the ground, then
@@ -588,6 +603,10 @@ pub struct PlayerState {
     /// A V/STOL type's nozzle angle down from aft (degrees), drawn on its model for the others.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
     pub nozzle: u8,
+    /// A swing wing's sweep (0 fully forward .. 255 fully back), drawn on its model for the
+    /// others (the F-14's: its pilot may sweep it back by hand).
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub sweep: u8,
     /// On a carrier's catapult: the catapult and the launch's phase (`catapult::report`; 0
     /// none). The start state names the catapult it starts on.
     #[serde(default, skip_serializing_if = "is_zero_u8")]
@@ -617,6 +636,22 @@ pub struct PlayerState {
     /// The flight model is stalled (the stall horn), for the crew.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub stalled: bool,
+    /// The air-to-air radar's tracks that guide its semi-active and data-linked missiles (the
+    /// F-14's AWG-9: its track-while-scan tracks and its single target track): flight indices,
+    /// and other pilots' ids. The air lock always counts as one.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub support: Vec<u16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub support_pilots: Vec<u8>,
+    /// The target the next air-to-air missile goes for where it is not the air lock (the F-14's
+    /// next track to shoot at in track-while-scan): a flight index, or another pilot's id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launch_unit: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launch_pilot: Option<u8>,
+    /// A Phoenix fired now goes active off the rail (the F-14 RIO's PH ACT switch).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ph_active: bool,
     pub cmd: Commands,
 }
 
@@ -678,6 +713,17 @@ pub const JSOW_SPEC: i32 = 53;
 pub const JSOW_WEAPON: i32 = 26;
 pub const MALD_SPEC: i32 = 54;
 pub const MALD_WEAPON: i32 = 27;
+/// The AIM-54C Phoenix's missile table entry and weapon type: guided by the launcher's radar
+/// to its target ([`Midcourse`]), then by its own radar seeker within [`PHOENIX_ACTIVE`].
+pub const PHOENIX_SPEC: i32 = 61;
+pub const PHOENIX_WEAPON: i32 = 38;
+/// How far from its target (map units, 10 nmi) the Phoenix's own seeker comes on, and how far
+/// that seeker sees an aircraft (map units, the same).
+pub const PHOENIX_ACTIVE: i32 = 1186;
+/// The AIM-7M Sparrow's missile table entry and weapon type: semi-active, it homes on its
+/// target only while the launcher's radar holds it in a single target track (the air lock).
+pub const SPARROW_SPEC: i32 = 62;
+pub const SPARROW_WEAPON: i32 = 39;
 /// The AIM-9's and the air-launched Stinger's missile table entries.
 pub const AIM9_SPEC: i32 = 23;
 pub const STINGER_SPEC: i32 = 48;
@@ -762,6 +808,9 @@ pub struct Airframe {
     /// The A-6 Intruder (external stores, as the F-16): no cannon.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub intruder: bool,
+    /// The F-14B Tomcat (external stores, as the F-16): its wings swing back with its speed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tomcat: bool,
 }
 
 /// Landing option.
@@ -845,6 +894,10 @@ pub struct SimOptions {
     /// The aircraft is the A-6 Intruder: seen as one by the other pilots, no cannon.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub intruder: bool,
+    /// The aircraft is the F-14B Tomcat: seen as one by the other pilots, its wings swept as
+    /// it sweeps them ([`PlayerState::sweep`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub tomcat: bool,
     /// Realistic weapon damage: a missile hit can destroy the aircraft
     /// outright, damages more systems, starts fires more often (a fire burns out or the aircraft
     /// explodes) and damaged control surfaces put the aircraft out of trim.
@@ -902,6 +955,7 @@ impl Default for SimOptions {
             hornet: false,
             growler: false,
             intruder: false,
+            tomcat: false,
             realistic_damage: false,
             realistic_guidance: false,
             realistic_ai_flight: false,

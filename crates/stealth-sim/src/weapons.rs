@@ -677,11 +677,12 @@ impl Sim {
             return;
         }
         // A free slot, else one of a missile spent and falling: a missile that missed glides
-        // on for a long while and would hold the slot. With none the store stays on.
-        let free = (8..12)
-            .rev()
-            .find(|&i| self.proj[i].ttl == 0)
-            .or_else(|| (8..12).rev().find(|&i| self.proj[i].flight.is_some_and(|f| f.stalled)));
+        // on for a long while and would hold the slot. With none the store stays on. The four
+        // slots of old first (from the top down), then the two more a Phoenix salvo takes.
+        let order = [11, 10, 9, 8, 13, 12];
+        let free = order.into_iter().find(|&i| self.proj[i].ttl == 0).or_else(|| {
+            order.into_iter().find(|&i| self.proj[i].flight.is_some_and(|f| f.stalled))
+        });
         let Some(slot) = free else { return };
         self.pl.bays[bay].1 -= 1;
         self.log_event(4, bay as i32);
@@ -754,13 +755,35 @@ impl Sim {
             pr.ttl = 0x7FFF;
         }
         self.proj[slot] = pr;
-        // An air-to-air missile fired with another pilot locked goes for him.
+        // An air-to-air missile fired with another pilot locked goes for him (or the pilot the
+        // F-14's track-while-scan shoots at next).
+        let (launch_unit, launch_pilot, ph_active) = self.pl.launch;
         if mt.class == 7 {
-            self.proj[slot].target_pilot = self.pl.pilot_lock.filter(|&k| self.pilot_airborne(k));
+            self.proj[slot].target_pilot =
+                launch_pilot.or(self.pl.pilot_lock).filter(|&k| self.pilot_airborne(k));
+        }
+        // The radar's target: the air lock, or the track the F-14's track-while-scan shoots at
+        // next.
+        let lock = launch_unit.map_or(self.pl.air_lock, |j| j as i32);
+        let radar_guided = matches!(spec, PHOENIX_SPEC | SPARROW_SPEC);
+        if radar_guided {
+            if lock >= 0 && (lock as usize) < self.flights.len() {
+                self.proj[slot].target = lock;
+            }
+            // The Phoenix: midcourse guidance by the radar to its target, unless fired active
+            // (PH ACT) or at no target at all.
+            if spec == PHOENIX_SPEC && !ph_active {
+                let m = self.proj[slot];
+                let at = match m.target_pilot {
+                    Some(k) => Some(self.pilot_target(k)),
+                    None => (m.target >= 0).then(|| self.unit_target(m.target as usize)),
+                };
+                self.proj[slot].midcourse =
+                    at.map(|tg| Midcourse { at: (tg.p[0] as i32, tg.p[1] as i32, tg.p[2] as i32) });
+            }
         }
         if self.guided(spec) {
             // An air-to-air missile goes for the radar's target.
-            let lock = self.pl.air_lock;
             if mt.class == 7 && lock >= 0 && (lock as usize) < self.flights.len() {
                 self.proj[slot].target = lock;
             }
@@ -779,6 +802,10 @@ impl Sim {
                 let mut m = self.proj[slot];
                 self.loft_launch(&mut m, tg.p);
                 self.proj[slot] = m;
+            }
+            // The Phoenix's long flight.
+            if spec == PHOENIX_SPEC {
+                self.proj[slot].ttl = crate::guidance::PHOENIX_SECS * self.fs;
             }
         }
         self.pl.last_missile_slot = slot as i32;
@@ -824,6 +851,7 @@ impl Sim {
             glide: None,
             intercept: None,
             sea: None,
+            midcourse: None,
             popup: Popup::Off,
         };
         if matches!(spec, 28 | 29 | 30 | 38 | CBU105_SPEC) {

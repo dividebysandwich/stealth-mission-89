@@ -727,6 +727,36 @@ pub struct HudFrame {
     /// A V/STOL type's readouts (`modern`: the nozzle angle, and jet-borne the hover drift
     /// vector at low speed).
     pub vtol: Option<VtolHud>,
+    /// The F-14's radar and missile cues (`modern`'s air-to-air symbols).
+    pub tomcat: Option<TomcatHud>,
+}
+
+/// The F-14's HUD cues from its AWG-9 (`tomcat::avionics` fills them).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TomcatHud {
+    /// The radar's mode as the displays name it.
+    pub mode: &'static str,
+    /// An ACM mode's scan against the nose (drawn on the glass).
+    pub acm: Option<AcmScan>,
+    /// Track while scan: the track the next Phoenix goes for (its direction from the aircraft
+    /// in the world, its range in km and its number).
+    pub next: Option<(Vec3, f32, u16)>,
+    /// A single target track's closing speed (knots).
+    pub closure: Option<f32>,
+    /// Our radar missiles in flight: each one's seconds to go (negative: to its seeker coming
+    /// on, positive: to impact).
+    pub in_flight: Vec<f32>,
+}
+
+/// An ACM mode's scan.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AcmScan {
+    /// A beam along the nose of this half width (rad).
+    Boresight(f32),
+    /// A vertical strip of this half width from this elevation to that off the nose (rad).
+    Vertical(f32, f32, f32),
+    /// The wide scan ahead.
+    Wide,
 }
 
 /// A V/STOL type's HUD readouts.
@@ -765,6 +795,7 @@ pub struct HudParams<'w, 's> {
     pub papi: Option<Res<'w, crate::scenery::PapiSites>>,
     pub theater: Option<Res<'w, crate::world::Theater>>,
     pub anchors: Option<Res<'w, crate::cockpit3d::levers::CockpitAnchors>>,
+    pub tomcat: Option<Res<'w, crate::tomcat::avionics::TomcatScene>>,
 }
 
 /// (temperature ratio, speed of sound in ft/s) at an altitude in feet (standard atmosphere).
@@ -816,8 +847,14 @@ impl HudParams<'_, '_> {
                 let gs = eye.y.max(0.0).atan2(along).to_degrees() - crate::scenery::GLIDE_PATH_DEG;
                 Some((loc as f32, gs as f32))
             });
+        let tomcat = self
+            .tomcat
+            .as_ref()
+            .filter(|_| self.settings.aircraft == crate::aircraft::AircraftKind::F14)
+            .and_then(|t| t.hud.clone());
         Some(HudFrame {
             ils,
+            tomcat,
             scale: self.settings.hud_scale(),
             field_bottom: self.anchors.as_ref().and_then(|a| a.hud_glass_bottom).and_then(|p| {
                 modern::glass_row(p - self.settings.seat_offset(), self.settings.hud_scale())

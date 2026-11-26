@@ -228,6 +228,11 @@ aircraft-ea18g =
         Elektroninė ataka, iš lėktuvnešių
         Trukdo priešo radarams prieš smūgį
         Dvi vietos: pilotas ir elektroninės kovos karininkas
+aircraft-f14 =
+    .facts =
+        Lėktuvnešio laivyno gynybos naikintuvas, dviejų narių įgula vienas už kito
+        Mach 1,9, kintamo strėliškumo sparnai, Phoenix raketos
+        Analoginė kabina, RIO radaro ekranai
 aircraft-a6 =
     .facts =
         Lėktuvnešių visų oro sąlygų atakos orlaivis, du įgulos nariai greta
