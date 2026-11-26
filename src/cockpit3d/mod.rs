@@ -150,6 +150,8 @@ pub struct HandsUpdate;
 #[derive(Resource, Default)]
 pub struct Hands {
     pub hands: [Hand; 2],
+    /// `Hotas::flown` when the hands last looked (`park_idle_hands`).
+    pub flown_seen: u32,
 }
 
 pub const BUTTON_PRIMARY: u8 = 1; // A / X
@@ -205,6 +207,15 @@ pub struct Hand {
     /// The thumbstick scrolls the kneeboard's key guide: it neither slews nor presses its
     /// mapped stick directions.
     pub scrolling: bool,
+    /// The grip pose in the tracking space while the runtime really tracks it (not a pose it
+    /// only extrapolates or pins to the head): set by the VR backends for `park_idle_hands`.
+    pub tracked: Option<Transform>,
+    /// Put down while the HOTAS flies: hidden and its inputs ignored until its grip is
+    /// pressed or its trigger pulled (`park_idle_hands`).
+    pub parked: bool,
+    /// Seconds without input or movement, and the tracked pose it was last still at.
+    pub idle: f32,
+    pub rest: Option<Transform>,
 }
 
 impl Hand {
@@ -217,6 +228,15 @@ impl Hand {
     pub fn trigger_pulled(&self) -> bool {
         self.trigger > 0.7 && self.prev_trigger <= 0.7
     }
+    /// Parked: hidden, its inputs dropped (but the menu button: recentring, the flight menu).
+    fn put_away(&mut self) {
+        self.active = false;
+        self.aim_raw = None;
+        self.squeeze = 0.0;
+        self.trigger = 0.0;
+        self.buttons &= BUTTON_MENU;
+        self.thumb = Vec2::ZERO;
+    }
     /// The grip as a button: (held, just pressed).
     pub fn grip_button(&self) -> (bool, bool) {
         (self.squeeze > GRIP_PRESS, self.squeeze > GRIP_PRESS && self.prev_squeeze <= GRIP_PRESS)
@@ -226,6 +246,67 @@ impl Hand {
 /// The grip counts as pressed past this, and a held grab lets go below `GRIP_RELEASE`.
 const GRIP_PRESS: f32 = 0.6;
 const GRIP_RELEASE: f32 = 0.4;
+
+/// A controller untouched this long (s) is put away when the HOTAS stick or throttle moves.
+const PARK_IDLE: f32 = 2.0;
+/// Moving more than this from where it lay (m, rad) is using it.
+const PARK_STILL_M: f32 = 0.02;
+const PARK_STILL_RAD: f32 = 0.1;
+
+/// Puts the controllers the player has put down away when he flies with the HOTAS (the VR
+/// backends, after reading the controllers and before `update_grabs`): a hand without input
+/// or tracked movement for `PARK_IDLE` is parked when the stick or the throttle moves
+/// (`flown`, `Hotas::flown`), as a controller that sleeps would otherwise float in front of
+/// the face (the runtime pins it to the head). A parked hand is hidden and does nothing
+/// until its grip is pressed or its trigger pulled (that press only wakes it). Only in a
+/// cockpit view: the menus' pointers stay.
+pub fn park_idle_hands(hands: &mut Hands, flown: u32, dt: f32, cockpit_view: bool) {
+    let flew = std::mem::replace(&mut hands.flown_seen, flown) != flown;
+    for hand in &mut hands.hands {
+        if !cockpit_view {
+            hand.parked = false;
+        }
+        if hand.parked {
+            if hand.grip_button().1 || hand.trigger_pulled() {
+                // Awake, without the press acting: only the held grip grabs.
+                hand.parked = false;
+                hand.prev_squeeze = hand.squeeze;
+                hand.prev_trigger = hand.trigger;
+                hand.prev_buttons = hand.buttons;
+                hand.idle = 0.0;
+                hand.rest = hand.tracked;
+            } else {
+                hand.put_away();
+                continue;
+            }
+        }
+        let used = hand.grab
+            || hand.squeeze > 0.2
+            || hand.trigger > 0.2
+            || hand.buttons != 0
+            || hand.thumb.length() > 0.3;
+        let moved = match (hand.tracked, hand.rest) {
+            (Some(t), Some(r)) => {
+                t.translation.distance(r.translation) > PARK_STILL_M
+                    || t.rotation.angle_between(r.rotation) > PARK_STILL_RAD
+            }
+            (Some(_), None) => true,
+            _ => false,
+        };
+        if used || moved {
+            hand.idle = 0.0;
+            if hand.tracked.is_some() {
+                hand.rest = hand.tracked;
+            }
+        } else {
+            hand.idle += dt;
+        }
+        if flew && cockpit_view && hand.idle >= PARK_IDLE {
+            hand.parked = true;
+            hand.put_away();
+        }
+    }
+}
 
 /// Sets `Hand::grab` from the hands' grab inputs (the VR backends, after reading the
 /// controllers): held, or toggled by a press (and let go when the grab took nothing).
@@ -1016,5 +1097,73 @@ mod grab_tests {
         assert!(frame(&mut hands, &config, 0.0, BUTTON_THUMB, false));
         assert!(frame(&mut hands, &config, 0.0, BUTTON_THUMB, true));
         assert!(!frame(&mut hands, &config, 0.0, 0, true));
+    }
+}
+
+#[cfg(test)]
+mod park_tests {
+    use super::*;
+
+    /// One frame of the left hand lying still (or squeezed / pulled), the HOTAS moved `flown`
+    /// times in all, 0.5 s later.
+    fn frame(hands: &mut Hands, flown: u32, squeeze: f32, trigger: f32, at: Vec3) -> bool {
+        let h = &mut hands.hands[0];
+        h.prev_squeeze = h.squeeze;
+        h.prev_trigger = h.trigger;
+        h.prev_buttons = h.buttons;
+        h.squeeze = squeeze;
+        h.trigger = trigger;
+        h.active = true;
+        h.tracked = Some(Transform::from_translation(at));
+        park_idle_hands(hands, flown, 0.5, true);
+        hands.hands[0].parked
+    }
+
+    #[test]
+    fn idle_hand_parks_when_flying_and_grip_wakes_it() {
+        let mut hands = Hands::default();
+        // Flying at once: the hand was just in use (first seen).
+        assert!(!frame(&mut hands, 1, 0.0, 0.0, Vec3::ZERO));
+        for _ in 0..4 {
+            assert!(!frame(&mut hands, 1, 0.0, 0.0, Vec3::ZERO), "no HOTAS move");
+        }
+        assert!(frame(&mut hands, 2, 0.0, 0.0, Vec3::ZERO), "still for 2 s, stick moved");
+        assert!(!hands.hands[0].active);
+        // Moving the parked controller does not wake it; its grip does, without acting.
+        assert!(frame(&mut hands, 3, 0.0, 0.0, Vec3::X));
+        assert!(!frame(&mut hands, 3, 0.8, 0.0, Vec3::X));
+        assert!(hands.hands[0].active);
+        assert!(!hands.hands[0].grip_button().1, "the waking press is consumed");
+    }
+
+    #[test]
+    fn hand_in_use_stays() {
+        let mut hands = Hands::default();
+        for i in 0..10 {
+            // Held: it drifts a few centimetres.
+            let at = Vec3::new(0.03 * (i % 2) as f32, 0.0, 0.0);
+            assert!(!frame(&mut hands, i, 0.0, 0.0, at));
+        }
+        // Lying still but the trigger held.
+        for i in 10..20 {
+            assert!(!frame(&mut hands, i, 0.0, 0.5, Vec3::ZERO));
+        }
+    }
+
+    #[test]
+    fn trigger_wakes_and_menus_unpark() {
+        let mut hands = Hands::default();
+        for i in 0..6 {
+            frame(&mut hands, i, 0.0, 0.0, Vec3::ZERO);
+        }
+        assert!(hands.hands[0].parked);
+        assert!(!frame(&mut hands, 6, 0.0, 0.9, Vec3::ZERO));
+        assert!(!hands.hands[0].trigger_pulled());
+        for i in 7..13 {
+            frame(&mut hands, i, 0.0, 0.0, Vec3::ZERO);
+        }
+        assert!(hands.hands[0].parked);
+        park_idle_hands(&mut hands, 13, 0.5, false);
+        assert!(!hands.hands[0].parked, "out of the cockpit the pointers come back");
     }
 }

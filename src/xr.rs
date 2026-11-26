@@ -452,6 +452,7 @@ fn read_hands(
     manning: Option<Res<crate::station::Manning>>,
     spaces: Query<(&HandSpace, &Transform, &OxrSpaceLocationFlags)>,
     config: Res<crate::hotas::InputConfig>,
+    (hotas, time): (Option<Res<crate::hotas::Hotas>>, Res<Time>),
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
@@ -491,10 +492,13 @@ fn read_hands(
         let mut grip = None;
         let mut aim = None;
         hand.aim_raw = None;
+        hand.tracked = None;
         for (s, tf, flags) in &spaces {
             if s.hand == i && flags.pos_valid() && flags.rot_valid() {
                 if s.aim {
                     hand.aim_raw = Some(*tf);
+                } else if flags.pos_tracked() && flags.rot_tracked() {
+                    hand.tracked = Some(*tf);
                 }
                 let t = offset * *tf;
                 if s.aim { aim = Some(t) } else { grip = Some(t) }
@@ -509,6 +513,8 @@ fn read_hands(
             });
         }
     }
+    let flown = hotas.map_or(0, |h| h.flown());
+    crate::cockpit3d::park_idle_hands(&mut hands, flown, time.delta_secs(), cockpit_view);
     crate::cockpit3d::update_grabs(&mut hands, &config);
 }
 

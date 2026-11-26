@@ -1080,6 +1080,9 @@ fn raw_mapping(g: &mut gilrs::Gilrs, id: gilrs::GamepadId) {
     }
 }
 
+/// A stick or throttle axis moving this far (raw, -1..1) is flying with the HOTAS.
+const FLOWN_MOVE: f32 = 0.04;
+
 /// Raw joystick state, read through our own gilrs instance (Bevy's gamepad layer drops the
 /// buttons and axes a standard gamepad doesn't have).
 #[derive(Resource)]
@@ -1093,6 +1096,10 @@ pub struct Hotas {
     nozzle_seen: Option<f32>,
     /// The TGP zoom axis's zoom step (the first only noted, like the nozzles').
     zoom_seen: Option<u8>,
+    /// The stick's and the throttle's axes where they last moved (device, code, raw value), and
+    /// how often they moved (`flown`).
+    flight_seen: Vec<(String, u32, f32)>,
+    flown: u32,
 }
 
 impl Hotas {
@@ -1105,6 +1112,8 @@ impl Hotas {
             throttle_applied: None,
             nozzle_seen: None,
             zoom_seen: None,
+            flight_seen: Vec::new(),
+            flown: 0,
         }
     }
 
@@ -1134,6 +1143,8 @@ impl Hotas {
             throttle_applied: None,
             nozzle_seen: None,
             zoom_seen: None,
+            flight_seen: Vec::new(),
+            flown: 0,
         }
     }
 
@@ -1143,6 +1154,25 @@ impl Hotas {
             d.usb_id.is_some_and(|id| crate::ffb::BASES.iter().any(|b| (b.0, b.1) == id))
         };
         self.devices.values().find(base)
+    }
+
+    /// Counts the stick's or the throttle's moves (past `FLOWN_MOVE`): the VR controllers put
+    /// down are put away when it changes (`cockpit3d::park_idle_hands`).
+    pub fn flown(&self) -> u32 {
+        self.flown
+    }
+
+    /// Notes a stick or throttle axis's raw value (the first only noted).
+    fn note_flown(&mut self, device: &str, code: u32, raw: f32) {
+        let seen = self.flight_seen.iter_mut().find(|(d, c, _)| d == device && *c == code);
+        match seen {
+            Some((_, _, v)) if (*v - raw).abs() > FLOWN_MOVE => {
+                *v = raw;
+                self.flown = self.flown.wrapping_add(1);
+            }
+            Some(_) => {}
+            None => self.flight_seen.push((device.to_owned(), code, raw)),
+        }
     }
 
     /// Connected devices, sorted by key.
@@ -1362,6 +1392,9 @@ pub fn read_hotas(
             continue;
         }
         let Some(raw) = hotas.axis(&m.device, m.code) else { continue };
+        if matches!(m.control, AxisControl::Roll | AxisControl::Pitch | AxisControl::Throttle) {
+            hotas.note_flown(&m.device, m.code, raw);
+        }
         let v = m.output(raw);
         match m.control {
             AxisControl::Roll => controls.roll = crate::input::stronger(controls.roll, v),

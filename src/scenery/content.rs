@@ -616,6 +616,9 @@ mod light_tests {
             clearings: vec![],
             blackouts: vec![],
             hills: Default::default(),
+            pads: Default::default(),
+            structures: vec![],
+            hills_gen: 0,
         }
     }
 
@@ -684,6 +687,9 @@ mod light_tests {
             clearings: vec![],
             blackouts: vec![],
             hills,
+            pads: Default::default(),
+            structures: vec![],
+            hills_gen: 0,
         };
         (sc, c)
     }

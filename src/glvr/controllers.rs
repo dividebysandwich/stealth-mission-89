@@ -20,6 +20,8 @@ pub struct Controller {
     pub thumb: Vec2,
     pub grip: Option<Transform>,
     pub aim: Option<Transform>,
+    /// The grip's position and orientation are tracked, not only valid.
+    pub tracked: bool,
 }
 
 pub struct Controllers {
@@ -238,14 +240,19 @@ impl Controllers {
                 let l = space.locate(base, time).ok()?;
                 let flags = xr::SpaceLocationFlags::POSITION_VALID
                     | xr::SpaceLocationFlags::ORIENTATION_VALID;
+                let tracked = xr::SpaceLocationFlags::POSITION_TRACKED
+                    | xr::SpaceLocationFlags::ORIENTATION_TRACKED;
                 l.location_flags.contains(flags).then(|| {
                     let (p, o) = (l.pose.position, l.pose.orientation);
-                    Transform::from_xyz(p.x, p.y, p.z)
-                        .with_rotation(Quat::from_xyzw(o.x, o.y, o.z, o.w))
+                    let t = Transform::from_xyz(p.x, p.y, p.z)
+                        .with_rotation(Quat::from_xyzw(o.x, o.y, o.z, o.w));
+                    (t, l.location_flags.contains(tracked))
                 })
             };
-            c.grip = locate(&self.spaces[i][0]);
-            c.aim = locate(&self.spaces[i][1]);
+            let grip = locate(&self.spaces[i][0]);
+            c.grip = grip.map(|g| g.0);
+            c.tracked = grip.is_some_and(|g| g.1);
+            c.aim = locate(&self.spaces[i][1]).map(|a| a.0);
         }
         out
     }
@@ -279,6 +286,7 @@ pub fn read_hands(
     view: Res<ViewState>,
     manning: Option<Res<crate::station::Manning>>,
     config: Res<crate::hotas::InputConfig>,
+    (hotas, time): (Option<Res<crate::hotas::Hotas>>, Res<Time>),
     mut hands: ResMut<Hands>,
 ) {
     let cockpit_view = view.view == View::Cockpit;
@@ -305,6 +313,7 @@ pub fn read_hands(
             }
         }
         hand.aim_raw = c.aim;
+        hand.tracked = c.grip.filter(|_| c.tracked);
         let grip = c.grip.map(|g| offset * g);
         let aim = c.aim.map(|a| offset * a);
         hand.active = cockpit_view && grip.is_some();
@@ -315,6 +324,8 @@ pub fn read_hands(
             });
         }
     }
+    let flown = hotas.map_or(0, |h| h.flown());
+    crate::cockpit3d::park_idle_hands(&mut hands, flown, time.delta_secs(), cockpit_view);
     crate::cockpit3d::update_grabs(&mut hands, &config);
 }
 

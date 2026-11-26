@@ -268,6 +268,9 @@ mod tests {
             clearings: vec![],
             blackouts: vec![],
             hills: Default::default(),
+            pads: Default::default(),
+            structures: vec![],
+            hills_gen: 0,
         }
     }
 
