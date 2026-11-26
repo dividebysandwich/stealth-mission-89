@@ -34,9 +34,10 @@ fn mark_joysticks(
 ) {
     for (entity, pad, name, marked) in &gamepads {
         let ids = pad.vendor_id().zip(pad.product_id());
-        let joystick = hotas.devices.values().any(|d| {
-            d.joystick && d.usb_id == ids && name.is_none_or(|n| n.as_str() == d.name)
-        });
+        let joystick = hotas
+            .devices
+            .values()
+            .any(|d| d.joystick && d.usb_id == ids && name.is_none_or(|n| n.as_str() == d.name));
         if joystick && !marked {
             commands.entity(entity).insert(Joystick);
         } else if marked && !joystick {
@@ -550,8 +551,8 @@ pub struct InputConfig {
 /// click talks on the radio instead of moving the bay doors. 13: the view zoom keys (Numpad *
 /// and /). 14: the RWR priority and target separate keys (Alt + W, Alt + E). 15: the helmet
 /// display mode key (H). 16: the HUD colour key (Shift + H). 17: the padlock and fly-by view keys
-/// (Shift + P, Shift + F12).
-const VERSION: u32 = 17;
+/// (Shift + P, Shift + F12). 18: the cursor slew keys, fixed before (the keypad).
+const VERSION: u32 = 18;
 
 impl Default for InputConfig {
     fn default() -> Self {
@@ -656,6 +657,20 @@ impl InputConfig {
             })
         {
             m.target = ButtonTarget::Action(Action::Ptt);
+        }
+        // The cursor slew keys were fixed: the keypad, its diagonals bound to two directions
+        // (which the loop below would leave out), where the keys are still free.
+        if self.version < 18 {
+            let slew = |t: ButtonTarget| matches!(t, ButtonTarget::Action(a) if a.slew_direction().is_some());
+            if !self.keys.iter().any(|k| slew(k.target)) {
+                let taken: Vec<(Mods, KeyCode)> =
+                    self.keys.iter().map(|k| (k.mods, k.key)).collect();
+                self.keys.extend(
+                    crate::input::default_key_mappings()
+                        .into_iter()
+                        .filter(|d| slew(d.target) && !taken.contains(&(d.mods, d.key))),
+                );
+            }
         }
         for d in crate::input::default_key_mappings() {
             let free = !self.keys.iter().any(|k| k.mods == d.mods && k.key == d.key);
@@ -1446,8 +1461,8 @@ pub fn read_hotas(
 }
 
 /// A device or mouse button bound to `target`: held (`now`), pressed this frame (`pressed`); at
-/// a console (`console`) only the stick, the triggers, the radio, the view zoom and the
-/// pointer's buttons pass.
+/// a console (`console`) only the stick, the triggers, the radio, the view zoom, the cursor
+/// slew and the pointer's buttons pass.
 pub fn hold_button(
     target: ButtonTarget,
     now: bool,
@@ -1478,6 +1493,14 @@ pub fn hold_button(
         controls.view_zoom = 1.0;
     } else if now && a == Action::ViewZoomOut {
         controls.view_zoom = -1.0;
+    }
+    // The cursor slew, held (at a console a drone's TGP).
+    if let Some(d) = a.slew_direction() {
+        let slew = if console { &mut controls.console_slew } else { &mut controls.slew };
+        if now {
+            *slew = (*slew + d).clamp(Vec2::splat(-1.0), Vec2::ONE);
+        }
+        return;
     }
     // The pointer's buttons, held.
     match a {
@@ -1727,6 +1750,25 @@ mod tests {
         // Brought up to the version 4 defaults, then on to the current ones.
         assert_eq!(c.vr_buttons, default_vr_buttons());
         assert!(!c.migrate());
+    }
+
+    /// A mapping from before the slew keys could be bound gets the keypad's, the diagonals
+    /// too, but not a keypad key the player bound to something else.
+    #[test]
+    fn slew_keys_migrate() {
+        use crate::input::Mods;
+        let slew =
+            |t: ButtonTarget| matches!(t, ButtonTarget::Action(a) if a.slew_direction().is_some());
+        let mut c = InputConfig { version: 17, ..InputConfig::default() };
+        c.keys.retain(|k| !slew(k.target));
+        c.bind_key(ButtonTarget::Action(Action::Brakes), Mods::None, KeyCode::Numpad3);
+        assert!(c.migrate());
+        let keys = |t| c.keys_for(ButtonTarget::Action(t)).map(|k| k.key).collect::<BTreeSet<_>>();
+        use KeyCode::*;
+        assert_eq!(keys(Action::SlewUp), BTreeSet::from([Numpad7, Numpad8, Numpad9]));
+        assert_eq!(keys(Action::SlewDown), BTreeSet::from([Numpad1, Numpad2]));
+        assert_eq!(keys(Action::SlewRight), BTreeSet::from([Numpad6, Numpad9]));
+        assert!(keys(Action::Brakes).contains(&Numpad3));
     }
 
     /// A mapping from before the grab setting grabs with the grips; the setting is saved.

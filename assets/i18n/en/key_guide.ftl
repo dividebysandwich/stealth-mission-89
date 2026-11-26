@@ -68,6 +68,7 @@ kg-cam-rear = Tracking camera rear
 kg-cam-left = Tracking camera left
 kg-cam-right = Tracking camera right
 kg-camera-zoom-in = Pod / camera zoom in / out (or the SOI's)
+kg-slew = Move the sensor cursor (held)
 kg-lock-cursor = Lock the target under the cursor
 kg-swap-soi = Sensor of interest to the other MFD
 kg-pod-to-helmet = Targeting pod to where the helmet sight looks

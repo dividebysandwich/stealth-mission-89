@@ -1056,7 +1056,7 @@ fn edit_waypoints(
     mut state: ResMut<MfdState>,
     controls: Res<crate::input::FlightControls>,
     block: Res<crate::input::InputBlock>,
-    keys: Res<ButtonInput<KeyCode>>,
+    (keys, config): (Res<ButtonInput<KeyCode>>, Res<crate::hotas::InputConfig>),
     time: Res<Time>,
     aircraft: Query<&Aircraft, With<Player>>,
     mut wps: ResMut<Waypoints>,
@@ -1093,17 +1093,11 @@ fn edit_waypoints(
             wps.current = (wps.current + 1) % n;
         }
     }
-    let keypad = |keep: fn(Vec2) -> bool| {
-        crate::input::SLEW_KEYS
-            .iter()
-            .filter(|(k, x, y)| keys.pressed(*k) && keep(Vec2::new(*x, *y)))
-            .fold(Vec2::ZERO, |a, (_, x, y)| a + Vec2::new(*x, *y))
-            .clamp(Vec2::splat(-1.0), Vec2::ONE)
-    };
     if controls.slew == Vec2::ZERO {
         return;
     }
-    let slew = controls.slew - keypad(|_| true) + keypad(|d| d.x == 0.0 || d.y == 0.0);
+    let keypad = |diagonals| crate::input::key_slew(&config, &keys, diagonals);
+    let slew = controls.slew - keypad(true) + keypad(false);
     if slew == Vec2::ZERO {
         return;
     }

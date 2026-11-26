@@ -1153,10 +1153,12 @@ fn vr_targets() -> Vec<ButtonTarget> {
         .into_iter()
         .flat_map(|(_, targets)| targets)
         .filter(|t| {
-            // The head looks around in VR, the fingertips press the controls.
+            // The head looks around in VR, the fingertips press the controls, the thumbsticks
+            // slew.
             !matches!(t, ButtonTarget::Action(a)
                 if a.stick_direction().is_some()
                     || a.look_direction().is_some()
+                    || a.slew_direction().is_some()
                     || matches!(a, Action::MouseLook | Action::ClickControl))
         })
         .collect()

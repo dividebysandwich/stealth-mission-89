@@ -65,6 +65,7 @@ kg-cam-rear = Verfolgerkamera nach hinten
 kg-cam-left = Verfolgerkamera nach links
 kg-cam-right = Verfolgerkamera nach rechts
 kg-camera-zoom-in = Pod- / Kamerazoom hinein / hinaus (oder der des SOI)
+kg-slew = Sensor-Cursor bewegen (gehalten)
 kg-lock-cursor = Ziel unter dem Cursor aufschalten
 kg-swap-soi = Sensor of Interest auf das andere MFD
 kg-pod-to-helmet = Zielbehälter dorthin, wo das Helmvisier hinschaut

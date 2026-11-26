@@ -67,6 +67,7 @@ kg-cam-rear = Sekimo kamera atgal
 kg-cam-left = Sekimo kamera kairėn
 kg-cam-right = Sekimo kamera dešinėn
 kg-camera-zoom-in = Konteinerio / kameros mastelis artinti / tolinti (arba SOI)
+kg-slew = Judinti jutiklio žymeklį (laikant)
 kg-lock-cursor = Užfiksuoti taikinį po žymekliu
 kg-swap-soi = Dominantis jutiklis į kitą MFD
 kg-pod-to-helmet = Taikymo konteineris ten, kur žiūri šalmo taikiklis

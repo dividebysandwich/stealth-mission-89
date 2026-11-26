@@ -65,6 +65,7 @@ kg-cam-rear = Izsekošanas kamera atpakaļ
 kg-cam-left = Izsekošanas kamera pa kreisi
 kg-cam-right = Izsekošanas kamera pa labi
 kg-camera-zoom-in = Konteinera / kameras tālummaiņa tuvināt / tālināt (vai SOI)
+kg-slew = Pārvietot sensora kursoru (turot)
 kg-lock-cursor = Notvert mērķi zem kursora
 kg-swap-soi = Sensors SOI uz otru MFD
 kg-pod-to-helmet = Mērķēšanas konteiners turp, kur skatās ķiveres tēmēklis

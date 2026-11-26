@@ -67,6 +67,7 @@ kg-cam-rear = Sledilna kamera nazaj
 kg-cam-left = Sledilna kamera levo
 kg-cam-right = Sledilna kamera desno
 kg-camera-zoom-in = Povečava kontejnerja / kamere približaj / oddalji (ali SOI)
+kg-slew = Premikanje kazalca senzorja (držanje)
 kg-lock-cursor = Zakleni cilj pod kazalcem
 kg-swap-soi = Sensor of interest (SOI) na drugi MFD
 kg-pod-to-helmet = Ciljni pod tja, kamor gleda merek na čeladi

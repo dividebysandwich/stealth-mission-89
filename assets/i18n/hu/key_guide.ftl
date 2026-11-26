@@ -68,6 +68,7 @@ kg-cam-rear = Követőkamera hátra
 kg-cam-left = Követőkamera balra
 kg-cam-right = Követőkamera jobbra
 kg-camera-zoom-in = A tároló / kamera nagyítása közelít / távolít (vagy a SOI-é)
+kg-slew = Az érzékelő kurzorának mozgatása (nyomva tartva)
 kg-lock-cursor = A kurzor alatti célpont befogása
 kg-swap-soi = Az érdekes érzékelő (SOI) a másik MFD-re
 kg-pod-to-helmet = A célzókonténer oda, ahová a sisakcélzó néz

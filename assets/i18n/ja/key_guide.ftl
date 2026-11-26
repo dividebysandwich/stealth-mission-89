@@ -67,6 +67,7 @@ kg-cam-rear = トラッキングカメラ後方
 kg-cam-left = トラッキングカメラ左
 kg-cam-right = トラッキングカメラ右
 kg-camera-zoom-in = ポッド/カメラのズーム 拡大 / 縮小 (またはSOIのもの)
+kg-slew = センサーのカーソルを動かす (長押し)
 kg-lock-cursor = カーソル下の目標をロック
 kg-swap-soi = SOI をもう一方の MFD へ
 kg-pod-to-helmet = ターゲティングポッドをヘルメット照準の方向へ

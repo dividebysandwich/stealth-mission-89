@@ -208,6 +208,12 @@ pub enum Action {
     /// Tracking camera / targeting pod zoom.
     CameraZoomIn,
     CameraZoomOut,
+    /// Modern avionics: moves the sensor of interest's cursor (held, not a discrete action;
+    /// the numeric keypad by default, its diagonals bound to two of them).
+    SlewLeft,
+    SlewRight,
+    SlewUp,
+    SlewDown,
     /// Keyboard stick (held, not a discrete action): the arrow keys.
     PitchDown,
     PitchUp,
@@ -251,6 +257,18 @@ impl Action {
             Action::PanRight => Some(Vec2::new(1.0, 0.0)),
             Action::PanUp => Some(Vec2::new(0.0, 1.0)),
             Action::PanDown => Some(Vec2::new(0.0, -1.0)),
+            _ => None,
+        }
+    }
+
+    /// The direction (x right, y up) a held cursor slew action moves the cursor; None for the
+    /// others.
+    pub fn slew_direction(self) -> Option<Vec2> {
+        match self {
+            Action::SlewLeft => Some(Vec2::new(-1.0, 0.0)),
+            Action::SlewRight => Some(Vec2::new(1.0, 0.0)),
+            Action::SlewUp => Some(Vec2::new(0.0, 1.0)),
+            Action::SlewDown => Some(Vec2::new(0.0, -1.0)),
             _ => None,
         }
     }
@@ -449,6 +467,19 @@ const BINDINGS: &[(Mods, KeyCode, Action)] = {
         (None, K::Space, SelectWeapon),
         (None, K::Enter, FireWeapon),
         (None, K::NumpadEnter, LockCursor),
+        // The cursor slew: the keypad's arrows, its diagonals both of theirs.
+        (None, K::Numpad4, SlewLeft),
+        (None, K::Numpad7, SlewLeft),
+        (None, K::Numpad1, SlewLeft),
+        (None, K::Numpad6, SlewRight),
+        (None, K::Numpad9, SlewRight),
+        (None, K::Numpad3, SlewRight),
+        (None, K::Numpad8, SlewUp),
+        (None, K::Numpad7, SlewUp),
+        (None, K::Numpad9, SlewUp),
+        (None, K::Numpad2, SlewDown),
+        (None, K::Numpad1, SlewDown),
+        (None, K::Numpad3, SlewDown),
         (Alt, K::KeyS, SwapSoi),
         (None, K::KeyL, PodToHelmet),
         (None, K::BracketRight, CameraZoomIn),
@@ -555,18 +586,41 @@ impl Default for VirtualStick {
 /// Double-tap window: 5 BIOS ticks.
 const DOUBLE_TAP_S: f64 = 5.0 / 18.2;
 
-/// Keyboard sensor/cursor slew (fixed): the numeric keypad.
-pub(crate) const SLEW_KEYS: &[(KeyCode, f32, f32)] = &[
-    // (key, x, y); up = cursor up.
-    (KeyCode::Numpad8, 0.0, 1.0),
-    (KeyCode::Numpad2, 0.0, -1.0),
-    (KeyCode::Numpad4, -1.0, 0.0),
-    (KeyCode::Numpad6, 1.0, 0.0),
-    (KeyCode::Numpad7, -1.0, 1.0),
-    (KeyCode::Numpad9, 1.0, 1.0),
-    (KeyCode::Numpad1, -1.0, -1.0),
-    (KeyCode::Numpad3, 1.0, -1.0),
-];
+/// The modifier held on the keyboard (Alt wins over Shift).
+pub fn held_mods(keys: &ButtonInput<KeyCode>) -> Mods {
+    if keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]) {
+        Mods::Alt
+    } else if keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
+        Mods::Shift
+    } else {
+        Mods::None
+    }
+}
+
+/// The cursor slew of the keys held that are bound to the slew actions with the modifier held,
+/// -1..1 (x right, y up); `diagonals` false leaves out a key bound to two directions (a keypad
+/// diagonal).
+pub fn key_slew(
+    config: &crate::hotas::InputConfig,
+    keys: &ButtonInput<KeyCode>,
+    diagonals: bool,
+) -> Vec2 {
+    let mods = held_mods(keys);
+    let direction = |m: &crate::hotas::KeyMapping| match m.target {
+        crate::hotas::ButtonTarget::Action(a) if m.mods == mods => a.slew_direction(),
+        _ => None,
+    };
+    let mut slew = Vec2::ZERO;
+    for m in config.keys.iter().filter(|m| keys.pressed(m.key)) {
+        let Some(d) = direction(m) else { continue };
+        let single =
+            || config.keys.iter().filter(|o| o.key == m.key && direction(o).is_some()).count() == 1;
+        if diagonals || single() {
+            slew += d;
+        }
+    }
+    slew.clamp(Vec2::splat(-1.0), Vec2::ONE)
+}
 
 /// How long a throttle key is held before the throttle moves on its own (seconds).
 const THROTTLE_HOLD_S: f64 = 0.3;
@@ -584,23 +638,17 @@ fn read_keyboard(
     mut throttle_since: Local<Option<f64>>,
     mut nozzle_since: Local<Option<f64>>,
 ) {
-    let shift = keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
-    let alt = keys.any_pressed([KeyCode::AltLeft, KeyCode::AltRight]);
-    let mods = if alt {
-        Mods::Alt
-    } else if shift {
-        Mods::Shift
-    } else {
-        Mods::None
-    };
+    let mods = held_mods(&keys);
     // The free view's movement keys move it, not the aircraft (with Alt they still do).
     let free = view.is_some_and(|v| v.view == crate::camera::View::Free) && mods != Mods::Alt;
     let camera_key = |k: KeyCode| free && crate::camera::FREE_KEYS.contains(&k);
     for m in &config.keys {
         let crate::hotas::ButtonTarget::Action(action) = m.target else { continue };
-        // The stick keys are held, read below. The menu and recording keys work in the menu.
+        // The stick and slew keys are held, read below. The menu and recording keys work in
+        // the menu.
         if (block.0 && !matches!(action, Action::Menu | Action::RecordGif))
             || action.stick_direction().is_some()
+            || action.slew_direction().is_some()
             || camera_key(m.key)
             || (radio.0 && RADIO_KEYS.contains(&m.key))
         {
@@ -732,15 +780,7 @@ fn read_keyboard(
         })
         .sum::<Vec2>()
         .clamp(Vec2::splat(-1.0), Vec2::ONE);
-    let mut slew = Vec2::ZERO;
-    if mods == Mods::None {
-        for &(key, x, y) in SLEW_KEYS {
-            if keys.pressed(key) {
-                slew += Vec2::new(x, y);
-            }
-        }
-    }
-    controls.slew = slew.clamp(Vec2::splat(-1.0), Vec2::ONE);
+    controls.slew = key_slew(&config, &keys, true);
     controls.console_slew = Vec2::ZERO;
     if block.0 {
         // At a console: only the stick, the rudder and the triggers and the throttle and slew
@@ -1012,6 +1052,28 @@ mod tests {
         app.world_mut().resource_mut::<ButtonInput<KeyCode>>().release(KeyCode::CapsLock);
         app.update();
         assert!(!app.world().resource::<FlightControls>().talk);
+    }
+
+    /// The keypad slews the cursor (its diagonals both ways) through bindable actions: a key
+    /// bound to one slews, and the keypad key it replaces no longer does.
+    #[test]
+    fn slew_keys_are_bindable() {
+        use crate::hotas::{ButtonTarget, InputConfig};
+        let mut config = InputConfig::default();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::Numpad7);
+        assert_eq!(key_slew(&config, &keys, true), Vec2::new(-1.0, 1.0));
+        assert_eq!(key_slew(&config, &keys, false), Vec2::ZERO, "a diagonal");
+        keys.press(KeyCode::Numpad6);
+        assert_eq!(key_slew(&config, &keys, false), Vec2::X);
+        config.bind_key(ButtonTarget::Action(Action::SlewLeft), Mods::None, KeyCode::KeyJ);
+        config.bind_key(ButtonTarget::Action(Action::Brakes), Mods::None, KeyCode::Numpad6);
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::KeyJ);
+        keys.press(KeyCode::Numpad6);
+        assert_eq!(key_slew(&config, &keys, true), Vec2::NEG_X);
+        keys.press(KeyCode::ShiftLeft);
+        assert_eq!(key_slew(&config, &keys, true), Vec2::ZERO, "bound without Shift");
     }
 
     /// The view pan actions have no key by default; a key bound to one looks that way while

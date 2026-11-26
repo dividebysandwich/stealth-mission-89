@@ -68,6 +68,7 @@ kg-cam-rear = Câmera de rastreamento atrás
 kg-cam-left = Câmera de rastreamento à esquerda
 kg-cam-right = Câmera de rastreamento à direita
 kg-camera-zoom-in = Zoom do casulo / câmera aproximar / afastar (ou o do SOI)
+kg-slew = Mover o cursor do sensor (segurado)
 kg-lock-cursor = Travar o alvo sob o cursor
 kg-swap-soi = Sensor de interesse (SOI) no outro MFD
 kg-pod-to-helmet = Pod de designação para onde a mira do capacete olha

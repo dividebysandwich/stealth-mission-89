@@ -68,6 +68,7 @@ kg-cam-rear = Tracking camera ke belakang
 kg-cam-left = Tracking camera ke kiri
 kg-cam-right = Tracking camera ke kanan
 kg-camera-zoom-in = Zoom pod / kamera perbesar / perkecil (atau milik SOI)
+kg-slew = Gerakkan kursor sensor (ditahan)
 kg-lock-cursor = Kunci sasaran di bawah kursor
 kg-swap-soi = Sensor of interest (SOI) ke MFD lain
 kg-pod-to-helmet = Pod penjejak ke arah pandangan bidikan helm

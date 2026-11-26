@@ -67,6 +67,7 @@ kg-cam-rear = 추적 카메라 후방
 kg-cam-left = 추적 카메라 좌측
 kg-cam-right = 추적 카메라 우측
 kg-camera-zoom-in = 포드/카메라 줌 확대 / 축소 (또는 SOI의 것)
+kg-slew = 센서 커서 이동 (길게 누름)
 kg-lock-cursor = 커서 아래 표적 락온
 kg-swap-soi = 관심 센서를 다른 MFD로
 kg-pod-to-helmet = 표적 포드를 헬멧 조준기가 보는 곳으로

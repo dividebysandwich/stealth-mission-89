@@ -65,6 +65,7 @@ kg-cam-rear = Caméra de poursuite vers l'arrière
 kg-cam-left = Caméra de poursuite à gauche
 kg-cam-right = Caméra de poursuite à droite
 kg-camera-zoom-in = Zoom de la nacelle / caméra avant / arrière (ou celui du SOI)
+kg-slew = Déplacer le curseur du capteur (maintenu)
 kg-lock-cursor = Verrouiller la cible sous le curseur
 kg-swap-soi = Capteur d'intérêt (SOI) sur l'autre MFD
 kg-pod-to-helmet = Pod de désignation vers où regarde le viseur de casque
