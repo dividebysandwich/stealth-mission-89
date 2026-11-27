@@ -429,6 +429,68 @@ pub fn launch_times(range: f32, closure: f32) -> Option<[f32; 3]> {
     Some([2.0 * nm, 0.5 * longest, longest].map(|r| (range - r) / closure))
 }
 
+/// The TID's symbol buttons in: CLSN the collision course to the hooked track, NON ATTK the
+/// tracks known as friends (out: only those that may be shot at), JAM STROBE the jammers'
+/// bearings, DATA LINK the aircraft the other friendly radars report, SYM ELEM the symbols'
+/// elements (out: the bare symbols), ALT NUM the altitudes and VEL VECTOR the velocity leaders
+/// and launch zone vectors among them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TidSymbols {
+    pub collision: bool,
+    pub non_attack: bool,
+    pub jam_strobes: bool,
+    pub data_link: bool,
+    pub elements: bool,
+    pub alt_numbers: bool,
+    pub vel_vectors: bool,
+}
+
+impl Default for TidSymbols {
+    /// As the panel starts: all but the collision course.
+    fn default() -> Self {
+        Self {
+            collision: false,
+            non_attack: true,
+            jam_strobes: true,
+            data_link: true,
+            elements: true,
+            alt_numbers: true,
+            vel_vectors: true,
+        }
+    }
+}
+
+/// An aircraft reported on the data link (by the other friendly radars): where it is (metres
+/// east, north, up) and flies to (radians clockwise from north).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct LinkTrack {
+    pub target: ContactRef,
+    pub pos: DVec3,
+    pub heading: f32,
+    pub friendly: bool,
+}
+
+/// The course (radians clockwise from north) on which an aircraft at `own` flying `speed` m/s
+/// meets a target at `at` flying `vel` (metres east, north; m/s), and the seconds until then.
+/// None if it cannot catch it.
+pub fn collision_course(own: DVec2, speed: f64, at: DVec2, vel: DVec2) -> Option<(f32, f32)> {
+    let d = at - own;
+    // |d + vel t| = speed t.
+    let (a, b, c) = (vel.length_squared() - speed * speed, 2.0 * d.dot(vel), d.length_squared());
+    let t = if a.abs() < 1e-6 {
+        (b < 0.0).then(|| -c / b)?
+    } else {
+        let disc = b * b - 4.0 * a * c;
+        if disc < 0.0 {
+            return None;
+        }
+        let (t1, t2) = ((-b - disc.sqrt()) / (2.0 * a), (-b + disc.sqrt()) / (2.0 * a));
+        [t1, t2].into_iter().filter(|t| *t > 0.0).min_by(|x, y| x.total_cmp(y))?
+    };
+    let meet = d + vel * t;
+    Some((meet.x.atan2(meet.y) as f32, t as f32))
+}
+
 /// What the TID shows.
 pub struct TidView<'a> {
     pub radar: &'a Awg9,
@@ -441,9 +503,10 @@ pub struct TidView<'a> {
     pub waypoints: &'a [DVec2],
     pub steer: Option<usize>,
     pub in_flight: &'a [InFlight],
-    /// The velocity leaders and the tracks' altitudes (in thousands of feet) are shown.
-    pub vel_vectors: bool,
-    pub alt_numbers: bool,
+    /// The TID's symbol buttons.
+    pub options: TidSymbols,
+    /// The aircraft on the data link the radar does not track itself (drawn with DATA LINK in).
+    pub link: &'a [LinkTrack],
     /// The hand controller's cursor (`tid_spot`'s units), if it is on this display.
     pub cursor: Option<Vec2>,
     /// Seconds (the time to impact's flashing).
@@ -566,6 +629,20 @@ fn ntds(c: &mut Canvas, p: Vec2, s: f32, friendly: Option<bool>, t: f32) {
     }
 }
 
+/// A data link track's symbol at `p`: the lower half of the radar track's (hostile a V, friendly
+/// a bowl, open above).
+fn ntds_link(c: &mut Canvas, p: Vec2, s: f32, friendly: bool, t: f32) {
+    if friendly {
+        c.arc(p - Vec2::Y * s * 0.3, s, 0.0, std::f32::consts::PI, 1.5, ink(t));
+    } else {
+        c.polyline(
+            &[p + Vec2::new(-s, -s * 0.3), p + Vec2::Y * s, p + Vec2::new(s, -s * 0.3)],
+            1.5,
+            ink(t),
+        );
+    }
+}
+
 /// The TID's picture.
 pub fn draw_tid(c: &mut Canvas, v: &TidView) {
     c.clear(0);
@@ -628,9 +705,39 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
     let (hs, hc) = v.own.heading.sin_cos();
     let own_vel = DVec2::new(hs as f64, hc as f64) * (v.own.knots * v.own.pitch.cos() / KT) as f64;
     let full = VECTOR_FULL * rad;
+    let o = v.options;
+    // The jammers' strobes: their bearings from the aircraft out to the tube's edge.
+    if o.jam_strobes {
+        for s in &r.strobes {
+            let d = tube.dir(v.own.heading + s.az);
+            let start = tube.own + d * 0.06 * h;
+            c.dashed(start, tube.clip(start, tube.own + d * rad * 2.0), 2.0, 4.0, 1.5, ink(MID));
+        }
+    }
+    // The data link's aircraft the radar does not track itself: the lower half symbols.
+    if o.data_link {
+        for l in v.link {
+            let p = tube.at(l.pos.truncate());
+            let held = r.tracks.iter().any(|t| t.target == l.target)
+                || r.stt.is_some_and(|t| t.target == l.target);
+            if held || !tube.inside(p) || (l.friendly && !o.non_attack) {
+                continue;
+            }
+            ntds_link(c, p, 0.02 * h, l.friendly, MID);
+            c.stroke(p, p, 2.0, ink(MID));
+            if o.elements && o.vel_vectors {
+                c.stroke(p, p + tube.dir(l.heading) * 0.035 * h, 1.0, ink(MID));
+            }
+            if o.elements && o.alt_numbers {
+                let alt = (l.pos.z * 3.2808 / 10_000.0).round().max(0.0);
+                let at = p + Vec2::new(-0.03 * h, 0.0);
+                text(c, at, &format!("{alt:.0}"), 0.032 * h, DIM, Align::Right);
+            }
+        }
+    }
     for t in &r.tracks {
         let p = tube.at(t.now().truncate());
-        if !tube.inside(p) {
+        if !tube.inside(p) || (t.friendly == Some(true) && !o.non_attack) {
             continue;
         }
         let coasting = t.unseen > 2.0 * r.frame;
@@ -648,7 +755,8 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
         let range = d.length();
         let closure = -(vel - own_vel).dot(d) / range.max(1.0);
         let zone = launch_times(range as f32, closure as f32)
-            .filter(|z| t.friendly != Some(true) && z[2] < ZONE_SHOWN && z[0] > 0.0);
+            .filter(|z| t.friendly != Some(true) && z[2] < ZONE_SHOWN && z[0] > 0.0)
+            .filter(|_| o.elements && o.vel_vectors);
         if let Some([least, best, longest]) = zone {
             let len = least.min(ZONE_SECS) / ZONE_SECS * full;
             c.stroke(p, p + along * len, 1.0, ink(bright));
@@ -663,12 +771,12 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
             if dot > 0.0 && longest > 0.0 {
                 c.stroke(p + along * dot, p + along * dot, 3.5, ink(BRIGHT));
             }
-        } else if v.vel_vectors && speed > 5.0 {
+        } else if o.elements && o.vel_vectors && speed > 5.0 {
             // The velocity leader: the track's heading, its length the speed.
             let len = (speed as f32 * KT / VECTOR_KNOTS).min(1.0) * full;
             c.stroke(p, p + along * len.max(0.01 * h), 1.0, ink(bright));
         }
-        if v.alt_numbers {
+        if o.elements && o.alt_numbers {
             // The altitude to the nearest ten thousand feet, left of the symbol.
             let alt = (t.pos.z * 3.2808 / 10_000.0).round().max(0.0);
             let at = p + Vec2::new(-0.03 * h, 0.0);
@@ -677,7 +785,8 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
         // Right of it: the missile's time to impact once one flies at it (flashing with the
         // missile's seeker on), else its place in the firing order.
         let right = p + Vec2::new(0.03 * h, 0.0);
-        if let Some(m) = v.in_flight.iter().find(|m| m.target == t.target) {
+        if !o.elements {
+        } else if let Some(m) = v.in_flight.iter().find(|m| m.target == t.target) {
             if !m.active() || (v.t * TTI_FLASH).fract() < 0.5 {
                 let tti = format!("{:.0}", m.tti.clamp(0.0, 999.0));
                 text(c, right, &tti, 0.032 * h, BRIGHT, Align::Left);
@@ -701,6 +810,44 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
             c.ring(p, b, 1.0, ink(BRIGHT));
         }
     }
+    // The collision course to the hooked track (else the single target track): a line from the
+    // aircraft to where they meet (a cross), the course along the top; a target it cannot catch:
+    // NO CLSN.
+    if o.collision {
+        let target =
+            hooked.and_then(|n| r.track(n)).map(|t| (t.now().truncate(), t.vel.truncate()));
+        let target = target.or_else(|| {
+            r.stt.map(|t| {
+                let (bs, bc) = ((v.own.heading + t.az) as f64).sin_cos();
+                let flat = t.range as f64 * (t.el as f64).cos();
+                let (hs, hc) = (t.heading as f64).sin_cos();
+                (
+                    v.own.pos.truncate() + DVec2::new(bs, bc) * flat,
+                    DVec2::new(hs, hc) * t.speed as f64,
+                )
+            })
+        });
+        if let Some((at, vel)) = target {
+            let label = Vec2::new(tube.mid.x, 0.13 * h);
+            match collision_course(v.own.pos.truncate(), own_vel.length().max(50.0), at, vel) {
+                Some((course, secs)) => {
+                    let meet = tube.at(at + vel * secs as f64);
+                    let end = tube.clip(tube.own, meet);
+                    c.dashed(tube.own, end, 8.0, 4.0, 1.5, ink(BRIGHT));
+                    if tube.inside(meet) {
+                        let s = 0.02 * h;
+                        for d in [Vec2::new(1.0, 1.0), Vec2::new(1.0, -1.0)] {
+                            c.stroke(meet - d * s, meet + d * s, 1.5, ink(BRIGHT));
+                        }
+                    }
+                    let deg = (course.to_degrees() + 360.0) % 360.0;
+                    let s = format!("CLSN {deg:03.0}  {}", min_sec(secs));
+                    text(c, label, &s, 0.035 * h, BRIGHT, Align::Centre);
+                }
+                None => text(c, label, "NO CLSN", 0.035 * h, BRIGHT, Align::Centre),
+            }
+        }
+    }
     // The hooked track's data along the foot.
     if let Some(t) = hooked.and_then(|n| r.track(n)) {
         let readout = track_readout(t, &v.own);
@@ -716,6 +863,12 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
             c.stroke(p + d * gap, p + d * arm, 1.5, ink(BRIGHT));
         }
     }
+}
+
+/// "m:ss" of seconds.
+fn min_sec(secs: f32) -> String {
+    let s = secs.clamp(0.0, 5999.0) as u32;
+    format!("{}:{:02}", s / 60, s % 60)
 }
 
 /// A track's data: number, bearing and range from us, altitude (thousands of feet), heading
@@ -1307,8 +1460,8 @@ mod tests {
                 waypoints: &wps,
                 steer: Some(0),
                 in_flight: &[],
-                vel_vectors: true,
-                alt_numbers: true,
+                options: TidSymbols { collision: true, ..default() },
+                link: &[],
                 cursor: None,
                 t: 0.0,
             };
@@ -1377,6 +1530,95 @@ mod tests {
         off.ir = r.ir.clone();
         assert_ne!(draw(&off, Ir), draw(&Awg9::default(), Ir));
         assert_eq!(draw(&off, Pd), draw(&Awg9::default(), Pd));
+    }
+
+    /// The TID's symbol buttons: NON ATTK out hides the friends, SYM ELEM out leaves the bare
+    /// symbols, JAM STROBE draws the jammers' bearings, DATA LINK the reported aircraft, CLSN
+    /// the collision course to the hooked track.
+    #[test]
+    fn the_tid_symbol_buttons_show_and_hide() {
+        let ctl = Awg9Controls::default();
+        let own = Own { pos: DVec3::new(0.0, 0.0, 9000.0), knots: 450.0, ..default() };
+        let track = |number: u16, east: f64, friendly| TrackFile {
+            number,
+            target: ContactRef::Unit(number as usize),
+            pos: DVec3::new(east, 60_000.0, 8000.0),
+            vel: DVec3::new(0.0, -250.0, 0.0),
+            friendly,
+            unseen: 0.0,
+            age: 5.0,
+            priority: Some(number as u8),
+        };
+        let mut r = Awg9::default();
+        r.mode = crate::awg9::Mode::TwsAuto;
+        r.tracks = vec![track(1, -20_000.0, Some(false)), track(2, 20_000.0, Some(true))];
+        r.strobes =
+            vec![crate::aa_radar::Strobe { az: 0.5, target: ContactRef::Unit(7), age: 0.0 }];
+        r.hooked = Some(1);
+        let link = [LinkTrack {
+            target: ContactRef::Unit(9),
+            pos: DVec3::new(-40_000.0, -30_000.0, 6000.0),
+            heading: 1.0,
+            friendly: true,
+        }];
+        let draw = |options: TidSymbols| {
+            let mut c = Canvas::scaled(320, 320, 1);
+            let v = TidView {
+                radar: &r,
+                controls: &ctl,
+                own,
+                range_nm: 100.0,
+                stab: TidStab::Aircraft,
+                waypoints: &[],
+                steer: None,
+                in_flight: &[],
+                options,
+                link: &link,
+                cursor: None,
+                t: 0.0,
+            };
+            draw_tid(&mut c, &v);
+            lit(&c)
+        };
+        let all = TidSymbols::default();
+        let full = draw(all);
+        for less in [
+            TidSymbols { non_attack: false, ..all },
+            TidSymbols { jam_strobes: false, ..all },
+            TidSymbols { data_link: false, ..all },
+            TidSymbols { elements: false, ..all },
+            TidSymbols { alt_numbers: false, ..all },
+            TidSymbols { vel_vectors: false, ..all },
+        ] {
+            assert!(draw(less) < full, "{less:?}");
+        }
+        assert!(draw(TidSymbols { collision: true, ..all }) > full);
+        // The bare symbols: neither of the elements' buttons adds anything.
+        let bare = TidSymbols { elements: false, ..all };
+        assert_eq!(draw(bare), draw(TidSymbols { alt_numbers: false, vel_vectors: false, ..bare }));
+        // Head on at the same speed they meet half way, straight ahead; a faster target going
+        // away is never caught.
+        let (course, secs) = collision_course(
+            DVec2::ZERO,
+            250.0,
+            DVec2::new(0.0, 50_000.0),
+            DVec2::new(0.0, -250.0),
+        )
+        .unwrap();
+        assert!(course.abs() < 1e-3 && (secs - 100.0).abs() < 0.1);
+        // Crossing from the left at our speed, abeam: 45 degrees of lead.
+        let (course, _) = collision_course(
+            DVec2::ZERO,
+            250.0,
+            DVec2::new(-50_000.0, 50_000.0),
+            DVec2::new(250.0, 0.0),
+        )
+        .unwrap();
+        assert!(course.abs() < 1e-2, "{course}");
+        assert!(
+            collision_course(DVec2::ZERO, 200.0, DVec2::new(0.0, 50_000.0), DVec2::new(0.0, 300.0))
+                .is_none()
+        );
     }
 
     /// The field of regard map: ahead and down is seen, the left beyond the fuselage, back under
@@ -1472,8 +1714,8 @@ mod preview {
                 waypoints: &wps,
                 steer: Some(0),
                 in_flight: &inf,
-                vel_vectors: true,
-                alt_numbers: true,
+                options: TidSymbols { collision: true, ..default() },
+                link: &[],
                 cursor: Some(Vec2::new(0.2, 0.3)),
                 t: 0.0,
             },

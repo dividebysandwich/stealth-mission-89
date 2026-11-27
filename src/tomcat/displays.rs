@@ -108,6 +108,19 @@ fn lantirn(c: &mut Canvas, i: &Inputs, round: bool) {
 /// The square inside a round tube (its side over the tube's diameter, a little inside it).
 const INSCRIBED: f32 = 0.68;
 
+/// The TID's symbol buttons as the panel has them.
+pub fn tid_symbols(p: &TomcatPanel) -> scopes::TidSymbols {
+    scopes::TidSymbols {
+        collision: p.tid_option(TidOption::Clsn),
+        non_attack: p.tid_option(TidOption::NonAttack),
+        jam_strobes: p.tid_option(TidOption::JamStrobe),
+        data_link: p.tid_option(TidOption::DataLink),
+        elements: p.tid_option(TidOption::SymElem),
+        alt_numbers: p.tid_option(TidOption::AltNum),
+        vel_vectors: p.tid_option(TidOption::VelVector),
+    }
+}
+
 /// The TID's picture at the TID's range and stabilisation (`tid`: the RIO's tube, else the
 /// HSD's repeat).
 fn tid_picture(c: &mut Canvas, i: &Inputs, tid: bool) {
@@ -124,8 +137,8 @@ fn tid_picture(c: &mut Canvas, i: &Inputs, tid: bool) {
             waypoints: &i.scene.waypoints,
             steer: i.scene.steer,
             in_flight: &i.scene.in_flight,
-            vel_vectors: p.tid_option(TidOption::VelVector),
-            alt_numbers: p.tid_option(TidOption::AltNum),
+            options: tid_symbols(p),
+            link: &i.scene.link,
             cursor: (tid && cursor.active == Some(Cursor::Tid)).then_some(cursor.tid),
             t: i.t,
         },

@@ -905,8 +905,17 @@ impl Default for TomcatPanel {
             tid_mode: TidMode::default(),
             tid_range: TidRange::default(),
             tid_readout: TidReadout::default(),
-            // The aircraft's velocity vector and the targets' altitudes shown.
-            tid_options: 1 << TidOption::AltNum as u8 | 1 << TidOption::VelVector as u8,
+            // Every symbol shown but the collision course (and TID AUTO, which does nothing).
+            tid_options: [
+                TidOption::NonAttack,
+                TidOption::JamStrobe,
+                TidOption::DataLink,
+                TidOption::SymElem,
+                TidOption::AltNum,
+                TidOption::VelVector,
+            ]
+            .iter()
+            .fold(0, |bits, o| bits | 1 << *o as u8),
             hooks: 0,
             hook_target: 0,
             ph_active: false,

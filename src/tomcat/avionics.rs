@@ -62,6 +62,9 @@ pub struct TomcatScene {
     pub cursor: Cursors,
     /// The HUD's radar and missile cues.
     pub hud: Option<crate::hud::TomcatHud>,
+    /// The aircraft on the data link (the TID's DATA LINK button): the friendly ones and those
+    /// the other friendly radars see.
+    pub link: Vec<crate::f14_scopes::LinkTrack>,
 }
 
 /// The display the RIO's hand controller moves a cursor on.
@@ -613,6 +616,7 @@ fn scene(
     player: Query<(&Aircraft, &WorldPos), With<Player>>,
     time: Res<Time>,
     cursor: Res<Cursors>,
+    (contacts, campaign): (Res<Contacts>, Option<Res<crate::campaign::ActiveCampaign>>),
     mut out: ResMut<TomcatScene>,
     mut closing: Local<Vec<(usize, f64, f64)>>,
 ) {
@@ -669,6 +673,36 @@ fn scene(
         }
     }
     *closing = rates;
+    // The data link: the friendly aircraft, and the others where another friendly radar sees
+    // them (a jammer: where one burns through, as the contacts have it).
+    out.link.clear();
+    if panel.tid_option(super::TidOption::DataLink)
+        && let Some(combat) = combat.as_deref()
+    {
+        let sim = &combat.sim;
+        let eyes =
+            crate::campaign::picture::friendly_eyes(campaign.as_ref().map(|c| c.state()), sim);
+        for k in contacts.list.iter().filter(|k| {
+            matches!(k.kind, crate::mfd::ContactKind::Aircraft | crate::mfd::ContactKind::Drone)
+        }) {
+            let Some(target) = k.target else { continue };
+            let reported = k.friendly
+                || match target {
+                    ContactRef::Unit(i) => sim.flights().get(i).is_some_and(|u| {
+                        k.seen && crate::campaign::picture::seen_by(&eyes, u.x, u.y)
+                    }),
+                    _ => false,
+                };
+            if reported {
+                out.link.push(crate::f14_scopes::LinkTrack {
+                    target,
+                    pos: DVec3::new(k.east * WU, k.north * WU, k.alt as f64 * WU),
+                    heading: (k.heading as f64 / 65536.0 * std::f64::consts::TAU) as f32,
+                    friendly: k.friendly,
+                });
+            }
+        }
+    }
     let now = clock.start_seconds + clock.elapsed.unwrap_or(0.0) * clock.rate;
     out.hud = Some(crate::hud::TomcatHud {
         steer: panel.steer,

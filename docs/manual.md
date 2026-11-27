@@ -5010,6 +5010,21 @@ for 1,800 knots). **ALT NUM** writes the track's altitude to the nearest ten tho
 of it (4: between 35,000 and 45,000 feet). The number right of a track is its place in the
 Phoenixes' **firing order** (1 is shot next).
 
+The other buttons round the TID (all in at the start but CLSN):
+
+- **CLSN** draws the collision course to the hooked track (or the single target track): a
+  dashed line from your aircraft to the cross where you would meet it at your speed, with the
+  course to fly and the time until then along the top. **NO CLSN**: it is faster than you and
+  going away.
+- **NON ATTK** shows the aircraft you may not shoot at, the friends. Out, only hostile and
+  unknown ones are drawn.
+- **JAM STROBE** draws a dashed line along the bearing of every jammer the radar hears.
+- **DATA LINK** adds the aircraft the other friendly radars report and yours does not track:
+  the lower half of the symbol (a bowl for a friend, a V for a hostile one). You cannot shoot
+  at them until your own radar tracks them.
+- **SYM ELEM** shows what stands round the symbols: the lines, the altitudes, the firing order
+  and the times. Out, only the bare symbols are left.
+
 **Launch zone vectors** replace the velocity lines of hostile tracks from a minute before they
 come into the Phoenix's range. The line's length is the time until you are at the shortest
 range (the longest line: three minutes or more); as it runs out the line draws back into the
