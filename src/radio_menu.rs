@@ -1,6 +1,8 @@
 //! The radio menu: the radio key (`\`) opens the calls to the AI wingman on the cockpit's
 //! message panel (`player_notices.rs`, on the screen and in the headset); 1 to 7 make one,
-//! the radio key again (or a while without a call) closes it. The pilot's call is spoken over
+//! the radio key again (or a while without a call) closes it. "Engage SAMs" is there only while
+//! the wingman carries anti-radiation missiles (its key left unused otherwise, so the others
+//! keep theirs). The pilot's call is spoken over
 //! the radio (`atc.rs`'s voices), and the wingman's answer after it, and shown on the HUD.
 //!
 //! A single mission's (or a career's) wingman flies in this simulation; a campaign's call goes
@@ -8,7 +10,7 @@
 
 use bevy::prelude::*;
 use stealth_i18n::tf;
-use stealth_sim::wingman::{WingCmd, WingReply};
+use stealth_sim::wingman::{Wing, WingCmd, WingReply};
 
 use crate::combat::Combat;
 use crate::input::{Action, ActionEvent, InputBlock, InputSystemsSet, RADIO_KEYS, RadioCapture};
@@ -58,11 +60,19 @@ pub fn call_id(cmd: WingCmd) -> &'static str {
     }
 }
 
-/// The menu's lines: its title, then each call on its key.
-fn lines() -> Vec<String> {
+/// Whether the menu offers a call to the wingman `wing` (None: not joined yet): SAMs only with
+/// anti-radiation missiles aboard.
+fn offered(cmd: WingCmd, wing: Option<Wing>) -> bool {
+    cmd != WingCmd::Sams || wing.is_some_and(|w| w.harms > 0)
+}
+
+/// The menu's lines: its title, then each call offered on its key.
+fn lines(wing: Option<Wing>) -> Vec<String> {
     let mut out = vec![tf!("radio-wing-title").to_string()];
     for (k, &cmd) in WingCmd::ALL.iter().enumerate() {
-        out.push(format!("{}  {}", k + 1, tf!(call_id(cmd))));
+        if offered(cmd, wing) {
+            out.push(format!("{}  {}", k + 1, tf!(call_id(cmd))));
+        }
     }
     out
 }
@@ -92,12 +102,14 @@ fn radio_menu(
     if menu.open.is_some_and(|t| now - t > OPEN_SECS) {
         menu.open = None;
     }
+    let wing = combat.sim.wing(combat.sim.active_pilot());
     let scripted =
         menu.script_pick.take().and_then(|k| WingCmd::ALL.get((k as usize).checked_sub(1)?));
     let picked = menu
         .open
         .and_then(|_| RADIO_KEYS.iter().position(|&k| keys.just_pressed(k)))
         .map(|k| WingCmd::ALL[k])
+        .filter(|&cmd| offered(cmd, wing))
         .or(scripted.copied());
     if let Some(cmd) = picked {
         menu.open = None;
@@ -119,7 +131,7 @@ fn radio_menu(
     if capture.0 != open {
         capture.0 = open;
     }
-    let want = if open { lines() } else { Vec::new() };
+    let want = if open { lines(wing) } else { Vec::new() };
     if notices.menu != want {
         notices.menu = want;
     }
@@ -149,4 +161,24 @@ fn close(
     menu.open = None;
     capture.0 = false;
     notices.menu.clear();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// "Engage SAMs" is offered only with anti-radiation missiles aboard; the other calls keep
+    /// their keys.
+    #[test]
+    fn sams_only_with_anti_radiation_missiles() {
+        let none = Wing::default();
+        let armed = Wing { harms: 2, ..default() };
+        assert!(!offered(WingCmd::Sams, None));
+        assert!(!offered(WingCmd::Sams, Some(none)));
+        assert!(offered(WingCmd::Sams, Some(armed)));
+        assert!(WingCmd::ALL.iter().filter(|&&c| c != WingCmd::Sams).all(|&c| offered(c, None)));
+        let shown = lines(Some(none));
+        assert_eq!(shown.len(), WingCmd::ALL.len());
+        assert!(shown[2].starts_with("3 "), "{shown:?}");
+    }
 }

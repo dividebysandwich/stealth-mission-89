@@ -4819,6 +4819,57 @@ fn a_wingman_fires_a_harm_at_a_sam_site() {
     assert_eq!(sim.wing(me).map(|w| w.order), Some(stealth_sim::wingman::WingOrder::Formation));
 }
 
+/// A wingman with Shrikes (another anti-radiation missile) fires one of them at the SAM site
+/// ahead it is called on: the most valuable radar ahead (an SA-10 farther off), not a closer
+/// SA-8 behind its lead nor a closer, lesser SA-8 ahead.
+#[test]
+fn a_wingman_fires_a_shrike_at_the_best_sam_ahead() {
+    use stealth_sim::wingman::{WingCmd, WingReply};
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    // An SA-8 6 km behind (west), another 9 km ahead off the nose, an SA-10 25 km ahead (east).
+    place_site(&mut sim, 5, 3, mx - 400, my);
+    place_site(&mut sim, 6, 3, mx + 600, my + 100);
+    place_site(&mut sim, 7, 4, mx + 1600, my);
+    sim.set_loadout(&[(SHRIKE_WEAPON, 1), (SHRIKE_WEAPON, 1), (0, 1), (0, 1)]);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::F16);
+    let mut p = player_at(mx, my, 8000, 0x4000, 400);
+    for _ in 0..15 * 10 {
+        wing_step(&mut sim, &mut p);
+    }
+    assert_eq!(sim.wing(me).map(|w| w.harms), Some(2));
+    assert_eq!(sim.wing_command(me, WingCmd::Sams), WingReply::Engaging);
+    let mut shot = None;
+    for _ in 0..15 * 90 {
+        wing_step(&mut sim, &mut p);
+        shot = shot.or_else(|| sim.ai_missiles().iter().find(|m| m.ground.is_some()).copied());
+        if shot.is_some() {
+            break;
+        }
+    }
+    let shot = shot.expect("no missile fired");
+    assert_eq!((shot.spec, shot.ground), (SHRIKE_SPEC, Some(7)));
+    assert_eq!(sim.wing(me).map(|w| w.harms), Some(1));
+}
+
+/// A wingman without anti-radiation missiles can't take SAMs; with Sidearms only (a
+/// helicopter's) it can.
+#[test]
+fn a_wingman_counts_sidearms_as_anti_radiation_missiles() {
+    let d = data();
+    let (m, mut sim) = aaa_mission(d);
+    let (mx, my) = sandbox(&mut sim, &m);
+    sim.set_loadout(&[(SIDEARM_WEAPON, 2), (0, 1)]);
+    let me = sim.active_pilot();
+    sim.request_wingman(me, stealth_sim::ai_missions::F16);
+    let mut p = player_at(mx, my, 8000, 0x4000, 400);
+    wing_step(&mut sim, &mut p);
+    let w = sim.wing(me).expect("joined");
+    assert_eq!((w.harms, w.arm), (2, SIDEARM_SPEC));
+}
+
 /// A helicopter's wingman (an AH-64) keeps its closer station on its lead.
 #[test]
 fn a_helicopter_wingman_flies_close_formation() {

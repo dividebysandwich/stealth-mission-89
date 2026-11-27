@@ -1828,8 +1828,8 @@ do, and with the *Airframe losses* rule its loss costs the friendly side an airc
 
 It joins you from behind once you are a few hundred feet up and flies **spread** (abeam on your
 right, a little back) or **in trail** (behind you); a helicopter's wingman keeps closer. In
-formation it fights off enemy aircraft that come near you, and if it carries HARMs it fires one at
-a SAM site that launches at you, then rejoins.
+formation it fights off enemy aircraft that come near you. If it carries anti-radiation missiles
+(HARMs, Shrikes or Sidearms) it fires one at a SAM site that launches at you, then rejoins.
 
 A helicopter's wingman lifts off beside you and keeps about 120 m off your right side (300 m in
 trail). It flies as high over the ground as you do, never lower than about 20 m, and stays with you
@@ -1842,7 +1842,7 @@ Press **\\** for the radio menu (beside the HUD, in the headset too), then a num
 | Key | Call | What it does |
 |---|---|---|
 | 1 | Engage my target | Your air lock; else your ground lock or the targeting pod's point |
-| 2 | Engage SAMs | A HARM at the SAM site firing at you, else the nearest one |
+| 2 | Engage SAMs | An anti-radiation missile at the SAM site firing at you, else at the SAM radar ahead most worth it (the farthest-seeing for how far off it is). Only offered while it carries anti-radiation missiles |
 | 3 | Cover me | Hunts enemy aircraft farther round you |
 | 4 | Rejoin | Back on your wing |
 | 5 | Return to base | Goes home and lands |

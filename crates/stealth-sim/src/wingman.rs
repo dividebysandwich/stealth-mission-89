@@ -1,12 +1,14 @@
 //! The player's AI wingman: an aircraft of his own type that joins him once he is up and flies
 //! formation on him (spread abeam, or in trail), defends him and itself against the enemy's
-//! aircraft and (with HARMs) the SAM sites that fire at them, and takes his radio calls:
-//! engage my target, engage SAMs, cover me, rejoin, RTB, go trail / spread.
+//! aircraft and (with anti-radiation missiles: HARMs, Shrikes, Sidearms) the SAM sites that fire
+//! at them, and takes his radio calls: engage my target, engage SAMs (the site firing at them,
+//! else the best radar ahead), cover me, rejoin, RTB, go trail / spread.
 //!
 //! It is one of the campaign's AI flights (in a single mission too, hosted by the campaign's
 //! bookkeeping as an escort is, [`Sim::launch_escorts`]), with a [`Wing`] that says whose
 //! wingman it is and what it was told. Its missiles come from its lead's air-to-air stores, its
-//! anti-radiation shots from his HARMs and its attacks on the ground from his other stores.
+//! anti-radiation shots from his anti-radiation missiles and its attacks on the ground from his
+//! other stores.
 //!
 //! Close to its station it keeps it as a formation pilot does: on the station point, moving
 //! with its lead ([`Sim::keep_station`]); farther off (joining up, after a fight) it flies there
@@ -67,6 +69,11 @@ const COVER_BUBBLE: i32 = 0x500;
 const ENGAGE_BUBBLE: i32 = 0x900;
 /// How far (map units) from its lead an enemy SAM site may be for it to go for it.
 const SAM_REACH: i32 = 0x800;
+/// "Engage SAMs" takes a site this far either side of its lead's heading (BAM, 75°).
+const AHEAD: i32 = 0x3555;
+/// Map units added to a site's distance when weighing it (sites much closer than this count as
+/// about as close), ~6 km.
+const SAM_NEAR: i32 = 0x180;
 /// Its lead down this long (s): it goes home.
 const LEAD_DOWN_SECS: i32 = 20;
 /// Ground attacks it makes with each store of a weapon (at most).
@@ -80,7 +87,7 @@ pub enum WingOrder {
     Formation,
     /// Its lead's target (an aircraft, a ground object or point).
     Engage,
-    /// An enemy SAM site with a HARM.
+    /// An enemy SAM site with an anti-radiation missile.
     Sams,
     /// Ranges wider round its lead after the enemy's aircraft.
     Cover,
@@ -129,9 +136,13 @@ pub struct Wing {
     pub lead: u8,
     pub order: WingOrder,
     pub form: Form,
-    /// HARMs and ground attacks left.
+    /// Anti-radiation missiles and ground attacks left.
     pub harms: u8,
     pub ground: u8,
+    /// The missile (type) of its anti-radiation shots: its lead's HARMs, Shrikes or Sidearms (0:
+    /// a HARM, as before there were others).
+    #[serde(default)]
+    pub arm: i32,
     /// The aircraft it was told to engage (flight unit).
     pub air: Option<u16>,
     /// Frames its lead has been on the ground (or out of the world).
@@ -186,7 +197,7 @@ pub enum WingReply {
     Engaging,
     /// Nothing locked to engage.
     NoTarget,
-    /// No HARM left, or no SAM site in reach.
+    /// No anti-radiation missile left, or no SAM site in reach.
     NoHarm,
     NoSam,
     /// Nothing left to attack the ground with.
@@ -222,16 +233,24 @@ struct Lead {
     speed: f64,
 }
 
-/// The air-to-air missiles, HARMs and ground attacks a wingman carries for its lead's stores
-/// (weapon type, rounds per station).
-fn wing_stores(sim: &Sim, bays: &[(i32, i32)]) -> (AiLoadout, u8, u8) {
+/// The air-to-air missiles, anti-radiation missiles (and their missile type: the farthest
+/// reaching of them) and ground attacks a wingman carries for its lead's stores (weapon type,
+/// rounds per station).
+fn wing_stores(sim: &Sim, bays: &[(i32, i32)]) -> (AiLoadout, u8, i32, u8) {
     let (mut radar, mut ir, mut stingers, mut harms, mut ground) = (0, 0, 0, 0u8, 0u8);
+    let mut arm = 0;
     for &(w, n) in bays.iter().filter(|b| b.0 >= 0 && b.1 > 0) {
         match w {
             1 => radar += n,
             0 => ir += n,
             21 => stingers += n,
-            2 => harms = harms.saturating_add(n as u8),
+            HARM_WEAPON | SHRIKE_WEAPON | SIDEARM_WEAPON => {
+                harms = harms.saturating_add(n as u8);
+                let spec = sim.weapon_types.get(w as usize).map_or(0, |t| t.spec as i32);
+                if arm == 0 || sim.missile(spec).lock_range > sim.missile(arm).lock_range {
+                    arm = spec;
+                }
+            }
             // The camera, tanks, cargo, paratroopers, decoys and jammers attack nothing.
             16 | 17 | 18 | 27 | 28 | 29 => {}
             _ if sim.weapon_types.get(w as usize).is_some_and(|t| t.spec != 0)
@@ -246,7 +265,7 @@ fn wing_stores(sim: &Sim, bays: &[(i32, i32)]) -> (AiLoadout, u8, u8) {
     l.stores[0] = Store { missile: AIM120, count: radar, seeker: Seeker::Radar };
     l.stores[1] = Store { missile: AIM9, count: ir, seeker: Seeker::Ir };
     l.stores[2] = Store { missile: STINGER_SPEC, count: stingers, seeker: Seeker::Ir };
-    (l, harms, ground)
+    (l, harms, arm, ground)
 }
 
 impl Sim {
@@ -382,12 +401,12 @@ impl Sim {
         } else {
             p.stores.clone()
         };
-        let (loadout, harms, ground) = wing_stores(self, &bays);
+        let (loadout, harms, arm, ground) = wing_stores(self, &bays);
         let tag = WING_TAG + p.lead as u32;
         let mut f =
             self.mission_flight(p.spec, AiTask::Patrol(u.x, u.y), tag, true, p.home as usize);
         f.loadout = loadout;
-        f.wing = Some(Wing { lead: p.lead, harms, ground, ..Default::default() });
+        f.wing = Some(Wing { lead: p.lead, harms, ground, arm, ..Default::default() });
         u.missile = f.classic_missile();
         self.flights[i] = u;
         if self.ai_flight.len() > i {
@@ -619,19 +638,26 @@ impl Sim {
         })
     }
 
-    /// The enemy SAM site nearest pilot `lead` within reach (object index), the active ones
-    /// first.
-    fn nearest_sam(&self, lead: u8) -> Option<usize> {
+    /// The enemy SAM site ahead of pilot `lead` (within `AHEAD` of his heading) and within
+    /// reach (object index) most worth an anti-radiation missile: the most valuable radar (how
+    /// far it sees) for how far off it is, a radar on the air before one that is off.
+    fn sam_ahead(&self, lead: u8) -> Option<usize> {
         let p = &self.pilot_ref(lead as usize).p;
         (1..self.objects.len())
             .filter(|&o| self.enemy_site(o))
-            .map(|o| {
+            .filter_map(|o| {
                 let ob = &self.objects[o];
-                let d = approx(ob.x - p.mx, ob.y - p.my);
-                (o, if ob.alert > 0 { d } else { d + SAM_REACH }, d)
+                let (dx, dy) = (s16(ob.x - p.mx), s16(ob.y - p.my));
+                let d = approx(dx, dy);
+                let off = s16(crate::math::bearing(dx, s16(-dy)) - p.heading).abs();
+                if d >= SAM_REACH || off > AHEAD {
+                    return None;
+                }
+                let value = self.threat_type(ob.unit_type).map_or(1, |t| t.lethality.max(1));
+                let worth = value as i64 * 0x10000 / (d + SAM_NEAR) as i64;
+                Some((o, ob.alert > 0, worth))
             })
-            .filter(|&(_, _, d)| d < SAM_REACH)
-            .min_by_key(|&(_, key, _)| key)
+            .max_by_key(|&(o, on, worth)| (on, worth, std::cmp::Reverse(o)))
             .map(|(o, _, _)| o)
     }
 
@@ -856,7 +882,7 @@ impl Sim {
                 if w.harms == 0 {
                     return WingReply::NoHarm;
                 }
-                let Some(o) = self.sam_firing_at(lead, i).or_else(|| self.nearest_sam(lead)) else {
+                let Some(o) = self.sam_firing_at(lead, i).or_else(|| self.sam_ahead(lead)) else {
                     return WingReply::NoSam;
                 };
                 let at = (self.objects[o].x, self.objects[o].y);

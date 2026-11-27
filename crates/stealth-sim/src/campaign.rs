@@ -1849,6 +1849,11 @@ impl Sim {
             }
         };
         let weapons: Vec<(i32, i32)> = (0..self.objects.len()).map(|t| weapon(self, t)).collect();
+        // A wingman fires its lead's kind of anti-radiation missile (`Wing::arm`) from its reach.
+        let arms: Vec<(i32, i32)> = [SHRIKE_SPEC, SIDEARM_SPEC]
+            .into_iter()
+            .map(|spec| (spec, (self.missile(spec).lock_range as i32) << 6))
+            .collect();
         let c = self.campaign.as_mut().expect("campaign");
         let (mut shots, mut cas) = (Vec::new(), Vec::new());
         for (i, slot) in c.flights.iter_mut().enumerate() {
@@ -1882,6 +1887,12 @@ impl Sim {
                 (ROCKETS, ROCKET_RELEASE)
             } else {
                 weapons.get(target as usize).copied().unwrap_or((ROCKETS, ROCKET_RELEASE))
+            };
+            let (spec, release) = match f.wing.map(|w| w.arm) {
+                Some(arm) if spec == HARM => {
+                    arms.iter().copied().find(|a| a.0 == arm).unwrap_or((spec, release))
+                }
+                _ => (spec, release),
             };
             if approx(u.x - f.goal.0, u.y - f.goal.1) < release {
                 if f.strike_unit {
