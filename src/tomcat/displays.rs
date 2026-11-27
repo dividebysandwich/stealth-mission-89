@@ -125,6 +125,7 @@ fn tid_picture(c: &mut Canvas, i: &Inputs, tid: bool) {
             vel_vectors: p.tid_option(TidOption::VelVector),
             alt_numbers: p.tid_option(TidOption::AltNum),
             cursor: (tid && cursor.active == Some(Cursor::Tid)).then_some(cursor.tid),
+            t: i.t,
         },
     );
 }

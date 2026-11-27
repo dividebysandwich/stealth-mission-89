@@ -446,7 +446,7 @@ fn scene(
             } else {
                 secs(range)
             };
-            flying.push(InFlight { target, to_go });
+            flying.push(InFlight { target, to_go, tti: secs(range) });
         }
     }
     *closing = rates;

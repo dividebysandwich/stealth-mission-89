@@ -228,6 +228,40 @@ pub enum TidStab {
 pub struct InFlight {
     pub target: ContactRef,
     pub to_go: f32,
+    /// Seconds to its impact, whether its seeker is on yet or not.
+    pub tti: f32,
+}
+
+impl InFlight {
+    /// Its own seeker is on (it went "pitbull").
+    pub fn active(&self) -> bool {
+        self.to_go >= 0.0
+    }
+}
+
+/// The TID's vectors' full length in tube radii (1.5 inches on the tube): a velocity leader's at
+/// `VECTOR_KNOTS`, a launch zone vector's at `ZONE_SECS`.
+const VECTOR_FULL: f32 = 0.43;
+const VECTOR_KNOTS: f32 = 1800.0;
+const ZONE_SECS: f32 = 180.0;
+/// The launch zone vectors replace the velocity leaders this many seconds before a track comes
+/// into the Phoenix's range.
+const ZONE_SHOWN: f32 = 60.0;
+/// The time to impact flashes this often a second once the missile's own seeker is on.
+const TTI_FLASH: f32 = 3.0;
+
+/// The seconds until a track closing at `closure` m/s from `range` m is at the Phoenix's
+/// shortest, best and longest launch ranges (the launch zone vector's TUMR, TUOR and TUIR;
+/// negative: already inside). None for a track that does not close. The ranges are the
+/// computer's estimates by the closing speed: some 20 nmi against a slow or beam target up to
+/// 60 against a fast one head on, the best shot at half of that.
+pub fn launch_times(range: f32, closure: f32) -> Option<[f32; 3]> {
+    if closure < 20.0 {
+        return None;
+    }
+    let nm = NM as f32;
+    let longest = (20.0 + closure * 0.07).min(60.0) * nm;
+    Some([2.0 * nm, 0.5 * longest, longest].map(|r| (range - r) / closure))
 }
 
 /// What the TID shows.
@@ -247,6 +281,8 @@ pub struct TidView<'a> {
     pub alt_numbers: bool,
     /// The hand controller's cursor (`tid_spot`'s units), if it is on this display.
     pub cursor: Option<Vec2>,
+    /// Seconds (the time to impact's flashing).
+    pub t: f32,
 }
 
 /// A point's place on the TID (metres east, north) in tube radii from the tube's middle (x
@@ -424,6 +460,9 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
     c.stroke(tube.own - side * s * 0.8, tube.own + side * s * 0.8, 1.5, ink(BRIGHT));
     // The tracks.
     let hooked = r.hooked;
+    let (hs, hc) = v.own.heading.sin_cos();
+    let own_vel = DVec2::new(hs as f64, hc as f64) * (v.own.knots * v.own.pitch.cos() / KT) as f64;
+    let full = VECTOR_FULL * rad;
     for t in &r.tracks {
         let p = tube.at(t.now().truncate());
         if !tube.inside(p) {
@@ -432,47 +471,54 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
         let coasting = t.unseen > 2.0 * r.frame;
         let bright = if coasting { DIM } else { BRIGHT };
         ntds(c, p, 0.02 * h, Some(t.friendly), bright);
-        if v.vel_vectors {
-            let vel = t.vel.truncate();
-            let speed = vel.length();
-            if speed > 5.0 {
-                let bearing = vel.x.atan2(vel.y) as f32;
-                // A minute's flight.
-                let len = (speed * 60.0) as f32 * tube.scale;
-                c.stroke(
-                    p,
-                    p + tube.dir(bearing) * len.clamp(0.01 * h, 0.15 * h),
-                    1.0,
-                    ink(bright),
-                );
+        // The track's centre dot.
+        c.stroke(p, p, 2.5, ink(bright));
+        let vel = t.vel.truncate();
+        let speed = vel.length();
+        let along = if speed > 5.0 { tube.dir(vel.x.atan2(vel.y) as f32) } else { tube.dir(0.0) };
+        // The launch zone vector of a hostile track about to come into range: its length the
+        // time until the shortest range, the bar on it the best range and the dot the longest
+        // as far from its end as the time until them (the end comes back to them).
+        let d = t.now().truncate() - v.own.pos.truncate();
+        let range = d.length();
+        let closure = -(vel - own_vel).dot(d) / range.max(1.0);
+        let zone = launch_times(range as f32, closure as f32)
+            .filter(|z| !t.friendly && z[2] < ZONE_SHOWN && z[0] > 0.0);
+        if let Some([least, best, longest]) = zone {
+            let len = least.min(ZONE_SECS) / ZONE_SECS * full;
+            c.stroke(p, p + along * len, 1.0, ink(bright));
+            let at = |secs: f32| len - secs / ZONE_SECS * full;
+            let bar = at(best);
+            if bar > 0.0 && best > 0.0 {
+                let half = (0.02 * full).max(1.5);
+                let (a, b) = ((bar - half).max(0.0), (bar + half).min(len));
+                c.stroke(p + along * a, p + along * b, 4.0, ink(BRIGHT));
             }
+            let dot = at(longest);
+            if dot > 0.0 && longest > 0.0 {
+                c.stroke(p + along * dot, p + along * dot, 3.5, ink(BRIGHT));
+            }
+        } else if v.vel_vectors && speed > 5.0 {
+            // The velocity leader: the track's heading, its length the speed.
+            let len = (speed as f32 * KT / VECTOR_KNOTS).min(1.0) * full;
+            c.stroke(p, p + along * len.max(0.01 * h), 1.0, ink(bright));
         }
-        let label = match t.priority {
-            Some(k) => format!("{}·{}", t.number, k),
-            None => format!("{}", t.number),
-        };
-        text(c, p + Vec2::new(0.025 * h, -0.03 * h), &label, 0.03 * h, MID, Align::Left);
         if v.alt_numbers {
-            let alt = (t.pos.z * 3.2808 / 1000.0).round();
-            text(
-                c,
-                p + Vec2::new(-0.025 * h, 0.03 * h),
-                &format!("{alt:.0}"),
-                0.028 * h,
-                DIM,
-                Align::Right,
-            );
+            // The altitude to the nearest ten thousand feet, left of the symbol.
+            let alt = (t.pos.z * 3.2808 / 10_000.0).round().max(0.0);
+            let at = p + Vec2::new(-0.03 * h, 0.0);
+            text(c, at, &format!("{alt:.0}"), 0.032 * h, MID, Align::Right);
         }
+        // Right of it: the missile's time to impact once one flies at it (flashing with the
+        // missile's seeker on), else its place in the firing order.
+        let right = p + Vec2::new(0.03 * h, 0.0);
         if let Some(m) = v.in_flight.iter().find(|m| m.target == t.target) {
-            // The missile's counter: time to its seeker coming on (minus), then to impact.
-            text(
-                c,
-                p + Vec2::new(0.025 * h, 0.035 * h),
-                &format!("{:+.0}", m.to_go),
-                0.03 * h,
-                BRIGHT,
-                Align::Left,
-            );
+            if !m.active() || (v.t * TTI_FLASH).fract() < 0.5 {
+                let tti = format!("{:.0}", m.tti.clamp(0.0, 999.0));
+                text(c, right, &tti, 0.032 * h, BRIGHT, Align::Left);
+            }
+        } else if let Some(k) = t.priority {
+            text(c, right, &format!("{k}"), 0.032 * h, BRIGHT, Align::Left);
         }
         if hooked == Some(t.number) {
             let b = 0.035 * h;
@@ -1139,6 +1185,22 @@ mod tests {
             .count()
     }
 
+    /// A closing track's launch times run down together a second a second; one that draws
+    /// away has none. A missile with its seeker on is active.
+    #[test]
+    fn launch_times_run_down() {
+        let far = launch_times(150_000.0, 500.0).unwrap();
+        let near = launch_times(150_000.0 - 5_000.0, 500.0).unwrap();
+        for k in 0..3 {
+            assert!((far[k] - near[k] - 10.0).abs() < 1e-3);
+        }
+        assert!(far[0] > far[1] && far[1] > far[2]);
+        assert!(launch_times(50_000.0, -100.0).is_none());
+        let m = InFlight { target: ContactRef::Unit(1), to_go: 12.0, tti: 12.0 };
+        assert!(m.active());
+        assert!(!InFlight { to_go: -3.0, ..m }.active());
+    }
+
     /// Every display draws on its canvas without panicking, standby or idle too.
     #[test]
     fn the_displays_draw() {
@@ -1168,6 +1230,7 @@ mod tests {
                 vel_vectors: true,
                 alt_numbers: true,
                 cursor: None,
+                t: 0.0,
             };
             draw_tid(&mut c, &v);
             assert!(lit(&c) > 0);
@@ -1271,7 +1334,7 @@ mod preview {
         draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)), true);
         crate::intruder::dump_png(&c, &crate::tomcat::displays::ddd_colours(), "f14_ddd");
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(-20_000.0, 100_000.0)];
-        let inf = [InFlight { target: ContactRef::Unit(2), to_go: -23.0 }];
+        let inf = [InFlight { target: ContactRef::Unit(2), to_go: -23.0, tti: 41.0 }];
         draw_tid(
             &mut c,
             &TidView {
@@ -1286,6 +1349,7 @@ mod preview {
                 vel_vectors: true,
                 alt_numbers: true,
                 cursor: Some(Vec2::new(0.2, 0.3)),
+                t: 0.0,
             },
         );
         crate::intruder::dump_png(&c, &pal, "f14_tid");

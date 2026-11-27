@@ -4970,11 +4970,21 @@ returns while it is lit: a friendly one gets a grey bar over and under it, a hos
 plain bar.
 
 **The TID** (tactical information display, the big round tube) is the picture the computer
-builds: your aircraft, the tracks with their numbers, the scan's limits and the route. Hostile
+builds: your aircraft, the tracks, the scan's limits and the route. Hostile
 tracks wear a peaked hat, friendly ones a round one, unknown ones a square one. The **TID MODE**
 knob turns the picture: north up, nose up, nose up with you at the foot (ATTK), or the pod's
-video (TV). **TID RANGE** sets how far it reaches. **VEL VECTOR** adds a line showing where each
-track is going, **ALT NUM** its altitude in thousands of feet.
+video (TV). **TID RANGE** sets how far it reaches. **VEL VECTOR** adds a line from each track's
+centre dot: its direction is the track's heading and its length its speed (the longest stands
+for 1,800 knots). **ALT NUM** writes the track's altitude to the nearest ten thousand feet left
+of it (4: between 35,000 and 45,000 feet). The number right of a track is its place in the
+Phoenixes' **firing order** (1 is shot next).
+
+**Launch zone vectors** replace the velocity lines of hostile tracks from a minute before they
+come into the Phoenix's range. The line's length is the time until you are at the shortest
+range (the longest line: three minutes or more); as it runs out the line draws back into the
+track. The bright bar on it is the best launch range and the dot beyond it the longest: when
+the line's end has come back to the dot you are in range, when it reaches the bar the shot is
+at its best.
 
 **The hand controller and HOOK.** The stick on the pedestal between your knees moves a cursor
 (the slew keys do the same):
@@ -4989,8 +4999,9 @@ HOTAS button, the VR controller's stick click), takes the return or the track un
 track's bearing and range, altitude, course and speed are written along the TID's foot. With
 nothing under the cursor HOOK steps to the next track. What you hook is what **PD STT** or
 **P STT** then locks, what the TCS looks at, and in TWS MAN what the next Phoenix goes for. The
-pilot's displays and radar follow the same hooked aircraft. A Phoenix in flight shows its
-seconds to go at its track: to its own seeker coming on, then to impact.
+pilot's displays and radar follow the same hooked aircraft. Once a Phoenix flies
+at a track, its **time to impact** in seconds takes the firing order number's place; it flashes
+three times a second when the missile's own seeker has come on.
 
 **The ECMD** (the small round tube) shows the radars painting you round your aircraft, the most
 dangerous in a diamond near the middle, those tracking you inside the others; a launch flashes.
