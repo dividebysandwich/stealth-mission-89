@@ -5177,10 +5177,21 @@ The game keeps everything it writes for you in one folder:
 | Linux, Steam Deck, Steam Frame | `~/.local/share/stealth-mission-89` |
 
 In it: `saves` (single missions saved in flight), `pilots` (career), `campaigns` (dynamic
-campaigns), `config` (your options and key bindings), `tacview` (Tacview recordings) and the log
-of the last start. Copy the folder to keep your progress or to take it to another computer. With
-Steam Cloud, the saves, pilots and campaigns follow you from one computer to another, also
-between Windows, macOS and Linux; your options and bindings stay on each computer.
+campaigns), `config` (your options and key bindings) and `tacview` (Tacview recordings). Copy the
+folder to keep your progress or to take it to another computer. With Steam Cloud, the saves,
+pilots and campaigns follow you from one computer to another, also between Windows, macOS and
+Linux; your options and bindings stay on each computer.
+
+The game's log, which helps with a bug report, is kept where your system keeps programs' logs:
+
+| System | Folder |
+|---|---|
+| Windows | `%LOCALAPPDATA%\Stealth Mission 89\logs` (type it into Explorer's address bar) |
+| macOS | `~/Library/Logs/Stealth Mission 89` |
+| Linux, Steam Deck, Steam Frame | `~/.local/state/stealth-mission-89` |
+
+`stealth-mission-89.log` is the last start's, `stealth-mission-89-vr.log` the last VR flight's;
+the starts before are kept as `.1.log` to `.4.log`.
 
 ## Appendix C: Glossary
 

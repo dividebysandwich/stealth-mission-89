@@ -215,7 +215,7 @@ fn max_temp() -> Option<f64> {
 
 #[cfg(unix)]
 mod signals {
-    /// Writes one line to stderr and re-raises the signal with the default action. Only
+    /// Writes one line to stderr (and the log file) and re-raises the signal with the default action. Only
     /// async-signal-safe calls: no allocation, no locks.
     extern "C" fn handler(sig: libc::c_int, info: *mut libc::siginfo_t, _: *mut libc::c_void) {
         let name: &[u8] = match sig {
@@ -254,9 +254,16 @@ mod signals {
             n += hex(&mut buf[n..], unsafe { (*info).si_addr() } as usize);
         }
         n += copy(&mut buf[n..], b"\n");
+        // The log file too (`log_file`): started from a launcher, stderr may go nowhere.
+        #[cfg(not(target_arch = "wasm32"))]
+        let file = crate::log_file::LOG_FD.load(std::sync::atomic::Ordering::Relaxed);
         // SAFETY: write, signal and raise are async-signal-safe.
         unsafe {
             libc::write(2, buf.as_ptr().cast(), n);
+            #[cfg(not(target_arch = "wasm32"))]
+            if file >= 0 {
+                libc::write(file, buf.as_ptr().cast(), n);
+            }
             libc::signal(sig, libc::SIG_DFL);
             libc::raise(sig);
         }

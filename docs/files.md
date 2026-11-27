@@ -31,8 +31,26 @@ first start without a `config` folder copies them over; the old files are left w
 | `config/input.json` | Key and joystick bindings | no: this computer's devices |
 | `config/route.json`, `config/loadout.json` | Handed to the game when FLY IN VR restarts it | no |
 | `tacview/*.acmi` | Tacview recordings | no: exports, large |
-| `stealth-mission-89.log`, `stealth-mission-89-vr.log` | The log of a game started from Explorer, Steam or a launcher | no |
 | `assets/` (Linux AppImage only) | The game's shaders and data, copied there on every start | no |
+
+## The log
+
+The game writes its log on every start where the system keeps programs' logs
+(`src/log_file.rs`), not in the folder above:
+
+| System | Folder |
+|---|---|
+| Windows | `%LOCALAPPDATA%\Stealth Mission 89\logs` (not Documents, which OneDrive may sync) |
+| macOS | `~/Library/Logs/Stealth Mission 89` |
+| Linux, Steam Deck, Steam Frame | `$XDG_STATE_HOME/stealth-mission-89`, by default `~/.local/state/stealth-mission-89` |
+| With `SM89_HOME` set (test runs) | `$SM89_HOME/logs` |
+
+`stealth-mission-89.log` is the last start's log, `stealth-mission-89-vr.log` the last VR
+start's ("Fly in VR" relaunches the game with `--vr`); the four starts before each are kept as
+`.1.log` (the last) to `.4.log`. Started from Explorer, Steam or a launcher (no terminal), the
+game's standard output and error go to the file too, with what graphics drivers print there;
+started from a terminal, the terminal shows the log as well. The browser and Android builds
+write no file (the browser console and logcat have the log).
 
 File names are lower case ASCII, digits, `-` and `_` only, so they are the same file on every
 system. Saves, pilots, campaigns and settings are written next to themselves as `<name>.tmp` and

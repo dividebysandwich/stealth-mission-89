@@ -78,6 +78,8 @@ mod lighting;
 mod lightning;
 mod loading;
 mod loadout;
+#[cfg(not(target_arch = "wasm32"))]
+mod log_file;
 mod lso;
 mod map_draw;
 mod meatball;
@@ -195,6 +197,16 @@ fn add_gl_vr(app: &mut App, plugins: bevy::app::PluginGroupBuilder, _: String) {
     app.add_plugins(plugins);
 }
 
+/// `LogPlugin::custom_layer`: the log file (`log_file`) and, when profiling, the span timer.
+fn log_layers(app: &mut App) -> Option<bevy::log::BoxedLayer> {
+    #[cfg(not(target_arch = "wasm32"))]
+    let file = log_file::layer();
+    #[cfg(target_arch = "wasm32")]
+    let file = None;
+    let layers: Vec<_> = [profile::log_layer(app), file].into_iter().flatten().collect();
+    (!layers.is_empty()).then(|| Box::new(layers) as bevy::log::BoxedLayer)
+}
+
 pub fn run() {
     // `--gl-vr`: the headset drawn with glvr's OpenGL renderer. Foveation is asked for first,
     // before any thread starts.
@@ -212,8 +224,13 @@ pub fn run() {
     if gl_vr.is_none() {
         no_gpu::exit_if_missing();
     }
+    // The log file; started from a launcher, the standard output and error go there too.
     #[cfg(windows)]
-    win_console::leave_explorer_console();
+    let launched = win_console::leave_explorer_console();
+    #[cfg(not(any(windows, target_arch = "wasm32")))]
+    let launched = log_file::asked_to_redirect();
+    #[cfg(not(target_arch = "wasm32"))]
+    log_file::start(launched);
     let mut settings = Settings::from_args();
     // The game in VR (its VR tuning, the hands) with glvr's session instead of Bevy's.
     settings.vr |= gl_vr.is_some();
@@ -281,7 +298,9 @@ pub fn run() {
         })
         .set(bevy::log::LogPlugin {
             filter: format!("{}{}", bevy::log::DEFAULT_FILTER, profile::log_filter()),
-            custom_layer: profile::log_layer,
+            custom_layer: log_layers,
+            #[cfg(not(target_arch = "wasm32"))]
+            fmt_layer: log_file::console_layer,
             ..default()
         });
     // --vr: OpenXR replaces the render plugin (the window stays for the menu / mirror).
@@ -303,6 +322,10 @@ pub fn run() {
             warn!("built without the `xr` feature: --vr ignored");
         }
         app.add_plugins(plugins);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(path) = log_file::path() {
+        info!("log file: {}", path.display());
     }
     app.add_plugins(crash_log::CrashLogPlugin);
     // The render world's pipeline count, and the desktop's loading screen over a flight's start.

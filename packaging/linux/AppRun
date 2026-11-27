@@ -33,12 +33,9 @@ case " $* " in
         fi
         ;;
 esac
-# Started from a launcher (Steam, a file manager, the Steam Frame), not a terminal: the log goes
-# to the data folder, stealth-mission-89-vr.log for VR starts ("Fly in VR" relaunches with --vr
-# or --gl-vr).
+# Started from a launcher (Steam, a file manager, the Steam Frame), not a terminal: the game sends
+# its standard output and error to its log file (~/.local/state/stealth-mission-89).
 if [ ! -t 2 ]; then
-    log=stealth-mission-89.log
-    case " $* " in *" --vr "* | *" --gl-vr "*) log=stealth-mission-89-vr.log ;; esac
-    NO_COLOR=1 exec "$HERE/usr/bin/stealth-mission-89" "$@" > "$BEVY_ASSET_ROOT/$log" 2>&1
+    export SM89_LOG_STDERR=1
 fi
 exec "$HERE/usr/bin/stealth-mission-89" "$@"
