@@ -292,8 +292,8 @@ DECK_Z = 1.45
 DECK_END = 7.62
 # Consoles: (inner and outer x, s from and to, top z) of each seat's.
 # (They start behind the knee panels.)
-PILOT_CONSOLE = (0.27, 0.45, 4.50, 5.40, 0.75)
-RIO_CONSOLE = (0.25, 0.45, 6.02, 6.95, 0.81)
+PILOT_CONSOLE = (0.27, 0.45, 4.50, 5.40, 0.72)
+RIO_CONSOLE = (0.25, 0.45, 6.02, 6.95, 0.75)
 # Seat: its cushion's top under the eye.
 SEAT_TOP = -0.80
 # The pilot's centre stick: its pivot on the floor, the kept grip raised on a shaft.
