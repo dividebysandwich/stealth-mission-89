@@ -234,14 +234,15 @@ impl<'a> Spawner<'a> {
             left_trackcam_missing: false,
             anchors: CockpitAnchors {
                 eject_handle: false,
-                // The F-14's radar intercept officer has no throttle: none for a hand to take.
+                // The F-14's radar intercept officer has no throttle: none for a hand to take
+                // (far off on the left, so the right hand still takes his hand controller).
                 throttle_idle: if no_throttle {
-                    Vec3::splat(1.0e4)
+                    super::levers::NO_THROTTLE
                 } else {
                     default_anchors.throttle_idle
                 },
                 throttle_full: if no_throttle {
-                    Vec3::splat(1.0e4)
+                    super::levers::NO_THROTTLE
                 } else {
                     default_anchors.throttle_full
                 },

@@ -197,6 +197,9 @@ const NOZZLE_NOTCH: f32 = 10.0 / NOZZLE_TRAVEL_DEG;
 
 /// Reach for grabbing (metres from the grip centre).
 const GRAB_REACH: f32 = 0.10;
+/// Where a cockpit without a throttle has it (the F-14 RIO's): out of every hand's reach, left
+/// of the stick (a throttle right of it would give the stick to the left hand).
+pub(super) const NO_THROTTLE: Vec3 = Vec3::new(-1.0e4, 0.0, 0.0);
 
 #[derive(Component)]
 pub(super) struct Stick;
@@ -1055,6 +1058,50 @@ mod tests {
         set(&mut app, 1, Some(Transform::from_translation(Vec3::new(0.62, -0.62, -0.2))));
         step(&mut app);
         assert!(app.world().resource::<FlightControls>().throttle.is_some());
+    }
+
+    /// The F-14 RIO's hand controller on its pedestal (no throttle in his cockpit): the right
+    /// hand takes it and tilting the controller moves it.
+    #[test]
+    fn the_rios_hand_controller_takes_the_right_hand() {
+        use crate::input::{ConsoleStick, ConsoleThrottle, InputBlock};
+        let pivot = Vec3::new(0.0, -0.698, -0.315);
+        let anchors = CockpitAnchors {
+            stick_pivot: pivot,
+            grip_height: 0.057,
+            tilt_stick: true,
+            throttle_idle: NO_THROTTLE,
+            throttle_full: NO_THROTTLE,
+            ..default()
+        };
+        assert!(!anchors.throttle_right());
+        let mut app = App::new();
+        app.add_plugins(MinimalPlugins)
+            .add_message::<ActionEvent>()
+            .insert_resource(anchors)
+            .insert_resource(InputConfig::default())
+            .insert_resource(FlightConstants::default())
+            .init_resource::<Hands>()
+            .init_resource::<FlightControls>()
+            .init_resource::<InputBlock>()
+            .init_resource::<ConsoleStick>()
+            .init_resource::<ConsoleThrottle>()
+            .add_systems(Update, grab_levers);
+        let grip = Transform::from_translation(pivot + Vec3::Y * 0.057);
+        let set = |app: &mut App, grip: Transform| {
+            let h = &mut app.world_mut().resource_mut::<Hands>().hands[1];
+            h.active = true;
+            h.grab = true;
+            h.grip = grip;
+        };
+        set(&mut app, grip);
+        app.update();
+        assert!(app.world().resource::<Hands>().hands[1].lever, "the right hand holds it");
+        // Tilted back (the top of the controller towards the seat): pitch up.
+        set(&mut app, grip.with_rotation(Quat::from_rotation_x(0.2)));
+        app.update();
+        let pitch = app.world().resource::<FlightControls>().pitch;
+        assert!(pitch > 0.3, "pitch {pitch}");
     }
 
     /// The stall buffet: nothing outside it, knocks with gaps at its edge, and on average harder
