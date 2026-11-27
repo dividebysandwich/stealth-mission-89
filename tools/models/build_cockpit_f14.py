@@ -307,7 +307,9 @@ HUD_Y = 0.78
 # The glass reaches lower than the Tornado's, down to its body on the shield (its frame only
 # clips the picture, the scale is the angular size across; the clipped corners are outside the
 # symbology's field, src/hud/modern.rs FIELD).
-HUD_GLASS = (0.18 * HUD_Y / 0.80, -0.165, 0.095 * HUD_Y / 0.80)
+# Its width is the oval front pane's as the eye sees it (PANE_X at the pane, some 1.25 m ahead;
+# the 2D camera sits `Settings::seat_offset`'s lean nearer).
+HUD_GLASS = (0.095, -0.165, 0.095 * HUD_Y / 0.80)
 # The combiner's clipped top corners (share of its half width, of its height).
 HUD_CLIP = (0.30, 0.22)
 HUD_BODY = (0.16, 0.09)

@@ -40,12 +40,17 @@ const TAPE_Y: f32 = 100.0;
 const TAPE_PX: f32 = 8.0;
 const TAPE_HALF: f32 = 21.0;
 /// The speed's and the altitude's rings: their centres and radius.
-const SPEED_AT: Vec2 = Vec2::new(322.0, 262.0);
-const ALT_AT: Vec2 = Vec2::new(958.0, 262.0);
+const SPEED_AT: Vec2 = Vec2::new(392.0, 262.0);
+const ALT_AT: Vec2 = Vec2::new(888.0, 262.0);
 const RING: f32 = 44.0;
 /// The steering circle: its centre under the boresight and its radius.
 const CIRCLE_AT: Vec2 = Vec2::new(CX, CY + 60.0);
 const CIRCLE: f32 = 105.0;
+/// The symbols' half width round the boresight and their left and right edges: the combiner
+/// is as wide as the oval front pane (the aircraft's HUD scale fits this into it).
+const HALF: f32 = 300.0;
+const LEFT: f32 = CX - HALF;
+const RIGHT: f32 = CX + HALF;
 /// Radar altitudes shown (feet).
 const RADAR_ALT_TOP: f32 = 5000.0;
 
@@ -145,7 +150,7 @@ fn ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
         .unwrap_or(Vec3::NEG_Z);
     let gamma = f.path_dir.y.clamp(-1.0, 1.0).asin().to_degrees();
     let fld = field(f);
-    c.set_clip(fld.0.x as i32 - 20, TAPE_Y as i32 + 44, fld.1.x as i32 + 20, fld.1.y as i32 + 10);
+    c.set_clip(LEFT as i32, TAPE_Y as i32 + 44, RIGHT as i32, fld.1.y as i32 + 10);
     for k in -18i32..=18 {
         let deg = k as f32 * 5.0;
         if (deg - gamma).abs() > 22.0 || deg.abs() > 89.0 {
@@ -156,8 +161,8 @@ fn ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
         let Some(p) = project(inv * dir, f.scale) else { continue };
         let p = p + h * (fpm - p).dot(h);
         if k == 0 {
-            c.stroke(p - h * 420.0, p - h * 34.0, PEN, INK);
-            c.stroke(p + h * 34.0, p + h * 420.0, PEN, INK);
+            c.stroke(p - h * HALF, p - h * 34.0, PEN, INK);
+            c.stroke(p + h * 34.0, p + h * HALF, PEN, INK);
             continue;
         }
         let (gap, len, tip) = (36.0, 66.0, 11.0);
@@ -194,6 +199,7 @@ fn path_marker(c: &mut Canvas, p: Vec2, caged: bool) {
 /// The steering circle with the range on it, the steering symbol, the target's box.
 fn air_to_air(c: &mut Canvas, f: &HudFrame) {
     let fld = field(f);
+    let fld = (Vec2::new(LEFT + 16.0, fld.0.y), Vec2::new(RIGHT - 16.0, fld.1.y));
     let cues = &f.cues;
     let boresight = Vec2::new(CX, CY);
     let locked = cues.target_dir.and_then(|d| project(d, f.scale));
@@ -297,7 +303,7 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
     let st = &f.state;
     let line = 22.0;
     // Angle of attack, Mach number, load factor.
-    let (x, y) = (300.0, 340.0);
+    let (x, y) = (LEFT + 22.0, 340.0);
     for (k, (name, value)) in [
         ("\u{3b1}", format!("{:.1}", f.aoa)),
         ("M", format!("{:.2}", f.mach)),
@@ -313,12 +319,12 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
     // The radar's mode, the bearing and range to the steering point, the weapon to drop.
     let y = y + 3.0 * line + 6.0;
     if let Some(t) = &f.tomcat {
-        text(c, 270.0, y, &mode_label(t.mode), Align::Left);
+        text(c, LEFT, y, &mode_label(t.mode), Align::Left);
     }
     let nm = f.steerpoint.map(|s| s.1 / KM_NM);
     if let Some((b, nm)) = f.waypoint_bearing.zip(nm) {
         let brg = b as f32 * 360.0 / 65536.0;
-        text(c, 270.0, y + line, &format!("BA {brg:03.0}/{nm:.0}"), Align::Left);
+        text(c, LEFT, y + line, &format!("BA {brg:03.0}/{nm:.0}"), Align::Left);
     }
     if st.mode == HudMode::Gnd {
         let weapon = if f.gun_selected {
@@ -327,11 +333,11 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
             f.weapon.as_ref().map(|w| w.1.to_uppercase())
         };
         if let Some(w) = weapon {
-            text(c, 270.0, y + 2.0 * line, &format!("CP {w}"), Align::Left);
+            text(c, LEFT, y + 2.0 * line, &format!("CP {w}"), Align::Left);
         }
     }
     if let Some(t) = f.throttle {
-        text(c, 270.0, y + 3.0 * line, &super::throttle_text(t), Align::Left);
+        text(c, LEFT, y + 3.0 * line, &super::throttle_text(t), Align::Left);
     }
     // Right: the bomb's release data, else the target's data over the steering point's.
     if let Some(b) = f.cues.bomb.filter(|_| st.mode == HudMode::Gnd) {
@@ -373,8 +379,8 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
     let top = 330.0;
     for (k, (name, value)) in rows.iter().enumerate() {
         let yy = top + k as f32 * line;
-        text(c, 856.0, yy, name, Align::Left);
-        text(c, 1030.0, yy, value, Align::Right);
+        text(c, RIGHT - 142.0, yy, name, Align::Left);
+        text(c, RIGHT, yy, value, Align::Right);
     }
 }
 
@@ -428,7 +434,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     rocket_sight(c, f);
     if let Some((loc, gs)) = f.ils {
         ils_bars(c, fpm, h, down, loc, gs);
-        text(c, 890.0, 308.0, "AWL", Align::Left);
+        text(c, RIGHT - 142.0, 308.0, "AWL", Align::Left);
     }
     if let Some(m) = &f.message {
         text(c, CX, 160.0, m, Align::Centre);

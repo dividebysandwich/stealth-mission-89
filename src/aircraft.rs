@@ -905,7 +905,7 @@ static A10: AircraftSpec = AircraftSpec {
     vr_eye_height: None,
     // The F-16's, scaled to the taller combiner (x +-0.17, z -0.13 .. 0.11 at 0.70 m in front
     // of the eye, tools/models/build_cockpit_a10.py).
-    hud_scale: 1900.0,
+    hud_scale: 1700.0,
     vr_hud_scale: 1900.0,
     bomb_bay: false,
     helicopter: false,
@@ -1167,7 +1167,7 @@ static A6: AircraftSpec = AircraftSpec {
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     // The optical sight's small reflector plate (tools/models/build_cockpit_a6.py).
-    hud_scale: 1900.0,
+    hud_scale: 1700.0,
     vr_hud_scale: 1900.0,
     bomb_bay: false,
     helicopter: false,
@@ -1231,10 +1231,11 @@ static F14: AircraftSpec = AircraftSpec {
     cockpit_size: 1.0,
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
-    // The combiner on the glare shield is the Tornado's at the same angular size
-    // (tools/models/build_cockpit_f14.py `HUD_*`).
-    hud_scale: 2080.0,
-    vr_hud_scale: 2080.0,
+    // The combiner on the glare shield is as wide as the oval front pane
+    // (tools/models/build_cockpit_f14.py `HUD_*`): `hud::vdig`'s symbols (300 px either side)
+    // fit it from the 2D camera's leaned eye, and from the seat's in VR.
+    hud_scale: 1700.0,
+    vr_hud_scale: 2450.0,
     bomb_bay: false,
     helicopter: false,
     turret: false,
@@ -1303,7 +1304,7 @@ static C5: AircraftSpec = AircraftSpec {
     // As the A-10's: the symbology inside the overhead HUD's combiner of about the same angular
     // size (x +-0.075, z -0.065 .. 0.045 at 0.32 m in front of the eye,
     // tools/models/build_cockpit_c5.py).
-    hud_scale: 1900.0,
+    hud_scale: 1700.0,
     vr_hud_scale: 1900.0,
     // The cargo inside, airdrop pallets going over the ramp (its "bay" doors).
     bomb_bay: true,
@@ -1367,7 +1368,7 @@ static AC130: AircraftSpec = AircraftSpec {
     vr_scale: 1.25 * 0.7,
     vr_eye_height: None,
     // The overhead HUD's combiner as the C-5's (tools/models/build_cockpit_c130.py).
-    hud_scale: 1900.0,
+    hud_scale: 1700.0,
     vr_hud_scale: 1900.0,
     bomb_bay: false,
     helicopter: false,

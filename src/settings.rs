@@ -299,6 +299,9 @@ fn get(args: &[String], f: &str) -> Option<String> {
     args.iter().position(|a| a == f).and_then(|i| args.get(i + 1)).cloned()
 }
 
+/// The F-14 pilot's 2D camera's lean forward (metres, `Settings::desk_lean`).
+const F14_DESK_LEAN: f32 = 0.32;
+
 impl Settings {
     /// The cockpit flown: the classic cockpit only where the aircraft has one.
     pub fn cockpit(&self) -> (crate::cockpit3d::layout::PanelStyle, &'static str) {
@@ -358,7 +361,18 @@ impl Settings {
 
     /// The eye's move up from the cockpit origin for the seat height (aircraft frame).
     pub fn seat_offset(&self) -> Vec3 {
-        Vec3::Y * self.seat_height
+        Vec3::Y * self.seat_height + Vec3::NEG_Z * self.desk_lean()
+    }
+
+    /// How far the 2D camera sits ahead of the seat's eye (metres): the F-14's pilot leans in
+    /// to his narrow combiner so its symbols read at the screen's size.
+    fn desk_lean(&self) -> f32 {
+        let pilot = self.gunner_seat().is_none() && !self.asw_console;
+        if !self.vr && pilot && self.aircraft == crate::aircraft::AircraftKind::F14 {
+            F14_DESK_LEAN
+        } else {
+            0.0
+        }
     }
 
     /// Scale of the VR rig (the head offset) for the chosen cockpit size: the aircraft's, or at
