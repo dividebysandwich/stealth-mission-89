@@ -865,54 +865,6 @@
       "round": false
     },
     {
-      "control": "Tomcat(Hook)",
-      "key": "Item(Tomcat(Hook))",
-      "kind": "switch",
-      "rect": [
-        -337.0,
-        52.0,
-        16.0,
-        26.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"UP\", 15, 5))",
-      "kind": null,
-      "rect": [
-        -350.0,
-        54.5,
-        11.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"DN\", 15, 5))",
-      "kind": null,
-      "rect": [
-        -350.0,
-        67.5,
-        11.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
-      "control": null,
-      "key": "Item(Label(\"HOOK\", 15, 5))",
-      "kind": null,
-      "rect": [
-        -338.5,
-        82.0,
-        19.0,
-        8.0
-      ],
-      "round": false
-    },
-    {
       "control": "Action(Chaff)",
       "key": "Item(Label(\"CHAFF\", 5, 7))",
       "kind": "cap",
@@ -1605,6 +1557,66 @@
         276.0,
         39.0,
         8.0
+      ],
+      "round": false
+    },
+    {
+      "control": "Tomcat(Hook)",
+      "key": "Item(Tomcat(Hook))",
+      "kind": "switch",
+      "rect": [
+        540.0,
+        34.0,
+        14.0,
+        54.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"HOOK\", 15, 5))",
+      "kind": null,
+      "rect": [
+        545.0,
+        17.0,
+        19.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"UP\", 15, 5))",
+      "kind": null,
+      "rect": [
+        526.0,
+        22.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"DN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        526.0,
+        85.0,
+        11.0,
+        8.0
+      ],
+      "round": false
+    },
+    {
+      "control": null,
+      "key": "Item(Label(\"EMERG\\nDOWN\\nPULL\\nTURN\", 15, 5))",
+      "kind": null,
+      "rect": [
+        508.5,
+        45.5,
+        23.0,
+        25.0
       ],
       "round": false
     }

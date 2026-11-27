@@ -264,11 +264,8 @@ fn lower(it: &mut Items) {
         it.put(Elem::TomcatReadout(r), rect(180.0, y + 6.0, 50.0, 15.0), None, false);
     }
     it.put(Elem::Dial(Dial::Clock), rect(245.0, 12.0, 46.0, 46.0), None, true);
-    // The left knee panel: the gear lights, the hook handle, the dispensers and the jammer.
+    // The left knee panel: the gear lights, the dispensers and the jammer.
     it.put(Elem::GearLights, rect(-345.0, 6.0, 40.0, 32.0), None, false);
-    it.switch(Key::Hook, -337.0, 52.0);
-    it.positions(-337.0, 52.0, &["UP", "DN"], false);
-    it.legend("HOOK", -329.0, 86.0, At::Centre);
     for (i, (label, action, led)) in
         [("CHAFF", Action::Chaff, LedId::Chaff), ("FLARE", Action::Flare, LedId::Flares)]
             .into_iter()
@@ -282,6 +279,34 @@ fn lower(it: &mut Items) {
         Elem::Lamp(Ecm, None),
         rect(-345.0, 134.0, 36.0, 13.0),
         Some(E::Action(Action::Ecm)),
+        false,
+    );
+}
+
+/// The arresting hook's panel: where its parts are drawn (the layout's left, top: off the
+/// instrument panel; the model sets the panel on the right knee panel over the DISPLAYS panel)
+/// and its size.
+pub const HOOK_PANEL: (f32, f32, f32, f32) = (500.0, 14.0, 66.0, 80.0);
+/// The hook handle's slot on its panel (left, top, width, height from the panel's corner): the
+/// control's footprint.
+pub const HOOK_SLOT: (f32, f32, f32, f32) = (40.0, 20.0, 14.0, 54.0);
+/// The emergency release's placard.
+const HOOK_PLACARD: &str = "EMERG\nDOWN\nPULL\nTURN";
+
+/// The pilot's arresting hook panel: the handle in its slot (up: the hook up; down: lowered)
+/// between UP and DN, HOOK over it, the emergency release's placard left of the slot.
+fn hook(it: &mut Items) {
+    let (x, y, w, _) = HOOK_PANEL;
+    let (sx, sy, sw, sh) = HOOK_SLOT;
+    it.control(Key::Hook, rect(x + sx, y + sy, sw, sh));
+    it.legend("HOOK", x + w - 2.0, y + 7.0, At::Right);
+    it.legend("UP", x + sx - 3.0, y + 12.0, At::Right);
+    it.legend("DN", x + sx - 3.0, y + sy + sh + 1.0, At::Right);
+    let (pw, ph) = label_size(HOOK_PLACARD);
+    it.put(
+        Elem::Label(HOOK_PLACARD, LEGEND.0, LEGEND.1),
+        rect(x + 20.0 - pw / 2.0, y + 44.0 - ph / 2.0, pw, ph),
+        None,
         false,
     );
 }
@@ -509,6 +534,7 @@ impl PanelLayout {
         flight(&mut it);
         lower(&mut it);
         displays(&mut it);
+        hook(&mut it);
         Self {
             style: PanelStyle::F14,
             items: it.0,

@@ -203,6 +203,15 @@ KNEE_FOLD = -25.0
 KNEE_LEN = 308.0
 KNEE_IN = (289.0, 276.0)
 KNEE_WALL = 445.0
+# The arresting hook's panel on the right knee panel over the DISPLAYS panel: where the layout
+# draws it (`f14_layout::HOOK_PANEL`: off the instrument panel; left, top, width, height) and
+# its left edge on the knee panel in the DISPLAYS panel's columns (centred over that panel). The
+# handle swings about a pivot HOOK_PIVOT m behind the panel's face (a toggle switch's lean:
+# 0.5 rad from UP to DN), a flat bar up through the slot with the grip HOOK_REACH m out.
+HOOK_PANEL = (500.0, 14.0, 66.0, 80.0)
+HOOK_U = 138.0
+HOOK_PIVOT = 0.085
+HOOK_REACH = 0.055
 # The RIO's: the TID's housing (layout rectangle, m out of the panel) and the hood round its
 # tube (m out of the housing: low and thin, clear of the buttons round it and of the eye's
 # line to the knobs under it); his knee boxes (see `rio_knee`).
@@ -246,6 +255,8 @@ else:
         return Slope(MAIN, 0.0, KNEE_FOLD, KNEE_PILOT, du, KNEE_OUT, KNEE_CANT, side * KNEE_WALL)
 
     PARTS = [
+        ((HOOK_PANEL[0] - 4.0, HOOK_PANEL[0] + HOOK_PANEL[2] + 4.0, HOOK_PANEL[1] - 4.0, HOOK_PANEL[1] + HOOK_PANEL[3] + 4.0),
+         knee_part(192.0 + HOOK_U - HOOK_PANEL[0], 1)),
         ((90.0, 300.0, 100.0, 300.0), knee_part(192.0, 1)),
         ((-356.0, -272.0, 156.0, 268.0), knee_part(-34.0, -1)),
         ((-356.0, -272.0, -2.0, 156.0), knee_part(-46.0, -1)),
@@ -408,6 +419,8 @@ coloured("white", "yellow", (0.80, 0.80, 0.76))
 coloured("panel_light", "panel_grey", (0.72, 0.74, 0.72))
 # The VDI's pale knobs.
 coloured("knob_pale", "yellow", (0.55, 0.56, 0.54))
+# The hook handle's grip: worn blue grey.
+coloured("hook_grip", "panel_grey", (0.33, 0.37, 0.44), 0.6)
 # A dark tube's glass (the other seat's dressing).
 coloured("tube", "yellow", (0.012, 0.022, 0.016), 0.2)
 
@@ -642,6 +655,45 @@ def switch(key, r, offset, effect):
     mesh_object("metal", box_mesh("metal", (0.0036, 0.017, 0.0036), "metal", (0.0, -0.0085, 0.0)), (0, 0, 0), parent=moving)
     mesh_object("metal", cylinder_mesh("metal", 0.0028, 0.004, "metal", centre=(0.0, -0.015, 0.0), n=KNOB), (0, 0, 0), parent=moving)
     highlight(c, hw, hh, 0.001)
+
+
+def hook_handle(r, offset, effect):
+    """The arresting hook's handle in its slot (the layout rectangle r): a `switch` whose `moving`
+    part is the whole handle, swinging about a pivot behind the panel (the control's origin),
+    up the slot with the hook up and down it with the hook down. A flat bar out through the
+    slot, on its end the grip: a small hook."""
+    x, y, w, h = r
+    hw, hh = w / 2000, h / 2000
+    out = HOOK_PIVOT + HOOK_REACH
+    # The slot: a dark well with a raised rim.
+    frame("dark", (x - 1.5, y - 1.5, w + 3.0, h + 3.0), (x, y, w, h), offset, offset + 0.003)
+    c = empty(control_name(effect), rect_point(r, offset - HOOK_PIVOT), PANEL.rot,
+              props={"control": effect, "kind": "switch", "half": [hw + 0.012, hh + 0.006], "height": out + 0.03, "travel": 0.0})
+    moving = empty("moving", (0, 0, 0), parent=c, props={"moving": True})
+    mesh_object("metal", box_mesh("metal", (0.005, out, 0.017), "metal", (0.0, -out / 2, 0.0)), (0, 0, 0), parent=moving)
+    # The grip is a small arresting hook, as on the aircraft: in side view (mm out along the
+    # handle from the bar's end, mm up the panel) a slim shank and a toe that curls down and
+    # back round a throat. A thin slab, its edges chamfered.
+    profile = [(-4, 4), (12, 5), (28, 7), (42, 7), (52, 3), (57, -4), (57, -12), (52, -18), (45, -19),
+               (41, -15), (45, -11), (46, -6), (41, -2), (28, -3), (12, -4), (-4, -4)]
+    ca = sum(a for a, _ in profile) / len(profile)
+    cb = sum(b for _, b in profile) / len(profile)
+    bm = bmesh.new()
+    rings = []
+    for x_, k in ((-0.006, 0.86), (-0.004, 1.0), (0.004, 1.0), (0.006, 0.86)):
+        rings.append([bm.verts.new((x_, -(out + (ca + (a - ca) * k) / 1000), (cb + (b - cb) * k) / 1000)) for a, b in profile])
+    n_ = len(profile)
+    for r0, r1 in zip(rings, rings[1:]):
+        for q in range(n_):
+            bm.faces.new((r0[q], r0[(q + 1) % n_], r1[(q + 1) % n_], r1[q]))
+    caps = [bm.faces.new(rings[0]), bm.faces.new(list(reversed(rings[-1])))]
+    bmesh.ops.triangulate(bm, faces=caps)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh_object("hook_grip", finish("hook_grip", bm, "hook_grip"), (0, 0, 0), parent=moving)
+    # The control's face in the atlas: on the slot's floor.
+    mesh_object("atlas", quad_mesh("atlas", 2 * hw, 2 * hh, "atlas", -HOOK_PIVOT - 0.0008), (0, 0, 0), parent=c,
+                props={"atlas_face": "Item(Tomcat(Hook))", "atlas_uv": [0.0, 0.0, 1.0, 1.0], "no_shadow": True})
+    highlight(c, hw + 0.012, hh + 0.006, HOOK_PIVOT)
 
 
 def knob_control(key, r, offset, effect):
@@ -1167,6 +1219,7 @@ else:
         ("black", (-152.0, -272.0, 264.0, 78.0)),  # the ACM panel
         ("black", (126.0, -272.0, 90.0, 104.0)),  # wing sweep
         ("black", (94.0, 104.0, 154.0, 186.0)),  # DISPLAYS
+        ("black", HOOK_PANEL),  # the hook handle's, over it
         ("dark", (-276.0, -268.0, 68.0, 53.0)),  # cautions
         ("dark", (222.0, -268.0, 68.0, 53.0)),  # threats
         ("black", (-352.0, 0.0, 66.0, 152.0)),  # the left knee panel
@@ -1240,11 +1293,14 @@ for f in layout["faces"]:
             # A light or window: a black frame round it.
             x, y, w, h = r
             frame("black", (x - 1.5, y - 1.5, w + 3.0, h + 3.0), (x, y, w, h), off - 0.001, off + 0.002)
-        face(key, r, off + 0.0005, f["round"])
+        # (The hook's emergency placard's legend lies on its striped plate.)
+        face(key, r, off + (0.0030 if "EMERG" in key else 0.0005), f["round"])
         if key.startswith("Item(Dial(") and not f["round"]:
             # The tapes' and the fuel quantity's black window frames.
             x, y, w, h = r
             frame("black", (x - 3.0, y - 3.0, w + 6.0, h + 6.0), (x, y, w, h), off - 0.001, off + 0.004)
+    elif f["control"] == "Tomcat(Hook)":
+        hook_handle(r, off, f["control"])
     elif f["kind"] == "switch":
         switch(key, r, off, f["control"])
     elif f["kind"] == "knob":
@@ -1297,13 +1353,37 @@ else:
     plane_box("metal", "metal", (-110.0, -186.0, 16.0, 62.0), PLATE, PLATE + 0.002)
     for v in (-106.0, -52.0):
         knob(102.0, v, 0.006, 0.011, "dark", offset=PLATE)
-    # On the right knee panel over the DISPLAYS panel: the emergency gear handle's plate with
-    # its yellow placard and the pale handle standing out of it.
-    use(at=(200.0, 200.0))
-    plane_box("black", "black", (110.0, 14.0, 118.0, 80.0), 0.0, PLATE)
-    plane_box("yellow", "yellow", (118.0, 34.0, 26.0, 44.0), PLATE, PLATE + 0.001)
-    plane_box("dark", "dark", (152.0, 30.0, 16.0, 50.0), PLATE, PLATE + 0.004)
-    rod("white", point(160.0, 40.0, PLATE), point(160.0, 30.0, 0.05), 0.007, "white")
+    # The hook panel's emergency release placard left of the slot: a plate in yellow and black
+    # stripes round a black field (the layout's EMERG DOWN PULL TURN legend lies on it) with the
+    # turn's arrow under the words, and two screws.
+    hx, hy = HOOK_PANEL[:2]
+    use(HOOK_PANEL)
+    pl = (hx + 4.0, hy + 20.0, 32.0, 50.0)
+    plane_box("yellow", "yellow", pl, PLATE, PLATE + 0.0010)
+    bm = bmesh.new()
+    bar, lean, n = 4.0, pl[3], 9
+    for k in range(n):
+        x0 = pl[0] - lean + (pl[2] + lean) * (k + 0.2) / n
+        xs_ = [min(max(x, pl[0]), pl[0] + pl[2]) for x in (x0, x0 + bar, x0 + bar + lean, x0 + lean)]
+        if xs_[1] - xs_[0] < 0.1 and xs_[2] - xs_[3] < 0.1:
+            continue
+        quad = ((xs_[0], pl[1] + pl[3]), (xs_[1], pl[1] + pl[3]), (xs_[2], pl[1]), (xs_[3], pl[1]))
+        bm.faces.new([bm.verts.new(point(u, v, PLATE + 0.0014)) for u, v in quad])
+    mesh_object("black", finish("black", bm, "black"), (0, 0, 0), props={"no_shadow": True})
+    plane_box("black", "black", (pl[0] + 4.0, pl[1] + 4.0, pl[2] - 8.0, pl[3] - 8.0), PLATE, PLATE + 0.0024)
+    # The arrow: an arc over the field's foot, its head at the left end.
+    bm = bmesh.new()
+    ac, ar, aw = (pl[0] + pl[2] / 2, pl[1] + pl[3] - 9.0), 7.0, 0.9
+    arc = [math.radians(a) for a in range(200, 341, 20)]
+    for a0, a1 in zip(arc, arc[1:]):
+        ring_ = [(ac[0] + r_ * math.cos(a), ac[1] + r_ * math.sin(a)) for a, r_ in ((a0, ar - aw), (a1, ar - aw), (a1, ar + aw), (a0, ar + aw))]
+        bm.faces.new([bm.verts.new(point(u, v, PLATE + 0.0030)) for u, v in ring_])
+    tip = (ac[0] + ar * math.cos(arc[0]), ac[1] + ar * math.sin(arc[0]))
+    head = (tip, (tip[0] + 3.4, tip[1] - 0.6), (tip[0] + 0.4, tip[1] - 3.4))
+    bm.faces.new([bm.verts.new(point(u, v, PLATE + 0.0030)) for u, v in head])
+    mesh_object("white", finish("white", bm, "white"), (0, 0, 0), props={"no_shadow": True})
+    for u, v in ((hx + 5.0, hy + 5.0), (hx + 8.0, hy + 75.0)):
+        knob(u, v, 0.003, 0.0015, "metal", offset=PLATE)
     # The fire handles either side of the ACM panel: a stem out of the panel and a yellow grip
     # across it with black stripes, turned a little towards the pilot.
     use()
