@@ -5100,7 +5100,7 @@ missile is lost.
 On the RIO's LANTIRN panel set **POWER** to ON and **VIDEO** to the pod, then turn the TID to
 TV (the pilot: the VDI to TV). The picture is always black and white; the FLIR key switches
 between the television and the infrared picture, and **POLARITY** shows the infrared one white
-hot or black hot. The pod is slewed and locked like any
+hot or black hot (moving it brings the infrared picture up if the television one was). The pod is slewed and locked like any
 targeting pod (5.2), and guides laser-guided bombs to the point it holds.
 
 Over the picture: the pod's point in latitude and longitude, your altitude, ground speed and

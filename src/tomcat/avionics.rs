@@ -679,15 +679,23 @@ fn scene(
 }
 
 /// The pod's picture is rendered while a display in this cockpit shows it (TV or FLIR, the
-/// FLIR key; black and white either way: the cockpit's `trackcam` screens are grey).
+/// FLIR key; black and white either way: the cockpit's `trackcam` screens are grey). The FLIR
+/// picture is white hot or black hot by the POLARITY switch, which also brings it up.
 fn pod_video(
     settings: Res<Settings>,
     panel: Res<TomcatPanel>,
     radar: Res<Awg9>,
     player: Query<(&Aircraft, &WorldPos), With<Player>>,
     mut mfd: ResMut<MfdState>,
+    mut polarity: Local<Option<bool>>,
 ) {
     let tomcat = settings.aircraft == AircraftKind::F14;
+    // The POLARITY switch is the thermal picture's: moving it (in either seat) brings the
+    // pod's FLIR picture up if its television picture was.
+    if tomcat && polarity.is_some_and(|p| p != panel.black_hot) && !mfd.flir {
+        mfd.flir = true;
+    }
+    *polarity = tomcat.then_some(panel.black_hot);
     let tv = tomcat.then(|| tv_shown(&panel, settings.cockpit().0));
     if mfd.tomcat_tv != tv {
         mfd.tomcat_tv = tv;
