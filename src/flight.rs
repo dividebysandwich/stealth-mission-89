@@ -2593,6 +2593,26 @@ mod tests {
         assert!(sto.0 < conventional.0 * 0.7, "STO {sto:?} conventional {conventional:?}");
     }
 
+    /// Jet-borne with the auto trim on and the stick released (the nozzles down, holding the
+    /// height with the throttle), the trim stays where it was: the reaction controls hold the
+    /// attitude, and a trim run to its stop meanwhile pitched the nose up once on the wing.
+    #[test]
+    fn av8b_jet_borne_flight_leaves_the_trim_alone() {
+        let k = FlightConstants { landing: 0, ..FlightConstants::av8b() };
+        let mut a = harrier(airborne(1500.0, 100.0, 90.0));
+        a.auto_trim = true;
+        a.nozzle_lever = 70.0 / 98.5;
+        a.nozzle = 70f32.to_radians();
+        let mut most = 0.0f32;
+        fly_with(k, false, a, 60.0, |a, c| {
+            c.throttle = Some(hover_throttle(a, 1500.0));
+            c.nozzle = Some(70.0 / 98.5);
+            most = most.max(a.stick_trim.y.abs());
+        });
+        println!("AV-8B jet-borne for 60 s: the trim moved at most {most:.3}");
+        assert!(most < 0.05, "the trim ran to {most:.3}");
+    }
+
     /// The transition from the hover: the nozzles going aft over 15 s at full throttle, the
     /// pilot holding the height with the stick, it accelerates onto the wing.
     #[test]

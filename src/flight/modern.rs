@@ -1158,12 +1158,14 @@ pub(super) fn step(
         let (roll_fault, pitch_fault) = a.damage.control_bias(a.time);
         let (roll_fault, pitch_fault) = (roll_fault + a.stick_trim.x, pitch_fault + a.stick_trim.y);
         // Auto trim: the held flight path's error is trimmed out (what the path hold alone
-        // leaves against a pitch bias), and with the stick released the roll bias.
+        // leaves against a pitch bias), and with the stick released the roll bias. Not while
+        // jet-borne: the reaction controls hold the attitude there and the path follows the
+        // nozzles, so the trim would run to its stop and pitch the nose up once on the wing.
         if a.auto_trim && !a.autopilot() {
             let pitch_trim = a.modern.hold.map_or(0.0, |g0| (g0 - gamma) * TRIM_PATH_GAIN);
             let roll_free = stick_released(controls).0;
             let roll_trim = if roll_free { -roll_fault * TRIM_ROLL_GAIN } else { 0.0 };
-            a.move_trim(Vec2::new(roll_trim, pitch_trim) * dt);
+            a.move_trim(Vec2::new(roll_trim, pitch_trim) * (1.0 - jet) * dt);
         }
         if a.autopilot() {
             // Bank toward the waypoint bearing (at most 30 degrees), hold the altitude.
