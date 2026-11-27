@@ -197,7 +197,14 @@ pub(super) struct Control {
     /// many positions it has.
     pos: f32,
     positions: u8,
+    /// The gear lever's lean about its pivot (rad, its moving part's turn about X): its face,
+    /// the knob, goes with it.
+    lean: f32,
 }
+
+/// The gear lever's lean from the middle about its pivot (rad): down with the gear down, up
+/// with it up.
+const GEAR_LEAN: f32 = 0.5;
 
 /// The moving part of a control (cap, lever arm).
 #[derive(Component)]
@@ -239,7 +246,14 @@ impl Control {
             click: 0.0,
             pos: 0.0,
             positions: 1,
+            lean: 0.0,
         })
+    }
+
+    /// The face's frame (cockpit frame, `tf` the control's): the control's own, turned with
+    /// the lever's lean.
+    fn face_rotation(&self, tf: &Transform) -> Quat {
+        tf.rotation * Quat::from_rotation_x(self.lean)
     }
 
     pub(super) fn is_eject(&self) -> bool {
@@ -254,14 +268,15 @@ impl Control {
     /// Where the ray o + t d (cockpit frame, `tf` the control's) goes through the face
     /// rectangle: t.
     pub(super) fn face_hit(&self, tf: &Transform, o: Vec3, d: Vec3) -> Option<f32> {
-        let n = tf.rotation * Vec3::Z;
+        let rotation = self.face_rotation(tf);
+        let n = rotation * Vec3::Z;
         let plane = tf.translation + n * self.height;
         let denom = d.dot(n);
         if denom.abs() < 1e-9 {
             return None;
         }
         let t = (plane - o).dot(n) / denom;
-        let local = tf.rotation.inverse() * (o + d * t - tf.translation);
+        let local = rotation.inverse() * (o + d * t - tf.translation);
         (t > 0.0 && local.x.abs() <= self.half.x && local.y.abs() <= self.half.y).then_some(t)
     }
 }
@@ -606,7 +621,7 @@ pub(super) fn interact(
             if !hand.active || !cockpit_view || c.kind == Kind::EjectHandle || !usable(&c) {
                 continue;
             }
-            let local = tf.rotation.inverse() * (hand.finger - tf.translation);
+            let local = c.face_rotation(tf).inverse() * (hand.finger - tf.translation);
             let inside = local.x.abs() <= c.half.x + TOUCH_MARGIN
                 && local.y.abs() <= c.half.y + TOUCH_MARGIN
                 && local.z > -0.04;
@@ -675,31 +690,34 @@ pub(super) fn interact(
 /// Moves the caps in, the gear lever to the gear position, the A-6's pushbuttons, switches and
 /// knobs to their state, and shows the touched controls' highlights.
 pub(super) fn animate(
-    controls: Query<(&Control, &Children)>,
+    mut controls: Query<(&mut Control, &Children)>,
     mut moving: Query<(&mut Transform, &Children), With<Moving>>,
     mut highlights: Query<&mut Visibility, With<Highlight>>,
     aircraft: Query<&Aircraft, With<Player>>,
 ) {
     let gear = aircraft.single().is_ok_and(|a| a.gear_down);
-    for (c, children) in &controls {
+    for (mut c, children) in &mut controls {
+        // A switch's or knob's position from its middle one.
+        let off = c.pos - (c.positions.max(1) - 1) as f32 / 2.0;
+        let lean = match c.kind {
+            Kind::GearLever if gear => GEAR_LEAN,
+            Kind::GearLever => -GEAR_LEAN,
+            _ => 0.0,
+        };
+        if c.lean != lean {
+            c.lean = lean;
+        }
+        let shown = if c.touched { Visibility::Inherited } else { Visibility::Hidden };
         for child in children.iter() {
             if let Ok((mut tf, parts)) = moving.get_mut(child) {
                 for part in parts.iter() {
                     if let Ok(mut v) = highlights.get_mut(part) {
-                        v.set_if_neq(if c.touched {
-                            Visibility::Inherited
-                        } else {
-                            Visibility::Hidden
-                        });
+                        v.set_if_neq(shown);
                     }
                 }
                 let mut t = Transform::from_xyz(0.0, 0.0, -c.depth);
-                // A switch's or knob's position from its middle one.
-                let off = c.pos - (c.positions.max(1) - 1) as f32 / 2.0;
                 match c.kind {
-                    Kind::GearLever => {
-                        t.rotation = Quat::from_rotation_x(if gear { 0.5 } else { -0.5 })
-                    }
+                    Kind::GearLever => t.rotation = Quat::from_rotation_x(c.lean),
                     Kind::Twist => {
                         t.rotation = Quat::from_rotation_z(-c.pos * std::f32::consts::FRAC_PI_4)
                     }
@@ -750,6 +768,30 @@ pub(super) fn console_panel(
             label.lit = lit;
             super::displays::draw_side_label(&mut tex.canvas, &fonts, &label.text, lit);
             tex.dirty = true;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The gear lever's face (its knob) leans with the lever: a click straight at the knob
+    /// finds it in either position, where the knob of the upright lever would be does not.
+    #[test]
+    fn the_gear_levers_face_leans_with_it() {
+        let extras = serde_json::json!({
+            "control": "Action(Gear)", "kind": "gear", "half": [0.0136, 0.0136],
+            "height": 0.0476, "travel": 0.0068,
+        });
+        let mut c = Control::from_model(&extras).unwrap();
+        let tf = Transform::IDENTITY;
+        for lean in [GEAR_LEAN, -GEAR_LEAN] {
+            c.lean = lean;
+            let knob = Quat::from_rotation_x(lean) * Vec3::Z * c.height;
+            let hit = |at: Vec3| c.face_hit(&tf, at + Vec3::Z, Vec3::NEG_Z);
+            assert!(hit(knob).is_some(), "the knob at lean {lean}");
+            assert!(hit(Vec3::Z * c.height).is_none(), "the upright lever's knob at lean {lean}");
         }
     }
 }
