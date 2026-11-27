@@ -197,8 +197,8 @@ pub(super) struct Control {
     /// many positions it has.
     pos: f32,
     positions: u8,
-    /// The gear lever's lean about its pivot (rad, its moving part's turn about X): its face,
-    /// the knob, goes with it.
+    /// The lean of the gear lever or a toggle switch about its pivot (rad, its moving part's
+    /// turn about X): its face (the gear lever's knob, a hook handle's grip) goes with it.
     lean: f32,
 }
 
@@ -702,6 +702,7 @@ pub(super) fn animate(
         let lean = match c.kind {
             Kind::GearLever if gear => GEAR_LEAN,
             Kind::GearLever => -GEAR_LEAN,
+            Kind::Switch => off * SWITCH_STEP,
             _ => 0.0,
         };
         if c.lean != lean {
@@ -709,6 +710,10 @@ pub(super) fn animate(
         }
         let shown = if c.touched { Visibility::Inherited } else { Visibility::Hidden };
         for child in children.iter() {
+            // The highlight round the control (most cockpits'), or on its moving part (below).
+            if let Ok(mut v) = highlights.get_mut(child) {
+                v.set_if_neq(shown);
+            }
             if let Ok((mut tf, parts)) = moving.get_mut(child) {
                 for part in parts.iter() {
                     if let Ok(mut v) = highlights.get_mut(part) {
@@ -717,11 +722,10 @@ pub(super) fn animate(
                 }
                 let mut t = Transform::from_xyz(0.0, 0.0, -c.depth);
                 match c.kind {
-                    Kind::GearLever => t.rotation = Quat::from_rotation_x(c.lean),
+                    Kind::GearLever | Kind::Switch => t.rotation = Quat::from_rotation_x(c.lean),
                     Kind::Twist => {
                         t.rotation = Quat::from_rotation_z(-c.pos * std::f32::consts::FRAC_PI_4)
                     }
-                    Kind::Switch => t.rotation = Quat::from_rotation_x(off * SWITCH_STEP),
                     Kind::Knob => {
                         let last = (c.positions.max(2) - 1) as f32;
                         t.rotation = Quat::from_rotation_z(-off * KNOB_STEP.min(KNOB_SWEEP / last))
