@@ -4856,6 +4856,15 @@ The **flight mode** buttons beside the armament panel belong to the B/N too:
   lamps; neither changes anything else.
 - The other buttons and the navigation column latch but change nothing in the game.
 
+**Bombing from the right seat.** Alone in the B/N's seat you can have the pilot bomb for you.
+With bombs selected on the armament panel, MASTER ARM on and an **attack button in** (any but
+ROCKET), designate something within some 6 km of the mission's primary or secondary target.
+The pilot leaves the route and his terrain following, flies straight over the point (at least
+4,000 ft above the ground) and releases as the release switch is set. While the designation
+stays and bombs are left he comes round for another pass, which takes two to three minutes.
+When the target is destroyed, or when you let the attack button out or drop the lock, he
+flies on along the route.
+
 ## 16.6 The automatic B/N
 
 With nobody in the right seat, an automatic B/N does the least a real one would. As soon as an

@@ -56,6 +56,7 @@ mod glvr;
 mod goggles;
 mod ground_fire;
 mod ground_radar;
+mod bomb_run;
 mod gunner;
 mod headtrack;
 mod help;
@@ -425,7 +426,7 @@ pub fn run() {
             asw::AswPlugin,
             naval::NavalPlugin,
         ))
-        .add_plugins(radio_menu::RadioMenuPlugin)
+        .add_plugins((radio_menu::RadioMenuPlugin, bomb_run::BombRunPlugin))
         .add_plugins((
             fires::FiresPlugin,
             terrain::TerrainPlugin,

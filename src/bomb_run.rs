@@ -1,28 +1,34 @@
-//! The F-14's AI pilot bombs for the player in the RIO's seat: while the LANTIRN's picture is
-//! up on the TID and the RIO has a point designated with it near the mission's primary or
-//! secondary target, the pilot leaves the route, flies over the point and releases a bomb where
-//! it falls onto it (a laser-guided one steers to the designated point on its way down, the
-//! simulation's). He comes round for another pass while the designation stays and bombs are
-//! left; the picture switched away (or the designation dropped), he flies on along the route.
+//! The AI pilot bombs for the player in the other seat of his own aircraft. The F-14's, while
+//! the LANTIRN's picture is up on the RIO's TID; the A-6's, while an attack button is in. With
+//! a point designated near the mission's primary or secondary target and bombs aboard the pilot
+//! leaves the route, flies over the point and releases a bomb where it falls onto it (a
+//! laser-guided one steers to the designated point on its way down, the simulation's). He comes
+//! round for another pass while the designation stays and bombs are left; the picture switched
+//! away or the attack button out (or the designation dropped), he flies on along the route.
 
 use bevy::math::DVec2;
 use bevy::prelude::*;
 
-use super::{SteerMode, TomcatPanel};
 use crate::aircraft::AircraftKind;
 use crate::cockpit3d::layout::PanelStyle;
 use crate::flight::{Aircraft, FlightSystems, Player};
 use crate::input::{Action, ActionEvent};
+use crate::intruder::{AttackMode, IntruderPanel};
+use crate::tomcat::{SteerMode, TomcatPanel};
 use crate::world::{WU, WorldPos, bevy_to_wu};
 
-pub(super) fn build(app: &mut App) {
-    app.init_resource::<Attack>().add_systems(
-        Update,
-        fly.after(crate::input::InputSystemsSet)
-            .after(crate::script::ScriptSet)
-            .before(FlightSystems)
-            .run_if(in_state(crate::settings::AppState::Flight)),
-    );
+pub struct BombRunPlugin;
+
+impl Plugin for BombRunPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<Attack>().add_systems(
+            Update,
+            fly.after(crate::input::InputSystemsSet)
+                .after(crate::script::ScriptSet)
+                .before(FlightSystems)
+                .run_if(in_state(crate::settings::AppState::Flight)),
+        );
+    }
 }
 
 /// The weapon types the pilot bombs with: the GBU-12, the Mk 82, 83 and 84.
@@ -51,6 +57,9 @@ const HOLD_BEFORE: f64 = 1.5;
 const HOLD_AFTER: f32 = 2.0;
 /// He bombs from at least this high over the ground (altitude units, ~4000 ft).
 const HEIGHT_LEAST: f32 = 4000.0;
+/// The point is designated again this long after the HUD went to A/G (s): the simulation has
+/// dropped its lock by then.
+const AGAIN: f32 = 0.5;
 /// Seconds between his presses of the weapon select key until a bomb is selected.
 const SELECT_WAIT: f32 = 0.5;
 
@@ -72,8 +81,11 @@ pub struct Attack {
     /// The release button stays held this long yet (s).
     hold: f32,
     select_wait: f32,
-    /// The steering mode before the attack (put back after it).
+    /// The F-14's steering mode before the attack (put back after it).
     steer: Option<SteerMode>,
+    /// The point to designate again in this many seconds: the F-14's HUD going to A/G for the
+    /// attack lets go of the simulation's ground lock.
+    again: Option<((f64, f64), f32)>,
     /// Bombs released (the test aid's count).
     pub releases: u32,
     log: f32,
@@ -140,8 +152,10 @@ fn fly(
     contacts: Res<crate::mfd::Contacts>,
     waypoints: Res<crate::hud::Waypoints>,
     mfd: Res<crate::mfd::MfdState>,
-    combat: Option<Res<crate::combat::Combat>>,
+    mut combat: Option<ResMut<crate::combat::Combat>>,
+    hud: Res<crate::hud::HudState>,
     mut panel: ResMut<TomcatPanel>,
+    intruder: Res<IntruderPanel>,
     mut controls: ResMut<crate::input::FlightControls>,
     mut actions: MessageWriter<ActionEvent>,
     mut player: Query<(&mut Aircraft, &WorldPos), With<Player>>,
@@ -149,12 +163,18 @@ fn fly(
 ) {
     let dt = time.delta_secs();
     let Ok((mut a, pos)) = player.single_mut() else { return };
-    // The player in his own aircraft's back seat, its picture the LANTIRN's.
-    let rio = settings.aircraft == AircraftKind::F14
+    // The player in his own aircraft's other seat: the F-14's with the LANTIRN's picture up,
+    // the A-6's with an attack on (not the rockets').
+    let tomcat = settings.aircraft == AircraftKind::F14;
+    let rio = matches!(settings.aircraft, AircraftKind::F14 | AircraftKind::A6)
         && manning.as_deref().is_some_and(|m| m.gunner() && !m.remote_gunner())
         && !a.on_ground
         && a.ended.is_none();
-    let lantirn = panel.lts_lantirn && super::avionics::tv_shown(&panel, PanelStyle::F14Rio);
+    let lantirn = if tomcat {
+        panel.lts_lantirn && crate::tomcat::avionics::tv_shown(&panel, PanelStyle::F14Rio)
+    } else {
+        intruder.attack.is_some_and(|m| m != AttackMode::Rocket)
+    };
     let sim = combat.as_deref().map(|c| &c.sim);
     let bombs = sim.is_some_and(|s| s.bays().0.iter().any(|b| b.1 > 0 && BOMBS.contains(&b.0)));
     let target = contacts
@@ -163,6 +183,19 @@ fn fly(
         // (Destroyed, it is done: the next designation is the next target.)
         .filter(|_| sim.is_some_and(|s| !s.targeting().target_killed))
         .filter(|p| in_target_area(*p, &waypoints));
+    if target.is_none()
+        && let Some((p, wait)) = attack.again.take().filter(|_| rio && lantirn && bombs)
+    {
+        if wait > dt {
+            attack.again = Some((p, wait - dt));
+        } else if let Some(c) = combat.as_deref_mut() {
+            c.designate_at(
+                (p.0 / 32.0).round() as i32,
+                (0x8000 as f64 - p.1 / 32.0).round() as i32,
+            );
+        }
+        return;
+    }
     let (Some(target), Some(sim)) = (target, sim) else {
         // Back to the route, the steering as it was.
         if attack.phase.take().is_some() {
@@ -184,19 +217,25 @@ fn fly(
     if a.autopilot() && a.autopilot_alt < least {
         a.autopilot_alt = least;
     }
-    // The HUD in A/G, a bomb selected.
-    if attack.phase.is_none() {
-        attack.steer = Some(panel.steer);
-    }
-    if panel.steer != SteerMode::AirToGround {
-        panel.steer = SteerMode::AirToGround;
+    // The F-14's HUD in A/G and a bomb selected (the A-6's attack button has its computer in
+    // the mode, and its weapons are the armament panel's: the bombardier's).
+    if tomcat {
+        if attack.phase.is_none() {
+            attack.steer = Some(panel.steer);
+            attack.again = (hud.mode != crate::hud::HudMode::Gnd).then_some((target, AGAIN));
+        } else if let Some((p, wait)) = attack.again.take().filter(|a| a.1 > dt) {
+            attack.again = Some((p, wait - dt));
+        }
+        if panel.steer != SteerMode::AirToGround {
+            panel.steer = SteerMode::AirToGround;
+        }
     }
     let (bays, cur) = sim.bays();
     let weapon = if sim.gun_selected() { -1 } else { bays.get(cur).map_or(-1, |b| b.0) };
     // (All the stations of a kind are one selection: the selected one may be the empty one.)
     let selected = BOMBS.contains(&weapon) && bays.iter().any(|b| b.0 == weapon && b.1 > 0);
     attack.select_wait -= dt;
-    if !selected && attack.select_wait <= 0.0 {
+    if tomcat && !selected && attack.select_wait <= 0.0 {
         attack.select_wait = SELECT_WAIT;
         actions.write(ActionEvent(Action::SelectWeapon));
     }
@@ -233,7 +272,8 @@ fn fly(
             attack.hold = attack.hold.max(dt * 2.0);
         }
         if attack.along.is_some_and(|last| last > 0.0) && along <= 0.0 {
-            if good {
+            // (The A-6's master arm is the bombardier's.)
+            if good && !mfd.master_safe {
                 actions.write(ActionEvent(Action::FireWeapon));
                 attack.hold = HOLD_AFTER;
                 attack.releases += 1;
@@ -259,12 +299,12 @@ fn fly(
     a.waypoint_bearing = crate::flight::to_bam(steer).rem_euclid(65536.0);
     attack.phase = Some(phase);
 
-    // Test aid `SM89_F14_LOG`.
+    // Test aid `SM89_ATTACK_LOG`.
     attack.log += dt;
-    if attack.log >= 1.0 && std::env::var_os("SM89_F14_LOG").is_some() {
+    if attack.log >= 1.0 && std::env::var_os("SM89_ATTACK_LOG").is_some() {
         attack.log = 0.0;
         eprintln!(
-            "f14 attack {:?} d={:.0} off={:.2} alt={:.0} kt={:.0} weapon={} solved={:?} releases={}",
+            "attack {:?} d={:.0} off={:.2} alt={:.0} kt={:.0} weapon={} solved={:?} releases={}",
             phase,
             d,
             off,

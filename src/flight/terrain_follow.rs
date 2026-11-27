@@ -203,7 +203,9 @@ pub(super) fn scan(
     if a.gear_down || a.knots() < DESCENT_LEAST_KNOTS {
         gamma = gamma.max(0.0);
     }
-    if following {
+    // (Not while the AI pilot flies his own heading for the other seat, a bombing run:
+    // `bomb_run` has him hold an altitude the bombs can be dropped from.)
+    if following && a.orbit.is_none() {
         a.tf_gamma = Some(gamma);
     }
     // The beam sees what no nearer return hides: a return above the steepest sight line so far
