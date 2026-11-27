@@ -151,6 +151,13 @@ enum Found {
 
 /// How long (seconds) an axis must stay past half way to bind, so that a sensor's spike does not.
 const AXIS_HOLD_S: f64 = 0.06;
+/// How far (of the -1..1 range) an axis must move from where it rested to bind as a button (an
+/// axis pushed one way, a hat), and on an axis's row: less there, as some slew mini-sticks
+/// only reach part of their range until calibrated. Once past, it counts until back under
+/// half of that, so a stick held near the mark does not flicker in and out (and pass for a
+/// jittery sensor).
+const PAST_BUTTON: f32 = 0.5;
+const PAST_AXIS: f32 = 0.3;
 /// Spikes (past half way and back sooner than `AXIS_HOLD_S`) after which an axis is taken for a
 /// jittery sensor and no longer binds while the game runs.
 const NOISY_SPIKES: u8 = 3;
@@ -201,19 +208,24 @@ impl Capture {
         spikes: &mut HashMap<AxisId, u8>,
     ) -> Option<(String, Found)> {
         let mut found = None;
+        let past = if matches!(self.what, Binding::Axis(_)) { PAST_AXIS } else { PAST_BUTTON };
         for d in devices {
             // Buttons held at the start count again once released.
             self.buttons.retain(|(n, c)| *n != d.key || d.buttons.contains(c));
-            for &code in &d.buttons {
-                // An analog trigger binds to an axis's row as the axis.
+            // Pressed since the last frame too: a switch's short pulse.
+            for code in d.down() {
+                // An analog trigger binds to an axis's row as the axis. A key's row takes a
+                // joystick button too (bound as the action's joystick button).
                 let takes = match self.what {
-                    Binding::Button(_) => true,
+                    Binding::Button(_) | Binding::Key(_) => true,
                     Binding::Axis(_) => !d.button_axes.contains(&code),
-                    Binding::Key(_) => false,
                 };
                 if takes && !self.buttons.contains(&(d.key.clone(), code)) {
                     found = found.or(Some((d.key.clone(), Found::Button(Source::Button(code)))));
                 }
+            }
+            if matches!(self.what, Binding::Key(_)) {
+                continue;
             }
             for (&code, &v) in &d.axes {
                 // Analog triggers already have a button above. Their resting value is -1:
@@ -227,7 +239,8 @@ impl Capture {
                 }
                 // An axis seen for the first time is its own baseline.
                 let base = *self.axes.entry(id.clone()).or_insert(v);
-                let side = ((v - base).abs() > 0.5).then_some(v > base);
+                let reach = if self.past.contains_key(&id) { past * 0.5 } else { past };
+                let side = ((v - base).abs() > reach).then_some(v > base);
                 let held = match (side, self.past.get(&id).copied()) {
                     (Some(side), Some((since, was))) if side == was => now - since >= AXIS_HOLD_S,
                     (Some(side), past) => {
@@ -251,10 +264,10 @@ impl Capture {
                     let hat = crate::hotas_profiles::is_hat(code);
                     let input = match self.what {
                         Binding::Axis(_) if !hat => Found::Axis(code),
-                        Binding::Axis(_) | Binding::Button(_) if v > 0.5 => {
+                        Binding::Axis(_) | Binding::Button(_) if v > PAST_BUTTON => {
                             Found::Button(Source::AxisPositive(code))
                         }
-                        Binding::Axis(_) | Binding::Button(_) if v < -0.5 => {
+                        Binding::Axis(_) | Binding::Button(_) if v < -PAST_BUTTON => {
                             Found::Button(Source::AxisNegative(code))
                         }
                         _ => continue,
@@ -327,6 +340,7 @@ mod tests {
             ));
 
             // Start another capture while still holding the trigger from the first binding.
+            d.next_frame();
             let mut capture = Capture::new(what, [&d]);
             assert!(poll_held(&mut capture, &d).is_none());
             d.button_changed(code, 0.0, true);
@@ -417,6 +431,47 @@ mod tests {
             );
             assert!(matches!(poll_held(&mut axis, &d), Some((_, Found::Axis(42)))));
         }
+    }
+
+    /// A switch's pulse (pressed and released before the next frame) binds; so does a joystick
+    /// button pressed while a key's row waits (as the action's joystick button).
+    #[test]
+    fn a_pulse_and_a_button_on_a_key_row_bind() {
+        let mut config = InputConfig::default();
+        let hotas = Hotas::empty();
+        let mut d = Device::default();
+        d.key = "Throttle".into();
+        let target = ButtonTarget::Action(Action::Brakes);
+        for what in [Binding::Button(target), Binding::Key(target)] {
+            d.next_frame();
+            let mut cap = Capture::new(what, [&d]);
+            d.button_changed(9, 1.0, false);
+            d.button_changed(9, 0.0, false);
+            let Some((device, input)) = poll(&mut cap, &d, 0.0) else { panic!("no press") };
+            let made = bind_found(&mut config, &hotas, &mut cap, &device, input);
+            assert!(made.what == Binding::Button(target));
+            assert_eq!(config.button(target).map(|m| m.source), Some(Source::Button(9)));
+            config.buttons.clear();
+        }
+    }
+
+    /// A mini-stick that reaches only part of its range binds on an axis's row, and one held
+    /// near the mark is not taken for a jittery sensor.
+    #[test]
+    fn a_short_slew_stick_binds() {
+        let mut d = Device::default();
+        d.axes.insert(3, 0.0);
+        let mut spikes = HashMap::new();
+        let mut cap = Capture::new(Binding::Axis(AxisControl::SlewX), [&d]);
+        let mut t = 0.0;
+        for v in [0.32, 0.27, 0.31, 0.26, 0.33, 0.28] {
+            d.axes.insert(3, v);
+            assert!(cap.poll([&d], t, &mut spikes).is_none());
+            t += 0.01;
+        }
+        assert!(spikes.is_empty());
+        let found = cap.poll([&d], t + AXIS_HOLD_S, &mut spikes);
+        assert!(matches!(found, Some((_, Found::Axis(3)))));
     }
 
     /// A sensor's spike past half way does not bind; a jittery axis is left out after a few,
@@ -562,7 +617,8 @@ fn bind_found(
             lost.retain(|l| !pair.contains(l));
             (shown.0, shown.1, lost)
         }
-        (Binding::Button(target), Found::Button(source)) => {
+        (Binding::Button(target) | Binding::Key(target), Found::Button(source)) => {
+            let what = Binding::Button(target);
             let lost = losing(config, hotas, what, Taking::Button(device, source));
             config.bind_button(target, device.to_string(), source);
             (what, source.label(), lost)
@@ -753,19 +809,20 @@ pub fn show(
         if escape {
             dialog.capture = None;
             dialog.status = None;
-        } else if let Binding::Key(target) = cap.what {
-            if let Some((mods, key)) = pressed_key(keys) {
-                let what = cap.what;
-                let lost = losing(config, hotas, what, Taking::Key(mods, key));
-                let before = config.clone();
-                config.bind_key(target, mods, key);
-                dialog.undo = Some((before, config.clone()));
-                dialog.bound(what, &crate::input::key_label(mods, key), lost);
-                dialog.capture = None;
-            }
+        } else if let Binding::Key(target) = cap.what
+            && let Some((mods, key)) = pressed_key(keys)
+        {
+            let what = cap.what;
+            let lost = losing(config, hotas, what, Taking::Key(mods, key));
+            let before = config.clone();
+            config.bind_key(target, mods, key);
+            dialog.undo = Some((before, config.clone()));
+            dialog.bound(what, &crate::input::key_label(mods, key), lost);
+            dialog.capture = None;
         } else if let Some((device, input)) = {
             let found = cap.poll(hotas.devices(), ctx.input(|i| i.time), &mut dialog.spikes);
             if let Some((device, code)) = cap.ignored.pop() {
+                warn!("input binding: axis {code:#x} of {device} is jittery, left out");
                 dialog.status = Some(t!(
                     "input-noisy-axis",
                     axis = binding_label(&device, &t!("input-axis", n = code & 0xffff))
@@ -774,6 +831,7 @@ pub fn show(
             found
         } {
             let made = bind_found(config, hotas, cap, &device, input);
+            info!("input binding: {} <- {device}: {}", made.what.name(), made.label);
             dialog.undo = Some((made.before, config.clone()));
             dialog.bound(made.what, &binding_label(&device, &made.label), made.lost);
             dialog.capture = made.next;
@@ -1213,6 +1271,16 @@ pub fn show(
     if let Some(what) = start {
         dialog.status = None;
         dialog.jump = None;
+        // What the capture starts from, for the log a player's report comes with.
+        for d in hotas.devices() {
+            info!(
+                "input binding: {} waits; {}: {} axes, buttons held {:?}",
+                what.name(),
+                d.key,
+                d.axes.len(),
+                d.buttons
+            );
+        }
         dialog.capture = Some(Capture::new(what, hotas.devices()));
     }
     if dialog.saved.as_ref() != Some(config) {

@@ -834,6 +834,9 @@ pub struct Device {
     /// Analog buttons also exposed as axes; button capture must not bind their release.
     pub button_axes: BTreeSet<u32>,
     pub buttons: BTreeSet<u32>,
+    /// Buttons pressed since the last poll, released again or not: a short press (a switch
+    /// sending a pulse) can come and go between two frames and must still count once.
+    pub pulsed: BTreeSet<u32>,
     prev_buttons: BTreeSet<u32>,
     prev_axes: BTreeMap<u32, f32>,
 }
@@ -879,7 +882,9 @@ impl Device {
     pub(super) fn button_changed(&mut self, code: u32, value: f32, analog: bool) {
         // Match gilrs' default press/release thresholds, with hysteresis near the press point.
         if value >= 0.75 {
-            self.buttons.insert(code);
+            if self.buttons.insert(code) {
+                self.pulsed.insert(code);
+            }
         } else if value <= 0.65 {
             self.buttons.remove(&code);
         }
@@ -894,7 +899,7 @@ impl Device {
         let (buttons, axes) =
             if prev { (&self.prev_buttons, &self.prev_axes) } else { (&self.buttons, &self.axes) };
         match source {
-            Source::Button(c) => buttons.contains(&c),
+            Source::Button(c) => buttons.contains(&c) || !prev && self.pulsed.contains(&c),
             Source::AxisPositive(c) => axes.get(&c).is_some_and(|v| *v > 0.5),
             Source::AxisNegative(c) => axes.get(&c).is_some_and(|v| *v < -0.5),
         }
@@ -914,9 +919,21 @@ impl Device {
             };
     }
 
-    /// The buttons pressed since the last poll.
+    /// Starts a poll: the state so far becomes the previous one.
+    pub(crate) fn next_frame(&mut self) {
+        self.prev_buttons.clone_from(&self.buttons);
+        self.prev_axes.clone_from(&self.axes);
+        self.pulsed.clear();
+    }
+
+    /// The buttons pressed since the last poll (a press already released too).
     pub fn just_pressed(&self) -> impl Iterator<Item = u32> + '_ {
-        self.buttons.difference(&self.prev_buttons).copied()
+        self.pulsed.difference(&self.prev_buttons).copied()
+    }
+
+    /// The buttons down now or pressed since the last poll.
+    pub fn down(&self) -> impl Iterator<Item = u32> + '_ {
+        self.buttons.union(&self.pulsed).copied()
     }
 }
 
@@ -1297,8 +1314,7 @@ impl Hotas {
 
     fn poll(&mut self) {
         for d in self.devices.values_mut() {
-            d.prev_buttons.clone_from(&d.buttons);
-            d.prev_axes.clone_from(&d.axes);
+            d.next_frame();
         }
         let Some(g) = &mut self.gilrs else { return };
         let g = g.get();
@@ -1617,12 +1633,12 @@ mod tests {
         let mut d = Device::default();
         let code = 0x30002;
         for _ in 0..2 {
-            d.prev_buttons.clone_from(&d.buttons);
+            d.next_frame();
             d.button_changed(code, 0.3, true);
             assert!(!d.active(Source::Button(code), false));
             d.button_changed(code, 0.75, true);
             assert_eq!(d.just_pressed().collect::<Vec<_>>(), [code]);
-            d.prev_buttons.clone_from(&d.buttons);
+            d.next_frame();
             d.button_changed(code, 0.7, true);
             assert!(d.active(Source::Button(code), false), "hysteresis holds the press");
             assert_eq!(d.just_pressed().count(), 0);
@@ -1631,6 +1647,21 @@ mod tests {
             d.button_changed(code, 0.0, true);
             assert!(!d.active(Source::Button(code), false));
         }
+    }
+
+    /// A switch's pulse, pressed and released between two polls, counts as one press.
+    #[test]
+    fn a_pulse_between_polls_is_a_press() {
+        let mut d = Device::default();
+        d.next_frame();
+        d.button_changed(7, 1.0, false);
+        d.button_changed(7, 0.0, false);
+        assert_eq!(d.just_pressed().collect::<Vec<_>>(), [7]);
+        assert!(d.active(Source::Button(7), false));
+        assert!(!d.active(Source::Button(7), true));
+        d.next_frame();
+        assert_eq!(d.just_pressed().count(), 0);
+        assert!(!d.active(Source::Button(7), false));
     }
 
     #[test]
@@ -1653,6 +1684,7 @@ mod tests {
         // Face buttons and bumpers also send ButtonChanged, but must remain buttons only.
         d.button_changed(0x10130, 1.0, false);
         assert!(d.active(Source::Button(0x10130), false));
+        d.next_frame();
         d.button_changed(0x10130, 0.0, false);
         assert!(!d.active(Source::Button(0x10130), false));
         assert!(!d.axes.contains_key(&0x10130));
