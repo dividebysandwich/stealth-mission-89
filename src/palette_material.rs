@@ -480,7 +480,9 @@ pub struct Globals {
     pub shadow_texel: Vec4,
     pub shadow_light: Vec4,
     /// Storm haze under an overcast: strength 0..1 (x), visibility in metres (y); the deck
-    /// drawn by the layered clouds (z, `WeatherState::deck_volumetric`).
+    /// drawn by the layered clouds (z, `WeatherState::deck_volumetric`); the range (metres) of
+    /// the aircraft's spotting dots and lights in the tracking camera's picture (w, 0: the shader's
+    /// `DOT_RANGE`; `station::SPOT_RANGE` at an air defence console).
     pub storm_haze: Vec4,
     /// Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
     /// colour (xyz) and reach in metres (w).

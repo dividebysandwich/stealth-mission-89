@@ -99,7 +99,9 @@ struct Globals {
     shadow_cascades: array<mat4x4<f32>, 4>,
     shadow_texel: vec4<f32>,
     shadow_light: vec4<f32>,
-    // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y).
+    // Storm haze under an overcast: strength 0..1 (x), visibility in metres (y); the range
+    // (metres) of the aircraft's spotting dots and lights in the tracking camera's picture (w,
+    // 0: DOT_RANGE).
     storm_haze: vec4<f32>,
     // Combat flash (flashes.rs) as a point light: position (xyz) and intensity (w), linear
     // colour (xyz) and reach in metres (w).
@@ -426,6 +428,11 @@ fn vertex(v: Vertex) -> VertexOutput {
         out.world_position = center;
         out.clip_position = clip + vec4<f32>(corner * px * 2.0 / vp * clip.w, 0.0, 0.0);
         var range = DOT_RANGE;
+        // An air defence console's camera makes out aircraft (their spotting dots, their
+        // lights at night) much further away.
+        if ((spot || (tag & 7u) == 5u) && globals.storm_haze.w > 0.0 && all(abs(vp - globals.dots.zw) < vec2<f32>(0.5))) {
+            range = globals.storm_haze.w;
+        }
         if (globals.weather.z > 0.0) {
             range = min(range, globals.weather.z * DOT_VIS_FACTOR);
         }

@@ -42,7 +42,7 @@ use crate::flight::{Aircraft, FlightSystems, Player};
 use crate::settings::AppState;
 use crate::world::WorldPos;
 
-pub use eo::ConsoleEo;
+pub use eo::{ConsoleEo, SPOT_RANGE};
 pub use scope::RADAR_REACH;
 
 pub struct StationPlugin;

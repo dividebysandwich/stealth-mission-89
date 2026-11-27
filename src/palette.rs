@@ -513,10 +513,11 @@ fn update_globals(
     origin: Res<crate::world::FloatingOrigin>,
     hud: Option<Res<crate::hud::HudState>>,
     mfd: Option<Res<crate::mfd::MfdState>>,
-    (trackcam, wide, console, unit_view, scene_flir): (
+    (trackcam, wide, console, manning, unit_view, scene_flir): (
         Option<Res<crate::trackcam::TrackCamImage>>,
         Option<Res<crate::trackcam::TrackCamWide>>,
         Option<Res<crate::station::ConsoleEo>>,
+        Option<Res<crate::station::Manning>>,
         Option<Res<crate::campaign::UnitView>>,
         Option<Res<crate::menu_scene::SceneFlir>>,
     ),
@@ -578,7 +579,7 @@ fn update_globals(
     g.dots.x = if settings.vr { crate::dots::XR_ANGLE } else { 0.0 };
     g.dots.y = time.elapsed_secs_wrapped() % 3600.0;
     // The tracking camera's picture (the FLIR view): the drone command center's wide one there.
-    let shown = match (console.is_some_and(|c| c.wide), wide) {
+    let shown = match (console.as_ref().is_some_and(|c| c.wide), wide) {
         (true, Some(w)) => Some(w.0.clone()),
         _ => trackcam.map(|t| t.0.clone()),
     };
@@ -604,6 +605,10 @@ fn update_globals(
     (g.clouds, g.weather, g.noise, g.stratus) = weather.globals(origin.origin);
     (g.bolt_a, g.bolt_b) = weather.bolt_light(origin.origin);
     g.storm_haze = weather.storm_haze();
+    // An air defence console's camera (Gepard, NASAMS, Patriot) shows aircraft as dots far out.
+    if console.is_some() && manning.is_some_and(|m| !m.drones() && !m.gunner()) {
+        g.storm_haze.w = crate::station::SPOT_RANGE;
+    }
     (g.burst, g.burst_colour) = bursts.globals(origin.origin);
     let theater = theater.as_ref().map_or("", |t| t.id.as_str());
     g.atmos = weather.atmos(&settings, theater, lighting.daylight, lighting.moonlit);

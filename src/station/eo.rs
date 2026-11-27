@@ -23,6 +23,9 @@ const SLEW_RATE: f32 = 1.6;
 const SLEW_RAMP: f32 = 0.3;
 /// The camera's height on its mast (m).
 const MAST: f64 = 6.0;
+/// How far out the camera shows an aircraft as a dot or by its lights (m; `Globals::storm_haze`): past the
+/// Patriot's reach.
+pub const SPOT_RANGE: f32 = 150_000.0;
 /// How fast the camera slewed by hand is drawn to the gun's direction (1/s).
 const TO_GUN: f32 = 4.0;
 
