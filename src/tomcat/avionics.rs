@@ -16,7 +16,8 @@ use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
 use super::{
-    DddMode, LtsMode, Power, SteerMode, TidMode, TomcatPanel, TomcatStatus, VdiMode, WcsMode,
+    DddMode, LtsMode, MissileOption, Power, SteerMode, TidMode, TomcatPanel, TomcatStatus, VdiMode,
+    WcsMode,
 };
 use crate::aircraft::AircraftKind;
 use crate::awg9::{Awg9, Awg9Controls, Mode};
@@ -321,6 +322,38 @@ fn seeker_target(radar: &Awg9, a: &Aircraft, pos: &WorldPos) -> Option<ContactRe
     tracks.chain(hits).min_by(|a, b| a.0.total_cmp(&b.0)).map(|t| t.1)
 }
 
+/// The single target track the MSL OPTIONS knob takes the radar into as a radar missile is
+/// launched (NORM and ACT: none, the radar stays in its mode).
+pub fn launch_wcs(option: MissileOption) -> Option<WcsMode> {
+    match option {
+        MissileOption::PdStt => Some(WcsMode::PdStt),
+        MissileOption::PulseStt => Some(WcsMode::PulseStt),
+        MissileOption::Norm | MissileOption::ActiveStt => None,
+    }
+}
+
+/// The target of a Phoenix or Sparrow of ours launched since the last call (`flying`: the
+/// slots of those in flight then).
+fn new_radar_missile(sim: &stealth_sim::Sim, flying: &mut Vec<usize>) -> Option<ContactRef> {
+    let mut now = Vec::new();
+    let mut new = None;
+    for (slot, m) in sim.projectiles().iter().enumerate().skip(stealth_sim::ENEMY_SLOTS) {
+        if m.ttl == 0 || !matches!(m.spec, stealth_sim::PHOENIX_SPEC | stealth_sim::SPARROW_SPEC) {
+            continue;
+        }
+        now.push(slot);
+        if !flying.contains(&slot) {
+            new = match m.target_pilot {
+                Some(k) => Some(ContactRef::Pilot(k)),
+                None if m.target >= 0 => Some(ContactRef::Unit(m.target as usize)),
+                None => new,
+            };
+        }
+    }
+    *flying = now;
+    new
+}
+
 /// The seconds the IFF's button stays lit after a push.
 const IFF_SECS: f32 = 1.0;
 
@@ -344,6 +377,7 @@ pub(super) fn radar_controls(
         MessageWriter<crate::avionics::Unlock>,
     ),
     mut actions: MessageReader<crate::input::ActionEvent>,
+    mut flying: Local<Vec<usize>>,
 ) {
     // The lock control (the targeting pod's and the radar's lock: a key, a HOTAS button, a VR
     // controller's): with a cursor up it hooks, as the HOOK button does.
@@ -361,13 +395,22 @@ pub(super) fn radar_controls(
         sub = step_acm(sub, rate > 0.0);
     }
     *acm = Some((sub, rate));
+    // MSL OPTIONS at PD STT or PULSE STT: a radar missile leaving the rail takes the radar into
+    // that single target track on the missile's target (hooked for it).
+    let launched = combat.as_deref().and_then(|c| new_radar_missile(&c.sim, &mut flying));
+    if let (Some(target), Some(wcs)) = (launched, launch_wcs(panel.missile_option))
+        && !panel.acm_cover
+    {
+        panel.hook_target = super::hook_code(Some(target));
+        panel.wcs = wcs;
+    }
     let mode = mode(&panel, sub);
     let want = Awg9Controls {
         mode,
         // In ACM the antenna keys pick the mode: the elevation stays.
         elevation: if panel.acm_cover { controls.elevation } else { mfd.av.fcr_el.to_radians() },
         range: panel.ddd_range.miles() as f32 * NM as f32,
-        ph_active: panel.ph_active,
+        ph_active: panel.ph_active || panel.missile_option == MissileOption::ActiveStt,
         ..*controls
     };
     controls.set_if_neq(want);
@@ -877,6 +920,14 @@ mod tests {
         p.acm_cover = false;
         p.wcs = WcsMode::PulseStt;
         assert!(mode(&p, Mode::Mrl).stt() && mode(&p, Mode::Mrl).pulse());
+    }
+
+    #[test]
+    fn the_missile_options_pick_the_launch_track() {
+        assert_eq!(launch_wcs(MissileOption::Norm), None);
+        assert_eq!(launch_wcs(MissileOption::ActiveStt), None);
+        assert_eq!(launch_wcs(MissileOption::PdStt), Some(WcsMode::PdStt));
+        assert_eq!(launch_wcs(MissileOption::PulseStt), Some(WcsMode::PulseStt));
     }
 
     /// The display mode buttons each give the DDD its picture; the Vc switch doubles the

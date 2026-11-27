@@ -5120,6 +5120,11 @@ missile's own seeker comes on and it no longer needs you. Until then **keep the 
 scan**: a missile whose track is dropped flies to where the target was last and looks there.
 
 - Inside ten miles, or with **PH ACT** on, the Phoenix is active off the rail.
+- **MSL OPTIONS** (the knob on the RIO's armament panel) sets what the radar does as a Phoenix
+  or a Sparrow leaves the rail. **NORM**: it stays in its mode. **PD STT** and **PULSE STT**: it
+  hooks the missile's target and goes into that single target track on it, the surest guidance
+  for one missile, at the price of the other tracks. The third position fires the Phoenix
+  active off the rail like PH ACT.
 - It climbs high and comes down on its target: give it range to do so. Fired from far out it
   takes a minute or two.
 - Flying through a Phoenix's smoke shakes the aircraft.
