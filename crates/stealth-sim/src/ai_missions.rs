@@ -24,6 +24,8 @@ pub const CH47: i32 = 43;
 pub const AH64: i32 = 44;
 pub const FA18E: i32 = 46;
 pub const EA18G: i32 = 47;
+/// The MH-60R Seahawk (appended after the strike missiles).
+pub const MH60R: i32 = 52;
 /// The A-6 Intruder: an AI type from the start (units.ron), flown by players too.
 pub const A6: i32 = 24;
 /// The F-14B Tomcat: the blue F-14 (units.ron `f14_blue`), flown by players too.

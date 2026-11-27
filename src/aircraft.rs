@@ -340,7 +340,7 @@ pub fn landing_light(model: i32) -> Vec3 {
         21 => Vec3::new(0.0, -0.55, -3.2),
         23 => f16_point(0.0, 2.20, -1.04) - Vec3::Y * F16_LIFT,
         24 => f117_point(0.0, 4.45, -0.02) - Vec3::Y * F117_LIFT,
-        25 => uh60_point(0.0, 3.0, 0.53) - Vec3::Y * UH60_LIFT,
+        25 | 78 => uh60_point(0.0, 3.0, 0.53) - Vec3::Y * UH60_LIFT,
         32 => a10_point(0.30, 5.10, -0.66) - Vec3::Y * A10_LIFT,
         43 => ah1z_point(0.0, 2.5, 0.70) - Vec3::Y * AH1Z_LIFT,
         45 => tornado_point(0.0, 3.85, -0.90) - Vec3::Y * TORNADO_LIFT,

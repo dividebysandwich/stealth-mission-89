@@ -340,12 +340,13 @@ mod tests {
     fn units_build_the_tables() {
         let t = shipped();
         assert_eq!(t.threats.len(), 27);
-        assert_eq!(t.aircraft.len(), 52);
+        assert_eq!(t.aircraft.len(), 53);
         assert_eq!(t.aircraft[crate::strike_missiles::ISKANDER as usize].name, "Iskander");
         assert_eq!(t.aircraft[crate::strike_missiles::FLAMINGO as usize].name, "Flamingo");
         assert_eq!(t.aircraft[crate::strike_missiles::TU95 as usize].name, "Tu-95");
         assert_eq!(t.aircraft[crate::ai_missions::FA18E as usize].model, 79);
         assert_eq!(t.aircraft[crate::ai_missions::EA18G as usize].model, 81);
+        assert_eq!(t.aircraft[crate::ai_missions::MH60R as usize].model, 78);
         assert_eq!(t.aircraft[crate::ai_missions::A6 as usize].model, 27);
         // The blue F-14 (units.ron `f14_blue`): the friendly one, model 5.
         let f14 = &t.aircraft[crate::ai_missions::F14 as usize];

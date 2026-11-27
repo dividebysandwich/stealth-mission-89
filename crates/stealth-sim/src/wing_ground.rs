@@ -111,7 +111,7 @@ fn span_m(spec: i32) -> f64 {
     match spec {
         t::F16 | t::AV8B => 10.0,
         t::A10 => 17.5,
-        t::UH60 | t::CH47 => 18.5,
+        t::UH60 | t::MH60R | t::CH47 => 18.5,
         t::OH58 => 11.0,
         crate::munitions::C5 => 68.0,
         _ => 14.0,

@@ -834,24 +834,24 @@ fn state_hash(sim: &Sim) -> u64 {
 #[test]
 fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
-        0x4d2f5bcf4edab453,
-        0xf818144d1147d928,
-        0xd832888b899c6848,
-        0xc3217b1ab80b278a,
-        0x924fb325aef8b0be,
-        0xa81ce33c713cbfae,
-        0xa1565802d474a46b,
-        0x9325914c7f18d0aa,
-        0x0fce272d525f763e,
-        0xdb62d9c02c71e2ef,
-        0xe931e3e10af197d9,
-        0x6b64471688517096,
-        0x51be046deca4aa34,
-        0x990f81e5e47ecdd6,
-        0xdd39f5f14ce613a7,
-        0x93e457aa3a415dea,
-        0x5226950f245fba2b,
-        0x93754ecdf6d5a8da,
+        0xc5752eb9af4508c8,
+        0x215a9432f2b7f29f,
+        0x231b23dccad3fe8d,
+        0x45177f0bc47d3981,
+        0x54d57b12cf940243,
+        0xf1cba1fd2463a583,
+        0xcc30827233467ec6,
+        0xdd97735445be8c87,
+        0xdeff1b8b26d730c1,
+        0x300e35f6ae0ae60e,
+        0xaf354ded95dafeae,
+        0x94bfd461a449be65,
+        0x6c34778cc2c325eb,
+        0xf533264e11715c81,
+        0xcd4bfa3ed2b5fcde,
+        0xdafc4e836e1b7f89,
+        0x496273962e6d894c,
+        0x898dd47b6f822f97,
     ];
     let d = data();
     let mut got = Vec::new();
@@ -5593,3 +5593,4 @@ fn heavier_bombs_have_a_wider_blast() {
     assert!(!heavy_bomb(&hard, 9, 20).0, "a Mk 82 leaves it standing");
     assert!(heavy_bomb(&hard, MK84_WEAPON, 20).0, "a Mk 84 wrecks it");
 }
+

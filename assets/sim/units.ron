@@ -104,6 +104,8 @@
         (id: "kh101", name: "Kh-101", nato: "Kh-101", kmh: 800, radius_km: 2500, agility: 1, radar: "none", model: 88, kind: Drone),
         (id: "fp7", name: "FP-7", nato: "FP-7", mach: 3.0, radius_km: 200, agility: 1, radar: "none", model: 89, kind: Drone),
         (id: "flamingo", name: "Flamingo", nato: "FP-5", kmh: 900, radius_km: 3000, agility: 1, radar: "none", model: 90, kind: Drone),
+        // The MH-60R Seahawk, a player's aircraft, flown by the AI on anti-submarine missions (appended).
+        (id: "mh60r", name: "MH-60R", nato: "Seahawk", kmh: 270, radius_km: 280, agility: 1, radar: "none", model: 78, kind: Helicopter),
     ],
     // `family`: Sam, Air (air-to-air), Ground (air-to-ground), or Special with the game values
     // given directly (`lock`, `speed`, `turn`). `seeker`: RearIr, Ir, Command, SemiActive,
