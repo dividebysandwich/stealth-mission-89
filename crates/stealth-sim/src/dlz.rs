@@ -50,6 +50,9 @@ struct Track {
     p: [f64; 3],
     v: [f64; 3],
     alt: i32,
+    /// The ground the missile flies over (altitude units: the rolling hills at a ground
+    /// target, the flat world against an aircraft).
+    ground: i32,
 }
 
 /// Launch zone against the locked target (ground ranges in map units).
@@ -154,12 +157,14 @@ impl Sim {
         let zone = if lock_max < 1 || d < 1.0 {
             None
         } else {
+            // On the ground at the target (the rolling hills there).
+            let ground = self.hill_alt(tx, ty);
             let at = |r: i32| {
                 let k = r as f64 / d;
                 let tx = self.pl.p.mx + (dx * k).round() as i32;
                 let ty = self.pl.p.my + (dy * k).round() as i32;
-                let p = [tx as f64 * 32.0 + 16.0, ty as f64 * 32.0 + 16.0, 0.0];
-                self.reaches(w, spec, Track { p, v: [0.0; 3], alt: 0 }, false)
+                let p = [tx as f64 * 32.0 + 16.0, ty as f64 * 32.0 + 16.0, ground as f64];
+                self.reaches(w, spec, Track { p, v: [0.0; 3], alt: ground, ground }, false)
             };
             find_zone(lock_max, 0, at)
         };
@@ -201,7 +206,7 @@ impl Sim {
         let (ux, uy) = (dx / 32.0 / d, dy / 32.0 / d);
         let hits = |r: i32, v: [f64; 3]| {
             let p = [me[0] + ux * r as f64 * 32.0, me[1] + uy * r as f64 * 32.0, tg.p[2]];
-            self.reaches(w, spec, Track { p, v, alt }, true)
+            self.reaches(w, spec, Track { p, v, alt, ground: 0 }, true)
         };
         // A missile passing just outside its fuse radius misses from a range here and there
         // all through the zone, a different one with every change of the geometry: a miss
@@ -288,7 +293,8 @@ impl Sim {
             if guided {
                 let target = seen.then_some(Target { p, v: track.v });
                 let guide = target.filter(|_| aim != 0);
-                match guidance::flight_step(&mut m, vmax, radius, fs, guide, target, 0.0) {
+                let ground = track.ground as f64;
+                match guidance::flight_step(&mut m, vmax, radius, fs, guide, target, ground) {
                     Step::Fused => return true,
                     Step::Flying => {}
                     Step::Ground => return false,
@@ -299,7 +305,7 @@ impl Sim {
                 if self.classic_step(&mut m, false, seen, aim, r, talt) {
                     return true;
                 }
-                if m.alt < 0 {
+                if m.alt < track.ground {
                     return false;
                 }
             }

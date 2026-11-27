@@ -2989,7 +2989,7 @@ pub(crate) fn update_pod(
     }
     let shown = state.camera_shown();
     let looking = if turret {
-        slaved_sight(combat.as_deref(), origin)
+        slaved_sight(combat.as_deref(), origin, theater.as_deref())
             .or(state.av.helmet)
             .or_else(|| Some(a.orientation * pod_dir(0.0, -0.05)))
     } else {
@@ -3259,13 +3259,19 @@ fn draw_side_gun_scope(
 }
 
 /// Where the gunship's slaved pod looks: at the lock (else the helmet sight).
-fn slaved_sight(combat: Option<&crate::combat::Combat>, eye: DVec3) -> Option<Vec3> {
+fn slaved_sight(
+    combat: Option<&crate::combat::Combat>,
+    eye: DVec3,
+    theater: Option<&crate::world::Theater>,
+) -> Option<Vec3> {
     // As the tracking camera: the ground lock, else the aircraft or pilot locked.
     combat.and_then(|c| {
         let (sim, t) = (&c.sim, c.sim.targeting());
         let at = if let Some(o) = t.ground.and_then(|g| sim.objects().get(g)) {
             let (e, n) = crate::combat::map_wu(o.x, o.y);
-            crate::world::wu_to_bevy(e + 16.0, n - 16.0, 0.0)
+            // On the rolling hills there.
+            let p = crate::world::wu_to_bevy(e + 16.0, n - 16.0, 0.0);
+            theater.map_or(p, |t| crate::sim_render::on_ground(&t.hills, p))
         } else if let Some((i, u)) = t.air.and_then(|i| sim.flights().get(i).map(|u| (i, *u))) {
             let (e, n, z) = crate::combat::unit_position(c.prev_flights.get(i), &u, c.alpha);
             crate::world::wu_to_bevy(e, n, z)

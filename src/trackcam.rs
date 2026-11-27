@@ -173,6 +173,7 @@ pub(crate) fn update_camera(
     >,
     console: Option<Res<crate::station::ConsoleEo>>,
     (image, wide_image): (Option<Res<TrackCamImage>>, Option<Res<TrackCamWide>>),
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let Ok((mut camera, mut proj, mut pos, mut tf, mut target)) = cam.single_mut() else {
         return;
@@ -314,7 +315,9 @@ pub(crate) fn update_camera(
     let t = sim.targeting();
     let target = if let Some(o) = t.ground.and_then(|g| sim.objects().get(g)) {
         let (e, n) = map_wu(o.x, o.y);
-        look = Some(wu_to_bevy(e + 16.0, n - 16.0, 0.0));
+        // On the ground where it is drawn: the rolling hills there.
+        let p = wu_to_bevy(e + 16.0, n - 16.0, 0.0);
+        look = Some(theater.as_ref().map_or(p, |t| crate::sim_render::on_ground(&t.hills, p)));
         look
     } else if let Some((i, u)) = t.air.and_then(|i| sim.flights().get(i).map(|u| (i, *u))) {
         let (e, n, z) = unit_position(combat.prev_flights.get(i), &u, combat.alpha);

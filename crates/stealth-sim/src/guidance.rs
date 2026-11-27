@@ -297,10 +297,11 @@ impl Sim {
         }
     }
 
-    /// A world object (on the ground) as a target.
+    /// A world object (on the ground, the rolling hills there) as a target.
     pub(crate) fn object_target(&self, i: i32) -> Target {
         let o = self.obj(i);
-        Target { p: [o.x as f64 * 32.0 + 16.0, o.y as f64 * 32.0 + 16.0, 0.0], v: [0.0; 3] }
+        let z = self.hill_alt(o.x, o.y) as f64;
+        Target { p: [o.x as f64 * 32.0 + 16.0, o.y as f64 * 32.0 + 16.0, z], v: [0.0; 3] }
     }
 
     /// Starts the realistic flight of the missile just put in slot `s` at `pos` (wu: east,

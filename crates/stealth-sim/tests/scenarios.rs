@@ -2605,6 +2605,71 @@ fn hellfire_launch_zone_at_the_spot() {
     }
 }
 
+/// A Hellfire hits a target standing on the rolling hills: it flies at the target where it
+/// stands, not at the flat world under the hill (it used to fly into the hillside short of it).
+/// The realistic launch zone reaches it there too.
+#[test]
+fn hellfire_hits_a_target_on_the_hills() {
+    use stealth_sim::hills::{DIM, Hills};
+    for guided in [false, true] {
+        let (mut sim, mx, my, mut p) = helicopter(true, guided);
+        let hills = Hills::from_bytes(vec![255; DIM * DIM]).unwrap();
+        sim.set_hills(hills.clone());
+        // A target 2-3 km out on a hill at least 50 m up, the hovering helicopter 150 m over
+        // it with the missile's way there clear of the hills.
+        let up = (150.0 / (512_000.0 / 1_048_576.0)) as i32;
+        let clear = |(tx, ty): (i32, i32), hover: i32, g: i32| {
+            (0..=90).all(|k| {
+                let t = k as f64 / 100.0;
+                let x = mx + ((tx - mx) as f64 * t).round() as i32;
+                let y = my + ((ty - my) as f64 * t).round() as i32;
+                let z = (hover - 20) as f64 + (g - hover + 20) as f64 * t;
+                hills.ground_alt(x, y) as f64 + 20.0 <= z
+            })
+        };
+        let (tx, ty, hover) = (0..64)
+            .flat_map(|k| (0..8).map(move |d| (k, d)))
+            .find_map(|(k, d)| {
+                let a = std::f64::consts::TAU * d as f64 / 8.0;
+                let r = 128.0 + k as f64;
+                let (tx, ty) = (mx + (r * a.sin()) as i32, my - (r * a.cos()) as i32);
+                let g = hills.ground_alt(tx, ty);
+                let hover = g.max(hills.ground_alt(mx, my)) + up;
+                (g >= 100 && clear((tx, ty), hover, g)).then_some((tx, ty, hover))
+            })
+            .expect("a target on a hill in the clear");
+        {
+            let o = &mut sim.objects_mut()[5];
+            o.x = tx;
+            o.y = ty;
+            o.flags = 0;
+        }
+        let heading = ((tx - mx) as f64).atan2((my - ty) as f64) / std::f64::consts::TAU * 65536.0;
+        p.heading = (heading.round() as i32 & 0xFFFF) as u16;
+        p.altitude = hover as u16;
+        p.height = (hover - hills.ground_alt(mx, my)) as u16;
+        p.hud_mode = HudMode::Gnd;
+        p.pod = Some(PodAim { heading: p.heading, pitch: -0x100, ground: Some((tx, ty)) });
+        sim.step(&p, 15);
+        let z = sim.launch_zone().expect("a launch zone");
+        // (Classic guidance's zone starts farther out than this when fired from low down.)
+        assert!(z.in_zone() || !guided, "{z:?}");
+        p.cmd.fire = true;
+        // The hit's burst (kind 0x10) at the target, not only a ground impact's (-6) on the
+        // way (classic guidance's last step may clip the slope just short as it fuses).
+        let mut bursts = Vec::new();
+        for _ in 0..15 * 60 {
+            for e in sim.step(&p, 15) {
+                if let SimEvent::Explosion { x, y, kind, .. } = e {
+                    bursts.push((x - tx, y - ty, kind));
+                }
+            }
+            p.cmd = Commands::default();
+        }
+        assert!(bursts.contains(&(0, 0, 0x10)), "guided {guided}: {bursts:?}");
+    }
+}
+
 /// With realistic guidance a Hellfire leaves the rail along the aircraft's nose and flies on
 /// straight for 1 s before turning onto the spot (it can be lobbed); here 30 degrees off the
 /// nose, in its seeker's view.

@@ -198,6 +198,7 @@ pub fn follow(
     mut cams: Query<(&mut WorldPos, &mut Transform), With<UnitCamera>>,
     time: Res<Time<Real>>,
     drawn: Option<Res<crate::sim_render::DrawnUnits>>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     let view = &mut *view;
     // The view lives with the Ops screen.
@@ -217,6 +218,11 @@ pub fn follow(
                 && at != DVec3::ZERO
             {
                 p = at + DVec3::Y * 2.0;
+            } else if let UnitRef::Site(_) = unit
+                && let Some(t) = theater.as_deref()
+            {
+                // A site on the rolling hills there.
+                p = crate::sim_render::on_ground(&t.hills, p);
             }
             view.last = Some((p, heading));
             view.info = info;

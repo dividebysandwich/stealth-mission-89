@@ -1275,6 +1275,7 @@ fn kill_cam(
     observables: Query<(Entity, &Observable)>,
     aircraft: Query<&Aircraft, With<Player>>,
     time: Res<Time>,
+    theater: Option<Res<crate::world::Theater>>,
 ) {
     if let Some((left, back)) = kill.left {
         // A view key took over.
@@ -1317,7 +1318,9 @@ fn kill_cam(
             .sim
             .objects()
             .get(i)
-            .map(|o| crate::sim_render::map_point(o.x as f64 + 0.5, o.y as f64 + 0.5, 0.0)),
+            .map(|o| crate::sim_render::map_point(o.x as f64 + 0.5, o.y as f64 + 0.5, 0.0))
+            // On the rolling hills there.
+            .map(|p| theater.as_ref().map_or(p, |t| crate::sim_render::on_ground(&t.hills, p))),
         _ => None,
     };
     if entity.is_none() && at.is_none() {

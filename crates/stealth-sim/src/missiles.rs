@@ -429,7 +429,7 @@ impl Sim {
                         aim = a;
                         best = r;
                         hit = t;
-                        alt0 = 0;
+                        alt0 = self.hill_alt(o.x, o.y);
                         locked = true;
                     }
                 }
@@ -450,7 +450,7 @@ impl Sim {
                     aim = self.acq_aim;
                     best = self.acq_range;
                     hit = t;
-                    alt0 = 0;
+                    alt0 = self.hill_alt(o.x, o.y);
                     locked = true;
                 }
             }
@@ -462,7 +462,7 @@ impl Sim {
                     aim = self.acq_aim;
                     best = self.acq_range;
                     hit = gl;
-                    alt0 = 0;
+                    alt0 = self.hill_alt(o.x, o.y);
                     locked = true;
                 }
             }
