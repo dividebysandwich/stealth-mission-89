@@ -849,25 +849,26 @@ impl Sim {
         }
     }
 
-    /// Camera photo.
+    /// Camera photo. The F-14's TARPS pod and the A-6's camera (`fixed_camera`) have no camera
+    /// page and no lock to aim with: they look down ahead of the nose and photograph whatever
+    /// recon target is in view.
     fn photo(&mut self, ps: &PlayerState) {
         if self.pl.photo_timer > 0 {
             self.pl.photo_timer -= 1;
         }
         let spec = self.selected_spec();
         self.pl.targeting.photo = self.photo_cue(spec);
-        if !(spec == -1
-            && self.pl.pflags & pflags::BAY_OPEN != 0
-            && self.pl.camera_mfd
-            && self.pl.gnd_lock != -1)
-        {
+        let fixed = self.fixed_camera();
+        let aimed = fixed || (self.pl.camera_mfd && self.pl.gnd_lock != -1);
+        if !(spec == -1 && self.pl.pflags & pflags::BAY_OPEN != 0 && aimed) {
             self.pl.pflags &= !pflags::CAMERA_VIEW;
             return;
         }
         self.pl.pflags |= pflags::CAMERA_VIEW;
-        let t = self.pl.gnd_lock & 0x7F;
+        let lock = self.pl.gnd_lock & 0x7F;
         let mut in_view = 0;
         for k in 0..2 {
+            let t = if fixed { self.pl.targets[k].object } else { lock };
             if self.photo_aim(k, t).is_some_and(|(r, aim)| r + aim < self.photo_limit()) {
                 in_view |= k + 1;
             }
@@ -883,13 +884,18 @@ impl Sim {
             self.msg(text!("sim-target-photographed"));
             if in_view & 1 != 0 && self.pl.pflags & pflags::PRIMARY_DONE == 0 {
                 self.mark_target_reached(0);
-                self.log_event(0x8A, t);
+                self.log_event(0x8A, self.pl.targets[0].object);
             }
             if in_view & 2 != 0 && self.pl.pflags & pflags::SECONDARY_DONE == 0 {
                 self.mark_target_reached(1);
-                self.log_event(0x4A, t);
+                self.log_event(0x4A, self.pl.targets[1].object);
             }
         }
+    }
+
+    /// The camera is a fixed one without a camera page (the F-14's TARPS, the A-6's).
+    fn fixed_camera(&self) -> bool {
+        self.pl.tomcat || self.pl.intruder
     }
 
     /// A frame photographs a recon target when its range and the aiming error add up to less
@@ -925,7 +931,7 @@ impl Sim {
             PhotoNeeds::Camera
         } else if self.pl.pflags & pflags::BAY_OPEN == 0 {
             PhotoNeeds::BayOpen
-        } else if !self.pl.camera_mfd {
+        } else if !self.pl.camera_mfd && !self.fixed_camera() {
             PhotoNeeds::CameraPage
         } else {
             PhotoNeeds::Nothing

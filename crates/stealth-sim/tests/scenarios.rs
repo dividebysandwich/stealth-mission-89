@@ -2076,6 +2076,43 @@ fn photo_cue_guides_to_the_recon_target() {
     assert_eq!(sim.targeting().photo, None);
 }
 
+/// The F-14's TARPS camera (and the A-6's) has no camera page and needs no lock: every press
+/// takes a frame, and the recon target in the camera's view is photographed.
+#[test]
+fn a_fixed_camera_photographs_without_page_or_lock() {
+    let d = data();
+    let m = mission(d, 3, 0x1234, 1);
+    let opts = SimOptions { tomcat: true, ..Default::default() };
+    let mut sim = Sim::with_options(&d.sim, &m, opts);
+    sim.set_training(true);
+    let (cx, cy) = sandbox(&mut sim, &m);
+    place_site(&mut sim, 5, 0, cx, cy - 200);
+    sim.target_slots_mut()[0] = TargetSlot { mission_type: 1, object: 5, base: 0, code: 0x12 };
+    let camera = sim.weapon_types().iter().position(|w| w.spec == -1).unwrap();
+    sim.set_bay(0, camera as i32, 1);
+    sim.select_bay(0);
+    let mut p = player_at(cx, cy, 1000, 0, 300);
+    p.cmd.toggle_bay = true;
+    sim.step(&p, 15);
+    p.cmd = Commands::default();
+    for _ in 0..30 {
+        sim.step(&p, 15);
+    }
+    let mut frames = 0;
+    for _ in 0..3 {
+        p.cmd.fire = true;
+        for e in sim.step(&p, 15) {
+            frames += matches!(e, SimEvent::PhotoTaken { .. }) as i32;
+        }
+        p.cmd.fire = false;
+        for _ in 0..6 {
+            sim.step(&p, 15);
+        }
+    }
+    assert_eq!(frames, 3, "a frame each press, no camera page, no lock");
+    assert!(sim.objectives().primary_done, "the target in view photographed");
+}
+
 /// A Maverick fired from 3000 ft at a target `range` map units northeast (classic guidance
 /// does not steer for a bearing of exactly north), the nose on it: the
 /// launch zone at the shot and whether it hit (None: no lock from there).
@@ -5658,5 +5695,3 @@ fn heavier_bombs_have_a_wider_blast() {
     assert!(!heavy_bomb(&hard, 9, 20).0, "a Mk 82 leaves it standing");
     assert!(heavy_bomb(&hard, MK84_WEAPON, 20).0, "a Mk 84 wrecks it");
 }
-
-
