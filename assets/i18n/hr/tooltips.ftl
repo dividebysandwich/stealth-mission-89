@@ -337,6 +337,7 @@ tip-f14-ph-act = Ispaljuje Phoenix s vlastitom glavom uključenom odmah s tračn
 tip-f14-launch = Lansira odabranu raketu na sljedeći trag u redoslijedu gađanja
 tip-f14-missile-option = Što radar čini pri lansiranju radarske rakete: ništa, praćenje jednog cilja na njezin cilj, ili Phoenix aktivan odmah s tračnice
 tip-f14-weapon-select = Odabire sljedeće oružje, kao pilotova tipka za oružje
+tip-f14-camera = Snima kadar kamerom TARPS bez obzira na odabrano oružje
 tip-f14-lantirn-power = Kontejner LANTIRN uključen, pripravnost ili isključen
 tip-f14-lantirn-video = Što prikazuju TV slike: sliku kontejnera LANTIRN ili kamere TCS
 tip-f14-laser-arm = Aktivira laser kontejnera: vodi laserski vođene bombe na točku koju kontejner drži

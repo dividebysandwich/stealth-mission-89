@@ -442,8 +442,9 @@ fn tid(it: &mut Items) {
     it.put(Elem::TomcatLight(Light::MslPrep), rect(-280.0, -82.0, 34.0, 18.0), None, false);
     it.knob(Key::MissileOption, -330.0, -26.0);
     it.lamp(Key::Launch, -280.0, -30.0, 40.0, 24.0);
-    // The weapon select button beside the master caution light.
+    // The weapon select and the TARPS camera's buttons beside the master caution light.
     it.lamp(Key::WeaponSelect, -288.0, 18.0, 40.0, 20.0);
+    it.lamp(Key::Camera, -288.0, 44.0, 40.0, 20.0);
     let mc = Some(E::Action(Action::MasterCaution));
     it.put(Elem::Lamp(Mw, Some("MASTER\nCAUTION")), rect(-334.0, 16.0, 36.0, 18.0), mc, false);
     for (i, (label, action)) in

@@ -338,6 +338,7 @@ tip-f14-ph-act = Menembakkan Phoenix dengan pencarinya sendiri menyala sejak dar
 tip-f14-launch = Meluncurkan rudal yang dipilih ke jejak berikutnya dalam urutan tembak
 tip-f14-missile-option = Yang dilakukan radar saat rudal radar diluncurkan: tidak ada, pelacakan sasaran tunggal pada sasarannya, atau Phoenix aktif sejak dari rel
 tip-f14-weapon-select = Memilih senjata berikutnya, seperti tombol senjata pilot
+tip-f14-camera = Mengambil gambar dengan pod kamera TARPS, apa pun senjata yang dipilih
 tip-f14-lantirn-power = Pod LANTIRN nyala, siaga atau mati
 tip-f14-lantirn-video = Yang ditampilkan gambar TV: milik pod LANTIRN atau kamera TCS
 tip-f14-laser-arm = Mempersenjatai laser pod: memandu bom berpemandu laser ke titik yang dipegang pod

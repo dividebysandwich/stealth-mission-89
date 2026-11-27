@@ -338,6 +338,7 @@ tip-f14-ph-act = Saját keresőfejjel bekapcsolva indítja a Phoenixet a sínrő
 tip-f14-launch = Indítja a kiválasztott rakétát a lövési sorrend következő nyomvonalára
 tip-f14-missile-option = Mit tesz a radar radarrakéta indításakor: semmit, egycélkövetés a rakéta céljára, vagy Phoenix aktív már a sínről
 tip-f14-weapon-select = Kiválasztja a következő fegyvert, mint a pilóta fegyvergombja
+tip-f14-camera = Képet készít a TARPS kamerakonténerrel, bármelyik fegyver van kiválasztva
 tip-f14-lantirn-power = LANTIRN konténer be, készenlét vagy ki
 tip-f14-lantirn-video = Mit mutatnak a TV-képek: a LANTIRN konténerét vagy a TCS kameráét
 tip-f14-laser-arm = Élesíti a konténer lézerét: a lézervezérlésű bombákat a konténer által tartott pontra vezeti

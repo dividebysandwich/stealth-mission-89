@@ -337,6 +337,7 @@ tip-f14-ph-act = Laukaisee Phoenixin oma hakupää päällä suoraan kiskolta: e
 tip-f14-launch = Laukaisee valitun ohjuksen ampumajärjestyksen seuraavaan jälkeen
 tip-f14-missile-option = Mitä tutka tekee, kun tutkaohjus laukaistaan: ei mitään, yhden maalin seuranta sen maaliin, tai Phoenix aktiivinen suoraan kiskolta
 tip-f14-weapon-select = Valitsee seuraavan aseen kuten ohjaajan asenäppäin
+tip-f14-camera = Ottaa kuvan TARPS-kamerasäiliöllä valitusta aseesta riippumatta
 tip-f14-lantirn-power = LANTIRN-podi päällä, valmiustila tai pois
 tip-f14-lantirn-video = Mitä TV-kuvat näyttävät: LANTIRN-podin tai TCS-kameran kuvaa
 tip-f14-laser-arm = Virittää podin laserin: se ohjaa laserohjatut pommit pisteeseen, jota podi pitää

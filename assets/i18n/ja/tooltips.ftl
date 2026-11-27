@@ -338,6 +338,7 @@ tip-f14-ph-act = Phoenixを自身のシーカーを発射直後から作動さ�
 tip-f14-launch = 選択したミサイルを射撃順の次の航跡に発射
 tip-f14-missile-option = レーダーミサイル発射時のレーダーの動作：何もしない、その目標を単一目標追尾、またはPhoenixを発射直後からアクティブに
 tip-f14-weapon-select = パイロットの兵装キーと同じく次の兵装を選択
+tip-f14-camera = 選択中の兵装にかかわらずTARPSカメラポッドで1コマ撮影
 tip-f14-lantirn-power = LANTIRNポッドのオン、待機、オフ
 tip-f14-lantirn-video = TV映像の内容：LANTIRNポッドまたはTCSカメラ
 tip-f14-laser-arm = ポッドのレーザーを作動準備：ポッドが保持する点へレーザー誘導爆弾を誘導する

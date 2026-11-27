@@ -1069,6 +1069,18 @@
       "round": false
     },
     {
+      "control": "Tomcat(Camera)",
+      "key": "Item(Tomcat(Camera))",
+      "kind": "lamp",
+      "rect": [
+        -288.0,
+        44.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
       "control": "Action(MasterCaution)",
       "key": "Item(Lamp(Mw, Some(\"MASTER\\nCAUTION\")))",
       "kind": "cap",

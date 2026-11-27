@@ -338,6 +338,7 @@ tip-f14-ph-act = Feuert die Phoenix mit eingeschaltetem eigenem Suchkopf ab der 
 tip-f14-launch = Startet den gewählten Flugkörper auf die nächste Spur der Schussfolge
 tip-f14-missile-option = Was das Radar beim Start eines Radarflugkörpers tut: nichts, Einzelzielverfolgung auf dessen Ziel, oder die Phoenix aktiv ab der Schiene
 tip-f14-weapon-select = Wählt die nächste Waffe, wie die Waffentaste des Piloten
+tip-f14-camera = Macht ein Bild mit dem TARPS-Kamerapod, welche Waffe auch gewählt ist
 tip-f14-lantirn-power = LANTIRN-Pod ein, Bereitschaft oder aus
 tip-f14-lantirn-video = Was die TV-Bilder zeigen: das des LANTIRN-Pods oder das der TCS-Kamera
 tip-f14-laser-arm = Schärft den Laser des Pods: er lenkt lasergelenkte Bomben auf den Punkt, den der Pod hält

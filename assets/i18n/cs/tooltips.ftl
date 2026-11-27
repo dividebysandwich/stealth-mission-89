@@ -338,6 +338,7 @@ tip-f14-ph-act = Odpálí Phoenix s vlastní hlavicí zapnutou už od kolejnice:
 tip-f14-launch = Odpálí zvolenou střelu na další stopu v pořadí střelby
 tip-f14-missile-option = Co udělá radar při odpálení radarové střely: nic, sledování jednoho cíle na její cíl, nebo Phoenix aktivní hned od kolejnice
 tip-f14-weapon-select = Zvolí další zbraň, jako pilotova klávesa zbraní
+tip-f14-camera = Pořídí snímek kontejnerem s kamerou TARPS bez ohledu na zvolenou zbraň
 tip-f14-lantirn-power = Kontejner LANTIRN zap., pohotovost nebo vyp.
 tip-f14-lantirn-video = Co ukazují TV obrazy: obraz kontejneru LANTIRN nebo kamery TCS
 tip-f14-laser-arm = Odjistí laser kontejneru: navádí laserem naváděné pumy na bod, který kontejner drží

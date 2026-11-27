@@ -337,6 +337,7 @@ tip-f14-ph-act = Palaiž Phoenix ar ieslēgtu paša galviņu jau no sliedes: tra
 tip-f14-launch = Palaiž izvēlēto raķeti uz nākamo trasi šaušanas secībā
 tip-f14-missile-option = Ko radars dara, palaižot radara raķeti: neko, viena mērķa sekošana tās mērķim vai Phoenix aktīvs jau no sliedes
 tip-f14-weapon-select = Izvēlas nākamo ieroci, kā pilota ieroču taustiņš
+tip-f14-camera = Uzņem kadru ar TARPS kameras konteineru neatkarīgi no izvēlētā ieroča
 tip-f14-lantirn-power = LANTIRN konteiners ieslēgts, gaidīšana vai izslēgts
 tip-f14-lantirn-video = Ko rāda TV attēli: LANTIRN konteinera vai TCS kameras attēlu
 tip-f14-laser-arm = Aktivizē konteinera lāzeru: tas vada lāzervadāmās bumbas uz punktu, ko tur konteiners

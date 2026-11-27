@@ -2111,6 +2111,22 @@ fn a_fixed_camera_photographs_without_page_or_lock() {
     }
     assert_eq!(frames, 3, "a frame each press, no camera page, no lock");
     assert!(sim.objectives().primary_done, "the target in view photographed");
+    // The back seat's camera button: a frame whatever is selected (here a Sidewinder), none
+    // without a camera aboard.
+    sim.set_bay(1, 0, 2);
+    sim.select_bay(1);
+    let mut photo = |sim: &mut Sim| {
+        p.cmd = Commands { photo: true, ..Default::default() };
+        let taken = sim.step(&p, 15).iter().any(|e| matches!(e, SimEvent::PhotoTaken { .. }));
+        p.cmd = Commands::default();
+        for _ in 0..6 {
+            sim.step(&p, 15);
+        }
+        taken
+    };
+    assert!(photo(&mut sim), "the camera button with a Sidewinder selected");
+    sim.set_bay(0, 0, 2);
+    assert!(!photo(&mut sim), "no camera aboard");
 }
 
 /// A Maverick fired from 3000 ft at a target `range` map units northeast (classic guidance

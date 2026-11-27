@@ -564,6 +564,12 @@ impl Combat {
         self.pending.next_bay = true;
     }
 
+    /// The back seat's camera button: a frame from the camera aboard at the next simulation
+    /// frame, whatever is selected.
+    pub fn photo(&mut self) {
+        self.pending.photo = true;
+    }
+
     /// Designates a ground point (map units) at the next simulation frame.
     pub fn designate_at(&mut self, x: i32, y: i32) {
         self.pending.designate_at = Some((x, y));

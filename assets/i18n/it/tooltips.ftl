@@ -337,6 +337,7 @@ tip-f14-ph-act = Spara il Phoenix con il proprio cercatore acceso dalla rotaia: 
 tip-f14-launch = Lancia il missile selezionato sulla prossima traccia nell'ordine di tiro
 tip-f14-missile-option = Cosa fa il radar al lancio di un missile radar: nulla, inseguimento di bersaglio singolo sul suo bersaglio, o il Phoenix attivo dalla rotaia
 tip-f14-weapon-select = Seleziona l'arma successiva, come il tasto armi del pilota
+tip-f14-camera = Scatta un fotogramma con il pod fotocamera TARPS, qualunque arma sia selezionata
 tip-f14-lantirn-power = Pod LANTIRN acceso, in attesa o spento
 tip-f14-lantirn-video = Cosa mostrano le immagini TV: quella del pod LANTIRN o della telecamera TCS
 tip-f14-laser-arm = Arma il laser del pod: guida le bombe a guida laser sul punto che il pod tiene

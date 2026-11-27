@@ -851,7 +851,8 @@ impl Sim {
 
     /// Camera photo. The F-14's TARPS pod and the A-6's camera (`fixed_camera`) have no camera
     /// page and no lock to aim with: they look down ahead of the nose and photograph whatever
-    /// recon target is in view.
+    /// recon target is in view, and the back seat's camera button (`photo`) takes a frame
+    /// whatever weapon is selected.
     fn photo(&mut self, ps: &PlayerState) {
         if self.pl.photo_timer > 0 {
             self.pl.photo_timer -= 1;
@@ -859,8 +860,9 @@ impl Sim {
         let spec = self.selected_spec();
         self.pl.targeting.photo = self.photo_cue(spec);
         let fixed = self.fixed_camera();
+        let button = ps.cmd.photo && fixed && self.camera_aboard();
         let aimed = fixed || (self.pl.camera_mfd && self.pl.gnd_lock != -1);
-        if !(spec == -1 && self.pl.pflags & pflags::BAY_OPEN != 0 && aimed) {
+        if !((spec == -1 || button) && self.pl.pflags & pflags::BAY_OPEN != 0 && aimed) {
             self.pl.pflags &= !pflags::CAMERA_VIEW;
             return;
         }
@@ -873,7 +875,8 @@ impl Sim {
                 in_view |= k + 1;
             }
         }
-        if self.pl.photo_timer == 0 && (ps.cmd.fire || self.pl.prev_fire) {
+        let shutter = (spec == -1 && (ps.cmd.fire || self.pl.prev_fire)) || button;
+        if self.pl.photo_timer == 0 && shutter {
             self.pl.photo_timer = 4;
             self.pl.photo_frames += 1;
             self.msg(text!("sim-frame", frame = self.pl.photo_frames));
@@ -896,6 +899,15 @@ impl Sim {
     /// The camera is a fixed one without a camera page (the F-14's TARPS, the A-6's).
     fn fixed_camera(&self) -> bool {
         self.pl.tomcat || self.pl.intruder
+    }
+
+    /// A camera is aboard.
+    fn camera_aboard(&self) -> bool {
+        self.pl.bays.iter().any(|&(w, n)| {
+            n > 0
+                && w >= 0
+                && self.weapon_types.get(w as usize).is_some_and(|t| t.spec as i32 == -1)
+        })
     }
 
     /// A frame photographs a recon target when its range and the aiming error add up to less

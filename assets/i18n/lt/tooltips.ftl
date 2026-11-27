@@ -338,6 +338,7 @@ tip-f14-ph-act = Paleidžia Phoenix su įjungta sava galvute nuo pat bėgio: žy
 tip-f14-launch = Paleidžia pasirinktą raketą į kitą žymę šaudymo eilėje
 tip-f14-missile-option = Ką radaras daro paleidžiant radarinę raketą: nieko, vieno taikinio sekimas į jos taikinį arba Phoenix aktyvus nuo pat bėgio
 tip-f14-weapon-select = Parenka kitą ginklą, kaip piloto ginklų klavišas
+tip-f14-camera = Padaro kadrą TARPS kameros konteineriu, nesvarbu, koks ginklas pasirinktas
 tip-f14-lantirn-power = LANTIRN konteineris įjungtas, budėjimas ar išjungtas
 tip-f14-lantirn-video = Ką rodo TV vaizdai: LANTIRN konteinerio ar TCS kameros
 tip-f14-laser-arm = Užtaiso konteinerio lazerį: jis veda lazeriu valdomas bombas į tašką, kurį laiko konteineris

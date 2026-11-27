@@ -480,6 +480,10 @@ pub enum HudMode {
 pub struct Commands {
     /// Enter / joystick button 1 (fire the selected weapon, camera shutter). Holding repeats every 4 frames.
     pub fire: bool,
+    /// The back seat's camera button (the F-14 RIO's, the A-6 B/N's): a frame from the camera
+    /// aboard, whatever weapon is selected.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub photo: bool,
     /// Backspace / button 0 held: cannon.
     pub gun: bool,
     /// The fire button held: fires the cannon when it is selected.

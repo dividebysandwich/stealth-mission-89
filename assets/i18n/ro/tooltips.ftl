@@ -337,6 +337,7 @@ tip-f14-ph-act = Trage Phoenix cu propriul cap de căutare pornit de pe șină: 
 tip-f14-launch = Lansează racheta aleasă spre următoarea pistă din ordinea de tragere
 tip-f14-missile-option = Ce face radarul la lansarea unei rachete radar: nimic, urmărire a unei singure ținte pe ținta ei, sau Phoenix activ de pe șină
 tip-f14-weapon-select = Selectează arma următoare, ca tasta de arme a pilotului
+tip-f14-camera = Face un cadru cu containerul cu cameră TARPS, oricare ar fi arma selectată
 tip-f14-lantirn-power = Container LANTIRN pornit, așteptare sau oprit
 tip-f14-lantirn-video = Ce arată imaginile TV: cea a containerului LANTIRN sau a camerei TCS
 tip-f14-laser-arm = Armează laserul containerului: ghidează bombele cu ghidaj laser spre punctul ținut de container

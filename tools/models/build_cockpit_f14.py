@@ -1328,7 +1328,7 @@ if RIO:
     for v in (-62.0, -8.0):
         knob(-232.0, v, 0.013, 0.004, "dark", offset=PLATE)
         knob(-232.0, v, 0.010, 0.016, "knob_pale", offset=PLATE)
-    # (Clear of the WPN SEL button beside the master caution light.)
+    # (Clear of the WPN SEL and CAMERA buttons beside the master caution light.)
     for u in (-232.0, -208.0):
         toggle(u, 34.0)
     for u in (-262.0, -224.0):

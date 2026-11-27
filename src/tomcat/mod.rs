@@ -488,11 +488,12 @@ pub enum Key {
     TidOption(TidOption),
     TidHook,
     /// The RIO's armament panel: Phoenix active off the rail, LAUNCH, the missile options, the
-    /// weapon select button (the next weapon, as the pilot's key).
+    /// weapon select button (the next weapon, as the pilot's key) and the TARPS camera's button.
     PhAct,
     Launch,
     MissileOption,
     WeaponSelect,
+    Camera,
     /// The RIO's LANTIRN panel.
     LtsPower,
     LtsVideo,
@@ -551,6 +552,7 @@ impl Key {
             Key::Launch,
             Key::MissileOption,
             Key::WeaponSelect,
+            Key::Camera,
             Key::LtsPower,
             Key::LtsVideo,
             Key::LaserArm,
@@ -613,6 +615,7 @@ impl Key {
             | Key::TidHook
             | Key::Launch
             | Key::WeaponSelect
+            | Key::Camera
             | Key::Iff
             | Key::LtsMode(_)
             | Key::LtsOper => "lamp",
@@ -729,6 +732,7 @@ impl Key {
             Key::Launch => "LAUNCH",
             Key::MissileOption => "MSL\nOPTIONS",
             Key::WeaponSelect => "WPN\nSEL",
+            Key::Camera => "CAMERA",
             Key::LtsPower => "POWER",
             Key::LtsVideo => "VIDEO",
             Key::LaserArm => "LASER",
@@ -797,6 +801,7 @@ impl Key {
             Key::Launch => "tip-f14-launch",
             Key::MissileOption => "tip-f14-missile-option",
             Key::WeaponSelect => "tip-f14-weapon-select",
+            Key::Camera => "tip-f14-camera",
             Key::LtsPower => "tip-f14-lantirn-power",
             Key::LtsVideo => "tip-f14-lantirn-video",
             Key::LaserArm => "tip-f14-laser-arm",
@@ -882,8 +887,10 @@ pub struct TomcatPanel {
     pub missile_option: MissileOption,
     /// LAUNCH presses so far.
     pub launches: u8,
-    /// WPN SEL presses so far (the pilot's client takes each new one, in either seat).
+    /// WPN SEL and CAMERA presses so far (the pilot's client takes each new one, in either
+    /// seat).
     pub selects: u8,
+    pub photos: u8,
     /// The LANTIRN panel.
     pub lts_power: Power,
     pub lts_lantirn: bool,
@@ -947,6 +954,7 @@ impl Default for TomcatPanel {
             missile_option: MissileOption::default(),
             launches: 0,
             selects: 0,
+            photos: 0,
             lts_power: Power::Off,
             lts_lantirn: false,
             laser_armed: false,
@@ -1031,6 +1039,7 @@ impl TomcatPanel {
             }
             Key::MissileOption => self.missile_option = next(&MISSILE_OPTIONS, self.missile_option),
             Key::WeaponSelect => self.selects = self.selects.wrapping_add(1),
+            Key::Camera => self.photos = self.photos.wrapping_add(1),
             Key::LtsPower => self.lts_power = next(&POWERS, self.lts_power),
             Key::LtsVideo => self.lts_lantirn = !self.lts_lantirn,
             Key::LaserArm => self.laser_armed = !self.laser_armed,
@@ -1172,6 +1181,7 @@ impl TomcatPanel {
         b.put(index(&ALQ126S, self.alq126), 2);
         b.put(self.iffs, 4);
         b.put(self.selects, 3);
+        b.put(self.photos, 3);
         b.buf
     }
 
@@ -1228,6 +1238,7 @@ impl TomcatPanel {
         self.alq126 = pick(&ALQ126S, b.get(2));
         self.iffs = (self.iffs & !0xf) | b.get(4);
         self.selects = (self.selects & !7) | b.get(3);
+        self.photos = (self.photos & !7) | b.get(3);
     }
 }
 

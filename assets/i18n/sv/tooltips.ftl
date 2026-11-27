@@ -337,6 +337,7 @@ tip-f14-ph-act = Avfyrar Phoenix med egen målsökare på från skenan: den krä
 tip-f14-launch = Avfyrar den valda roboten mot nästa spår i skottordningen
 tip-f14-missile-option = Vad radarn gör när en radarrobot avfyras: inget, enmålsföljning på dess mål, eller Phoenix aktiv från skenan
 tip-f14-weapon-select = Väljer nästa vapen, som pilotens vapenknapp
+tip-f14-camera = Tar en bild med TARPS-kamerakapseln, vilket vapen som än är valt
 tip-f14-lantirn-power = LANTIRN-kapsel på, beredskap eller av
 tip-f14-lantirn-video = Vad tv-bilderna visar: LANTIRN-kapselns eller TCS-kamerans
 tip-f14-laser-arm = Armerar kapselns laser: den styr laserstyrda bomber till punkten kapseln håller

@@ -337,6 +337,7 @@ tip-f14-ph-act = Scaoileann sé an Phoenix lena chuardaitheoir féin ar siúl ó
 tip-f14-launch = Lainseálann sé an diúracán roghnaithe ar an gcéad rian eile san ord lámhaigh
 tip-f14-missile-option = Cad a dhéanann an radar nuair a lainseáiltear diúracán radair: faic, rianú sprice aonair ar a sprioc, nó an Phoenix gníomhach ón ráille
 tip-f14-weapon-select = Roghnaíonn sé an chéad arm eile, mar a dhéanann eochair airm an phíolóta
+tip-f14-camera = Glacann sé fráma le pod ceamara TARPS, cibé arm atá roghnaithe
 tip-f14-lantirn-power = Pod LANTIRN air, fuireachas nó as
 tip-f14-lantirn-video = Cad a thaispeánann na pictiúir TV: pictiúr phod LANTIRN nó cheamara TCS
 tip-f14-laser-arm = Armálann sé léasar an phod: treoraíonn sé buamaí léasarthreoraithe chuig an bpointe a choinníonn an pod

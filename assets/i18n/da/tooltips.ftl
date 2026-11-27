@@ -337,6 +337,7 @@ tip-f14-ph-act = Affyrer Phoenix med egen søger tændt fra skinnen: den kræver
 tip-f14-launch = Affyrer det valgte missil mod det næste spor i skudrækkefølgen
 tip-f14-missile-option = Hvad radaren gør når et radarmissil affyres: intet, enkeltmålsfølgning på dets mål, eller Phoenix aktiv fra skinnen
 tip-f14-weapon-select = Vælger det næste våben, som pilotens våbentast
+tip-f14-camera = Tager et billede med TARPS-kamerapoden, uanset hvilket våben der er valgt
 tip-f14-lantirn-power = LANTIRN-pod til, standby eller fra
 tip-f14-lantirn-video = Hvad tv-billederne viser: LANTIRN-podens eller TCS-kameraets
 tip-f14-laser-arm = Armerer podens laser: den styrer laserstyrede bomber til det punkt poden holder

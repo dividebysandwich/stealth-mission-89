@@ -134,15 +134,15 @@ fn remote_launch(
     *last = Some(count);
 }
 
-/// The RIO's WPN SEL (the panel's press count, shared): the pilot's client (mine, whichever
-/// seat I sit in) steps to the next weapon.
+/// The RIO's WPN SEL and CAMERA (the panel's press counts, shared): the pilot's client (mine,
+/// whichever seat I sit in) steps to the next weapon or takes a frame with the TARPS camera.
 fn rio_buttons(
     settings: Res<crate::settings::Settings>,
     mut combat: Option<ResMut<crate::combat::Combat>>,
     panel: Res<TomcatPanel>,
-    mut last: Local<Option<u8>>,
+    mut last: Local<Option<(u8, u8)>>,
 ) {
-    let counts = panel.selects & 7;
+    let counts = (panel.selects & 7, panel.photos & 7);
     let owner =
         combat.as_deref_mut().filter(|_| settings.aircraft == AircraftKind::F14).filter(|c| {
             let me = c.sim.active_pilot();
@@ -152,8 +152,13 @@ fn rio_buttons(
         *last = None;
         return;
     };
-    if last.is_some_and(|l| l != counts) {
-        c.step_weapon();
+    if let Some((selects, photos)) = *last {
+        if selects != counts.0 {
+            c.step_weapon();
+        }
+        if photos != counts.1 {
+            c.photo();
+        }
     }
     *last = Some(counts);
 }

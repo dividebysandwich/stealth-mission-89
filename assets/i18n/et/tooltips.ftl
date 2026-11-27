@@ -338,6 +338,7 @@ tip-f14-ph-act = Laseb Phoenixi välja oma otsijaga sees kohe rööpalt: jälge 
 tip-f14-launch = Laseb valitud raketi välja laskejärjekorra järgmise jälje pihta
 tip-f14-missile-option = Mida radar teeb radarraketi stardil: mitte midagi, ühe sihtmärgi jälgimine selle sihtmärgile või Phoenix aktiivne kohe rööpalt
 tip-f14-weapon-select = Valib järgmise relva nagu piloodi relvaklahv
+tip-f14-camera = Teeb kaadri TARPS-kamerakonteineriga, olenemata valitud relvast
 tip-f14-lantirn-power = LANTIRN-konteiner sees, ooterežiim või väljas
 tip-f14-lantirn-video = Mida TV-pildid näitavad: LANTIRN-konteineri või TCS-kaamera pilti
 tip-f14-laser-arm = Lülitab konteineri laseri valmis: see juhib laserjuhitavad pommid punkti, mida konteiner hoiab

@@ -337,6 +337,7 @@ tip-f14-ph-act = Tire le Phoenix avec son propre autodirecteur allumé dès le r
 tip-f14-launch = Tire le missile choisi sur la piste suivante dans l'ordre de tir
 tip-f14-missile-option = Ce que fait le radar au tir d'un missile radar : rien, poursuite sur cible unique de sa cible, ou Phoenix actif dès le rail
 tip-f14-weapon-select = Sélectionne l'arme suivante, comme la touche d'arme du pilote
+tip-f14-camera = Prend une image avec la nacelle caméra TARPS, quelle que soit l'arme choisie
 tip-f14-lantirn-power = Nacelle LANTIRN en marche, en veille ou arrêtée
 tip-f14-lantirn-video = Ce que montrent les images TV : celle de la nacelle LANTIRN ou de la caméra TCS
 tip-f14-laser-arm = Arme le laser de la nacelle : il guide les bombes à guidage laser vers le point que tient la nacelle

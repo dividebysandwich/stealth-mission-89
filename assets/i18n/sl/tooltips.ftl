@@ -337,6 +337,7 @@ tip-f14-ph-act = Izstreli Phoenix z lastno iskalno glavo, vklopljeno že z vodil
 tip-f14-launch = Izstreli izbrano raketo na naslednjo sled v vrstnem redu streljanja
 tip-f14-missile-option = Kaj stori radar ob izstrelitvi radarske rakete: nič, sledenje enemu cilju na njen cilj ali Phoenix aktiven že z vodila
 tip-f14-weapon-select = Izbere naslednje orožje, kot pilotova tipka za orožje
+tip-f14-camera = Posname posnetek s kamero TARPS ne glede na izbrano orožje
 tip-f14-lantirn-power = Zabojnik LANTIRN vklopljen, pripravljenost ali izklopljen
 tip-f14-lantirn-video = Kaj prikazujejo TV slike: sliko zabojnika LANTIRN ali kamere TCS
 tip-f14-laser-arm = Aktivira laser zabojnika: vodi lasersko vodene bombe na točko, ki jo drži zabojnik
