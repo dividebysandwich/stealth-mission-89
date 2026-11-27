@@ -30,6 +30,20 @@ pub fn colours() -> std::sync::Arc<[u32; 256]> {
     crate::intruder::phosphor([3, 10, 4], [70, 255, 110])
 }
 
+/// The DDD's tube: lit, its marks dark (index 0 the lit screen, the ramp's ink darker the
+/// brighter it is drawn), the antenna's line (`f14_scopes::DDD_SWEEP`) white.
+pub fn ddd_colours() -> std::sync::Arc<[u32; 256]> {
+    let (screen, mark) = ([104.0f32, 176.0, 142.0], [12.0f32, 40.0, 28.0]);
+    let rgba = |c: [f32; 3]| u32::from_le_bytes([c[0] as u8, c[1] as u8, c[2] as u8, 255]);
+    let mut lut = [rgba(screen); 256];
+    for (i, v) in lut.iter_mut().enumerate().skip(1).take(100) {
+        let t = i as f32 / 100.0;
+        *v = rgba(std::array::from_fn(|k| screen[k] + (mark[k] - screen[k]) * t));
+    }
+    lut[scopes::DDD_SWEEP as usize] = rgba([232.0, 255.0, 240.0]);
+    std::sync::Arc::new(lut)
+}
+
 /// What the displays draw from.
 pub struct Inputs<'a> {
     pub fonts: &'a Fonts,
@@ -172,8 +186,8 @@ pub fn draw_hsd(c: &mut Canvas, i: &Inputs) {
 pub fn draw_ddd(c: &mut Canvas, i: &Inputs) {
     let cursor = i.scene.cursor;
     let ddd = (cursor.active == Some(Cursor::Ddd)).then_some(cursor.ddd);
-    scopes::draw_ddd(c, i.radar, i.controls, ddd);
-    super::dump_png(c, &colours(), "ddd");
+    scopes::draw_ddd(c, i.radar, i.controls, ddd, false);
+    super::dump_png(c, &ddd_colours(), "ddd");
 }
 
 /// The RIO's tactical information display: the tactical picture, or the LANTIRN's in TV.

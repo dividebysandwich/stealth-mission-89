@@ -69,10 +69,16 @@ pub fn ddd_spot(r: &Awg9, ctl: &Awg9Controls, hit: &crate::awg9::Hit) -> Vec2 {
     Vec2::new(hit.az, up)
 }
 
+/// The DDD's antenna line's colour index (white in `tomcat::displays::ddd_colours`; the ramp
+/// is the dark ink on the lit tube).
+pub const DDD_SWEEP: u8 = 200;
+
 /// The DDD: returns, gates and carets of the radar `r` set by `ctl`; `cursor`: the hand
-/// controller's acquisition cursor (azimuth in radians, 0..1 up the scope), two bars round its
-/// place.
-pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec2>) {
+/// controller's acquisition cursor (azimuth in radians, 0..1 up the scope), two bars over each
+/// other at its place; `iff`: the IFF interrogates, friendly returns get bars over and under them.
+/// The tube is lit and its marks dark (`tomcat::displays::ddd_colours`), the antenna's azimuth a
+/// white line up it.
+pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec2>, iff: bool) {
     c.clear(0);
     let (w, h) = (c.w as f32, c.h as f32);
     let m = 0.08 * w;
@@ -80,18 +86,32 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
     let az_x = |az: f32| x0 + (az / GIMBAL * 0.5 + 0.5) * (x1 - x0);
     let range_y = |range: f32| y1 - (range / ctl.range).clamp(0.0, 1.05) * (y1 - y0);
     let vc_y = |vc: f32| y1 - ((vc * KT + 200.0) / (VC_TOP + 200.0)).clamp(0.0, 1.05) * (y1 - y0);
-    // The frame's grid: azimuth every 10 degrees along the foot, range quarters.
-    for k in -6..=6 {
+    // The frame's grid: azimuth every 10 degrees along the foot with 30 and 0 printed, the two
+    // range lines at 30 degrees either side with their tenths, the cross in the middle.
+    for k in -6i32..=6 {
         let x = az_x(k as f32 * 10f32.to_radians());
         let len = if k % 3 == 0 { 0.03 * h } else { 0.015 * h };
-        c.stroke(Vec2::new(x, y1), Vec2::new(x, y1 + len), 1.0, ink(DIM));
+        c.stroke(Vec2::new(x, y1), Vec2::new(x, y1 + len), 1.0, ink(MID));
+        if k % 3 == 0 && k.abs() <= 3 {
+            let s = format!("{}", (k * 10).abs());
+            text(c, Vec2::new(x, y1 + 0.055 * h), &s, 0.03 * h, MID, Align::Centre);
+        }
     }
-    for q in 1..4 {
-        let y = y0 + (y1 - y0) * q as f32 / 4.0;
-        c.stroke(Vec2::new(x0 - 0.02 * w, y), Vec2::new(x0, y), 1.0, ink(DIM));
+    for s in [-1.0, 1.0] {
+        let x = az_x(s * 30f32.to_radians());
+        c.stroke(Vec2::new(x, y0), Vec2::new(x, y1), 1.0, ink(MID));
+        for q in 0..=10 {
+            let y = y1 - (y1 - y0) * q as f32 / 10.0;
+            let len = if q % 5 == 0 { 0.03 * w } else { 0.015 * w };
+            c.stroke(Vec2::new(x - len, y), Vec2::new(x + len, y), 1.0, ink(MID));
+        }
+    }
+    let mid = Vec2::new(az_x(0.0), (y0 + y1) / 2.0);
+    for d in [Vec2::X, Vec2::Y] {
+        c.stroke(mid - d * 0.03 * h, mid + d * 0.03 * h, 1.0, ink(MID));
     }
     if !r.mode.on() {
-        text(c, Vec2::new(w / 2.0, h / 2.0), "STBY", 0.07 * h, MID, Align::Centre);
+        text(c, Vec2::new(w / 2.0, h * 0.3), "STBY", 0.07 * h, MID, Align::Centre);
         return;
     }
     // The scan's limits.
@@ -102,16 +122,9 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
             c.dashed(Vec2::new(x, y0), Vec2::new(x, y1), 4.0, 6.0, 1.0, ink(DIM));
         }
     }
-    // The antenna's carets: azimuth at the foot, elevation at the left edge.
+    // The antenna: its azimuth a white line up the scope, its elevation a caret at the left.
     let bx = az_x(r.beam);
-    c.triangle(
-        [
-            Vec2::new(bx, y1 + 0.01 * h),
-            Vec2::new(bx - 0.02 * w, y1 + 0.05 * h),
-            Vec2::new(bx + 0.02 * w, y1 + 0.05 * h),
-        ],
-        ink(MID),
-    );
+    c.stroke(Vec2::new(bx, y0), Vec2::new(bx, y1), 2.5, DDD_SWEEP);
     let ey = (y0 + y1) / 2.0 - r.elevation / (60f32.to_radians()) * (y1 - y0) / 2.0;
     c.triangle(
         [
@@ -130,9 +143,9 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
     let velocity = r.mode.velocity_only();
     if let Some(k) = cursor {
         let p = Vec2::new(az_x(k.x), y1 - k.y.clamp(0.0, 1.0) * (y1 - y0));
-        for sx in [-1.0, 1.0] {
-            let x = p.x + sx * 0.035 * w;
-            c.stroke(Vec2::new(x, p.y - 0.04 * h), Vec2::new(x, p.y + 0.04 * h), 1.5, ink(BRIGHT));
+        for sy in [-1.0, 1.0] {
+            let y = p.y + sy * 0.012 * h;
+            c.stroke(Vec2::new(p.x - 0.04 * w, y), Vec2::new(p.x + 0.04 * w, y), 1.5, ink(BRIGHT));
         }
     }
     let hooked = r.hook;
@@ -142,6 +155,14 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
         let fade = (1.0 - hit.age / (2.0 * r.frame)).clamp(0.15, 1.0);
         let half = 0.018 * w;
         c.stroke(Vec2::new(x - half, y), Vec2::new(x + half, y), 0.012 * h, ink(BRIGHT * fade));
+        if iff && hit.friendly {
+            // The IFF's reply: grey bars over and under the return.
+            for sy in [-1.0, 1.0] {
+                let by = y + sy * 0.022 * h;
+                let b = 1.4 * half;
+                c.stroke(Vec2::new(x - b, by), Vec2::new(x + b, by), 0.008 * h, ink(0.4 * fade));
+            }
+        }
         if Some(hit.target) == hooked {
             c.frame(
                 Vec2::new(x - 2.0 * half, y - 0.03 * h),
@@ -177,14 +198,13 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
             t.closure * KT,
             t.speed * KT
         );
-        text(c, Vec2::new(w / 2.0, 0.045 * h), &data, 0.045 * h, MID, Align::Centre);
+        text(c, Vec2::new(w / 2.0, y0 + 0.035 * h), &data, 0.03 * h, MID, Align::Centre);
     }
-    // The mode and scale.
-    let mode = r.mode.label();
-    text(c, Vec2::new(x0, h - 0.035 * h), mode, 0.04 * h, MID, Align::Left);
+    // The mode and scale over the scope (the tube's corners are round).
     let scale =
         if velocity { format!("VC {VC_TOP:.0}") } else { format!("{:.0}", ctl.range as f64 / NM) };
-    text(c, Vec2::new(x1, h - 0.035 * h), &scale, 0.04 * h, MID, Align::Right);
+    let top = format!("{}  {scale}", r.mode.label());
+    text(c, Vec2::new(w / 2.0, 0.04 * h), &top, 0.035 * h, MID, Align::Centre);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1132,7 +1152,7 @@ mod tests {
             knots: 400.0,
         };
         let mut c = Canvas::scaled(320, 320, 1);
-        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)));
+        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)), true);
         assert!(lit(&c) > 0);
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(30_000.0, 80_000.0)];
         for stab in [TidStab::Ground, TidStab::Aircraft, TidStab::Attack] {
@@ -1248,8 +1268,8 @@ mod preview {
         let pal = crate::intruder::phosphor([2, 10, 4], [80, 255, 110]);
         let own = Own { pos: own, heading: 0.0, pitch: 0.05, roll: -0.35, knots: 450.0 };
         let mut c = Canvas::scaled(320, 320, 2);
-        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)));
-        crate::intruder::dump_png(&c, &pal, "f14_ddd");
+        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)), true);
+        crate::intruder::dump_png(&c, &crate::tomcat::displays::ddd_colours(), "f14_ddd");
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(-20_000.0, 100_000.0)];
         let inf = [InFlight { target: ContactRef::Unit(2), to_go: -23.0 }];
         draw_tid(

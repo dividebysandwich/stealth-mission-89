@@ -495,11 +495,10 @@ pub(super) fn screen(
         CanvasRole::Phd => Some(crate::intruder::scope::phd_colours()),
         CanvasRole::Dvri => Some(crate::intruder::scope::dvri_colours()),
         CanvasRole::Sensor => Some(crate::intruder::scope::sensor_colours()),
-        CanvasRole::F14Vdi
-        | CanvasRole::F14Hsd
-        | CanvasRole::Ddd
-        | CanvasRole::Tid
-        | CanvasRole::Ecmd => Some(crate::tomcat::displays::colours()),
+        CanvasRole::Ddd => Some(crate::tomcat::displays::ddd_colours()),
+        CanvasRole::F14Vdi | CanvasRole::F14Hsd | CanvasRole::Tid | CanvasRole::Ecmd => {
+            Some(crate::tomcat::displays::colours())
+        }
         _ => None,
     };
     let material = materials.add(cockpit_part(
