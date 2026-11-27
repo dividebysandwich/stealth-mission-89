@@ -273,6 +273,7 @@ tip-a6-south-west = Zuid of west: buiten de kaart, POS weigert het
 tip-a6-digit = Het nummer van een routepunt, of het volgende cijfer van een coördinaat
 tip-a6-pos = Met TARGET: de ingetoetste coördinaten invoeren
 tip-a6-no-effect = Geen effect in het spel
+tip-a6-camera = Maakt een opname met de camerapod, welk wapen ook gekozen is
 tip-a6-light-attack = Een aanvalsknop is ingedrukt
 tip-a6-light-in-range = De lossing is minder dan 20 s weg
 tip-a6-light-computer = Computer uit, geen doel of coördinaten geweigerd

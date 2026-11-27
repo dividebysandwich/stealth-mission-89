@@ -273,6 +273,7 @@ tip-a6-south-west = Pietūs arba vakarai: už žemėlapio, POS atmeta
 tip-a6-digit = Maršruto taško numeris arba kitas koordinatės skaitmuo
 tip-a6-pos = Su TARGET: patvirtinti įvestas koordinates
 tip-a6-no-effect = Žaidime neveikia
+tip-a6-camera = Padaro kadrą kameros konteineriu, nesvarbu, koks ginklas pasirinktas
 tip-a6-light-attack = Įspaustas atakos mygtukas
 tip-a6-light-in-range = Iki numetimo liko mažiau nei 20 s
 tip-a6-light-computer = Kompiuteris išjungtas, nėra taikinio arba koordinatės atmestos

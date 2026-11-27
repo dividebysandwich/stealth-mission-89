@@ -41,6 +41,7 @@ impl Plugin for IntruderPlugin {
                 Update,
                 (
                     crew::share,
+                    crew::camera,
                     crew::automatic,
                     computer::drive,
                     computer::compute,
@@ -368,6 +369,9 @@ pub enum Key {
     Clear,
     Quantity(u8),
     Action(u8),
+    /// The bombardier/navigator's camera button: a frame from the camera pod, whatever is
+    /// selected.
+    Camera,
 }
 
 pub(crate) const VDI_DISPLAYS: [VdiDisplay; 4] =
@@ -437,6 +441,7 @@ impl Key {
         v.extend([Key::Release, Key::Clear]);
         v.extend((0..QUANTITY_KEYS).map(Key::Quantity));
         v.extend((0..ACTION_KEYS).map(Key::Action));
+        v.push(Key::Camera);
         v
     }
 
@@ -479,7 +484,8 @@ impl Key {
             | Key::Release
             | Key::Clear
             | Key::Quantity(_)
-            | Key::Action(_) => "cap",
+            | Key::Action(_)
+            | Key::Camera => "cap",
         }
     }
 
@@ -552,6 +558,7 @@ impl Key {
             Key::Clear => "CLEAR",
             Key::Quantity(n) => QUANTITY_LABELS[n.min(QUANTITY_KEYS - 1) as usize],
             Key::Action(n) => ACTION_LABELS[n.min(ACTION_KEYS - 1) as usize],
+            Key::Camera => "CAMERA",
         }
     }
 
@@ -596,6 +603,7 @@ impl Key {
                 _ => "tip-a6-digit",
             },
             Key::Action(0) => "tip-a6-pos",
+            Key::Camera => "tip-a6-camera",
             // They latch or move, and that is all.
             Key::OneScan
             | Key::Erase
@@ -625,6 +633,9 @@ pub struct IntruderPanel {
     pub phd_power: Power,
     pub one_scan: bool,
     pub erases: u8,
+    /// The camera button's presses so far (the pilot's client takes each new one, in either
+    /// seat).
+    pub photos: u8,
     /// TRACK RADAR.
     pub clearance: Clearance,
     pub track: TrackFunction,
@@ -711,6 +722,7 @@ impl Default for IntruderPanel {
             phd_power: Power::On,
             one_scan: false,
             erases: 0,
+            photos: 0,
             clearance: Clearance::default(),
             track: TrackFunction::default(),
             scale: DisplayScale::default(),
@@ -773,6 +785,7 @@ impl IntruderPanel {
             Key::PhdPower => self.phd_power = next(&POWERS, self.phd_power),
             Key::OneScan => self.one_scan = !self.one_scan,
             Key::Erase => self.erases = self.erases.wrapping_add(1),
+            Key::Camera => self.photos = self.photos.wrapping_add(1),
             Key::Clearance => self.clearance = next(&CLEARANCES, self.clearance),
             Key::TrackFunction => self.track = next(&TRACKS, self.track),
             Key::DisplayScale => self.scale = next(&SCALES, self.scale),

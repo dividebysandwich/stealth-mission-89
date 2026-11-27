@@ -272,6 +272,7 @@ tip-a6-south-west = Jug ali zahod: zunaj zemljevida, POS jo zavrne
 tip-a6-digit = Številka točke poti ali naslednja števka koordinate
 tip-a6-pos = S TARGET: vnesi vtipkane koordinate
 tip-a6-no-effect = V igri nima učinka
+tip-a6-camera = Posname posnetek s kamero ne glede na izbrano orožje
 tip-a6-light-attack = Gumb za napad je pritisnjen
 tip-a6-light-in-range = Do odvrženja je manj kot 20 s
 tip-a6-light-computer = Računalnik izklopljen, ni cilja ali koordinate zavrnjene

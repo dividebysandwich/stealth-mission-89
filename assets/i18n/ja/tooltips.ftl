@@ -273,6 +273,7 @@ tip-a6-south-west = 南または西：地図外のためPOSが拒否
 tip-a6-digit = 経路点番号、または座標の次の桁
 tip-a6-pos = TARGETと併用：入力した座標を確定
 tip-a6-no-effect = ゲーム内では効果なし
+tip-a6-camera = 選択中の兵装にかかわらずカメラポッドで1コマ撮影
 tip-a6-light-attack = 攻撃ボタンが押されている
 tip-a6-light-in-range = 投下まで20秒未満
 tip-a6-light-computer = コンピューターオフ、目標なし、または座標拒否

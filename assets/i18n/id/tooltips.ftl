@@ -273,6 +273,7 @@ tip-a6-south-west = Selatan atau barat: di luar peta, POS menolaknya
 tip-a6-digit = Nomor titik rute, atau digit berikutnya dari koordinat
 tip-a6-pos = Dengan TARGET: masukkan koordinat yang diketik
 tip-a6-no-effect = Tidak berpengaruh dalam game
+tip-a6-camera = Mengambil gambar dengan pod kamera, apa pun senjata yang dipilih
 tip-a6-light-attack = Tombol serangan sedang ditekan
 tip-a6-light-in-range = Pelepasan kurang dari 20 s lagi
 tip-a6-light-computer = Komputer mati, tanpa target, atau koordinat ditolak

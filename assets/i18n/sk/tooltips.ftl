@@ -272,6 +272,7 @@ tip-a6-south-west = Juh alebo západ: mimo mapy, POS ju odmietne
 tip-a6-digit = Číslo bodu trasy alebo ďalšia číslica súradnice
 tip-a6-pos = S TARGET: potvrdiť zadané súradnice
 tip-a6-no-effect = V hre bez účinku
+tip-a6-camera = Urobí snímku kontajnerom s kamerou bez ohľadu na zvolenú zbraň
 tip-a6-light-attack = Tlačidlo útoku je stlačené
 tip-a6-light-in-range = Do zhodenia zostáva menej ako 20 s
 tip-a6-light-computer = Počítač vyp., žiadny cieľ alebo súradnice odmietnuté

@@ -2701,6 +2701,18 @@
       "round": false
     },
     {
+      "control": "Intruder(Camera)",
+      "key": "Item(Control(Camera))",
+      "kind": "cap",
+      "rect": [
+        542.0,
+        32.0,
+        38.0,
+        14.0
+      ],
+      "round": false
+    },
+    {
       "control": null,
       "key": "Item(Label(\"TEMPORARY STORAGE\", 15, 5))",
       "kind": null,

@@ -289,6 +289,7 @@ tip-a6-south-west = South or west: off the map, POS refuses it
 tip-a6-digit = A route point's number, or a coordinate's next digit
 tip-a6-pos = With TARGET: enters the keyed coordinates
 tip-a6-no-effect = No effect in the game
+tip-a6-camera = Takes a frame with the camera pod, whatever weapon is selected
 tip-a6-light-attack = An attack button is in
 tip-a6-light-in-range = The release is less than 20 s away
 tip-a6-light-computer = Computer off, no target, or coordinates refused

@@ -272,6 +272,7 @@ tip-a6-south-west = Sud sau vest: în afara hărții, POS o refuză
 tip-a6-digit = Numărul unui punct de traseu sau următoarea cifră a unei coordonate
 tip-a6-pos = Cu TARGET: introduce coordonatele tastate
 tip-a6-no-effect = Fără efect în joc
+tip-a6-camera = Face un cadru cu containerul cu cameră, oricare ar fi arma selectată
 tip-a6-light-attack = Un buton de atac este apăsat
 tip-a6-light-in-range = Lansarea are loc în mai puțin de 20 s
 tip-a6-light-computer = Calculator oprit, nicio țintă sau coordonate refuzate

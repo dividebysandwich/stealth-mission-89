@@ -272,6 +272,7 @@ tip-a6-south-west = Theas nó thiar: lasmuigh den léarscáil, diúltaíonn POS 
 tip-a6-digit = Uimhir pointe bealaigh, nó an chéad digit eile de chomhordanáid
 tip-a6-pos = Le TARGET: iontráil na comhordanáidí a clóscríobhadh
 tip-a6-no-effect = Gan éifeacht sa chluiche
+tip-a6-camera = Glacann sé fráma leis an bpod ceamara, cibé arm atá roghnaithe
 tip-a6-light-attack = Tá cnaipe ionsaithe brúite isteach
 tip-a6-light-in-range = Tá an scaoileadh níos lú ná 20 s uainn
 tip-a6-light-computer = Ríomhaire as, gan sprioc, nó comhordanáidí diúltaithe

@@ -273,6 +273,7 @@ tip-a6-south-west = Nofsinhar jew punent: barra l-mappa, POS jirrifjutah
 tip-a6-digit = In-numru ta' punt tar-rotta, jew iċ-ċifra li jmiss ta' koordinata
 tip-a6-pos = Ma' TARGET: ikkonferma l-koordinati mdaħħla
 tip-a6-no-effect = L-ebda effett fil-logħba
+tip-a6-camera = Jieħu ritratt bil-pod tal-kamera, ikun liema arma tkun magħżula
 tip-a6-light-attack = Buttuna tal-attakk magħfusa
 tip-a6-light-in-range = Ir-rilaxx huwa inqas minn 20 s 'il bogħod
 tip-a6-light-computer = Kompjuter mitfi, l-ebda mira, jew koordinati rrifjutati

@@ -272,6 +272,7 @@ tip-a6-south-west = Jug ili zapad: izvan karte, POS to odbija
 tip-a6-digit = Broj točke rute ili sljedeća znamenka koordinate
 tip-a6-pos = S TARGET: unesi upisane koordinate
 tip-a6-no-effect = Bez učinka u igri
+tip-a6-camera = Snima kadar kamerom bez obzira na odabrano oružje
 tip-a6-light-attack = Tipka napada je pritisnuta
 tip-a6-light-in-range = Ispuštanje je za manje od 20 s
 tip-a6-light-computer = Računalo isključeno, nema cilja ili su koordinate odbijene

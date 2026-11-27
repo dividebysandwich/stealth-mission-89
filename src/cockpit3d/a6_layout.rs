@@ -395,6 +395,8 @@ fn bn(it: &mut Items) {
     {
         it.key(label, rect(542.0 + 40.0 * i as f32, 14.0, 38.0, 14.0), E::Action(action));
     }
+    // The camera pod's button under them.
+    it.control(Key::Camera, rect(542.0, 32.0, 38.0, 14.0));
 
     // --- The computer keyboard on the pedestal (x 286..444, y 300..442).
     it.legend("TEMPORARY STORAGE", 344.0, 306.0, At::Centre);

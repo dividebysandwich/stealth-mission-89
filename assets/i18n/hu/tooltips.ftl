@@ -273,6 +273,7 @@ tip-a6-south-west = Dél vagy nyugat: a térképen kívül, a POS elutasítja
 tip-a6-digit = Egy útvonalpont száma vagy egy koordináta következő számjegye
 tip-a6-pos = TARGET után: a begépelt koordináták bevitele
 tip-a6-no-effect = Nincs hatása a játékban
+tip-a6-camera = Képet készít a kamerakonténerrel, bármelyik fegyver van kiválasztva
 tip-a6-light-attack = Egy támadásgomb be van nyomva
 tip-a6-light-in-range = Az oldás kevesebb mint 20 s múlva jön
 tip-a6-light-computer = Számítógép ki, nincs cél, vagy elutasított koordináták

@@ -273,6 +273,7 @@ tip-a6-south-west = Lõuna või lääs: väljaspool kaarti, POS lükkab tagasi
 tip-a6-digit = Teekonnapunkti number või koordinaadi järgmine number
 tip-a6-pos = Koos TARGET-iga: kinnitab sisestatud koordinaadid
 tip-a6-no-effect = Mängus mõju puudub
+tip-a6-camera = Teeb kaadri kamerakonteineriga, olenemata valitud relvast
 tip-a6-light-attack = Mõni rünnakunupp on sees
 tip-a6-light-in-range = Heiteni on alla 20 s
 tip-a6-light-computer = Arvuti väljas, sihtmärk puudub või koordinaadid lükati tagasi

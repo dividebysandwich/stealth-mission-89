@@ -272,6 +272,7 @@ tip-a6-south-west = Południe lub zachód: poza mapą, POS odrzuca
 tip-a6-digit = Numer punktu trasy lub kolejna cyfra współrzędnej
 tip-a6-pos = Z TARGET: zatwierdź wpisane współrzędne
 tip-a6-no-effect = Brak efektu w grze
+tip-a6-camera = Robi zdjęcie zasobnikiem kamery, niezależnie od wybranej broni
 tip-a6-light-attack = Wciśnięty przycisk ataku
 tip-a6-light-in-range = Do zrzutu mniej niż 20 s
 tip-a6-light-computer = Komputer wyłączony, brak celu lub współrzędne odrzucone

@@ -272,6 +272,7 @@ tip-a6-south-west = Dienvidi vai rietumi: ārpus kartes, POS to noraida
 tip-a6-digit = Maršruta punkta numurs vai koordinātas nākamais cipars
 tip-a6-pos = Ar TARGET: apstiprināt ievadītās koordinātas
 tip-a6-no-effect = Spēlē nedarbojas
+tip-a6-camera = Uzņem kadru ar kameras konteineru neatkarīgi no izvēlētā ieroča
 tip-a6-light-attack = Nospiesta uzbrukuma poga
 tip-a6-light-in-range = Līdz nomešanai mazāk nekā 20 s
 tip-a6-light-computer = Dators izslēgts, nav mērķa vai koordinātas noraidītas

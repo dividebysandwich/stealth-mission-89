@@ -272,6 +272,7 @@ tip-a6-south-west = Etelä tai länsi: kartan ulkopuolella, POS hylkää sen
 tip-a6-digit = Reittipisteen numero tai koordinaatin seuraava numero
 tip-a6-pos = TARGET-näppäimen kanssa: syöttää näppäillyt koordinaatit
 tip-a6-no-effect = Ei vaikutusta pelissä
+tip-a6-camera = Ottaa kuvan kamerasäiliöllä valitusta aseesta riippumatta
 tip-a6-light-attack = Jokin hyökkäysnappi on painettuna
 tip-a6-light-in-range = Irrotukseen on alle 20 s
 tip-a6-light-computer = Tietokone pois, ei maalia tai koordinaatit hylätty

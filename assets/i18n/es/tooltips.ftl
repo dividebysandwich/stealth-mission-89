@@ -273,6 +273,7 @@ tip-a6-south-west = Sur u oeste: fuera del mapa, POS lo rechaza
 tip-a6-digit = Número de un punto de ruta o siguiente cifra de una coordenada
 tip-a6-pos = Con TARGET: introduce las coordenadas tecleadas
 tip-a6-no-effect = Sin efecto en el juego
+tip-a6-camera = Toma una imagen con el pod de cámara, sea cual sea el arma seleccionada
 tip-a6-light-attack = Hay un botón de ataque pulsado
 tip-a6-light-in-range = Faltan menos de 20 s para soltar
 tip-a6-light-computer = Ordenador apagado, sin blanco o coordenadas rechazadas

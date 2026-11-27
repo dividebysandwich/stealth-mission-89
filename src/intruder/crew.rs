@@ -65,7 +65,9 @@ impl IntruderPanel {
             .fold(0u16, |acc, (i, s)| acc | (index(&SELECTS, s) as u16) << (i * 2));
         b[5..7].copy_from_slice(&stations.to_le_bytes());
         b[7..9].copy_from_slice(&self.interval.to_le_bytes());
-        b[9] = index(&POWERS, &self.search_power) | index(&SEARCH_RANGES, &self.search_range) << 2;
+        b[9] = index(&POWERS, &self.search_power)
+            | index(&SEARCH_RANGES, &self.search_range) << 2
+            | (self.photos & 0xF) << 4;
         b[10..12].copy_from_slice(&self.addresses.to_le_bytes());
         b[12] = self.erases;
         let keyed = self.keyed.map_or(KEYED_NONE, |g| {
@@ -104,6 +106,7 @@ impl IntruderPanel {
         self.interval = u16::from_le_bytes([b[7], b[8]]).min(super::INTERVAL_MAX);
         self.search_power = pick(&POWERS, b[9] & 3);
         self.search_range = pick(&SEARCH_RANGES, b[9] >> 2 & 3);
+        self.photos = (self.photos & !0xF) | b[9] >> 4;
         self.addresses = u16::from_le_bytes([b[10], b[11]]);
         self.erases = b[12];
         let keyed = u32::from_le_bytes([b[13], b[14], b[15], 0]);
@@ -112,6 +115,30 @@ impl IntruderPanel {
             [v(keyed), v(keyed >> 12)]
         });
     }
+}
+
+/// The bombardier/navigator's camera button (the panel's press count, shared): the pilot's
+/// client (mine, whichever seat I sit in) takes a frame with the camera pod.
+pub(super) fn camera(
+    settings: Res<crate::settings::Settings>,
+    mut combat: Option<ResMut<crate::combat::Combat>>,
+    panel: Res<IntruderPanel>,
+    mut last: Local<Option<u8>>,
+) {
+    let count = panel.photos & 0xF;
+    let owner =
+        combat.as_deref_mut().filter(|_| settings.aircraft == AircraftKind::A6).filter(|c| {
+            let me = c.sim.active_pilot();
+            c.sim.crew_view(me).is_none_or(|v| v.owner == me)
+        });
+    let Some(c) = owner else {
+        *last = None;
+        return;
+    };
+    if last.is_some_and(|l| l != count) {
+        c.photo();
+    }
+    *last = Some(count);
 }
 
 /// What of the panel went where, and when I last moved a control.

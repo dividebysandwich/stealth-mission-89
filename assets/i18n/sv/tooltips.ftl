@@ -272,6 +272,7 @@ tip-a6-south-west = Syd eller väst: utanför kartan, POS avvisar den
 tip-a6-digit = En ruttpunkts nummer eller koordinatens nästa siffra
 tip-a6-pos = Med TARGET: för in de inmatade koordinaterna
 tip-a6-no-effect = Ingen effekt i spelet
+tip-a6-camera = Tar en bild med kamerakapseln, vilket vapen som än är valt
 tip-a6-light-attack = En attackknapp är intryckt
 tip-a6-light-in-range = Mindre än 20 s till fällning
 tip-a6-light-computer = Datorn av, inget mål eller koordinater avvisade

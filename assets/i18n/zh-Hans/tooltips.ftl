@@ -271,6 +271,7 @@ tip-a6-south-west = 南或西：在地图外，POS 会拒绝
 tip-a6-digit = 航路点编号，或坐标的下一位数字
 tip-a6-pos = 配合 TARGET：确认输入的坐标
 tip-a6-no-effect = 游戏中无作用
+tip-a6-camera = 无论选中何种武器，都用相机吊舱拍摄一帧
 tip-a6-light-attack = 攻击按钮已按下
 tip-a6-light-in-range = 距投放不到 20 秒
 tip-a6-light-computer = 计算机关闭、无目标或坐标被拒绝

@@ -272,6 +272,7 @@ tip-a6-south-west = Sud ou ouest : hors de la carte, POS la refuse
 tip-a6-digit = Numéro d'un point de route, ou chiffre suivant d'une coordonnée
 tip-a6-pos = Avec TARGET : valider les coordonnées saisies
 tip-a6-no-effect = Sans effet dans le jeu
+tip-a6-camera = Prend une image avec la nacelle caméra, quelle que soit l'arme choisie
 tip-a6-light-attack = Un bouton d'attaque est enfoncé
 tip-a6-light-in-range = Le largage est à moins de 20 s
 tip-a6-light-computer = Calculateur éteint, pas de cible ou coordonnées refusées

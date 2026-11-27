@@ -272,6 +272,7 @@ tip-a6-south-west = 남쪽 또는 서쪽: 지도 밖이라 POS가 거부
 tip-a6-digit = 경로점 번호 또는 좌표의 다음 자릿수
 tip-a6-pos = TARGET과 함께: 입력한 좌표 확정
 tip-a6-no-effect = 게임에서는 효과 없음
+tip-a6-camera = 선택된 무장과 관계없이 카메라 포드로 한 장 촬영
 tip-a6-light-attack = 공격 버튼이 눌려 있음
 tip-a6-light-in-range = 투하까지 20초 미만
 tip-a6-light-computer = 컴퓨터 꺼짐, 표적 없음 또는 좌표 거부됨

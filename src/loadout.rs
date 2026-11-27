@@ -1285,12 +1285,16 @@ static FA18E_STATIONS: [Hardpoint; 11] = [
 /// (Hydra 70s and Zunis) and the tanks.
 const A6_WING: [u8; 19] =
     [0, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 17, HYDRA, MK83, MK84, SHRIKE, ZUNI];
+/// The A-6C's right inner pylon takes the reconnaissance camera pod too (one: the left one
+/// stays as it is).
+const A6_CAMERA: [u8; 20] =
+    [0, 2, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, HYDRA, MK83, MK84, SHRIKE, ZUNI];
 /// The A-6C's wing stations 1, 2, 4 and 5 (station 3, the centreline, carries its TRIM sensor
 /// pod: not a hardpoint).
 static A6_STATIONS: [Hardpoint; 4] = [
     pylon("hardpoint-a6-1-left-outer-wing", "1", -3.68, 6.95, Some(3), &A6_WING),
     pylon("hardpoint-a6-2-left-inner-wing", "2", -2.50, 6.70, Some(2), &A6_WING),
-    pylon("hardpoint-a6-4-right-inner-wing", "4", 2.50, 6.70, Some(1), &A6_WING),
+    pylon("hardpoint-a6-4-right-inner-wing", "4", 2.50, 6.70, Some(1), &A6_CAMERA),
     pylon("hardpoint-a6-5-right-outer-wing", "5", 3.68, 6.95, Some(0), &A6_WING),
 ];
 /// The F-14's Sidewinder rails on the glove pylons' outboard sides.
@@ -2187,6 +2191,7 @@ impl PlannedLoadout {
                         // The A-6's two pairs: the missiles outboard, the tanks and the
                         // bombs inboard first.
                         0 | 2 | 5 if intruder => &[0, 1],
+                        16 if intruder => &[2],
                         _ if intruder => &[1, 0],
                         0 if a10 => &[0],
                         16 | 18 if a10 => &[5],
@@ -2224,7 +2229,10 @@ impl PlannedLoadout {
                             && lay.hardpoints[i].loads.contains(&w)
                     }) {
                         stores[i] = Some(w);
-                        if let Some(j) = lay.hardpoints[i].mirror {
+                        // (A single store, the A-6's camera pod, where the mirror takes none.)
+                        if let Some(j) = lay.hardpoints[i].mirror
+                            && lay.hardpoints[j].loads.contains(&w)
+                        {
                             stores[j] = Some(w);
                         }
                     }
@@ -2311,7 +2319,11 @@ impl PlannedLoadout {
             }
         };
         put(i);
-        if mirror && let Some(j) = lay.hardpoints[i].mirror {
+        // (Not a store the mirror takes none of: the A-6's camera pod.)
+        if mirror
+            && let Some(j) = lay.hardpoints[i].mirror
+            && store.is_none_or(|w| lay.hardpoints[j].loads.contains(&w))
+        {
             put(j);
         }
     }
@@ -2853,6 +2865,23 @@ mod tests {
             seed,
         )
         .unwrap()
+    }
+
+    /// A photo mission's A-6: its camera pod on the right inner pylon alone (the left one keeps
+    /// its own load); the editor puts it there without its mirror.
+    #[test]
+    fn the_a6_carries_one_camera_pod() {
+        let photo = (1..200)
+            .map(|seed| mission(seed, false))
+            .find(|m| m.loadout.bays.iter().any(|b| b.weapon == 16) && !out_of_stock(m, 16))
+            .expect("a photo mission");
+        let lo = PlannedLoadout::of(&photo, AircraftKind::A6);
+        assert_eq!(lo.stores[2], Some(16), "{:?}", lo.stores);
+        assert_eq!(lo.stores.iter().filter(|s| **s == Some(16)).count(), 1, "{:?}", lo.stores);
+        let mut lo = PlannedLoadout::of(&photo, AircraftKind::A6);
+        lo.load(1, Some(9), true);
+        lo.load(2, Some(16), true);
+        assert_eq!((lo.stores[1], lo.stores[2]), (Some(9), Some(16)));
     }
 
     /// Stores flown that differ from the briefed ones come again on the next mission of the kind
