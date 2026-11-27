@@ -193,6 +193,7 @@ fn attach(
         proj: Vec4::new(CX, CY, SCALE, SCALE),
         style: Vec4::new(1.0, 1.0, 0.0, 0.0),
         sharp: false,
+        ink_depth: false,
     });
     // A little larger than the canvas (the shader leaves the rest clear).
     let size = Vec2::new(WIDTH as f32, HEIGHT as f32) / SCALE * DISTANCE * 1.1;
@@ -229,6 +230,7 @@ pub(crate) fn spawn_scene_visor(
         proj: Vec4::new(CX, CY, SCALE, SCALE),
         style: Vec4::new(1.0, 1.0, 0.0, 0.0),
         sharp: false,
+        ink_depth: false,
     });
     let size = Vec2::new(WIDTH as f32, HEIGHT as f32) / SCALE * DISTANCE * 1.1;
     let visor = commands

@@ -42,6 +42,12 @@ const HIT_STEPS: f32 = 4.0 / 128.0;
 const HIT_SHARE: f32 = 0.004;
 // The ripples' slope (calm water's catspaws: the wobble of what it mirrors).
 const RIPPLE: f32 = 0.035;
+// Nearer than this (m) is at the eye (the cockpit, the HUD); the sky beside it at the same
+// height stands in for it in the water, looked for this many pixels to either side, doubling
+// up to `SEARCH` times.
+const AT_EYE: f32 = 5.0;
+const FILL: f32 = 4.0;
+const SEARCH: i32 = 9;
 // A reflection darkens a little in the water.
 const TINT: vec3<f32> = vec3<f32>(0.86, 0.9, 0.92);
 
@@ -138,6 +144,65 @@ fn crossing(start: vec3<f32>, r: vec3<f32>, lo_in: f32, hi_in: f32, size: vec2<f
     return hi;
 }
 
+// Whether a depth is the background: the sky dome and the far scenery stand beyond the
+// march's reach.
+fn background(d: f32) -> bool {
+    return d <= 0.0 || view_depth(d) >= REACH;
+}
+
+// What the picture shows far off in the direction d where that is the background: its colour
+// and how far it is inside the picture's edges (faded out towards them); alpha 0 off the
+// picture, -1 where something stands in front of the background (r: 1 if that is at the eye).
+fn far_at(d: vec3<f32>, size: vec2<f32>) -> vec4<f32> {
+    let inf = params.clip_from_eye * vec4<f32>(d, 0.0);
+    if (inf.w <= 0.0) {
+        return vec4<f32>(0.0);
+    }
+    let uv = vec2<f32>(inf.x / inf.w * 0.5 + 0.5, 0.5 - inf.y / inf.w * 0.5);
+    if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+        return vec4<f32>(0.0);
+    }
+    let fp = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.9999)) * size);
+    let fd = depth_at(fp);
+    if (!background(fd)) {
+        return vec4<f32>(select(0.0, 1.0, view_depth(fd) <= AT_EYE), 0.0, 0.0, -1.0);
+    }
+    let edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    return vec4<f32>(textureLoad(colour, fp, 0).rgb, smoothstep(0.0, 0.08, edge));
+}
+
+// What the water mirrors in the direction r when nothing within the march's reach is there:
+// the background the picture shows (alpha: its share, 0 for none, the water keeping its own
+// sky). Something at the eye in front of it (the cockpit, the canopy's frame, the HUD's
+// symbology, which writes its depth for this: hud_glass.rs `ink_depth`) is no part of the
+// world the water mirrors: the nearest background either side at the same height in the sky
+// stands in (else the water's own sky, which is not quite the picture's, drew its shape).
+fn far_colour(r: vec3<f32>, size: vec2<f32>) -> vec4<f32> {
+    let f = far_at(r, size);
+    if (f.a >= 0.0 || f.r <= 0.0) {
+        return vec4<f32>(f.rgb, max(f.a, 0.0));
+    }
+    // The turn about the vertical that moves a pixel across the picture at this height.
+    let pixel = 2.0 / (params.size.z * size.y) / max(length(r.xz), 0.05);
+    var sum = vec4<f32>(0.0);
+    var turn = pixel * FILL;
+    for (var i = 0; i < SEARCH; i++) {
+        for (var side = -1.0; side <= 1.0; side += 2.0) {
+            let a = turn * side;
+            let d = vec3<f32>(r.x * cos(a) - r.z * sin(a), r.y, r.x * sin(a) + r.z * cos(a));
+            let b = far_at(d, size);
+            if (b.a > 0.0) {
+                sum += vec4<f32>(b.rgb * b.a, b.a);
+            }
+        }
+        if (sum.a > 0.0) {
+            return vec4<f32>(sum.rgb / sum.a, min(sum.a, 1.0));
+        }
+        turn *= 2.0;
+    }
+    return vec4<f32>(0.0);
+}
+
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let px = vec2<i32>(in.position.xy);
@@ -203,23 +268,8 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     if (hit < 0.0) {
         // Nothing near: what the picture shows far off in the mirrored direction, if it is the
         // background there (the sky, the hills on the horizon, the clouds) or past the reach.
-        let inf = params.clip_from_eye * vec4<f32>(r, 0.0);
-        if (inf.w <= 0.0) {
-            return vec4<f32>(c.rgb, 1.0);
-        }
-        let uv = vec2<f32>(inf.x / inf.w * 0.5 + 0.5, 0.5 - inf.y / inf.w * 0.5);
-        if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
-            return vec4<f32>(c.rgb, 1.0);
-        }
-        let fp = vec2<i32>(clamp(uv, vec2<f32>(0.0), vec2<f32>(0.9999)) * size);
-        // (The sky dome and the far scenery stand beyond the march's reach.)
-        let fd = depth_at(fp);
-        if (fd > 0.0 && view_depth(fd) < REACH) {
-            return vec4<f32>(c.rgb, 1.0);
-        }
-        let far = textureLoad(colour, fp, 0);
-        let edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-        return vec4<f32>(mix(c.rgb, far.rgb * TINT, weight * smoothstep(0.0, 0.08, edge)), 1.0);
+        let far = far_colour(r, size);
+        return vec4<f32>(mix(c.rgb, far.rgb * TINT, weight * far.a), 1.0);
     }
     let uv = to_uv(params.clip_from_eye * vec4<f32>(start + r * hit, 1.0));
     let hp = vec2<i32>(clamp(uv.xy, vec2<f32>(0.0), vec2<f32>(0.9999)) * size);

@@ -88,6 +88,7 @@ impl Plugin for Cockpit3dPlugin {
         .add_message::<ScreenDrag>()
         .add_systems(Startup, (setup_materials, initial_look, model::load_models))
         .add_systems(OnEnter(AppState::Flight), tooltips::spawn_box)
+        .add_systems(PostUpdate, hud_glass::ink_depth)
         .add_systems(
             Update,
             (

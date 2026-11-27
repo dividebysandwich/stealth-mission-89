@@ -646,6 +646,7 @@ pub(super) fn hud_material(
         proj,
         style,
         sharp: false,
+        ink_depth: false,
     });
     (tex, material)
 }

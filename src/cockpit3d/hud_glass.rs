@@ -24,23 +24,24 @@ const GLASS_BIAS: f32 = 1.0e5;
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct HudGlassKey {
     sharp: bool,
+    ink_depth: bool,
 }
 
 impl From<&HudGlassMaterial> for HudGlassKey {
     fn from(m: &HudGlassMaterial) -> Self {
-        Self { sharp: m.sharp }
+        Self { sharp: m.sharp, ink_depth: m.ink_depth }
     }
 }
 
 impl From<&HmdMaterial> for HudGlassKey {
     fn from(m: &HmdMaterial) -> Self {
-        Self { sharp: m.sharp }
+        Self { sharp: m.sharp, ink_depth: m.ink_depth }
     }
 }
 
 impl From<&LeaveSharp> for HudGlassKey {
     fn from(m: &LeaveSharp) -> Self {
-        Self { sharp: m.sharp }
+        Self { sharp: m.sharp, ink_depth: false }
     }
 }
 
@@ -67,8 +68,14 @@ impl MaterialExtension for LeaveSharp {
     }
 }
 
-/// The glass's blend state, with the alpha channel drawn as the HUD is kept sharp.
+/// The glass's blend state, with the alpha channel drawn as the HUD is kept sharp, and its
+/// symbology's depth written while the water mirrors the picture (`ink_depth`).
 fn leave_sharp(descriptor: &mut RenderPipelineDescriptor, key: HudGlassKey) {
+    if key.ink_depth
+        && let Some(depth) = descriptor.depth_stencil.as_mut()
+    {
+        depth.depth_write_enabled = Some(true);
+    }
     if !key.sharp {
         return;
     }
@@ -102,6 +109,10 @@ pub struct HudGlassMaterial {
     pub style: Vec4,
     /// Pixelize leaves it sharp (`Effects::sharp_hud`).
     pub sharp: bool,
+    /// The symbology writes its depth (the blank glass discards: its tint is clear), so the
+    /// water's screen space reflections (water_ssr.rs) see something near the eye there, not
+    /// the sky behind, and leave it out of the water.
+    pub ink_depth: bool,
 }
 
 /// The modern HUD's and the helmet display's symbology colour (the shaders' `HUD_COLOURS`;
@@ -157,6 +168,28 @@ pub(super) fn switch_colour(
     }
     if changed && settings.initial_state == crate::settings::AppState::Menu {
         crate::prefs::Prefs::save_options(&settings);
+    }
+}
+
+/// Has the HUD glasses' and the helmet displays' symbology write its depth while the water
+/// mirrors the picture (`ink_depth`; in the menu's scenes too).
+pub(crate) fn ink_depth(
+    settings: Res<crate::settings::Settings>,
+    mut huds: ResMut<Assets<HudGlassMaterial>>,
+    mut hmds: ResMut<Assets<HmdMaterial>>,
+) {
+    let on = crate::water_ssr::active(&settings);
+    let stale: Vec<_> = huds.iter().filter(|(_, m)| m.ink_depth != on).map(|(id, _)| id).collect();
+    for id in stale {
+        if let Some(mut m) = huds.get_mut(id) {
+            m.ink_depth = on;
+        }
+    }
+    let stale: Vec<_> = hmds.iter().filter(|(_, m)| m.ink_depth != on).map(|(id, _)| id).collect();
+    for id in stale {
+        if let Some(mut m) = hmds.get_mut(id) {
+            m.ink_depth = on;
+        }
     }
 }
 
@@ -284,6 +317,10 @@ pub struct HmdMaterial {
     pub style: Vec4,
     /// Pixelize leaves it sharp (`Effects::sharp_hud`).
     pub sharp: bool,
+    /// The symbology writes its depth (the blank glass discards: its tint is clear), so the
+    /// water's screen space reflections (water_ssr.rs) see something near the eye there, not
+    /// the sky behind, and leave it out of the water.
+    pub ink_depth: bool,
 }
 
 impl Material for HmdMaterial {
