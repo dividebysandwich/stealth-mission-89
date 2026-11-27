@@ -3531,7 +3531,7 @@ struct Evasion {
     cartridges: usize,
 }
 
-/// Fires air-to-air store `w` (0 AIM-9, 1 AIM-120) from 5000 ft at a MiG-29 at 6000 ft about
+/// Fires air-to-air store `w` (0 AIM-9, 1 AIM-120, 39 AIM-7M) from 5000 ft at a MiG-29 at 6000 ft
 /// `range` map units north, coming at the player (or, `tail`, flying away north): what the MiG
 /// did, defending itself (`evade`, with flares and chaff: `cms`) or not.
 fn evasion_shot(w: i32, range: i32, tail: bool, evade: bool, cms: bool, seed: u32) -> Evasion {
@@ -3624,27 +3624,41 @@ fn ai_dives_and_flares_against_a_close_shot() {
     assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
 }
 
-/// An AMRAAM fired head-on from 34 km: the MiG cranks off the missile's line to one side,
-/// then the other, and the missile that has to follow kills less often.
+/// An AMRAAM fired head-on from 34 km flies on its launcher's guidance at first: the MiG,
+/// warned of it, flies on at the player. Once its seeker comes on (pitbull, ~18 km) the MiG
+/// beams it at once, and the missile kills less often than one at a MiG flying on. Fired from
+/// inside that range, from behind, it defends at once.
 #[test]
-fn ai_cranks_a_long_shot() {
-    let r = evasion_shot(1, 64 * 34, false, true, false, 1);
-    let (at, first) =
-        r.off.iter().take(12).copied().enumerate().max_by_key(|(_, o)| o.abs()).unwrap();
-    assert!((0x1C00..0x3000).contains(&first.abs()), "crank {first:#x}: {:?}", r.off);
-    // Then it turns back across to crank the other way.
-    assert!(
-        r.off.iter().skip(at).take(6).any(|&o| (o - first) * first.signum() < -0x1000),
-        "never turned back: {:?}",
-        r.off
-    );
+fn ai_holds_on_until_an_amraam_goes_pitbull() {
+    for seed in 1..4 {
+        let r = evasion_shot(1, 64 * 34, false, true, true, seed);
+        assert!(r.off.iter().take(8).all(|o| o.abs() < 0x400), "turned early: {:?}", r.off);
+        assert!(r.off.iter().skip(8).any(|o| o.abs() > 0x3000), "never beamed: {:?}", r.off);
+    }
     let evading = evasion_kills(1, 64 * 34, false, true, true);
     let flying_on = evasion_kills(1, 64 * 34, false, false, false);
     assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
-    // From behind it weaves away from it.
+    let r = evasion_shot(1, 64 * 14, true, true, true, 1);
+    assert!(r.dive > 300, "no defensive dive inside pitbull range: {r:?}");
     let evading = evasion_kills(1, 64 * 14, true, true, true);
     let flying_on = evasion_kills(1, 64 * 14, true, false, false);
     assert!(evading < flying_on, "tail: {evading} of 8 evading shot down, {flying_on} flying on");
+}
+
+/// A Sparrow (semi-active: the player's radar guides it all the way) from 20 km: the MiG does
+/// not notch it at once, only once it is close, then dives away with chaff, and lives more
+/// often than one flying on.
+#[test]
+fn ai_defends_late_against_a_sparrow() {
+    const SPARROW: i32 = 39;
+    for seed in 1..4 {
+        let r = evasion_shot(SPARROW, 64 * 20, false, true, true, seed);
+        assert!(r.off.iter().take(3).all(|o| o.abs() < 0x400), "notched early: {:?}", r.off);
+        assert!(r.dive > 300 && r.cartridges > 0, "no defence: {r:?}");
+    }
+    let evading = evasion_kills(SPARROW, 64 * 20, false, true, true);
+    let flying_on = evasion_kills(SPARROW, 64 * 20, false, false, false);
+    assert!(evading < flying_on, "{evading} of 8 evading shot down, {flying_on} flying on");
 }
 
 /// Realistic AI flight over ten minutes of every theater: the jets fly (and land) as before,
@@ -5644,4 +5658,5 @@ fn heavier_bombs_have_a_wider_blast() {
     assert!(!heavy_bomb(&hard, 9, 20).0, "a Mk 82 leaves it standing");
     assert!(heavy_bomb(&hard, MK84_WEAPON, 20).0, "a Mk 84 wrecks it");
 }
+
 

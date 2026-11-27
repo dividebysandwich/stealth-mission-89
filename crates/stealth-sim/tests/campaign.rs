@@ -1214,7 +1214,9 @@ fn place(sim: &mut Sim, i: usize, x: i32, y: i32, alt: i32, heading: i32, speed:
 #[test]
 fn a_pressed_strike_aircraft_fights_off_its_attacker_and_flies_on() {
     use stealth_sim::ai_missions::TORNADO;
-    let (mut sim, i, _) = intercept(TORNADO, 0, (0x900, 0, -0x4000));
+    // (From 0x900 map units an AA-7, which the Tornado only defends against once it is close,
+    // got it.)
+    let (mut sim, i, _) = intercept(TORNADO, 0, (0x800, 0, -0x4000));
     let (mut fought, mut shot_first, mut fighter_lost, mut fired_at_target) =
         (0, None, false, false);
     for _ in 0..15 * 60 {
@@ -1932,3 +1934,5 @@ fn an_offline_sam_site_lets_helicopters_by() {
     sim.set_site_offline(3, false);
     assert_eq!(sim.objects()[3].flags & oflags::OFFLINE, 0);
 }
+
+

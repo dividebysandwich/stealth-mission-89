@@ -4,7 +4,9 @@
 //! gravity along the flight path (the zoom climb trades speed for height). Their pilots steer it
 //! for the point the AI picks ([`Sim::fly`](crate::Sim)) and defend against the missiles they
 //! notice: cranking off a distant shot, breaking and diving away from a close one, with flares
-//! or chaff.
+//! or chaff. A missile guided from outside (a command, semi-active or track-via-missile one, an
+//! active radar one on its launcher's guidance before its own seeker comes on) only makes them
+//! defend once it is close; one whose seeker goes active (pitbull) at once.
 //!
 //! Takeoff, the landing approach, rollout, base traffic and falling wrecks keep the classic
 //! moves; the model takes over from (and hands back to) the flight unit's record seamlessly.
@@ -87,6 +89,13 @@ const CRANK: f64 = 0.96;
 const CRANK_S: i32 = 6;
 const CRANK_S_RANDOM: i32 = 5;
 const T_CM: f64 = 4.0;
+/// A missile guided from outside: the pilot, warned of it, flies on with what he was doing
+/// until its time to go or its range comes under these (then he defends).
+const T_EXTERNAL: f64 = 10.0;
+const R_EXTERNAL: f64 = 6000.0;
+/// An active radar missile's seeker comes on (pitbull) this close to its target (wu: the
+/// Phoenix's, ~18 km, as an AMRAAM's).
+const PITBULL: f64 = PHOENIX_ACTIVE as f64 * 32.0;
 const CM_EVERY_S: f64 = 1.5;
 /// Seconds a cartridge lives, and the most cartridges of each kind carried.
 const CM_LIFE_S: i32 = 3;
@@ -272,6 +281,49 @@ pub struct UnitThreat {
     pub key: u32,
     pub pos: [f64; 3],
     pub ir: bool,
+    #[serde(default, skip_serializing_if = "Homing::is_seeker")]
+    pub homing: Homing,
+}
+
+/// How a missile homes, as its target's pilot knows it (his warning receiver).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum Homing {
+    /// On its own seeker all the way (an IR missile, or as before there was a difference).
+    #[default]
+    Seeker,
+    /// Guided from outside all the way: command, semi-active or track-via-missile.
+    External,
+    /// An active radar missile: on its launcher's guidance, its own seeker on from `PITBULL`.
+    Active,
+}
+
+impl Homing {
+    fn is_seeker(&self) -> bool {
+        *self == Homing::Seeker
+    }
+
+    /// Of missile table entry `spec`.
+    pub(crate) fn of(sim: &Sim, spec: i32) -> Homing {
+        if ir_seeker(sim, spec) {
+            return Homing::Seeker;
+        }
+        match sim.missile(spec).class {
+            1..=3 => Homing::External,
+            7 if spec == SPARROW_SPEC => Homing::External,
+            7 => Homing::Active,
+            _ => Homing::Seeker,
+        }
+    }
+
+    /// Guided from outside at range `r` (wu) from its target: the pilot can't tell it is coming
+    /// for him yet, nor beat its seeker.
+    fn external(self, r: f64) -> bool {
+        match self {
+            Homing::External => true,
+            Homing::Active => r > PITBULL,
+            Homing::Seeker => false,
+        }
+    }
 }
 
 /// What the pilot flies for: the heading error and climb angle (rad), the speed (wu/s), the
@@ -447,7 +499,7 @@ impl AiFlight {
 /// An IR missile (no launch warning to the target) of missile table entry `spec`.
 pub(crate) fn ir_seeker(sim: &Sim, spec: i32) -> bool {
     match sim.missile(spec).class {
-        7 => matches!(spec, 23 | 32),
+        7 => matches!(spec, 23 | 32 | STINGER_SPEC),
         c => c <= 0,
     }
 }
@@ -705,7 +757,8 @@ impl Sim {
                     m.pos[2] / M_PER_WU,
                 ];
                 let key = 0x1_0000 | ((k as u32) << 8) | (m.spec as u32 & 0xFF);
-                v.push(UnitThreat { unit: i as u16, key, pos, ir: ir_seeker(self, m.spec) });
+                let (ir, homing) = (ir_seeker(self, m.spec), Homing::of(self, m.spec));
+                v.push(UnitThreat { unit: i as u16, key, pos, ir, homing });
             }
         }
         v
@@ -789,12 +842,22 @@ impl Sim {
             return None;
         }
         let tgo = if ev.closing > 1.0 { r / ev.closing } else { f64::INFINITY };
+        // Guided from outside: no crank, no notch, until it is close. Its seeker on: defend.
+        let external = th.homing.external(r);
+        let pitbull = th.homing == Homing::Active && !external;
         let phase = match ev.phase {
-            Phase::Defend if tgo > T_CRANK_AGAIN && r > 1.5 * R_CLOSE => Phase::Crank,
+            _ if external && ev.phase != Phase::Defend && tgo > T_EXTERNAL && r > R_EXTERNAL => {
+                Phase::None
+            }
+            Phase::Defend if tgo > T_CRANK_AGAIN && r > 1.5 * R_CLOSE && !pitbull => Phase::Crank,
             Phase::Defend => Phase::Defend,
-            _ if tgo < T_CLOSE || r < R_CLOSE => Phase::Defend,
+            _ if tgo < T_CLOSE || r < R_CLOSE || pitbull || external => Phase::Defend,
             _ => Phase::Crank,
         };
+        if phase == Phase::None {
+            ev.phase = phase;
+            return None;
+        }
         if phase != ev.phase {
             ev.side = side(brg);
             ev.flip = (CRANK_S + self.rng.random(CRANK_S_RANDOM)) * fs;
@@ -899,6 +962,7 @@ impl Sim {
             key,
             pos: [x * 32.0, y * 32.0, alt],
             ir,
+            homing: Homing::of(self, spec),
         });
         false
     }

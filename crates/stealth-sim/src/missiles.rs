@@ -328,6 +328,20 @@ impl Sim {
                         self.flights[hit as usize].flags |= fflags::HIT;
                     }
                 }
+                // Realistic AI flight: the aircraft's pilot learns of a Sparrow, or a Phoenix
+                // on the radar's guidance (an active one already did, `radar_homing`), and its
+                // chaff may fool it.
+                let told = spec == SPARROW_SPEC || self.proj[s].midcourse.is_some();
+                if hit >= 0 && told && self.opts.realistic_ai_flight {
+                    let fooled = self.proj[s].cm_fooled & crate::ai_flight::DECOYED != 0
+                        || self.unit_homed(s, hit as usize, cls);
+                    if fooled {
+                        hit = -1;
+                        locked = false;
+                        point = None;
+                        aim = self.proj[s].heading;
+                    }
+                }
                 if let Some(k) = pilot_hit {
                     let close = (self.proj[s].speed << 4) > best;
                     self.pilot_threats.push((k.0, close));
