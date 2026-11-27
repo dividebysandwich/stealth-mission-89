@@ -705,8 +705,13 @@ impl Sim {
             if pr.target >= 0 && pr.tgt_x >= 0 && !self.guided(spec) {
                 let o = self.obj(pr.target);
                 let (pos, _) = self.launch_motion();
-                let to =
-                    [o.x as f64 * 32.0 + 16.0 - pos[0], o.y as f64 * 32.0 + 16.0 - pos[1], -pos[2]];
+                // On the ground there (the rolling hills).
+                let z = self.hill_alt(o.x, o.y) as f64;
+                let to = [
+                    o.x as f64 * 32.0 + 16.0 - pos[0],
+                    o.y as f64 * 32.0 + 16.0 - pos[1],
+                    z - pos[2],
+                ];
                 (pr.heading, pr.pitch) = crate::guidance::heading_pitch(to);
             }
         } else if gl >= 0 && (gl as usize) < self.objects.len() {

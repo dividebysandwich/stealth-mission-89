@@ -668,10 +668,18 @@ impl Sim {
             m.heading = s16(m.heading + cdiv(d * 4, fs));
             m.roll = s16(d * 2);
             let ab = best.abs();
+            let dz = s16(alt0 - m.alt);
+            let lift = if ab > 0x140 { ab >> 3 } else { 0 };
             let mut pa = if enemy && best < 0x400 {
-                bearing(s16(alt0 - m.alt) >> 4, ab)
+                bearing(dz >> 4, ab)
+            } else if !enemy && self.opts.fix_classic_bugs {
+                // Fixed: classic shifted the height difference to map units, which rounds it
+                // down: up to a map unit (15 m) under the target. Fired low and from a shallow
+                // angle (a hovering helicopter's Hellfire), the missile flew into the ground
+                // short of it.
+                ((dz as f64 / 32.0 + lift as f64).atan2(ab as f64) * BAM).round() as i32
             } else {
-                bearing((s16(alt0 - m.alt) >> 5) + if ab > 0x140 { ab >> 3 } else { 0 }, ab)
+                bearing((dz >> 5) + lift, ab)
             };
             // A Sidearm's pop-up: it climbs until turning down to the radar at its turn rate
             // would take a good part of the time left to it, or it is high enough above it,

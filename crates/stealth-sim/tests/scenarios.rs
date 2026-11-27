@@ -836,20 +836,20 @@ fn classic_state_golden() {
     const GOLDEN: &[u64] = &[
         0x4d2f5bcf4edab453,
         0xf818144d1147d928,
-        0xe8d24709c71dc512,
+        0xd832888b899c6848,
         0xc3217b1ab80b278a,
         0x924fb325aef8b0be,
         0xa81ce33c713cbfae,
         0xa1565802d474a46b,
         0x9325914c7f18d0aa,
-        0x661b2e6118a4fe76,
+        0x0fce272d525f763e,
         0xdb62d9c02c71e2ef,
         0xe931e3e10af197d9,
-        0xf4130402789e3db2,
-        0xe4a5c833d8acfee1,
-        0x136dddfc2e58c354,
+        0x6b64471688517096,
+        0x51be046deca4aa34,
+        0x990f81e5e47ecdd6,
         0xdd39f5f14ce613a7,
-        0xd2094cd76f905388,
+        0x93e457aa3a415dea,
         0x5226950f245fba2b,
         0x93754ecdf6d5a8da,
     ];
@@ -2149,8 +2149,9 @@ fn launch_zone_predicts_maverick_hits() {
 }
 
 /// Anti-ship store `w` (3 Penguin, 4 Harpoon) fired level from 1000 ft at a ship `range` map
-/// units northeast, locked on the display: the launch zone at the shot and whether it hit.
-fn ship_shot(guided: bool, w: i32, range: i32) -> (dlz::LaunchZone, bool) {
+/// units northeast, locked on the display: the launch zone at the shot, whether it hit and
+/// whether the lock was valid as it was fired.
+fn ship_shot(guided: bool, w: i32, range: i32) -> (dlz::LaunchZone, bool, bool) {
     let d = data();
     let (m, mut sim, ship) = (0..8)
         .flat_map(|th| (0..8u16).map(move |k| (th, k)))
@@ -2181,6 +2182,7 @@ fn ship_shot(guided: bool, w: i32, range: i32) -> (dlz::LaunchZone, bool) {
         p.cmd = Commands::default();
     }
     let zone = sim.launch_zone().expect("launch zone");
+    let locked = sim.targeting().lock_valid;
     p.cmd.fire = true;
     let mut hit = false;
     for _ in 0..15 * 240 {
@@ -2191,7 +2193,7 @@ fn ship_shot(guided: bool, w: i32, range: i32) -> (dlz::LaunchZone, bool) {
         }
         p.cmd = Commands::default();
     }
-    (zone, hit)
+    (zone, hit, locked)
 }
 
 #[test]
@@ -2200,15 +2202,21 @@ fn launch_zone_predicts_anti_ship_hits() {
         for w in [3, 4] {
             let mut hits = 0;
             for range in (1..=12).map(|k| k * 100) {
-                let (z, hit) = ship_shot(guided, w, range);
+                let (z, hit, locked) = ship_shot(guided, w, range);
                 assert!(z.at_lock && z.zone.is_some(), "guided {guided} w {w}: {z:?}");
                 assert!((z.range - range).abs() <= range / 10 + 2, "{z:?}");
                 // Classic missiles fired from close in may dive into the water by the ship and
                 // hit it with the blast, which the zone does not count on; at the far edge
                 // (the zone takes the ship as standing still) they may dive in short of it.
+                // Close in, the ship is below the HUD's lock oval of a jet flying level: the
+                // classic lock is not valid and the missile flies on unguided (the zone goes by
+                // the missile's flight alone).
                 let far_edge = z.zone.is_some_and(|(_, hi)| (hi - range).abs() < 40);
+                let unguided = !guided && !locked && !hit;
                 assert!(
-                    z.in_zone() == hit || (!guided && (hit && z.too_close() || far_edge)),
+                    z.in_zone() == hit
+                        || unguided
+                        || (!guided && (hit && z.too_close() || far_edge)),
                     "guided {guided} w {w} range {range}: {z:?} hit {hit}"
                 );
                 hits += hit as i32;
@@ -2607,7 +2615,7 @@ fn hellfire_launch_zone_at_the_spot() {
 
 /// A Hellfire hits a target standing on the rolling hills: it flies at the target where it
 /// stands, not at the flat world under the hill (it used to fly into the hillside short of it).
-/// The realistic launch zone reaches it there too.
+/// The launch zone reaches it there too.
 #[test]
 fn hellfire_hits_a_target_on_the_hills() {
     use stealth_sim::hills::{DIM, Hills};
@@ -2652,11 +2660,9 @@ fn hellfire_hits_a_target_on_the_hills() {
         p.pod = Some(PodAim { heading: p.heading, pitch: -0x100, ground: Some((tx, ty)) });
         sim.step(&p, 15);
         let z = sim.launch_zone().expect("a launch zone");
-        // (Classic guidance's zone starts farther out than this when fired from low down.)
-        assert!(z.in_zone() || !guided, "{z:?}");
+        assert!(z.in_zone(), "guided {guided}: {z:?}");
         p.cmd.fire = true;
-        // The hit's burst (kind 0x10) at the target, not only a ground impact's (-6) on the
-        // way (classic guidance's last step may clip the slope just short as it fuses).
+        // The hit's burst (kind 0x10) at the target, not a ground impact's (-6) on the way.
         let mut bursts = Vec::new();
         for _ in 0..15 * 60 {
             for e in sim.step(&p, 15) {
@@ -2666,7 +2672,44 @@ fn hellfire_hits_a_target_on_the_hills() {
             }
             p.cmd = Commands::default();
         }
-        assert!(bursts.contains(&(0, 0, 0x10)), "guided {guided}: {bursts:?}");
+        assert_eq!(bursts.first(), Some(&(0, 0, 0x10)), "guided {guided}: {bursts:?}");
+    }
+}
+
+/// A classic-guidance Hellfire fired from a low hover hits at short and long range alike, its
+/// launch zone saying so: it used to aim up to a map unit under the target (the height
+/// difference rounded down) and fly into the ground short of it.
+#[test]
+fn classic_hellfire_hits_from_a_low_hover() {
+    for alt in [20u16, 122, 250] {
+        for r in [30, 100, 200, 300] {
+            let (mut sim, mx, my, mut p) = helicopter(true, false);
+            let (tx, ty) = (mx + r, my - r);
+            {
+                let o = &mut sim.objects_mut()[5];
+                o.x = tx;
+                o.y = ty;
+                o.flags = 0;
+            }
+            p.altitude = alt;
+            p.height = alt;
+            p.hud_mode = HudMode::Gnd;
+            p.pod = Some(PodAim { heading: 0x2000, pitch: -0x100, ground: Some((tx, ty)) });
+            sim.step(&p, 15);
+            let z = sim.launch_zone().expect("a launch zone");
+            assert!(z.in_zone(), "{alt} up, {r} out: {z:?}");
+            p.cmd.fire = true;
+            let mut bursts = Vec::new();
+            for _ in 0..15 * 60 {
+                for e in sim.step(&p, 15) {
+                    if let SimEvent::Explosion { x, y, kind, .. } = e {
+                        bursts.push((x - tx, y - ty, kind));
+                    }
+                }
+                p.cmd = Commands::default();
+            }
+            assert_eq!(bursts.first(), Some(&(0, 0, 0x10)), "{alt} up, {r} out: {bursts:?}");
+        }
     }
 }
 
