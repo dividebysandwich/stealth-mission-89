@@ -376,8 +376,11 @@ const EXHAUST: Vec3 = Vec3::new(0.0, 0.3, 8.0);
 const F117_EXHAUST: Vec3 = Vec3::new(0.0, F117_LIFT + 0.55, 5.2);
 
 /// The F-117A's HUD's pixels per unit: the modern HUD's field (`hud::modern::field`, 780
-/// pixels across) in its glass, 0.11 across per unit ahead at its narrow top.
-const F117_HUD_SCALE: f32 = 3500.0;
+/// pixels across) in its glass, 0.11 across per unit ahead at its narrow top, as the seat's eye
+/// sees it (VR); on the screen as the 2D camera does, leaning in to it
+/// (`settings::F117_DESK_VIEW`: the glass is as much wider from there).
+const F117_VR_HUD_SCALE: f32 = 3500.0;
+const F117_HUD_SCALE: f32 = 2150.0;
 
 static F117: AircraftSpec = AircraftSpec {
     model: "aircraft_024",
@@ -404,7 +407,7 @@ static F117: AircraftSpec = AircraftSpec {
     // The symbology's field fits the contributed model's small HUD glass (about 13 degrees
     // across), as seen from the eye, in VR too.
     hud_scale: F117_HUD_SCALE,
-    vr_hud_scale: F117_HUD_SCALE,
+    vr_hud_scale: F117_VR_HUD_SCALE,
     bomb_bay: true,
     helicopter: false,
     turret: false,

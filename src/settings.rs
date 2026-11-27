@@ -306,6 +306,10 @@ const F14_DESK_VIEW: DeskView = DeskView { lean: 0.20, drop: 0.05, pitch: 0.21 }
 /// The F-14 RIO's: tilted down to his whole panel, the TID and the panels under it.
 const F14_RIO_DESK_VIEW: DeskView = DeskView { lean: 0.0, drop: 0.0, pitch: 0.47 };
 
+/// The F-117A pilot's in the modern cockpit: well forward to its small combiner, tilted down
+/// to keep the displays and the flight instruments in the picture.
+const F117_DESK_VIEW: DeskView = DeskView { lean: 0.36, drop: 0.0, pitch: 0.21 };
+
 /// Where an aircraft's 2D camera sits and looks relative to the seat's eye.
 #[derive(Clone, Copy, Default)]
 struct DeskView {
@@ -384,12 +388,20 @@ impl Settings {
 
     /// The 2D camera off the seat's eye: the F-14's pilot leans in to his narrow combiner so
     /// its symbols read at the screen's size, and looks down a little to the instruments.
-    /// Its RIO looks down at his panel.
+    /// Its RIO looks down at his panel. The F-117A's pilot leans in to the modern cockpit's
+    /// small combiner likewise (`AircraftSpec::hud_scale` is the symbols' size from there).
     fn desk_view(&self) -> DeskView {
-        if self.vr || self.asw_console || self.aircraft != crate::aircraft::AircraftKind::F14 {
+        use crate::aircraft::AircraftKind;
+        use crate::cockpit3d::layout::PanelStyle;
+        if self.vr || self.asw_console {
             return DeskView::default();
         }
-        if self.gunner_seat().is_some() { F14_RIO_DESK_VIEW } else { F14_DESK_VIEW }
+        match self.aircraft {
+            AircraftKind::F14 if self.gunner_seat().is_some() => F14_RIO_DESK_VIEW,
+            AircraftKind::F14 => F14_DESK_VIEW,
+            AircraftKind::F117 if self.cockpit().0 == PanelStyle::Modern => F117_DESK_VIEW,
+            _ => DeskView::default(),
+        }
     }
 
     /// Scale of the VR rig (the head offset) for the chosen cockpit size: the aircraft's, or at
