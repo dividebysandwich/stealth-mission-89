@@ -1091,7 +1091,11 @@ pub fn apply(state: &mut MfdState, raster: &mut MapRaster, cmd: MfdCmd) {
         // (pressed on the menu, back to the format).
         MfdCmd::Row(side, k) => {
             let f = av.formats(side)[k as usize];
+            // An unused (blank) button: the format menu, to put a format on it (pressed on its
+            // menu, the menu closes).
             if !av.offered(f) {
+                let i = index(side);
+                av.menu[i] = if av.menu[i] == Some(k) { None } else { Some(k) };
                 return;
             }
             match av.menu(side) {
@@ -1281,10 +1285,11 @@ pub fn osb(side: MfdSide, slot: u8, s: &MfdState) -> Option<(&'static str, OsbFn
         let k = slot - 5;
         let g = av.formats(side)[k as usize];
         let lit = menu.map_or(f == g, |m| m == k);
-        // A format not offered (a weapon's page without that weapon): a blank button, but
-        // still the one to open the format menu from while it is open.
-        if !av.offered(g) && menu != Some(k) {
-            return None;
+        // A format not offered (a weapon's page without that weapon, or none on this
+        // aircraft): an unlabelled button that opens the format menu to put a format on it
+        // (lit while its menu is open).
+        if !av.offered(g) {
+            return Some(("", Cmd(MfdCmd::Row(side, k)), menu == Some(k)));
         }
         return Some((g.label(), Cmd(MfdCmd::Row(side, k)), lit));
     }
@@ -1529,7 +1534,12 @@ fn draw_labels(c: &mut Canvas, side: MfdSide, s: &MfdState) {
         let Some((label, _, lit)) = osb(side, slot, s) else { continue };
         let (edge, k) = crate::mfd::osb_edge(slot);
         let k = k as i32;
-        let w = crate::font::stroke_width(label, LABEL_GLYPH).ceil() as i32;
+        // (An unassigned bottom button's lit box marks the one the format menu is for.)
+        let w = if label.is_empty() {
+            h
+        } else {
+            crate::font::stroke_width(label, LABEL_GLYPH).ceil() as i32
+        };
         // Vertical middles: of the label bands, and of the side buttons (clear of the bands).
         let row = ((c.h as i32 * (2 * k + 1)) / 10)
             .clamp(BAND + 2 + h / 2, c.h as i32 - BAND - 2 - h / 2);
@@ -3873,6 +3883,36 @@ mod tests {
         assert_eq!(next.formats(MfdSide::Left), s.av.formats(MfdSide::Left));
     }
 
+    /// An unused bottom button (its format not offered, as the HARM display on the MH-60R
+    /// without HARMs) is blank but opens the format menu, and a pick goes onto it.
+    #[test]
+    fn unused_bottom_button_takes_a_format() {
+        let mut s = MfdState { modern: true, ..default() };
+        s.av.set_stores(false, false, false);
+        let mut raster = MapRaster::default();
+        let press = |s: &mut MfdState, raster: &mut MapRaster, slot| {
+            let Some((_, OsbFn::Cmd(cmd), _)) = osb(MfdSide::Left, slot, s) else { panic!() };
+            apply(s, raster, cmd);
+        };
+        // The second button (HARM) is blank, unlit; pressed, the menu is for it and it's lit.
+        assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| (o.0, o.2)), Some(("", false)));
+        press(&mut s, &mut raster, 6);
+        assert_eq!(s.av.menu(MfdSide::Left), Some(1));
+        assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| (o.0, o.2)), Some(("", true)));
+        // Pressed again: the menu closes, the format stays.
+        press(&mut s, &mut raster, 6);
+        assert_eq!(s.av.menu(MfdSide::Left), None);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Hsd);
+        // ENG from the menu: on the button and up.
+        press(&mut s, &mut raster, 6);
+        let eng =
+            (10..20).find(|&k| osb(MfdSide::Left, k, &s).is_some_and(|o| o.0 == "ENG")).unwrap();
+        press(&mut s, &mut raster, eng);
+        assert_eq!(s.av.formats(MfdSide::Left)[1], Format::Eng);
+        assert_eq!(s.av.format(MfdSide::Left), Format::Eng);
+        assert_eq!(osb(MfdSide::Left, 6, &s).map(|o| o.0), Some("ENG"));
+    }
+
     /// The cargo jet starts on the HSD, the HSI, the engines and the cargo page, left to right
     /// (its fourth MFD sits left of the third), and keeps them in NAV; only it has the cargo page.
     #[test]
@@ -3904,7 +3944,7 @@ mod tests {
         assert_eq!(label(&av, MfdSide::Left, 1), Some("HARM"));
         av.set_stores(false, false, false);
         assert_ne!(av.format(MfdSide::Right), Format::Harm);
-        assert_eq!(label(&av, MfdSide::Left, 1), None);
+        assert_eq!(label(&av, MfdSide::Left, 1), Some(""));
         assert!(av.available().all(|f| f != Format::Harm));
         assert_ne!(av.next_left_format(), Some(Format::Harm));
         av.set_stores(true, false, false);

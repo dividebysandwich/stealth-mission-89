@@ -497,6 +497,15 @@ fn control_tip(effect: Effect, mfd: &MfdState, style: PanelStyle) -> Option<Tip>
         Effect::Tomcat(k) => (tomcat_title(k), t!(k.tip()).to_string()),
         Effect::Osb(side, slot) => {
             let (label, f, _) = osb(side, slot, mfd)?;
+            // An unassigned bottom button (modern avionics): it opens the format menu.
+            if label.is_empty() && matches!(f, OsbFn::Cmd(MfdCmd::Row(..))) {
+                return Some(Tip {
+                    title: t!("tip-osb-unassigned").to_string(),
+                    readout: None,
+                    detail: t!("tip-cmd-format-blank").to_string(),
+                    actions: Vec::new(),
+                });
+            }
             let detail = match f {
                 OsbFn::Cmd(c) => cmd_text(c),
                 OsbFn::Action(a) => {
