@@ -76,10 +76,10 @@ pub const DDD_SWEEP: u8 = 200;
 
 /// The DDD: returns, gates and carets of the radar `r` set by `ctl`; `cursor`: the hand
 /// controller's acquisition cursor (azimuth in radians, 0..1 up the scope), two bars over each
-/// other at its place; `iff`: the IFF interrogates, friendly returns get bars over and under them.
+/// other at its place. The returns the IFF found friendly get bars over and under them.
 /// The tube is lit and its marks dark (`tomcat::displays::ddd_colours`), the antenna's azimuth a
 /// white line up it.
-pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec2>, iff: bool) {
+pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec2>) {
     c.clear(0);
     let (w, h) = (c.w as f32, c.h as f32);
     let m = 0.08 * w;
@@ -156,7 +156,7 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
         let fade = (1.0 - hit.age / (2.0 * r.frame)).clamp(0.15, 1.0);
         let half = 0.018 * w;
         c.stroke(Vec2::new(x - half, y), Vec2::new(x + half, y), 0.012 * h, ink(BRIGHT * fade));
-        if iff && hit.friendly {
+        if hit.friendly == Some(true) {
             // The IFF's reply: grey bars over and under the return.
             for sy in [-1.0, 1.0] {
                 let by = y + sy * 0.022 * h;
@@ -471,7 +471,7 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
         }
         let coasting = t.unseen > 2.0 * r.frame;
         let bright = if coasting { DIM } else { BRIGHT };
-        ntds(c, p, 0.02 * h, Some(t.friendly), bright);
+        ntds(c, p, 0.02 * h, t.friendly, bright);
         // The track's centre dot.
         c.stroke(p, p, 2.5, ink(bright));
         let vel = t.vel.truncate();
@@ -484,7 +484,7 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
         let range = d.length();
         let closure = -(vel - own_vel).dot(d) / range.max(1.0);
         let zone = launch_times(range as f32, closure as f32)
-            .filter(|z| !t.friendly && z[2] < ZONE_SHOWN && z[0] > 0.0);
+            .filter(|z| t.friendly != Some(true) && z[2] < ZONE_SHOWN && z[0] > 0.0);
         if let Some([least, best, longest]) = zone {
             let len = least.min(ZONE_SECS) / ZONE_SECS * full;
             c.stroke(p, p + along * len, 1.0, ink(bright));
@@ -533,7 +533,7 @@ pub fn draw_tid(c: &mut Canvas, v: &TidView) {
         let p = tube.own + tube.dir(bearing) * d * tube.scale;
         if tube.inside(p) {
             let b = 0.03 * h;
-            ntds(c, p, 0.02 * h, None, BRIGHT);
+            ntds(c, p, 0.02 * h, r.identity(t.target), BRIGHT);
             c.ring(p, b, 1.0, ink(BRIGHT));
         }
     }
@@ -1130,7 +1130,7 @@ mod tests {
             knots: 400.0,
         };
         let mut c = Canvas::scaled(320, 320, 1);
-        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)), true);
+        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)));
         assert!(lit(&c) > 0);
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(30_000.0, 80_000.0)];
         for stab in [TidStab::Ground, TidStab::Aircraft, TidStab::Attack] {
@@ -1242,11 +1242,14 @@ mod preview {
             }
             r.step(1.0 / 30.0, own, 0.0, &ctl, &t, None, |_, _| true);
         }
+        // The IFF pushed: the friend among them shows.
+        r.interrogate();
+        r.step(1.0 / 30.0, own, 0.0, &ctl, &t, None, |_, _| true);
         r.hooked = r.tracks.first().map(|t| t.number);
         let pal = crate::intruder::phosphor([2, 10, 4], [80, 255, 110]);
         let own = Own { pos: own, heading: 0.0, pitch: 0.05, roll: -0.35, knots: 450.0 };
         let mut c = Canvas::scaled(320, 320, 2);
-        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)), true);
+        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)));
         crate::intruder::dump_png(&c, &crate::tomcat::displays::ddd_colours(), "f14_ddd");
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(-20_000.0, 100_000.0)];
         let inf = [InFlight { target: ContactRef::Unit(2), to_go: -23.0, tti: 41.0 }];

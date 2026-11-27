@@ -201,7 +201,8 @@ pub struct Hit {
     pub range: f32,
     pub closure: f32,
     pub target: ContactRef,
-    pub friendly: bool,
+    /// Friend or foe, once the IFF has interrogated it (`Awg9::interrogate`); None until then.
+    pub friendly: Option<bool>,
     /// Seconds since it was painted.
     pub age: f32,
 }
@@ -215,7 +216,8 @@ pub struct TrackFile {
     /// Where it was last seen (metres east, north, up), its estimated velocity (m/s).
     pub pos: DVec3,
     pub vel: DVec3,
-    pub friendly: bool,
+    /// Friend or foe, once the IFF has interrogated it (`Awg9::interrogate`); None until then.
+    pub friendly: Option<bool>,
     /// Seconds since it was last seen, and since it was first.
     pub unseen: f32,
     pub age: f32,
@@ -261,6 +263,10 @@ pub struct Awg9 {
     heading: f32,
     /// The targets' last positions and velocities (for closures and the STT).
     motions: Vec<(ContactRef, DVec3, DVec3)>,
+    /// The aircraft the IFF has interrogated and what they answered (friendly), while the radar
+    /// holds them; the IFF's button was pushed (the next frame interrogates).
+    identified: Vec<(ContactRef, bool)>,
+    asking: bool,
 }
 
 impl Default for Awg9 {
@@ -285,6 +291,8 @@ impl Default for Awg9 {
             own: None,
             heading: 0.0,
             motions: Vec::new(),
+            identified: Vec::new(),
+            asking: false,
         }
     }
 }
@@ -308,6 +316,44 @@ impl Awg9 {
     /// Own position (metres east, north, up) at the last frame.
     pub fn own_position(&self) -> Option<DVec3> {
         self.own.map(|o| o.0)
+    }
+
+    /// The IFF's button pushed: every aircraft the radar holds now (a return, a track, the
+    /// single target track) is interrogated, and is known as friend or foe from then on until
+    /// the radar loses it. One it finds later is unknown until the next push.
+    pub fn interrogate(&mut self) {
+        self.asking = true;
+    }
+
+    /// Friend (true) or foe as the IFF found an aircraft; None if it has not interrogated it.
+    pub fn identity(&self, t: ContactRef) -> Option<bool> {
+        self.identified.iter().find(|k| k.0 == t).map(|k| k.1)
+    }
+
+    /// The frame's end: the IFF's answers of the aircraft held if it was pushed, those of the
+    /// aircraft lost forgotten, the returns and the tracks marked by what is known.
+    fn identify(&mut self, targets: &[Target]) {
+        let held = |r: &Awg9, t: ContactRef| {
+            r.hits.iter().any(|h| h.target == t)
+                || r.tracks.iter().any(|k| k.target == t)
+                || r.stt.is_some_and(|s| s.target == t)
+        };
+        if std::mem::take(&mut self.asking) {
+            for t in targets {
+                if held(self, t.target) && self.identity(t.target).is_none() {
+                    self.identified.push((t.target, t.friendly));
+                }
+            }
+        }
+        let mut known = std::mem::take(&mut self.identified);
+        known.retain(|k| held(self, k.0));
+        self.identified = known;
+        for i in 0..self.hits.len() {
+            self.hits[i].friendly = self.identity(self.hits[i].target);
+        }
+        for i in 0..self.tracks.len() {
+            self.tracks[i].friendly = self.identity(self.tracks[i].target);
+        }
     }
 
     /// The track numbered `n`.
@@ -359,7 +405,25 @@ impl Awg9 {
     /// A frame: the aircraft at `own` (metres east, north, up) heading `heading`, the controls
     /// `c`, the simulation's air lock `locked`; `sight` tells whether the ground leaves the line
     /// between two points open.
+    #[allow(clippy::too_many_arguments)]
     pub fn step(
+        &mut self,
+        dt: f32,
+        own: DVec3,
+        heading: f32,
+        c: &Awg9Controls,
+        targets: &[Target],
+        locked: Option<ContactRef>,
+        sight: impl Fn(DVec3, DVec3) -> bool,
+    ) {
+        self.sweep(dt, own, heading, c, targets, locked, sight);
+        if c.mode.on() {
+            self.identify(targets);
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn sweep(
         &mut self,
         dt: f32,
         own: DVec3,
@@ -550,7 +614,7 @@ impl Awg9 {
                 range: range as f32,
                 closure,
                 target: t.target,
-                friendly: t.friendly,
+                friendly: self.identity(t.target),
                 age: 0.0,
             });
             if tws {
@@ -579,7 +643,6 @@ impl Awg9 {
             tr.vel += (measured - tr.vel) * k;
             tr.pos = t.pos;
             tr.unseen = 0.0;
-            tr.friendly = t.friendly;
             return;
         }
         if self.tracks.len() >= MAX_TRACKS {
@@ -592,21 +655,21 @@ impl Awg9 {
             target: t.target,
             pos: t.pos,
             vel: self.velocity(t.target),
-            friendly: t.friendly,
+            friendly: self.identity(t.target),
             unseen: 0.0,
             age: 0.0,
             priority: None,
         });
     }
 
-    /// TWS AUTO: the hostile tracks ranked for the shots, the soonest at us first (range over
-    /// closure; those not closing by their range), the first `PRIORITIES`.
+    /// TWS AUTO: the tracks not known as friends ranked for the shots, the soonest at us first
+    /// (range over closure; those not closing by their range), the first `PRIORITIES`.
     fn rank(&mut self, own: DVec3) {
         let own_vel = self.own.map_or(DVec3::ZERO, |o| o.1);
         let mut order: Vec<(f64, u16)> = self
             .tracks
             .iter()
-            .filter(|t| !t.friendly && t.unseen < COAST_FRAMES * self.frame)
+            .filter(|t| t.friendly != Some(true) && t.unseen < COAST_FRAMES * self.frame)
             .map(|t| {
                 let d = t.now() - own;
                 let range = d.length();
@@ -825,6 +888,52 @@ mod tests {
         // The next shot: the first ranked without a missile at it.
         assert_eq!(radar.next_shot(&[]), Some(ContactRef::Unit(2)));
         assert_eq!(radar.next_shot(&[ContactRef::Unit(2)]), Some(ContactRef::Unit(3)));
+    }
+
+    /// A track is unknown until the IFF interrogates it: then the friend shows as one and
+    /// leaves the ranks, the foe shows as one; an aircraft found later is unknown again until
+    /// the next push, and one the radar lost is forgotten.
+    #[test]
+    fn the_iff_tells_friend_from_foe_once_pushed() {
+        let mut radar = Awg9::default();
+        let c = controls(Mode::TwsAuto);
+        let pi = std::f32::consts::PI;
+        let mut t = vec![
+            fighter(1, -10_000.0, 120_000.0, 9000.0, pi),
+            Target { friendly: true, ..fighter(2, 0.0, 90_000.0, 9000.0, pi) },
+        ];
+        let frames = 4.0 * c.scan().frame();
+        run(&mut radar, frames, &c, &mut t, 250.0, None);
+        let track = |r: &Awg9, n: usize| {
+            *r.tracks.iter().find(|tr| tr.target == ContactRef::Unit(n)).unwrap()
+        };
+        assert_eq!(track(&radar, 1).friendly, None);
+        assert_eq!(track(&radar, 2).friendly, None);
+        assert!(radar.hits.iter().all(|h| h.friendly.is_none()));
+        // Unknown, the friend is ranked for a shot like the other.
+        assert_eq!(track(&radar, 2).priority, Some(1));
+        radar.interrogate();
+        run(&mut radar, 0.2, &c, &mut t, 250.0, None);
+        assert_eq!(track(&radar, 1).friendly, Some(false));
+        assert_eq!(track(&radar, 2).friendly, Some(true));
+        assert_eq!(track(&radar, 2).priority, None);
+        assert_eq!(track(&radar, 1).priority, Some(1));
+        assert_eq!(radar.identity(ContactRef::Unit(2)), Some(true));
+        // It stays known on the returns of the later sweeps.
+        run(&mut radar, frames, &c, &mut t, 250.0, None);
+        assert_eq!(track(&radar, 2).friendly, Some(true));
+        assert!(radar.hits.iter().any(|h| h.friendly == Some(true)));
+        // A newcomer is unknown until the next push.
+        t.push(Target { friendly: true, ..fighter(3, 10_000.0, 80_000.0, 9000.0, pi) });
+        run(&mut radar, frames, &c, &mut t, 250.0, None);
+        assert_eq!(track(&radar, 3).friendly, None);
+        assert_eq!(track(&radar, 1).friendly, Some(false));
+        radar.interrogate();
+        run(&mut radar, 0.2, &c, &mut t, 250.0, None);
+        assert_eq!(track(&radar, 3).friendly, Some(true));
+        // Switched off, the radar forgets.
+        run(&mut radar, 0.2, &controls(Mode::Standby), &mut t, 250.0, None);
+        assert_eq!(radar.identity(ContactRef::Unit(2)), None);
     }
 
     /// Pulse search does not see an aircraft below the horizon (ground clutter), pulse Doppler

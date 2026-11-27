@@ -4978,13 +4978,17 @@ high (for a target above you in a turn). Closing the cover gives the radar back 
 across, range up (in PD SRCH closing speed up), a dark bar for each return, the scan's limits
 dashed, the antenna's azimuth a white line up the scope and its elevation a caret on the left
 edge. In a single target track it shows the gates on the target, and its range, closing speed
-and speed along the top. A push of the **IFF** button (beside the WCS mode buttons) interrogates the
-returns for a moment (it is lit meanwhile): a friendly one gets a grey bar over and under it, a
-hostile stays a plain bar.
+and speed along the top. The radar cannot tell friend from foe: a push of the **IFF** button (beside the WCS mode
+buttons; it springs back) interrogates every aircraft the radar holds at that moment. From then
+on a friendly return wears a grey bar over and under it and a hostile stays a plain bar, until
+the radar loses the aircraft. One the radar finds later is unknown until the next push.
 
 **The TID** (tactical information display, the big round tube) is the picture the computer
 builds: your aircraft, the tracks, the scan's limits and the route. Hostile
-tracks wear a peaked hat, friendly ones a round one, unknown ones a square one. The **TID MODE**
+tracks wear a peaked hat, friendly ones a round one, unknown ones a square one: every track is
+unknown until the IFF has interrogated it, and what it found shows in both cockpits (the pilot's
+HSD in TID mode too). TWS AUTO ranks unknown tracks for the Phoenixes like hostile ones, so
+interrogate before you shoot; the automatic RIO does it for every new aircraft. The **TID MODE**
 knob turns the picture: north up, nose up, nose up with you at the foot (ATTK), or the pod's
 video (TV). **TID RANGE** sets how far it reaches. **VEL VECTOR** adds a line from each track's
 centre dot: its direction is the track's heading and its length its speed (the longest stands

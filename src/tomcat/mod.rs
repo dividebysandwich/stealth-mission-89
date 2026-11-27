@@ -1453,6 +1453,24 @@ mod tests {
         assert_eq!(Key::parse("Bogus"), None);
     }
 
+    /// The IFF's button does not stay in: each push counts, and goes to the other seat.
+    #[test]
+    fn the_iff_button_is_momentary() {
+        let mut p = TomcatPanel::default();
+        p.press(Key::Iff);
+        assert!(!p.latched(Key::Iff));
+        assert_eq!(p.iffs, 1);
+        let mut q = TomcatPanel::default();
+        q.unpack(&p.pack());
+        assert_eq!(q.iffs, 1);
+        p.press(Key::Iff);
+        q.unpack(&p.pack());
+        assert_eq!(q.iffs, 2);
+        // Lit only while it interrogates.
+        p.interrogating = 0.5;
+        assert!(p.latched(Key::Iff));
+    }
+
     /// One button of a group is in at a time.
     #[test]
     fn radio_groups() {

@@ -16,7 +16,7 @@ use crate::world::{WU, WorldPos};
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         Update,
-        (share, remote_launch, automatic, log)
+        (share, remote_launch, welcome, automatic, log)
             .chain()
             .after(crate::combat::CombatSystems)
             .before(super::avionics::radar_controls)
@@ -26,6 +26,8 @@ pub(super) fn build(app: &mut App) {
 
 /// Seconds between the automatic RIO's looks at the picture.
 const LOOK: f32 = 0.5;
+/// Seconds between his pushes of the IFF's button.
+const IFF_EVERY: f32 = 2.0;
 /// The automatic RIO designates a target of the route this close ahead (m, 20 nmi: inside the
 /// pod's tracking range).
 const DESIGNATE_RANGE: f64 = 37_000.0;
@@ -66,6 +68,7 @@ fn log(
     panel: Res<TomcatPanel>,
     hud: Res<crate::hud::HudState>,
     mfd: Res<MfdState>,
+    radar: Res<crate::awg9::Awg9>,
     mut since: Local<f32>,
 ) {
     *since += time.delta_secs();
@@ -74,13 +77,22 @@ fn log(
     }
     *since = 0.0;
     if std::env::var_os("SM89_F14_LOG").is_some() {
+        // The tracks by what the IFF found: friends, foes, unknown.
+        let known = |k: Option<bool>| radar.tracks.iter().filter(|t| t.friendly == k).count();
         eprintln!(
-            "f14 panel wcs={:?} tid={:?} hsd={:?} hooks={} launches={} acm={} steer={:?} hud={:?} ils={}",
+            "f14 tracks friends={} foes={} unknown={}",
+            known(Some(true)),
+            known(Some(false)),
+            known(None)
+        );
+        eprintln!(
+            "f14 panel wcs={:?} tid={:?} hsd={:?} hooks={} launches={} iffs={} acm={} steer={:?} hud={:?} ils={}",
             panel.wcs,
             panel.tid_range,
             panel.hsd_mode,
             panel.hooks,
             panel.launches & 0xF,
+            panel.iffs & 0xF,
             panel.acm_cover,
             panel.steer,
             hud.mode,
@@ -122,6 +134,35 @@ fn remote_launch(
     *last = Some(count);
 }
 
+/// Seconds after another player took my back seat at which my client pushes the IFF for him:
+/// his radar starts with nothing identified, so the pushes (shared like any) bring his picture
+/// up to what the pilot's already shows, while his game still loads and his radar finds them.
+const WELCOME_IFF: [f32; 3] = [3.0, 10.0, 20.0];
+
+fn welcome(
+    time: Res<Time>,
+    settings: Res<crate::settings::Settings>,
+    combat: Option<Res<crate::combat::Combat>>,
+    mut panel: ResMut<TomcatPanel>,
+    mut aboard: Local<Option<f32>>,
+) {
+    let crewed =
+        combat.as_deref().filter(|_| settings.aircraft == AircraftKind::F14).is_some_and(|c| {
+            let me = c.sim.active_pilot();
+            c.sim.crew_view(me).is_some_and(|v| v.owner == me && v.gunner.is_some_and(|g| g != me))
+        });
+    if !crewed {
+        *aboard = None;
+        return;
+    }
+    let before = aboard.unwrap_or(0.0);
+    let now = before + time.delta_secs();
+    *aboard = Some(now);
+    if WELCOME_IFF.iter().any(|&t| before < t && now >= t) {
+        panel.press(super::Key::Iff);
+    }
+}
+
 /// The DDD's shortest range that shows a contact `metres` away.
 pub fn ddd_range_for(metres: f32) -> DddRange {
     DDD_RANGES
@@ -155,6 +196,8 @@ struct Rio {
     ddd: Option<DddRange>,
     tid: Option<TidRange>,
     pod: bool,
+    /// Seconds until he may push the IFF again.
+    iff: f32,
     /// The laser as he set it, the waypoint he lases.
     laser: Option<bool>,
     lased: Option<usize>,
@@ -163,7 +206,7 @@ struct Rio {
 
 /// The automatic radar intercept officer, while the back seat is empty (and the pilot has not
 /// the ACM cover up): the radar in track while scan, or in a single target track on the pilot's
-/// lock for a Sparrow; the DDD's and the TID's ranges and the antenna on the nearest hostile;
+/// lock for a Sparrow; the IFF pushed for every new aircraft on the radar; the DDD's and the TID's ranges and the antenna on the nearest hostile;
 /// with a bomb selected or laser-guided bombs aboard the LANTIRN up and the mission's primary
 /// target, then the secondary, designated and lased while it is in reach ahead.
 #[allow(clippy::too_many_arguments)]
@@ -176,9 +219,11 @@ fn automatic(
     mut mfd: ResMut<MfdState>,
     mut combat: Option<ResMut<crate::combat::Combat>>,
     player: Query<(&Aircraft, &WorldPos), With<Player>>,
+    radar: Res<crate::awg9::Awg9>,
     mut rio: Local<Rio>,
 ) {
     rio.wait -= time.delta_secs();
+    rio.iff -= time.delta_secs();
     if settings.aircraft != AircraftKind::F14 || settings.gunner_cockpit || rio.wait > 0.0 {
         return;
     }
@@ -202,6 +247,14 @@ fn automatic(
     if rio.wcs != Some(wcs) {
         rio.wcs = Some(wcs);
         panel.wcs = wcs;
+    }
+    // The IFF: a push whenever the radar holds an aircraft it has not interrogated yet.
+    let unknown = radar.hits.iter().any(|h| h.friendly.is_none())
+        || radar.tracks.iter().any(|t| t.friendly.is_none())
+        || radar.stt.is_some_and(|t| radar.identity(t.target).is_none());
+    if unknown && rio.iff <= 0.0 {
+        rio.iff = IFF_EVERY;
+        panel.press(super::Key::Iff);
     }
     // The nearest hostile aircraft: the ranges and the antenna on it.
     let own = DVec3::new(pos.0.x, -pos.0.z, pos.0.y);

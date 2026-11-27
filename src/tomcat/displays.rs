@@ -192,7 +192,7 @@ pub fn draw_hsd(c: &mut Canvas, i: &Inputs) {
 pub fn draw_ddd(c: &mut Canvas, i: &Inputs) {
     let cursor = i.scene.cursor;
     let ddd = (cursor.active == Some(Cursor::Ddd)).then_some(cursor.ddd);
-    scopes::draw_ddd(c, i.radar, i.controls, ddd, i.panel.interrogating > 0.0);
+    scopes::draw_ddd(c, i.radar, i.controls, ddd);
     super::dump_png(c, &ddd_colours(), "ddd");
 }
 

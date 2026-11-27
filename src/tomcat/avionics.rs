@@ -253,7 +253,7 @@ const SIDEWINDER_WEAPON: i32 = 0;
 const SEEKER_CONE: f64 = 0.26;
 const SEEKER_REACH: f64 = 18_500.0;
 
-/// The hostile aircraft the radar has (a track, else a return) nearest the nose within the
+/// The aircraft not known as a friend the radar has (a track, else a return) nearest the nose within the
 /// Sidewinder seeker's cone and reach.
 fn seeker_target(radar: &Awg9, a: &Aircraft, pos: &WorldPos) -> Option<ContactRef> {
     let o = own(a, pos);
@@ -261,22 +261,22 @@ fn seeker_target(radar: &Awg9, a: &Aircraft, pos: &WorldPos) -> Option<ContactRe
     let (hs, hc) = (o.heading as f64).sin_cos();
     let (ps, pc) = (o.pitch as f64).sin_cos();
     let nose = DVec3::new(hs * pc, hc * pc, ps);
-    let tracks = radar.tracks.iter().filter(|t| !t.friendly).filter_map(|t| {
+    let tracks = radar.tracks.iter().filter(|t| t.friendly != Some(true)).filter_map(|t| {
         let d = t.now() - o.pos;
         let off = nose.angle_between(d);
         (d.length() < SEEKER_REACH && off < SEEKER_CONE).then_some((off, t.target))
     });
     // A return has no elevation: by its azimuth, with the antenna near level.
     let level = radar.elevation.abs() < 0.2 && o.pitch.abs() < 0.2;
-    let hits = radar.hits.iter().filter(|h| !h.friendly && level).filter_map(|h| {
+    let hits = radar.hits.iter().filter(|h| h.friendly != Some(true) && level).filter_map(|h| {
         let off = h.az.abs() as f64;
         ((h.range as f64) < SEEKER_REACH && off < SEEKER_CONE).then_some((off, h.target))
     });
     tracks.chain(hits).min_by(|a, b| a.0.total_cmp(&b.0)).map(|t| t.1)
 }
 
-/// The seconds the IFF interrogates after a push of its button.
-const IFF_SECS: f32 = 2.0;
+/// The seconds the IFF's button stays lit after a push.
+const IFF_SECS: f32 = 1.0;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn radar_controls(
@@ -363,10 +363,12 @@ pub(super) fn radar_controls(
         }
     }
     *hooks = Some(panel.hooks);
-    // The IFF button pushed (in either seat): it interrogates a while.
+    // The IFF button pushed (in either seat: the push goes across with the panel, so both
+    // seats' radars interrogate what they hold and show the same friends and foes).
     let pushes = panel.iffs & 0xf;
     if iffs.is_some_and(|k| k != pushes) {
         panel.interrogating = IFF_SECS;
+        radar.interrogate();
     } else if panel.interrogating > 0.0 {
         panel.interrogating = (panel.interrogating - dt).max(0.0);
     }
@@ -768,7 +770,7 @@ mod tests {
             target: ContactRef::Unit(number as usize),
             pos: DVec3::ZERO,
             vel: DVec3::ZERO,
-            friendly: false,
+            friendly: None,
             unseen: 0.0,
             age: 0.0,
             priority: None,
@@ -834,7 +836,7 @@ mod tests {
             range,
             closure: 0.0,
             target: ContactRef::Unit(i),
-            friendly: false,
+            friendly: None,
             age: 0.0,
         };
         radar.hits = vec![hit(1, -0.3, controls.range * 0.2), hit(2, 0.2, controls.range * 0.6)];
@@ -848,7 +850,7 @@ mod tests {
             target: ContactRef::Unit(9),
             pos: DVec3::new(0.0, 50.0 * NM, 8000.0),
             vel: DVec3::ZERO,
-            friendly: false,
+            friendly: None,
             unseen: 0.0,
             age: 0.0,
             priority: None,
@@ -869,7 +871,7 @@ mod tests {
             target: ContactRef::Unit(4),
             pos: DVec3::new(1000.0, 20_000.0, 500.0),
             vel: DVec3::ZERO,
-            friendly: false,
+            friendly: None,
             unseen: 0.0,
             age: 0.0,
             priority: None,
