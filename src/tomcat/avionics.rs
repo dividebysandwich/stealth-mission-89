@@ -275,6 +275,9 @@ fn seeker_target(radar: &Awg9, a: &Aircraft, pos: &WorldPos) -> Option<ContactRe
     tracks.chain(hits).min_by(|a, b| a.0.total_cmp(&b.0)).map(|t| t.1)
 }
 
+/// The seconds the IFF interrogates after a push of its button.
+const IFF_SECS: f32 = 2.0;
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn radar_controls(
     settings: Res<Settings>,
@@ -287,7 +290,7 @@ pub(super) fn radar_controls(
     mut cursor: ResMut<Cursors>,
     mut controls: ResMut<Awg9Controls>,
     mut radar: ResMut<Awg9>,
-    mut hooks: Local<Option<u8>>,
+    (mut hooks, mut iffs): (Local<Option<u8>>, Local<Option<u8>>),
     mut acm: Local<Option<(Mode, f32)>>,
     mut was_stt: Local<bool>,
     (combat, hud): (Option<Res<crate::combat::Combat>>, Res<crate::hud::HudState>),
@@ -360,6 +363,14 @@ pub(super) fn radar_controls(
         }
     }
     *hooks = Some(panel.hooks);
+    // The IFF button pushed (in either seat): it interrogates a while.
+    let pushes = panel.iffs & 0xf;
+    if iffs.is_some_and(|k| k != pushes) {
+        panel.interrogating = IFF_SECS;
+    } else if panel.interrogating > 0.0 {
+        panel.interrogating = (panel.interrogating - dt).max(0.0);
+    }
+    *iffs = Some(pushes);
     // The crew's hooked aircraft on this radar: its track, if it has one.
     let hook = super::hook_ref(panel.hook_target);
     let hooked = hook.and_then(|t| radar.tracks.iter().find(|k| k.target == t)).map(|t| t.number);

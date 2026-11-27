@@ -477,7 +477,8 @@ pub enum Key {
     AntennaDown,
     XmtrChan,
     MslChan,
-    /// The IFF interrogator (lit while it interrogates: friendly returns get bars on the DDD).
+    /// The IFF interrogator's button (a push interrogates; lit while it does: friendly returns
+    /// get bars on the DDD).
     Iff,
     /// The RIO's TID: its mode, range and readout knobs, the symbol buttons round it, the hand
     /// controller's hook button.
@@ -838,8 +839,10 @@ pub struct TomcatPanel {
     /// The thumbwheels' channels (1 ..= `CHANNELS`).
     pub xmtr_chan: u8,
     pub msl_chan: u8,
-    /// The IFF interrogates.
-    pub iff: bool,
+    /// The IFF button's presses so far (the avionics take each new one, in either seat).
+    pub iffs: u8,
+    /// The seconds the IFF still interrogates after a push (this seat's clock: not shared).
+    pub interrogating: f32,
     /// The TID.
     pub tid_mode: TidMode,
     pub tid_range: TidRange,
@@ -897,7 +900,8 @@ impl Default for TomcatPanel {
             ccm: 0,
             xmtr_chan: 1,
             msl_chan: 1,
-            iff: false,
+            iffs: 0,
+            interrogating: 0.0,
             tid_mode: TidMode::default(),
             tid_range: TidRange::default(),
             tid_readout: TidReadout::default(),
@@ -979,7 +983,7 @@ impl TomcatPanel {
             Key::AntennaDown => return Some(PanelOut::Mfd(crate::mfd::MfdCmd::FcrElevation(-1))),
             Key::XmtrChan => self.xmtr_chan = self.xmtr_chan % CHANNELS + 1,
             Key::MslChan => self.msl_chan = self.msl_chan % CHANNELS + 1,
-            Key::Iff => self.iff = !self.iff,
+            Key::Iff => self.iffs = self.iffs.wrapping_add(1),
             Key::TidMode => self.tid_mode = next(&TID_MODES, self.tid_mode),
             Key::TidRange => self.tid_range = next(&TID_RANGES, self.tid_range),
             Key::TidReadout => self.tid_readout = next(&TID_READOUTS, self.tid_readout),
@@ -1017,7 +1021,7 @@ impl TomcatPanel {
             Key::DddRange(r) => self.ddd_range == r,
             Key::DddMode(m) => self.ddd_mode == m,
             Key::Ccm(c) => self.ccm_in(c),
-            Key::Iff => self.iff,
+            Key::Iff => self.interrogating > 0.0,
             Key::TidOption(o) => self.tid_option(o),
             Key::LtsMode(m) => self.lts_mode == m,
             Key::LtsOper => self.lts_oper,
@@ -1129,7 +1133,7 @@ impl TomcatPanel {
         b.put(index(&LTS_MODES, self.lts_mode), 1);
         b.flag(self.lts_oper);
         b.put(index(&ALQ126S, self.alq126), 2);
-        b.flag(self.iff);
+        b.put(self.iffs, 4);
         b.buf
     }
 
@@ -1182,7 +1186,7 @@ impl TomcatPanel {
         self.lts_mode = pick(&LTS_MODES, b.get(1));
         self.lts_oper = b.bool();
         self.alq126 = pick(&ALQ126S, b.get(2));
-        self.iff = b.bool();
+        self.iffs = (self.iffs & !0xf) | b.get(4);
     }
 }
 
