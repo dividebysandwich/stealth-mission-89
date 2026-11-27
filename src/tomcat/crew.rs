@@ -64,6 +64,8 @@ fn log(
     time: Res<Time>,
     settings: Res<crate::settings::Settings>,
     panel: Res<TomcatPanel>,
+    hud: Res<crate::hud::HudState>,
+    mfd: Res<MfdState>,
     mut since: Local<f32>,
 ) {
     *since += time.delta_secs();
@@ -73,13 +75,16 @@ fn log(
     *since = 0.0;
     if std::env::var_os("SM89_F14_LOG").is_some() {
         eprintln!(
-            "f14 panel wcs={:?} tid={:?} hsd={:?} hooks={} launches={} acm={}",
+            "f14 panel wcs={:?} tid={:?} hsd={:?} hooks={} launches={} acm={} steer={:?} hud={:?} ils={}",
             panel.wcs,
             panel.tid_range,
             panel.hsd_mode,
             panel.hooks,
             panel.launches & 0xF,
-            panel.acm_cover
+            panel.acm_cover,
+            panel.steer,
+            hud.mode,
+            mfd.ils
         );
     }
 }

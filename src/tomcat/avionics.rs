@@ -470,7 +470,9 @@ fn steer_mode(
         if hud.mode != want {
             hud.mode = want;
         }
-    } else if hud.mode != mode {
+    } else if hud.mode != mode && pilot {
+        // (The buttons are the pilot's: what changes the back seat's HUD mode, a lock there,
+        // leaves them.)
         let s = steer_for(hud.mode, panel.steer);
         if panel.steer != s {
             panel.steer = s;
