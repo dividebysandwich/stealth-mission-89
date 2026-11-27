@@ -336,6 +336,7 @@ tip-f14-tid-hook = 커서 아래의 반사파나 항적을 선택, 없으면 다
 tip-f14-ph-act = Phoenix를 자체 탐색기를 레일에서부터 켠 채 발사: 항적이 필요 없음, 근거리용
 tip-f14-launch = 선택한 미사일을 사격 순서의 다음 항적에 발사
 tip-f14-missile-option = 레이더 미사일 발사 시 레이더의 동작: 없음, 그 표적을 단일 표적 추적, 또는 Phoenix를 레일에서부터 능동으로
+tip-f14-weapon-select = 조종사의 무장 키처럼 다음 무장을 선택
 tip-f14-lantirn-power = LANTIRN 포드 켜짐, 대기 또는 꺼짐
 tip-f14-lantirn-video = TV 영상이 보여 주는 것: LANTIRN 포드 또는 TCS 카메라
 tip-f14-laser-arm = 포드의 레이저를 무장: 포드가 잡고 있는 지점으로 레이저 유도 폭탄을 유도

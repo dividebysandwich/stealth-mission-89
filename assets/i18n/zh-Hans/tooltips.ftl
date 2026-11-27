@@ -335,6 +335,7 @@ tip-f14-tid-hook = 选取光标下的回波或航迹，否则选取下一条航�
 tip-f14-ph-act = 让 Phoenix 离轨即打开自身导引头发射：不需要航迹，用于近距
 tip-f14-launch = 向射击顺序中的下一条航迹发射所选导弹
 tip-f14-missile-option = 发射雷达导弹时雷达的动作：无、对其目标单目标跟踪，或 Phoenix 离轨即主动
+tip-f14-weapon-select = 选择下一件武器，与飞行员的武器键相同
 tip-f14-lantirn-power = LANTIRN 吊舱开、待机或关
 tip-f14-lantirn-video = TV 画面显示的内容：LANTIRN 吊舱或 TCS 摄像机的画面
 tip-f14-laser-arm = 使吊舱激光器待发：把激光制导炸弹引导到吊舱保持的点

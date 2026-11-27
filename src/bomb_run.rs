@@ -232,8 +232,11 @@ fn fly(
     }
     let (bays, cur) = sim.bays();
     let weapon = if sim.gun_selected() { -1 } else { bays.get(cur).map_or(-1, |b| b.0) };
-    // (All the stations of a kind are one selection: the selected one may be the empty one.)
-    let selected = BOMBS.contains(&weapon) && bays.iter().any(|b| b.0 == weapon && b.1 > 0);
+    // The bomb for the run, whatever the RIO selected meanwhile: the laser-guided one while
+    // there are any (the LANTIRN guides it), else the first kind left. (All the stations of a
+    // kind are one selection: the selected one may be the empty one.)
+    let wanted = BOMBS.into_iter().find(|&w| bays.iter().any(|b| b.0 == w && b.1 > 0));
+    let selected = wanted.is_some_and(|w| w == weapon);
     attack.select_wait -= dt;
     if tomcat && !selected && attack.select_wait <= 0.0 {
         attack.select_wait = SELECT_WAIT;

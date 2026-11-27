@@ -353,6 +353,7 @@ tip-f14-tid-hook = Hooks the return or track under the cursor, else the next tra
 tip-f14-ph-act = Fires the Phoenix with its own seeker on from the rail: it needs no track, at short range
 tip-f14-launch = Launches the selected missile at the next track in the firing order
 tip-f14-missile-option = What the radar does as a radar missile is launched: nothing, a single target track on its target, or the Phoenix active off the rail
+tip-f14-weapon-select = Selects the next weapon, as the pilot's weapon key does
 tip-f14-lantirn-power = LANTIRN pod on, standby or off
 tip-f14-lantirn-video = What the TV pictures show: the LANTIRN pod's or the TCS camera's
 tip-f14-laser-arm = Arms the pod's laser: it guides laser-guided bombs to the point the pod holds

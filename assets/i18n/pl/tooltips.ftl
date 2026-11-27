@@ -336,6 +336,7 @@ tip-f14-tid-hook = Chwyta echo lub ślad pod kursorem, inaczej następny ślad: 
 tip-f14-ph-act = Odpala Phoenix z własną głowicą włączoną od szyny: nie potrzebuje śladu, na małą odległość
 tip-f14-launch = Odpala wybrany pocisk do następnego śladu w kolejności strzelania
 tip-f14-missile-option = Co robi radar przy odpaleniu pocisku radarowego: nic, śledzenie jednego celu na jego celu albo Phoenix aktywny od szyny
+tip-f14-weapon-select = Wybiera następną broń, jak klawisz broni pilota
 tip-f14-lantirn-power = Zasobnik LANTIRN wł., gotowość lub wył.
 tip-f14-lantirn-video = Co pokazują obrazy TV: obraz zasobnika LANTIRN lub kamery TCS
 tip-f14-laser-arm = Uzbraja laser zasobnika: naprowadza bomby kierowane laserowo na punkt trzymany przez zasobnik

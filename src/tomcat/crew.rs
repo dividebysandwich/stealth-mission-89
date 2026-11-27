@@ -16,7 +16,7 @@ use crate::world::{WU, WorldPos};
 pub(super) fn build(app: &mut App) {
     app.add_systems(
         Update,
-        (share, remote_launch, welcome, automatic, log)
+        (share, remote_launch, rio_buttons, welcome, automatic, log)
             .chain()
             .after(crate::combat::CombatSystems)
             .before(super::avionics::radar_controls)
@@ -132,6 +132,30 @@ fn remote_launch(
         actions.write(crate::input::ActionEvent(crate::input::Action::FireWeapon));
     }
     *last = Some(count);
+}
+
+/// The RIO's WPN SEL (the panel's press count, shared): the pilot's client (mine, whichever
+/// seat I sit in) steps to the next weapon.
+fn rio_buttons(
+    settings: Res<crate::settings::Settings>,
+    mut combat: Option<ResMut<crate::combat::Combat>>,
+    panel: Res<TomcatPanel>,
+    mut last: Local<Option<u8>>,
+) {
+    let counts = panel.selects & 7;
+    let owner =
+        combat.as_deref_mut().filter(|_| settings.aircraft == AircraftKind::F14).filter(|c| {
+            let me = c.sim.active_pilot();
+            c.sim.crew_view(me).is_none_or(|v| v.owner == me)
+        });
+    let Some(c) = owner else {
+        *last = None;
+        return;
+    };
+    if last.is_some_and(|l| l != counts) {
+        c.step_weapon();
+    }
+    *last = Some(counts);
 }
 
 /// Seconds after another player took my back seat at which my client pushes the IFF for him:

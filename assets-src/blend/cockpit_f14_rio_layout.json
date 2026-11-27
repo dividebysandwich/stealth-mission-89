@@ -1057,6 +1057,18 @@
       "round": false
     },
     {
+      "control": "Tomcat(WeaponSelect)",
+      "key": "Item(Tomcat(WeaponSelect))",
+      "kind": "lamp",
+      "rect": [
+        -288.0,
+        18.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
       "control": "Action(MasterCaution)",
       "key": "Item(Lamp(Mw, Some(\"MASTER\\nCAUTION\")))",
       "kind": "cap",

@@ -1328,10 +1328,11 @@ if RIO:
     for v in (-62.0, -8.0):
         knob(-232.0, v, 0.013, 0.004, "dark", offset=PLATE)
         knob(-232.0, v, 0.010, 0.016, "knob_pale", offset=PLATE)
-    for u in (-256.0, -232.0, -208.0):
+    # (Clear of the WPN SEL button beside the master caution light.)
+    for u in (-232.0, -208.0):
         toggle(u, 34.0)
     for u in (-262.0, -224.0):
-        plane_box("tube", "tube", (u, 58.0, 30.0, 14.0), PLATE, PLATE + 0.002)
+        plane_box("tube", "tube", (u, 76.0, 30.0, 14.0), PLATE, PLATE + 0.002)
     for i_ in range(6):
         toggle(-378.0 + 36.0 * i_, 118.0)
     # The ECM panel's: switches inboard of the ECMD, a keyboard under the layout's part.

@@ -337,6 +337,7 @@ tip-f14-tid-hook = Jaqbad l-eku jew it-traċċa taħt il-kursur, inkella t-traċ
 tip-f14-ph-act = Jispara l-Phoenix bis-seeker tiegħu mixgħul mir-rail: m'għandux bżonn traċċa, f'distanza qasira
 tip-f14-launch = Iniedi l-missila magħżula fuq it-traċċa li jmiss fl-ordni tal-isparar
 tip-f14-missile-option = X'jagħmel ir-radar meta titnieda missila tar-radar: xejn, traċċar ta' mira waħda fuq il-mira tagħha, jew il-Phoenix attiv mir-rail
+tip-f14-weapon-select = Jagħżel l-arma li jmiss, bħall-buttuna tal-armi tal-pilota
 tip-f14-lantirn-power = Pod LANTIRN mixgħul, standby jew mitfi
 tip-f14-lantirn-video = X'juru l-istampi TV: dik tal-pod LANTIRN jew tal-kamera TCS
 tip-f14-laser-arm = Jarma l-laser tal-pod: jiggwida bombi ggwidati bil-laser lejn il-punt li jżomm il-pod

@@ -219,6 +219,9 @@ pub fn draw_tid(c: &mut Canvas, i: &Inputs) {
     } else {
         tid_picture(c, i, true);
     }
+    if let Some(s) = &i.scene.notice {
+        scopes::draw_notice(c, s);
+    }
     super::dump_png(c, &colours(), "tid");
 }
 

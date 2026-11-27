@@ -34,7 +34,7 @@ pub(super) fn build(app: &mut App) {
         Update,
         (
             radar_controls.before(crate::awg9::scan).after(crate::combat::CombatSystems),
-            (scene, pod_video, station_lights).after(crate::awg9::scan),
+            (scene, pod_video, station_lights, weapon_notice).after(crate::awg9::scan),
             steer_mode.before(scene),
         )
             .run_if(in_state(AppState::Flight)),
@@ -66,6 +66,8 @@ pub struct TomcatScene {
     /// The aircraft on the data link (the TID's DATA LINK button): the friendly ones and those
     /// the other friendly radars see.
     pub link: Vec<crate::f14_scopes::LinkTrack>,
+    /// The weapon just selected, as the TID names it for a moment (`weapon_notice`).
+    pub notice: Option<String>,
 }
 
 /// The display the RIO's hand controller moves a cursor on.
@@ -836,6 +838,67 @@ fn pod_video(
     let black_hot = tomcat && panel.black_hot && panel.lts_lantirn;
     if mfd.black_hot != black_hot {
         mfd.black_hot = black_hot;
+    }
+}
+
+/// Seconds the TID names a weapon just selected.
+const NOTICE_SECS: f32 = 3.0;
+
+/// The selected weapon (its type) and the rounds of that kind aboard (None: the gun or
+/// nothing): in another's back seat as his client has it.
+fn selection(sim: &stealth_sim::Sim) -> Option<(i8, i8)> {
+    let me = sim.active_pilot();
+    if let Some(v) = sim.crew_view(me).filter(|v| v.owner != me) {
+        return v.weapon;
+    }
+    let (bays, cur) = sim.bays();
+    let w = bays.get(cur).map(|b| b.0).filter(|&w| w >= 0 && !sim.gun_selected())?;
+    let rounds: i32 = bays.iter().filter(|b| b.0 == w).map(|b| b.1.max(0)).sum();
+    Some((w.min(127) as i8, rounds.min(127) as i8))
+}
+
+/// The TID's name for a selection: the weapon and its rounds, the TARPS camera, the gun.
+pub fn notice_text(selected: Option<(i8, i8)>) -> String {
+    match selected {
+        None => "GUN".to_string(),
+        Some((16, _)) => "TARPS CAMERA".to_string(),
+        Some((w, n)) => match crate::loadout::WEAPONS.get(w as usize) {
+            Some((name, _)) => format!("{} {n}", name.to_uppercase()),
+            None => format!("{n}"),
+        },
+    }
+}
+
+/// A newly selected weapon (in either seat, or by the AI pilot) is named on the TID for a
+/// moment.
+fn weapon_notice(
+    time: Res<Time>,
+    settings: Res<Settings>,
+    combat: Option<Res<crate::combat::Combat>>,
+    mut out: ResMut<TomcatScene>,
+    mut last: Local<Option<(Option<i8>, f32)>>,
+) {
+    let sel = combat
+        .as_deref()
+        .filter(|_| settings.aircraft == AircraftKind::F14)
+        .map(|c| selection(&c.sim));
+    let Some(sel) = sel else {
+        *last = None;
+        out.notice = None;
+        return;
+    };
+    let kind = sel.map(|s| s.0);
+    let now = time.elapsed_secs();
+    let since = match *last {
+        Some((k, at)) if k == kind => at,
+        // The first look at it is no change.
+        None => now - NOTICE_SECS,
+        Some(_) => now,
+    };
+    *last = Some((kind, since));
+    let notice = (now - since < NOTICE_SECS).then(|| notice_text(sel));
+    if out.notice != notice {
+        out.notice = notice;
     }
 }
 

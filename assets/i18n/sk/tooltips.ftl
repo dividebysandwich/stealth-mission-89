@@ -336,6 +336,7 @@ tip-f14-tid-hook = Zachytí odraz alebo stopu pod kurzorom, inak ďalšiu stopu:
 tip-f14-ph-act = Odpáli Phoenix s vlastnou hlavicou zapnutou už od koľajnice: nepotrebuje stopu, na krátku vzdialenosť
 tip-f14-launch = Odpáli zvolenú strelu na ďalšiu stopu v poradí streľby
 tip-f14-missile-option = Čo urobí radar pri odpálení radarovej strely: nič, sledovanie jedného cieľa na jej cieľ, alebo Phoenix aktívny hneď od koľajnice
+tip-f14-weapon-select = Zvolí ďalšiu zbraň, ako pilotov kláves zbraní
 tip-f14-lantirn-power = Kontajner LANTIRN zap., pohotovosť alebo vyp.
 tip-f14-lantirn-video = Čo ukazujú TV obrazy: obraz kontajnera LANTIRN alebo kamery TCS
 tip-f14-laser-arm = Odistí laser kontajnera: navádza laserom navádzané bomby na bod, ktorý kontajner drží

@@ -337,6 +337,7 @@ tip-f14-tid-hook = Pakt de echo of het spoor onder de cursor, anders het volgend
 tip-f14-ph-act = Vuurt de Phoenix af met eigen zoekkop aan vanaf de rail: hij heeft geen spoor nodig, op korte afstand
 tip-f14-launch = Lanceert de gekozen raket op het volgende spoor in de vuurvolgorde
 tip-f14-missile-option = Wat de radar doet als een radarraket wordt gelanceerd: niets, enkeldoelvolgen op haar doel, of de Phoenix actief vanaf de rail
+tip-f14-weapon-select = Kiest het volgende wapen, zoals de wapentoets van de piloot
 tip-f14-lantirn-power = LANTIRN-pod aan, stand-by of uit
 tip-f14-lantirn-video = Wat de tv-beelden tonen: dat van de LANTIRN-pod of van de TCS-camera
 tip-f14-laser-arm = Activeert de laser van de pod: die geleidt lasergeleide bommen naar het punt dat de pod vasthoudt

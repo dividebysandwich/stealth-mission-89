@@ -151,6 +151,18 @@ pub struct CrewView {
     /// target, it is locked in range).
     #[serde(default)]
     pub seeker: Option<(bool, bool)>,
+    /// The owner's selected weapon (its type) and the rounds of that kind aboard; None: the gun
+    /// or nothing (for the F-14 RIO's TID).
+    #[serde(default)]
+    pub weapon: Option<(i8, i8)>,
+}
+
+/// Pilot `p`'s selected weapon (its type) and the rounds of that kind aboard (None: the gun or
+/// nothing).
+fn selected_weapon(p: &crate::Pilot) -> Option<(i8, i8)> {
+    let w = p.bays.get(p.cur_bay).map(|b| b.0).filter(|&w| w >= 0 && !p.gun_selected)?;
+    let rounds: i32 = p.bays.iter().filter(|b| b.0 == w).map(|b| b.1.max(0)).sum();
+    Some((w.min(127) as i8, rounds.min(127) as i8))
 }
 
 /// The aircraft has a gunner's seat: the AC-130's console, the AH-64's front cockpit, the
@@ -511,6 +523,7 @@ impl Sim {
             radar_track: owner.tracking != 0,
             stalled: owner.last_input.stalled,
             seeker: self.seeker_of(owner),
+            weapon: selected_weapon(owner),
         })
     }
 

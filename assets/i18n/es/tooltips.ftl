@@ -337,6 +337,7 @@ tip-f14-tid-hook = Engancha el eco o la traza bajo el cursor, si no la traza sig
 tip-f14-ph-act = Dispara el Phoenix con su propio buscador encendido desde el raíl: no necesita traza, a corta distancia
 tip-f14-launch = Lanza el misil seleccionado contra la siguiente traza del orden de tiro
 tip-f14-missile-option = Lo que hace el radar al lanzar un misil de radar: nada, seguimiento de un solo blanco sobre su blanco, o el Phoenix activo desde el raíl
+tip-f14-weapon-select = Selecciona el arma siguiente, como la tecla de armas del piloto
 tip-f14-lantirn-power = Pod LANTIRN encendido, en espera o apagado
 tip-f14-lantirn-video = Lo que muestran las imágenes de TV: la del pod LANTIRN o la de la cámara TCS
 tip-f14-laser-arm = Arma el láser del pod: guía las bombas de guiado láser al punto que mantiene el pod

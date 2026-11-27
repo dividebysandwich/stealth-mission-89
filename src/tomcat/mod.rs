@@ -487,10 +487,12 @@ pub enum Key {
     TidReadout,
     TidOption(TidOption),
     TidHook,
-    /// The RIO's armament panel: Phoenix active off the rail, LAUNCH, the missile options.
+    /// The RIO's armament panel: Phoenix active off the rail, LAUNCH, the missile options, the
+    /// weapon select button (the next weapon, as the pilot's key).
     PhAct,
     Launch,
     MissileOption,
+    WeaponSelect,
     /// The RIO's LANTIRN panel.
     LtsPower,
     LtsVideo,
@@ -548,6 +550,7 @@ impl Key {
             Key::PhAct,
             Key::Launch,
             Key::MissileOption,
+            Key::WeaponSelect,
             Key::LtsPower,
             Key::LtsVideo,
             Key::LaserArm,
@@ -609,6 +612,7 @@ impl Key {
             | Key::TidOption(_)
             | Key::TidHook
             | Key::Launch
+            | Key::WeaponSelect
             | Key::Iff
             | Key::LtsMode(_)
             | Key::LtsOper => "lamp",
@@ -724,6 +728,7 @@ impl Key {
             Key::PhAct => "PH ACT",
             Key::Launch => "LAUNCH",
             Key::MissileOption => "MSL\nOPTIONS",
+            Key::WeaponSelect => "WPN\nSEL",
             Key::LtsPower => "POWER",
             Key::LtsVideo => "VIDEO",
             Key::LaserArm => "LASER",
@@ -791,6 +796,7 @@ impl Key {
             Key::PhAct => "tip-f14-ph-act",
             Key::Launch => "tip-f14-launch",
             Key::MissileOption => "tip-f14-missile-option",
+            Key::WeaponSelect => "tip-f14-weapon-select",
             Key::LtsPower => "tip-f14-lantirn-power",
             Key::LtsVideo => "tip-f14-lantirn-video",
             Key::LaserArm => "tip-f14-laser-arm",
@@ -876,6 +882,8 @@ pub struct TomcatPanel {
     pub missile_option: MissileOption,
     /// LAUNCH presses so far.
     pub launches: u8,
+    /// WPN SEL presses so far (the pilot's client takes each new one, in either seat).
+    pub selects: u8,
     /// The LANTIRN panel.
     pub lts_power: Power,
     pub lts_lantirn: bool,
@@ -938,6 +946,7 @@ impl Default for TomcatPanel {
             ph_active: false,
             missile_option: MissileOption::default(),
             launches: 0,
+            selects: 0,
             lts_power: Power::Off,
             lts_lantirn: false,
             laser_armed: false,
@@ -1021,6 +1030,7 @@ impl TomcatPanel {
                 return Some(PanelOut::Action(Action::FireWeapon));
             }
             Key::MissileOption => self.missile_option = next(&MISSILE_OPTIONS, self.missile_option),
+            Key::WeaponSelect => self.selects = self.selects.wrapping_add(1),
             Key::LtsPower => self.lts_power = next(&POWERS, self.lts_power),
             Key::LtsVideo => self.lts_lantirn = !self.lts_lantirn,
             Key::LaserArm => self.laser_armed = !self.laser_armed,
@@ -1137,8 +1147,9 @@ impl TomcatPanel {
         b.put(index(&DDD_MODES, self.ddd_mode), 3);
         b.put(index(&ASPECTS, self.aspect), 2);
         b.flag(self.vc_2x);
-        for k in self.knobs {
-            b.put(k, 3);
+        // Two knobs' five positions to five bits.
+        for k in self.knobs.chunks_exact(2) {
+            b.put(k[0].min(KNOB_STEPS - 1) * KNOB_STEPS + k[1].min(KNOB_STEPS - 1), 5);
         }
         b.put(self.ccm, 3);
         b.put(self.xmtr_chan, 4);
@@ -1160,6 +1171,7 @@ impl TomcatPanel {
         b.flag(self.lts_oper);
         b.put(index(&ALQ126S, self.alq126), 2);
         b.put(self.iffs, 4);
+        b.put(self.selects, 3);
         b.buf
     }
 
@@ -1190,8 +1202,10 @@ impl TomcatPanel {
         self.ddd_mode = pick(&DDD_MODES, b.get(3));
         self.aspect = pick(&ASPECTS, b.get(2));
         self.vc_2x = b.bool();
-        for k in &mut self.knobs {
-            *k = b.get(3).min(KNOB_STEPS - 1);
+        for k in self.knobs.chunks_exact_mut(2) {
+            let v = b.get(5);
+            k[0] = (v / KNOB_STEPS).min(KNOB_STEPS - 1);
+            k[1] = v % KNOB_STEPS;
         }
         self.ccm = b.get(3);
         self.xmtr_chan = b.get(4).clamp(1, CHANNELS);
@@ -1213,6 +1227,7 @@ impl TomcatPanel {
         self.lts_oper = b.bool();
         self.alq126 = pick(&ALQ126S, b.get(2));
         self.iffs = (self.iffs & !0xf) | b.get(4);
+        self.selects = (self.selects & !7) | b.get(3);
     }
 }
 

@@ -42,6 +42,20 @@ fn text(c: &mut Canvas, p: Vec2, s: &str, h: f32, t: f32, align: Align) {
     stroke_text_at(c, p.x, p.y, s, h, 1.0, ink(t), align);
 }
 
+/// A short notice across a scope's lower part (the TID's: the weapon just selected) in a dark
+/// box with a frame, over whatever it shows.
+pub fn draw_notice(c: &mut Canvas, s: &str) {
+    let (w, h) = (c.w as f32, c.h as f32);
+    let th = 0.038 * h;
+    let width = crate::font::stroke_width(s, th) + 1.6 * th;
+    let mid = Vec2::new(w / 2.0, 0.72 * h);
+    let (x0, y0) = ((mid.x - width / 2.0).round() as i32, (mid.y - th).round() as i32);
+    let (bw, bh) = (width.round() as i32, (2.0 * th).round() as i32);
+    c.fill_rect(x0, y0, bw, bh, ink(0.0));
+    c.rect(x0, y0, bw, bh, ink(MID));
+    text(c, mid, s, th, BRIGHT, Align::Centre);
+}
+
 /// The aircraft: position (metres east, north, up), heading, pitch and roll (radians), speed.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Own {
