@@ -7,7 +7,7 @@
 # then tools/models/export.sh cockpit_ah1z. The layout JSON is written by
 # `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::ah1z` (src/cockpit3d/layout.rs).
 #
-# Life size, as the UH-60's (tools/models/build_cockpit_uh60.py, which this follows). Kept from
+# Life size, as the UH-60's (tools/models/build_cockpit_mh60r.py, which this follows). Kept from
 # the F-117A's cockpit: the seat with the ejection handle (no ejection: the handle stays), the
 # stick (the cyclic, short, on the right console), the throttle (the UH-60's collective on its
 # arm from a pivot left of the seat), the five target buttons (on the left console), the HUD

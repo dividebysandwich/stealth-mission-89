@@ -1,20 +1,22 @@
 # Builds the MH-60R cockpit master (assets-src/blend/cockpit_mh60r.blend) from the panel layout,
-# after the MH-60R's glass cockpit, with parts of the F-117A's modern cockpit:
+# after the MH-60R's glass cockpit, with parts of the F-117A's modern cockpit (the UH-60 flies
+# with it too):
 #   blender -b assets-src/blend/cockpit_base.blend --python-exit-code 1 \
 #       --python tools/models/build_cockpit_mh60r.py -- \
 #       assets-src/blend/cockpit_mh60r_layout.json assets-src/blend/cockpit_mh60r.blend
 # then tools/models/export.sh cockpit_mh60r. The layout JSON is written by
 # `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::mh60r` (src/cockpit3d/layout.rs).
 #
-# The airframe is the UH-60A's (tools/models/uh60.py), so is the cabin: this is
-# build_cockpit_uh60.py with the MH-60R's panel. Life size (the F-117A's cockpit is built larger
-# than life: its kept parts are scaled down by F117_SCALE about the eye). Kept, with their
+# The airframe is the UH-60A's (tools/models/uh60.py), so is the cabin. Life size (the F-117A's
+# cockpit is built larger than life: its kept parts are scaled down by F117_SCALE about the
+# eye). Kept, with their
 # materials, labels and control properties: the seat with the ejection handle, the stick (a
 # centre cyclic on a shaft from the floor), the throttle (the collective, its handle on an arm
 # from a pivot behind it left of the seat, swinging up: the `throttle_full` and
-# `throttle_pivot` anchors), the five target buttons, the HUD glass and the flood lamps. Built
-# here, low-poly: the instrument panel across the cabin under a deep glareshield, the four MFDs
-# in raised bezels (a pair in front of each seat), the caution/advisory panel and the standby
+# `throttle_pivot` anchors), the five target buttons and the flood lamps (no HUD: the helmet
+# display). Built here, low-poly: the instrument panel across the cabin under a deep glareshield,
+# the four large MFDs in raised bezels (a pair in front of each seat, side by side), the
+# caution/advisory panel and the standby
 # and engine instruments between the pairs; the centre console between the seats with the two
 # flight management keyboards side by side (the pilot's the CDU: the data entry display and its
 # caps; the copilot's dark), the AFCS panel, the caution and countermeasure panels and the
@@ -47,12 +49,10 @@ PANEL_CENTRE = Vector((0.0, 0.66, -0.34))
 PANEL_U = (-1620.0, 560.0)
 TOP, BOTTOM = -140.0, 205.0
 # The glareshield over its top: its lip at HOOD_Y, its top RISE over the panel's top edge,
-# forward to GLARE_FRONT. The HUD glass on it, scaled about the eye (the same angular size) to
-# stand at HUD_Y.
+# forward to GLARE_FRONT.
 HOOD_Y = 0.61
 RISE = 0.055
 GLARE_FRONT = 0.85
-HUD_Y = 0.62
 # Centre console (layout x >= 1500, centred on 2000): its face sloping down aft from under the
 # panel, CONSOLE_V (mm) along it from CONSOLE_FRONT to CONSOLE_REAR; CONSOLE_W wide.
 CONSOLE_U = 2000.0
@@ -75,7 +75,6 @@ GRIP_HAND = Vector((0.0, -50.0, 4.0))
 BEZEL = 0.03
 MFD_SIDE, MFD_TOP = 22.0, 25.0
 PLATE = 0.004
-HUD_BAR = 0.010
 ROUND = 16
 KNOB = 8
 
@@ -117,7 +116,7 @@ def rect_point(r, offset=0.0):
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "hud_glass", "lamp",
+    "lamp",
     "button_NEAR", "button_NEXT", "button_NONE", "button_WPN", "button_DTL",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
@@ -417,8 +416,9 @@ def mirror(r):
 
 
 # --- plates under the instrument groups
-BRAKE_PLATE = (-57.0, 119.0, 54.0, 26.0)
-DIMMERS = (40.0, 121.0, 170.0, 24.0)
+# BRAKE and the helmet display's cap where the pilot's MFDs meet.
+BRAKE_PLATE = (-99.0, 137.0, 96.0, 26.0)
+DIMMERS = (21.0, 138.0, 170.0, 24.0)
 plates = [
     ("black", (-595.0, -134.0, 150.0, 39.0)),  # caution/advisory panel
     ("dark", (-658.0, -98.0, 256.0, 130.0)),  # standby and engine instruments
@@ -711,32 +711,6 @@ full = COLLECTIVE_PIVOT + Matrix.Rotation(math.radians(COLLECTIVE_SWING), 3, "X"
 objs["throttle_full"].location = full
 empty("throttle_pivot", COLLECTIVE_PIVOT, props={"anchor": "throttle_pivot"})
 
-# --- HUD: the glass on the glareshield in front of the pilot, a frame of bars along its outline
-# (posts down to the glareshield, chamfered top corners, top) outside it by half a bar.
-hud = next(o for o in old if o.name.startswith("hud_glass"))
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-k = HUD_Y / (sum(v.y for v in glass) / len(glass))
-hud.location *= k
-hud.data.transform(Matrix.Scale(k, 4))
-bpy.context.view_layer.update()
-glass = [hud.matrix_world @ v.co for v in hud.data.vertices]
-hud_y = sum(v.y for v in glass) / len(glass)
-half_x = max(abs(v.x) for v in glass)
-top = max(v.z for v in glass)
-shoulder = max(v.z for v in glass if abs(abs(v.x) - half_x) < 0.01)
-top_x = min(abs(v.x) for v in glass if abs(v.z - top) < 0.002)
-post_x = half_x + HUD_BAR / 2
-outline = [
-    Vector((-post_x, glare_top)), Vector((-post_x, shoulder)),
-    Vector((-top_x, top + HUD_BAR / 2)), Vector((top_x, top + HUD_BAR / 2)),
-    Vector((post_x, shoulder)), Vector((post_x, glare_top)),
-]
-for a, b in zip(outline, outline[1:]):
-    d = b - a
-    centre = (a + b) / 2
-    rot = Euler((0.0, -math.atan2(d.y, d.x), 0.0))
-    box("frame", "frame", (centre.x, hud_y, centre.y), (d.length + HUD_BAR, HUD_BAR, HUD_BAR), rot)
 # No approach indexer: a helicopter has no angle of attack to fly the approach by.
 # --- flood lamps: two behind the pilot's head, one under the glareshield
 objs["lamp.002"].location = Vector((0.0, HOOD_Y + 0.04, t.z))

@@ -68,7 +68,8 @@ pub struct CockpitAnchors {
     pub tilt_stick: bool,
     pub throttle_idle: Vec3,
     pub throttle_full: Vec3,
-    /// The collective's pivot (none: the throttle slides along its rail).
+    /// The pivot of a collective or of a throttle swinging on its quadrant (none: the throttle
+    /// slides along its rail).
     pub throttle_pivot: Option<Vec3>,
     /// A V/STOL type's nozzle lever: its knob forward (nozzles aft, the `nozzle` object) and
     /// pulled back to the braking stop (the `nozzle_down` anchor), swinging about its pivot
@@ -671,9 +672,10 @@ pub(super) fn grab_levers(
         if (t >= 1.0 && before < 1.0) || (t <= 0.0 && before > 0.0) {
             th.haptic = th.haptic.max(0.5);
         }
-        // Hysteresis so hand jitter on a detent doesn't buzz. A collective has none.
+        // Hysteresis so hand jitter on a detent doesn't buzz. A collective has none, nor the
+        // transports' levers; an afterburning type's pivoting throttle (the F-14's) does.
         let pos = t * THROTTLE_NOTCHES;
-        if anchors.throttle_pivot.is_none()
+        if (ab || anchors.throttle_pivot.is_none())
             && (pos >= (g.notch + 1) as f32 + 0.1 || pos < g.notch as f32 - 0.1)
         {
             g.notch = pos.floor() as i32;

@@ -489,7 +489,8 @@ static UH60: AircraftSpec = AircraftSpec {
         two_sided: true,
         parts: true,
     }),
-    cockpits: &[(PanelStyle::Uh60, "cockpit_uh60")],
+    // The MH-60R's glass cockpit (no HUD: the helmet display).
+    cockpits: &[(PanelStyle::Mh60r, "cockpit_mh60r")],
     cockpit_size: 1.0,
     // Life size, as the F-16's.
     vr_scale: 1.25 * 0.7,
@@ -500,7 +501,7 @@ static UH60: AircraftSpec = AircraftSpec {
     helicopter: true,
     turret: false,
     pod: None,
-    hmd: Hmd::None,
+    hmd: Hmd::Full,
     muzzle: None,
     sight: None,
     exhaust: EXHAUST,
@@ -538,7 +539,7 @@ static MH60R: AircraftSpec = AircraftSpec {
     helicopter: true,
     turret: false,
     pod: None,
-    hmd: Hmd::None,
+    hmd: Hmd::Full,
     muzzle: None,
     sight: None,
     exhaust: EXHAUST,

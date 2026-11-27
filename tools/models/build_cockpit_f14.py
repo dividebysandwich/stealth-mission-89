@@ -23,10 +23,12 @@
 # Kept, with their materials and control properties: the seat with the ejection handle (copied
 # for the other seat), the stick (the pilot's centre stick on the centre line; in the RIO's
 # cockpit his hand controller on its pedestal on the centre line is the `stick`, a tilt
-# sensing one: `tilt`), the throttle with its rails
-# on the pilot's left console (the RIO has none), the gear handle on the pilot's left knee panel,
+# sensing one: `tilt`), the gear handle on the pilot's left knee panel,
 # the HUD glass (the pilot's combiner on the glare shield), the approach indexer and the flood
-# lamps. Built here, low-poly: the tub under the one-piece canopy (walls up to the glass's
+# lamps. Built here, low-poly: the throttle on the pilot's left console (the RIO has none): the
+# two engines' levers swinging together about a pivot sunk in the console (the `throttle_full`
+# and `throttle_pivot` anchors), up through the slots of the quadrant, a grip on each with its
+# switches; the tub under the one-piece canopy (walls up to the glass's
 # sill, the canopy's sill rails, the windscreen's bow and posts, the turtledeck behind the RIO),
 # the windscreen's front pane (an oval window in its heavy frame), both instrument panels (the
 # pilot's under its glare shield with the HUD's combiner; the RIO's with its radar section
@@ -290,16 +292,25 @@ DECK_Z = 1.45
 DECK_END = 7.62
 # Consoles: (inner and outer x, s from and to, top z) of each seat's.
 # (They start behind the knee panels.)
-PILOT_CONSOLE = (0.27, 0.45, 4.50, 5.40, 0.80)
-RIO_CONSOLE = (0.25, 0.45, 6.02, 6.95, 0.86)
+PILOT_CONSOLE = (0.27, 0.45, 4.50, 5.40, 0.75)
+RIO_CONSOLE = (0.25, 0.45, 6.02, 6.95, 0.81)
 # Seat: its cushion's top under the eye.
 SEAT_TOP = -0.80
 # The pilot's centre stick: its pivot on the floor, the kept grip raised on a shaft.
 STICK_S = 4.42
 STICK_RAISE = 0.36
-# The throttle on the pilot's left console: the handle at idle, its travel forward.
+# The throttle on the pilot's left console: where the hand holds its grips at idle, its travel
+# forward (the chord of its arc); the pivot THROTTLE_PIVOT under the console's top, under the
+# middle of the travel. The quadrant: a well in the console (half width, s from and to), its
+# slotted cover QUADRANT_SUNK under the top.
 THROTTLE = (-0.36, 4.74, PILOT_CONSOLE[4] + 0.089)
 THROTTLE_TRAVEL = 0.17
+THROTTLE_PIVOT = 0.12
+QUADRANT = (0.048, 4.555, 4.765)
+QUADRANT_SUNK = 0.012
+# The levers either side of the throttle's middle, their slots' width.
+LEVER_X = 0.024
+SLOT = 0.012
 # The pilot's HUD combiner on the glare shield: its distance ahead of the eye and its half
 # width, bottom and top off the eye: the Tornado's combiner at the same angular size
 # (AircraftSpec::hud_scale 2080 fits the symbology into it).
@@ -324,10 +335,9 @@ PLATE = 0.004
 # --- keep, drop
 KEEP = (
     "seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_", "stick", "throttle",
-    "black_549", "metal_550", "metal_551", "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
+    "hud_glass", "approach", "lamp", "control_Action_Gear_.001",
 )
 SEAT = ("seat_", "cushion_", "metal_98", "metal_99", "control_Action_Eject_")
-RAILS = ("black_549", "metal_550", "metal_551")
 
 
 def drop(o):
@@ -993,6 +1003,18 @@ def console_panel(x0, x1, s0, s1, top, rows, h=0.006):
 for (xin, xout, s0, s1, top), floor in ((PILOT_CONSOLE, PILOT_FLOOR), (RIO_CONSOLE, RIO_FLOOR)):
     for side in (-1, 1):
         x = sorted((side * xin, side * xout))
+        if top == PILOT_CONSOLE[4] and side < 0:
+            # Round the throttle quadrant's well.
+            qx, q0, q1 = THROTTLE[0] - QUADRANT[0], QUADRANT[1], QUADRANT[2]
+            qx = (qx, qx + 2 * QUADRANT[0])
+            well = top - THROTTLE_PIVOT - 0.04
+            for xs, ss, z1 in (((x[0], qx[0]), (s0, s1), top), ((qx[1], x[1]), (s0, s1), top),
+                               (qx, (s0, q0), top), (qx, (q1, s1), top), (qx, (q0, q1), well)):
+                cbox("panel_grey", xs, ss, (floor, z1))
+            for xs, ss in (((x[0] + 0.006, qx[0]), (s0 + 0.01, s1 - 0.01)), ((qx[1], x[1] - 0.006), (s0 + 0.01, s1 - 0.01)),
+                           (qx, (s0 + 0.01, q0)), (qx, (q1, s1 - 0.01))):
+                cbox("dark", xs, ss, (top, top + 0.004))
+            continue
         cbox("panel_grey", x, (s0, s1), (floor, top))
         cbox("dark", (x[0] + 0.006, x[1] - 0.006), (s0 + 0.01, s1 - 0.01), (top, top + 0.004))
 PC = PILOT_CONSOLE[4] + 0.004
@@ -1351,7 +1373,7 @@ if RIO:
         o.location = o.location - HC_PIVOT
     stick["grip"] = HC_GRIP
     stick["tilt"] = True
-    for o in [throttle, full] + [objs[n] for n in RAILS] + [objs["control_Action_Gear_.001"]]:
+    for o in [throttle, full, objs["control_Action_Gear_.001"]]:
         drop(o)
 else:
     # Centre stick: pivot on the floor on the centre line, the grip raised on a shaft, a boot.
@@ -1363,19 +1385,159 @@ else:
     rod("metal", (0, 0, 0), (0, 0, STICK_RAISE + 0.02), 0.011, "metal", stick)
     rod("rubber", pivot, pivot + Vector((0, 0, 0.06)), 0.04, "rubber")
     box("dark", "dark", pivot + Vector((0.0, 0.0, -0.004)), (0.12, 0.12, 0.008))
-    # Throttle: on the left console, the kept handle's travel lengthened, its rails along it.
-    move = C(*THROTTLE) - throttle.location
+    # Throttle: the two engines' levers swinging together about a pivot sunk in the left
+    # console, up through the slots of the quadrant's cover; a grip on each (after the F-14's:
+    # a rounded body lying along the hand, nose up, on the lever under its aft end). The
+    # inboard grip's inboard face carries the thumb's switches: the wing sweep hat aft, the
+    # speed brake switch, the microphone hat ahead; a button on each grip's edge under the
+    # fingers (two on the outboard one: PLM, CAGE), the lights' toggle on its outboard face.
+    # Built upright in millimetres (x inboard, y forward, z up the levers, the hand's place at
+    # the origin), then leant aft to idle about the pivot.
+    for c in list(throttle.children):
+        drop(c)
     throttle.location = C(*THROTTLE)
     full.location = throttle.location + Vector((0.0, THROTTLE_TRAVEL, 0.0))
-    y0, y1 = throttle.location.y - 0.03, full.location.y + 0.03
-    for n in RAILS:
-        o = objs[n]
-        o.data = o.data.copy()
-        vs = [v.co.y for v in o.data.vertices]
-        k = (y1 - y0) / (max(vs) - min(vs))
-        o.data.transform(Matrix.Diagonal((1.0, k, 1.0, 1.0)))
-        o.location = o.location + move
-        o.location.y = (y0 + y1) / 2
+    top_z = PILOT_CONSOLE[4]
+    up = THROTTLE[2] - top_z + THROTTLE_PIVOT
+    pivot = Vector((0.0, THROTTLE_TRAVEL / 2, -up))
+    swing = math.atan2(THROTTLE_TRAVEL / 2, up)
+    arm = math.hypot(THROTTLE_TRAVEL / 2, up)
+    empty("throttle_pivot", throttle.location + pivot, props={"anchor": "throttle_pivot"})
+    IDLE = Matrix.Translation(pivot) @ Matrix.Rotation(swing, 4, "X") @ Matrix.Translation((0.0, 0.0, arm)) @ Matrix.Scale(0.001, 4)
+
+    def part(name, me, m=Matrix.Identity(4), smooth=False):
+        """A throttle part from its mesh in the upright frame (mm), moved by m first."""
+        me.transform(IDLE @ m)
+        for pl in me.polygons:
+            pl.use_smooth = smooth
+        return mesh_object(name, me, (0, 0, 0), parent=throttle)
+
+    def hull(points):
+        """The convex hull of points in a plane, anticlockwise."""
+        pts = sorted(set(points))
+
+        def half(seq):
+            h = []
+            for q in seq:
+                while len(h) >= 2 and (h[-1][0] - h[-2][0]) * (q[1] - h[-2][1]) - (h[-1][1] - h[-2][1]) * (q[0] - h[-2][0]) <= 0:
+                    h.pop()
+                h.append(q)
+            return h[:-1]
+
+        return half(pts) + half(pts[::-1])
+
+    # The grip's side view (y, z): the aft lobe under the thumb, the nose, the palm's swell
+    # over them; its long axis GRIP_RISE nose up.
+    GRIP_RISE = math.radians(30.0)
+    GRIP_LONG = 59.0
+    along = Vector((math.cos(GRIP_RISE), math.sin(GRIP_RISE)))
+    below = Vector((along.y, -along.x))
+    aft, nose = -along * GRIP_LONG / 2, along * GRIP_LONG / 2
+    lobes = [(aft, 21.0), (nose, 13.0), (-below * 7.0 - along * 7.0, 21.0)]
+    side_view = hull([
+        (round(c.x + r * math.cos(2 * math.pi * i / 20), 2), round(c.y + r * math.sin(2 * math.pi * i / 20), 2))
+        for c, r in lobes for i in range(20)
+    ])
+    # Half the grips' thickness: the outboard (left engine's) one slimmer, both close to the gap
+    # between them.
+    GRIP_HALF = {-1: 14.0, 1: 21.0}
+    GRIP_GAP = 3.0
+
+    def yz(p, x=0.0):
+        return Vector((x, p.x, p.y))
+
+    def lathe(name, mat, c, d, steps, n=KNOB):
+        """A round part standing on c along d: (radius, height) steps, closed on top."""
+        bm = bmesh.new()
+        rot = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_matrix()
+        rings = []
+        for r, h in steps:
+            rings.append([bm.verts.new(c + rot @ Vector((r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n), h))) for i in range(n)])
+        for a_, b_ in zip(rings, rings[1:]):
+            for i in range(n):
+                j = (i + 1) % n
+                bm.faces.new((a_[i], a_[j], b_[j], b_[i]))
+        bm.faces.new(rings[-1])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        return part(name, finish(name, bm, mat))
+
+    def slab(name, mat, c, x_axis, y_axis, size):
+        """A box at c: `size` along x_axis, y_axis and their normal (standing on c along it)."""
+        z_axis = x_axis.cross(y_axis).normalized()
+        m = Matrix((x_axis.normalized(), z_axis.cross(x_axis).normalized(), z_axis)).transposed().to_4x4()
+        me = box_mesh(name, size, mat, (0.0, 0.0, size[2] / 2))
+        return part(name, me, Matrix.Translation(c) @ m)
+
+    coloured("throttle_grip", "panel_grey", (0.70, 0.71, 0.69), 0.55)
+    INBOARD, AHEAD, UPWARD = Vector((1, 0, 0)), yz(along), yz(-below)
+    for sx in (-1, 1):
+        cx = sx * LEVER_X * 1000
+        gh = GRIP_HALF[sx]
+        gx = sx * (GRIP_GAP + gh)
+        # The grip: its side view through its thickness, the edges rounded.
+        bm = bmesh.new()
+        rings = []
+        for x, k in ((-gh, 0.80), (-gh + 2.5, 0.94), (-gh + 7.0, 1.0), (gh - 7.0, 1.0), (gh - 2.5, 0.94), (gh, 0.80)):
+            rings.append([bm.verts.new((gx + x, y * k, z * k)) for y, z in side_view])
+        n = len(side_view)
+        for a_, b_ in zip(rings, rings[1:]):
+            for i in range(n):
+                j = (i + 1) % n
+                bm.faces.new((a_[i], a_[j], b_[j], b_[i]))
+        bm.faces.new(rings[0][::-1])
+        bm.faces.new(rings[-1])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        part("throttle_grip", finish("throttle_grip", bm, "throttle_grip"), smooth=True)
+        # Its lever: a blade from the pivot up into the grip's aft end.
+        foot, head = Vector((cx, 0.0, -arm * 1000)), yz(aft + below * 6.0, cx)
+        d = (head - foot).normalized()
+        me = box_mesh("throttle_lever", (7.0, 20.0, (head - foot).length), "frame", (0.0, 0.0, (head - foot).length / 2))
+        part("throttle_lever", me, Matrix.Translation(foot) @ Vector((0, 0, 1)).rotation_difference(d).to_matrix().to_4x4())
+        # The buttons under the fingers, on the grip's lower edge ahead.
+        for k in ((-9.0, 9.0) if sx < 0 else (0.0,)):
+            at_ = yz(along * (6.0 + k) + below * 15.0, gx)
+            lathe("throttle_button", "dark", at_, yz(below), [(6.5, 0.0), (6.5, 5.0), (4.5, 5.0), (4.5, 9.0)])
+    face_x = (GRIP_GAP + 2 * GRIP_HALF[1]) * 0.999
+    # The wing sweep hat on its black dial.
+    lathe("throttle_sweep", "black", yz(aft, face_x), INBOARD, [(16.0, 0.0), (16.0, 1.5), (10.5, 2.0), (9.5, 8.0), (4.0, 8.5), (3.5, 11.5)], n=12)
+    # The microphone hat.
+    lathe("throttle_mic", "black", yz(nose, face_x), INBOARD, [(11.5, 0.0), (11.5, 1.5), (7.5, 2.0), (6.5, 7.0), (3.0, 7.5), (2.5, 10.0)], n=10)
+    # The speed brake switch: a ribbed slide between its two rails.
+    mid = yz(along * 2.0, face_x)
+    slab("throttle_brake", "black", mid, AHEAD, UPWARD, (15.0, 20.0, 6.0))
+    for k in (-6.0, -2.0, 2.0, 6.0):
+        slab("throttle_brake", "dark", mid + AHEAD * k + INBOARD * 6.0, AHEAD, UPWARD, (1.6, 20.0, 1.6))
+    for k in (-10.5, 10.5):
+        slab("throttle_rail", "metal", mid + AHEAD * k, AHEAD, UPWARD, (3.0, 25.0, 4.0))
+    # The exterior lights' toggle on the outboard grip's outboard face.
+    out_ = yz(nose - along * 4.0, -(GRIP_GAP + 2 * GRIP_HALF[-1]) * 0.999)
+    lathe("throttle_toggle", "dark", out_, -INBOARD, [(6.0, 0.0), (6.0, 3.0), (4.0, 3.5)])
+    lathe("throttle_toggle", "metal", out_ - INBOARD * 3.0, -INBOARD + AHEAD * 0.35, [(1.8, 0.0), (2.2, 12.0)], n=6)
+    # The pivot's axle across the well, a hub on it for each lever.
+    part("throttle_axle", cylinder_mesh("throttle_axle", 8.0, 2000 * QUADRANT[0], "metal", axis="Z", n=10),
+         Matrix.Translation((-1000 * QUADRANT[0], 0.0, -arm * 1000)) @ Matrix.Rotation(math.radians(90.0), 4, "Y"))
+    # The quadrant's cover sunk in the console round the levers' slots: the strips between and
+    # beside them, the ends; the slots as long as the levers swing (with a finger's clearance).
+    cover = top_z - QUADRANT_SUNK
+    cross = []
+    for t_ in (0.0, 1.0):
+        rot = Matrix.Rotation(swing * (1.0 - 2.0 * t_), 3, "X")
+        a_ = rot @ Vector((0.0, 0.0, 0.0))
+        b_ = rot @ ((yz(aft + below * 6.0) / 1000) + Vector((0.0, 0.0, arm)))
+        k = (THROTTLE_PIVOT - QUADRANT_SUNK) / (b_.z - a_.z)
+        cross.append((a_ + (b_ - a_) * k).y)
+    pivot_s = THROTTLE[1] - THROTTLE_TRAVEL / 2
+    slot0, slot1 = pivot_s - max(cross) - 0.022, pivot_s - min(cross) + 0.022
+    qx0, qx1 = THROTTLE[0] - QUADRANT[0], THROTTLE[0] + QUADRANT[0]
+    edges = [qx0, THROTTLE[0] - LEVER_X - SLOT / 2, THROTTLE[0] - LEVER_X + SLOT / 2,
+             THROTTLE[0] + LEVER_X - SLOT / 2, THROTTLE[0] + LEVER_X + SLOT / 2, qx1]
+    for x0, x1 in zip(edges[::2], edges[1::2]):
+        cbox("black", (x0, x1), (QUADRANT[1], QUADRANT[2]), (cover - 0.003, cover))
+    for s0_, s1_ in ((QUADRANT[1], slot0), (slot1, QUADRANT[2])):
+        cbox("black", (qx0, qx1), (s0_, s1_), (cover - 0.003, cover))
+    # The well's dark lining under the cover.
+    cbox("black", (qx0 + 0.001, qx1 - 0.001), (QUADRANT[1] + 0.001, QUADRANT[2] - 0.001), (top_z - THROTTLE_PIVOT - 0.04, top_z - THROTTLE_PIVOT - 0.038))
+    print(f"throttle: swing {math.degrees(2 * swing):.1f} deg on a {arm:.3f} m arm, slots s {slot0:.3f}..{slot1:.3f}")
     # The gear handle on the left knee panel.
     g = objs["control_Action_Gear_.001"]
     use(at=(-328.0, 211.0))

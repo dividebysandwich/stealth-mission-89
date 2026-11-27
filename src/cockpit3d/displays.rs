@@ -325,7 +325,6 @@ fn atlas_scale(style: PanelStyle) -> i32 {
         PanelStyle::Classic => TEXELS,
         PanelStyle::Modern
         | PanelStyle::F16
-        | PanelStyle::Uh60
         | PanelStyle::Ah1z
         | PanelStyle::Tornado
         | PanelStyle::A10
@@ -1046,7 +1045,6 @@ mod tests {
             PanelStyle::Classic,
             PanelStyle::Modern,
             PanelStyle::F16,
-            PanelStyle::Uh60,
             PanelStyle::Ah1z,
             PanelStyle::Tornado,
             PanelStyle::A10,

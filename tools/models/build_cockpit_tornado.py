@@ -8,7 +8,7 @@
 # `UPDATE_LAYOUT=1 cargo test layout_files` from `PanelLayout::tornado` (src/cockpit3d/layout.rs).
 #
 # Life size (the F-117A's cockpit is built larger than life: its kept parts are scaled down by
-# F117_SCALE about the eye, as tools/models/build_cockpit_uh60.py does). Kept, with their
+# F117_SCALE about the eye, as tools/models/build_cockpit_mh60r.py does). Kept, with their
 # materials, labels and control properties: the seat with the ejection handle, the stick (made a
 # centre stick on a shaft from the floor between the knees), the throttle with its rails on the
 # left console, the gear handle and the five target buttons, the HUD glass, the approach

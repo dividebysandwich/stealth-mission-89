@@ -56,7 +56,7 @@ and `central_europe_038` is the SAM radar in Central Europe's `central_europe.gl
 | `carrier` | The aircraft carrier, bow north (`carrier_000`) and turned about (`carrier_001`), built by `carrier.py`; every theater's carriers refer to it | scenery level units |
 | `drones` | The remake's own aircraft (Geran drones, the Mi-24 Hind), numbered from 100 | aircraft units |
 | `aaa` | The remake's low-level air defences (Shilka, S-60, MANPADS, Patriot, Gepard, ZSU-57-2), from 110 | aircraft units |
-| `cockpit_modern`, `cockpit_classic`, `cockpit_f16`, `cockpit_uh60`, `cockpit_ah1z`, `cockpit_tornado`, `cockpit_a10`, `cockpit_av8b`, `cockpit_rah66`, `cockpit_oh58`, `cockpit_ch47`, `cockpit_f22` | Flyable aircraft cockpits | metres |
+| `cockpit_modern`, `cockpit_classic`, `cockpit_f16`, `cockpit_ah1z`, `cockpit_tornado`, `cockpit_a10`, `cockpit_av8b`, `cockpit_rah66`, `cockpit_oh58`, `cockpit_ch47`, `cockpit_f22` | Flyable aircraft cockpits | metres |
 
 A large model that several theaters place is kept once, in a file of its own, and placed by
 reference: the theater's root object keeps its name and `attr`, has no children, and has a `ref`
@@ -835,7 +835,7 @@ cockpits' builders start from too.
 
 The generated cockpits' panels (the F-117A's modern one, the F-16's, the UH-60A's, the
 AH-1Z's, the Tornado's, the A-10C's and the AV-8B's) are built from a layout by
-`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`, `build_cockpit_uh60.py`,
+`tools/models/build_cockpit_f117.py`, `build_cockpit_f16.py`, `build_cockpit_mh60r.py`,
 `build_cockpit_ah1z.py`, `build_cockpit_tornado.py`, `build_cockpit_a10.py` and
 `build_cockpit_av8b.py` (and the later ones, one a cockpit; the A-6's two seats both by
 `build_cockpit_a6.py`, the right one with `--seat right`), from

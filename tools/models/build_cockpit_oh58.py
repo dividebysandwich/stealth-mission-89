@@ -14,7 +14,7 @@
 # centre line to the right, the working cyclic and collective at the left seat, the pilot's seat
 # with a stub cyclic on the right.
 #
-# Life size, as the UH-60's (tools/models/build_cockpit_uh60.py, which this follows; the pilot in
+# Life size, as the UH-60's (tools/models/build_cockpit_mh60r.py, which this follows; the pilot in
 # the right seat). Kept from the F-117A's cockpit: the seat with the ejection handle (no ejection:
 # the handle stays), the stick (a centre cyclic on a shaft from the floor between the knees), the
 # throttle (the UH-60's collective on its arm from a pivot left of the seat), the five target

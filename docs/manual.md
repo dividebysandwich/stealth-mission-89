@@ -896,7 +896,9 @@ nothing) and no ejection seat.
 **AUTO** in a helicopter holds altitude and speed (at least 80 kt) and steers to the waypoint; moving the
 cyclic or the collective disengages it.
 
-**Cockpit.** Two MFDs, the up-front caps and the countermeasures and cautions on the centre console.
+**Cockpit.** The MH-60R's glass cockpit: four large MFDs (a pair in front of each seat), the up-front caps and the
+countermeasures and cautions on the centre console. No HUD: the helmet display shows speed, altitude and the
+sight (the **HMD** cap under the MFDs steps it through on, auto and off).
 
 ![The UH-60's cockpit](images/cockpit_uh60.png)
 
