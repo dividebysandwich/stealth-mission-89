@@ -2652,9 +2652,11 @@ Low level is where the strike aircraft live, and where most of them die. A few r
 
 ## 7.9 Landing
 
-1. Bring up the **ILS** (F9): the landing guidance on the centre display and, approaching the
-   runway, the steering bars on the HUD. Fly the flight path marker to where the bars cross to be
-   on the centreline and the 3° glide path.
+1. Bring up the **ILS** (F9; the A-6's LAND, the F-14's LDG): the landing guidance on the centre
+   display and, approaching the runway, the steering bars on the HUD. Fly the flight path marker
+   to where the bars cross to be on the centreline and the 3° glide path. You don't need to
+   target the field: the ILS picks up any friendly runway you fly towards from 20 nmi out and
+   within 35° of its centreline (an enemy field's runway never guides you).
 2. **Gear down** (6), **flaps** (9). Check the gear lights: a green lamp at each wheel.
 3. Fly the approach on speed: in the F-16C the AOA indexer left of the HUD shows a green circle; in
    the F-117A the bracket left of the flight path marker should centre on it.

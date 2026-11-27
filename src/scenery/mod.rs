@@ -86,6 +86,7 @@ impl Plugin for SceneryPlugin {
                         airfields,
                         lamps_at_night,
                         papi_lights,
+                        mark_friendly_runways,
                         approach_sides,
                         clear_approaches,
                         share_parking,
@@ -319,6 +320,55 @@ pub struct SceneryBacklog(pub Option<usize>);
 /// Where the ILS camera looks on an approach to each runway end (see `trackcam.rs`).
 #[derive(Resource, Default)]
 pub struct PapiSites(pub Vec<airfield::PapiSite>);
+
+/// An airfield's runway ends are this near its object (metres; as the tower's, `atc::bases`).
+const FIELD_REACH_M: f64 = 2500.0;
+
+/// The ILS guides to friendly and neutral fields only: once a second each runway end takes its
+/// airfield's side from the simulation (a field taken by the enemy drops out, one won back comes
+/// in); an end near no airfield the simulation knows stays friendly.
+fn mark_friendly_runways(
+    combat: Option<Res<crate::combat::Combat>>,
+    mut sites: ResMut<PapiSites>,
+    time: Res<Time>,
+    mut wait: Local<f32>,
+) {
+    use stealth_sim::types::oflags;
+    *wait -= time.delta_secs();
+    if *wait > 0.0 {
+        return;
+    }
+    *wait = 1.0;
+    let Some(combat) = combat else { return };
+    let fields: Vec<(DVec2, bool)> = combat
+        .sim
+        .objects()
+        .iter()
+        .skip(3)
+        .filter(|o| o.flags & oflags::AIRFIELD != 0)
+        .map(|o| {
+            let p = crate::sim_render::map_point(o.x as f64, o.y as f64, 0.0);
+            (DVec2::new(p.x, -p.z), o.flags & (oflags::FRIENDLY | oflags::NEUTRAL) != 0)
+        })
+        .collect();
+    let sides: Vec<bool> = sites
+        .0
+        .iter()
+        .map(|s| {
+            fields
+                .iter()
+                .map(|&(p, friendly)| (p.distance(s.aim), friendly))
+                .filter(|&(d, _)| d < FIELD_REACH_M)
+                .min_by(|a, b| a.0.total_cmp(&b.0))
+                .is_none_or(|(_, friendly)| friendly)
+        })
+        .collect();
+    if sites.0.iter().zip(&sides).any(|(s, &f)| s.friendly != f) {
+        for (s, f) in sites.0.iter_mut().zip(sides) {
+            s.friendly = f;
+        }
+    }
+}
 
 /// A cargo crate for a new air defence site (metres: length, width, height), olive with dark
 /// straps.

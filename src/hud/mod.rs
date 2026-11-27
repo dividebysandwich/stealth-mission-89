@@ -852,10 +852,16 @@ impl HudParams<'_, '_> {
         let ils =
             self.mfd.as_ref().filter(|m| m.ils).zip(self.papi.as_ref()).and_then(|(_, papi)| {
                 let eye = pos.0 + (a.orientation * self.settings.cockpit_eye()).as_dvec3();
-                let (_, along, lateral) =
+                let (site, along, lateral) =
                     crate::scenery::approach_to(&papi.0, bevy::math::DVec2::new(eye.x, -eye.z), h)?;
                 let loc = lateral.atan2(along).to_degrees();
-                let gs = eye.y.max(0.0).atan2(along).to_degrees() - crate::scenery::GLIDE_PATH_DEG;
+                // The height over the runway (it may stand on a hill).
+                let field = self
+                    .theater
+                    .as_ref()
+                    .map_or(0.0, |t| t.hills.ground_m(site.aim.x, site.aim.y) as f64);
+                let gs = (eye.y - field).max(0.0).atan2(along).to_degrees()
+                    - crate::scenery::GLIDE_PATH_DEG;
                 Some((loc as f32, gs as f32))
             });
         let tomcat = self

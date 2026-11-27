@@ -85,30 +85,40 @@ pub struct PapiSite {
     pub toward: DVec2,
     /// Half width of the view at the aim point (metres).
     pub half_width: f64,
+    /// A friendly (or neutral) field's: only these guide the ILS (`mark_friendly_runways`).
+    pub friendly: bool,
 }
 
 /// Glide path of the PAPIs (and the HUD's ILS glideslope), degrees.
 pub const GLIDE_PATH_DEG: f64 = 3.0;
 
-/// The runway end an aircraft at `ac` (ground metres) heading `heading` (radians from north) is
-/// approaching: ahead, within 25 km and the approach cone; with the distance to its aim point
-/// along the centreline and the offset from the centreline (metres, positive = right of it
-/// seen from the approach).
+/// How far out the ILS picks up a runway end (metres along the centreline), and the half
+/// angle of its approach cone (the localizer's coverage) as the tangent.
+pub const ILS_RANGE_M: f64 = 37_000.0;
+const ILS_CONE: f64 = 0.7;
+
+/// The friendly runway end an aircraft at `ac` (ground metres) heading `heading` (radians from
+/// north) is approaching: in front of the threshold within 20 nmi (`ILS_RANGE_M`), inside the
+/// 35 degree approach cone and flying towards it (within 90 degrees of the landing direction),
+/// the nearest and best lined up one; with the distance to its aim point along the centreline
+/// and the offset from the centreline (metres, positive = right of it seen from the approach).
+/// Nothing needs to be targeted: any friendly field's runway on the way in will do.
 pub fn approach_to(sites: &[PapiSite], ac: DVec2, heading: f32) -> Option<(&PapiSite, f64, f64)> {
     let forward = DVec2::new(heading.sin() as f64, heading.cos() as f64);
     sites
         .iter()
+        .filter(|s| s.friendly)
         .filter_map(|s| {
             let rel = ac - s.aim;
             let along = rel.dot(s.toward);
             // Flying along -toward, its right is toward.perp() (perp turns left).
             let lateral = rel.dot(s.toward.perp());
-            let ok = (100.0..25_000.0).contains(&along)
-                && lateral.abs() < along * 0.4 + 400.0
-                && forward.dot(-s.toward) > 0.5;
+            let ok = (100.0..ILS_RANGE_M).contains(&along)
+                && lateral.abs() < along * ILS_CONE + 600.0
+                && forward.dot(-s.toward) > 0.0;
             ok.then_some((s, along, lateral))
         })
-        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .min_by(|a, b| (a.1 + 2.0 * a.2.abs()).total_cmp(&(b.1 + 2.0 * b.2.abs())))
 }
 
 pub fn papi_sites(a: &Airfield) -> Vec<PapiSite> {
@@ -119,7 +129,7 @@ pub fn papi_sites(a: &Airfield) -> Vec<PapiSite> {
             let aim = ax.at(p.end * (a.runway.half_len - PAPI_IN), 0.0);
             let outer =
                 p.units.iter().map(|u| (*u - a.runway.c).dot(ax.v).abs()).fold(0.0, f64::max);
-            PapiSite { aim, toward: ax.u * p.end, half_width: outer * 1.1 + 10.0 }
+            PapiSite { aim, toward: ax.u * p.end, half_width: outer * 1.1 + 10.0, friendly: true }
         })
         .collect()
 }
@@ -767,5 +777,40 @@ fn approach(g: &mut Geom, f: &Frame, ax: &Axes, end: f64, l: f64, w: f64) {
             k += 1;
         }
         d += BARRETTE;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A north-south runway's southern end (landing northwards) at the origin.
+    fn south_end(friendly: bool) -> PapiSite {
+        PapiSite { aim: DVec2::ZERO, toward: DVec2::NEG_Y, half_width: 40.0, friendly }
+    }
+
+    /// The ILS takes a friendly runway end ahead from 20 nmi out and well off the centreline,
+    /// flying roughly towards it, without anything targeted; never an enemy field's, nor one
+    /// behind or flown away from.
+    #[test]
+    fn ils_finds_a_friendly_runway_on_the_way_in() {
+        let north = 0.0f32;
+        let sites = [south_end(true)];
+        // 30 km out on the centreline, and 15 km out 6 km to the side heading 60 degrees off.
+        assert!(approach_to(&sites, DVec2::new(0.0, -30_000.0), north).is_some());
+        let (_, along, lateral) =
+            approach_to(&sites, DVec2::new(-6_000.0, -15_000.0), 60f32.to_radians()).unwrap();
+        assert!((along - 15_000.0).abs() < 1.0 && (lateral + 6_000.0).abs() < 1.0);
+        // Too far, past the threshold, or flying away.
+        assert!(approach_to(&sites, DVec2::new(0.0, -40_000.0), north).is_none());
+        assert!(approach_to(&sites, DVec2::new(0.0, 500.0), north).is_none());
+        assert!(approach_to(&sites, DVec2::new(0.0, -10_000.0), std::f32::consts::PI).is_none());
+        // An enemy field's runway: nothing.
+        assert!(approach_to(&[south_end(false)], DVec2::new(0.0, -10_000.0), north).is_none());
+        // Two fields ahead: the one lined up wins over a nearer one far off to the side.
+        let side = PapiSite { aim: DVec2::new(5_000.0, -4_000.0), ..south_end(true) };
+        let sites = [side, south_end(true)];
+        let (s, _, _) = approach_to(&sites, DVec2::new(0.0, -12_000.0), north).unwrap();
+        assert_eq!(s.aim, DVec2::ZERO);
     }
 }
