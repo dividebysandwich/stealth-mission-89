@@ -56,37 +56,103 @@ pub struct Own {
 // ---------------------------------------------------------------------------------------------
 // DDD
 
-/// The DDD's closure scale in pulse Doppler search (knots): -200 at the foot, this at the top.
-const VC_TOP: f32 = 1200.0;
+/// The DDD's closure scale (knots): -200 at the foot, this at the top (twice it with the Vc
+/// switch at 2X).
+pub const VC_TOP: f32 = 1200.0;
+/// The elevations the DDD's antenna and infrared pictures show (radians either side of the
+/// horizon).
+const EL_SPAN: f32 = 60.0 * std::f32::consts::PI / 180.0;
+
+/// The DDD's picture (its display mode buttons).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DddPicture {
+    /// PULSE VIDEO: the raw returns by range (as strong as they are near), with the ground's
+    /// clutter while the antenna looks down. A mode without ranges (pulse Doppler search) shows
+    /// none.
+    Pulse,
+    /// PD: the radar's processed returns, by range (pulse Doppler search: by closing speed).
+    #[default]
+    Pd,
+    /// ANT TRK: where the antenna looks: the scan's pattern and its bars by azimuth and
+    /// elevation, the returns at theirs.
+    Antenna,
+    /// RDROT: the returns by closing speed in every mode (the rate display).
+    Rate,
+    /// JAT: the jammers' strobes only (their bearings; the returns are off).
+    Jam,
+    /// IROT: what the infrared sensor sees, by azimuth and elevation (no radar return needed).
+    Ir,
+}
+
+impl DddPicture {
+    /// Up the scope is elevation (not range or closure).
+    fn angles(self) -> bool {
+        matches!(self, DddPicture::Antenna | DddPicture::Ir)
+    }
+
+    /// Up the scope is the closing speed in the radar's mode `mode`.
+    fn rate(self, mode: crate::awg9::Mode) -> bool {
+        self == DddPicture::Rate || (self == DddPicture::Pd && mode.velocity_only())
+    }
+}
+
+/// What the DDD shows: its picture, its closure scale's top (knots) and the hand controller's
+/// acquisition cursor (azimuth in radians, 0..1 up the scope), if it is on this display.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DddView {
+    pub picture: DddPicture,
+    pub vc_top: f32,
+    pub cursor: Option<Vec2>,
+}
+
+impl Default for DddView {
+    fn default() -> Self {
+        Self { picture: DddPicture::Pd, vc_top: VC_TOP, cursor: None }
+    }
+}
 
 /// A return's place on the DDD: its azimuth (radians) and how far up the scope it is (0 the
-/// foot, 1 the top: its range of the scope's, in pulse Doppler search its closing speed).
-pub fn ddd_spot(r: &Awg9, ctl: &Awg9Controls, hit: &crate::awg9::Hit) -> Vec2 {
-    let up = if r.mode.velocity_only() {
-        (hit.closure * KT + 200.0) / (VC_TOP + 200.0)
+/// foot, 1 the top: its range of the scope's, its closing speed or its elevation by the
+/// picture). `el`: radians over the horizon, `range`: metres, `closure`: m/s.
+pub fn ddd_spot(
+    r: &Awg9,
+    ctl: &Awg9Controls,
+    v: &DddView,
+    (az, el): (f32, f32),
+    range: f32,
+    closure: f32,
+) -> Vec2 {
+    let up = if v.picture.angles() {
+        el / EL_SPAN * 0.5 + 0.5
+    } else if v.picture.rate(r.mode) {
+        (closure * KT + 200.0) / (v.vc_top + 200.0)
     } else {
-        hit.range / ctl.range
+        range / ctl.range
     };
-    Vec2::new(hit.az, up)
+    Vec2::new(az, up)
 }
 
 /// The DDD's antenna line's colour index (white in `tomcat::displays::ddd_colours`; the ramp
 /// is the dark ink on the lit tube).
 pub const DDD_SWEEP: u8 = 200;
 
-/// The DDD: returns, gates and carets of the radar `r` set by `ctl`; `cursor`: the hand
-/// controller's acquisition cursor (azimuth in radians, 0..1 up the scope), two bars over each
-/// other at its place. The returns the IFF found friendly get bars over and under them.
-/// The tube is lit and its marks dark (`tomcat::displays::ddd_colours`), the antenna's azimuth a
-/// white line up it.
-pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec2>) {
+/// The DDD: returns, gates and carets of the radar `r` set by `ctl` in the picture `v` (the
+/// cursor: two bars over each other at its place). The returns the IFF found friendly get bars
+/// over and under them. The tube is lit and its marks dark (`tomcat::displays::ddd_colours`),
+/// the antenna's azimuth a white line up it.
+pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, v: &DddView) {
     c.clear(0);
     let (w, h) = (c.w as f32, c.h as f32);
     let m = 0.08 * w;
     let (x0, x1, y0, y1) = (m, w - m, m, h - m);
     let az_x = |az: f32| x0 + (az / GIMBAL * 0.5 + 0.5) * (x1 - x0);
-    let range_y = |range: f32| y1 - (range / ctl.range).clamp(0.0, 1.05) * (y1 - y0);
-    let vc_y = |vc: f32| y1 - ((vc * KT + 200.0) / (VC_TOP + 200.0)).clamp(0.0, 1.05) * (y1 - y0);
+    let picture = v.picture;
+    let (angles, rate) = (picture.angles(), picture.rate(r.mode));
+    // A mark's row by the picture.
+    let row = |el: f32, range: f32, closure: f32| {
+        let up = ddd_spot(r, ctl, v, (0.0, el), range, closure).y;
+        y1 - up.clamp(0.0, 1.05) * (y1 - y0)
+    };
     // The frame's grid: azimuth every 10 degrees along the foot with 30 and 0 printed, the two
     // range lines at 30 degrees either side with their tenths, the cross in the middle.
     for k in -6i32..=6 {
@@ -111,22 +177,89 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
     for d in [Vec2::X, Vec2::Y] {
         c.stroke(mid - d * 0.03 * h, mid + d * 0.03 * h, 1.0, ink(MID));
     }
+    let title = |c: &mut Canvas, s: &str| {
+        text(c, Vec2::new(w / 2.0, 0.04 * h), s, 0.035 * h, MID, Align::Centre);
+    };
+    let cursor = |c: &mut Canvas| {
+        if let Some(k) = v.cursor {
+            let p = Vec2::new(az_x(k.x), y1 - k.y.clamp(0.0, 1.0) * (y1 - y0));
+            for sy in [-1.0, 1.0] {
+                let y = p.y + sy * 0.012 * h;
+                c.stroke(
+                    Vec2::new(p.x - 0.04 * w, y),
+                    Vec2::new(p.x + 0.04 * w, y),
+                    1.5,
+                    ink(BRIGHT),
+                );
+            }
+        }
+    };
+    let hooked = r.hook;
+    let hook_box = |c: &mut Canvas, x: f32, y: f32| {
+        let half = 0.036 * w;
+        c.frame(
+            Vec2::new(x - half, y - 0.03 * h),
+            Vec2::new(x + half, y + 0.03 * h),
+            1.0,
+            ink(1.0),
+        );
+    };
+    // The infrared sensor's picture: the hot spots by azimuth and elevation, with the radar or
+    // without it.
+    if picture == DddPicture::Ir {
+        c.dashed(Vec2::new(x0, mid.y), Vec2::new(x1, mid.y), 4.0, 6.0, 1.0, ink(DIM));
+        for spot in &r.ir {
+            let (x, y) = (az_x(spot.az), row(spot.el, 0.0, 0.0));
+            let s = 0.02 * w;
+            c.polyline(
+                &[
+                    Vec2::new(x, y - s),
+                    Vec2::new(x + s, y),
+                    Vec2::new(x, y + s),
+                    Vec2::new(x - s, y),
+                    Vec2::new(x, y - s),
+                ],
+                1.5,
+                ink(BRIGHT),
+            );
+            if Some(spot.target) == hooked {
+                hook_box(c, x, y);
+            }
+        }
+        cursor(c);
+        return title(c, "IR  EL 60");
+    }
     if !r.mode.on() {
         text(c, Vec2::new(w / 2.0, h * 0.3), "STBY", 0.07 * h, MID, Align::Centre);
         return;
     }
-    // The scan's limits.
+    // The scan's limits; in the antenna's picture its whole pattern: the bars between them.
+    let scan = ctl.scan();
     if !r.mode.stt() {
-        let half = ctl.scan().az_half;
+        let half = scan.az_half;
         for s in [-1.0, 1.0] {
             let x = az_x(s * half);
             c.dashed(Vec2::new(x, y0), Vec2::new(x, y1), 4.0, 6.0, 1.0, ink(DIM));
+        }
+        if angles && !r.mode.acm() {
+            for bar in 0..scan.bars.max(1) {
+                let y = row(scan.bar_elevation(bar), 0.0, 0.0);
+                let t = if bar == r.bar { MID } else { DIM };
+                c.dashed(
+                    Vec2::new(az_x(-half), y),
+                    Vec2::new(az_x(half), y),
+                    6.0,
+                    4.0,
+                    1.0,
+                    ink(t),
+                );
+            }
         }
     }
     // The antenna: its azimuth a white line up the scope, its elevation a caret at the left.
     let bx = az_x(r.beam);
     c.stroke(Vec2::new(bx, y0), Vec2::new(bx, y1), 2.5, DDD_SWEEP);
-    let ey = (y0 + y1) / 2.0 - r.elevation / (60f32.to_radians()) * (y1 - y0) / 2.0;
+    let ey = (y0 + y1) / 2.0 - r.elevation / EL_SPAN * (y1 - y0) / 2.0;
     c.triangle(
         [
             Vec2::new(x0 - 0.01 * w, ey),
@@ -135,27 +268,57 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
         ],
         ink(MID),
     );
-    // Jammers: strobes up their azimuth.
+    if angles {
+        // Where the beam is now.
+        c.ring(Vec2::new(bx, ey), 0.025 * w, 1.5, ink(BRIGHT));
+    }
+    // Jammers: strobes up their azimuth (the jamming's picture: nothing else, and darker).
+    let jam = picture == DddPicture::Jam;
     for s in &r.strobes {
         let x = az_x(s.az);
         let t = (1.0 - s.age / (2.0 * r.frame)).clamp(0.2, 1.0);
-        c.stroke(Vec2::new(x, y0), Vec2::new(x, y1), 1.5, ink(MID * t));
-    }
-    let velocity = r.mode.velocity_only();
-    if let Some(k) = cursor {
-        let p = Vec2::new(az_x(k.x), y1 - k.y.clamp(0.0, 1.0) * (y1 - y0));
-        for sy in [-1.0, 1.0] {
-            let y = p.y + sy * 0.012 * h;
-            c.stroke(Vec2::new(p.x - 0.04 * w, y), Vec2::new(p.x + 0.04 * w, y), 1.5, ink(BRIGHT));
+        let (width, dark) = if jam { (3.0, BRIGHT) } else { (1.5, MID) };
+        c.stroke(Vec2::new(x, y0), Vec2::new(x, y1), width, ink(dark * t));
+        if jam && Some(s.target) == hooked {
+            hook_box(c, x, mid.y);
         }
     }
-    let hooked = r.hook;
-    for hit in &r.hits {
+    cursor(c);
+    if jam {
+        return title(c, &format!("JAT  {}", r.strobes.len()));
+    }
+    let pulse = picture == DddPicture::Pulse;
+    if pulse && r.elevation < 0.0 {
+        // The ground's clutter under the beam: speckles from where the beam meets the ground
+        // outwards, new ones as the antenna moves.
+        let mut seed = (r.beam * 4000.0) as i32 as u32 ^ 0x9E37_79B9;
+        let mut next = || {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            (seed >> 8) as f32 / 16_777_216.0
+        };
+        let near = (0.15 / (-r.elevation).max(0.02)).clamp(0.05, 1.0);
+        for _ in 0..90 {
+            let x = bx + (next() - 0.5) * 0.12 * w;
+            let y = y1 - (near + next() * (1.0 - near)).min(1.0) * (y1 - y0);
+            c.stroke(Vec2::new(x, y), Vec2::new(x + 0.01 * w, y), 0.008 * h, ink(DIM * next()));
+        }
+    }
+    // The raw video of a mode without ranges has no returns to show.
+    let blind = pulse && r.mode.velocity_only();
+    for hit in r.hits.iter().filter(|_| !blind) {
         let x = az_x(hit.az);
-        let y = if velocity { vc_y(hit.closure) } else { range_y(hit.range) };
+        let y = row(hit.el, hit.range, hit.closure);
         let fade = (1.0 - hit.age / (2.0 * r.frame)).clamp(0.15, 1.0);
-        let half = 0.018 * w;
-        c.stroke(Vec2::new(x - half, y), Vec2::new(x + half, y), 0.012 * h, ink(BRIGHT * fade));
+        // The raw video: the nearer the stronger (wider and thicker).
+        let strength =
+            if pulse { (1.6 - hit.range / ctl.range.max(1.0)).clamp(0.6, 1.6) } else { 1.0 };
+        let half = 0.018 * w * strength;
+        c.stroke(
+            Vec2::new(x - half, y),
+            Vec2::new(x + half, y),
+            0.012 * h * strength,
+            ink(BRIGHT * fade),
+        );
         if hit.friendly == Some(true) {
             // The IFF's reply: grey bars over and under the return.
             for sy in [-1.0, 1.0] {
@@ -165,18 +328,13 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
             }
         }
         if Some(hit.target) == hooked {
-            c.frame(
-                Vec2::new(x - 2.0 * half, y - 0.03 * h),
-                Vec2::new(x + 2.0 * half, y + 0.03 * h),
-                1.0,
-                ink(BRIGHT),
-            );
+            hook_box(c, x, y);
         }
     }
     // A single target track: its gates round it, its data along the top.
     if let Some(t) = r.stt {
         let x = az_x(t.az);
-        let y = if velocity { vc_y(t.closure) } else { range_y(t.range) };
+        let y = row(t.el, t.range, t.closure);
         let (gx, gy) = (0.035 * w, 0.03 * h);
         for s in [-1.0, 1.0] {
             c.stroke(
@@ -202,10 +360,16 @@ pub fn draw_ddd(c: &mut Canvas, r: &Awg9, ctl: &Awg9Controls, cursor: Option<Vec
         text(c, Vec2::new(w / 2.0, y0 + 0.035 * h), &data, 0.03 * h, MID, Align::Centre);
     }
     // The mode and scale over the scope (the tube's corners are round).
-    let scale =
-        if velocity { format!("VC {VC_TOP:.0}") } else { format!("{:.0}", ctl.range as f64 / NM) };
-    let top = format!("{}  {scale}", r.mode.label());
-    text(c, Vec2::new(w / 2.0, 0.04 * h), &top, 0.035 * h, MID, Align::Centre);
+    let scale = if angles {
+        "EL 60".to_string()
+    } else if rate {
+        format!("VC {:.0}", v.vc_top)
+    } else if blind {
+        "NO RANGE".to_string()
+    } else {
+        format!("{:.0}", ctl.range as f64 / NM)
+    };
+    title(c, &format!("{}  {scale}", r.mode.label()));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1130,7 +1294,7 @@ mod tests {
             knots: 400.0,
         };
         let mut c = Canvas::scaled(320, 320, 1);
-        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)));
+        draw_ddd(&mut c, &r, &ctl, &DddView { cursor: Some(Vec2::new(0.1, 0.4)), ..default() });
         assert!(lit(&c) > 0);
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(30_000.0, 80_000.0)];
         for stab in [TidStab::Ground, TidStab::Aircraft, TidStab::Attack] {
@@ -1169,6 +1333,50 @@ mod tests {
         );
         assert!(lit(&c) > 0);
         assert_eq!(dm(42.3, 'N', 'S'), "N 42:18.00");
+    }
+
+    /// Each DDD picture draws its own; the raw video of a mode without ranges shows no returns;
+    /// the infrared picture needs no radar.
+    #[test]
+    fn the_ddd_pictures_differ() {
+        let ctl = Awg9Controls { mode: crate::awg9::Mode::Rws, ..default() };
+        let mut r = Awg9::default();
+        r.mode = crate::awg9::Mode::Rws;
+        r.elevation = -0.1;
+        r.hits = vec![crate::awg9::Hit {
+            az: 0.3,
+            el: 0.2,
+            range: ctl.range * 0.25,
+            closure: 400.0,
+            target: ContactRef::Unit(1),
+            friendly: None,
+            age: 0.0,
+        }];
+        r.strobes =
+            vec![crate::aa_radar::Strobe { az: -0.4, target: ContactRef::Unit(2), age: 0.0 }];
+        r.ir = vec![crate::awg9::IrSpot { az: -0.2, el: 0.1, target: ContactRef::Unit(3) }];
+        let draw = |r: &Awg9, picture| {
+            let mut c = Canvas::scaled(240, 240, 1);
+            draw_ddd(&mut c, r, &ctl, &DddView { picture, ..default() });
+            c.px
+        };
+        use DddPicture::*;
+        let all = [Pulse, Pd, Antenna, Rate, Jam, Ir].map(|p| draw(&r, p));
+        for (i, a) in all.iter().enumerate() {
+            assert!(all[..i].iter().all(|b| a != b), "picture {i}");
+        }
+        // The return's place by the picture: range, elevation, closing speed.
+        let v = |picture| DddView { picture, ..default() };
+        let h = r.hits[0];
+        let spot = |p| ddd_spot(&r, &ctl, &v(p), (h.az, h.el), h.range, h.closure).y;
+        assert!((spot(Pd) - 0.25).abs() < 1e-3);
+        assert!((spot(Antenna) - (0.5 + 0.2 / EL_SPAN * 0.5)).abs() < 1e-3);
+        assert!((spot(Rate) - (400.0 * KT + 200.0) / (VC_TOP + 200.0)).abs() < 1e-3);
+        // Standby: the infrared picture still shows its spot, the others say STBY.
+        let mut off = Awg9::default();
+        off.ir = r.ir.clone();
+        assert_ne!(draw(&off, Ir), draw(&Awg9::default(), Ir));
+        assert_eq!(draw(&off, Pd), draw(&Awg9::default(), Pd));
     }
 
     /// The field of regard map: ahead and down is seen, the left beyond the fuselage, back under
@@ -1249,7 +1457,7 @@ mod preview {
         let pal = crate::intruder::phosphor([2, 10, 4], [80, 255, 110]);
         let own = Own { pos: own, heading: 0.0, pitch: 0.05, roll: -0.35, knots: 450.0 };
         let mut c = Canvas::scaled(320, 320, 2);
-        draw_ddd(&mut c, &r, &ctl, Some(Vec2::new(0.1, 0.4)));
+        draw_ddd(&mut c, &r, &ctl, &DddView { cursor: Some(Vec2::new(0.1, 0.4)), ..default() });
         crate::intruder::dump_png(&c, &crate::tomcat::displays::ddd_colours(), "f14_ddd");
         let wps = [DVec2::new(10_000.0, 40_000.0), DVec2::new(-20_000.0, 100_000.0)];
         let inf = [InFlight { target: ContactRef::Unit(2), to_go: -23.0, tti: 41.0 }];

@@ -191,8 +191,11 @@ pub fn draw_hsd(c: &mut Canvas, i: &Inputs) {
 /// The RIO's detail data display: the AWG-9's returns.
 pub fn draw_ddd(c: &mut Canvas, i: &Inputs) {
     let cursor = i.scene.cursor;
-    let ddd = (cursor.active == Some(Cursor::Ddd)).then_some(cursor.ddd);
-    scopes::draw_ddd(c, i.radar, i.controls, ddd);
+    let view = scopes::DddView {
+        cursor: (cursor.active == Some(Cursor::Ddd)).then_some(cursor.ddd),
+        ..super::avionics::ddd_view(i.panel)
+    };
+    scopes::draw_ddd(c, i.radar, i.controls, &view);
     super::dump_png(c, &ddd_colours(), "ddd");
 }
 

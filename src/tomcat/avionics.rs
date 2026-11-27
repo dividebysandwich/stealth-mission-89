@@ -15,7 +15,9 @@
 use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
-use super::{LtsMode, Power, SteerMode, TidMode, TomcatPanel, TomcatStatus, VdiMode, WcsMode};
+use super::{
+    DddMode, LtsMode, Power, SteerMode, TidMode, TomcatPanel, TomcatStatus, VdiMode, WcsMode,
+};
 use crate::aircraft::AircraftKind;
 use crate::awg9::{Awg9, Awg9Controls, Mode};
 use crate::cockpit3d::layout::PanelStyle;
@@ -105,6 +107,23 @@ pub fn tid_stab(panel: &TomcatPanel) -> TidStab {
     }
 }
 
+/// The DDD's picture as its display mode buttons and the Vc switch set it.
+pub fn ddd_view(panel: &TomcatPanel) -> crate::f14_scopes::DddView {
+    use crate::f14_scopes::DddPicture;
+    crate::f14_scopes::DddView {
+        picture: match panel.ddd_mode {
+            DddMode::PulseVideo => DddPicture::Pulse,
+            DddMode::Pd => DddPicture::Pd,
+            DddMode::AntTrk => DddPicture::Antenna,
+            DddMode::Rdrot => DddPicture::Rate,
+            DddMode::Jat => DddPicture::Jam,
+            DddMode::Irot => DddPicture::Ir,
+        },
+        vc_top: crate::f14_scopes::VC_TOP * if panel.vc_2x { 2.0 } else { 1.0 },
+        cursor: None,
+    }
+}
+
 /// The cursor the hand controller moves in the radar's mode: the DDD's in the search modes,
 /// the TID's otherwise.
 pub fn cursor_for(mode: Mode) -> Cursor {
@@ -124,21 +143,45 @@ pub fn under_cursor(
     panel: &TomcatPanel,
     own: &Own,
 ) -> Option<ContactRef> {
+    use crate::f14_scopes::{DddPicture, ddd_spot};
     match cursor.active? {
-        Cursor::Ddd => radar
-            .hits
-            .iter()
-            .map(|h| {
-                let p = crate::f14_scopes::ddd_spot(radar, controls, h);
-                let d = Vec2::new(
-                    (p.x - cursor.ddd.x) / (2.0 * crate::awg9::GIMBAL),
-                    p.y - cursor.ddd.y,
-                );
-                (d.length(), h.target)
-            })
-            .filter(|(d, _)| *d < HOOK_REACH)
-            .min_by(|a, b| a.0.total_cmp(&b.0))
-            .map(|(_, t)| t),
+        Cursor::Ddd => {
+            // What the picture shows: the returns, the jammers' strobes (any height on their
+            // bearing) or the infrared sensor's spots.
+            let view = ddd_view(panel);
+            let off = |p: Vec2, across_only: bool| {
+                let up = if across_only { 0.0 } else { p.y - cursor.ddd.y };
+                Vec2::new((p.x - cursor.ddd.x) / (2.0 * crate::awg9::GIMBAL), up).length()
+            };
+            let marks: Vec<(f32, ContactRef)> = match view.picture {
+                DddPicture::Jam => radar
+                    .strobes
+                    .iter()
+                    .map(|s| (off(Vec2::new(s.az, 0.0), true), s.target))
+                    .collect(),
+                DddPicture::Ir => radar
+                    .ir
+                    .iter()
+                    .map(|s| {
+                        let p = ddd_spot(radar, controls, &view, (s.az, s.el), 0.0, 0.0);
+                        (off(p, false), s.target)
+                    })
+                    .collect(),
+                _ => radar
+                    .hits
+                    .iter()
+                    .map(|h| {
+                        let p = ddd_spot(radar, controls, &view, (h.az, h.el), h.range, h.closure);
+                        (off(p, false), h.target)
+                    })
+                    .collect(),
+            };
+            marks
+                .into_iter()
+                .filter(|(d, _)| *d < HOOK_REACH)
+                .min_by(|a, b| a.0.total_cmp(&b.0))
+                .map(|(_, t)| t)
+        }
         Cursor::Tid => radar
             .tracks
             .iter()
@@ -291,8 +334,7 @@ pub(super) fn radar_controls(
     mut controls: ResMut<Awg9Controls>,
     mut radar: ResMut<Awg9>,
     (mut hooks, mut iffs): (Local<Option<u8>>, Local<Option<u8>>),
-    mut acm: Local<Option<(Mode, f32)>>,
-    mut was_stt: Local<bool>,
+    (mut acm, mut was_stt): (Local<Option<(Mode, f32)>>, Local<bool>),
     (combat, hud): (Option<Res<crate::combat::Combat>>, Res<crate::hud::HudState>),
     (mut locks, mut unlocks): (
         MessageWriter<crate::avionics::LockRequest>,
@@ -803,6 +845,25 @@ mod tests {
         assert!(mode(&p, Mode::Mrl).stt() && mode(&p, Mode::Mrl).pulse());
     }
 
+    /// The display mode buttons each give the DDD its picture; the Vc switch doubles the
+    /// closure scale.
+    #[test]
+    fn the_ddd_buttons_pick_its_picture() {
+        use crate::f14_scopes::DddPicture;
+        let mut p = TomcatPanel::default();
+        let mut seen = Vec::new();
+        for m in super::super::DDD_MODES {
+            p.press(super::super::Key::DddMode(m));
+            seen.push(ddd_view(&p).picture);
+        }
+        assert_eq!(seen.len(), 6);
+        assert!(seen.iter().enumerate().all(|(i, a)| seen[..i].iter().all(|b| a != b)));
+        assert_eq!(seen[1], DddPicture::Pd);
+        let before = ddd_view(&p).vc_top;
+        p.press(super::super::Key::VcScale);
+        assert_eq!(ddd_view(&p).vc_top, 2.0 * before);
+    }
+
     #[test]
     fn the_antenna_keys_step_the_acm_modes() {
         assert_eq!(step_acm(Mode::Mrl, true), Mode::Plm);
@@ -843,6 +904,7 @@ mod tests {
         radar.mode = Mode::Rws;
         let hit = |i: usize, az: f32, range: f32| crate::awg9::Hit {
             az,
+            el: 0.0,
             range,
             closure: 0.0,
             target: ContactRef::Unit(i),

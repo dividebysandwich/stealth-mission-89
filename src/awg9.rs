@@ -196,8 +196,9 @@ impl Awg9Controls {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Hit {
     /// Azimuth from the nose (radians, right positive), range (metres) and closure (m/s,
-    /// closing positive) when it was painted.
+    /// closing positive) when it was painted; its elevation over the horizon (radians).
     pub az: f32,
+    pub el: f32,
     pub range: f32,
     pub closure: f32,
     pub target: ContactRef,
@@ -205,6 +206,46 @@ pub struct Hit {
     pub friendly: Option<bool>,
     /// Seconds since it was painted.
     pub age: f32,
+}
+
+/// An aircraft the infrared sensor sees: where (radians from the nose, over the horizon). It
+/// has no range.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct IrSpot {
+    pub az: f32,
+    pub el: f32,
+    pub target: ContactRef,
+}
+
+/// The infrared sensor's reach (metres) against an aircraft's hot tail, against its nose and
+/// against a drone's small engine.
+const IR_TAIL: f64 = 74_000.0;
+const IR_NOSE: f64 = 37_000.0;
+const IR_DRONE: f64 = 9_000.0;
+
+/// What the infrared sensor sees of `targets` from `own` heading `heading`: the aircraft in
+/// its gimbals near enough for the side they show it, with the line to them open.
+pub fn infrared(
+    own: DVec3,
+    heading: f32,
+    targets: &[Target],
+    sight: &impl Fn(DVec3, DVec3) -> bool,
+) -> Vec<IrSpot> {
+    targets
+        .iter()
+        .filter_map(|t| {
+            let (az, el, range) = geometry(own, heading, t.pos);
+            if az.abs() > GIMBAL || el.abs() > GIMBAL {
+                return None;
+            }
+            // 0 its nose towards us .. pi its tail.
+            let to_us = angle_diff((own.x - t.pos.x).atan2(own.y - t.pos.y) as f32, t.heading);
+            let tail = (to_us.abs() / std::f32::consts::PI) as f64;
+            let reach =
+                if t.detect < 50_000.0 { IR_DRONE } else { IR_NOSE + (IR_TAIL - IR_NOSE) * tail };
+            (range < reach && sight(own, t.pos)).then_some(IrSpot { az, el, target: t.target })
+        })
+        .collect()
 }
 
 /// A track file of the track while scan.
@@ -243,6 +284,8 @@ pub struct Awg9 {
     pub bar: u8,
     pub hits: Vec<Hit>,
     pub strobes: Vec<Strobe>,
+    /// The aircraft the infrared sensor sees (it needs no radar return).
+    pub ir: Vec<IrSpot>,
     pub tracks: Vec<TrackFile>,
     /// The single target track (STT, or the ACM's lock).
     pub stt: Option<Track>,
@@ -279,6 +322,7 @@ impl Default for Awg9 {
             bar: 0,
             hits: Vec::new(),
             strobes: Vec::new(),
+            ir: Vec::new(),
             tracks: Vec::new(),
             stt: None,
             acquired: None,
@@ -416,7 +460,8 @@ impl Awg9 {
         locked: Option<ContactRef>,
         sight: impl Fn(DVec3, DVec3) -> bool,
     ) {
-        self.sweep(dt, own, heading, c, targets, locked, sight);
+        self.sweep(dt, own, heading, c, targets, locked, &sight);
+        self.ir = infrared(own, heading, targets, &sight);
         if c.mode.on() {
             self.identify(targets);
         }
@@ -431,7 +476,7 @@ impl Awg9 {
         c: &Awg9Controls,
         targets: &[Target],
         locked: Option<ContactRef>,
-        sight: impl Fn(DVec3, DVec3) -> bool,
+        sight: &impl Fn(DVec3, DVec3) -> bool,
     ) {
         if self.mode != c.mode {
             // A new mode: the search returns go, TWS tracks only stay in TWS, ACM starts over.
@@ -611,6 +656,7 @@ impl Awg9 {
             self.hits.retain(|h| h.target != t.target);
             self.hits.push(Hit {
                 az,
+                el,
                 range: range as f32,
                 closure,
                 target: t.target,

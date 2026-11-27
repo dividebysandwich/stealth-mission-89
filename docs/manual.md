@@ -4983,6 +4983,20 @@ buttons; it springs back) interrogates every aircraft the radar holds at that mo
 on a friendly return wears a grey bar over and under it and a hostile stays a plain bar, until
 the radar loses the aircraft. One the radar finds later is unknown until the next push.
 
+The six buttons either side of the DDD pick its picture:
+
+| Button | The DDD shows |
+|---|---|
+| **PULSE VIDEO** | The raw returns by range: the nearer the stronger, and the ground's clutter speckles the scope while the antenna looks down. PD SRCH has no ranges, so it shows none (NO RANGE). |
+| **PD** | The processed returns as described above. It is in when you start. |
+| **ANT TRK** | Where the antenna looks: azimuth across, elevation up (60 degrees either way), the scan's bars as dashed lines, a ring where the beam is now and each return at its elevation. Use it to put the scan on a target's altitude. |
+| **RDROT** | Closing speed up the scope in every mode, from -200 knots at the foot to 1,200 at the top (2,400 with the **Vc** switch at 2X): what comes at you fastest stands highest. |
+| **JAT** | The jammers' strobes only, with their number: the bearings of the aircraft jamming you. |
+| **IROT** | The infrared sensor's picture: a diamond for every hot aircraft ahead, by azimuth and elevation, without range. It needs no radar return, so it finds what jams or hides in the notch: a fighter from some 20 miles head on, 40 from behind. |
+
+The hand controller's cursor and HOOK work on whatever the picture shows: on a strobe in JAT, on
+a diamond in IROT.
+
 **The TID** (tactical information display, the big round tube) is the picture the computer
 builds: your aircraft, the tracks, the scan's limits and the route. Hostile
 tracks wear a peaked hat, friendly ones a round one, unknown ones a square one: every track is
@@ -5044,6 +5058,10 @@ hold the selected weapon once MASTER ARM is on.
 - **Airspeed** in the ring of dots on the left (the needle goes round once every 100 knots),
   the ground speed over it (G). **Altitude** in the ring on the right (once round every 1,000
   feet), the radar altitude over it (R) below 5,000 feet. Decluttered, both are boxed numbers.
+- The HUD **DCLTR** switch on the DISPLAYS panel strips the glass to the heading scale, the
+  speed and altitude as boxed numbers, the horizon with the flight path marker and the weapons'
+  symbols (the steering circle, the target's box and data, the missiles' times, the bombing,
+  gun and rocket cues).
 - **Lower left:** angle of attack, Mach number and g; the radar's mode (TWSA, PDSTT ...); **BA**,
   the bearing and range in nautical miles to the steering point; in air-to-ground **CP** and
   the weapon.
