@@ -1944,6 +1944,39 @@ fn out_of_stock(m: &Mission, w: u8) -> bool {
     !AIR_TO_AIR.contains(&w) && m.weapon_unavailable.get(w as usize).is_some_and(|&u| u != 0)
 }
 
+/// What an aircraft that cannot carry the briefed air-to-ground weapon `w` takes for its
+/// target instead, the best first: a weapon of its kind, then the guided ones before the
+/// unguided. Empty for what is no air-to-ground weapon.
+fn stand_ins(w: u8) -> &'static [u8] {
+    match w {
+        // Against ships: the anti-ship missiles, then what hits a point.
+        3 | 4 | SLAMER => &[4, 3, SLAMER, 5, JSOW, 6, HELLFIRE, MK84, MK83, 9],
+        // Against radars.
+        2 | SHRIKE | SIDEARM => &[2, SHRIKE, SIDEARM, 5, JSOW, 6, HELLFIRE, CBU105, 11, 7, 9],
+        // Against vehicles and small hard targets.
+        5 | HELLFIRE | APKWS | CBU105 => {
+            &[5, HELLFIRE, 6, CBU105, APKWS, 11, 7, HYDRA, ZUNI, MK83, 9]
+        }
+        // Against runways.
+        8 | JP233 => &[8, JP233, 6, MK84, MK83, 9],
+        // Bombs: the laser-guided one, then the heavier free-fall ones.
+        6 | 7 | 9..=15 | MK83 | MK84 | JSOW | HYDRA | ZUNI => {
+            &[6, JSOW, 5, MK84, MK83, 9, 10, 11, 7, CBU105]
+        }
+        _ => &[],
+    }
+}
+
+/// The weapon flown for the briefed `w` on stations that carry `loads`: `w` itself where one
+/// carries it, else the first of its stand-ins one carries and the mission has (None: nothing
+/// for it; what is no air-to-ground weapon is left out rather than replaced). `guided`: the
+/// stand-ins before `w` itself (an aircraft whose pod guides them).
+fn flown_for(m: &Mission, w: u8, loads: &[u8], guided: bool) -> Option<u8> {
+    let own = loads.contains(&w).then_some(w);
+    let other = || stand_ins(w).iter().copied().find(|s| loads.contains(s) && !out_of_stock(m, *s));
+    if guided && !stand_ins(w).is_empty() { other().or(own) } else { own.or_else(other) }
+}
+
 /// The stores flown: a weapon type (or nothing) on each hardpoint.
 #[derive(Resource, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlannedLoadout {
@@ -2081,7 +2114,10 @@ impl PlannedLoadout {
                 }
             }
             // The Sidewinders on the shoulder rails, Phoenixes on the glove pylons, the tanks on
-            // the nacelles if briefed, the briefed stores in the tunnel (front pair first), else
+            // the nacelles if briefed. In the tunnel (front pair first) the stores for the
+            // mission: for a target on the ground or at sea the laser-guided bombs the LANTIRN
+            // guides (whatever the briefing's weapon, which is the F-117A's; without them in
+            // stock the briefed bombs or the heaviest it carries), the briefed camera; else
             // Phoenixes there too.
             AircraftKind::F14 => {
                 stores[0] = Some(0);
@@ -2093,8 +2129,15 @@ impl PlannedLoadout {
                     stores[2] = Some(17);
                     stores[7] = Some(17);
                 }
-                let tunnel: Vec<u8> =
-                    briefed.into_iter().filter(|w| F14_TARPS.contains(w)).collect();
+                let mut tunnel: Vec<u8> = Vec::new();
+                for w in briefed.into_iter().filter_map(|w| flown_for(m, w, &F14_TARPS, true)) {
+                    if !tunnel.contains(&w) {
+                        tunnel.push(w);
+                    }
+                }
+                // (The briefing's own air-to-air missiles say nothing against a strike's
+                // bombs: those go first.)
+                tunnel.sort_by_key(|w| AIR_TO_AIR.contains(w));
                 for (k, (i, j)) in [(3usize, 6usize), (4, 5)].into_iter().enumerate() {
                     let w = tunnel.get(k).or(tunnel.first()).copied().unwrap_or(PHOENIX);
                     // One camera pod (TARPS) on the rear right station.
@@ -2120,6 +2163,12 @@ impl PlannedLoadout {
                 // The mission's camera or cargo first: its station must not be blocked.
                 let mut briefed: Vec<u8> = briefed.collect();
                 briefed.sort_by_key(|w| !matches!(w, 16 | 18));
+                // What this aircraft cannot carry at all: the nearest weapon it can, for the
+                // same target.
+                let carried: Vec<u8> =
+                    lay.hardpoints.iter().flat_map(|h| h.loads).copied().collect();
+                let briefed: Vec<u8> =
+                    briefed.into_iter().filter_map(|w| flown_for(m, w, &carried, false)).collect();
                 for w in briefed.into_iter().chain([0]) {
                     // Stations preferred for each kind of store (pairs by their left station).
                     let order: &[usize] = match w {
@@ -2277,13 +2326,12 @@ impl PlannedLoadout {
             .collect()
     }
 
-    /// The station selected at the start: the one with the briefed main weapon, else the first
-    /// loaded one.
+    /// The station selected at the start: the one with the briefed main weapon, else with the
+    /// first weapon that stands in for it, else the first loaded one.
     pub fn first_choice(&self, m: &Mission) -> usize {
         let main = m.loadout.bays.first().map(|b| b.weapon as u8);
-        self.stores
-            .iter()
-            .position(|s| s.is_some() && *s == main)
+        let with = |w: u8| self.stores.iter().position(|s| *s == Some(w));
+        main.and_then(|w| with(w).or_else(|| stand_ins(w).iter().find_map(|&s| with(s))))
             .or_else(|| self.stores.iter().position(Option::is_some))
             .unwrap_or(0)
     }
@@ -2836,6 +2884,76 @@ mod tests {
         // The briefed stores flown: forgotten.
         kept.keep(&PlannedLoadout::of(&a, AircraftKind::F16), &a);
         assert!(kept.loadouts.is_empty());
+    }
+
+    /// A briefing with weapons an aircraft cannot carry: it flies the nearest it can for the
+    /// target. The F-14 takes laser-guided bombs for every target on the ground or at sea (the
+    /// briefed bombs if there are none), Phoenixes for one in the air; the selected station is
+    /// the bombs'.
+    #[test]
+    fn stores_suit_the_mission() {
+        let briefed = |m: &Mission| -> Vec<u8> {
+            m.loadout.bays.iter().take(m.loadout.usable_bays).map(|b| b.weapon as u8).collect()
+        };
+        let attack = |m: &Mission| briefed(m).iter().any(|w| !stand_ins(*w).is_empty());
+        let mut ground = 0;
+        for seed in 1..60 {
+            let m = mission(seed, false);
+            let lo = PlannedLoadout::of(&m, AircraftKind::F14);
+            let tunnel: Vec<u8> = lo.stores[3..7].iter().flatten().copied().collect();
+            if attack(&m) {
+                ground += 1;
+                let want = if out_of_stock(&m, 6) { None } else { Some(6) };
+                if let Some(w) = want {
+                    assert!(
+                        tunnel.contains(&w),
+                        "seed {seed}: {:?} for {:?}",
+                        lo.stores,
+                        briefed(&m)
+                    );
+                    // (The briefing's first weapon may be a missile for the way there.)
+                    if !stand_ins(briefed(&m)[0]).is_empty() {
+                        assert_eq!(lo.stores[lo.first_choice(&m)], Some(w), "seed {seed}");
+                    }
+                }
+                assert!(
+                    tunnel.iter().any(|w| !AIR_TO_AIR.contains(w) && *w != 16),
+                    "seed {seed}: {:?} for {:?}",
+                    lo.stores,
+                    briefed(&m)
+                );
+            }
+            // The other pylon aircraft: every briefed attack weapon is flown or stood in for.
+            for kind in [AircraftKind::F16, AircraftKind::A10, AircraftKind::A6] {
+                let lo = PlannedLoadout::of(&m, kind);
+                if attack(&m) {
+                    assert!(
+                        lo.stores.iter().flatten().any(|w| !stand_ins(*w).is_empty()),
+                        "seed {seed} {kind:?}: {:?} for {:?}",
+                        lo.stores,
+                        briefed(&m)
+                    );
+                }
+            }
+        }
+        assert!(ground > 20);
+        // The stand-ins: guided before unguided, and never an air-to-air weapon or equipment.
+        let m = mission(1, false);
+        let stock = |w: u8| !out_of_stock(&m, w);
+        if stock(6) {
+            assert_eq!(flown_for(&m, 4, &F14_TARPS, true), Some(6));
+            assert_eq!(flown_for(&m, 9, &F14_TARPS, true), Some(6));
+            assert_eq!(flown_for(&m, 9, &[9, 6], false), Some(9));
+        }
+        assert_eq!(flown_for(&m, 1, &F14_TARPS, true), None);
+        assert_eq!(flown_for(&m, 16, &F14_TARPS, true), Some(16));
+        assert_eq!(flown_for(&m, PHOENIX, &F14_TARPS, true), Some(PHOENIX));
+        for w in 0..WEAPONS.len() as u8 {
+            assert!(stand_ins(w).iter().all(|s| !AIR_TO_AIR.contains(s) && !matches!(s, 16..=19)));
+            let i = stand_ins(w).iter().position(|s| *s == 6);
+            let j = stand_ins(w).iter().position(|s| *s == 9);
+            assert!(i.zip(j).is_none_or(|(i, j)| i < j), "{w}");
+        }
     }
 
     #[test]

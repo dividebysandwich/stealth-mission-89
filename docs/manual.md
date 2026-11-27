@@ -199,7 +199,7 @@ mouse on an option for a short description.
 | NEW MISSION | New objectives with the same options. |
 | LOAD | Missions saved in flight (*Save mission* in the in-flight menu), newest first; LOAD flies one on, paused. The pencil left of LOAD renames a save (an empty name gives back the mission's title). DELETE removes one save and DELETE ALL every save, each after a confirmation. |
 | PLAN ROUTE | The mission planner (chapter 8.2). |
-| LOADOUT | The stores on each station or bay, seen from above: click one and pick its load (*Same on both sides* mirrors it). Greyed out weapons are out of stock. BRIEFED restores the briefed stores, CLEAR empties everything. Stores of your own that you fly come again on your next missions of the same kind with the same aircraft, as long as every one still fits and is in stock (not on a photo or special equipment mission, which keeps its briefed stores); flying the briefed stores forgets them. |
+| LOADOUT | The stores on each station or bay, seen from above: click one and pick its load (*Same on both sides* mirrors it). Greyed out weapons are out of stock. BRIEFED restores the briefed stores (where your aircraft cannot carry a briefed weapon, the nearest it can for the same target, guided ones first), CLEAR empties everything. Stores of your own that you fly come again on your next missions of the same kind with the same aircraft, as long as every one still fits and is in stock (not on a photo or special equipment mission, which keeps its briefed stores); flying the briefed stores forgets them. |
 | FLY IN VR | Use a connected OpenXR VR headset with this mission. |
 | FLY | Take off. |
 
@@ -4918,7 +4918,10 @@ In the game the Tomcat is a carrier fighter with a HUD and a gun but no MFDs: th
 missiles and the pod are worked from the panels described here. It reaches 660 kt at sea level
 without afterburner and 817 kt with it (Mach 1.85 high up) and pulls 6.7 g. It carries Phoenixes
 or Sparrows on the glove pylons and under the fuselage, Sidewinders on the shoulder rails, tanks
-under the nacelles, bombs on the tunnel stations, and the LANTIRN pod under the right glove.
+under the nacelles, bombs on the tunnel stations, and the LANTIRN pod under the right glove. A
+mission against a target on the ground or at sea comes with laser-guided bombs in the tunnel for
+the LANTIRN to guide, whatever weapon the briefing names; one against aircraft with Phoenixes
+there.
 
 ## 17.1 The wings
 
