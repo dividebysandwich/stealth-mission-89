@@ -307,6 +307,7 @@ tip-f14-vc-scale = Skala tal-veloċità tal-qrib tad-DDD
 tip-f14-volume = Volum tat-toni tar-radar u tal-missili
 tip-f14-radar-knob = Jaġġusta l-istampa tar-radar
 tip-f14-ccm = Kontro-kontromiżuri kontra l-interferenza
+tip-f14-iff = Identifikazzjoni ħabib jew għadu: l-eki ħbiberija jieħdu linji fuq id-DDD
 tip-f14-antenna = Jimmejla l-antenna tar-radar 'il fuq jew 'l isfel
 tip-f14-channel = Kanal tal-frekwenza tar-radar u tal-missili
 tip-f14-tid-mode = TID: stabbilizzat mal-art jew mal-ajruplan, attakk jew vidjo TV

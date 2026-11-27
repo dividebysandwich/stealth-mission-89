@@ -306,6 +306,7 @@ tip-f14-vc-scale = DDD:ns skala för närmandehastighet
 tip-f14-volume = Volym för radarns och robotarnas toner
 tip-f14-radar-knob = Justerar radarbilden
 tip-f14-ccm = Motmotmedel mot störning
+tip-f14-iff = Igenkänning vän eller fiende: vänliga ekon får streck på DDD
 tip-f14-antenna = Lutar radarantennen upp eller ner
 tip-f14-channel = Frekvenskanal för radar och robotar
 tip-f14-tid-mode = TID: mark- eller flygplansstabiliserad, anfall eller tv-video

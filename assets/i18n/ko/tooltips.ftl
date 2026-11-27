@@ -306,6 +306,7 @@ tip-f14-vc-scale = DDD의 접근 속도 눈금
 tip-f14-volume = 레이더와 미사일 신호음의 음량
 tip-f14-radar-knob = 레이더 화면을 조정
 tip-f14-ccm = 전파 방해에 대한 대응
+tip-f14-iff = 피아 식별: 아군 반사파는 DDD에 막대가 표시됨
 tip-f14-antenna = 레이더 안테나를 위아래로 기울임
 tip-f14-channel = 레이더와 미사일의 주파수 채널
 tip-f14-tid-mode = TID: 지면 또는 기체 안정, 공격 또는 TV 영상

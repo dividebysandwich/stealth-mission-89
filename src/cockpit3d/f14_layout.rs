@@ -391,6 +391,8 @@ fn radar(it: &mut Items) {
         let (x, y) = (148.0 + 46.0 * (i % 4) as f32, -224.0 + 24.0 * (i / 4) as f32);
         it.lamp(Key::Wcs(m), x, y, 40.0, 20.0);
     }
+    // The IFF interrogator in the WCS buttons' free eighth place.
+    it.lamp(Key::Iff, 148.0 + 46.0 * 3.0, -200.0, 40.0, 20.0);
 }
 
 /// The RIO's TID's buttons and knobs, the armament panel left of it, the ECM panel right of it,

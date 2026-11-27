@@ -307,6 +307,7 @@ tip-f14-vc-scale = DDD lähenemiskiiruse skaala
 tip-f14-volume = Radari ja rakettide toonide helitugevus
 tip-f14-radar-knob = Reguleerib radaripilti
 tip-f14-ccm = Vastuabinõud segamisele
+tip-f14-iff = Oma-võõra tuvastus: omad sihtmärgid saavad DDD-l kriipsud
 tip-f14-antenna = Kallutab radariantenni üles või alla
 tip-f14-channel = Radari ja rakettide sageduskanal
 tip-f14-tid-mode = TID: maa- või lennukistabiliseeritud, rünnak või TV-video

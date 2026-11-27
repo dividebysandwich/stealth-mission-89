@@ -306,6 +306,7 @@ tip-f14-vc-scale = Stupnica rýchlosti približovania na DDD
 tip-f14-volume = Hlasitosť tónov radaru a striel
 tip-f14-radar-knob = Upraví obraz radaru
 tip-f14-ccm = Ochrana proti rušeniu
+tip-f14-iff = Rozpoznávanie vlastný-cudzí: vlastné ciele majú na DDD čiarky
 tip-f14-antenna = Nakloní anténu radaru nahor alebo nadol
 tip-f14-channel = Frekvenčný kanál radaru a striel
 tip-f14-tid-mode = TID: stabilizácia k zemi alebo k lietadlu, útok alebo TV video

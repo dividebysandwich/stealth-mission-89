@@ -4961,10 +4961,13 @@ high (for a target above you in a turn). Closing the cover gives the radar back 
 
 ## 17.4 The RIO's displays
 
-**The DDD** (detail data display, above) is the radar's raw picture: azimuth across, range up
-(in PD SRCH closing speed up), a bar for each return, the scan's limits dashed, the antenna's
-carets on the edges. In a single target track it shows the gates on the target, and its range,
-closing speed and speed along the top.
+**The DDD** (detail data display, above) is the radar's raw picture on a lit tube: azimuth
+across, range up (in PD SRCH closing speed up), a dark bar for each return, the scan's limits
+dashed, the antenna's azimuth a white line up the scope and its elevation a caret on the left
+edge. In a single target track it shows the gates on the target, and its range, closing speed
+and speed along the top. The **IFF** button (beside the WCS mode buttons) interrogates the
+returns while it is lit: a friendly one gets a grey bar over and under it, a hostile stays a
+plain bar.
 
 **The TID** (tactical information display, the big round tube) is the picture the computer
 builds: your aircraft, the tracks with their numbers, the scan's limits and the route. Hostile

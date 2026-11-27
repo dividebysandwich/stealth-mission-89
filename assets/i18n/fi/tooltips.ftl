@@ -306,6 +306,7 @@ tip-f14-vc-scale = DDD:n lähestymisnopeuden asteikko
 tip-f14-volume = Tutkan ja ohjusten äänimerkkien voimakkuus
 tip-f14-radar-knob = Säätää tutkakuvaa
 tip-f14-ccm = Häirinnän vastatoimet
+tip-f14-iff = Ystävä-vihollinen-tunnistus: omat kaiut saavat viivat DDD:hen
 tip-f14-antenna = Kallistaa tutka-antennia ylös tai alas
 tip-f14-channel = Tutkan ja ohjusten taajuuskanava
 tip-f14-tid-mode = TID: maa- tai konevakautettu, hyökkäys tai TV-video

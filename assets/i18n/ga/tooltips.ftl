@@ -306,6 +306,7 @@ tip-f14-vc-scale = Scála luais druidim an DDD
 tip-f14-volume = Airde thoin an radair agus na ndiúracán
 tip-f14-radar-knob = Coigeartaíonn sé pictiúr an radair
 tip-f14-ccm = Frith-fhrithbhearta in aghaidh suaite
+tip-f14-iff = Aithint cara nó namhaid: faigheann macallaí cairdiúla barraí ar an DDD
 tip-f14-antenna = Claonann sé aeróg an radair suas nó síos
 tip-f14-channel = Cainéal minicíochta an radair agus na ndiúracán
 tip-f14-tid-mode = TID: cobhsaithe ar an talamh nó ar an aerárthach, ionsaí nó físeán TV

@@ -757,6 +757,18 @@
       "round": false
     },
     {
+      "control": "Tomcat(Iff)",
+      "key": "Item(Tomcat(Iff))",
+      "kind": "lamp",
+      "rect": [
+        286.0,
+        -200.0,
+        40.0,
+        20.0
+      ],
+      "round": false
+    },
+    {
       "control": "Tomcat(TidOption(Clsn))",
       "key": "Item(Tomcat(TidOption(Clsn)))",
       "kind": "lamp",

@@ -305,6 +305,7 @@ tip-f14-vc-scale = DDD 的接近速度刻度
 tip-f14-volume = 雷达和导弹音调的音量
 tip-f14-radar-knob = 调整雷达画面
 tip-f14-ccm = 抗干扰措施
+tip-f14-iff = 敌我识别：友方回波在DDD上显示横条
 tip-f14-antenna = 将雷达天线向上或向下倾斜
 tip-f14-channel = 雷达和导弹的频率通道
 tip-f14-tid-mode = TID：对地或对机稳定、攻击或 TV 视频

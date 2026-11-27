@@ -306,6 +306,7 @@ tip-f14-vc-scale = Escala de velocidade de aproximação do DDD
 tip-f14-volume = Volume dos tons do radar e dos mísseis
 tip-f14-radar-knob = Ajusta a imagem do radar
 tip-f14-ccm = Contra-contramedidas contra interferência
+tip-f14-iff = Identificação amigo-inimigo: ecos amigos ganham barras no DDD
 tip-f14-antenna = Inclina a antena do radar para cima ou para baixo
 tip-f14-channel = Canal de frequência do radar e dos mísseis
 tip-f14-tid-mode = TID: estabilizado no solo ou na aeronave, ataque ou vídeo TV

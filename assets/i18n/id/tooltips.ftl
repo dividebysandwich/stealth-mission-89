@@ -307,6 +307,7 @@ tip-f14-vc-scale = Skala kecepatan mendekat DDD
 tip-f14-volume = Volume nada radar dan rudal
 tip-f14-radar-knob = Mengatur gambar radar
 tip-f14-ccm = Penangkal anti-pengacauan
+tip-f14-iff = Identifikasi kawan atau lawan: pantulan kawan diberi garis di DDD
 tip-f14-antenna = Memiringkan antena radar ke atas atau ke bawah
 tip-f14-channel = Kanal frekuensi radar dan rudal
 tip-f14-tid-mode = TID: stabil terhadap tanah atau pesawat, serangan atau video TV

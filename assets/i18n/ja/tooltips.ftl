@@ -307,6 +307,7 @@ tip-f14-vc-scale = DDDの接近速度の目盛
 tip-f14-volume = レーダーとミサイルの音量
 tip-f14-radar-knob = レーダー画像を調整
 tip-f14-ccm = 妨害に対する対抗手段
+tip-f14-iff = 敵味方識別: 味方の反射にはDDD上でバーが付く
 tip-f14-antenna = レーダーアンテナを上下に傾ける
 tip-f14-channel = レーダーとミサイルの周波数チャンネル
 tip-f14-tid-mode = TID：地面または機体安定、攻撃、TV映像

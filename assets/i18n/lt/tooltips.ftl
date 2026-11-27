@@ -307,6 +307,7 @@ tip-f14-vc-scale = DDD artėjimo greičio skalė
 tip-f14-volume = Radaro ir raketų tonų garsumas
 tip-f14-radar-knob = Reguliuoja radaro vaizdą
 tip-f14-ccm = Apsauga nuo trukdžių
+tip-f14-iff = Savas-svetimas atpažinimas: savi taikiniai DDD gauna brūkšnius
 tip-f14-antenna = Pakreipia radaro anteną aukštyn ar žemyn
 tip-f14-channel = Radaro ir raketų dažnio kanalas
 tip-f14-tid-mode = TID: stabilizuotas pagal žemę ar lėktuvą, ataka ar TV vaizdas

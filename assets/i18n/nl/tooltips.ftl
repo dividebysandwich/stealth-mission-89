@@ -307,6 +307,7 @@ tip-f14-vc-scale = Schaal van de naderingssnelheid op de DDD
 tip-f14-volume = Volume van de radar- en raketttonen
 tip-f14-radar-knob = Stelt het radarbeeld bij
 tip-f14-ccm = Tegen-tegenmaatregelen tegen storing
+tip-f14-iff = Vriend-of-vijandherkenning: vriendelijke echo's krijgen strepen op de DDD
 tip-f14-antenna = Kantelt de radarantenne omhoog of omlaag
 tip-f14-channel = Frequentiekanaal van radar en raketten
 tip-f14-tid-mode = TID: grond- of vliegtuiggestabiliseerd, aanval of tv-video

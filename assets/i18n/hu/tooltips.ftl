@@ -307,6 +307,7 @@ tip-f14-vc-scale = A DDD közeledési sebesség skálája
 tip-f14-volume = A radar és a rakéták hangjainak hangereje
 tip-f14-radar-knob = Beállítja a radarképet
 tip-f14-ccm = Zavarás elleni védelem
+tip-f14-iff = Barát-ellenség azonosítás: a baráti visszhangok vonalakat kapnak a DDD-n
 tip-f14-antenna = Felfelé vagy lefelé dönti a radarantennát
 tip-f14-channel = A radar és a rakéták frekvenciacsatornája
 tip-f14-tid-mode = TID: földhöz vagy géphez stabilizált, támadás vagy TV-videó

@@ -477,6 +477,8 @@ pub enum Key {
     AntennaDown,
     XmtrChan,
     MslChan,
+    /// The IFF interrogator (lit while it interrogates: friendly returns get bars on the DDD).
+    Iff,
     /// The RIO's TID: its mode, range and readout knobs, the symbol buttons round it, the hand
     /// controller's hook button.
     TidMode,
@@ -534,6 +536,7 @@ impl Key {
             Key::AntennaDown,
             Key::XmtrChan,
             Key::MslChan,
+            Key::Iff,
             Key::TidMode,
             Key::TidRange,
             Key::TidReadout,
@@ -605,6 +608,7 @@ impl Key {
             | Key::TidOption(_)
             | Key::TidHook
             | Key::Launch
+            | Key::Iff
             | Key::LtsMode(_)
             | Key::LtsOper => "lamp",
             Key::HudDeclutter
@@ -703,6 +707,7 @@ impl Key {
             Key::AntennaDown => "EL DN",
             Key::XmtrChan => "XMTR\nCHAN",
             Key::MslChan => "MSL\nCHAN",
+            Key::Iff => "IFF",
             Key::TidMode => "TID MODE",
             Key::TidRange => "TID RANGE",
             Key::TidReadout => "READOUT",
@@ -759,6 +764,7 @@ impl Key {
             Key::Ccm(_) => "tip-f14-ccm",
             Key::AntennaUp | Key::AntennaDown => "tip-f14-antenna",
             Key::XmtrChan | Key::MslChan => "tip-f14-channel",
+            Key::Iff => "tip-f14-iff",
             Key::TidMode => "tip-f14-tid-mode",
             Key::TidRange => "tip-f14-tid-range",
             Key::TidReadout => "tip-f14-tid-readout",
@@ -832,6 +838,8 @@ pub struct TomcatPanel {
     /// The thumbwheels' channels (1 ..= `CHANNELS`).
     pub xmtr_chan: u8,
     pub msl_chan: u8,
+    /// The IFF interrogates.
+    pub iff: bool,
     /// The TID.
     pub tid_mode: TidMode,
     pub tid_range: TidRange,
@@ -889,6 +897,7 @@ impl Default for TomcatPanel {
             ccm: 0,
             xmtr_chan: 1,
             msl_chan: 1,
+            iff: false,
             tid_mode: TidMode::default(),
             tid_range: TidRange::default(),
             tid_readout: TidReadout::default(),
@@ -970,6 +979,7 @@ impl TomcatPanel {
             Key::AntennaDown => return Some(PanelOut::Mfd(crate::mfd::MfdCmd::FcrElevation(-1))),
             Key::XmtrChan => self.xmtr_chan = self.xmtr_chan % CHANNELS + 1,
             Key::MslChan => self.msl_chan = self.msl_chan % CHANNELS + 1,
+            Key::Iff => self.iff = !self.iff,
             Key::TidMode => self.tid_mode = next(&TID_MODES, self.tid_mode),
             Key::TidRange => self.tid_range = next(&TID_RANGES, self.tid_range),
             Key::TidReadout => self.tid_readout = next(&TID_READOUTS, self.tid_readout),
@@ -1007,6 +1017,7 @@ impl TomcatPanel {
             Key::DddRange(r) => self.ddd_range == r,
             Key::DddMode(m) => self.ddd_mode == m,
             Key::Ccm(c) => self.ccm_in(c),
+            Key::Iff => self.iff,
             Key::TidOption(o) => self.tid_option(o),
             Key::LtsMode(m) => self.lts_mode == m,
             Key::LtsOper => self.lts_oper,
@@ -1118,6 +1129,7 @@ impl TomcatPanel {
         b.put(index(&LTS_MODES, self.lts_mode), 1);
         b.flag(self.lts_oper);
         b.put(index(&ALQ126S, self.alq126), 2);
+        b.flag(self.iff);
         b.buf
     }
 
@@ -1170,6 +1182,7 @@ impl TomcatPanel {
         self.lts_mode = pick(&LTS_MODES, b.get(1));
         self.lts_oper = b.bool();
         self.alq126 = pick(&ALQ126S, b.get(2));
+        self.iff = b.bool();
     }
 }
 
