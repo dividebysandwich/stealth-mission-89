@@ -14,6 +14,7 @@
 //! (`avionics` sets the AWG-9 from it and gathers what `displays` draw). `SM89_F14_PNG=<dir>` writes the displays out as they
 //! are drawn.
 
+pub mod attack;
 pub mod avionics;
 pub mod crew;
 pub mod displays;
@@ -39,6 +40,7 @@ impl Plugin for TomcatPlugin {
                 Update,
                 sweep_switch.after(crate::combat::CombatSystems).run_if(in_state(AppState::Flight)),
             );
+        attack::build(app);
         avionics::build(app);
         crew::build(app);
     }

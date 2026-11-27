@@ -5106,6 +5106,16 @@ hooked track, else at the track the next Phoenix would go for; with nothing trac
 along the nose (BRST). **FOV** switches its wide and narrow fields of view; the track's range is
 written at the lower right. Use it to see what a contact is before you shoot at it.
 
+**Bombing from the back seat.** Alone in the RIO's seat you can have the pilot bomb for you.
+With bombs aboard and the LANTIRN's picture on the TID, lock the pod onto something within
+some 6 km of the mission's primary or secondary target. The pilot leaves the route, flies
+straight over the point (at least 4,000 ft above the ground) and releases one bomb, or the
+ripple set, so that it falls onto it; a laser-guided bomb steers to the point the pod holds, so
+keep it there until the bomb lands. While the designation stays and bombs are left he comes
+round for another pass, which takes two to three minutes. When the target is destroyed, or
+when you turn the TID away from TV, switch VIDEO to TCS or drop the lock, he flies on along
+the route.
+
 ## 17.8 The automatic RIO
 
 With nobody in the back seat an automatic RIO does the routine work:
