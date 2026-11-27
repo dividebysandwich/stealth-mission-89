@@ -27,6 +27,9 @@
 //!   cues; LDG has the waterline, the approach angle of attack bracket beside the flight path
 //!   marker, the glide slope's dashed reference line under the horizon (the ILS's 3 degrees, the
 //!   carrier's 3.5 with the AWL knob at ACL), the ILS steering and GEAR flashing with the gear up.
+//! - The DISPLAYS panel's HUD DCLT switch leaves the heading scale, the speed and the altitude
+//!   (boxed numbers), the horizon with the flight path marker and the weapons' symbols (the
+//!   air-to-air and air-to-ground cues, the sights, the target's data and the missiles' times).
 
 use bevy::prelude::*;
 
@@ -394,10 +397,16 @@ fn air_to_air(c: &mut Canvas, f: &HudFrame) {
     }
 }
 
-/// The readouts at the lower left and right.
+/// The HUD DCLT switch is on.
+fn decluttered(f: &HudFrame) -> bool {
+    f.tomcat.as_ref().is_some_and(|t| t.declutter)
+}
+
+/// The readouts at the lower left and right (decluttered: the weapons' only).
 fn readouts(c: &mut Canvas, f: &HudFrame) {
     let st = &f.state;
     let line = 22.0;
+    let all = !decluttered(f);
     // Angle of attack, Mach number, load factor.
     let (x, y) = (LEFT + 22.0, 340.0);
     for (k, (name, value)) in [
@@ -407,23 +416,25 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
     ]
     .into_iter()
     .enumerate()
+    .filter(|_| all)
     {
         let yy = y + k as f32 * line;
         text(c, x, yy, name, Align::Left);
         text(c, x + 76.0, yy, &value, Align::Right);
     }
-    if f.tomcat.is_some() {
+    if f.tomcat.is_some() && all {
         text(c, LEFT, y - line - 6.0, steer_label(steering(f)), Align::Left);
     }
     // The radar's mode, the bearing and range to the steering point, the weapon to drop.
     let y = y + 3.0 * line + 6.0;
     if let Some(t) = &f.tomcat
+        && all
         && !matches!(steering(f), SteerMode::TakeOff | SteerMode::Landing)
     {
         text(c, LEFT, y, &mode_label(t.mode), Align::Left);
     }
     let nm = f.steerpoint.map(|s| s.1 / KM_NM);
-    if let Some((b, nm)) = f.waypoint_bearing.zip(nm) {
+    if let Some((b, nm)) = f.waypoint_bearing.zip(nm).filter(|_| all) {
         let brg = b as f32 * 360.0 / 65536.0;
         text(c, LEFT, y + line, &format!("BA {brg:03.0}/{nm:.0}"), Align::Left);
     }
@@ -437,7 +448,7 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
             text(c, LEFT, y + 2.0 * line, &format!("CP {w}"), Align::Left);
         }
     }
-    if let Some(t) = f.throttle {
+    if let Some(t) = f.throttle.filter(|_| all) {
         text(c, LEFT, y + 3.0 * line, &super::throttle_text(t), Align::Left);
     }
     // Right: the bomb's release data, else the target's data over the steering point's.
@@ -463,7 +474,7 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
             rows.push(("VC", format!("{vc:.0}")));
         }
     }
-    if let Some((n, km, secs)) = f.steerpoint {
+    if let Some((n, km, secs)) = f.steerpoint.filter(|_| all) {
         rows.push(("WP", format!("{n} {:.1}", km / KM_NM)));
         if let Some(t) = &f.tomcat {
             rows.push(("Z", clock(t.clock)));
@@ -496,7 +507,10 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     let fpm = fpm_raw.map_or(Vec2::new(CX, fld.1.y), |p| p.clamp(fld.0, fld.1));
     let caged = fpm_raw.is_none_or(|p| !inside(fld, p));
     let steer = steering(f);
-    if st.declutter < 2 || st.mode == HudMode::Nav {
+    let clean = decluttered(f);
+    if clean {
+        ladder(c, f, fpm, h, down, true);
+    } else if st.declutter < 2 || st.mode == HudMode::Nav {
         // Taking off: the horizon and the rotation brackets only.
         ladder(c, f, fpm, h, down, steer == SteerMode::TakeOff);
     }
@@ -512,6 +526,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         }
     }
     match steer {
+        _ if clean => {}
         SteerMode::TakeOff => rotation_brackets(c, f, h, down),
         SteerMode::Landing => landing_cues(c, f, fpm, h),
         _ => {}
@@ -519,7 +534,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     heading_scale(c, f);
     let (kt, alt) = (f.knots.max(0), f.alt.max(0));
     let radar_alt = (f.radar_alt < RADAR_ALT_TOP).then(|| format!("{:.0}R", f.radar_alt.max(0.0)));
-    if st.declutter == 0 {
+    if st.declutter == 0 && !clean {
         let ground = (kt as f32 * f.path_dir.y.clamp(-1.0, 1.0).asin().cos()).round();
         let over = Some(format!("{ground:.0}G"));
         dial(c, SPEED_AT, kt as f32 % 100.0 / 100.0, &format!("{kt}"), over);
@@ -528,12 +543,12 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     } else {
         boxed(c, SPEED_AT.x, SPEED_AT.y, &format!("{kt}"), 3, Align::Centre);
         boxed(c, ALT_AT.x, ALT_AT.y, &format!("{}", alt / 10 * 10), 5, Align::Centre);
-        if let Some(r) = radar_alt {
+        if let Some(r) = radar_alt.filter(|_| !clean) {
             text(c, ALT_AT.x, ALT_AT.y - 30.0, &r, Align::Centre);
         }
     }
     readouts(c, f);
-    if let Some(d) = f.steerpoint_dir {
+    if let Some(d) = f.steerpoint_dir.filter(|_| !clean) {
         steerpoint_cue(c, inv * d, f);
     }
     if let Some(d) = f.tgp_dir {
@@ -546,7 +561,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     }
     gun_sight(c, f);
     rocket_sight(c, f);
-    if let Some((loc, gs)) = f.ils {
+    if let Some((loc, gs)) = f.ils.filter(|_| !clean) {
         ils_bars(c, fpm, h, down, loc, gs);
         text(c, RIGHT - 182.0, 308.0, "AWL", Align::Left);
     }
@@ -559,7 +574,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
         .filter(|s| s.1)
         .filter_map(|s| s.0)
         .collect();
-    if !status.is_empty() {
+    if !status.is_empty() && !clean {
         text(c, CX, 182.0, &status.join("  "), Align::Centre);
     }
     if let Some(r) = &f.cues.recon {
@@ -663,5 +678,62 @@ mod tests {
         };
         assert!(ink(&rotated, CX - 70.0, CY) && !ink(&rotated, CX - 70.0, ROTATION_TOP));
         assert_eq!(clock(3_725.0), "01:02:05");
+    }
+
+    /// HUD DCLT: the readouts, the pitch ladder and the steering go; the heading scale, the
+    /// speed, the altitude, the horizon and the weapons' symbols stay.
+    #[test]
+    fn declutter_leaves_the_flight_and_weapon_symbols() {
+        let picture = |declutter, mode| {
+            let mut f = HudFrame { scale: 900.0, knots: 420, alt: 22_350, ..Default::default() };
+            f.state.mode = mode;
+            f.path_dir = Vec3::new(0.0, 0.03, -1.0).normalize();
+            f.aoa = 4.0;
+            f.steerpoint = Some((2, 40.0, 300.0));
+            f.waypoint_bearing = Some(0);
+            f.weapon = Some((4, "Sidewinder".to_string()));
+            f.weapon_air_to_air = true;
+            f.cues.target_dir = Some(Vec3::new(0.05, 0.02, -1.0));
+            f.tomcat = Some(crate::hud::TomcatHud {
+                mode: "TWS AUTO",
+                steer: SteerMode::AirToAir,
+                declutter,
+                ..Default::default()
+            });
+            let mut c = Canvas::new(super::super::modern::WIDTH, super::super::modern::HEIGHT);
+            draw(&mut c, &f);
+            c
+        };
+        let ink = |c: &Canvas, x0: f32, y0: f32, x1: f32, y1: f32| {
+            (y0 as usize..y1 as usize)
+                .flat_map(|y| (x0 as usize..x1 as usize).map(move |x| (x, y)))
+                .filter(|&(x, y)| c.px[y * super::super::modern::WIDTH + x] != 0)
+                .count()
+        };
+        let (full, clean) = (picture(false, HudMode::Air), picture(true, HudMode::Air));
+        // The lower left readouts (angle of attack, Mach, g, the radar's mode) go.
+        assert!(ink(&full, LEFT, 320.0, LEFT + 120.0, 460.0) > 100);
+        assert_eq!(ink(&clean, LEFT, 320.0, LEFT + 120.0, 460.0), 0);
+        // The heading scale, the speed and the altitude stay.
+        assert!(ink(&clean, LEFT, TAPE_Y - 14.0, RIGHT, TAPE_Y + 20.0) > 100);
+        assert!(
+            ink(&clean, SPEED_AT.x - 40.0, SPEED_AT.y - 16.0, SPEED_AT.x + 40.0, SPEED_AT.y + 16.0)
+                > 50
+        );
+        assert!(
+            ink(&clean, ALT_AT.x - 50.0, ALT_AT.y - 16.0, ALT_AT.x + 50.0, ALT_AT.y + 16.0) > 50
+        );
+        // The weapon's symbols stay: the steering circle and the weapon under it.
+        let under = (CIRCLE_AT.x - 40.0, CIRCLE_AT.y + CIRCLE + 16.0);
+        assert!(ink(&clean, under.0, under.1, under.0 + 80.0, under.1 + 30.0) > 30);
+        // The target's data (lower right) stays, the steering point's rows go.
+        let right = |c: &Canvas| ink(c, RIGHT - 190.0, 318.0, RIGHT, 480.0);
+        assert!(right(&clean) > 30 && right(&clean) < right(&full));
+        // Cruising: no pitch ladder bars, the horizon stays.
+        let (full, clean) = (picture(false, HudMode::Nav), picture(true, HudMode::Nav));
+        assert!(
+            clean.px.iter().filter(|p| **p != 0).count()
+                < full.px.iter().filter(|p| **p != 0).count()
+        );
     }
 }

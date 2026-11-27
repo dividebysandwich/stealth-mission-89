@@ -548,6 +548,7 @@ pub fn hud_cues(
             .map(|z| (z * 3.280_84 / 1000.0) as f32),
         steer: SteerMode::Cruise,
         glide_deg: crate::scenery::GLIDE_PATH_DEG as f32,
+        declutter: false,
     }
 }
 
@@ -629,6 +630,7 @@ fn scene(
     let now = clock.start_seconds + clock.elapsed.unwrap_or(0.0) * clock.rate;
     out.hud = Some(crate::hud::TomcatHud {
         steer: panel.steer,
+        declutter: panel.hud_declutter,
         glide_deg: match panel.hud_awl {
             super::Awl::Ils => crate::scenery::GLIDE_PATH_DEG as f32,
             super::Awl::Acl => stealth_sim::catapult::GLIDE_DEG as f32,

@@ -757,6 +757,9 @@ pub struct TomcatHud {
     /// The landing picture's glide slope (degrees under the horizon): the ILS's or, with the
     /// HUD's AWL knob at ACL, the carrier's.
     pub glide_deg: f32,
+    /// The DISPLAYS panel's HUD DCLT switch: only the heading scale, the speed, the altitude,
+    /// the horizon and the weapons' symbols.
+    pub declutter: bool,
 }
 
 /// An ACM mode's scan.
