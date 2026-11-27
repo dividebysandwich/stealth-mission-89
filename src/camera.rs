@@ -1013,7 +1013,11 @@ fn update_rig(
     match state.view {
         View::Cockpit | View::LookLeft | View::LookRight | View::LookRear => {
             // Looks are head turns in the cockpit (in VR the headset turns).
-            let base_pitch = if state.view == View::Cockpit { COCKPIT_DOWN_PITCH } else { 0.0 };
+            let base_pitch = if state.view == View::Cockpit {
+                COCKPIT_DOWN_PITCH + settings.desk_pitch()
+            } else {
+                0.0
+            };
             let (y, p) = if settings.vr {
                 (0.0, 0.0)
             } else if state.padlock && state.view == View::Cockpit {
@@ -1148,7 +1152,7 @@ fn aim_padlock(
     time: Res<Time<Real>>,
 ) {
     if !state.padlock || state.view != View::Cockpit {
-        *aim = PadlockAim { yaw: 0.0, pitch: COCKPIT_DOWN_PITCH };
+        *aim = PadlockAim { yaw: 0.0, pitch: COCKPIT_DOWN_PITCH + settings.desk_pitch() };
         return;
     }
     let Ok((a, pos)) = aircraft.single() else { return };
@@ -1177,7 +1181,7 @@ fn aim_padlock(
                 local.y.atan2(local.x.hypot(local.z)).clamp(PADLOCK_PITCH.0, PADLOCK_PITCH.1);
             (yaw, pitch)
         }
-        None => (0.0, COCKPIT_DOWN_PITCH),
+        None => (0.0, COCKPIT_DOWN_PITCH + settings.desk_pitch()),
     };
     let k = 1.0 - (-PADLOCK_RATE * time.delta_secs()).exp();
     aim.yaw += (yaw - aim.yaw) * k;

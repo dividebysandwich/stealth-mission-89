@@ -318,9 +318,10 @@ HUD_Y = 0.78
 # The glass reaches lower than the Tornado's, down to its body on the shield (its frame only
 # clips the picture, the scale is the angular size across; the clipped corners are outside the
 # symbology's field, src/hud/modern.rs FIELD).
-# Its width is the oval front pane's as the eye sees it (PANE_X at the pane, some 1.25 m ahead;
-# the 2D camera sits `Settings::seat_offset`'s lean nearer).
-HUD_GLASS = (0.095, -0.165, 0.095 * HUD_Y / 0.80)
+# Its width is the oval front pane's as the 2D camera sees it (PANE_X at the pane, some 1.25 m
+# ahead of the eye; the camera sits `Settings::seat_offset`'s lean nearer, src/settings.rs
+# F14_DESK_VIEW): wide enough there for the symbology's field (src/hud/vdig.rs HALF).
+HUD_GLASS = (0.110, -0.165, 0.0926)
 # The combiner's clipped top corners (share of its half width, of its height).
 HUD_CLIP = (0.30, 0.22)
 HUD_BODY = (0.16, 0.09)
@@ -774,10 +775,12 @@ def bow(s, width, depth, inset=0.012):
 
 
 bow(BOW_S + 0.03, BOW_W, BOW_DEPTH)
+# The windscreen's posts off the centre line: at the front pane's front, at the bow.
+POST_X = (0.195, 0.225)
 # The windscreen's posts between its front pane and its side panes, along the glass.
 for side in (-1, 1):
-    a = (0.17, 3.02)
-    b = (0.20, BOW_S)
+    a = (POST_X[0], 3.02)
+    b = (POST_X[1], BOW_S)
     pts = []
     for k in range(5):
         f = k / 4
@@ -798,7 +801,7 @@ for side in (-1, 1):
 # The windscreen's front pane: an oval window in the heavy frame between the posts, from the
 # glare shield's front up to the bow (the frame lies on the inside of the glass).
 PANE_S = (3.50, 0.375)
-PANE_X = 0.165
+PANE_X = 0.19
 PANE_ROUND = 2.6
 PANE_THICK = 0.022
 
@@ -820,7 +823,7 @@ def pane_frame():
     edge_s = (3.02, BOW_S + 0.02)
 
     def edge_x(s):
-        return 0.17 + 0.03 * (s - 3.02) / (BOW_S - 3.02)
+        return POST_X[0] + (POST_X[1] - POST_X[0]) * (s - 3.02) / (BOW_S - 3.02)
 
     n = 40
     inner, outer = [], []

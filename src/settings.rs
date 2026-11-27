@@ -299,8 +299,20 @@ fn get(args: &[String], f: &str) -> Option<String> {
     args.iter().position(|a| a == f).and_then(|i| args.get(i + 1)).cloned()
 }
 
-/// The F-14 pilot's 2D camera's lean forward (metres, `Settings::desk_lean`).
-const F14_DESK_LEAN: f32 = 0.32;
+/// The F-14 pilot's 2D camera off the seat's eye (`Settings::desk_view`): its lean forward to
+/// the narrow combiner and its drop (metres), and its tilt down (radians, on top of the
+/// cockpit view's own) that brings the top of the panel under the HUD into the picture.
+const F14_DESK_VIEW: DeskView = DeskView { lean: 0.20, drop: 0.05, pitch: 0.21 };
+/// The F-14 RIO's: tilted down to his whole panel, the TID and the panels under it.
+const F14_RIO_DESK_VIEW: DeskView = DeskView { lean: 0.0, drop: 0.0, pitch: 0.47 };
+
+/// Where an aircraft's 2D camera sits and looks relative to the seat's eye.
+#[derive(Clone, Copy, Default)]
+struct DeskView {
+    lean: f32,
+    drop: f32,
+    pitch: f32,
+}
 
 impl Settings {
     /// The cockpit flown: the classic cockpit only where the aircraft has one.
@@ -361,18 +373,23 @@ impl Settings {
 
     /// The eye's move up from the cockpit origin for the seat height (aircraft frame).
     pub fn seat_offset(&self) -> Vec3 {
-        Vec3::Y * self.seat_height + Vec3::NEG_Z * self.desk_lean()
+        let desk = self.desk_view();
+        Vec3::Y * (self.seat_height - desk.drop) + Vec3::NEG_Z * desk.lean
     }
 
-    /// How far the 2D camera sits ahead of the seat's eye (metres): the F-14's pilot leans in
-    /// to his narrow combiner so its symbols read at the screen's size.
-    fn desk_lean(&self) -> f32 {
-        let pilot = self.gunner_seat().is_none() && !self.asw_console;
-        if !self.vr && pilot && self.aircraft == crate::aircraft::AircraftKind::F14 {
-            F14_DESK_LEAN
-        } else {
-            0.0
+    /// The 2D forward cockpit view's extra tilt down (radians, negative is down).
+    pub fn desk_pitch(&self) -> f32 {
+        -self.desk_view().pitch
+    }
+
+    /// The 2D camera off the seat's eye: the F-14's pilot leans in to his narrow combiner so
+    /// its symbols read at the screen's size, and looks down a little to the instruments.
+    /// Its RIO looks down at his panel.
+    fn desk_view(&self) -> DeskView {
+        if self.vr || self.asw_console || self.aircraft != crate::aircraft::AircraftKind::F14 {
+            return DeskView::default();
         }
+        if self.gunner_seat().is_some() { F14_RIO_DESK_VIEW } else { F14_DESK_VIEW }
     }
 
     /// Scale of the VR rig (the head offset) for the chosen cockpit size: the aircraft's, or at
