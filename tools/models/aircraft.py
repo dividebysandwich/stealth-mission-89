@@ -1008,9 +1008,12 @@ def f14():
     g.add(mirror(f14_glove(p)))
     g.add(mirror(f14_panel(F14_SHELF, p)))
     g.add(mirror(f14_panel(F14_TAILERON, p)))
-    # The fins canted out on the nacelles, the ventral fins under them.
+    # The fins canted out on the nacelles, their feet running on down into them (the nacelles'
+    # tops fall away aft) and cut away over the nozzles; the ventral fins under them.
     for sx in (-1, 1):
         g.add(wing(tuple(f14_p(sx * 1.47, 14.99, 0.50)), 2.91, tuple(f14_p(sx * 1.70, 17.54, 3.05)), 1.18, p, t=0.05,
+                   vertical=True, mirror=False))
+        g.add(wing(tuple(f14_p(sx * 1.43, 14.54, 0.05)), 2.41, tuple(f14_p(sx * 1.47, 14.99, 0.50)), 2.91, p, t=0.05,
                    vertical=True, mirror=False))
         g.add(wing(tuple(f14_p(sx * 1.40, 13.40, -0.95)), 1.70, tuple(f14_p(sx * 1.44, 14.40, -1.30)), 0.70, p, t=0.06,
                    vertical=True, mirror=False))
