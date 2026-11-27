@@ -5008,23 +5008,43 @@ dangerous in a diamond near the middle, those tracking you inside the others; a 
 
 ## 17.5 The pilot's displays
 
-**The VDI** shows the horizon and pitch ladder, or with its switch at **TV** the pod's video.
+**The VDI** repeats the HUD's symbols on its tube (a wider view of them), or with its switch at
+**TV** shows the pod's video.
 **The HSD** below it shows the compass rose with the course to the steering point, its range top
 left and the destination's bearing, range and your speeds in the middle. Its mode switch puts
 the TID's picture or the threats on it instead; **ECM ORIDE** brings the threats up by
 themselves when a radar paints you. The station lights under the ACM panel show which stations
 hold the selected weapon once MASTER ARM is on.
 
-**The HUD** is the usual one (chapter 4) with the radar's cues added in air-to-air mode:
+**The HUD** is the Tomcat's own, not the one of chapter 4:
 
-- The radar's mode is written under the weapon at the lower left.
-- In track while scan, with nothing locked, a **circle** marks the track the next Phoenix will go
-  for, its track number above and its range in kilometres below; the steering dot points to it.
-- A locked target's box shows its range and under it the closing speed (VC, knots).
+- **Heading scale** along the top: a tick every 5 degrees with the tens under every other one
+  (34 is 340 degrees), your heading under the caret; the open triangle under the scale is the
+  bearing to the steering point.
+- **Horizon and pitch ladder:** a bar every 5 degrees, solid above the horizon and dashed below
+  it, each bar's inner end turned towards the horizon. The **flight path marker** is the arc
+  on its wings with a caret beside it; the cross is the nose.
+- **Airspeed** in the ring of dots on the left (the needle goes round once every 100 knots),
+  the ground speed over it (G). **Altitude** in the ring on the right (once round every 1,000
+  feet), the radar altitude over it (R) below 5,000 feet. Decluttered, both are boxed numbers.
+- **Lower left:** angle of attack, Mach number and g; the radar's mode (TWSA, PDSTT ...); **BA**,
+  the bearing and range in nautical miles to the steering point; in air-to-ground **CP** and
+  the weapon.
+- **Lower right:** the target's bearing (BRG), range in nautical miles (RNG), altitude in
+  thousands of feet (ALT) and closing speed (VC); the steering point (WP) with its range, the
+  time (Z), the time to go (TTG) and the time you get there (ETA). With radar missiles in
+  flight the last row shows how many, and the soonest one's time: **ACT** until its seeker
+  comes on, then **TTI** until impact.
+- **Air-to-air:** the dashed **steering circle** under the nose. Its solid arc, from the top
+  clockwise, is the target's range; the two triangles on it are the missile's longest and
+  shortest launch ranges, so shoot when the arc ends between them. The small winged circle
+  inside is the steering symbol: fly it to the middle. The locked target wears a **box with
+  corner dots**, with **SHOOT** over it in range; in track while scan with nothing locked the
+  next Phoenix's target wears a dotted box with its track number. The weapon and its rounds are
+  under the circle (**SW** Sidewinder, **SP** Sparrow, **PH** Phoenix, **G** gun).
 - In the ACM modes the boresight beam is a small circle on the nose and a vertical scan a narrow
   strip up the glass: put the target inside it.
-- With radar missiles in flight the lower right shows how many, and the soonest one's seconds:
-  **ACT** until its seeker comes on, then **TTI** until impact.
+- Bombing, gun and rocket cues are those of chapter 4.
 
 ## 17.6 Phoenix and Sparrow
 

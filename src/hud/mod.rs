@@ -13,6 +13,7 @@ use crate::world::{WorldPos, bevy_to_wu};
 
 pub mod classic;
 pub mod modern;
+pub mod vdig;
 
 pub use classic::draw;
 
@@ -746,6 +747,10 @@ pub struct TomcatHud {
     /// Our radar missiles in flight: each one's seconds to go (negative: to its seeker coming
     /// on, positive: to impact).
     pub in_flight: Vec<f32>,
+    /// The time of day (seconds), for the Zulu and arrival times.
+    pub clock: f32,
+    /// The altitude (thousands of feet) of the single target track's or the next shot's target.
+    pub target_alt: Option<f32>,
 }
 
 /// An ACM mode's scan.

@@ -18,7 +18,7 @@ use crate::font::Fonts;
 use crate::rwr::EmitterView;
 
 /// The displays' canvases (drawing units) and their texels per unit.
-pub const VDI_CANVAS: (usize, usize) = (240, 240);
+pub const VDI_CANVAS: (usize, usize) = (400, 400);
 pub const HSD_CANVAS: (usize, usize) = (240, 240);
 pub const DDD_CANVAS: (usize, usize) = (240, 240);
 pub const TID_CANVAS: (usize, usize) = (320, 320);
@@ -54,6 +54,8 @@ pub struct Inputs<'a> {
     pub emitters: &'a [EmitterView],
     /// Seconds (for blinking).
     pub t: f32,
+    /// The HUD's frame: the VDI repeats its symbols.
+    pub hud: Option<&'a crate::hud::HudFrame>,
 }
 
 /// A TV mode with no picture: the dark tube and NO VIDEO.
@@ -152,12 +154,15 @@ fn ecm_on(p: &TomcatPanel) -> bool {
     matches!(p.alq126, Alq126::Receive | Alq126::Repeat)
 }
 
-/// The pilot's vertical display indicator: the attitude, or the LANTIRN's picture in TV.
+/// The pilot's vertical display indicator: the HUD's symbols repeated (`hud::vdig`), or the
+/// LANTIRN's picture in TV.
 pub fn draw_vdi(c: &mut Canvas, i: &Inputs) {
     if i.panel.vdi_mode == VdiMode::Tv {
         lantirn(c, i, false);
+    } else if let Some(f) = i.hud {
+        crate::hud::vdig::draw_vdi(c, f, crate::intruder::ink(1.0));
     } else {
-        scopes::draw_vdi(c, &i.scene.own);
+        c.clear(0);
     }
     super::dump_png(c, &colours(), "vdi");
 }
@@ -228,6 +233,7 @@ mod tests {
                 controls: &controls,
                 emitters: &[],
                 t: 0.0,
+                hud: None,
             };
             draw_tid(&mut c, &i);
             c.px

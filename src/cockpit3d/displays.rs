@@ -815,7 +815,12 @@ pub(super) fn update_displays(
                 use crate::tomcat::displays as f14;
                 let p = &d.panel;
                 let panel = &*p.tomcat;
+                // The VDI repeats the HUD's symbols.
+                let frame = (role == CanvasRole::F14Vdi)
+                    .then(|| d.hud.frame(d.mfd.state.camera_shown()))
+                    .flatten();
                 let inputs = f14::Inputs {
+                    hud: frame.as_ref(),
                     fonts: &fonts,
                     panel,
                     scene: &p.tomcat_scene,
@@ -848,6 +853,10 @@ pub(super) fn update_displays(
                         // The A-6's optical sight: reticles, no symbols.
                         let (panel, computer) = (&d.panel.intruder, &d.panel.computer);
                         crate::intruder::sight::draw(&mut tex.canvas, &frame, panel, computer);
+                    } else if settings.aircraft == crate::aircraft::AircraftKind::F14
+                        && tex.canvas.w != 320
+                    {
+                        crate::hud::vdig::draw(&mut tex.canvas, &frame);
                     } else if tex.canvas.w == 320 {
                         crate::hud::draw(&mut tex.canvas, &art, &fonts, &frame);
                     } else {

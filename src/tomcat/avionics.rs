@@ -399,7 +399,12 @@ pub(super) fn radar_controls(
 
 /// The HUD's cues from the radar `radar` of the aircraft at `own` (metres east, north, up) with
 /// the missiles `flying`.
-pub fn hud_cues(radar: &Awg9, own: DVec3, flying: &[InFlight]) -> crate::hud::TomcatHud {
+pub fn hud_cues(
+    radar: &Awg9,
+    own: DVec3,
+    flying: &[InFlight],
+    clock: f32,
+) -> crate::hud::TomcatHud {
     use crate::awg9::{PLM_HALF, VSL_HIGH, VSL_LOW};
     use crate::hud::AcmScan;
     let strip = 2.0 * crate::aa_radar::BEAM_HALF;
@@ -424,6 +429,15 @@ pub fn hud_cues(radar: &Awg9, own: DVec3, flying: &[InFlight]) -> crate::hud::To
         next,
         closure: radar.stt.map(|t| t.closure * 1.943_844),
         in_flight: flying.iter().map(|m| m.to_go).collect(),
+        clock,
+        target_alt: radar
+            .stt
+            .map(|t| own.z + t.range as f64 * (t.el as f64).sin())
+            .or_else(|| {
+                let t = radar.next_shot(&targets)?;
+                radar.tracks.iter().find(|k| k.target == t).map(|k| k.now().z)
+            })
+            .map(|z| (z * 3.280_84 / 1000.0) as f32),
     }
 }
 
@@ -502,7 +516,8 @@ fn scene(
         }
     }
     *closing = rates;
-    out.hud = Some(hud_cues(&radar, o.pos, &flying));
+    let now = clock.start_seconds + clock.elapsed.unwrap_or(0.0) * clock.rate;
+    out.hud = Some(hud_cues(&radar, o.pos, &flying, now as f32));
     out.tcs = crate::f14_scopes::Tcs {
         range_nm: tcs_target(&radar, o.pos).map(|d| (d.length() / NM) as f32),
         narrow: panel.narrow,

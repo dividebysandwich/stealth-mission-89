@@ -11,7 +11,7 @@
 //!   limits and the waypoints.
 //! - **HSD** (the pilot's horizontal situation display): the compass rose turned to the heading
 //!   with the course to the steering point, or the TID's picture repeated, or the threats.
-//! - **VDI** (the pilot's vertical display): the horizon, pitch ladder and bank scale.
+//! - **VDI** (the pilot's vertical display): the HUD's symbols repeated (`hud::vdig`).
 //! - **ECMD** (the RIO's electronic countermeasures display, the ALR-67's): the radars painting
 //!   the aircraft round its centre, the most dangerous inside, launches flashing.
 //! - **LANTIRN**: the targeting pod's symbology over its picture (on the TID's TV mode and the
@@ -48,6 +48,7 @@ pub struct Own {
     pub pos: DVec3,
     pub heading: f32,
     pub pitch: f32,
+    #[allow(dead_code)]
     pub roll: f32,
     pub knots: f32,
 }
@@ -646,91 +647,6 @@ pub fn draw_hsd_nav(c: &mut Canvas, own: &Own, steer: Option<DVec2>, label: &str
 }
 
 // ---------------------------------------------------------------------------------------------
-// VDI
-
-/// The pilot's VDI: the horizon, the pitch ladder every 5 degrees, the bank scale and the
-/// aircraft symbol; the sky dark, the ground a little lit.
-pub fn draw_vdi(c: &mut Canvas, own: &Own) {
-    c.clear(0);
-    let (w, h) = (c.w as f32, c.h as f32);
-    let mid = Vec2::new(w / 2.0, h / 2.0);
-    // Degrees of pitch per canvas height.
-    let per_deg = h / 50.0;
-    let (s, co) = (-own.roll).sin_cos();
-    let along = Vec2::new(co, s);
-    let up = Vec2::new(s, -co);
-    let horizon = mid - up * own.pitch.to_degrees() * per_deg;
-    // The ground below the horizon, faintly lit (a few rows of the ramp).
-    for k in 0..(h as i32 * 2) {
-        let off = k as f32 * 0.5;
-        let a = horizon - up * off - along * w * 2.0;
-        let b = horizon - up * off + along * w * 2.0;
-        c.stroke(a, b, 1.0, ink(0.08));
-        if off > h * 1.5 {
-            break;
-        }
-    }
-    c.stroke(horizon - along * w * 2.0, horizon + along * w * 2.0, 2.0, ink(BRIGHT));
-    for k in (-60i32..=60).step_by(5) {
-        if k == 0 {
-            continue;
-        }
-        let p = horizon + up * k as f32 * per_deg;
-        if (p - mid).length() > h * 0.45 {
-            continue;
-        }
-        let half = if k % 10 == 0 { 0.16 * w } else { 0.08 * w };
-        if k > 0 {
-            c.stroke(p - along * half, p + along * half, 1.0, ink(MID));
-        } else {
-            c.dashed(p - along * half, p + along * half, 6.0, 4.0, 1.0, ink(MID));
-        }
-        if k % 10 == 0 {
-            text(
-                c,
-                p + along * (half + 0.04 * w),
-                &format!("{}", k.abs()),
-                0.035 * h,
-                MID,
-                Align::Centre,
-            );
-        }
-    }
-    // The bank scale at the top, the pointer on it.
-    let r = 0.42 * h;
-    for deg in [-60.0f32, -45.0, -30.0, -20.0, -10.0, 0.0, 10.0, 20.0, 30.0, 45.0, 60.0] {
-        let a = deg.to_radians();
-        let d = Vec2::new(a.sin(), -a.cos());
-        let len = if deg % 30.0 == 0.0 { 0.04 } else { 0.025 };
-        c.stroke(mid + d * r, mid + d * (r + len * h), 1.0, ink(MID));
-    }
-    let d = Vec2::new((-own.roll).sin(), -(-own.roll).cos());
-    c.triangle(
-        [
-            mid + d * (r - 0.005 * h),
-            mid + d * (r - 0.04 * h) + Vec2::new(-d.y, d.x) * 0.015 * h,
-            mid + d * (r - 0.04 * h) - Vec2::new(-d.y, d.x) * 0.015 * h,
-        ],
-        ink(BRIGHT),
-    );
-    // The aircraft symbol, fixed.
-    let s = 0.1 * w;
-    c.polyline(
-        &[
-            mid - Vec2::X * s,
-            mid - Vec2::X * s * 0.35,
-            mid + Vec2::new(-s * 0.2, s * 0.2),
-            mid,
-            mid + Vec2::new(s * 0.2, s * 0.2),
-            mid + Vec2::X * s * 0.35,
-            mid + Vec2::X * s,
-        ],
-        2.0,
-        ink(BRIGHT),
-    );
-}
-
-// ---------------------------------------------------------------------------------------------
 // ECMD
 
 /// A radar painting the aircraft on the ECMD.
@@ -1236,7 +1152,6 @@ mod tests {
             assert!(lit(&c) > 0);
         }
         draw_hsd_nav(&mut c, &own, Some(wps[0]), "WP 1");
-        draw_vdi(&mut c, &own);
         let th = [Threat {
             rel_bearing: 0.5,
             label: "29".into(),
@@ -1355,8 +1270,6 @@ mod preview {
         crate::intruder::dump_png(&c, &pal, "f14_tid");
         draw_hsd_nav(&mut c, &own, Some(wps[0]), "WP 1");
         crate::intruder::dump_png(&c, &pal, "f14_hsd");
-        draw_vdi(&mut c, &own);
-        crate::intruder::dump_png(&c, &pal, "f14_vdi");
         let th = [
             Threat {
                 rel_bearing: 0.5,

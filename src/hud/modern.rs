@@ -26,19 +26,19 @@ pub const CY: f32 = 280.0;
 pub const SCALE: f32 = 1024.0;
 
 /// Ink (any colour but the transparent 0; the glass draws all ink in HUD green).
-const INK: u8 = 15;
+pub(super) const INK: u8 = 15;
 /// Pen widths and text heights (pixels).
-const PEN: f32 = 2.4;
-const THIN: f32 = 1.8;
-const TEXT: f32 = 15.0;
-const SMALL: f32 = 12.0;
+pub(super) const PEN: f32 = 2.4;
+pub(super) const THIN: f32 = 1.8;
+pub(super) const TEXT: f32 = 15.0;
+pub(super) const SMALL: f32 = 12.0;
 /// Area symbols are kept inside (the F-117A's combiner is roughly x 182..1098, y 14..483; its
 /// lower edge is seen over the glare shield, so the field reaches a little past it). Its lower
 /// edge is the combiner glass's (`HudFrame::field_bottom`, `field`).
-const FIELD: (Vec2, Vec2) = (Vec2::new(250.0, 75.0), Vec2::new(1030.0, 490.0));
+pub(super) const FIELD: (Vec2, Vec2) = (Vec2::new(250.0, 75.0), Vec2::new(1030.0, 490.0));
 /// The field's lowest bottom row (over the readouts' top row) and its gap to the canvas edge.
-const FIELD_LOWEST: f32 = 400.0;
-const FIELD_MARGIN: f32 = 12.0;
+pub(super) const FIELD_LOWEST: f32 = 400.0;
+pub(super) const FIELD_MARGIN: f32 = 12.0;
 
 /// The field of this frame: down to the combiner glass's lower edge.
 pub fn field(f: &HudFrame) -> (Vec2, Vec2) {
@@ -60,15 +60,15 @@ pub fn project(d: Vec3, scale: f32) -> Option<Vec2> {
     (z > 1e-3).then(|| Vec2::new(CX + scale * d.x / z, CY - scale * d.y / z))
 }
 
-fn inside(field: (Vec2, Vec2), p: Vec2) -> bool {
+pub(super) fn inside(field: (Vec2, Vec2), p: Vec2) -> bool {
     p.cmpge(field.0).all() && p.cmple(field.1).all()
 }
 
-fn text(c: &mut Canvas, x: f32, y: f32, s: &str, align: Align) {
+pub(super) fn text(c: &mut Canvas, x: f32, y: f32, s: &str, align: Align) {
     stroke_text_at(c, x, y, s, TEXT, PEN * 0.85, INK, align);
 }
 
-fn small(c: &mut Canvas, x: f32, y: f32, s: &str, align: Align) {
+pub(super) fn small(c: &mut Canvas, x: f32, y: f32, s: &str, align: Align) {
     stroke_text_at(c, x, y, s, SMALL, THIN, INK, align);
 }
 
@@ -89,7 +89,7 @@ pub(crate) fn boxed(c: &mut Canvas, x: f32, y: f32, s: &str, min_chars: usize, a
     );
 }
 
-fn diamond(c: &mut Canvas, p: Vec2, r: f32) {
+pub(super) fn diamond(c: &mut Canvas, p: Vec2, r: f32) {
     c.polyline(
         &[
             p + Vec2::new(0.0, -r),
@@ -106,7 +106,7 @@ fn diamond(c: &mut Canvas, p: Vec2, r: f32) {
 /// Where a cue in direction `d` (aircraft frame) is drawn: where it is seen, else (`true`) at
 /// the edge of the area inside the tapes, clear of the speed and altitude boxes and above the
 /// readouts, in its direction.
-fn kept_in_field(d: Vec3, f: &HudFrame, r: f32) -> Option<(Vec2, bool)> {
+pub(super) fn kept_in_field(d: Vec3, f: &HudFrame, r: f32) -> Option<(Vec2, bool)> {
     let p = project(d, f.scale);
     if let Some(p) = p.filter(|&p| inside(field(f), p)) {
         return Some((p, false));
@@ -123,7 +123,7 @@ fn kept_in_field(d: Vec3, f: &HudFrame, r: f32) -> Option<(Vec2, bool)> {
     Some((centre + dir * t, true))
 }
 
-fn cross_out(c: &mut Canvas, q: Vec2, r: f32) {
+pub(super) fn cross_out(c: &mut Canvas, q: Vec2, r: f32) {
     let k = r * 0.7;
     c.stroke(q + Vec2::new(-k, -k), q + Vec2::new(k, k), THIN, INK);
     c.stroke(q + Vec2::new(-k, k), q + Vec2::new(k, -k), THIN, INK);
@@ -131,7 +131,7 @@ fn cross_out(c: &mut Canvas, q: Vec2, r: f32) {
 
 /// The steerpoint diamond (direction in the aircraft frame); off the field it waits at the
 /// field's edge in the steerpoint's direction, crossed out.
-fn steerpoint_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
+pub(super) fn steerpoint_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
     const R: f32 = 9.0;
     let Some((q, off)) = kept_in_field(d, f, R) else { return };
     diamond(c, q, R);
@@ -142,7 +142,7 @@ fn steerpoint_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
 
 /// Where the targeting pod looks: a small circle with a dot; off the field at its edge,
 /// crossed out.
-fn pod_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
+pub(super) fn pod_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
     const R: f32 = 8.0;
     let Some((q, off)) = kept_in_field(d, f, R) else { return };
     c.ring(q, R, THIN, INK);
@@ -154,7 +154,7 @@ fn pod_cue(c: &mut Canvas, d: Vec3, f: &HudFrame) {
 }
 
 /// Screen directions of the horizon (to the right) and of world "down", from the attitude.
-fn horizon_axes(f: &HudFrame) -> (Vec2, Vec2) {
+pub(super) fn horizon_axes(f: &HudFrame) -> (Vec2, Vec2) {
     let inv = f.orientation.inverse();
     let fwd = f.orientation * Vec3::NEG_Z;
     let level = Vec3::new(fwd.x, 0.0, fwd.z).try_normalize().unwrap_or(Vec3::NEG_Z);
@@ -171,7 +171,7 @@ fn horizon_axes(f: &HudFrame) -> (Vec2, Vec2) {
     (h, Vec2::new(-h.y, h.x))
 }
 
-fn euler(f: &HudFrame) -> (f32, f32, f32) {
+pub(super) fn euler(f: &HudFrame) -> (f32, f32, f32) {
     let o = f.orientation;
     let fw = o * Vec3::NEG_Z;
     let r = o * Vec3::X;
@@ -345,7 +345,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
 }
 
 /// Upper left: load factor, Mach, maximum load factor.
-fn load_and_mach(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn load_and_mach(c: &mut Canvas, f: &HudFrame) {
     let g = f.gees as f32 / 16.0;
     text(c, 300.0, 100.0, &format!("{g:.1}"), Align::Left);
     let mach = if f.mach < 1.0 {
@@ -358,14 +358,14 @@ fn load_and_mach(c: &mut Canvas, f: &HudFrame) {
 }
 
 /// Below this airspeed a helicopter's HUD shows the hover drift vector, not the flight path.
-const HOVER_KNOTS: i32 = 40;
+pub(super) const HOVER_KNOTS: i32 = 40;
 /// Drift vector: pixels per knot, from its circle below the boresight.
-const DRIFT_SCALE: f32 = 4.0;
-const DRIFT_CENTRE: Vec2 = Vec2::new(CX, CY + 110.0);
+pub(super) const DRIFT_SCALE: f32 = 4.0;
+pub(super) const DRIFT_CENTRE: Vec2 = Vec2::new(CX, CY + 110.0);
 
 /// A helicopter's readouts: torque and rotor speed (upper left), the radar altitude (under the
 /// altitude scale) and, slow, the drift over the ground from a circle below the boresight.
-fn helicopter(c: &mut Canvas, f: &HudFrame, h: &super::HeliHud) {
+pub(super) fn helicopter(c: &mut Canvas, f: &HudFrame, h: &super::HeliHud) {
     text(c, 300.0, 100.0, &format!("TRQ {:.0}", h.torque), Align::Left);
     text(c, 300.0, 126.0, &format!("NR {:.0}", h.rotor), Align::Left);
     if h.rotor < 95.0 && f.blink {
@@ -377,7 +377,7 @@ fn helicopter(c: &mut Canvas, f: &HudFrame, h: &super::HeliHud) {
 }
 
 /// The drift over the ground (knots, x right, y ahead) from a circle below the boresight.
-fn drift_vector(c: &mut Canvas, drift: Vec2, field: (Vec2, Vec2)) {
+pub(super) fn drift_vector(c: &mut Canvas, drift: Vec2, field: (Vec2, Vec2)) {
     c.ring(DRIFT_CENTRE, 6.0, PEN, INK);
     let end = (DRIFT_CENTRE + Vec2::new(drift.x, -drift.y) * DRIFT_SCALE).clamp(field.0, field.1);
     if end.distance(DRIFT_CENTRE) > 8.0 {
@@ -387,13 +387,13 @@ fn drift_vector(c: &mut Canvas, drift: Vec2, field: (Vec2, Vec2)) {
 }
 
 /// Nozzle angle (degrees) past which a V/STOL type's HUD shows the hover symbology when slow.
-const HOVER_NOZZLE: f32 = 20.0;
+pub(super) const HOVER_NOZZLE: f32 = 20.0;
 /// The nozzle readout under the load factor and Mach: "NOZ 84" and beside it the nozzle as
 /// seen from the left, its pivot and the exit pointing aft (left) at 0, down at 90.
-const NOZZLE_AT: Vec2 = Vec2::new(300.0, 178.0);
-const NOZZLE_GLYPH: Vec2 = Vec2::new(410.0, 172.0);
+pub(super) const NOZZLE_AT: Vec2 = Vec2::new(300.0, 178.0);
+pub(super) const NOZZLE_GLYPH: Vec2 = Vec2::new(410.0, 172.0);
 
-fn nozzle(c: &mut Canvas, v: &super::VtolHud) {
+pub(super) fn nozzle(c: &mut Canvas, v: &super::VtolHud) {
     let deg = v.nozzle.round().clamp(0.0, 99.0);
     text(c, NOZZLE_AT.x, NOZZLE_AT.y, &format!("NOZ {deg:.0}"), Align::Left);
     let a = deg.to_radians();
@@ -406,7 +406,7 @@ fn nozzle(c: &mut Canvas, v: &super::VtolHud) {
 
 /// Drawn in the HUD's own frame, as on a real HUD: its wings stay parallel to the aircraft's
 /// and bank with it against the rolling ladder.
-fn flight_path_marker(c: &mut Canvas, p: Vec2, caged: bool) {
+pub(super) fn flight_path_marker(c: &mut Canvas, p: Vec2, caged: bool) {
     let (h, down) = (Vec2::X, Vec2::Y);
     let r = 9.0;
     c.ring(p, r, PEN, INK);
@@ -421,7 +421,7 @@ fn flight_path_marker(c: &mut Canvas, p: Vec2, caged: bool) {
 
 /// Pitch ladder centred on the flight path: a rung every 5 degrees, solid above the horizon
 /// with tips pointing down to it, dashed below with tips up; the horizon line is longer.
-fn pitch_ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
+pub(super) fn pitch_ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
     let inv = f.orientation.inverse();
     let track = Vec3::new(f.path_dir.x, 0.0, f.path_dir.z)
         .try_normalize()
@@ -473,7 +473,7 @@ fn pitch_ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
 
 /// Airspeed scale (left): 2 pixels per knot, ticks every 10 kt, labels every 50 kt, and the
 /// boxed readout inside the scale.
-fn airspeed(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn airspeed(c: &mut Canvas, f: &HudFrame) {
     let kt = f.knots.max(0) as f32;
     let (x, half) = (300.0, 120.0);
     if f.state.declutter == 0 {
@@ -514,7 +514,7 @@ pub(crate) fn altitude_text(alt: f32) -> String {
 /// Altitude scale (right): 0.2 pixels per foot, ticks every 100 ft, labels every 500 ft
 /// ("12,5" = 12,500), the boxed readout and the radar altitude below it when low, "TF" under
 /// that while the autopilot follows the terrain.
-fn altitude(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn altitude(c: &mut Canvas, f: &HudFrame) {
     let alt = f.alt.max(0) as f32;
     let (x, half) = (980.0, 120.0);
     if f.state.declutter == 0 {
@@ -565,7 +565,7 @@ fn altitude(c: &mut Canvas, f: &HudFrame) {
 }
 
 /// Heading tape along the top: 6 pixels per degree, labels every 10 degrees in tens.
-fn heading(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn heading(c: &mut Canvas, f: &HudFrame) {
     let hdg = f.heading as f32 / 65536.0 * 360.0;
     let (y, half) = (58.0, 170.0);
     if f.state.declutter == 2 {
@@ -598,7 +598,7 @@ fn heading(c: &mut Canvas, f: &HudFrame) {
 
 /// Bank angle scale under the boresight: ticks at 10, 20, 30 and 45 degrees each way and a
 /// pointer that stays towards the ground.
-fn bank_scale(c: &mut Canvas, down: Vec2, f: &HudFrame) {
+pub(super) fn bank_scale(c: &mut Canvas, down: Vec2, f: &HudFrame) {
     let centre = Vec2::new(CX, CY);
     let r = 165.0;
     for deg in [0.0f32, 10.0, 20.0, 30.0, 45.0] {
@@ -623,7 +623,7 @@ pub const APPROACH_AOA: f32 = 10.0;
 
 /// Approach angle-of-attack bracket left of the flight path marker (gear down): centred on
 /// the marker at the approach angle of attack, marker high in the bracket = fast.
-fn aoa_bracket(c: &mut Canvas, fpm: Vec2, aoa: f32) {
+pub(super) fn aoa_bracket(c: &mut Canvas, fpm: Vec2, aoa: f32) {
     let x = fpm.x - 48.0;
     let y = fpm.y - (aoa - APPROACH_AOA) * 8.0;
     let half = 18.0;
@@ -641,7 +641,7 @@ fn aoa_bracket(c: &mut Canvas, fpm: Vec2, aoa: f32) {
 
 /// AA: target designator box with the missile diamond when locked, SHOOT cue in range,
 /// allowable steering error circle, launch zone scale and the gun pipper.
-fn air_to_air(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn air_to_air(c: &mut Canvas, f: &HudFrame) {
     let fld = field(f);
     let cues = &f.cues;
     let target = cues.target_dir.and_then(|d| project(d, f.scale));
@@ -713,8 +713,19 @@ fn air_to_air(c: &mut Canvas, f: &HudFrame) {
 /// scan against the nose (the boresight beam's circle, a vertical scan's strip as far as the
 /// field shows it), and at the lower right the radar missiles in flight with the soonest one's
 /// seconds to go (ACT: to its seeker coming on; TTI: to impact).
-fn tomcat(c: &mut Canvas, f: &HudFrame, t: &super::TomcatHud) {
+pub(super) fn tomcat(c: &mut Canvas, f: &HudFrame, t: &super::TomcatHud) {
     text(c, 270.0, 470.0, t.mode, Align::Left);
+    acm_scan(c, f, t);
+    let soonest = t.in_flight.iter().copied().min_by(|a, b| a.abs().total_cmp(&b.abs()));
+    if let Some(s) = soonest {
+        let word = if s < 0.0 { "ACT" } else { "TTI" };
+        let line = format!("{} {word} {:.0}", t.in_flight.len(), s.abs().min(999.0));
+        text(c, 1010.0, 470.0, &line, Align::Right);
+    }
+}
+
+/// An ACM mode's scan against the nose.
+pub(super) fn acm_scan(c: &mut Canvas, f: &HudFrame, t: &super::TomcatHud) {
     let fld = field(f);
     match t.acm {
         Some(super::AcmScan::Boresight(half)) => {
@@ -736,29 +747,23 @@ fn tomcat(c: &mut Canvas, f: &HudFrame, t: &super::TomcatHud) {
         }
         Some(super::AcmScan::Wide) | None => {}
     }
-    let soonest = t.in_flight.iter().copied().min_by(|a, b| a.abs().total_cmp(&b.abs()));
-    if let Some(s) = soonest {
-        let word = if s < 0.0 { "ACT" } else { "TTI" };
-        let line = format!("{} {word} {:.0}", t.in_flight.len(), s.abs().min(999.0));
-        text(c, 1010.0, 470.0, &line, Align::Right);
-    }
 }
 
 /// ILS deviations at full scale (degrees): localizer and glideslope.
-const ILS_FULL_SCALE: (f32, f32) = (2.5, 0.7);
+pub(super) const ILS_FULL_SCALE: (f32, f32) = (2.5, 0.7);
 /// Bar offset at full scale, bar half length, and the ladder ticks on each bar: their distance
 /// from its middle and half length (pixels; the F-16's bars are about 5.5 flight path marker
 /// radii long either side, ticks at 60 %).
-const ILS_DEFLECTION: f32 = 60.0;
-const ILS_BAR: f32 = 50.0;
-const ILS_TICK: (f32, f32) = (30.0, 7.0);
+pub(super) const ILS_DEFLECTION: f32 = 60.0;
+pub(super) const ILS_BAR: f32 = 50.0;
+pub(super) const ILS_TICK: (f32, f32) = (30.0, 7.0);
 /// How far the ILS bars and the AOA bracket reach below the flight path marker (pixels).
-const ILS_REACH: f32 = ILS_DEFLECTION + ILS_TICK.1 + 4.0;
+pub(super) const ILS_REACH: f32 = ILS_DEFLECTION + ILS_TICK.1 + 4.0;
 
 /// ILS steering, as the F-16's: the localizer deviation bar (upright) and the glideslope
 /// deviation bar (level), each with two short ladder ticks, referenced to the flight path
 /// marker. Fly the marker to where they cross; each stops at full-scale deflection.
-fn ils_bars(c: &mut Canvas, fpm: Vec2, h: Vec2, down: Vec2, loc: f32, gs: f32) {
+pub(super) fn ils_bars(c: &mut Canvas, fpm: Vec2, h: Vec2, down: Vec2, loc: f32, gs: f32) {
     // Right of the centreline: the course is left. Above the glide path: it is below.
     let x = -(loc / ILS_FULL_SCALE.0).clamp(-1.0, 1.0) * ILS_DEFLECTION;
     let y = (gs / ILS_FULL_SCALE.1).clamp(-1.0, 1.0) * ILS_DEFLECTION;
@@ -774,7 +779,7 @@ fn ils_bars(c: &mut Canvas, fpm: Vec2, h: Vec2, down: Vec2, loc: f32, gs: f32) {
 /// Gun selected: the pipper (where the target has to be for the rounds fired now to hit it),
 /// with a locked target's range as an arc unwinding from 12 o'clock (a full circle is
 /// 12,000 ft), the range in km under it and SHOOT within the gun's range.
-fn gun_sight(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn gun_sight(c: &mut Canvas, f: &HudFrame) {
     let fld = field(f);
     let Some(g) = f.cues.gun else { return };
     let Some(p) = project(g.dir, f.scale) else { return };
@@ -803,7 +808,7 @@ fn gun_sight(c: &mut Canvas, f: &HudFrame) {
 /// Rockets selected: the CCIP rocket reticle (where a rocket fired now lands): a ring with four
 /// ticks round a dot, the slant range in km under it, the time of flight over it; IN RNG
 /// blinks within the rockets' effective range.
-fn rocket_sight(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn rocket_sight(c: &mut Canvas, f: &HudFrame) {
     let fld = field(f);
     let Some(g) = f.cues.rocket else { return };
     let Some(p) = project(g.dir, f.scale) else { return };
@@ -833,7 +838,7 @@ pub(crate) fn rocket_reticle(c: &mut Canvas, q: Vec2, r: f32, crossed: bool) {
 
 /// Launch zone right of the boresight without a locked target's zone: the weapon's nominal
 /// maximum and minimum range and the target range caret.
-fn launch_zone(c: &mut Canvas, f: &HudFrame) {
+pub(super) fn launch_zone(c: &mut Canvas, f: &HudFrame) {
     let Some(rmax) = f.weapon_range_km.filter(|r| *r > 0.0) else { return };
     let (x, top, bottom) = (880.0, CY - 100.0, CY + 100.0);
     let full = rmax * 1.25;
@@ -861,7 +866,7 @@ fn launch_zone(c: &mut Canvas, f: &HudFrame) {
 /// line from the shortest range up to the longest with ticks at both ends, the no-escape part
 /// a box on it (AA), and the target range caret left of it. The line fills the scale unless
 /// the target is out of range: then it shrinks to leave the caret above it.
-fn dynamic_launch_zone(c: &mut Canvas, z: &super::LaunchZoneCue) {
+pub(super) fn dynamic_launch_zone(c: &mut Canvas, z: &super::LaunchZoneCue) {
     let Some((lo, hi)) = z.zone_km else { return };
     let (x, top, bottom) = (820.0, CY - 100.0, CY + 100.0);
     let full = hi.max(z.range_km * 1.1).max(0.1);
@@ -889,7 +894,7 @@ fn dynamic_launch_zone(c: &mut Canvas, z: &super::LaunchZoneCue) {
 }
 
 /// "m:ss" of seconds (0 and up).
-fn min_sec(secs: f32) -> String {
+pub(super) fn min_sec(secs: f32) -> String {
     let s = secs.max(0.0).round() as i32;
     format!("{}:{:02}", s / 60, s % 60)
 }
@@ -897,7 +902,7 @@ fn min_sec(secs: f32) -> String {
 /// Bomb readouts in the lower right: the slant range (nautical miles, F) to the impact point
 /// (CCIP) or the target (CCRP), the time to release (CCRP, REL) and the bomb's time of fall
 /// (TOF).
-fn bomb_readouts(c: &mut Canvas, b: &super::BombCue) {
+pub(super) fn bomb_readouts(c: &mut Canvas, b: &super::BombCue) {
     let range = b.range_m.map_or("F---.-".to_string(), |m| format!("F{:05.1}", m / 1852.0));
     text(c, 1010.0, 392.0, &range, Align::Right);
     if b.ccrp {
@@ -915,7 +920,7 @@ fn bomb_readouts(c: &mut Canvas, b: &super::BombCue) {
 
 /// The CBU-105's release data: its burst altitude, and below it ALT LOW, else whether one
 /// released now reaches the marked point.
-fn sfw_readouts(c: &mut Canvas, s: &stealth_sim::sfw::SfwSolution) {
+pub(super) fn sfw_readouts(c: &mut Canvas, s: &stealth_sim::sfw::SfwSolution) {
     text(c, 1010.0, 392.0, &format!("BA {}", s.burst_ft), Align::Right);
     let state = match s.in_range {
         _ if s.low => "ALT LOW",
@@ -928,7 +933,7 @@ fn sfw_readouts(c: &mut Canvas, s: &stealth_sim::sfw::SfwSolution) {
 
 /// The airdrop's readouts in the lower right: the drop zone's range, the time to the release
 /// point, the pallets' time of fall, the pallets left.
-fn drop_readouts(c: &mut Canvas, d: &super::DropCue) {
+pub(super) fn drop_readouts(c: &mut Canvas, d: &super::DropCue) {
     text(c, 1010.0, 366.0, &format!("PLT {}", d.pallets), Align::Right);
     text(c, 1010.0, 392.0, &format!("DZ {:.1}", d.zone_km.unwrap_or(0.0)), Align::Right);
     let rel = match d.release_secs {
@@ -941,7 +946,7 @@ fn drop_readouts(c: &mut Canvas, d: &super::DropCue) {
 }
 
 /// Seconds before the release point the jump light's warnings come up (the ramp still up).
-const DROP_WARN_SECS: f32 = 30.0;
+pub(super) const DROP_WARN_SECS: f32 = 30.0;
 
 /// The airdrop (the C-5, in every HUD mode): the drop zone's diamond with its range, the
 /// azimuth steering line through it with the release cue sliding down to the flight path marker
@@ -953,7 +958,7 @@ const DROP_WARN_SECS: f32 = 30.0;
 /// The AC-130's guns, low on the left of the field: the gun and its rounds, then whether it
 /// bears on where the pod looks (its slant range in nautical miles when it does; GIMBAL when the
 /// orbit doesn't bring it to bear, NO TGP without the pod).
-fn side_guns(c: &mut Canvas, f: &HudFrame, g: super::SideGunCue) {
+pub(super) fn side_guns(c: &mut Canvas, f: &HudFrame, g: super::SideGunCue) {
     let fld = field(f);
     let (x, y) = (fld.0.x + 20.0, fld.1.y - 70.0);
     let gun = stealth_sim::gunship::gun_name(g.gun as usize);
@@ -968,7 +973,7 @@ fn side_guns(c: &mut Canvas, f: &HudFrame, g: super::SideGunCue) {
     small(c, x, y + 24.0, &status, Align::Left);
 }
 
-fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Vec2) {
+pub(super) fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Vec2) {
     let fld = field(f);
     let light = Vec2::new(CX, fpm.y.min(fld.1.y) - 64.0).max(Vec2::new(CX, fld.0.y + 20.0));
     let Some(zone) = d.zone_dir.filter(|_| d.pallets > 0) else {
@@ -1044,10 +1049,10 @@ fn airdrop(c: &mut Canvas, f: &HudFrame, d: &super::DropCue, fpm: Vec2, down: Ve
 }
 
 /// Pixels per second to the release the CCRP solution cue sits above the flight path marker.
-const SOLUTION_PX_PER_S: f32 = 10.0;
+pub(super) const SOLUTION_PX_PER_S: f32 = 10.0;
 
 /// The part of the line through `p` along `d` inside the field.
-fn field_line(field: (Vec2, Vec2), p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
+pub(super) fn field_line(field: (Vec2, Vec2), p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
     let (mut t0, mut t1) = (-1e4f32, 1e4f32);
     for a in 0..2 {
         let (lo, hi, o, v) = (field.0[a], field.1[a], p[a], d[a]);
@@ -1070,7 +1075,7 @@ fn field_line(field: (Vec2, Vec2), p: Vec2, d: Vec2) -> Option<(Vec2, Vec2)> {
 /// line through the target with the solution cue sliding down it to the flight path marker (the
 /// bomb goes when the cue reaches the marker with the button held); for the guided release
 /// (flight-path guide) the steering line with the release cue.
-fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
+pub(super) fn air_to_ground(c: &mut Canvas, f: &HudFrame, fpm: Vec2, down: Vec2) {
     let fld = field(f);
     let cues = &f.cues;
     // The Sidearm's seeker circle, where it looks (the boresight, or the helmet sight).
