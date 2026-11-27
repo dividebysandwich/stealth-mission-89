@@ -21,17 +21,24 @@
 //!   it in range, the next track-while-scan target a dotted box, the weapon and its rounds
 //!   under the circle.
 //! - Air-to-ground, the gun and rockets: `modern`'s cues.
+//! - The DISPLAYS panel's steering mode picks the picture (its name over the lower left
+//!   readouts): T.O. puts the waterline in place of the datum cross with the rotation brackets
+//!   10 degrees up the ladder round it; CRUISE is the navigation picture; A/A and A/G add their
+//!   cues; LDG has the waterline, the approach angle of attack bracket beside the flight path
+//!   marker, the glide slope's dashed reference line under the horizon (the ILS's 3 degrees, the
+//!   carrier's 3.5 with the AWL knob at ACL), the ILS steering and GEAR flashing with the gear up.
 
 use bevy::prelude::*;
 
 use super::modern::{
-    CX, CY, INK, PEN, TEXT, THIN, acm_scan, air_to_ground, bomb_readouts, boxed, cross_out, euler,
-    field, gun_sight, horizon_axes, ils_bars, inside, min_sec, pod_cue, project, rocket_sight,
-    small, steerpoint_cue, text,
+    CX, CY, INK, PEN, TEXT, THIN, acm_scan, air_to_ground, aoa_bracket, bomb_readouts, boxed,
+    cross_out, euler, field, gun_sight, horizon_axes, ils_bars, inside, min_sec, pod_cue, project,
+    rocket_sight, small, steerpoint_cue, text,
 };
 use super::{HudFrame, HudMode};
 use crate::canvas::Canvas;
 use crate::font::Align;
+use crate::tomcat::SteerMode;
 
 /// Kilometres a nautical mile.
 const KM_NM: f32 = 1.852;
@@ -53,6 +60,92 @@ const LEFT: f32 = CX - HALF;
 const RIGHT: f32 = CX + HALF;
 /// Radar altitudes shown (feet).
 const RADAR_ALT_TOP: f32 = 5000.0;
+/// The take-off picture's rotation attitude (degrees nose up) and the highest row its brackets
+/// come up to (under the heading scale).
+const ROTATION_DEG: f32 = 10.0;
+const ROTATION_TOP: f32 = TAPE_Y + 60.0;
+
+/// The steering mode the HUD draws (CRUISE without the panel's).
+fn steering(f: &HudFrame) -> SteerMode {
+    f.tomcat.as_ref().map_or(SteerMode::Cruise, |t| t.steer)
+}
+
+/// The steering mode's name on the HUD.
+fn steer_label(s: SteerMode) -> &'static str {
+    match s {
+        SteerMode::TakeOff => "T.O.",
+        SteerMode::Cruise => "CRUISE",
+        SteerMode::AirToAir => "A/A",
+        SteerMode::AirToGround => "A/G",
+        SteerMode::Landing => "LDG",
+    }
+}
+
+/// The waterline (the nose's line) at the boresight: a W with its wings level.
+fn waterline(c: &mut Canvas) {
+    let o = Vec2::new(CX, CY);
+    let pts = [
+        (-34.0, 0.0),
+        (-16.0, 0.0),
+        (-8.0, 10.0),
+        (0.0, 0.0),
+        (8.0, 10.0),
+        (16.0, 0.0),
+        (34.0, 0.0),
+    ]
+    .map(|(x, y)| o + Vec2::new(x, y));
+    c.polyline(&pts, PEN, INK);
+}
+
+/// Where a line `deg` above the horizon (negative: under it) crosses the vertical through
+/// `centre` (along the horizon's axis `h`), looking along the nose's heading.
+fn attitude_line(f: &HudFrame, centre: Vec2, h: Vec2, deg: f32, along_path: bool) -> Option<Vec2> {
+    let dir = if along_path { f.path_dir } else { f.orientation * Vec3::NEG_Z };
+    let level = Vec3::new(dir.x, 0.0, dir.z)
+        .try_normalize()
+        .or_else(|| {
+            let n = f.orientation * Vec3::NEG_Z;
+            Vec3::new(n.x, 0.0, n.z).try_normalize()
+        })
+        .unwrap_or(Vec3::NEG_Z);
+    let rad = deg.to_radians();
+    let p = project(f.orientation.inverse() * (level * rad.cos() + Vec3::Y * rad.sin()), f.scale)?;
+    Some(p + h * (centre - p).dot(h))
+}
+
+/// T.O.: the rotation brackets on the line 10 degrees up through the waterline: held at the
+/// top of the glass (dashed) until the nose comes up near it, they come down onto the
+/// waterline at the attitude to rotate to and climb out at.
+fn rotation_brackets(c: &mut Canvas, f: &HudFrame, h: Vec2, down: Vec2) {
+    let Some(p) = attitude_line(f, Vec2::new(CX, CY), h, ROTATION_DEG, false) else { return };
+    let top = ROTATION_TOP.max(field(f).0.y);
+    let held = p.y < top;
+    let p = if held { p + down * (top - p.y) / down.y.max(0.2) } else { p };
+    let (inner, outer, tip) = (46.0, 96.0, 12.0);
+    for side in [-1.0f32, 1.0] {
+        let (a, b) = (p + h * side * inner, p + h * side * outer);
+        if held {
+            c.dashed(a, b, 10.0, 7.0, PEN * 1.4, INK);
+        } else {
+            c.stroke(a, b, PEN * 1.4, INK);
+        }
+        c.stroke(a, a + down * tip, PEN, INK);
+    }
+}
+
+/// LDG: the glide slope's dashed line under the horizon across the flight path marker (the
+/// marker on it: on the glide slope's angle), the AOA bracket beside the marker.
+fn landing_cues(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2) {
+    let glide = f.tomcat.as_ref().map_or(3.0, |t| t.glide_deg);
+    if let Some(p) = attitude_line(f, fpm, h, -glide, true) {
+        c.dashed(p - h * 150.0, p - h * 40.0, 10.0, 8.0, PEN, INK);
+        c.dashed(p + h * 40.0, p + h * 150.0, 10.0, 8.0, PEN, INK);
+    }
+    aoa_bracket(c, fpm, f.aoa);
+    if !f.gear_down && f.blink {
+        text(c, CX, CY + 150.0, "GEAR", Align::Centre);
+    }
+}
 
 fn dot(c: &mut Canvas, p: Vec2) {
     c.stroke(p, p, PEN * 1.5, INK);
@@ -138,8 +231,9 @@ fn heading_scale(c: &mut Canvas, f: &HudFrame) {
     }
 }
 
-/// The horizon and the pitch ladder centred on the flight path marker.
-fn ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
+/// The horizon and the pitch ladder centred on the flight path marker (`horizon_only`: just
+/// the horizon).
+fn ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2, horizon_only: bool) {
     let inv = f.orientation.inverse();
     let track = Vec3::new(f.path_dir.x, 0.0, f.path_dir.z)
         .try_normalize()
@@ -153,7 +247,9 @@ fn ladder(c: &mut Canvas, f: &HudFrame, fpm: Vec2, h: Vec2, down: Vec2) {
     c.set_clip(LEFT as i32, TAPE_Y as i32 + 44, RIGHT as i32, fld.1.y as i32 + 10);
     for k in -18i32..=18 {
         let deg = k as f32 * 5.0;
-        if (deg - gamma).abs() > 22.0 || deg.abs() > 89.0 {
+        // (Taking off the horizon always shows: standing still there is no flight path.)
+        let far = (deg - gamma).abs() > 22.0 && !(horizon_only && k == 0);
+        if far || deg.abs() > 89.0 || horizon_only && k != 0 {
             continue;
         }
         let rad = deg.to_radians();
@@ -316,9 +412,14 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
         text(c, x, yy, name, Align::Left);
         text(c, x + 76.0, yy, &value, Align::Right);
     }
+    if f.tomcat.is_some() {
+        text(c, LEFT, y - line - 6.0, steer_label(steering(f)), Align::Left);
+    }
     // The radar's mode, the bearing and range to the steering point, the weapon to drop.
     let y = y + 3.0 * line + 6.0;
-    if let Some(t) = &f.tomcat {
+    if let Some(t) = &f.tomcat
+        && !matches!(steering(f), SteerMode::TakeOff | SteerMode::Landing)
+    {
         text(c, LEFT, y, &mode_label(t.mode), Align::Left);
     }
     let nm = f.steerpoint.map(|s| s.1 / KM_NM);
@@ -379,7 +480,7 @@ fn readouts(c: &mut Canvas, f: &HudFrame) {
     let top = 330.0;
     for (k, (name, value)) in rows.iter().enumerate() {
         let yy = top + k as f32 * line;
-        text(c, RIGHT - 142.0, yy, name, Align::Left);
+        text(c, RIGHT - 182.0, yy, name, Align::Left);
         text(c, RIGHT, yy, value, Align::Right);
     }
 }
@@ -394,13 +495,26 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     let fpm_raw = project(inv * f.path_dir, f.scale);
     let fpm = fpm_raw.map_or(Vec2::new(CX, fld.1.y), |p| p.clamp(fld.0, fld.1));
     let caged = fpm_raw.is_none_or(|p| !inside(fld, p));
+    let steer = steering(f);
     if st.declutter < 2 || st.mode == HudMode::Nav {
-        ladder(c, f, fpm, h, down);
+        // Taking off: the horizon and the rotation brackets only.
+        ladder(c, f, fpm, h, down, steer == SteerMode::TakeOff);
     }
     path_marker(c, fpm, caged);
-    // The armament datum line's cross at the boresight.
-    for d in [Vec2::X, Vec2::Y] {
-        c.stroke(Vec2::new(CX, CY) - d * 12.0, Vec2::new(CX, CY) + d * 12.0, PEN, INK);
+    match steer {
+        // Take-off and landing: the waterline.
+        SteerMode::TakeOff | SteerMode::Landing => waterline(c),
+        // The armament datum line's cross at the boresight.
+        _ => {
+            for d in [Vec2::X, Vec2::Y] {
+                c.stroke(Vec2::new(CX, CY) - d * 12.0, Vec2::new(CX, CY) + d * 12.0, PEN, INK);
+            }
+        }
+    }
+    match steer {
+        SteerMode::TakeOff => rotation_brackets(c, f, h, down),
+        SteerMode::Landing => landing_cues(c, f, fpm, h),
+        _ => {}
     }
     heading_scale(c, f);
     let (kt, alt) = (f.knots.max(0), f.alt.max(0));
@@ -434,7 +548,7 @@ pub fn draw(c: &mut Canvas, f: &HudFrame) {
     rocket_sight(c, f);
     if let Some((loc, gs)) = f.ils {
         ils_bars(c, fpm, h, down, loc, gs);
-        text(c, RIGHT - 142.0, 308.0, "AWL", Align::Left);
+        text(c, RIGHT - 182.0, 308.0, "AWL", Align::Left);
     }
     if let Some(m) = &f.message {
         text(c, CX, 160.0, m, Align::Centre);
@@ -514,6 +628,40 @@ mod tests {
             "G"
         );
         assert_eq!(mode_label("TWS AUTO"), "TWSA");
+        // Each steering mode its own picture: T.O.'s waterline and rotation brackets, LDG's
+        // glide slope line and bracket.
+        let picture = |steer| {
+            let mut f = HudFrame { scale: 900.0, knots: 140, alt: 600, ..Default::default() };
+            f.path_dir = Vec3::new(0.0, -0.05, -1.0).normalize();
+            f.gear_down = true;
+            f.tomcat = Some(crate::hud::TomcatHud { steer, glide_deg: 3.0, ..Default::default() });
+            let mut c = Canvas::new(super::super::modern::WIDTH, super::super::modern::HEIGHT);
+            draw(&mut c, &f);
+            c.px
+        };
+        let cruise = picture(SteerMode::Cruise);
+        let (to, ldg) = (picture(SteerMode::TakeOff), picture(SteerMode::Landing));
+        assert!(cruise != to && cruise != ldg && to != ldg);
+        // The rotation brackets 10 degrees up: ink left of the boresight there.
+        let ink = |px: &[u8], x: f32, y: f32| {
+            (-3..=3).any(|d| {
+                px[(y as i32 + d) as usize * super::super::modern::WIDTH + x as usize] != 0
+            })
+        };
+        // Level, 10 degrees up is off the glass: they wait at the top; with the nose up there,
+        // on the waterline.
+        assert!(ink(&to, CX - 70.0, ROTATION_TOP) && !ink(&cruise, CX - 70.0, ROTATION_TOP));
+        let rotated = {
+            let mut f = HudFrame { scale: 900.0, knots: 150, alt: 100, ..Default::default() };
+            f.orientation = Quat::from_rotation_x(10f32.to_radians());
+            f.path_dir = Vec3::new(0.0, 0.1, -1.0).normalize();
+            f.tomcat =
+                Some(crate::hud::TomcatHud { steer: SteerMode::TakeOff, ..Default::default() });
+            let mut c = Canvas::new(super::super::modern::WIDTH, super::super::modern::HEIGHT);
+            draw(&mut c, &f);
+            c.px
+        };
+        assert!(ink(&rotated, CX - 70.0, CY) && !ink(&rotated, CX - 70.0, ROTATION_TOP));
         assert_eq!(clock(3_725.0), "01:02:05");
     }
 }

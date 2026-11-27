@@ -8,16 +8,20 @@
 //!   Phoenixes and Sparrows in flight, the LANTIRN's data.
 //! - `pod_video`: the LANTIRN's picture is up while a TV mode shows it (`MfdState::tomcat_tv`).
 //! - `station_lights`: the pilot's station lights (`TomcatStatus::stations`).
+//! - `steer_mode`: the DISPLAYS panel's steering mode and the HUD's master mode follow each
+//!   other; T.O. on the ground, CRUISE once the gear is up, LDG (with the ILS) when it comes
+//!   down in flight.
 
 use bevy::math::{DVec2, DVec3};
 use bevy::prelude::*;
 
-use super::{LtsMode, Power, TidMode, TomcatPanel, TomcatStatus, VdiMode, WcsMode};
+use super::{LtsMode, Power, SteerMode, TidMode, TomcatPanel, TomcatStatus, VdiMode, WcsMode};
 use crate::aircraft::AircraftKind;
 use crate::awg9::{Awg9, Awg9Controls, Mode};
 use crate::cockpit3d::layout::PanelStyle;
 use crate::f14_scopes::{InFlight, Lantirn, Own, TidStab};
 use crate::flight::{Aircraft, Player};
+use crate::hud::HudMode;
 use crate::mfd::{ContactRef, Contacts, MfdState};
 use crate::settings::{AppState, Settings};
 use crate::world::{WU, WorldPos};
@@ -28,6 +32,7 @@ pub(super) fn build(app: &mut App) {
         (
             radar_controls.before(crate::awg9::scan).after(crate::combat::CombatSystems),
             (scene, pod_video, station_lights).after(crate::awg9::scan),
+            steer_mode.before(scene),
         )
             .run_if(in_state(AppState::Flight)),
     );
@@ -397,6 +402,94 @@ pub(super) fn radar_controls(
     *was_stt = mode.stt();
 }
 
+/// The game's HUD mode for a steering mode: A/A and A/G theirs, the others NAV.
+pub fn hud_mode_for(steer: SteerMode) -> HudMode {
+    match steer {
+        SteerMode::AirToAir => HudMode::Air,
+        SteerMode::AirToGround => HudMode::Gnd,
+        SteerMode::TakeOff | SteerMode::Cruise | SteerMode::Landing => HudMode::Nav,
+    }
+}
+
+/// The steering mode after the HUD's mode was changed to `mode` (its keys) from `steer`: A/A
+/// and A/G theirs; NAV keeps T.O., CRUISE and LDG, else CRUISE.
+pub fn steer_for(mode: HudMode, steer: SteerMode) -> SteerMode {
+    match mode {
+        HudMode::Air => SteerMode::AirToAir,
+        HudMode::Gnd => SteerMode::AirToGround,
+        HudMode::Nav if hud_mode_for(steer) == HudMode::Nav => steer,
+        HudMode::Nav => SteerMode::Cruise,
+    }
+}
+
+/// What the gear does to the steering mode in the front seat: T.O. on the ground, CRUISE
+/// from T.O. once the gear is up in the air, LDG from CRUISE when it comes down in flight.
+pub fn steer_by_gear(
+    steer: SteerMode,
+    gear_down: bool,
+    was_down: bool,
+    on_ground: bool,
+) -> SteerMode {
+    match steer {
+        SteerMode::TakeOff if !gear_down && !on_ground => SteerMode::Cruise,
+        SteerMode::Cruise if gear_down && !was_down && !on_ground => SteerMode::Landing,
+        s => s,
+    }
+}
+
+/// The DISPLAYS panel's steering buttons and the HUD's mode keys: one follows the other (a
+/// button sets the HUD's master mode, a mode key the button); LDG brings the ILS up and
+/// leaving it takes it away. The pilot starts on T.O. on the ground, the gear moves him on.
+fn steer_mode(
+    settings: Res<Settings>,
+    mut panel: ResMut<TomcatPanel>,
+    mut hud: ResMut<crate::hud::HudState>,
+    mut mfd: ResMut<MfdState>,
+    player: Query<&Aircraft, With<Player>>,
+    mut before: Local<Option<(SteerMode, HudMode, bool)>>,
+) {
+    if settings.aircraft != AircraftKind::F14 {
+        *before = None;
+        return;
+    }
+    let Ok(a) = player.single() else { return };
+    let pilot = !settings.gunner_cockpit;
+    let Some((steer, mode, gear)) = *before else {
+        // A new flight: T.O. on the ground, else the HUD's mode.
+        let start =
+            if a.on_ground { SteerMode::TakeOff } else { steer_for(hud.mode, SteerMode::Cruise) };
+        if pilot && panel.steer != start {
+            panel.steer = start;
+        }
+        *before = Some((panel.steer, hud.mode, a.gear_down));
+        return;
+    };
+    if panel.steer != steer {
+        // A steering button (here or the other seat's panel).
+        let want = hud_mode_for(panel.steer);
+        if hud.mode != want {
+            hud.mode = want;
+        }
+    } else if hud.mode != mode {
+        let s = steer_for(hud.mode, panel.steer);
+        if panel.steer != s {
+            panel.steer = s;
+        }
+    } else if pilot {
+        let s = steer_by_gear(panel.steer, a.gear_down, gear, a.on_ground);
+        if panel.steer != s {
+            panel.steer = s;
+        }
+    }
+    if panel.steer != steer {
+        let landing = panel.steer == SteerMode::Landing;
+        if steer == SteerMode::Landing || landing {
+            mfd.ils = landing;
+        }
+    }
+    *before = Some((panel.steer, hud.mode, a.gear_down));
+}
+
 /// The HUD's cues from the radar `radar` of the aircraft at `own` (metres east, north, up) with
 /// the missiles `flying`.
 pub fn hud_cues(
@@ -438,6 +531,8 @@ pub fn hud_cues(
                 radar.tracks.iter().find(|k| k.target == t).map(|k| k.now().z)
             })
             .map(|z| (z * 3.280_84 / 1000.0) as f32),
+        steer: SteerMode::Cruise,
+        glide_deg: crate::scenery::GLIDE_PATH_DEG as f32,
     }
 }
 
@@ -517,7 +612,14 @@ fn scene(
     }
     *closing = rates;
     let now = clock.start_seconds + clock.elapsed.unwrap_or(0.0) * clock.rate;
-    out.hud = Some(hud_cues(&radar, o.pos, &flying, now as f32));
+    out.hud = Some(crate::hud::TomcatHud {
+        steer: panel.steer,
+        glide_deg: match panel.hud_awl {
+            super::Awl::Ils => crate::scenery::GLIDE_PATH_DEG as f32,
+            super::Awl::Acl => stealth_sim::catapult::GLIDE_DEG as f32,
+        },
+        ..hud_cues(&radar, o.pos, &flying, now as f32)
+    });
     out.tcs = crate::f14_scopes::Tcs {
         range_nm: tcs_target(&radar, o.pos).map(|d| (d.length() / NM) as f32),
         narrow: panel.narrow,
@@ -618,6 +720,31 @@ fn station_lights(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The steering buttons set the HUD's mode and its keys the buttons; the gear moves T.O. on
+    /// to CRUISE in the air and CRUISE to LDG when it comes down there.
+    #[test]
+    fn steering_modes_follow_the_hud_and_the_gear() {
+        use SteerMode::*;
+        assert_eq!(hud_mode_for(AirToAir), HudMode::Air);
+        assert_eq!(hud_mode_for(AirToGround), HudMode::Gnd);
+        assert!([TakeOff, Cruise, Landing].iter().all(|&s| hud_mode_for(s) == HudMode::Nav));
+        assert_eq!(steer_for(HudMode::Air, Landing), AirToAir);
+        assert_eq!(steer_for(HudMode::Gnd, Cruise), AirToGround);
+        assert_eq!(steer_for(HudMode::Nav, AirToAir), Cruise);
+        assert_eq!(steer_for(HudMode::Nav, Landing), Landing);
+        assert_eq!(steer_for(HudMode::Nav, TakeOff), TakeOff);
+        // Rolling with the gear down: still T.O.; airborne with it up: CRUISE.
+        assert_eq!(steer_by_gear(TakeOff, true, true, true), TakeOff);
+        assert_eq!(steer_by_gear(TakeOff, true, true, false), TakeOff);
+        assert_eq!(steer_by_gear(TakeOff, false, true, false), Cruise);
+        // The gear lowered in flight: LDG; already down (or on the ground): no change.
+        assert_eq!(steer_by_gear(Cruise, true, false, false), Landing);
+        assert_eq!(steer_by_gear(Cruise, true, true, false), Cruise);
+        assert_eq!(steer_by_gear(Cruise, true, false, true), Cruise);
+        // A/A stays A/A whatever the gear does.
+        assert_eq!(steer_by_gear(AirToAir, true, false, false), AirToAir);
+    }
 
     #[test]
     fn the_hook_steps_through_the_tracks() {

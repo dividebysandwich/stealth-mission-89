@@ -5048,6 +5048,21 @@ hold the selected weapon once MASTER ARM is on.
   strip up the glass: put the target inside it.
 - Bombing, gun and rocket cues are those of chapter 4.
 
+**HUD modes.** The steering **MODE** buttons on the DISPLAYS panel pick the HUD's picture, its
+name written over the lower left readouts:
+
+| Mode | The HUD |
+|---|---|
+| **T.O.** | Take-off: the **waterline** (a W, the nose) replaces the cross, only the horizon is drawn, and the **rotation brackets** stand 10 degrees up: they wait dashed at the top of the glass and come down as you rotate; climb out with the W in them. Radar readouts are hidden. |
+| **CRUISE** | Navigation: the ladder and the steering to the steering point. |
+| **A/A** | Air-to-air: CRUISE with the radar's and the missiles' cues (the HUD's A-A mode). |
+| **A/G** | Air-to-ground: CRUISE with the bombing cues (the HUD's A-G mode). |
+| **LDG** | Landing: the waterline, the **AOA bracket** left of the flight path marker (the marker centred in it is on speed, high in it fast), a dashed **glide slope line** under the horizon (fly the marker on it: 3 degrees, 3.5 with the HUD's AWL knob at ACL), the ILS steering bars approaching a runway (*AWL*), and **GEAR** flashing with the gear up. Selecting LDG switches the ILS on, leaving it switches it off. |
+
+The HUD's mode keys and the buttons follow each other: A-A and A-G press A/A and A/G, NAV goes
+back to CRUISE (or stays in T.O. or LDG). You start in T.O. on the ground; raising the gear in
+the air moves on to CRUISE, and lowering it in flight in CRUISE goes to LDG.
+
 ## 17.6 Phoenix and Sparrow
 
 **AIM-54 Phoenix.** In track while scan, select the Phoenix and fire (or the RIO presses LAUNCH).

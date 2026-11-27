@@ -751,6 +751,12 @@ pub struct TomcatHud {
     pub clock: f32,
     /// The altitude (thousands of feet) of the single target track's or the next shot's target.
     pub target_alt: Option<f32>,
+    /// The DISPLAYS panel's steering mode: the HUD's take-off, cruise, A/A, A/G or landing
+    /// picture.
+    pub steer: crate::tomcat::SteerMode,
+    /// The landing picture's glide slope (degrees under the horizon): the ILS's or, with the
+    /// HUD's AWL knob at ACL, the carrier's.
+    pub glide_deg: f32,
 }
 
 /// An ACM mode's scan.
