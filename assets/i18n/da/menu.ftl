@@ -128,6 +128,56 @@ opponents-free = Fri flyvning
     .facts =
         Ingen fjendtlige styrker, kun venlige fly
         Flyv en rute over tilfældige steder, eller hvorhen du vil
+section-air-defences = Luftforsvar
+air-defences-none = Intet
+    .facts =
+        Ingen SAM-stillinger eller kanoner
+        Kun fjendtlige jagere er en trussel
+air-defences-low = Let
+    .facts =
+        Omkring halvdelen af SAM-stillingerne, ældre typer
+        Halvt så mange kanoner
+air-defences-normal = Normalt
+    .facts =
+        Som situationen og modstanderne giver
+        Standardindstilling
+air-defences-high = Tungt
+    .facts =
+        Alle SAM-stillinger bemandet, nyere typer
+        Dobbelt så mange kanoner
+section-enemy-aircraft = Fjendtlige fly
+enemy-aircraft-none = Intet
+    .facts =
+        Ingen fjendtlige jagere
+        Målet for en luftmission flyver stadig
+enemy-aircraft-low = Få
+    .facts =
+        Halvt så mange patruljer
+        Højst to alarmstarter
+enemy-aircraft-normal = Normalt
+    .facts =
+        Som situationen og modstanderne giver
+        Standardindstilling
+enemy-aircraft-high = Mange
+    .facts =
+        En ekstra patrulje ved siden af hver
+        Dobbelt så hyppige alarmstarter
+section-support = Støtte
+support-none = Intet
+    .facts =
+        Du flyver alene
+support-wingman = Wingman
+    .facts =
+        En AI-wingman i din flytype
+        Følger dine radioordrer
+support-sead = SEAD-pakke
+    .facts =
+        F-16'er letter før dig
+        HARM mod SAM-stillingerne på din rute
+support-both = Wingman + SEAD
+    .facts =
+        En AI-wingman, og F-16'er foran dig
+        HARM mod SAM-stillingerne på din rute
 ff-title = Fri flyvning
 ff-summary = Ingen fjendtlige styrker nogen steder: kun venlige fly og enheder. Flyv hvorhen du vil.
 ff-objective = Foreslået rute: { $route }, derefter tilbage til { $base }.

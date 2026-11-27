@@ -619,7 +619,7 @@ impl Sim {
     fn scramble(&mut self, i: usize) {
         if self.quiet
             || self.scrambles_left == Some(0)
-            || (((self.mission_tick >> (self.roe + 4)) ^ i as i32) & 7) != 0
+            || (((self.mission_tick >> (self.roe + 4)) ^ i as i32) & self.scramble_mask()) != 0
             || self.is_traffic(i)
             || i >= self.mission_flights
             || i == 0

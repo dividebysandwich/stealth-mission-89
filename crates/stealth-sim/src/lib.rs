@@ -19,6 +19,7 @@ pub mod csar;
 mod damage;
 pub mod dlz;
 pub mod drones;
+mod enemy_air;
 pub mod ground;
 pub mod guidance;
 pub mod gunship;
@@ -37,6 +38,7 @@ mod radar;
 pub mod relief;
 pub mod rockets;
 pub mod score;
+pub mod sead;
 pub mod sfw;
 pub mod slam;
 pub mod standoff;
@@ -209,6 +211,12 @@ pub struct Sim {
     /// escort can take on), None unlimited.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) scrambles_left: Option<u8>,
+    /// A single mission's choice of enemy aircraft ([`enemy_air`]).
+    #[serde(default, skip_serializing_if = "stealth_mission::Amount::is_normal")]
+    pub(crate) enemy_aircraft: stealth_mission::Amount,
+    /// A single mission's SEAD package still to take off ([`sead`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) sead: Option<sead::SeadPackage>,
     pub(crate) proj: [Projectile; N_PROJ],
     pub(crate) bullets: Vec<Bullet>,
     /// Number of player gun-round slots (enemy rounds follow them).
@@ -654,6 +662,8 @@ impl Sim {
             escort_leader: m.escort as i32,
             quiet: m.quiet,
             scrambles_left: (m.escorts > 0).then_some(m.escorts),
+            enemy_aircraft: stealth_mission::Amount::Normal,
+            sead: None,
             proj: [Projectile::default(); N_PROJ],
             bullets: Vec::new(),
             n_bullets: 0,
@@ -746,7 +756,7 @@ impl Sim {
         if sim.opts.campaign {
             let st = data.stores_init.map(|v| v as i32);
             sim.init_campaign(st, data.gun_ammo_init as i32);
-        } else if sim.opts.air_defence {
+        } else if sim.opts.air_defence && m.settings.air_defences != stealth_mission::Amount::None {
             sim.place_aaa(m);
         }
         if sim.quiet && !sim.opts.campaign {
@@ -758,9 +768,16 @@ impl Sim {
             }
             sim.escort_leader = -1;
         }
+        if !sim.quiet {
+            sim.set_enemy_aircraft(m.settings.enemy_aircraft, m.rng.holdrand_exit);
+        }
         if m.escorts > 0 {
             let st = data.stores_init.map(|v| v as i32);
             sim.launch_escorts(m.escorts, st, data.gun_ammo_init as i32);
+        }
+        if m.settings.sead && !m.settings.free_flight {
+            let st = data.stores_init.map(|v| v as i32);
+            sim.plan_sead(m, st, data.gun_ammo_init as i32);
         }
         if !sim.opts.campaign {
             sim.column = gunship::MissionColumn::of(m);
@@ -1097,6 +1114,7 @@ impl Sim {
             self.update_aaa(&present);
         }
         self.update_aircraft(&present);
+        self.update_sead();
         if self.campaign.is_some() {
             self.activate(first);
             self.update_campaign();

@@ -128,6 +128,56 @@ opponents-free = Vol libre
     .facts =
         Aucune force ennemie, seulement des avions amis
         Suivez une route au-dessus de lieux au hasard, ou allez où vous voulez
+section-air-defences = Défense aérienne
+air-defences-none = Aucune
+    .facts =
+        Aucun site SAM ni canon
+        Seuls les chasseurs ennemis sont une menace
+air-defences-low = Légère
+    .facts =
+        Environ la moitié des sites SAM, types plus anciens
+        Moitié moins de canons
+air-defences-normal = Normale
+    .facts =
+        Selon la situation et les adversaires
+        Niveau par défaut
+air-defences-high = Lourde
+    .facts =
+        Tous les sites SAM armés, types plus récents
+        Deux fois plus de canons
+section-enemy-aircraft = Avions ennemis
+enemy-aircraft-none = Aucune
+    .facts =
+        Aucun chasseur ennemi
+        La cible d'une mission aérienne vole quand même
+enemy-aircraft-low = Peu
+    .facts =
+        Moitié moins de patrouilles
+        Deux décollages d'alerte au plus
+enemy-aircraft-normal = Normale
+    .facts =
+        Selon la situation et les adversaires
+        Niveau par défaut
+enemy-aircraft-high = Beaucoup
+    .facts =
+        Une deuxième patrouille près de chacune
+        Décollages d'alerte deux fois plus fréquents
+section-support = Soutien
+support-none = Aucune
+    .facts =
+        Vous volez seul
+support-wingman = Ailier
+    .facts =
+        Un ailier IA sur votre type d'avion
+        Obéit à vos ordres radio
+support-sead = Groupe SEAD
+    .facts =
+        Des F-16 décollent avant vous
+        Des HARM sur les sites SAM de votre route
+support-both = Ailier + SEAD
+    .facts =
+        Un ailier IA, et des F-16 avant vous
+        Des HARM sur les sites SAM de votre route
 ff-title = Vol libre
 ff-summary = Aucune force ennemie nulle part : seulement des avions et des unités amis. Volez où vous voulez.
 ff-objective = Route suggérée : { $route }, puis retour à { $base }.

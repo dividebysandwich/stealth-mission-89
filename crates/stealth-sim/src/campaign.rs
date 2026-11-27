@@ -1541,7 +1541,7 @@ impl Sim {
         }
     }
 
-    fn spawn_strike(
+    pub(crate) fn spawn_strike(
         &mut self,
         from: usize,
         target: usize,

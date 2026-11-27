@@ -128,6 +128,56 @@ opponents-free = Vapaa lento
     .facts =
         Ei vihollisjoukkoja, vain omia koneita
         Lennä reitti satunnaisten paikkojen yli tai minne haluat
+section-air-defences = Ilmatorjunta
+air-defences-none = Ei mitään
+    .facts =
+        Ei SAM-asemia eikä tykkejä
+        Vain vihollisen hävittäjät ovat uhka
+air-defences-low = Kevyt
+    .facts =
+        Noin puolet SAM-asemista, vanhempia tyyppejä
+        Puolet tykeistä
+air-defences-normal = Normaali
+    .facts =
+        Tilanteen ja vastustajien mukaan
+        Oletustaso
+air-defences-high = Raskas
+    .facts =
+        Kaikki SAM-asemat miehitetty, uudempia tyyppejä
+        Kaksi kertaa enemmän tykkejä
+section-enemy-aircraft = Vihollisen koneet
+enemy-aircraft-none = Ei mitään
+    .facts =
+        Ei vihollisen hävittäjiä
+        Ilmatehtävän maali lentää silti
+enemy-aircraft-low = Vähän
+    .facts =
+        Puolet partioista
+        Enintään kaksi hälytyslähtöä
+enemy-aircraft-normal = Normaali
+    .facts =
+        Tilanteen ja vastustajien mukaan
+        Oletustaso
+enemy-aircraft-high = Paljon
+    .facts =
+        Toinen partio jokaisen viereen
+        Hälytyslähtöjä kaksi kertaa useammin
+section-support = Tuki
+support-none = Ei mitään
+    .facts =
+        Lennät yksin
+support-wingman = Siipimies
+    .facts =
+        Tekoälysiipimies omalla konetyypilläsi
+        Tottelee radiokäskyjäsi
+support-sead = SEAD-osasto
+    .facts =
+        F-16:t nousevat ennen sinua
+        HARM-ohjukset reittisi SAM-asemiin
+support-both = Siipimies + SEAD
+    .facts =
+        Tekoälysiipimies ja F-16:t edelläsi
+        HARM-ohjukset reittisi SAM-asemiin
 ff-title = Vapaa lento
 ff-summary = Vihollisjoukkoja ei ole missään: vain omia koneita ja yksiköitä. Lennä minne haluat.
 ff-objective = Ehdotettu reitti: { $route }, sitten takaisin kohteeseen { $base }.

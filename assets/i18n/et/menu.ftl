@@ -128,6 +128,56 @@ opponents-free = Vaba lend
     .facts =
         Vaenlase vägesid pole, ainult omad lennukid
         Lenda marsruut juhuslike kohtade kohal või kuhu soovid
+section-air-defences = Õhutõrje
+air-defences-none = Puudub
+    .facts =
+        SAM-positsioone ega kahureid pole
+        Ohtlikud on ainult vaenlase hävitajad
+air-defences-low = Kerge
+    .facts =
+        Umbes pooled SAM-positsioonid, vanemad tüübid
+        Pooled kahurid
+air-defences-normal = Tavaline
+    .facts =
+        Olukorra ja vastaste järgi
+        Vaikimisi raskusaste
+air-defences-high = Raske
+    .facts =
+        Kõik SAM-positsioonid mehitatud, uuemad tüübid
+        Kaks korda rohkem kahureid
+section-enemy-aircraft = Vaenlase lennukid
+enemy-aircraft-none = Puudub
+    .facts =
+        Vaenlase hävitajaid pole
+        Õhumissiooni sihtmärk lendab ikkagi
+enemy-aircraft-low = Vähe
+    .facts =
+        Pooled patrullid
+        Kõige rohkem kaks häirestarti
+enemy-aircraft-normal = Tavaline
+    .facts =
+        Olukorra ja vastaste järgi
+        Vaikimisi raskusaste
+enemy-aircraft-high = Palju
+    .facts =
+        Teine patrull iga patrulli kõrval
+        Häirestardid kaks korda sagedamini
+section-support = Toetus
+support-none = Puudub
+    .facts =
+        Lendad üksi
+support-wingman = Tiivamees
+    .facts =
+        TI-tiivamees sinu lennukitüübiga
+        Täidab sinu raadiokäske
+support-sead = SEAD-üksus
+    .facts =
+        F-16-d stardivad sinu ees
+        HARM-id sinu marsruudi SAM-positsioonidele
+support-both = Tiivamees + SEAD
+    .facts =
+        TI-tiivamees ja F-16-d sinu ees
+        HARM-id sinu marsruudi SAM-positsioonidele
 ff-title = Vaba lend
 ff-summary = Vaenlase vägesid pole kusagil: ainult omad lennukid ja üksused. Lenda kuhu soovid.
 ff-objective = Soovitatud marsruut: { $route }, siis tagasi { $base }.

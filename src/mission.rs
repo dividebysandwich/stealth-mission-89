@@ -226,6 +226,14 @@ pub fn from_args(app: &mut App) {
         settings.free_flight = true;
         settings.opponents = 0;
     }
+    // `--air-defences|--enemy-aircraft none|low|normal|high`, `--sead`: the enemy's air
+    // defences and fighters, a SEAD package ahead of the player.
+    let amount = |f: &str| get(f).and_then(|s| stealth_mission::Amount::parse(&s));
+    if !settings.free_flight {
+        settings.air_defences = amount("--air-defences").unwrap_or_default();
+        settings.enemy_aircraft = amount("--enemy-aircraft").unwrap_or_default();
+        settings.sead = args.iter().any(|a| a == "--sead");
+    }
     // `--start-hour <0-23>`: takeoff time.
     settings.start_hour = get("--start-hour").and_then(|s| s.parse::<u8>().ok()).map(|h| h.min(23));
     // `--moon <0-7>`: the moon's phase in eighths (0 new, 4 full).

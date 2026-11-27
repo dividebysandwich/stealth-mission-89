@@ -128,6 +128,56 @@ opponents-free = Voľný let
     .facts =
         Žiadne nepriateľské sily, len spojenecké lietadlá
         Trasa ponad náhodné miesta, alebo kamkoľvek chcete
+section-air-defences = Protivzdušná obrana
+air-defences-none = Žiadna
+    .facts =
+        Žiadne stanovištia SAM ani kanóny
+        Hrozbou sú len nepriateľské stíhačky
+air-defences-low = Slabá
+    .facts =
+        Asi polovica stanovíšť SAM, staršie typy
+        Polovičný počet kanónov
+air-defences-normal = Normálna
+    .facts =
+        Podľa situácie a protivníkov
+        Predvolené nastavenie
+air-defences-high = Silná
+    .facts =
+        Všetky stanovištia SAM obsadené, novšie typy
+        Dvojnásobok kanónov
+section-enemy-aircraft = Nepriateľské lietadlá
+enemy-aircraft-none = Žiadna
+    .facts =
+        Žiadne nepriateľské stíhačky
+        Cieľ vzdušnej misie aj tak letí
+enemy-aircraft-low = Málo
+    .facts =
+        Polovičný počet hliadok
+        Najviac dva poplachové štarty
+enemy-aircraft-normal = Normálna
+    .facts =
+        Podľa situácie a protivníkov
+        Predvolené nastavenie
+enemy-aircraft-high = Veľa
+    .facts =
+        Druhá hliadka vedľa každej
+        Poplachové štarty dvakrát častejšie
+section-support = Podpora
+support-none = Žiadna
+    .facts =
+        Letíte sami
+support-wingman = Wingman
+    .facts =
+        AI wingman vo vašom type lietadla
+        Plní vaše rádiové rozkazy
+support-sead = Balík SEAD
+    .facts =
+        F-16 štartujú pred vami
+        HARMy na stanovištia SAM na vašej trase
+support-both = Wingman + SEAD
+    .facts =
+        AI wingman a F-16 pred vami
+        HARMy na stanovištia SAM na vašej trase
 ff-title = Voľný let
 ff-summary = Nikde žiadne nepriateľské sily: len spojenecké lietadlá a jednotky. Leťte, kam chcete.
 ff-objective = Navrhovaná trasa: { $route }, potom späť na { $base }.

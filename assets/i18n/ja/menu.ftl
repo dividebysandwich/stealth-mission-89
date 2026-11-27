@@ -128,6 +128,56 @@ opponents-free = フリーフライト
     .facts =
         敵はいない、味方機のみ
         ランダムな地点を巡るルート、または好きな場所へ
+section-air-defences = 防空
+air-defences-none = なし
+    .facts =
+        SAMサイトも対空砲もなし
+        脅威は敵戦闘機のみ
+air-defences-low = 少ない
+    .facts =
+        SAMサイトは約半分、旧式
+        対空砲は半分
+air-defences-normal = 通常
+    .facts =
+        状況と敵の練度による
+        既定の設定
+air-defences-high = 多い
+    .facts =
+        全SAMサイトが稼働、新型
+        対空砲は2倍
+section-enemy-aircraft = 敵機
+enemy-aircraft-none = なし
+    .facts =
+        敵戦闘機なし
+        航空任務の目標機は飛行する
+enemy-aircraft-low = 少数
+    .facts =
+        哨戒機は半分
+        緊急発進は最大2回
+enemy-aircraft-normal = 通常
+    .facts =
+        状況と敵の練度による
+        既定の設定
+enemy-aircraft-high = 多数
+    .facts =
+        各哨戒にもう1隊
+        緊急発進が2倍の頻度
+section-support = 支援
+support-none = なし
+    .facts =
+        単機で飛行
+support-wingman = 僚機
+    .facts =
+        自機と同型のAI僚機
+        無線指示に従う
+support-sead = SEAD編隊
+    .facts =
+        F-16が先に離陸
+        経路上のSAMサイトにHARMを発射
+support-both = 僚機 + SEAD
+    .facts =
+        AI僚機と先行するF-16
+        経路上のSAMサイトにHARMを発射
 ff-title = フリーフライト
 ff-summary = 敵はどこにもいない。味方の航空機と部隊のみ。好きな所へ飛ぼう。
 ff-objective = 推奨ルート：{ $route }、その後 { $base } へ帰投。

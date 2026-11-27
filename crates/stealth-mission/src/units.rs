@@ -50,6 +50,9 @@ pub(crate) fn round_to(v: f64, step: f64) -> i16 {
 #[derive(Deserialize)]
 struct Radar {
     id: String,
+    /// The missile it guides (a SAM site's radar); none for search radars and guns.
+    #[serde(default)]
+    missile: Option<String>,
 }
 
 #[derive(Deserialize, Default, PartialEq)]
@@ -115,6 +118,8 @@ pub struct WeaponInfo {
 /// The units the generator reads.
 pub(crate) struct UnitTables {
     pub radars: Vec<String>,
+    /// Per radar: it guides a missile (a SAM site's).
+    pub sam: Vec<bool>,
     pub planes: Vec<PlaneInfo>,
     pub weapons: Vec<WeaponInfo>,
 }
@@ -151,5 +156,6 @@ pub(crate) fn read(text: &str) -> Result<UnitTables> {
                 Ok(WeaponInfo { id: w.id.clone(), name, bay: w.bay, effect })
             })
             .collect::<Result<_>>()?;
-    Ok(UnitTables { radars: u.radars.into_iter().map(|r| r.id).collect(), planes, weapons })
+    let sam = u.radars.iter().map(|r| r.missile.is_some()).collect();
+    Ok(UnitTables { radars: u.radars.into_iter().map(|r| r.id).collect(), sam, planes, weapons })
 }

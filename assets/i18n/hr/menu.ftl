@@ -128,6 +128,56 @@ opponents-free = Slobodan let
     .facts =
         Bez neprijateljskih snaga, samo prijateljski zrakoplovi
         Letite rutom preko nasumičnih mjesta ili kamo želite
+section-air-defences = Protuzračna obrana
+air-defences-none = Bez
+    .facts =
+        Bez SAM položaja i topova
+        Prijete samo neprijateljski lovci
+air-defences-low = Slaba
+    .facts =
+        Otprilike pola SAM položaja, stariji tipovi
+        Pola topova
+air-defences-normal = Uobičajena
+    .facts =
+        Prema situaciji i protivnicima
+        Zadana razina
+air-defences-high = Jaka
+    .facts =
+        Svi SAM položaji popunjeni, noviji tipovi
+        Dvostruko više topova
+section-enemy-aircraft = Neprijateljski zrakoplovi
+enemy-aircraft-none = Bez
+    .facts =
+        Bez neprijateljskih lovaca
+        Cilj zračne misije ipak leti
+enemy-aircraft-low = Malo
+    .facts =
+        Pola ophodnji
+        Najviše dva uzbunska polijetanja
+enemy-aircraft-normal = Uobičajena
+    .facts =
+        Prema situaciji i protivnicima
+        Zadana razina
+enemy-aircraft-high = Mnogo
+    .facts =
+        Druga ophodnja uz svaku
+        Uzbunska polijetanja dvostruko češće
+section-support = Potpora
+support-none = Bez
+    .facts =
+        Letite sami
+support-wingman = Pratitelj
+    .facts =
+        UI pratitelj u vašem tipu zrakoplova
+        Izvršava vaše radijske naredbe
+support-sead = SEAD paket
+    .facts =
+        F-16 polijeću prije vas
+        HARM-ovi na SAM položaje na vašoj ruti
+support-both = Pratitelj + SEAD
+    .facts =
+        UI pratitelj i F-16 ispred vas
+        HARM-ovi na SAM položaje na vašoj ruti
 ff-title = Slobodan let
 ff-summary = Nigdje neprijateljskih snaga: samo prijateljski zrakoplovi i postrojbe. Letite kamo želite.
 ff-objective = Predložena ruta: { $route }, zatim natrag u { $base }.

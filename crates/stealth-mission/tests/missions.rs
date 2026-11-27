@@ -84,6 +84,7 @@ fn random_missions_do_not_panic() {
                 helicopter: i % 4 == 1,
                 land_bases: false,
                 free_flight: false,
+                ..Default::default()
             };
             let seed = if i % 2 == 0 { Seed::Srand(next() as u16) } else { Seed::Holdrand(next()) };
             let m = generate(data, &s, seed).unwrap_or_else(|e| panic!("{s:?} {seed:?}: {e}"));

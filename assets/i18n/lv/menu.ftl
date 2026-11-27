@@ -128,6 +128,56 @@ opponents-free = Brīvais lidojums
     .facts =
         Nav ienaidnieka spēku, tikai savējo lidmašīnas
         Lidojiet maršrutu pāri nejaušām vietām vai kur vēlaties
+section-air-defences = Pretgaisa aizsardzība
+air-defences-none = Nav
+    .facts =
+        Nav ne SAM pozīciju, ne lielgabalu
+        Bīstami ir tikai ienaidnieka iznīcinātāji
+air-defences-low = Vāja
+    .facts =
+        Apmēram puse SAM pozīciju, vecāki tipi
+        Uz pusi mazāk lielgabalu
+air-defences-normal = Parasta
+    .facts =
+        Atbilstoši situācijai un pretiniekiem
+        Noklusējuma līmenis
+air-defences-high = Spēcīga
+    .facts =
+        Visas SAM pozīcijas darbojas, jaunāki tipi
+        Divreiz vairāk lielgabalu
+section-enemy-aircraft = Ienaidnieka lidmašīnas
+enemy-aircraft-none = Nav
+    .facts =
+        Nav ienaidnieka iznīcinātāju
+        Gaisa uzdevuma mērķis tik un tā lido
+enemy-aircraft-low = Maz
+    .facts =
+        Uz pusi mazāk patruļu
+        Ne vairāk kā divas trauksmes pacelšanās
+enemy-aircraft-normal = Parasta
+    .facts =
+        Atbilstoši situācijai un pretiniekiem
+        Noklusējuma līmenis
+enemy-aircraft-high = Daudz
+    .facts =
+        Otra patruļa blakus katrai
+        Trauksmes pacelšanās divreiz biežāk
+section-support = Atbalsts
+support-none = Nav
+    .facts =
+        Jūs lidojat vieni
+support-wingman = Pārinieks
+    .facts =
+        MI pārinieks jūsu lidmašīnas tipā
+        Izpilda jūsu radio pavēles
+support-sead = SEAD grupa
+    .facts =
+        F-16 paceļas pirms jums
+        HARM pret SAM pozīcijām jūsu maršrutā
+support-both = Pārinieks + SEAD
+    .facts =
+        MI pārinieks un F-16 jums priekšā
+        HARM pret SAM pozīcijām jūsu maršrutā
 ff-title = Brīvais lidojums
 ff-summary = Nekur nav ienaidnieka spēku: tikai savējo lidmašīnas un vienības. Lidojiet, kur vēlaties.
 ff-objective = Ieteiktais maršruts: { $route }, tad atpakaļ uz { $base }.

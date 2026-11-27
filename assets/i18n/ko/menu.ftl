@@ -128,6 +128,56 @@ opponents-free = 자유 비행
     .facts =
         적 없음, 아군 항공기만
         무작위 지점을 도는 경로, 또는 원하는 곳으로
+section-air-defences = 방공
+air-defences-none = 없음
+    .facts =
+        SAM 기지와 대공포 없음
+        위협은 적 전투기뿐
+air-defences-low = 약함
+    .facts =
+        SAM 기지 약 절반, 구형
+        대공포 절반
+air-defences-normal = 보통
+    .facts =
+        상황과 적 수준에 따름
+        기본 설정
+air-defences-high = 강함
+    .facts =
+        모든 SAM 기지 가동, 신형
+        대공포 두 배
+section-enemy-aircraft = 적기
+enemy-aircraft-none = 없음
+    .facts =
+        적 전투기 없음
+        공중 임무의 목표기는 비행함
+enemy-aircraft-low = 적음
+    .facts =
+        초계 절반
+        긴급 출격 최대 2회
+enemy-aircraft-normal = 보통
+    .facts =
+        상황과 적 수준에 따름
+        기본 설정
+enemy-aircraft-high = 많음
+    .facts =
+        초계마다 한 편대 더
+        긴급 출격 두 배로 잦음
+section-support = 지원
+support-none = 없음
+    .facts =
+        단독 비행
+support-wingman = 윙맨
+    .facts =
+        같은 기종의 AI 윙맨
+        무전 지시를 따름
+support-sead = SEAD 편대
+    .facts =
+        F-16이 먼저 이륙
+        경로상의 SAM 기지에 HARM 발사
+support-both = 윙맨 + SEAD
+    .facts =
+        AI 윙맨과 앞서가는 F-16
+        경로상의 SAM 기지에 HARM 발사
 ff-title = 자유 비행
 ff-summary = 어디에도 적이 없습니다. 아군 항공기와 부대만 있습니다. 원하는 곳으로 비행하십시오.
 ff-objective = 추천 경로: { $route }, 그 후 { $base }(으)로 귀환.

@@ -128,6 +128,56 @@ opponents-free = Saoreitilt
     .facts =
         Gan fórsaí namhaid, aerárthaí cairdiúla amháin
         Eitil bealach thar áiteanna randamacha, nó áit ar bith is mian leat
+section-air-defences = Aerchosaint
+air-defences-none = Dada
+    .facts =
+        Gan láithreáin SAM ná gunnaí
+        Níl ach trodaithe namhaid ina mbagairt
+air-defences-low = Éadrom
+    .facts =
+        Thart ar leath na láithreán SAM, cineálacha níos sine
+        Leath na ngunnaí
+air-defences-normal = Gnáth
+    .facts =
+        De réir an staid agus na naimhde
+        An socrú réamhshocraithe
+air-defences-high = Trom
+    .facts =
+        Gach láithreán SAM i bhfeidhm, cineálacha níos nuaí
+        Dhá oiread gunnaí
+section-enemy-aircraft = Aerárthaí namhaid
+enemy-aircraft-none = Dada
+    .facts =
+        Gan trodaithe namhaid
+        Bíonn sprioc misin aeir ag eitilt fós
+enemy-aircraft-low = Beagán
+    .facts =
+        Leath na bpatról
+        Dhá éirí aláraim ar a mhéad
+enemy-aircraft-normal = Gnáth
+    .facts =
+        De réir an staid agus na naimhde
+        An socrú réamhshocraithe
+enemy-aircraft-high = Go leor
+    .facts =
+        Dara patról in aice le gach ceann
+        Éirí aláraim dhá uair chomh minic
+section-support = Tacaíocht
+support-none = Dada
+    .facts =
+        Eitlíonn tú i d'aonar
+support-wingman = Sciathánaí
+    .facts =
+        Sciathánaí IS i do chineál aerárthaigh
+        Glacann sé le d'orduithe raidió
+support-sead = Pacáiste SEAD
+    .facts =
+        Éiríonn F-16anna romhat
+        HARManna ar láithreáin SAM ar do bhealach
+support-both = Sciathánaí + SEAD
+    .facts =
+        Sciathánaí IS, agus F-16anna romhat
+        HARManna ar láithreáin SAM ar do bhealach
 ff-title = Saoreitilt
 ff-summary = Níl fórsaí namhaid in áit ar bith: aerárthaí agus aonaid chairdiúla amháin. Eitil áit ar bith is mian leat.
 ff-objective = Bealach molta: { $route }, ansin ar ais go { $base }.

@@ -128,6 +128,56 @@ opponents-free = Laisvas skrydis
     .facts =
         Jokių priešo pajėgų, tik savi lėktuvai
         Skriskite maršrutu virš atsitiktinių vietų arba kur norite
+section-air-defences = Priešlėktuvinė gynyba
+air-defences-none = Nėra
+    .facts =
+        Jokių SAM pozicijų ir pabūklų
+        Pavojingi tik priešo naikintuvai
+air-defences-low = Silpna
+    .facts =
+        Maždaug pusė SAM pozicijų, senesni tipai
+        Perpus mažiau pabūklų
+air-defences-normal = Įprasta
+    .facts =
+        Pagal padėtį ir priešininkus
+        Numatytasis nustatymas
+air-defences-high = Stipri
+    .facts =
+        Visos SAM pozicijos veikia, naujesni tipai
+        Dvigubai daugiau pabūklų
+section-enemy-aircraft = Priešo lėktuvai
+enemy-aircraft-none = Nėra
+    .facts =
+        Jokių priešo naikintuvų
+        Oro užduoties taikinys vis tiek skrenda
+enemy-aircraft-low = Mažai
+    .facts =
+        Perpus mažiau patrulių
+        Ne daugiau kaip du kilimai pagal aliarmą
+enemy-aircraft-normal = Įprasta
+    .facts =
+        Pagal padėtį ir priešininkus
+        Numatytasis nustatymas
+enemy-aircraft-high = Daug
+    .facts =
+        Antras patrulis šalia kiekvieno
+        Kilimai pagal aliarmą dvigubai dažniau
+section-support = Parama
+support-none = Nėra
+    .facts =
+        Skrendate vieni
+support-wingman = Sparnininkas
+    .facts =
+        DI sparnininkas jūsų lėktuvo tipu
+        Vykdo jūsų radijo komandas
+support-sead = SEAD grupė
+    .facts =
+        F-16 pakyla prieš jus
+        HARM į SAM pozicijas jūsų maršrute
+support-both = Sparnininkas + SEAD
+    .facts =
+        DI sparnininkas ir F-16 priekyje
+        HARM į SAM pozicijas jūsų maršrute
 ff-title = Laisvas skrydis
 ff-summary = Niekur nėra priešo pajėgų: tik savi lėktuvai ir daliniai. Skriskite kur norite.
 ff-objective = Siūlomas maršrutas: { $route }, tada atgal į { $base }.

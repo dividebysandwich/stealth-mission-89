@@ -128,6 +128,56 @@ opponents-free = Free flight
     .facts =
         No enemy forces, only friendly aircraft
         Fly a route over random places, or anywhere you like
+section-air-defences = Air defences
+air-defences-none = None
+    .facts =
+        No SAM sites or guns
+        Only enemy fighters threaten you
+air-defences-low = Light
+    .facts =
+        About half the SAM sites, older types
+        Half the guns
+air-defences-normal = Normal
+    .facts =
+        Set by the situation and opponents
+        Default setting
+air-defences-high = Heavy
+    .facts =
+        Every SAM site manned, newer types
+        Twice the guns
+section-enemy-aircraft = Enemy aircraft
+enemy-aircraft-none = None
+    .facts =
+        No enemy fighters
+        An air mission's target still flies
+enemy-aircraft-low = Few
+    .facts =
+        Half the patrols
+        Bases scramble twice at most
+enemy-aircraft-normal = Normal
+    .facts =
+        Set by the situation and opponents
+        Default setting
+enemy-aircraft-high = Many
+    .facts =
+        A second patrol beside each
+        Bases scramble twice as often
+section-support = Support
+support-none = None
+    .facts =
+        You fly alone
+support-wingman = Wingman
+    .facts =
+        An AI wingman in your aircraft type
+        Takes your radio calls
+support-sead = SEAD package
+    .facts =
+        F-16s take off ahead of you
+        HARMs at the SAM sites on your route
+support-both = Wingman + SEAD
+    .facts =
+        An AI wingman, and F-16s ahead of you
+        HARMs at the SAM sites on your route
 ff-title = Free Flight
 ff-summary = No enemy forces anywhere: only friendly aircraft and units. Fly wherever you like.
 ff-objective = Suggested route: { $route }, then back to { $base }.

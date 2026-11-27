@@ -128,6 +128,56 @@ opponents-free = Zbor liber
     .facts =
         Fără forțe inamice, doar avioane prietene
         Zburați un traseu peste locuri aleatorii sau oriunde doriți
+section-air-defences = Apărare antiaeriană
+air-defences-none = Deloc
+    .facts =
+        Fără situri SAM sau tunuri
+        Doar avioanele de vânătoare inamice sunt o amenințare
+air-defences-low = Slabă
+    .facts =
+        Cam jumătate din siturile SAM, tipuri mai vechi
+        Jumătate din tunuri
+air-defences-normal = Normală
+    .facts =
+        După situație și adversari
+        Setarea implicită
+air-defences-high = Puternică
+    .facts =
+        Toate siturile SAM active, tipuri mai noi
+        De două ori mai multe tunuri
+section-enemy-aircraft = Avioane inamice
+enemy-aircraft-none = Deloc
+    .facts =
+        Fără avioane de vânătoare inamice
+        Ținta unei misiuni aeriene zboară totuși
+enemy-aircraft-low = Puține
+    .facts =
+        Jumătate din patrule
+        Cel mult două decolări de alarmă
+enemy-aircraft-normal = Normală
+    .facts =
+        După situație și adversari
+        Setarea implicită
+enemy-aircraft-high = Multe
+    .facts =
+        O a doua patrulă lângă fiecare
+        Decolări de alarmă de două ori mai dese
+section-support = Sprijin
+support-none = Deloc
+    .facts =
+        Zbori singur
+support-wingman = Coechipier
+    .facts =
+        Un coechipier IA pe tipul tău de avion
+        Execută ordinele tale radio
+support-sead = Pachet SEAD
+    .facts =
+        F-16 decolează înaintea ta
+        HARM asupra siturilor SAM de pe ruta ta
+support-both = Coechipier + SEAD
+    .facts =
+        Un coechipier IA, și F-16 înaintea ta
+        HARM asupra siturilor SAM de pe ruta ta
 ff-title = Zbor liber
 ff-summary = Nicăieri forțe inamice: doar avioane și unități prietene. Zburați oriunde doriți.
 ff-objective = Traseu sugerat: { $route }, apoi înapoi la { $base }.

@@ -14,6 +14,9 @@ Starting
     --roe <0..2>               cold war .. conventional war (default 1)
     --opponents <0..3>         enemy skill (default 1)
     --free-flight              no enemy at all, a route over random places
+    --air-defences <level>     none, low, normal, high: the enemy's SAM sites and guns
+    --enemy-aircraft <level>   none, low, normal, high: the enemy's fighters
+    --sead                     a SEAD package takes off ahead of the player
     --start-hour <0..23>       takeoff time
     --moon <0..7>              moon phase in eighths (0 new, 4 full; default: the date's)
     --start-base <name>        take off from another airfield

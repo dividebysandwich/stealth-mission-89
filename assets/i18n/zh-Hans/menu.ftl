@@ -128,6 +128,56 @@ opponents-free = 自由飞行
     .facts =
         没有敌军，只有友军飞机
         沿随机地点的航线飞行，或随意飞往任何地方
+section-air-defences = 防空
+air-defences-none = 无
+    .facts =
+        没有地空导弹阵地和高炮
+        只有敌方战斗机构成威胁
+air-defences-low = 薄弱
+    .facts =
+        约一半地空导弹阵地，型号较旧
+        高炮减半
+air-defences-normal = 普通
+    .facts =
+        取决于局势和对手
+        默认设置
+air-defences-high = 密集
+    .facts =
+        所有地空导弹阵地启用，型号较新
+        高炮加倍
+section-enemy-aircraft = 敌机
+enemy-aircraft-none = 无
+    .facts =
+        没有敌方战斗机
+        空战任务的目标仍会飞行
+enemy-aircraft-low = 少
+    .facts =
+        巡逻减半
+        最多两次紧急起飞
+enemy-aircraft-normal = 普通
+    .facts =
+        取决于局势和对手
+        默认设置
+enemy-aircraft-high = 多
+    .facts =
+        每支巡逻旁再加一支
+        紧急起飞频率加倍
+section-support = 支援
+support-none = 无
+    .facts =
+        单机飞行
+support-wingman = 僚机
+    .facts =
+        与你同型的 AI 僚机
+        听从你的无线电指令
+support-sead = SEAD 编队
+    .facts =
+        F-16 先于你起飞
+        用 HARM 攻击航线上的地空导弹阵地
+support-both = 僚机 + SEAD
+    .facts =
+        AI 僚机，以及先行的 F-16
+        用 HARM 攻击航线上的地空导弹阵地
 ff-title = 自由飞行
 ff-summary = 任何地方都没有敌军：只有友军飞机和部队。想飞到哪里就飞到哪里。
 ff-objective = 建议航线：{ $route }，然后返回 { $base }。

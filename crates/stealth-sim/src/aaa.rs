@@ -815,7 +815,31 @@ impl Sim {
                 at(&mut units, GroundKind::Manpads, spot);
             }
         }
-        units.truncate(MAX_UNITS);
+        // A single mission's choice of air defences: every other gun, or a second beside each
+        // (twice as many at most).
+        let mut most = MAX_UNITS;
+        match m.settings.air_defences {
+            stealth_mission::Amount::Low => {
+                let mut k = 0;
+                units.retain(|_| {
+                    k += 1;
+                    k % 2 == 1
+                });
+            }
+            stealth_mission::Amount::High => {
+                let extra: Vec<GroundUnit> = units
+                    .iter()
+                    .filter_map(|u| {
+                        let (x, y, t) = ring_spot(&mut rng, &water, (u.x, u.y), 3, 12)?;
+                        Some(GroundUnit { x, y, aim_az: t as f32, ..*u })
+                    })
+                    .collect();
+                units.extend(extra);
+                most = 2 * MAX_UNITS;
+            }
+            _ => {}
+        }
+        units.truncate(most);
         self.units = units;
         self.aaa_rng = Some(rng);
     }

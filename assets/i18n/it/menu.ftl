@@ -128,6 +128,56 @@ opponents-free = Volo libero
     .facts =
         Nessuna forza nemica, solo aerei amici
         Segui una rotta su luoghi a caso, o vola dove vuoi
+section-air-defences = Difesa aerea
+air-defences-none = Nessuna
+    .facts =
+        Nessun sito SAM né cannoni
+        Solo i caccia nemici sono una minaccia
+air-defences-low = Leggera
+    .facts =
+        Circa metà dei siti SAM, tipi più vecchi
+        Metà dei cannoni
+air-defences-normal = Normale
+    .facts =
+        Secondo la situazione e gli avversari
+        Livello predefinito
+air-defences-high = Pesante
+    .facts =
+        Tutti i siti SAM attivi, tipi più recenti
+        Il doppio dei cannoni
+section-enemy-aircraft = Aerei nemici
+enemy-aircraft-none = Nessuna
+    .facts =
+        Nessun caccia nemico
+        Il bersaglio di una missione aerea vola comunque
+enemy-aircraft-low = Pochi
+    .facts =
+        Metà delle pattuglie
+        Al massimo due decolli su allarme
+enemy-aircraft-normal = Normale
+    .facts =
+        Secondo la situazione e gli avversari
+        Livello predefinito
+enemy-aircraft-high = Molti
+    .facts =
+        Una seconda pattuglia accanto a ciascuna
+        Decolli su allarme due volte più frequenti
+section-support = Supporto
+support-none = Nessuna
+    .facts =
+        Voli da solo
+support-wingman = Gregario
+    .facts =
+        Un gregario IA sul tuo tipo di aereo
+        Esegue i tuoi ordini radio
+support-sead = Pacchetto SEAD
+    .facts =
+        Gli F-16 decollano prima di te
+        HARM contro i siti SAM sulla tua rotta
+support-both = Gregario + SEAD
+    .facts =
+        Un gregario IA, e F-16 davanti a te
+        HARM contro i siti SAM sulla tua rotta
 ff-title = Volo libero
 ff-summary = Nessuna forza nemica da nessuna parte: solo aerei e unità amici. Vola dove vuoi.
 ff-objective = Rotta suggerita: { $route }, poi ritorno a { $base }.

@@ -128,6 +128,56 @@ opponents-free = Szabad repülés
     .facts =
         Nincsenek ellenséges erők, csak baráti gépek
         Repülj egy útvonalat véletlen helyek fölött, vagy bárhová
+section-air-defences = Légvédelem
+air-defences-none = Nincs
+    .facts =
+        Nincs SAM-állás és légvédelmi löveg
+        Csak ellenséges vadászok fenyegetnek
+air-defences-low = Gyenge
+    .facts =
+        A SAM-állások mintegy fele, régebbi típusok
+        Feleannyi löveg
+air-defences-normal = Normál
+    .facts =
+        A helyzet és az ellenfelek szerint
+        Alapértelmezett fokozat
+air-defences-high = Erős
+    .facts =
+        Minden SAM-állás működik, újabb típusok
+        Kétszer annyi löveg
+section-enemy-aircraft = Ellenséges gépek
+enemy-aircraft-none = Nincs
+    .facts =
+        Nincsenek ellenséges vadászok
+        A légi küldetés célpontja így is repül
+enemy-aircraft-low = Kevés
+    .facts =
+        Feleannyi járőr
+        Legfeljebb két riasztásos felszállás
+enemy-aircraft-normal = Normál
+    .facts =
+        A helyzet és az ellenfelek szerint
+        Alapértelmezett fokozat
+enemy-aircraft-high = Sok
+    .facts =
+        Egy második járőr mindegyik mellett
+        Kétszer gyakoribb riasztásos felszállások
+section-support = Támogatás
+support-none = Nincs
+    .facts =
+        Egyedül repülsz
+support-wingman = Kísérő
+    .facts =
+        MI-kísérő a te géptípusodban
+        Teljesíti a rádióparancsaidat
+support-sead = SEAD-kötelék
+    .facts =
+        F-16-osok szállnak fel előtted
+        HARM-ok az útvonalad SAM-állásaira
+support-both = Kísérő + SEAD
+    .facts =
+        MI-kísérő, és F-16-osok előtted
+        HARM-ok az útvonalad SAM-állásaira
 ff-title = Szabad repülés
 ff-summary = Sehol nincsenek ellenséges erők: csak baráti repülőgépek és egységek. Repülj, amerre kedved tartja.
 ff-objective = Javasolt útvonal: { $route }, majd vissza ide: { $base }.

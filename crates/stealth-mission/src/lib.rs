@@ -1,5 +1,6 @@
 pub mod airlift;
 pub mod asw;
+pub mod defences;
 pub mod drones;
 pub mod free_flight;
 mod generator;
@@ -103,6 +104,38 @@ pub enum Plane {
     Lockheed = 1,
 }
 
+/// How much of something the enemy has (a single mission's air defences, its aircraft):
+/// `Normal` is the classic game's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum Amount {
+    None,
+    Low,
+    #[default]
+    Normal,
+    High,
+}
+
+impl Amount {
+    pub const ALL: [Amount; 4] = [Self::None, Self::Low, Self::Normal, Self::High];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Low => "low",
+            Self::Normal => "normal",
+            Self::High => "high",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.name().eq_ignore_ascii_case(s))
+    }
+
+    pub fn is_normal(&self) -> bool {
+        *self == Self::Normal
+    }
+}
+
 /// Player choices that feed the generator.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MissionSettings {
@@ -145,6 +178,18 @@ pub struct MissionSettings {
     /// ([`free_flight`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub free_flight: bool,
+    /// The enemy's SAM sites (and with the realistic air defence its guns): fewer and older,
+    /// or more and newer ([`defences`]).
+    #[serde(default, skip_serializing_if = "Amount::is_normal")]
+    pub air_defences: Amount,
+    /// The enemy's fighters: patrols in the air at the start and how often bases scramble
+    /// more (the simulation's).
+    #[serde(default, skip_serializing_if = "Amount::is_normal")]
+    pub enemy_aircraft: Amount,
+    /// A friendly SEAD package takes off ahead of the player and fires anti-radiation missiles
+    /// at the SAM sites along his route (the simulation's).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sead: bool,
 }
 
 fn clear_sky() -> Option<Sky> {
@@ -169,6 +214,9 @@ impl Default for MissionSettings {
             helicopter: false,
             land_bases: false,
             free_flight: false,
+            air_defences: Amount::Normal,
+            enemy_aircraft: Amount::Normal,
+            sead: false,
         }
     }
 }
@@ -482,6 +530,8 @@ pub fn generate_exact(data: &GameData, s: &MissionSettings, input: &GenInput) ->
     .helicopter(s.helicopter)
     .land_bases(s.land_bases)
     .run();
+    let mut g = g;
+    defences::apply(&mut g.world, s.air_defences, x, &th.world, input.holdrand);
     let mut avail = input.weapon_unavailable;
     avail[0] = lockheed as u8;
     avail[1] = lockheed as u8;

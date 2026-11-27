@@ -128,6 +128,56 @@ opponents-free = Freier Flug
     .facts =
         Keine feindlichen Kräfte, nur eigene Flugzeuge
         Eine Route über zufällige Orte fliegen, oder wohin du willst
+section-air-defences = Luftabwehr
+air-defences-none = Keine
+    .facts =
+        Keine SAM-Stellungen oder Flak
+        Nur feindliche Jäger sind eine Gefahr
+air-defences-low = Schwach
+    .facts =
+        Etwa die Hälfte der SAM-Stellungen, ältere Typen
+        Halb so viel Flak
+air-defences-normal = Normal
+    .facts =
+        Wie Lage und Gegner sie vorgeben
+        Standardstufe
+air-defences-high = Stark
+    .facts =
+        Jede SAM-Stellung besetzt, neuere Typen
+        Doppelt so viel Flak
+section-enemy-aircraft = Feindflugzeuge
+enemy-aircraft-none = Keine
+    .facts =
+        Keine feindlichen Jäger
+        Das Ziel eines Luftkampfeinsatzes fliegt trotzdem
+enemy-aircraft-low = Wenige
+    .facts =
+        Halb so viele Patrouillen
+        Höchstens zwei Alarmstarts
+enemy-aircraft-normal = Normal
+    .facts =
+        Wie Lage und Gegner sie vorgeben
+        Standardstufe
+enemy-aircraft-high = Viele
+    .facts =
+        Eine zweite Patrouille neben jeder
+        Doppelt so häufige Alarmstarts
+section-support = Unterstützung
+support-none = Keine
+    .facts =
+        Allein unterwegs
+support-wingman = Rottenflieger
+    .facts =
+        Ein KI-Rottenflieger im eigenen Flugzeugtyp
+        Nimmt Funkbefehle an
+support-sead = SEAD-Verband
+    .facts =
+        F-16 starten vorab
+        HARMs auf die SAM-Stellungen an der Route
+support-both = Rottenflieger + SEAD
+    .facts =
+        Ein KI-Rottenflieger und F-16 vorab
+        HARMs auf die SAM-Stellungen an der Route
 ff-title = Freier Flug
 ff-summary = Nirgends feindliche Kräfte: nur eigene Flugzeuge und Einheiten. Flieg, wohin du willst.
 ff-objective = Vorgeschlagene Route: { $route }, dann zurück nach { $base }.

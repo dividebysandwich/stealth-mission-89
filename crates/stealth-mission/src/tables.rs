@@ -197,6 +197,9 @@ pub struct MissionTables {
     pub training: (usize, usize),
     /// Per radar type: (upgrade, downgrade).
     pub threat_steps: Vec<(i16, i16)>,
+    /// Per radar type: a SAM site's (it guides a missile).
+    #[serde(default)]
+    pub sam_radars: Vec<bool>,
     /// Stores that can run short, each with its stand-in (weapon types).
     pub shortages: Vec<(u8, u8)>,
     pub planes: Vec<PlaneInfo>,
@@ -238,6 +241,7 @@ impl MissionTables {
             templates,
             training,
             threat_steps,
+            sam_radars: u.sam,
             shortages,
             planes: u.planes,
             weapons: u.weapons,

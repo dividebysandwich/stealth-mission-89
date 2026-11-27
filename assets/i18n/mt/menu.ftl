@@ -128,6 +128,56 @@ opponents-free = Titjira ħielsa
     .facts =
         L-ebda forza għadwa, ajruplani ħbieb biss
         Ittajjar rotta fuq postijiet każwali, jew kull fejn trid
+section-air-defences = Difiża tal-ajru
+air-defences-none = Xejn
+    .facts =
+        L-ebda sit SAM jew kanuni
+        Il-ġellieda tal-għadu biss huma theddida
+air-defences-low = Ħafifa
+    .facts =
+        Madwar nofs is-siti SAM, tipi eqdem
+        Nofs il-kanuni
+air-defences-normal = Normali
+    .facts =
+        Skont is-sitwazzjoni u l-avversarji
+        Issettjar predefinit
+air-defences-high = Tqila
+    .facts =
+        Is-siti SAM kollha attivi, tipi ġodda
+        Id-doppju tal-kanuni
+section-enemy-aircraft = Ajruplani tal-għadu
+enemy-aircraft-none = Xejn
+    .facts =
+        L-ebda ġellied tal-għadu
+        Il-mira ta' missjoni tal-ajru xorta ttir
+enemy-aircraft-low = Ftit
+    .facts =
+        Nofs il-pattulji
+        L-iktar żewġ tluq ta' allarm
+enemy-aircraft-normal = Normali
+    .facts =
+        Skont is-sitwazzjoni u l-avversarji
+        Issettjar predefinit
+enemy-aircraft-high = Ħafna
+    .facts =
+        It-tieni pattulja ħdejn kull waħda
+        Tluq ta' allarm darbtejn aktar spiss
+section-support = Appoġġ
+support-none = Xejn
+    .facts =
+        Ittir waħdek
+support-wingman = Wingman
+    .facts =
+        Wingman IA fit-tip tal-ajruplan tiegħek
+        Jobdi l-ordnijiet tar-radju tiegħek
+support-sead = Pakkett SEAD
+    .facts =
+        F-16 jitilqu qablek
+        HARM fuq is-siti SAM fir-rotta tiegħek
+support-both = Wingman + SEAD
+    .facts =
+        Wingman IA, u F-16 quddiemek
+        HARM fuq is-siti SAM fir-rotta tiegħek
 ff-title = Titjira Ħielsa
 ff-summary = L-ebda forza għadwa mkien: ajruplani u unitajiet ħbieb biss. Ittajjar fejn trid.
 ff-objective = Rotta proposta: { $route }, imbagħad lura lejn { $base }.

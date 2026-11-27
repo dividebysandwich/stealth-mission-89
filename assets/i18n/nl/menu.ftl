@@ -128,6 +128,56 @@ opponents-free = Vrije vlucht
     .facts =
         Geen vijandelijke troepen, alleen eigen vliegtuigen
         Vlieg een route over willekeurige plaatsen, of waarheen je wilt
+section-air-defences = Luchtverdediging
+air-defences-none = Geen
+    .facts =
+        Geen SAM-stellingen of kanonnen
+        Alleen vijandelijke jagers vormen een gevaar
+air-defences-low = Licht
+    .facts =
+        Ongeveer de helft van de SAM-stellingen, oudere types
+        Half zoveel kanonnen
+air-defences-normal = Normaal
+    .facts =
+        Zoals situatie en tegenstanders het bepalen
+        Standaardinstelling
+air-defences-high = Zwaar
+    .facts =
+        Elke SAM-stelling bemand, nieuwere types
+        Twee keer zoveel kanonnen
+section-enemy-aircraft = Vijandelijke toestellen
+enemy-aircraft-none = Geen
+    .facts =
+        Geen vijandelijke jagers
+        Het doel van een luchtmissie vliegt toch
+enemy-aircraft-low = Weinig
+    .facts =
+        Half zoveel patrouilles
+        Hoogstens twee alarmstarts
+enemy-aircraft-normal = Normaal
+    .facts =
+        Zoals situatie en tegenstanders het bepalen
+        Standaardinstelling
+enemy-aircraft-high = Veel
+    .facts =
+        Een tweede patrouille naast elke
+        Twee keer zo vaak alarmstarts
+section-support = Steun
+support-none = Geen
+    .facts =
+        Je vliegt alleen
+support-wingman = Wingman
+    .facts =
+        Een AI-wingman in jouw type toestel
+        Volgt je radio-opdrachten
+support-sead = SEAD-pakket
+    .facts =
+        F-16's stijgen voor je op
+        HARMs op de SAM-stellingen langs je route
+support-both = Wingman + SEAD
+    .facts =
+        Een AI-wingman, en F-16's voor je uit
+        HARMs op de SAM-stellingen langs je route
 ff-title = Vrije vlucht
 ff-summary = Nergens vijandelijke troepen: alleen eigen vliegtuigen en eenheden. Vlieg waarheen je wilt.
 ff-objective = Voorgestelde route: { $route }, daarna terug naar { $base }.

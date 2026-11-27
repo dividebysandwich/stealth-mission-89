@@ -128,6 +128,56 @@ opponents-free = Voo livre
     .facts =
         Sem forças inimigas, só aeronaves aliadas
         Voe uma rota sobre lugares aleatórios, ou para onde quiser
+section-air-defences = Defesa aérea
+air-defences-none = Nenhuma
+    .facts =
+        Nenhum sítio SAM nem canhões
+        Só os caças inimigos são ameaça
+air-defences-low = Leve
+    .facts =
+        Cerca de metade dos sítios SAM, tipos mais antigos
+        Metade dos canhões
+air-defences-normal = Normal
+    .facts =
+        Conforme a situação e os adversários
+        Nível padrão
+air-defences-high = Pesada
+    .facts =
+        Todos os sítios SAM ativos, tipos mais novos
+        O dobro de canhões
+section-enemy-aircraft = Aeronaves inimigas
+enemy-aircraft-none = Nenhuma
+    .facts =
+        Nenhum caça inimigo
+        O alvo de uma missão aérea ainda voa
+enemy-aircraft-low = Poucas
+    .facts =
+        Metade das patrulhas
+        No máximo duas decolagens de alerta
+enemy-aircraft-normal = Normal
+    .facts =
+        Conforme a situação e os adversários
+        Nível padrão
+enemy-aircraft-high = Muitas
+    .facts =
+        Uma segunda patrulha ao lado de cada uma
+        Decolagens de alerta duas vezes mais frequentes
+section-support = Apoio
+support-none = Nenhuma
+    .facts =
+        Você voa sozinho
+support-wingman = Ala
+    .facts =
+        Um ala de IA no seu tipo de aeronave
+        Atende às suas ordens de rádio
+support-sead = Pacote SEAD
+    .facts =
+        F-16 decolam antes de você
+        HARMs nos sítios SAM da sua rota
+support-both = Ala + SEAD
+    .facts =
+        Um ala de IA, e F-16 à sua frente
+        HARMs nos sítios SAM da sua rota
 ff-title = Voo livre
 ff-summary = Nenhuma força inimiga em lugar algum: só aeronaves e unidades aliadas. Voe para onde quiser.
 ff-objective = Rota sugerida: { $route }, depois volte para { $base }.

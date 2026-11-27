@@ -128,6 +128,56 @@ opponents-free = Lot swobodny
     .facts =
         Brak sił wroga, tylko sojusznicze samoloty
         Leć trasą nad losowymi miejscami albo dokądkolwiek
+section-air-defences = Obrona przeciwlotnicza
+air-defences-none = Brak
+    .facts =
+        Brak stanowisk SAM i działek
+        Zagrażają tylko wrogie myśliwce
+air-defences-low = Słaba
+    .facts =
+        Około połowy stanowisk SAM, starsze typy
+        Połowa działek
+air-defences-normal = Normalna
+    .facts =
+        Zgodnie z sytuacją i przeciwnikami
+        Poziom domyślny
+air-defences-high = Silna
+    .facts =
+        Wszystkie stanowiska SAM obsadzone, nowsze typy
+        Dwa razy więcej działek
+section-enemy-aircraft = Wrogie samoloty
+enemy-aircraft-none = Brak
+    .facts =
+        Brak wrogich myśliwców
+        Cel misji powietrznej nadal leci
+enemy-aircraft-low = Mało
+    .facts =
+        Połowa patroli
+        Najwyżej dwa starty alarmowe
+enemy-aircraft-normal = Normalna
+    .facts =
+        Zgodnie z sytuacją i przeciwnikami
+        Poziom domyślny
+enemy-aircraft-high = Dużo
+    .facts =
+        Drugi patrol obok każdego
+        Starty alarmowe dwa razy częściej
+section-support = Wsparcie
+support-none = Brak
+    .facts =
+        Lecisz sam
+support-wingman = Skrzydłowy
+    .facts =
+        Skrzydłowy SI w twoim typie samolotu
+        Wykonuje twoje rozkazy radiowe
+support-sead = Pakiet SEAD
+    .facts =
+        F-16 startują przed tobą
+        HARM-y na stanowiska SAM na twojej trasie
+support-both = Skrzydłowy + SEAD
+    .facts =
+        Skrzydłowy SI i F-16 przed tobą
+        HARM-y na stanowiska SAM na twojej trasie
 ff-title = Lot swobodny
 ff-summary = Nigdzie nie ma sił wroga: tylko sojusznicze samoloty i jednostki. Leć, dokąd chcesz.
 ff-objective = Proponowana trasa: { $route }, potem powrót do { $base }.

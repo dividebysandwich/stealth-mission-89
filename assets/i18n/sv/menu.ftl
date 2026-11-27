@@ -128,6 +128,56 @@ opponents-free = Fri flygning
     .facts =
         Inga fientliga styrkor, bara egna flygplan
         Flyg en rutt över slumpvisa platser, eller vart du vill
+section-air-defences = Luftvärn
+air-defences-none = Inget
+    .facts =
+        Inga SAM-platser eller kanoner
+        Bara fientliga jaktplan är ett hot
+air-defences-low = Lätt
+    .facts =
+        Ungefär hälften av SAM-platserna, äldre typer
+        Hälften av kanonerna
+air-defences-normal = Normalt
+    .facts =
+        Som läget och motståndarna ger
+        Standardnivå
+air-defences-high = Tungt
+    .facts =
+        Varje SAM-plats bemannad, nyare typer
+        Dubbelt så många kanoner
+section-enemy-aircraft = Fientliga flygplan
+enemy-aircraft-none = Inget
+    .facts =
+        Inga fientliga jaktplan
+        Målet för ett luftuppdrag flyger ändå
+enemy-aircraft-low = Få
+    .facts =
+        Hälften av patrullerna
+        Högst två larmstarter
+enemy-aircraft-normal = Normalt
+    .facts =
+        Som läget och motståndarna ger
+        Standardnivå
+enemy-aircraft-high = Många
+    .facts =
+        En andra patrull bredvid varje
+        Dubbelt så täta larmstarter
+section-support = Understöd
+support-none = Inget
+    .facts =
+        Du flyger ensam
+support-wingman = Rotekamrat
+    .facts =
+        En AI-rotekamrat i din flygplanstyp
+        Lyder dina radioorder
+support-sead = SEAD-paket
+    .facts =
+        F-16 startar före dig
+        HARM mot SAM-platserna längs din rutt
+support-both = Rotekamrat + SEAD
+    .facts =
+        En AI-rotekamrat, och F-16 före dig
+        HARM mot SAM-platserna längs din rutt
 ff-title = Fri flygning
 ff-summary = Inga fientliga styrkor någonstans: bara egna flygplan och förband. Flyg vart du vill.
 ff-objective = Föreslagen rutt: { $route }, sedan tillbaka till { $base }.

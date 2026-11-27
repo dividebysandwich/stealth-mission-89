@@ -6,7 +6,7 @@ use bevy_egui::{
     PrimaryEguiContext, egui,
 };
 
-use stealth_mission::{Mission, MissionKind, Sky};
+use stealth_mission::{Amount, Mission, MissionKind, Sky};
 
 use crate::aircraft::AircraftKind;
 use crate::layout::{Flow, ListFit, Span, Split, screen_window};
@@ -68,6 +68,12 @@ pub struct MenuState {
     pub opponents: u8,
     /// Single missions: free flight, no enemy at all (the opponents' choice beyond Elite).
     pub free_flight: bool,
+    /// Single missions: how many SAM sites and guns, and enemy fighters.
+    pub air_defences: Amount,
+    pub enemy_aircraft: Amount,
+    /// Single missions: a SEAD package takes off ahead of the player (his wingman is
+    /// `Settings::wingman`).
+    pub sead: bool,
     pub lockheed: bool,
     /// A hosted coop campaign's friendly fire.
     pub friendly_fire: bool,
@@ -140,6 +146,8 @@ impl MenuState {
         (self.theater, self.roe, self.kind, self.opponents) =
             (s.theater, s.roe, s.kind, s.opponents);
         self.free_flight = s.free_flight;
+        (self.air_defences, self.enemy_aircraft, self.sead) =
+            (s.air_defences, s.enemy_aircraft, s.sead);
         self.lockheed = s.plane == stealth_mission::Plane::Lockheed;
         (self.weather, self.cloud_cover, self.wind) = (s.weather, s.cloud_cover, s.wind);
         (self.start_hour, self.moon) = (s.start_hour, s.moon);
@@ -160,6 +168,9 @@ impl Default for MenuState {
             kind: MissionKind::Strike,
             opponents: 1,
             free_flight: false,
+            air_defences: Amount::Normal,
+            enemy_aircraft: Amount::Normal,
+            sead: false,
             lockheed: false,
             friendly_fire: false,
             airframe_losses: false,
@@ -264,6 +275,9 @@ fn relaunch_in_vr(state: &MenuState, settings: &crate::settings::Settings) -> st
     .args(["--roe", &state.roe.to_string(), "--kind", &state.kind.id().to_string()])
     .args(["--opponents", &state.opponents.to_string()])
     .args(state.free_flight.then_some("--free-flight"))
+    .args(["--air-defences", state.air_defences.name()])
+    .args(["--enemy-aircraft", state.enemy_aircraft.name()])
+    .args(state.sead.then_some("--sead"))
     .args(["--weather", state.weather.map_or("random", Sky::name)]);
     if let Some(c) = state.cloud_cover {
         cmd.args(["--cloud-cover", &c.to_string()]);
@@ -370,6 +384,7 @@ fn settings_args(cmd: &mut std::process::Command, settings: &crate::settings::Se
         (settings.tacview_real_time, "--tacview-real-time"),
         (settings.air_defence, "--air-defence"),
         (settings.head_tracking, "--head-tracking"),
+        (settings.wingman, "--wingman"),
     ] {
         if on {
             cmd.arg(flag);
@@ -1347,6 +1362,35 @@ fn mission_options(ui: &mut egui::Ui, state: &mut MenuState) {
     }
 }
 
+/// A single mission's air defences or enemy aircraft (`id`: the section's and the levels'
+/// message ids, `section-<id>` and `<id>-<level>`).
+fn amount_options(ui: &mut egui::Ui, amount: &mut Amount, id: &str) {
+    section(ui, t!(&format!("section-{id}")));
+    let options = Amount::ALL.into_iter().map(|a| {
+        let key = format!("{id}-{}", a.name());
+        (a, t!(&key), t_lines!(&format!("{key}.facts")))
+    });
+    dropdown(ui, id, amount, options);
+}
+
+/// A single mission's friendly support: an AI wingman (the player's setting, also in the
+/// loadout), a SEAD package ahead of him, both or none.
+fn support_options(ui: &mut egui::Ui, sead: &mut bool, settings: &mut SettingsMut) {
+    section(ui, t!("section-support"));
+    let ids = ["support-none", "support-wingman", "support-sead", "support-both"];
+    let options = (0..4u8).map(|k| {
+        let id = ids[k as usize];
+        (k, t!(id), t_lines!(&format!("{id}.facts")))
+    });
+    let was = settings.wingman as u8 | (*sead as u8) << 1;
+    let mut choice = was;
+    dropdown(ui, "support", &mut choice, options);
+    if choice != was {
+        *sead = choice & 2 != 0;
+        settings.wingman = choice & 1 != 0;
+    }
+}
+
 /// The moon's phase (with the time of day switch on).
 pub(crate) fn moon_options(ui: &mut egui::Ui, moon: &mut Option<u8>) {
     section(ui, t!("section-moon"));
@@ -1924,6 +1968,10 @@ pub(crate) fn menu_ui(
             if state.free_flight {
                 mission_settings.free_flight = true;
                 mission_settings.opponents = 0;
+            } else {
+                mission_settings.air_defences = state.air_defences;
+                mission_settings.enemy_aircraft = state.enemy_aircraft;
+                mission_settings.sead = state.sead;
             }
             crate::mission::settings_for(&mut mission_settings, settings.aircraft);
             let aircraft = settings.aircraft;
@@ -1971,6 +2019,7 @@ pub(crate) fn menu_ui(
         state.wind,
         state.start_hour,
         state.moon,
+        (state.air_defences, state.enemy_aircraft, state.sead),
     );
     let realistic_before = state.realistic(settings.aircraft);
     // One window at a time: the open dialog replaces the screen it was opened from.
@@ -2027,6 +2076,11 @@ pub(crate) fn menu_ui(
                                 opponent_options(ui, &mut state.opponents);
                             });
                             mission_options(ui, state);
+                            ui.add_enabled_ui(!state.free_flight, |ui| {
+                                amount_options(ui, &mut state.air_defences, "air-defences");
+                                amount_options(ui, &mut state.enemy_aircraft, "enemy-aircraft");
+                            });
+                            support_options(ui, &mut state.sead, &mut settings);
                         });
                     });
                     split.lists(ui, theaters, mission);
@@ -2266,6 +2320,7 @@ pub(crate) fn menu_ui(
             state.wind,
             state.start_hour,
             state.moon,
+            (state.air_defences, state.enemy_aircraft, state.sead),
         )
     {
         // Changing the mission's options leaves career mode.

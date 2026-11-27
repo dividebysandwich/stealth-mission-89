@@ -44,6 +44,10 @@ pub struct Prefs {
     pub opponents: u8,
     /// Single missions: free flight (no enemy).
     pub free_flight: bool,
+    /// Single missions: the enemy's air defences and fighters, a SEAD package.
+    pub air_defences: stealth_mission::Amount,
+    pub enemy_aircraft: stealth_mission::Amount,
+    pub sead: bool,
     pub lockheed: bool,
     pub friendly_fire: bool,
     pub airframe_losses: bool,
@@ -149,6 +153,9 @@ impl Default for Prefs {
             kind: menu.kind,
             opponents: menu.opponents,
             free_flight: menu.free_flight,
+            air_defences: menu.air_defences,
+            enemy_aircraft: menu.enemy_aircraft,
+            sead: menu.sead,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
             airframe_losses: menu.airframe_losses,
@@ -282,6 +289,9 @@ impl Prefs {
             kind: menu.kind,
             opponents: menu.opponents,
             free_flight: menu.free_flight,
+            air_defences: menu.air_defences,
+            enemy_aircraft: menu.enemy_aircraft,
+            sead: menu.sead,
             lockheed: menu.lockheed,
             friendly_fire: menu.friendly_fire,
             airframe_losses: menu.airframe_losses,
@@ -372,6 +382,8 @@ impl Prefs {
         menu.kind = self.kind;
         menu.opponents = self.opponents.min(3);
         menu.free_flight = self.free_flight;
+        (menu.air_defences, menu.enemy_aircraft, menu.sead) =
+            (self.air_defences, self.enemy_aircraft, self.sead);
         menu.lockheed = self.lockheed;
         menu.friendly_fire = self.friendly_fire;
         menu.airframe_losses = self.airframe_losses;

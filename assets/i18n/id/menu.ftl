@@ -128,6 +128,56 @@ opponents-free = Terbang bebas
     .facts =
         Tanpa pasukan musuh, hanya pesawat kawan
         Terbangi rute di atas tempat acak, atau ke mana saja
+section-air-defences = Pertahanan udara
+air-defences-none = Tidak ada
+    .facts =
+        Tanpa situs SAM maupun meriam
+        Hanya pesawat tempur musuh yang mengancam
+air-defences-low = Ringan
+    .facts =
+        Sekitar separuh situs SAM, tipe lebih tua
+        Separuh meriam
+air-defences-normal = Normal
+    .facts =
+        Sesuai situasi dan lawan
+        Pengaturan bawaan
+air-defences-high = Berat
+    .facts =
+        Semua situs SAM aktif, tipe lebih baru
+        Dua kali lipat meriam
+section-enemy-aircraft = Pesawat musuh
+enemy-aircraft-none = Tidak ada
+    .facts =
+        Tanpa pesawat tempur musuh
+        Target misi udara tetap terbang
+enemy-aircraft-low = Sedikit
+    .facts =
+        Separuh patroli
+        Paling banyak dua lepas landas darurat
+enemy-aircraft-normal = Normal
+    .facts =
+        Sesuai situasi dan lawan
+        Pengaturan bawaan
+enemy-aircraft-high = Banyak
+    .facts =
+        Patroli kedua di samping masing-masing
+        Lepas landas darurat dua kali lebih sering
+section-support = Dukungan
+support-none = Tidak ada
+    .facts =
+        Anda terbang sendiri
+support-wingman = Wingman
+    .facts =
+        Wingman AI dengan tipe pesawat Anda
+        Menjalankan perintah radio Anda
+support-sead = Paket SEAD
+    .facts =
+        F-16 lepas landas lebih dulu
+        HARM ke situs SAM di rute Anda
+support-both = Wingman + SEAD
+    .facts =
+        Wingman AI, dan F-16 di depan Anda
+        HARM ke situs SAM di rute Anda
 ff-title = Terbang Bebas
 ff-summary = Tidak ada pasukan musuh di mana pun: hanya pesawat dan unit kawan. Terbanglah ke mana saja.
 ff-objective = Rute yang disarankan: { $route }, lalu kembali ke { $base }.
