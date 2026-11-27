@@ -242,6 +242,34 @@ fn stt_target(radar: &Awg9) -> Option<ContactRef> {
         .or_else(|| radar.hits.iter().min_by(|a, b| a.range.total_cmp(&b.range)).map(|h| h.target))
 }
 
+/// The Sidewinder's weapon type; how far off the nose (radians) and how far away (metres) its
+/// seeker, slaved to the radar, takes a target by itself.
+const SIDEWINDER_WEAPON: i32 = 0;
+const SEEKER_CONE: f64 = 0.26;
+const SEEKER_REACH: f64 = 18_500.0;
+
+/// The hostile aircraft the radar has (a track, else a return) nearest the nose within the
+/// Sidewinder seeker's cone and reach.
+fn seeker_target(radar: &Awg9, a: &Aircraft, pos: &WorldPos) -> Option<ContactRef> {
+    let o = own(a, pos);
+    // The nose in east, north, up.
+    let (hs, hc) = (o.heading as f64).sin_cos();
+    let (ps, pc) = (o.pitch as f64).sin_cos();
+    let nose = DVec3::new(hs * pc, hc * pc, ps);
+    let tracks = radar.tracks.iter().filter(|t| !t.friendly).filter_map(|t| {
+        let d = t.now() - o.pos;
+        let off = nose.angle_between(d);
+        (d.length() < SEEKER_REACH && off < SEEKER_CONE).then_some((off, t.target))
+    });
+    // A return has no elevation: by its azimuth, with the antenna near level.
+    let level = radar.elevation.abs() < 0.2 && o.pitch.abs() < 0.2;
+    let hits = radar.hits.iter().filter(|h| !h.friendly && level).filter_map(|h| {
+        let off = h.az.abs() as f64;
+        ((h.range as f64) < SEEKER_REACH && off < SEEKER_CONE).then_some((off, h.target))
+    });
+    tracks.chain(hits).min_by(|a, b| a.0.total_cmp(&b.0)).map(|t| t.1)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn radar_controls(
     settings: Res<Settings>,
@@ -257,8 +285,11 @@ pub(super) fn radar_controls(
     mut hooks: Local<Option<u8>>,
     mut acm: Local<Option<(Mode, f32)>>,
     mut was_stt: Local<bool>,
-    mut locks: MessageWriter<crate::avionics::LockRequest>,
-    mut unlocks: MessageWriter<crate::avionics::Unlock>,
+    (combat, hud): (Option<Res<crate::combat::Combat>>, Res<crate::hud::HudState>),
+    (mut locks, mut unlocks): (
+        MessageWriter<crate::avionics::LockRequest>,
+        MessageWriter<crate::avionics::Unlock>,
+    ),
     mut actions: MessageReader<crate::input::ActionEvent>,
 ) {
     // The lock control (the targeting pod's and the radar's lock: a key, a HOTAS button, a VR
@@ -333,6 +364,27 @@ pub(super) fn radar_controls(
     }
     // A single target track locks; going back to a search lets go.
     let air = contacts.locked.filter(|l| matches!(l, ContactRef::Unit(_) | ContactRef::Pilot(_)));
+    // The lock control without a cursor (the pilot's): the hooked aircraft, the track the next
+    // shot is for, else the nearest. A Sidewinder's seeker is slaved to the radar: it takes
+    // the hostile aircraft the radar has nearest the nose by itself.
+    if air.is_none() {
+        let sidewinder = combat.as_deref().is_some_and(|c| {
+            let (bays, cur) = c.sim.bays();
+            !c.sim.gun_selected()
+                && hud.mode == crate::hud::HudMode::Air
+                && bays.get(cur).is_some_and(|b| b.1 > 0 && b.0 == SIDEWINDER_WEAPON)
+        });
+        let wanted = if lock && active.is_none() {
+            radar.hook.or_else(|| radar.next_shot(&[])).or_else(|| stt_target(&radar))
+        } else if sidewinder {
+            player.single().ok().and_then(|(a, pos)| seeker_target(&radar, a, pos))
+        } else {
+            None
+        };
+        if let Some(t) = wanted {
+            locks.write(crate::avionics::LockRequest(t));
+        }
+    }
     if mode.stt() {
         if air.is_none()
             && let Some(t) = stt_target(&radar)

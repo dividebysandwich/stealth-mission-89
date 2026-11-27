@@ -758,6 +758,11 @@ impl Sim {
         // An air-to-air missile fired with another pilot locked goes for him (or the pilot the
         // F-14's track-while-scan shoots at next).
         let (launch_unit, launch_pilot, ph_active) = self.pl.launch;
+        // The track-while-scan's next shot is the radar missiles': a Sidewinder goes for what
+        // its own seeker is locked on.
+        let radar_guided = matches!(spec, PHOENIX_SPEC | SPARROW_SPEC);
+        let (launch_unit, launch_pilot) =
+            if radar_guided { (launch_unit, launch_pilot) } else { (None, None) };
         if mt.class == 7 {
             self.proj[slot].target_pilot =
                 launch_pilot.or(self.pl.pilot_lock).filter(|&k| self.pilot_airborne(k));
@@ -765,7 +770,6 @@ impl Sim {
         // The radar's target: the air lock, or the track the F-14's track-while-scan shoots at
         // next.
         let lock = launch_unit.map_or(self.pl.air_lock, |j| j as i32);
-        let radar_guided = matches!(spec, PHOENIX_SPEC | SPARROW_SPEC);
         if radar_guided {
             if lock >= 0 && (lock as usize) < self.flights.len() {
                 self.proj[slot].target = lock;

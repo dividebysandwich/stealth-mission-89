@@ -135,10 +135,11 @@ pub fn tid_range_for(metres: f32) -> TidRange {
         .unwrap_or(TidRange::Nm400)
 }
 
-/// The WCS mode the automatic RIO wants: a single target track for a Sparrow at the pilot's
-/// lock, else track while scan (the Phoenix's ranks in AUTO).
-pub fn wanted_wcs(sparrow: bool, locked: bool) -> WcsMode {
-    if sparrow && locked { WcsMode::PdStt } else { WcsMode::TwsAuto }
+/// The WCS mode the automatic RIO wants: a single target track for a Sparrow or a Sidewinder
+/// at the pilot's lock (going back to a search would let go of it), else track while scan (the
+/// Phoenix's ranks in AUTO).
+pub fn wanted_wcs(sparrow_or_sidewinder: bool, locked: bool) -> WcsMode {
+    if sparrow_or_sidewinder && locked { WcsMode::PdStt } else { WcsMode::TwsAuto }
 }
 
 /// What the automatic RIO last set (he sets a control again only when he wants another
@@ -187,7 +188,8 @@ fn automatic(
     let locked =
         contacts.locked.is_some_and(|l| matches!(l, ContactRef::Unit(_) | ContactRef::Pilot(_)));
     // The radar's mode.
-    let wcs = wanted_wcs(weapon == stealth_sim::SPARROW_WEAPON, locked);
+    // (Weapon 0 is the Sidewinder.)
+    let wcs = wanted_wcs(weapon == stealth_sim::SPARROW_WEAPON || weapon == 0, locked);
     if rio.wcs != Some(wcs) {
         rio.wcs = Some(wcs);
         panel.wcs = wcs;
@@ -267,5 +269,6 @@ mod tests {
         assert_eq!(wanted_wcs(true, true), WcsMode::PdStt);
         assert_eq!(wanted_wcs(true, false), WcsMode::TwsAuto);
         assert_eq!(wanted_wcs(false, true), WcsMode::TwsAuto);
+        assert_eq!(wanted_wcs(false, false), WcsMode::TwsAuto);
     }
 }
