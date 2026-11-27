@@ -5093,10 +5093,16 @@ With nobody in the back seat an automatic RIO does the routine work:
 
 - He keeps the radar in **TWS AUTO**, with the DDD's and the TID's ranges and the antenna on the
   nearest hostile aircraft.
-- With a **Sparrow selected and a lock of yours**, he takes a single target track on it, and
-  goes back to track while scan when the lock is gone.
-- With a **bomb selected** he switches the LANTIRN on and designates the mission's target, or
-  the route point you steer to, once it lies within 20 nmi ahead.
+- With a **Sparrow or a Sidewinder selected and a lock**, he takes a single target track on it,
+  and goes back to track while scan when the lock is gone. A selected Sidewinder's seeker takes
+  the hostile aircraft the radar has nearest your nose by itself (within some 10 nmi and 15
+  degrees); the **lock** control locks the hooked track, or the one the next shot is for.
+- With **laser-guided bombs aboard** (whatever is selected, unless you have an aircraft locked)
+  or any bomb selected he switches the LANTIRN on and, once it lies within 20 nmi ahead,
+  designates and **lases the mission's primary target** (LASER at ARM, OPER lit, the pod's
+  page shows L with the code); when the primary is destroyed he goes on to the **secondary**.
+  With a bomb selected and neither left he designates the route point you steer to. A point
+  you designate yourself stays until his target changes.
 
 He never touches the radar while your ACM cover is up, never fires, and stops the moment anyone
 sits in the back seat.

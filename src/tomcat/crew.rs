@@ -150,13 +150,17 @@ struct Rio {
     ddd: Option<DddRange>,
     tid: Option<TidRange>,
     pod: bool,
+    /// The laser as he set it, the waypoint he lases.
+    laser: Option<bool>,
+    lased: Option<usize>,
     wait: f32,
 }
 
 /// The automatic radar intercept officer, while the back seat is empty (and the pilot has not
 /// the ACM cover up): the radar in track while scan, or in a single target track on the pilot's
 /// lock for a Sparrow; the DDD's and the TID's ranges and the antenna on the nearest hostile;
-/// with a bomb selected the LANTIRN up and the route's target ahead designated.
+/// with a bomb selected or laser-guided bombs aboard the LANTIRN up and the mission's primary
+/// target, then the secondary, designated and lased while it is in reach ahead.
 #[allow(clippy::too_many_arguments)]
 fn automatic(
     time: Res<Time>,
@@ -219,8 +223,11 @@ fn automatic(
             mfd.av.fcr_el = el.round().clamp(-ANTENNA_REACH, ANTENNA_REACH);
         }
     }
-    // A bomb: the LANTIRN up, the route's target ahead designated.
-    let pod = !air_weapon;
+    // A bomb selected or laser-guided bombs aboard: the LANTIRN up, and the mission's primary
+    // target lased while it is in reach ahead, the secondary once the primary is done (with a
+    // bomb selected and neither left, the route's current point).
+    let lgb = bays.iter().any(|b| b.1 > 0 && b.0 == LGB_WEAPON);
+    let pod = !air_weapon || (lgb && !locked);
     if pod != rio.pod {
         rio.pod = pod;
         if pod {
@@ -228,27 +235,53 @@ fn automatic(
             panel.lts_mode = LtsMode::AirToGround;
         }
     }
-    if !pod || contacts.ground_lock.is_some() {
-        return;
-    }
     let here = DVec2::new(own.x, own.y);
     let heading = a.euler().0 as f64;
     let anchor = |i: usize| waypoints.anchors.get(i).copied().unwrap_or(i);
-    let best = [anchor(1), anchor(2), waypoints.current]
+    let done = combat.sim.objectives();
+    let target = lase_order(done.primary_done, done.secondary_done, !air_weapon)
         .into_iter()
-        .filter_map(|i| waypoints.points.get(i).copied())
-        .map(|wp| (wp, DVec2::new(wp.east * WU, wp.north * WU) - here))
-        .filter(|(_, d)| {
+        .flatten()
+        .filter(|_| pod)
+        .map(|k| if k == CURRENT { waypoints.current } else { anchor(k) })
+        .filter_map(|i| waypoints.points.get(i).copied().map(|wp| (i, wp)))
+        .find(|(_, wp)| {
+            let d = DVec2::new(wp.east * WU, wp.north * WU) - here;
             let off = (d.x.atan2(d.y) - heading + std::f64::consts::PI)
                 .rem_euclid(std::f64::consts::TAU)
                 - std::f64::consts::PI;
             d.length() < DESIGNATE_RANGE && off.abs() < DESIGNATE_CONE
-        })
-        .min_by(|p, q| p.1.length_squared().total_cmp(&q.1.length_squared()));
-    if let Some((wp, _)) = best {
+        });
+    // The laser: armed and firing while he has a target, safe again without one.
+    let lasing = target.is_some();
+    if rio.laser != Some(lasing) {
+        rio.laser = Some(lasing);
+        panel.laser_armed = lasing;
+        panel.lts_oper = lasing;
+    }
+    let Some((index, wp)) = target else {
+        rio.lased = None;
+        return;
+    };
+    // He designates his target once: a point the pilot designates meanwhile stays, until the
+    // RIO's target changes.
+    if rio.lased != Some(index) && (contacts.ground_lock.is_none() || rio.lased.is_some()) {
         let (x, y) = (wp.east / 32.0, 0x8000 as f64 - wp.north / 32.0);
         combat.designate_at(x.round() as i32, y.round() as i32);
+        rio.lased = Some(index);
     }
+}
+
+/// The GBU-12's weapon type (the laser-guided bomb).
+const LGB_WEAPON: i32 = 6;
+/// `lase_order`'s mark for the route's current point (the others are the mission's anchors).
+const CURRENT: usize = usize::MAX;
+
+/// The points the automatic RIO lases, the first in reach wins: the mission's primary target
+/// (anchor 1) until it is done, then the secondary (anchor 2), and with a bomb selected
+/// (`bombing`) the route's current point after them.
+pub fn lase_order(primary_done: bool, secondary_done: bool, bombing: bool) -> [Option<usize>; 3] {
+    [(!primary_done).then_some(1), (!secondary_done).then_some(2), bombing.then_some(CURRENT)]
 }
 
 #[cfg(test)]
@@ -270,5 +303,13 @@ mod tests {
         assert_eq!(wanted_wcs(true, false), WcsMode::TwsAuto);
         assert_eq!(wanted_wcs(false, true), WcsMode::TwsAuto);
         assert_eq!(wanted_wcs(false, false), WcsMode::TwsAuto);
+    }
+
+    #[test]
+    fn the_rio_lases_the_primary_then_the_secondary() {
+        assert_eq!(lase_order(false, false, false), [Some(1), Some(2), None]);
+        assert_eq!(lase_order(true, false, false), [None, Some(2), None]);
+        assert_eq!(lase_order(true, true, false), [None, None, None]);
+        assert_eq!(lase_order(true, true, true)[2], Some(CURRENT));
     }
 }
